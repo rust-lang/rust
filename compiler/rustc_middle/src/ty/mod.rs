@@ -56,7 +56,6 @@ pub mod vtable;
 pub mod walk;
 
 mod adt;
-mod alias_relation_direction;
 mod assoc;
 mod c_reader_cache_key;
 mod closure;
@@ -102,7 +101,6 @@ pub use self::adt::{
     AdtDef, AdtDefData, AdtFlags, AdtKind, FieldDef, Representability, VariantDef, VariantDiscr,
     VariantFlags,
 };
-pub use self::alias_relation_direction::AliasRelationDirection;
 pub use self::assoc::*;
 pub use self::binding::BindingMode;
 pub use self::binding::BindingMode::*;
@@ -138,11 +136,11 @@ pub use self::param_env::{ParamEnv, ParamEnvAnd};
 pub use self::parameterized::ParameterizedOverTcx;
 pub use self::placeholder::Placeholder;
 pub use self::predicate::{
-    BoundConstness, Clause, CoercePredicate, CratePredicatesMap, InstantiatedPredicates,
-    OutlivesPredicate, PolyCoercePredicate, PolyProjectionPredicate, PolyRegionOutlivesPredicate,
-    PolySubtypePredicate, PolyTraitPredicate, PolyTypeOutlivesPredicate, Predicate, PredicateKind,
-    ProjectionPredicate, RegionOutlivesPredicate, SubtypePredicate, ToPredicate, TraitPredicate,
-    TypeOutlivesPredicate,
+    AliasRelationDirection, BoundConstness, Clause, CoercePredicate, CratePredicatesMap,
+    InstantiatedPredicates, OutlivesPredicate, PolyCoercePredicate, PolyProjectionPredicate,
+    PolyRegionOutlivesPredicate, PolySubtypePredicate, PolyTraitPredicate,
+    PolyTypeOutlivesPredicate, Predicate, PredicateKind, ProjectionPredicate,
+    RegionOutlivesPredicate, SubtypePredicate, ToPredicate, TraitPredicate, TypeOutlivesPredicate,
 };
 pub use self::region::PlaceholderRegion;
 pub use self::rvalue_scopes::RvalueScopes;

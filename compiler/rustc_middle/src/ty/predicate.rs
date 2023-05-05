@@ -6,9 +6,8 @@ use rustc_hir::def_id::DefId;
 use rustc_type_ir::WithCachedTypeInfo;
 
 use crate::ty::{
-    self, AliasRelationDirection, AliasTy, Binder, ClosureKind, Const, DebruijnIndex, EarlyBinder,
-    GenericArg, ImplPolarity, ParamEnv, PolyTraitRef, SubstsRef, Term, TraitRef, Ty, TyCtxt,
-    TypeFlags,
+    self, AliasTy, Binder, ClosureKind, Const, DebruijnIndex, EarlyBinder, GenericArg,
+    ImplPolarity, ParamEnv, PolyTraitRef, SubstsRef, Term, TraitRef, Ty, TyCtxt, TypeFlags,
 };
 
 mod crate_predicates_map;
@@ -188,6 +187,13 @@ pub enum BoundConstness {
     ///
     /// Requires resolving to const only when we are in a const context.
     ConstIfConst,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
+#[derive(HashStable, Debug)]
+pub enum AliasRelationDirection {
+    Equate,
+    Subtype,
 }
 
 impl<'tcx> Predicate<'tcx> {
@@ -594,6 +600,15 @@ impl fmt::Display for BoundConstness {
         match self {
             Self::NotConst => f.write_str("normal"),
             Self::ConstIfConst => f.write_str("`~const`"),
+        }
+    }
+}
+
+impl fmt::Display for AliasRelationDirection {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AliasRelationDirection::Equate => write!(f, "=="),
+            AliasRelationDirection::Subtype => write!(f, "<:"),
         }
     }
 }
