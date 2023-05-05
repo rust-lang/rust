@@ -65,7 +65,6 @@ mod closure;
 mod closure_size_profile_data;
 mod consts;
 mod context;
-mod crate_inherent_impls;
 mod crate_variances_map;
 mod destructor;
 mod destructured_const;
@@ -73,10 +72,6 @@ mod diagnostics;
 mod erase_regions;
 mod field_def;
 mod generics;
-mod impl_header;
-mod impl_overlap_kind;
-mod impl_polarity;
-mod impl_subject;
 mod impl_trait_in_trait_data;
 mod impls_ty;
 mod infer_var_info;
@@ -103,6 +98,8 @@ mod variant_discr;
 mod variant_flags;
 mod visibility;
 
+mod coherence;
+
 pub use rustc_session::lint::RegisteredTools;
 pub use rustc_target::abi::{ReprFlags, ReprOptions};
 pub use rustc_type_ir::AliasKind::*;
@@ -127,13 +124,15 @@ pub use self::closure::{
     CAPTURE_STRUCT_LOCAL,
 };
 pub use self::closure_size_profile_data::ClosureSizeProfileData;
+pub use self::coherence::{
+    CrateInherentImpls, ImplHeader, ImplOverlapKind, ImplPolarity, ImplSubject,
+};
 pub use self::consts::{
     Const, ConstData, ConstInt, ConstKind, Expr, InferConst, ScalarInt, UnevaluatedConst, ValTree,
 };
 pub use self::context::{
     tls, CtxtInterners, DeducedParamAttrs, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt, TyCtxtFeed,
 };
-pub use self::crate_inherent_impls::CrateInherentImpls;
 pub use self::crate_variances_map::CrateVariancesMap;
 pub use self::destructor::Destructor;
 pub use self::destructured_const::DestructuredConst;
@@ -141,10 +140,6 @@ pub use self::diagnostics::*;
 pub use self::field_def::FieldDef;
 pub use self::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
 pub use self::generics::*;
-pub use self::impl_header::ImplHeader;
-pub use self::impl_overlap_kind::ImplOverlapKind;
-pub use self::impl_polarity::ImplPolarity;
-pub use self::impl_subject::ImplSubject;
 pub use self::impl_trait_in_trait_data::ImplTraitInTraitData;
 pub use self::infer_var_info::InferVarInfo;
 pub use self::instance::{Instance, InstanceDef, ShortInstance, UnusedGenericParams};
