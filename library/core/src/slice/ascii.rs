@@ -268,6 +268,24 @@ const fn contains_nonascii(v: usize) -> bool {
     (NONASCII_MASK & v) != 0
 }
 
+/// ASCII test *without* the chunk-at-a-time optimizations.
+///
+/// This is carefully structured to produce nice small code -- it's smaller in
+/// `-O` than what the "obvious" ways produces under `-C opt-level=s`.  If you
+/// touch it, be sure to run (and update if needed) the assembly test.
+#[unstable(feature = "str_internals", issue = "none")]
+#[doc(hidden)]
+#[inline]
+pub const fn is_ascii_simple(mut bytes: &[u8]) -> bool {
+    while let [rest @ .., last] = bytes {
+        if !last.is_ascii() {
+            break;
+        }
+        bytes = rest;
+    }
+    bytes.is_empty()
+}
+
 /// Optimized ASCII test that will use usize-at-a-time operations instead of
 /// byte-at-a-time operations (when possible).
 ///
@@ -293,16 +311,7 @@ const fn is_ascii(s: &[u8]) -> bool {
     // We also do this for architectures where `size_of::<usize>()` isn't
     // sufficient alignment for `usize`, because it's a weird edge case.
     if len < USIZE_SIZE || len < align_offset || USIZE_SIZE < mem::align_of::<usize>() {
-        // FIXME: once iterators and closures can be used in `const fn`,
-        // return s.iter().all(|b| b.is_ascii());
-        let mut i = 0;
-        while i < len {
-            if !s[i].is_ascii() {
-                return false;
-            }
-            i += 1;
-        }
-        return true;
+        return is_ascii_simple(s);
     }
 
     // We always read the first word unaligned, which means `align_offset` is
