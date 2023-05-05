@@ -1,62 +1,47 @@
-// Quick terminology mapping:
-//     * "rule" => region constraint ("rule" is just shorter)
-//     * "category"/"cat" => group of constraints with similar structure, i.e.
-//                           constraints can only be merged if they're in the
-//                           same category
-//     * "mapping" => mapping from one set of variables to another. Mappings MUST
-//                    be many-to-one. Obviously, they can't be one-to-many, and
-//                    a one-to-one mapping isn't really productive, because
-//                    we're not eliminating any variables that way
-//
-// This algorithm, in its present state, *is* exponential time. This exponential time
-// case happens iff we have potential mappings that overlap, thus requiring them
-// to be combined. For example, if we have a category A that contains constraints involving
-// variables [1, 2, 3] and [11, 12, 4], and a category B that contains constraints involving
-// variables [1, 2, 100] and [11, 12, 101], then the mapping in category A from the first
-// constraint to the second constraint is valid if and only if the mapping from the first
-// constraint to the second constraint in category B is valid (i.e. they depend on each other).
-// In this trivial case, it's obvious that they're both valid, but more complicated cases
-// can create a graph of dependencies (potentially with cycles), creating exponential behavior.
-//
-// In general, I don't think the exponential case should be happening *that* often, and if it does,
-// the dependencies graph shouldn't be very deep, so it shouldn't be terrible. However, I'm not very
-// knowledgable on the types of region constraints that can be generated, so maybe this assertion is false.
-// There's some heuristics that I can use to speed the exponential part up, or maybe just cap the search depth.
-
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_index::{Idx, IndexVec};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 
+rustc_index::newtype_index! { pub struct VarIndex {} }
+rustc_index::newtype_index! { pub struct ConstraintIndex {} }
+rustc_index::newtype_index! {
+    /// Identifies a clique in the dedup graph by an index
+    /// Two constraints can potentially be merged if and only if they belong to the same clique
+    pub struct CliqueIndex {}
+}
+rustc_index::newtype_index! { pub struct MappingIndex {} }
+
 #[derive(Debug)]
 pub struct DedupSolver {
-    /// The variables present in each rule - the inner vec contains the variables, in the order
-    /// that they appear in the rule
-    rule_vars: Vec<Vec<usize>>,
-    /// The categories that rules can be partitioned into - the inner vec contains all the rules
+    /// The variables present in each constraint - the inner vec contains the variables, in the order
+    /// that they appear in the constraint
+    constraint_vars: IndexVec<ConstraintIndex, Vec<VarIndex>>,
+    /// The categories that constraints can be partitioned into - the inner vec contains all the constraints
     /// that are in the same category
-    rule_cats: Vec<Vec<usize>>,
-    unremovable_vars: FxIndexSet<usize>,
+    constraint_cliques: IndexVec<CliqueIndex, Vec<ConstraintIndex>>,
+    unremovable_vars: FxIndexSet<VarIndex>,
 
     /// The below are internal variables used in the solving process:
 
     /// All the mappings that can possibly be taken
     mappings: FxIndexMap<Mapping, MappingInfo>,
-    /// Rules that have already been removed by deduplication
-    removed_rules: RefCell<FxIndexSet<usize>>,
+    /// Constraints that have already been removed by deduplication
+    removed_constraints: RefCell<FxIndexSet<ConstraintIndex>>,
     /// All of the currently applied var mappings, summed together
     applied_mappings: RefCell<Mapping>,
 }
 #[derive(Debug)]
 pub struct DedupResult {
-    pub removed_constraints: FxIndexSet<usize>,
-    pub removed_vars: FxIndexSet<usize>,
+    pub removed_constraints: FxIndexSet<ConstraintIndex>,
+    pub removed_vars: FxIndexSet<VarIndex>,
 }
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
-struct Mapping(BTreeMap<usize, usize>);
+struct Mapping(BTreeMap<VarIndex, VarIndex>);
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct MappingInfo {
-    dependencies: FxIndexMap<usize, FxIndexSet<usize>>,
-    rule_mappings: FxIndexMap<usize, usize>,
+    dependencies: FxIndexMap<ConstraintIndex, FxIndexSet<MappingIndex>>,
+    constraint_mappings: FxIndexMap<ConstraintIndex, ConstraintIndex>,
 }
 #[derive(Debug, PartialEq, Eq)]
 enum MapEvalErr {
@@ -66,20 +51,20 @@ enum MapEvalErr {
 
 impl DedupSolver {
     pub fn dedup(
-        constraint_vars: Vec<Vec<usize>>,
-        constraint_categories: Vec<Vec<usize>>,
-        unremovable_vars: FxIndexSet<usize>,
+        constraint_vars: IndexVec<ConstraintIndex, Vec<VarIndex>>,
+        constraint_cliques: IndexVec<CliqueIndex, Vec<ConstraintIndex>>,
+        unremovable_vars: FxIndexSet<VarIndex>,
     ) -> DedupResult {
         let mut deduper = Self {
-            rule_vars: constraint_vars,
-            rule_cats: constraint_categories,
+            constraint_vars,
+            constraint_cliques,
             unremovable_vars,
 
             mappings: FxIndexMap::default(),
-            removed_rules: RefCell::new(FxIndexSet::default()),
-            applied_mappings: RefCell::new(Mapping::map_rules(&[], &[])),
+            removed_constraints: RefCell::new(FxIndexSet::default()),
+            applied_mappings: RefCell::new(Mapping::map_constraints(&[], &[])),
         };
-        deduper.refine_categories();
+        deduper.refine_cliques();
         deduper.compute_mappings();
         deduper.resolve_dependencies();
 
@@ -90,86 +75,86 @@ impl DedupSolver {
             }
             removed_vars.insert(*from);
         }
-        DedupResult { removed_constraints: deduper.removed_rules.into_inner(), removed_vars }
+        DedupResult { removed_constraints: deduper.removed_constraints.into_inner(), removed_vars }
     }
-    fn refine_categories(&mut self) {
+    fn refine_cliques(&mut self) {
         // Refine categories based on shape
-        for cat_indx in 0..self.rule_cats.len() {
-            let mut shape_categories: FxIndexMap<Vec<usize>, usize> = FxIndexMap::default();
-            let mut rule_indx = 0;
-            while rule_indx < self.rule_cats[cat_indx].len() {
-                let rule = self.rule_cats[cat_indx][rule_indx];
-                let shape = Self::canonicalize_rule_shape(&mut self.rule_vars[rule]);
-                let is_first_entry = shape_categories.is_empty();
-                let new_cat = *shape_categories.entry(shape).or_insert_with(|| {
+        for clique_indx in (0..self.constraint_cliques.len()).map(CliqueIndex::new) {
+            let mut shape_cliques: FxIndexMap<Vec<usize>, CliqueIndex> = FxIndexMap::default();
+            let mut constraint_indx = 0;
+            while constraint_indx < self.constraint_cliques[clique_indx].len() {
+                let constraint = self.constraint_cliques[clique_indx][constraint_indx];
+                let shape =
+                    Self::canonicalize_constraint_shape(&mut self.constraint_vars[constraint]);
+                let is_first_entry = shape_cliques.is_empty();
+                let new_clique = *shape_cliques.entry(shape).or_insert_with(|| {
                     if is_first_entry {
-                        cat_indx
+                        clique_indx
                     } else {
-                        self.rule_cats.push(Vec::new());
-                        self.rule_cats.len() - 1
+                        self.constraint_cliques.push(Vec::new());
+                        CliqueIndex::new(self.constraint_cliques.len() - 1)
                     }
                 });
-                if new_cat == cat_indx {
-                    rule_indx += 1;
+                if new_clique == clique_indx {
+                    constraint_indx += 1;
                     continue;
                 }
-                self.rule_cats[cat_indx].swap_remove(rule_indx);
-                self.rule_cats[new_cat].push(rule);
+                self.constraint_cliques[clique_indx].swap_remove(constraint_indx);
+                self.constraint_cliques[new_clique].push(constraint);
             }
         }
         // Refine categories based on indices of variables
-        for cat_indx in 0..self.rule_cats.len() {
-            // A vec of tuples representing index categories.
-            // First element of tuple is a mapping from a variable to the index it occurs in
-            // Second element of tuple is the category
-            let mut index_categories: Vec<(FxIndexMap<usize, usize>, usize)> = Vec::new();
-            let mut rule_indx = 0;
-            while rule_indx < self.rule_cats[cat_indx].len() {
-                let rule = self.rule_cats[cat_indx][rule_indx];
-                let rule_vars = &self.rule_vars[rule];
-                let rule_var_indices: FxIndexMap<usize, usize> =
-                    rule_vars.iter().enumerate().map(|(indx, x)| (*x, indx)).collect();
+        for clique_indx in (0..self.constraint_cliques.len()).map(CliqueIndex::new) {
+            // First element of tuple (the FxIndexMap) maps a variable to
+            // the index it occurs in
+            let mut index_cliques: Vec<(FxIndexMap<VarIndex, usize>, CliqueIndex)> = Vec::new();
+            let mut constraint_indx = 0;
+            while constraint_indx < self.constraint_cliques[clique_indx].len() {
+                let constraint = self.constraint_cliques[clique_indx][constraint_indx];
+                let constraint_vars = &self.constraint_vars[constraint];
+                let constraint_var_indices: FxIndexMap<VarIndex, usize> =
+                    constraint_vars.iter().enumerate().map(|(indx, x)| (*x, indx)).collect();
 
-                let mut found_cat = None;
-                for (cat_vars, new_cat_indx) in index_categories.iter_mut() {
-                    let is_cat_member = rule_vars
+                let mut found_clique = None;
+                for (clique_vars, new_clique_indx) in index_cliques.iter_mut() {
+                    let is_clique_member = constraint_vars
                         .iter()
                         .enumerate()
-                        .all(|(indx, x)| *cat_vars.get(x).unwrap_or(&indx) == indx);
-                    if !is_cat_member {
+                        .all(|(indx, x)| *clique_vars.get(x).unwrap_or(&indx) == indx);
+                    if !is_clique_member {
                         continue;
                     }
-                    found_cat = Some(*new_cat_indx);
-                    cat_vars.extend(&rule_var_indices);
+                    found_clique = Some(*new_clique_indx);
+                    clique_vars.extend(&constraint_var_indices);
                     break;
                 }
-                let new_cat = found_cat.unwrap_or_else(|| {
-                    if index_categories.is_empty() {
-                        cat_indx
+                let new_clique = found_clique.unwrap_or_else(|| {
+                    if index_cliques.is_empty() {
+                        clique_indx
                     } else {
-                        self.rule_cats.push(Vec::new());
-                        let new_cat = self.rule_cats.len() - 1;
-                        index_categories.push((rule_var_indices, new_cat));
-                        new_cat
+                        let new_clique = self.constraint_cliques.next_index();
+                        self.constraint_cliques.push(Vec::new());
+                        index_cliques.push((constraint_var_indices, new_clique));
+                        new_clique
                     }
                 });
-                if new_cat == cat_indx {
-                    rule_indx += 1;
+                if new_clique == clique_indx {
+                    constraint_indx += 1;
                     continue;
                 }
-                self.rule_cats[cat_indx].swap_remove(rule_indx);
-                self.rule_cats[new_cat].push(rule);
+                self.constraint_cliques[clique_indx].swap_remove(constraint_indx);
+                self.constraint_cliques[new_clique].push(constraint);
             }
         }
     }
-    /// Returns the "shape" of a rule - related to the idea of de bruijn indices
-    /// For example, a rule involving the vars [1, 1, 2, 3] has a shape of [0, 0, 1, 2],
-    /// and a rule involving vars [3, 4] has a shape of [0, 1]
+    /// Returns the "shape" of a constraint - related to the idea of de bruijn indices
+    /// For example, a constraint involving the vars [1, 1, 2, 3] has a shape of [0, 0, 1, 2],
+    /// and a constraint involving vars [3, 4] has a shape of [0, 1]
     /// It takes a mutable reference to the vars because it also removes duplicates from
     /// the input vector after computing the shape
     /// Clearly, two constraints can be mapped onto each other only if they have the
     /// same shape
-    fn canonicalize_rule_shape(vars: &mut Vec<usize>) -> Vec<usize> {
+    fn canonicalize_constraint_shape(vars: &mut Vec<VarIndex>) -> Vec<usize> {
         let mut shape = Vec::new();
         let mut num_vars = 0;
         let mut indx = 0;
@@ -188,24 +173,32 @@ impl DedupSolver {
 
     /// Computes the set of all possible mappings
     /// If a mapping has no dependencies, then it's eagerly taken, to increase performance
-    /// Deduplication can be done greedily because if two rules can be merged, then they're
-    /// equivalent in every way, including in relations to other rules
+    /// Deduplication can be done greedily because if two constraints can be merged, then they're
+    /// equivalent in every way, including in relations to other constraints
     fn compute_mappings(&mut self) {
         let mut invalid_maps: FxIndexSet<Mapping> = FxIndexSet::default();
-        for cat in self.rule_cats.iter() {
-            for (n, rule_1) in
-                cat.iter().enumerate().filter(|x| !self.removed_rules.borrow().contains(x.1))
+        for clique in self.constraint_cliques.iter() {
+            for (n, constraint_1) in clique
+                .iter()
+                .enumerate()
+                .filter(|x| !self.removed_constraints.borrow().contains(x.1))
             {
-                for rule_2 in
-                    cat.iter().skip(n + 1).filter(|x| !self.removed_rules.borrow().contains(*x))
+                for constraint_2 in clique
+                    .iter()
+                    .skip(n + 1)
+                    .filter(|x| !self.removed_constraints.borrow().contains(*x))
                 {
-                    let forward =
-                        Mapping::map_rules(&self.rule_vars[*rule_1], &self.rule_vars[*rule_2]);
+                    let forward = Mapping::map_constraints(
+                        &self.constraint_vars[*constraint_1],
+                        &self.constraint_vars[*constraint_2],
+                    );
                     if invalid_maps.contains(&forward) || self.mappings.contains_key(&forward) {
                         continue;
                     }
-                    let reverse =
-                        Mapping::map_rules(&self.rule_vars[*rule_2], &self.rule_vars[*rule_1]);
+                    let reverse = Mapping::map_constraints(
+                        &self.constraint_vars[*constraint_2],
+                        &self.constraint_vars[*constraint_1],
+                    );
                     if invalid_maps.contains(&reverse) || self.mappings.contains_key(&reverse) {
                         continue;
                     }
@@ -235,7 +228,7 @@ impl DedupSolver {
         self.resolve_dependencies_to_mapping();
     }
     /// Currently, dependencies are in the form FxIndexMap<A, EmptyFxIndexSet>,
-    /// where A is a rule that must be mapped by another mapping. We must
+    /// where A is a constraint that must be mapped by another mapping. We must
     /// populate the EmptyFxIndexSet with a set of mappings that can map A without
     /// conflicting with the current mapping
     fn resolve_dependencies_to_mapping(&mut self) {
@@ -245,23 +238,24 @@ impl DedupSolver {
             }
             mapping_info
                 .dependencies
-                .retain(|dependency, _| !self.removed_rules.borrow().contains(dependency));
+                .retain(|dependency, _| !self.removed_constraints.borrow().contains(dependency));
             true
         });
         // A map from a constraint to the mappings that will eliminate it
-        let mut constraint_mappings: FxIndexMap<usize, FxIndexSet<usize>> = FxIndexMap::default();
+        let mut constraint_mappings: FxIndexMap<ConstraintIndex, FxIndexSet<MappingIndex>> =
+            FxIndexMap::default();
         for (indx, (_, mapping_info)) in self.mappings.iter().enumerate() {
-            for (from_rule, _) in mapping_info.rule_mappings.iter() {
+            for (from_constraint, _) in mapping_info.constraint_mappings.iter() {
                 constraint_mappings
-                    .entry(*from_rule)
+                    .entry(*from_constraint)
                     .or_insert_with(FxIndexSet::default)
-                    .insert(indx);
+                    .insert(MappingIndex::new(indx));
             }
         }
-        for indx in 0..self.mappings.len() {
+        for indx in (0..self.mappings.len()).map(MappingIndex::new) {
             let mapping = self.get_mapping(indx);
             let input_dependencies = &self.get_mapping_info(indx).dependencies;
-            let mut dependencies = Vec::new();
+            let mut dependencies = IndexVec::new();
             for (dependency, _) in input_dependencies.iter() {
                 let mut resolve_options = FxIndexSet::default();
                 if let Some(resolve_mappings) = constraint_mappings.get(dependency) {
@@ -273,15 +267,15 @@ impl DedupSolver {
                     )
                 }
                 // Don't duplicate dependency groups
-                if dependencies.contains(&resolve_options) {
+                if dependencies.iter().any(|x| x == &resolve_options) {
                     continue;
                 }
                 dependencies.push(resolve_options);
             }
-            // After this point, the actual rules that a dependency maps
+            // After this point, the actual constraints that a dependency maps
             // stops mattering - all that matters is that the dependency *exists*
-            self.mappings.get_index_mut(indx).unwrap().1.dependencies =
-                dependencies.into_iter().enumerate().collect();
+            self.mappings.get_index_mut(indx.index()).unwrap().1.dependencies =
+                dependencies.into_iter_enumerated().collect();
         }
     }
     /// Evaluates the mapping. Can return None if the mapping is invalid (i.e. it maps
@@ -295,27 +289,27 @@ impl DedupSolver {
             mapping.0.iter().any(|(from, to)| self.unremovable_vars.contains(from) && from != to);
 
         let mut info = MappingInfo::new();
-        for cat in self.rule_cats.iter() {
-            for rule_1 in cat {
-                let vars_1 = &self.rule_vars[*rule_1];
-                if !mapping.affects_rule(vars_1) {
+        for clique in self.constraint_cliques.iter() {
+            for constraint_1 in clique {
+                let vars_1 = &self.constraint_vars[*constraint_1];
+                if !mapping.affects_constraint(vars_1) {
                     continue;
                 }
                 let mut found_non_conflicting = false;
-                for rule_2 in cat.iter() {
-                    let vars_2 = &self.rule_vars[*rule_2];
-                    let trial_mapping = Mapping::map_rules(vars_1, vars_2);
+                for constraint_2 in clique.iter() {
+                    let vars_2 = &self.constraint_vars[*constraint_2];
+                    let trial_mapping = Mapping::map_constraints(vars_1, vars_2);
                     if mapping.conflicts_with(&trial_mapping) {
                         continue;
                     }
                     found_non_conflicting = true;
-                    // Only maps a subset of variables in rule_1
+                    // Only maps a subset of variables in constraint_1
                     if !mapping.maps_fully(vars_1, vars_2) {
-                        info.dependencies.insert(*rule_1, FxIndexSet::default());
+                        info.dependencies.insert(*constraint_1, FxIndexSet::default());
                         continue;
                     }
-                    if *rule_1 != *rule_2 {
-                        info.rule_mappings.insert(*rule_1, *rule_2);
+                    if *constraint_1 != *constraint_2 {
+                        info.constraint_mappings.insert(*constraint_1, *constraint_2);
                     }
                 }
                 if !found_non_conflicting {
@@ -323,7 +317,7 @@ impl DedupSolver {
                 }
             }
         }
-        for fully_mapped in info.rule_mappings.keys() {
+        for fully_mapped in info.constraint_mappings.keys() {
             info.dependencies.remove(fully_mapped);
         }
         if maps_unremovable_var {
@@ -334,7 +328,7 @@ impl DedupSolver {
 
     fn resolve_dependencies(&mut self) {
         let mut used_mappings = FxIndexSet::default();
-        for indx in 0..self.mappings.len() {
+        for indx in (0..self.mappings.len()).map(MappingIndex::new) {
             if used_mappings.contains(&indx) {
                 continue;
             }
@@ -366,12 +360,12 @@ impl DedupSolver {
     // I'll look into that later, if the rest of this approach is sound
     fn dfs_search(
         &self,
-        mut used_mappings: FxIndexSet<usize>,
+        mut used_mappings: FxIndexSet<MappingIndex>,
         mut applied_mappings: Mapping,
-        from: FxIndexSet<usize>,
-    ) -> Option<FxIndexSet<usize>> {
+        from: FxIndexSet<MappingIndex>,
+    ) -> Option<FxIndexSet<MappingIndex>> {
         for mapping_indx in from.iter() {
-            let (mapping, _) = self.mappings.get_index(*mapping_indx).unwrap();
+            let (mapping, _) = self.mappings.get_index(mapping_indx.index()).unwrap();
             if applied_mappings.conflicts_with(mapping) {
                 return None;
             }
@@ -382,14 +376,14 @@ impl DedupSolver {
         }
         used_mappings.extend(from.iter());
 
-        let choices: Vec<&FxIndexSet<usize>> =
+        let choices: Vec<&FxIndexSet<MappingIndex>> =
             from.iter().flat_map(|x| self.get_mapping_info(*x).dependencies.values()).collect();
         if choices.is_empty() {
             return Some(used_mappings);
         }
         let mut choice_indices = vec![0; choices.len()];
         while *choice_indices.last().unwrap() < choices.last().unwrap().len() {
-            let choice: FxIndexSet<usize> = choice_indices
+            let choice: FxIndexSet<MappingIndex> = choice_indices
                 .iter()
                 .zip(&choices)
                 .map(|(x, y)| *y.get_index(*x).unwrap())
@@ -424,29 +418,29 @@ impl DedupSolver {
         if self.applied_mappings.borrow().conflicts_with(mapping) {
             return false;
         }
-        self.removed_rules.borrow_mut().extend(info.rule_mappings.keys());
+        self.removed_constraints.borrow_mut().extend(info.constraint_mappings.keys());
         self.applied_mappings.borrow_mut().0.extend(&mapping.0);
         true
     }
-    fn get_mapping(&self, index: usize) -> &Mapping {
-        &self.mappings.get_index(index).unwrap().0
+    fn get_mapping(&self, index: MappingIndex) -> &Mapping {
+        &self.mappings.get_index(index.index()).unwrap().0
     }
-    fn get_mapping_info(&self, index: usize) -> &MappingInfo {
-        &self.mappings.get_index(index).unwrap().1
+    fn get_mapping_info(&self, index: MappingIndex) -> &MappingInfo {
+        &self.mappings.get_index(index.index()).unwrap().1
     }
 }
 
 impl Mapping {
-    fn map_rules(from: &[usize], to: &[usize]) -> Self {
+    fn map_constraints(from: &[VarIndex], to: &[VarIndex]) -> Self {
         Self(from.iter().zip(to).map(|(x, y)| (*x, *y)).collect())
     }
-    fn maps_var(&self, rule: usize) -> Option<usize> {
-        self.0.get(&rule).map(|x| *x)
+    fn maps_var(&self, constraint: VarIndex) -> Option<VarIndex> {
+        self.0.get(&constraint).map(|x| *x)
     }
-    fn affects_rule(&self, rule: &[usize]) -> bool {
-        rule.iter().any(|x| self.maps_var(*x).unwrap_or(*x) != *x)
+    fn affects_constraint(&self, constraint: &[VarIndex]) -> bool {
+        constraint.iter().any(|x| self.maps_var(*x).unwrap_or(*x) != *x)
     }
-    fn maps_fully(&self, from: &[usize], to: &[usize]) -> bool {
+    fn maps_fully(&self, from: &[VarIndex], to: &[VarIndex]) -> bool {
         if from.len() != to.len() {
             return false;
         }
@@ -468,7 +462,7 @@ impl Mapping {
 }
 impl MappingInfo {
     fn new() -> Self {
-        Self { dependencies: FxIndexMap::default(), rule_mappings: FxIndexMap::default() }
+        Self { dependencies: FxIndexMap::default(), constraint_mappings: FxIndexMap::default() }
     }
 }
 

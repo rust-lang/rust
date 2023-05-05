@@ -1,28 +1,26 @@
-#![allow(dead_code)]
-#![allow(unused_variables)]
-#![allow(unreachable_code)]
-#![allow(unused_imports)]
 use crate::infer::canonical::{Canonical, CanonicalVarInfos};
 use crate::infer::region_constraints::MemberConstraint;
 use crate::solve::{ExternalConstraintsData, Response};
 use rustc_middle::ty::{TyCtxt, UniverseIndex};
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
+use rustc_index::{Idx, IndexVec};
 use std::hash::Hash;
 use std::ops::Deref;
 
 mod constraint_walker;
 mod solver;
 use constraint_walker::{ConstraintWalker, Outlives};
+use solver::{ConstraintIndex, DedupSolver, VarIndex};
 
 pub struct Deduper<'tcx> {
     tcx: TyCtxt<'tcx>,
-    rule_vars: Vec<Vec<usize>>,
-    rule_cats: FxIndexMap<ConstraintType<'tcx>, Vec<usize>>,
+    constraint_vars: IndexVec<ConstraintIndex, Vec<VarIndex>>,
+    constraint_cliques: FxIndexMap<ConstraintType<'tcx>, Vec<ConstraintIndex>>,
     /// Maps a constraint index (the index inside constraint_vars) back to its index in outlives
-    indx_to_outlives: FxHashMap<usize, usize>,
+    indx_to_outlives: FxHashMap<ConstraintIndex, usize>,
     /// Maps a constraint index (the index inside constraint_vars) back to its index in member_constraints
-    indx_to_members: FxHashMap<usize, usize>,
+    indx_to_members: FxHashMap<ConstraintIndex, usize>,
 }
 #[derive(Debug, PartialEq, Eq, Hash)]
 enum ConstraintType<'tcx> {
@@ -35,8 +33,8 @@ impl<'tcx> Deduper<'tcx> {
         let mut constraints = input.value.external_constraints.deref().clone();
         let mut deduper = Self {
             tcx,
-            rule_vars: Vec::new(),
-            rule_cats: FxIndexMap::default(),
+            constraint_vars: IndexVec::new(),
+            constraint_cliques: FxIndexMap::default(),
             indx_to_outlives: FxHashMap::default(),
             indx_to_members: FxHashMap::default(),
         };
@@ -49,24 +47,35 @@ impl<'tcx> Deduper<'tcx> {
         variables: &mut CanonicalVarInfos<'tcx>,
         max_universe: &mut UniverseIndex,
     ) {
-        dedup_exact_eq(&mut constraints.region_constraints.outlives);
-        dedup_exact_eq(&mut constraints.region_constraints.member_constraints);
+        constraints.region_constraints.outlives =
+            FxIndexSet::<_>::from_iter(constraints.region_constraints.outlives.clone().into_iter())
+                .into_iter()
+                .collect();
+        constraints.region_constraints.member_constraints = FxIndexSet::<_>::from_iter(
+            constraints.region_constraints.member_constraints.clone().into_iter(),
+        )
+        .into_iter()
+        .collect();
 
-        let dedupable_vars: FxIndexSet<usize> = variables
+        let dedupable_vars: FxIndexSet<VarIndex> = variables
             .iter()
             .enumerate()
             .filter(|(_, var)| var.universe() > UniverseIndex::ROOT)
-            .map(|(indx, _)| indx)
+            .map(|(indx, _)| VarIndex::new(indx))
             .collect();
 
-        self.extract_constraint_data(&dedupable_vars, constraints, variables);
+        self.extract_constraint_data(constraints, variables);
 
-        let rule_vars = std::mem::take(&mut self.rule_vars);
-        let rule_cats = std::mem::take(&mut self.rule_cats).into_values().collect::<Vec<_>>();
-        let unremovable_vars: FxIndexSet<usize> =
-            (0..variables.len()).filter(|x| !dedupable_vars.contains(x)).collect();
+        let constraint_vars = std::mem::take(&mut self.constraint_vars);
+        let constraint_cliques =
+            std::mem::take(&mut self.constraint_cliques).into_values().collect::<IndexVec<_, _>>();
+        let unremovable_vars: FxIndexSet<_> = (0..variables.len())
+            .map(VarIndex::new)
+            .filter(|x| !dedupable_vars.contains(x))
+            .collect();
 
-        let solve_result = solver::DedupSolver::dedup(rule_vars, rule_cats, unremovable_vars);
+        let solve_result =
+            DedupSolver::dedup(constraint_vars, constraint_cliques, unremovable_vars);
         self.remove_duplicate_constraints(&solve_result.removed_constraints, constraints);
         self.compress_variables(&solve_result.removed_vars, constraints, variables, max_universe);
     }
@@ -74,7 +83,6 @@ impl<'tcx> Deduper<'tcx> {
     // categories
     fn extract_constraint_data(
         &mut self,
-        dedupable_vars: &FxIndexSet<usize>,
         constraints: &mut ExternalConstraintsData<'tcx>,
         variables: &mut CanonicalVarInfos<'tcx>,
     ) {
@@ -83,19 +91,12 @@ impl<'tcx> Deduper<'tcx> {
         // it re-writes all variables with a dummy value (num_vars - guaranteed to NOT be a var index),
         // allowing us to compare constraints based solely on their structure, not on the variables present
         // Used to compute constraint categories
-        let mut dummy_var_rewriter = |var| num_vars;
-        /*
-        let mut dummy_var_rewriter = |var| {
-            if dedupable_vars.contains(&var) {
-                return num_vars;
-            }
-            var
-        };
-        */
+        let mut dummy_var_rewriter = |_| num_vars;
+
         for (indx, outlives) in constraints.region_constraints.outlives.iter().enumerate() {
             let mut extractor = ConstraintWalker::new(self.tcx, &mut dummy_var_rewriter);
             let erased = ConstraintType::Outlives(extractor.walk_outlives(&outlives.0));
-            let vars = std::mem::take(&mut extractor.vars);
+            let vars: Vec<_> = extractor.vars.iter().map(|x| VarIndex::new(*x)).collect();
             if vars.is_empty() {
                 continue;
             }
@@ -104,7 +105,7 @@ impl<'tcx> Deduper<'tcx> {
         for (indx, member) in constraints.region_constraints.member_constraints.iter().enumerate() {
             let mut extractor = ConstraintWalker::new(self.tcx, &mut dummy_var_rewriter);
             let erased = ConstraintType::Member(extractor.walk_members(member));
-            let vars = std::mem::take(&mut extractor.vars);
+            let vars: Vec<_> = extractor.vars.iter().map(|x| VarIndex::new(*x)).collect();
             if vars.is_empty() {
                 continue;
             }
@@ -115,20 +116,20 @@ impl<'tcx> Deduper<'tcx> {
         &mut self,
         input_indx: usize,
         erased: ConstraintType<'tcx>,
-        vars: Vec<usize>,
+        vars: Vec<VarIndex>,
     ) {
-        self.rule_vars.push(vars);
-        let constraint_indx = self.rule_vars.len() - 1;
+        let constraint_indx = self.constraint_vars.next_index();
+        self.constraint_vars.push(vars);
         match &erased {
             ConstraintType::Outlives(_) => &mut self.indx_to_outlives,
             ConstraintType::Member(_) => &mut self.indx_to_members,
         }
         .insert(constraint_indx, input_indx);
-        self.rule_cats.entry(erased).or_insert_with(Vec::new).push(constraint_indx);
+        self.constraint_cliques.entry(erased).or_insert_with(Vec::new).push(constraint_indx);
     }
     fn remove_duplicate_constraints(
         &mut self,
-        to_remove: &FxIndexSet<usize>,
+        to_remove: &FxIndexSet<ConstraintIndex>,
         constraints: &mut ExternalConstraintsData<'tcx>,
     ) {
         let mut remove_outlives: FxIndexSet<usize> =
@@ -147,7 +148,7 @@ impl<'tcx> Deduper<'tcx> {
     }
     fn compress_variables(
         &mut self,
-        removed_vars: &FxIndexSet<usize>,
+        removed_vars: &FxIndexSet<VarIndex>,
         constraints: &mut ExternalConstraintsData<'tcx>,
         variables: &mut CanonicalVarInfos<'tcx>,
         max_universe: &mut UniverseIndex,
@@ -157,21 +158,21 @@ impl<'tcx> Deduper<'tcx> {
             vars.iter().map(|x| x.universe()).collect();
         universes_available.sort();
 
-        let mut compressed_vars: FxHashMap<usize, usize> = FxHashMap::default();
+        let mut compressed_vars: FxHashMap<VarIndex, usize> = FxHashMap::default();
         let mut universes_used: FxIndexSet<UniverseIndex> = FxIndexSet::default();
 
         let mut num_removed = 0;
-        let mut var_indx = 0;
-        while var_indx < vars.len() {
-            let original_var_indx = var_indx + num_removed;
+        let mut var_indx = VarIndex::new(0);
+        while var_indx.index() < vars.len() {
+            let original_var_indx = var_indx.plus(num_removed);
             if removed_vars.contains(&original_var_indx) {
                 num_removed += 1;
-                vars.remove(var_indx);
+                vars.remove(var_indx.index());
                 continue;
             }
-            compressed_vars.insert(original_var_indx, var_indx);
-            universes_used.insert(vars[var_indx].universe());
-            var_indx += 1;
+            compressed_vars.insert(original_var_indx, var_indx.index());
+            universes_used.insert(vars[var_indx.index()].universe());
+            var_indx.increment_by(1);
         }
         universes_used.sort();
 
@@ -183,7 +184,8 @@ impl<'tcx> Deduper<'tcx> {
             );
         }
 
-        let mut var_rewriter = |var| compressed_vars.get(&var).cloned().unwrap_or(var);
+        let mut var_rewriter =
+            |var| compressed_vars.get(&VarIndex::from(var)).cloned().unwrap_or(var);
         for outlives in constraints.region_constraints.outlives.iter_mut() {
             let mut walker = ConstraintWalker::new(self.tcx, &mut var_rewriter);
             outlives.0 = walker.walk_outlives(&outlives.0);
@@ -195,16 +197,5 @@ impl<'tcx> Deduper<'tcx> {
 
         *variables = self.tcx.mk_canonical_var_infos(&vars);
         *max_universe = UniverseIndex::from(universes_used.len().saturating_sub(1));
-    }
-}
-
-fn dedup_exact_eq<T: PartialEq>(input: &mut Vec<T>) {
-    let mut indx = 0;
-    while indx < input.len() {
-        if input.iter().skip(indx + 1).any(|x| x == &input[indx]) {
-            input.swap_remove(indx);
-            continue;
-        }
-        indx += 1;
     }
 }

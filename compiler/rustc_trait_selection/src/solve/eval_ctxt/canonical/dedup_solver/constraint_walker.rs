@@ -3,7 +3,6 @@ use rustc_middle::ty;
 use ty::subst::{GenericArg, GenericArgKind};
 use ty::{Const, OutlivesPredicate, Placeholder, Region, Ty, TyCtxt};
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync::Lrc;
 
 pub type Outlives<'tcx> = OutlivesPredicate<GenericArg<'tcx>, Region<'tcx>>;
@@ -18,9 +17,6 @@ pub struct ConstraintWalker<'tcx, 'a> {
 impl<'tcx, 'a> ConstraintWalker<'tcx, 'a> {
     pub fn new(tcx: TyCtxt<'tcx>, fetch_var: &'a mut dyn FnMut(usize) -> usize) -> Self {
         Self { tcx, fetch_var: fetch_var, vars: Vec::new() }
-    }
-    pub fn reset(&mut self) {
-        self.vars.clear();
     }
     pub fn add_var(&mut self, var: usize) -> usize {
         self.vars.push(var);
