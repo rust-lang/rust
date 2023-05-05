@@ -62,10 +62,7 @@ use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::{ConstArg, GenericArg, ItemLocalId, ParamName, TraitCandidate};
 use rustc_index::{Idx, IndexSlice, IndexVec};
-use rustc_middle::{
-    span_bug,
-    ty::{ResolverAstLowering, TyCtxt},
-};
+use rustc_middle::{resolver_outputs::ResolverAstLowering, span_bug, ty::TyCtxt};
 use rustc_session::parse::{add_feature_diagnostics, feature_err};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::DesugaringKind;

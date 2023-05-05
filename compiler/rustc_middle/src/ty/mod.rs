@@ -76,13 +76,11 @@ mod impls_ty;
 mod infer_var_info;
 mod instance;
 mod list;
-mod main_definition;
 mod opaque;
 mod param_env;
 mod parameterized;
 mod placeholder;
 mod predicate;
-mod resolver_outputs;
 mod rvalue_scopes;
 mod structural_impls;
 mod sty;
@@ -138,7 +136,6 @@ pub use self::impl_trait_in_trait_data::ImplTraitInTraitData;
 pub use self::infer_var_info::InferVarInfo;
 pub use self::instance::{Instance, InstanceDef, ShortInstance, UnusedGenericParams};
 pub use self::list::List;
-pub use self::main_definition::MainDefinition;
 pub use self::opaque::{OpaqueHiddenType, OpaqueTypeKey};
 pub use self::param_env::{ParamEnv, ParamEnvAnd};
 pub use self::parameterized::ParameterizedOverTcx;
@@ -150,7 +147,6 @@ pub use self::predicate::{
     ProjectionPredicate, RegionOutlivesPredicate, SubtypePredicate, ToPredicate, TraitPredicate,
     TypeOutlivesPredicate,
 };
-pub use self::resolver_outputs::{ResolverAstLowering, ResolverGlobalCtxt, ResolverOutputs};
 pub use self::rvalue_scopes::RvalueScopes;
 pub use self::sty::BoundRegionKind::*;
 pub use self::sty::{

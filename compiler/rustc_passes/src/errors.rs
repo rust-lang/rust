@@ -11,7 +11,8 @@ use rustc_errors::{
 };
 use rustc_hir::{self as hir, ExprKind, Target};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
-use rustc_middle::ty::{MainDefinition, Ty};
+use rustc_middle::resolver_outputs::MainDefinition;
+use rustc_middle::ty::Ty;
 use rustc_span::{Span, Symbol, DUMMY_SP};
 
 use crate::check_attr::ProcMacroKind;
