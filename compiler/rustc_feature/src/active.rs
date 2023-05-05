@@ -164,6 +164,8 @@ declare_features! (
     (active, link_cfg, "1.14.0", None, None),
     /// Allows the `multiple_supertrait_upcastable` lint.
     (active, multiple_supertrait_upcastable, "1.69.0", None, None),
+    /// Allow negative trait bounds. This is an internal-only feature for testing the trait solver!
+    (incomplete, negative_bounds, "CURRENT_RUSTC_VERSION", None, None),
     /// Allows using `#[omit_gdb_pretty_printer_section]`.
     (active, omit_gdb_pretty_printer_section, "1.5.0", None, None),
     /// Allows using `#[prelude_import]` on glob `use` items.
@@ -329,6 +331,8 @@ declare_features! (
     (active, cfg_target_thread_local, "1.7.0", Some(29594), None),
     /// Allow conditional compilation depending on rust version
     (active, cfg_version, "1.45.0", Some(64796), None),
+    /// Allows to use the `#[cfi_encoding = ""]` attribute.
+    (active, cfi_encoding, "1.69.0", Some(89653), None),
     /// Allows `for<...>` on closures and generators.
     (active, closure_lifetime_binder, "1.64.0", Some(97362), None),
     /// Allows `#[track_caller]` on closures and generators.

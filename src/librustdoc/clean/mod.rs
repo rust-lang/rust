@@ -131,7 +131,7 @@ fn clean_generic_bound<'tcx>(
         hir::GenericBound::LangItemTrait(lang_item, span, _, generic_args) => {
             let def_id = cx.tcx.require_lang_item(lang_item, Some(span));
 
-            let trait_ref = ty::TraitRef::identity(cx.tcx, def_id);
+            let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(cx.tcx, def_id));
 
             let generic_args = clean_generic_args(generic_args, cx);
             let GenericArgs::AngleBracketed { bindings, .. } = generic_args
@@ -2089,9 +2089,9 @@ pub(crate) fn reexport_chain<'tcx>(
     import_def_id: LocalDefId,
     target_def_id: LocalDefId,
 ) -> &'tcx [Reexport] {
-    for child in tcx.module_children_reexports(tcx.local_parent(import_def_id)) {
+    for child in tcx.module_children_local(tcx.local_parent(import_def_id)) {
         if child.res.opt_def_id() == Some(target_def_id.to_def_id())
-            && child.reexport_chain[0].id() == Some(import_def_id.to_def_id())
+            && child.reexport_chain.first().and_then(|r| r.id()) == Some(import_def_id.to_def_id())
         {
             return &child.reexport_chain;
         }

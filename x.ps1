@@ -16,7 +16,14 @@ function Get-Application($app) {
 
 function Invoke-Application($application, $arguments) {
     $process = Start-Process -NoNewWindow -PassThru $application $arguments
+    # WORKAROUND: Caching the handle is necessary to make ExitCode work.
+    # See https://stackoverflow.com/a/23797762
+    $handle = $process.Handle
     $process.WaitForExit()
+    if ($null -eq $process.ExitCode) {
+        Write-Error "Unable to read the exit code"
+        Exit 1
+    }
     Exit $process.ExitCode
 }
 

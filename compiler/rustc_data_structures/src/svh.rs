@@ -23,18 +23,18 @@ impl Svh {
         Svh { hash }
     }
 
-    pub fn as_u64(&self) -> u64 {
-        self.hash.to_smaller_hash().as_u64()
+    pub fn as_u128(self) -> u128 {
+        self.hash.as_u128()
     }
 
-    pub fn to_string(&self) -> String {
-        format!("{:016x}", self.hash.to_smaller_hash())
+    pub fn to_hex(self) -> String {
+        format!("{:032x}", self.hash.as_u128())
     }
 }
 
 impl fmt::Display for Svh {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad(&self.to_string())
+        f.pad(&self.to_hex())
     }
 }
 

@@ -18,6 +18,7 @@
 // ignore-wasm32
 // ignore-wasm64
 // ignore-emscripten
+// ignore-loongarch64
 // compile-flags: -C no-prepopulate-passes
 
 #![crate_type = "lib"]

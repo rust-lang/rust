@@ -101,12 +101,11 @@ impl CheckAttrVisitor<'_> {
         item: Option<ItemLike<'_>>,
     ) {
         let mut doc_aliases = FxHashMap::default();
-        let mut is_valid = true;
         let mut specified_inline = None;
         let mut seen = FxHashMap::default();
         let attrs = self.tcx.hir().attrs(hir_id);
         for attr in attrs {
-            let attr_is_valid = match attr.name_or_empty() {
+            match attr.name_or_empty() {
                 sym::do_not_recommend => self.check_do_not_recommend(attr.span, target),
                 sym::inline => self.check_inline(hir_id, attr, span, target),
                 sym::no_coverage => self.check_no_coverage(hir_id, attr, span, target),
@@ -188,7 +187,6 @@ impl CheckAttrVisitor<'_> {
                 sym::link_ordinal => self.check_link_ordinal(&attr, span, target),
                 _ => true,
             };
-            is_valid &= attr_is_valid;
 
             // lint-only checks
             match attr.name_or_empty() {
@@ -253,10 +251,6 @@ impl CheckAttrVisitor<'_> {
             }
 
             self.check_unused_attribute(hir_id, attr)
-        }
-
-        if !is_valid {
-            return;
         }
 
         self.check_repr(attrs, span, target, item, hir_id);

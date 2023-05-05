@@ -1,14 +1,16 @@
-// For more information about type metadata and type metadata identifiers for cross-language LLVM
-// CFI support, see Type metadata in the design document in the tracking issue #89653.
-
-// FIXME(rcvalle): Identify C char and integer type uses and encode them with their respective
-// builtin type encodings as specified by the Itanium C++ ABI for extern function types with the "C"
-// calling convention to use this encoding for cross-language LLVM CFI.
-
-use bitflags::bitflags;
+/// Type metadata identifiers (using Itanium C++ ABI mangling for encoding) for LLVM Control Flow
+/// Integrity (CFI) and cross-language LLVM CFI support.
+///
+/// Encodes type metadata identifiers for LLVM CFI and cross-language LLVM CFI support using Itanium
+/// C++ ABI mangling for encoding with vendor extended type qualifiers and types for Rust types that
+/// are not used across the FFI boundary.
+///
+/// For more information about LLVM CFI and cross-language LLVM CFI support for the Rust compiler,
+/// see design document in the tracking issue #89653.
 use core::fmt::Display;
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::DiagnosticMessage;
 use rustc_hir as hir;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{
@@ -16,10 +18,12 @@ use rustc_middle::ty::{
     Ty, TyCtxt, UintTy,
 };
 use rustc_span::def_id::DefId;
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 use rustc_target::abi::call::{Conv, FnAbi};
 use rustc_target::spec::abi::Abi;
 use std::fmt::Write as _;
+
+use crate::typeid::TypeIdOptions;
 
 /// Type and extended type qualifiers.
 #[derive(Eq, Hash, PartialEq)]
@@ -36,15 +40,6 @@ enum DictKey<'tcx> {
     Region(Region<'tcx>),
     Const(Const<'tcx>),
     Predicate(ExistentialPredicate<'tcx>),
-}
-
-bitflags! {
-    /// Options for typeid_for_fnabi and typeid_for_fnsig.
-    pub struct TypeIdOptions: u32 {
-        const NO_OPTIONS = 0;
-        const GENERALIZE_POINTERS = 1;
-        const GENERALIZE_REPR_C = 2;
-    }
 }
 
 /// Options for encode_ty.
@@ -88,21 +83,6 @@ fn compress<'tcx>(
         None => {
             dict.insert(key, dict.len());
         }
-    }
-}
-
-// FIXME(rcvalle): Move to compiler/rustc_middle/src/ty/sty.rs after C types work is done, possibly
-// along with other is_c_type methods.
-/// Returns whether a `ty::Ty` is `c_void`.
-fn is_c_void_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    match ty.kind() {
-        ty::Adt(adt_def, ..) => {
-            let def_id = adt_def.0.did;
-            let crate_name = tcx.crate_name(def_id.krate);
-            tcx.item_name(def_id).as_str() == "c_void"
-                && (crate_name == sym::core || crate_name == sym::std || crate_name == sym::libc)
-        }
-        _ => false,
     }
 }
 
@@ -448,6 +428,12 @@ fn encode_ty<'tcx>(
 
     match ty.kind() {
         // Primitive types
+
+        // Rust's bool has the same layout as C17's _Bool, that is, its size and alignment are
+        // implementation-defined. Any bool can be cast into an integer, taking on the values 1
+        // (true) or 0 (false).
+        //
+        // (See https://rust-lang.github.io/unsafe-code-guidelines/layout/scalars.html#bool.)
         ty::Bool => {
             typeid.push('b');
         }
@@ -535,9 +521,33 @@ fn encode_ty<'tcx>(
         // User-defined types
         ty::Adt(adt_def, substs) => {
             let mut s = String::new();
-            let def_id = adt_def.0.did;
-            if options.contains(EncodeTyOptions::GENERALIZE_REPR_C) && adt_def.repr().c() {
-                // For cross-language CFI support, the encoding must be compatible at the FFI
+            let def_id = adt_def.did();
+            if let Some(cfi_encoding) = tcx.get_attr(def_id, sym::cfi_encoding) {
+                // Use user-defined CFI encoding for type
+                if let Some(value_str) = cfi_encoding.value_str() {
+                    if !value_str.to_string().trim().is_empty() {
+                        s.push_str(&value_str.to_string().trim());
+                    } else {
+                        #[allow(
+                            rustc::diagnostic_outside_of_impl,
+                            rustc::untranslatable_diagnostic
+                        )]
+                        tcx.sess
+                            .struct_span_err(
+                                cfi_encoding.span,
+                                DiagnosticMessage::Str(format!(
+                                    "invalid `cfi_encoding` for `{:?}`",
+                                    ty.kind()
+                                )),
+                            )
+                            .emit();
+                    }
+                } else {
+                    bug!("encode_ty: invalid `cfi_encoding` for `{:?}`", ty.kind());
+                }
+                compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
+            } else if options.contains(EncodeTyOptions::GENERALIZE_REPR_C) && adt_def.repr().c() {
+                // For cross-language LLVM CFI support, the encoding must be compatible at the FFI
                 // boundary. For instance:
                 //
                 //     struct type1 {};
@@ -567,8 +577,33 @@ fn encode_ty<'tcx>(
         ty::Foreign(def_id) => {
             // <length><name>, where <name> is <unscoped-name>
             let mut s = String::new();
-            let name = tcx.item_name(*def_id).to_string();
-            let _ = write!(s, "{}{}", name.len(), &name);
+            if let Some(cfi_encoding) = tcx.get_attr(*def_id, sym::cfi_encoding) {
+                // Use user-defined CFI encoding for type
+                if let Some(value_str) = cfi_encoding.value_str() {
+                    if !value_str.to_string().trim().is_empty() {
+                        s.push_str(&value_str.to_string().trim());
+                    } else {
+                        #[allow(
+                            rustc::diagnostic_outside_of_impl,
+                            rustc::untranslatable_diagnostic
+                        )]
+                        tcx.sess
+                            .struct_span_err(
+                                cfi_encoding.span,
+                                DiagnosticMessage::Str(format!(
+                                    "invalid `cfi_encoding` for `{:?}`",
+                                    ty.kind()
+                                )),
+                            )
+                            .emit();
+                    }
+                } else {
+                    bug!("encode_ty: invalid `cfi_encoding` for `{:?}`", ty.kind());
+                }
+            } else {
+                let name = tcx.item_name(*def_id).to_string();
+                let _ = write!(s, "{}{}", name.len(), &name);
+            }
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             typeid.push_str(&s);
         }
@@ -618,7 +653,7 @@ fn encode_ty<'tcx>(
         ty::FnPtr(fn_sig) => {
             // PF<return-type><parameter-type1..parameter-typeN>E
             let mut s = String::from("P");
-            s.push_str(&encode_fnsig(tcx, &fn_sig.skip_binder(), dict, TypeIdOptions::NO_OPTIONS));
+            s.push_str(&encode_fnsig(tcx, &fn_sig.skip_binder(), dict, TypeIdOptions::empty()));
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             typeid.push_str(&s);
         }
@@ -655,22 +690,59 @@ fn encode_ty<'tcx>(
 }
 
 // Transforms a ty:Ty for being encoded and used in the substitution dictionary. It transforms all
-// c_void types into unit types unconditionally, and generalizes all pointers if
-// TransformTyOptions::GENERALIZE_POINTERS option is set.
-#[instrument(level = "trace", skip(tcx))]
+// c_void types into unit types unconditionally, generalizes pointers if
+// TransformTyOptions::GENERALIZE_POINTERS option is set, and normalizes integers if
+// TransformTyOptions::NORMALIZE_INTEGERS option is set.
 fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptions) -> Ty<'tcx> {
     let mut ty = ty;
 
     match ty.kind() {
-        ty::Bool
-        | ty::Int(..)
-        | ty::Uint(..)
-        | ty::Float(..)
-        | ty::Char
-        | ty::Str
-        | ty::Never
-        | ty::Foreign(..)
-        | ty::Dynamic(..) => {}
+        ty::Float(..) | ty::Char | ty::Str | ty::Never | ty::Foreign(..) | ty::Dynamic(..) => {}
+
+        ty::Bool => {
+            if options.contains(EncodeTyOptions::NORMALIZE_INTEGERS) {
+                // Note: on all platforms that Rust's currently supports, its size and alignment are
+                // 1, and its ABI class is INTEGER - see Rust Layout and ABIs.
+                //
+                // (See https://rust-lang.github.io/unsafe-code-guidelines/layout/scalars.html#bool.)
+                //
+                // Clang represents bool as an 8-bit unsigned integer.
+                ty = tcx.types.u8;
+            }
+        }
+
+        ty::Int(..) | ty::Uint(..) => {
+            if options.contains(EncodeTyOptions::NORMALIZE_INTEGERS) {
+                // Note: C99 7.18.2.4 requires uintptr_t and intptr_t to be at least 16-bit wide.
+                // All platforms we currently support have a C platform, and as a consequence,
+                // isize/usize are at least 16-bit wide for all of them.
+                //
+                // (See https://rust-lang.github.io/unsafe-code-guidelines/layout/scalars.html#isize-and-usize.)
+                match ty.kind() {
+                    ty::Int(IntTy::Isize) => match tcx.sess.target.pointer_width {
+                        16 => ty = tcx.types.i16,
+                        32 => ty = tcx.types.i32,
+                        64 => ty = tcx.types.i64,
+                        128 => ty = tcx.types.i128,
+                        _ => bug!(
+                            "transform_ty: unexpected pointer width `{}`",
+                            tcx.sess.target.pointer_width
+                        ),
+                    },
+                    ty::Uint(UintTy::Usize) => match tcx.sess.target.pointer_width {
+                        16 => ty = tcx.types.u16,
+                        32 => ty = tcx.types.u32,
+                        64 => ty = tcx.types.u64,
+                        128 => ty = tcx.types.u128,
+                        _ => bug!(
+                            "transform_ty: unexpected pointer width `{}`",
+                            tcx.sess.target.pointer_width
+                        ),
+                    },
+                    _ => (),
+                }
+            }
+        }
 
         _ if ty.is_unit() => {}
 
@@ -688,12 +760,17 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
         }
 
         ty::Adt(adt_def, substs) => {
-            if is_c_void_ty(tcx, ty) {
+            if ty.is_c_void(tcx) {
                 ty = tcx.mk_unit();
             } else if options.contains(TransformTyOptions::GENERALIZE_REPR_C) && adt_def.repr().c()
             {
                 ty = tcx.mk_adt(*adt_def, ty::List::empty());
             } else if adt_def.repr().transparent() && adt_def.is_struct() {
+                // Don't transform repr(transparent) types with an user-defined CFI encoding to
+                // preserve the user-defined CFI encoding.
+                if let Some(_) = tcx.get_attr(adt_def.did(), sym::cfi_encoding) {
+                    return ty;
+                }
                 let variant = adt_def.non_enum_variant();
                 let param_env = tcx.param_env(variant.def_id);
                 let field = variant.fields.iter().find(|field| {
@@ -815,7 +892,7 @@ fn transform_substs<'tcx>(
     options: TransformTyOptions,
 ) -> SubstsRef<'tcx> {
     let substs = substs.iter().map(|subst| match subst.unpack() {
-        GenericArgKind::Type(ty) if is_c_void_ty(tcx, ty) => tcx.mk_unit().into(),
+        GenericArgKind::Type(ty) if ty.is_c_void(tcx) => tcx.mk_unit().into(),
         GenericArgKind::Type(ty) => transform_ty(tcx, ty, options).into(),
         _ => subst,
     });
@@ -887,6 +964,15 @@ pub fn typeid_for_fnabi<'tcx>(
     // Close the "F..E" pair
     typeid.push('E');
 
+    // Add encoding suffixes
+    if options.contains(EncodeTyOptions::NORMALIZE_INTEGERS) {
+        typeid.push_str(".normalized");
+    }
+
+    if options.contains(EncodeTyOptions::GENERALIZE_POINTERS) {
+        typeid.push_str(".generalized");
+    }
+
     typeid
 }
 
@@ -912,6 +998,15 @@ pub fn typeid_for_fnsig<'tcx>(
 
     // Encode the function signature
     typeid.push_str(&encode_fnsig(tcx, fn_sig, &mut dict, options));
+
+    // Add encoding suffixes
+    if options.contains(EncodeTyOptions::NORMALIZE_INTEGERS) {
+        typeid.push_str(".normalized");
+    }
+
+    if options.contains(EncodeTyOptions::GENERALIZE_POINTERS) {
+        typeid.push_str(".generalized");
+    }
 
     typeid
 }

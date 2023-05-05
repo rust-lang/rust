@@ -280,3 +280,7 @@ hir_analysis_const_specialize = cannot specialize on const impl with non-const i
 hir_analysis_static_specialize = cannot specialize on `'static` lifetime
 
 hir_analysis_missing_tilde_const = missing `~const` qualifier for specialization
+
+hir_analysis_drop_impl_negative = negative `Drop` impls are not supported
+
+hir_analysis_drop_impl_reservation = reservation `Drop` impls are not supported

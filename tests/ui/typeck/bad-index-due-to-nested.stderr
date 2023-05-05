@@ -4,11 +4,14 @@ error[E0277]: the trait bound `K: Hash` is not satisfied
 LL |     map[k]
    |     ^^^ the trait `Hash` is not implemented for `K`
    |
-note: required by a bound in `<HashMap<K, V> as Index<&K>>`
-  --> $DIR/bad-index-due-to-nested.rs:9:8
+note: required for `HashMap<K, V>` to implement `Index<&K>`
+  --> $DIR/bad-index-due-to-nested.rs:7:12
    |
+LL | impl<K, V> Index<&K> for HashMap<K, V>
+   |            ^^^^^^^^^     ^^^^^^^^^^^^^
+LL | where
 LL |     K: Hash,
-   |        ^^^^ required by this bound in `<HashMap<K, V> as Index<&K>>`
+   |        ---- unsatisfied trait bound introduced here
 help: consider restricting type parameter `K`
    |
 LL | fn index<'a, K: std::hash::Hash, V>(map: &'a HashMap<K, V>, k: K) -> &'a V {
@@ -20,11 +23,14 @@ error[E0277]: the trait bound `V: Copy` is not satisfied
 LL |     map[k]
    |     ^^^ the trait `Copy` is not implemented for `V`
    |
-note: required by a bound in `<HashMap<K, V> as Index<&K>>`
-  --> $DIR/bad-index-due-to-nested.rs:10:8
+note: required for `HashMap<K, V>` to implement `Index<&K>`
+  --> $DIR/bad-index-due-to-nested.rs:7:12
    |
+LL | impl<K, V> Index<&K> for HashMap<K, V>
+   |            ^^^^^^^^^     ^^^^^^^^^^^^^
+...
 LL |     V: Copy,
-   |        ^^^^ required by this bound in `<HashMap<K, V> as Index<&K>>`
+   |        ---- unsatisfied trait bound introduced here
 help: consider restricting type parameter `V`
    |
 LL | fn index<'a, K, V: std::marker::Copy>(map: &'a HashMap<K, V>, k: K) -> &'a V {

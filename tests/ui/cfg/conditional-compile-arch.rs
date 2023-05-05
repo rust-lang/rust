@@ -39,3 +39,6 @@ pub fn main() { }
 
 #[cfg(target_arch = "riscv64")]
 pub fn main() { }
+
+#[cfg(target_arch = "loongarch64")]
+pub fn main() { }

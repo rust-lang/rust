@@ -279,7 +279,7 @@ fn predicates_reference_self(
     trait_def_id: DefId,
     supertraits_only: bool,
 ) -> SmallVec<[Span; 1]> {
-    let trait_ref = ty::TraitRef::identity(tcx, trait_def_id);
+    let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(tcx, trait_def_id));
     let predicates = if supertraits_only {
         tcx.super_predicates_of(trait_def_id)
     } else {
@@ -661,9 +661,9 @@ fn object_ty_for_trait<'tcx>(
     let trait_ref = ty::TraitRef::identity(tcx, trait_def_id);
     debug!(?trait_ref);
 
-    let trait_predicate = trait_ref.map_bound(|trait_ref| {
-        ty::ExistentialPredicate::Trait(ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref))
-    });
+    let trait_predicate = ty::Binder::dummy(ty::ExistentialPredicate::Trait(
+        ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref),
+    ));
     debug!(?trait_predicate);
 
     let pred: ty::Predicate<'tcx> = trait_ref.to_predicate(tcx);
@@ -769,11 +769,10 @@ fn receiver_is_dispatchable<'tcx>(
         let param_env = tcx.param_env(method.def_id);
 
         // Self: Unsize<U>
-        let unsize_predicate = ty::Binder::dummy(
-            tcx.mk_trait_ref(unsize_did, [tcx.types.self_param, unsized_self_ty]),
-        )
-        .without_const()
-        .to_predicate(tcx);
+        let unsize_predicate =
+            ty::TraitRef::new(tcx, unsize_did, [tcx.types.self_param, unsized_self_ty])
+                .without_const()
+                .to_predicate(tcx);
 
         // U: Trait<Arg1, ..., ArgN>
         let trait_predicate = {
@@ -782,7 +781,7 @@ fn receiver_is_dispatchable<'tcx>(
                 if param.index == 0 { unsized_self_ty.into() } else { tcx.mk_param_from_def(param) }
             });
 
-            ty::Binder::dummy(tcx.mk_trait_ref(trait_def_id, substs)).to_predicate(tcx)
+            ty::TraitRef::new(tcx, trait_def_id, substs).to_predicate(tcx)
         };
 
         let caller_bounds =
@@ -797,9 +796,8 @@ fn receiver_is_dispatchable<'tcx>(
 
     // Receiver: DispatchFromDyn<Receiver[Self => U]>
     let obligation = {
-        let predicate = ty::Binder::dummy(
-            tcx.mk_trait_ref(dispatch_from_dyn_did, [receiver_ty, unsized_receiver_ty]),
-        );
+        let predicate =
+            ty::TraitRef::new(tcx, dispatch_from_dyn_did, [receiver_ty, unsized_receiver_ty]);
 
         Obligation::new(tcx, ObligationCause::dummy(), param_env, predicate)
     };
@@ -882,7 +880,8 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
 
                     // Compute supertraits of current trait lazily.
                     if self.supertraits.is_none() {
-                        let trait_ref = ty::TraitRef::identity(self.tcx, self.trait_def_id);
+                        let trait_ref =
+                            ty::Binder::dummy(ty::TraitRef::identity(self.tcx, self.trait_def_id));
                         self.supertraits = Some(
                             traits::supertraits(self.tcx, trait_ref).map(|t| t.def_id()).collect(),
                         );

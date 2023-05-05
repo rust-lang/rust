@@ -106,6 +106,12 @@ impl<'tcx> Value<TyCtxt<'tcx>, DepKind> for ty::EarlyBinder<ty::Binder<'_, ty::F
     }
 }
 
+impl<'tcx, T> Value<TyCtxt<'tcx>, DepKind> for Result<T, ty::layout::LayoutError<'_>> {
+    fn from_cycle_error(_tcx: TyCtxt<'tcx>, _cycle: &[QueryInfo<DepKind>]) -> Self {
+        Err(ty::layout::LayoutError::Cycle)
+    }
+}
+
 // item_and_field_ids should form a cycle where each field contains the
 // type in the next element in the list
 pub fn recursive_type_error(

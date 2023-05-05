@@ -123,7 +123,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
         let tcx = self.infcx.tcx;
 
         // <ty as Deref>
-        let trait_ref = tcx.mk_trait_ref(tcx.lang_items().deref_trait()?, [ty]);
+        let trait_ref = ty::TraitRef::new(tcx, tcx.lang_items().deref_trait()?, [ty]);
 
         let cause = traits::ObligationCause::misc(self.span, self.body_id);
 

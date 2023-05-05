@@ -2816,6 +2816,9 @@ define_print_and_forward_display! {
         if let ty::BoundConstness::ConstIfConst = self.constness && cx.tcx().features().const_trait_impl {
             p!("~const ");
         }
+        if let ty::ImplPolarity::Negative = self.polarity {
+            p!("!");
+        }
         p!(print(self.trait_ref.print_only_trait_path()))
     }
 

@@ -191,7 +191,7 @@ impl<'tcx> ConstToPat<'tcx> {
             self.tcx(),
             ObligationCause::dummy(),
             self.param_env,
-            self.tcx().mk_trait_ref(partial_eq_trait_id, [ty, ty]),
+            ty::TraitRef::new(self.tcx(), partial_eq_trait_id, [ty, ty]),
         );
 
         // FIXME: should this call a `predicate_must_hold` variant instead?

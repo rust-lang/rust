@@ -20,7 +20,7 @@ use crate::type_::Type;
 use crate::value::Value;
 use rustc_codegen_ssa::traits::TypeMembershipMethods;
 use rustc_middle::ty::Ty;
-use rustc_symbol_mangling::typeid::{kcfi_typeid_for_fnabi, typeid_for_fnabi};
+use rustc_symbol_mangling::typeid::{kcfi_typeid_for_fnabi, typeid_for_fnabi, TypeIdOptions};
 use smallvec::SmallVec;
 
 /// Declare a function.
@@ -132,12 +132,31 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         fn_abi.apply_attrs_llfn(self, llfn);
 
         if self.tcx.sess.is_sanitizer_cfi_enabled() {
-            let typeid = typeid_for_fnabi(self.tcx, fn_abi);
+            let typeid = typeid_for_fnabi(self.tcx, fn_abi, TypeIdOptions::empty());
             self.set_type_metadata(llfn, typeid);
+            let typeid = typeid_for_fnabi(self.tcx, fn_abi, TypeIdOptions::GENERALIZE_POINTERS);
+            self.add_type_metadata(llfn, typeid);
+            let typeid = typeid_for_fnabi(self.tcx, fn_abi, TypeIdOptions::NORMALIZE_INTEGERS);
+            self.add_type_metadata(llfn, typeid);
+            let typeid = typeid_for_fnabi(
+                self.tcx,
+                fn_abi,
+                TypeIdOptions::GENERALIZE_POINTERS | TypeIdOptions::NORMALIZE_INTEGERS,
+            );
+            self.add_type_metadata(llfn, typeid);
         }
 
         if self.tcx.sess.is_sanitizer_kcfi_enabled() {
-            let kcfi_typeid = kcfi_typeid_for_fnabi(self.tcx, fn_abi);
+            // LLVM KCFI does not support multiple !kcfi_type attachments
+            let mut options = TypeIdOptions::empty();
+            if self.tcx.sess.is_sanitizer_cfi_generalize_pointers_enabled() {
+                options.insert(TypeIdOptions::GENERALIZE_POINTERS);
+            }
+            if self.tcx.sess.is_sanitizer_cfi_normalize_integers_enabled() {
+                options.insert(TypeIdOptions::NORMALIZE_INTEGERS);
+            }
+
+            let kcfi_typeid = kcfi_typeid_for_fnabi(self.tcx, fn_abi, options);
             self.set_kcfi_type_metadata(llfn, kcfi_typeid);
         }
 

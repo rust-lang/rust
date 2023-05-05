@@ -200,6 +200,10 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
         let bound_predicate = elaboratable.predicate().kind();
         match bound_predicate.skip_binder() {
             ty::PredicateKind::Clause(ty::Clause::Trait(data)) => {
+                // Negative trait bounds do not imply any supertrait bounds
+                if data.polarity == ty::ImplPolarity::Negative {
+                    return;
+                }
                 // Get predicates implied by the trait, or only super predicates if we only care about self predicates.
                 let predicates = if self.only_self {
                     tcx.super_predicates_of(data.def_id())

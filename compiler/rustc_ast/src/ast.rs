@@ -287,11 +287,19 @@ pub enum TraitBoundModifier {
     /// No modifiers
     None,
 
+    /// `!Trait`
+    Negative,
+
     /// `?Trait`
     Maybe,
 
     /// `~const Trait`
     MaybeConst,
+
+    /// `~const !Trait`
+    //
+    // This parses but will be rejected during AST validation.
+    MaybeConstNegative,
 
     /// `~const ?Trait`
     //
@@ -2444,6 +2452,16 @@ impl fmt::Debug for ImplPolarity {
             ImplPolarity::Negative(_) => "negative".fmt(f),
         }
     }
+}
+
+#[derive(Copy, Clone, PartialEq, Encodable, Decodable, HashStable_Generic)]
+pub enum BoundPolarity {
+    /// `Type: Trait`
+    Positive,
+    /// `Type: !Trait`
+    Negative(Span),
+    /// `Type: ?Trait`
+    Maybe(Span),
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]

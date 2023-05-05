@@ -86,7 +86,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     ) -> AutoTraitResult<A> {
         let tcx = self.tcx;
 
-        let trait_ref = tcx.mk_trait_ref(trait_did, [ty]);
+        let trait_ref = ty::TraitRef::new(tcx, trait_did, [ty]);
 
         let infcx = tcx.infer_ctxt().build();
         let mut selcx = SelectionContext::new(&infcx);
@@ -263,7 +263,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         let mut already_visited = FxHashSet::default();
         let mut predicates = VecDeque::new();
         predicates.push_back(ty::Binder::dummy(ty::TraitPredicate {
-            trait_ref: infcx.tcx.mk_trait_ref(trait_did, [ty]),
+            trait_ref: ty::TraitRef::new(infcx.tcx, trait_did, [ty]),
 
             constness: ty::BoundConstness::NotConst,
             // Auto traits are positive

@@ -1,9 +1,5 @@
 //! Support code for encoding and decoding types.
 
-/*
-Core encoding and decoding interfaces.
-*/
-
 use std::alloc::Allocator;
 use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
@@ -35,13 +31,13 @@ const STR_SENTINEL: u8 = 0xC1;
 /// really makes sense to store floating-point values at all.
 /// (If you need it, revert <https://github.com/rust-lang/rust/pull/109984>.)
 pub trait Encoder {
-    // Primitive types:
     fn emit_usize(&mut self, v: usize);
     fn emit_u128(&mut self, v: u128);
     fn emit_u64(&mut self, v: u64);
     fn emit_u32(&mut self, v: u32);
     fn emit_u16(&mut self, v: u16);
     fn emit_u8(&mut self, v: u8);
+
     fn emit_isize(&mut self, v: isize);
     fn emit_i128(&mut self, v: i128);
     fn emit_i64(&mut self, v: i64);
@@ -93,13 +89,13 @@ pub trait Encoder {
 /// really makes sense to store floating-point values at all.
 /// (If you need it, revert <https://github.com/rust-lang/rust/pull/109984>.)
 pub trait Decoder {
-    // Primitive types:
     fn read_usize(&mut self) -> usize;
     fn read_u128(&mut self) -> u128;
     fn read_u64(&mut self) -> u64;
     fn read_u32(&mut self) -> u32;
     fn read_u16(&mut self) -> u16;
     fn read_u8(&mut self) -> u8;
+
     fn read_isize(&mut self) -> isize;
     fn read_i128(&mut self) -> i128;
     fn read_i64(&mut self) -> i64;

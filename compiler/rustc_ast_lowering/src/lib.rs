@@ -1368,13 +1368,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         this.arena.alloc_from_iter(bounds.iter().filter_map(|bound| match bound {
                             GenericBound::Trait(
                                 ty,
-                                TraitBoundModifier::None | TraitBoundModifier::MaybeConst,
+                                TraitBoundModifier::None
+                                | TraitBoundModifier::MaybeConst
+                                | TraitBoundModifier::Negative,
                             ) => Some(this.lower_poly_trait_ref(ty, itctx)),
                             // `~const ?Bound` will cause an error during AST validation
                             // anyways, so treat it like `?Bound` as compilation proceeds.
                             GenericBound::Trait(
                                 _,
-                                TraitBoundModifier::Maybe | TraitBoundModifier::MaybeConstMaybe,
+                                TraitBoundModifier::Maybe
+                                | TraitBoundModifier::MaybeConstMaybe
+                                | TraitBoundModifier::MaybeConstNegative,
                             ) => None,
                             GenericBound::Outlives(lifetime) => {
                                 if lifetime_bound.is_none() {
@@ -2421,11 +2425,20 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             TraitBoundModifier::None => hir::TraitBoundModifier::None,
             TraitBoundModifier::MaybeConst => hir::TraitBoundModifier::MaybeConst,
 
+            TraitBoundModifier::Negative => {
+                if self.tcx.features().negative_bounds {
+                    hir::TraitBoundModifier::Negative
+                } else {
+                    hir::TraitBoundModifier::None
+                }
+            }
+
             // `MaybeConstMaybe` will cause an error during AST validation, but we need to pick a
             // placeholder for compilation to proceed.
             TraitBoundModifier::MaybeConstMaybe | TraitBoundModifier::Maybe => {
                 hir::TraitBoundModifier::Maybe
             }
+            TraitBoundModifier::MaybeConstNegative => hir::TraitBoundModifier::MaybeConst,
         }
     }
 
