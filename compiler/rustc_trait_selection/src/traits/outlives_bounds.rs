@@ -10,28 +10,28 @@ use rustc_span::DUMMY_SP;
 
 pub use rustc_middle::traits::query::OutlivesBound;
 
+type BoundsCompat<'a, 'tcx: 'a> = impl Iterator<Item = OutlivesBound<'tcx>> + 'a;
 type Bounds<'a, 'tcx: 'a> = impl Iterator<Item = OutlivesBound<'tcx>> + 'a;
-type BoundsV2<'a, 'tcx: 'a> = impl Iterator<Item = OutlivesBound<'tcx>> + 'a;
 pub trait InferCtxtExt<'a, 'tcx> {
-    fn implied_outlives_bounds(
+    fn implied_outlives_bounds_compat(
         &self,
         param_env: ty::ParamEnv<'tcx>,
         body_id: LocalDefId,
         ty: Ty<'tcx>,
     ) -> Vec<OutlivesBound<'tcx>>;
 
-    fn implied_bounds_tys(
+    fn implied_bounds_tys_compat(
         &'a self,
         param_env: ty::ParamEnv<'tcx>,
         body_id: LocalDefId,
         tys: FxIndexSet<Ty<'tcx>>,
-    ) -> Bounds<'a, 'tcx>;
+    ) -> BoundsCompat<'a, 'tcx>;
 
-    fn implied_bounds_tys_v2(
+    fn implied_bounds_tys(
         &'a self,
         param_env: ty::ParamEnv<'tcx>,
         tys: &'a FxIndexSet<Ty<'tcx>>,
-    ) -> BoundsV2<'a, 'tcx>;
+    ) -> Bounds<'a, 'tcx>;
 }
 
 impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
@@ -55,7 +55,7 @@ impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
     ///   into the inference context with this body-id.
     /// - `ty`, the type that we are supposed to assume is WF.
     #[instrument(level = "debug", skip(self, param_env, body_id), ret)]
-    fn implied_outlives_bounds(
+    fn implied_outlives_bounds_compat(
         &self,
         param_env: ty::ParamEnv<'tcx>,
         body_id: LocalDefId,
@@ -123,20 +123,21 @@ impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
         output
     }
 
-    fn implied_bounds_tys(
+    fn implied_bounds_tys_compat(
         &'a self,
         param_env: ParamEnv<'tcx>,
         body_id: LocalDefId,
         tys: FxIndexSet<Ty<'tcx>>,
-    ) -> Bounds<'a, 'tcx> {
-        tys.into_iter().flat_map(move |ty| self.implied_outlives_bounds(param_env, body_id, ty))
+    ) -> BoundsCompat<'a, 'tcx> {
+        tys.into_iter()
+            .flat_map(move |ty| self.implied_outlives_bounds_compat(param_env, body_id, ty))
     }
 
-    fn implied_bounds_tys_v2(
+    fn implied_bounds_tys(
         &'a self,
         param_env: ParamEnv<'tcx>,
         tys: &'a FxIndexSet<Ty<'tcx>>,
-    ) -> BoundsV2<'a, 'tcx> {
+    ) -> Bounds<'a, 'tcx> {
         tys.iter()
             .flat_map(move |&ty| {
                 let ty = self.resolve_vars_if_possible(ty);
@@ -147,7 +148,7 @@ impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
                     return &[] as &[OutlivesBound<'_>];
                 }
 
-                self.tcx.implied_outlives_bounds_v2(param_env.and(ty)).unwrap_or(&[])
+                self.tcx.implied_outlives_bounds(param_env.and(ty)).unwrap_or(&[])
             })
             .copied()
     }

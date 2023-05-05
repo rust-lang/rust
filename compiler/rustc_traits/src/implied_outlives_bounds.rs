@@ -19,10 +19,10 @@ use smallvec::{smallvec, SmallVec};
 
 pub(crate) fn provide(p: &mut Providers) {
     *p = Providers { implied_outlives_bounds, ..*p };
-    *p = Providers { implied_outlives_bounds_v2, ..*p };
+    *p = Providers { implied_outlives_bounds_compat, ..*p };
 }
 
-fn implied_outlives_bounds_v2<'tcx>(
+fn implied_outlives_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     goal: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
 ) -> Fallible<&'tcx [OutlivesBound<'tcx>]> {
@@ -40,14 +40,14 @@ fn implied_outlives_bounds_v2<'tcx>(
         Ok(ty)
     };
 
-    compute_implied_outlives_bounds_v2(tcx, goal_ty, normalize_op)
+    compute_implied_outlives_bounds(tcx, goal_ty, normalize_op)
 }
 
 /// For the sake of completeness, we should be careful when dealing with inference artifacts:
 /// - This function shouldn't access an InferCtxt.
 /// - `ty` must be fully resolved.
 /// - `normalize_op` must return a fully resolved type.
-fn compute_implied_outlives_bounds_v2<'tcx>(
+fn compute_implied_outlives_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
     normalize_op: impl Fn(Ty<'tcx>) -> Fallible<Ty<'tcx>>,
@@ -113,17 +113,17 @@ fn compute_implied_outlives_bounds_v2<'tcx>(
     Ok(tcx.arena.alloc_slice(&outlives_bounds))
 }
 
-fn implied_outlives_bounds<'tcx>(
+fn implied_outlives_bounds_compat<'tcx>(
     tcx: TyCtxt<'tcx>,
     goal: CanonicalTyGoal<'tcx>,
 ) -> Fallible<canonical::CanonicalQueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>> {
     tcx.infer_ctxt().enter_canonical_trait_query(&goal, |ocx, key| {
         let (param_env, ty) = key.into_parts();
-        compute_implied_outlives_bounds(ocx, param_env, ty)
+        compute_implied_outlives_bounds_compat(ocx, param_env, ty)
     })
 }
 
-fn compute_implied_outlives_bounds<'tcx>(
+fn compute_implied_outlives_bounds_compat<'tcx>(
     ocx: &ObligationCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     ty: Ty<'tcx>,

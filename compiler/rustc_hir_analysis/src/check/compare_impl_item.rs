@@ -330,7 +330,7 @@ fn compare_method_predicate_entailment<'tcx>(
     // lifetime parameters.
     let outlives_env = OutlivesEnvironment::with_bounds(
         param_env,
-        infcx.implied_bounds_tys(param_env, impl_m_def_id, wf_tys.clone()),
+        infcx.implied_bounds_tys_compat(param_env, impl_m_def_id, wf_tys.clone()),
     );
     let errors = infcx.resolve_regions(&outlives_env);
     if !errors.is_empty() {
@@ -724,7 +724,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     // lifetime parameters.
     let outlives_env = OutlivesEnvironment::with_bounds(
         param_env,
-        infcx.implied_bounds_tys(param_env, impl_m_def_id, wf_tys),
+        infcx.implied_bounds_tys_compat(param_env, impl_m_def_id, wf_tys),
     );
     ocx.resolve_regions_and_report_errors(impl_m_def_id, &outlives_env)?;
 
@@ -2050,7 +2050,8 @@ pub(super) fn check_type_bounds<'tcx>(
 
     // Finally, resolve all regions. This catches wily misuses of
     // lifetime parameters.
-    let implied_bounds = infcx.implied_bounds_tys(param_env, impl_ty_def_id, assumed_wf_types);
+    let implied_bounds =
+        infcx.implied_bounds_tys_compat(param_env, impl_ty_def_id, assumed_wf_types);
     let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
     ocx.resolve_regions_and_report_errors(impl_ty_def_id, &outlives_env)
 }

@@ -403,7 +403,7 @@ fn resolve_negative_obligation<'tcx>(
     let wf_tys = ocx.assumed_wf_types(param_env, DUMMY_SP, body_def_id);
     let outlives_env = OutlivesEnvironment::with_bounds(
         param_env,
-        infcx.implied_bounds_tys(param_env, body_def_id, wf_tys),
+        infcx.implied_bounds_tys_compat(param_env, body_def_id, wf_tys),
     );
     infcx.resolve_regions(&outlives_env).is_empty()
 }

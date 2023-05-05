@@ -56,7 +56,7 @@ macro_rules! arena_types {
                         rustc_middle::traits::query::NormalizationResult<'tcx>
                     >
                 >,
-            [] implied_outlives_bounds:
+            [] implied_outlives_bounds_compat:
                 rustc_middle::infer::canonical::Canonical<'tcx,
                     rustc_middle::infer::canonical::QueryResponse<'tcx,
                         Vec<rustc_middle::traits::query::OutlivesBound<'tcx>>

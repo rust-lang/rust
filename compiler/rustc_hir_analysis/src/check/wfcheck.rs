@@ -113,19 +113,21 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
         return;
     }
 
-    let infcx_v2 = infcx.fork();
-    let implied_bounds = infcx_v2.implied_bounds_tys_v2(param_env, &assumed_wf_types);
+    let infcx_compat = infcx.fork();
+
+    let implied_bounds = infcx.implied_bounds_tys(param_env, &assumed_wf_types);
     let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
-    let errors_v2 = infcx_v2.resolve_regions(&outlives_env);
-    if errors_v2.is_empty() {
+    let errors = infcx.resolve_regions(&outlives_env);
+    if errors.is_empty() {
         return;
     }
 
-    let implied_bounds = infcx.implied_bounds_tys(param_env, body_def_id, assumed_wf_types);
+    let implied_bounds =
+        infcx_compat.implied_bounds_tys_compat(param_env, body_def_id, assumed_wf_types);
     let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
-    let errors_v1 = infcx.resolve_regions(&outlives_env);
-    if !errors_v1.is_empty() {
-        infcx.err_ctxt().report_region_errors(body_def_id, &errors_v1);
+    let errors_compat = infcx_compat.resolve_regions(&outlives_env);
+    if !errors_compat.is_empty() {
+        infcx_compat.err_ctxt().report_region_errors(body_def_id, &errors_compat);
         return;
     }
 
@@ -148,7 +150,7 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
         },
     );
     if lint_level.is_error() {
-        infcx_v2.err_ctxt().report_region_errors(body_def_id, &errors_v2);
+        infcx.err_ctxt().report_region_errors(body_def_id, &errors);
     }
 }
 
@@ -707,7 +709,7 @@ fn resolve_regions_with_wf_tys<'tcx>(
     let infcx = tcx.infer_ctxt().build();
     let outlives_environment = OutlivesEnvironment::with_bounds(
         param_env,
-        infcx.implied_bounds_tys(param_env, id, wf_tys.clone()),
+        infcx.implied_bounds_tys_compat(param_env, id, wf_tys.clone()),
     );
     let region_bound_pairs = outlives_environment.region_bound_pairs();
 
