@@ -572,6 +572,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
             }
         };
     }
+    gate_all!(c_str_literals, "`c\"..\"` literals are experimental");
     gate_all!(
         if_let_guard,
         "`if let` guards are experimental",
