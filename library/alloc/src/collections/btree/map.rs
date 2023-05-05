@@ -3079,8 +3079,8 @@ impl<'a, K, V, A> CursorMut<'a, K, V, A> {
                 unsafe { self.root.reborrow() }
                     .as_mut()?
                     .borrow_mut()
-                    .first_leaf_edge()
-                    .next_kv()
+                    .last_leaf_edge()
+                    .next_back_kv()
                     .ok()?
                     .into_kv_valmut()
             }
