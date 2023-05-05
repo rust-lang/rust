@@ -247,8 +247,6 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 let ty = bx.cx().immediate_backend_type(field);
                 if bx.type_kind(ty) == TypeKind::Pointer {
                     *llval = bx.pointercast(*llval, ty);
-                } else {
-                    *llval = bx.bitcast(*llval, ty);
                 }
             }
             (OperandValue::Pair(a, b), Abi::ScalarPair(a_abi, b_abi)) => {
@@ -260,13 +258,9 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 let b_ty = bx.cx().scalar_pair_element_backend_type(field, 1, true);
                 if bx.type_kind(a_ty) == TypeKind::Pointer {
                     *a = bx.pointercast(*a, a_ty);
-                } else {
-                    *a = bx.bitcast(*a, a_ty);
                 }
                 if bx.type_kind(b_ty) == TypeKind::Pointer {
                     *b = bx.pointercast(*b, b_ty);
-                } else {
-                    *b = bx.bitcast(*b, b_ty);
                 }
             }
             // Newtype vector of array, e.g. #[repr(simd)] struct S([i32; 4]);
