@@ -1,0 +1,93 @@
+// MIR for `swap_big` after PreCodegen
+
+fn swap_big(_1: &mut [String; 9], _2: &mut [String; 9]) -> () {
+    debug a => _1;                       // in scope 0 at $DIR/mem_swap.rs:+0:17: +0:18
+    debug b => _2;                       // in scope 0 at $DIR/mem_swap.rs:+0:38: +0:39
+    let mut _0: ();                      // return place in scope 0 at $DIR/mem_swap.rs:+0:59: +0:59
+    let _3: ();                          // in scope 0 at $DIR/mem_swap.rs:+1:5: +1:25
+    scope 1 (inlined std::mem::swap::<[String; 9]>) { // at $DIR/mem_swap.rs:19:5: 19:25
+        debug x => _1;                   // in scope 1 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        debug y => _2;                   // in scope 1 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        let mut _4: *mut [std::string::String; 9]; // in scope 1 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        let mut _5: *mut [std::string::String; 9]; // in scope 1 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        scope 2 {
+        }
+        scope 3 (inlined std::mem::size_of::<[String; 9]>) { // at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        }
+        scope 4 (inlined align_of::<[String; 9]>) { // at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        }
+        scope 5 (inlined mem::swap_simple::<[String; 9]>) { // at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+            debug x => _1;               // in scope 5 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+            debug y => _2;               // in scope 5 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+            let mut _7: *const [std::string::String; 9]; // in scope 5 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+            let mut _9: *const [std::string::String; 9]; // in scope 5 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+            let mut _10: *mut [std::string::String; 9]; // in scope 5 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+            let mut _11: *mut [std::string::String; 9]; // in scope 5 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+            scope 6 {
+                let _6: [std::string::String; 9]; // in scope 6 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+                scope 7 {
+                    debug a => _6;       // in scope 7 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+                    let _8: [std::string::String; 9]; // in scope 7 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+                    scope 8 {
+                        debug b => _8;   // in scope 8 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+                        scope 15 (inlined std::ptr::write::<[String; 9]>) { // at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+                            debug dst => _10; // in scope 15 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+                            debug src => _8; // in scope 15 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+                            let mut _14: *mut [std::string::String; 9]; // in scope 15 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                            scope 16 {
+                                scope 17 (inlined std::ptr::write::runtime::<[String; 9]>) { // at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                                    debug dst => _14; // in scope 17 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                                }
+                            }
+                        }
+                        scope 18 (inlined std::ptr::write::<[String; 9]>) { // at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+                            debug dst => _11; // in scope 18 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+                            debug src => _6; // in scope 18 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+                            let mut _15: *mut [std::string::String; 9]; // in scope 18 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                            scope 19 {
+                                scope 20 (inlined std::ptr::write::runtime::<[String; 9]>) { // at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                                    debug dst => _15; // in scope 20 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                                }
+                            }
+                        }
+                    }
+                    scope 12 (inlined std::ptr::read::<[String; 9]>) { // at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+                        debug src => _9; // in scope 12 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+                        let mut _13: *const [std::string::String; 9]; // in scope 12 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                        scope 13 {
+                            scope 14 (inlined std::ptr::read::runtime::<[String; 9]>) { // at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                                debug src => _13; // in scope 14 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                            }
+                        }
+                    }
+                }
+                scope 9 (inlined std::ptr::read::<[String; 9]>) { // at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+                    debug src => _7;     // in scope 9 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+                    let mut _12: *const [std::string::String; 9]; // in scope 9 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                    scope 10 {
+                        scope 11 (inlined std::ptr::read::runtime::<[String; 9]>) { // at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                            debug src => _12; // in scope 11 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_4);                 // scope 2 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        _4 = &raw mut (*_1);             // scope 2 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        StorageLive(_5);                 // scope 2 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        _5 = &raw mut (*_2);             // scope 2 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        _3 = swap_nonoverlapping::<[String; 9]>(move _4, move _5, const 1_usize) -> bb1; // scope 2 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+                                         // mir::Constant
+                                         // + span: $SRC_DIR/core/src/mem/mod.rs:LL:COL
+                                         // + literal: Const { ty: unsafe fn(*mut [String; 9], *mut [String; 9], usize) {swap_nonoverlapping::<[String; 9]>}, val: Value(<ZST>) }
+    }
+
+    bb1: {
+        StorageDead(_5);                 // scope 2 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        StorageDead(_4);                 // scope 2 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        return;                          // scope 0 at $DIR/mem_swap.rs:+2:2: +2:2
+    }
+}
