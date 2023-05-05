@@ -9,11 +9,12 @@ use rustc_data_structures::OnDrop;
 use rustc_errors::registry::Registry;
 use rustc_errors::{ErrorGuaranteed, Handler};
 use rustc_lint::LintStore;
-use rustc_middle::ty;
+use rustc_middle::{bug, ty};
 use rustc_parse::maybe_new_parser_from_source_str;
 use rustc_query_impl::QueryCtxt;
 use rustc_query_system::query::print_query_stack;
-use rustc_session::config::{self, CheckCfg, ErrorOutputType, Input, OutputFilenames};
+use rustc_session::config::{self, ErrorOutputType, Input, OutputFilenames};
+use rustc_session::config::{CheckCfg, ExpectedValues};
 use rustc_session::lint;
 use rustc_session::parse::{CrateConfig, ParseSess};
 use rustc_session::Session;
@@ -121,9 +122,9 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String
 /// Converts strings provided as `--check-cfg [specs]` into a `CheckCfg`.
 pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
     rustc_span::create_default_session_if_not_set_then(move |_| {
-        let mut cfg = CheckCfg::default();
+        let mut check_cfg = CheckCfg::default();
 
-        'specs: for s in specs {
+        for s in specs {
             let sess = ParseSess::with_silent_emitter(Some(format!(
                 "this error occurred on the command line: `--check-cfg={s}`"
             )));
@@ -137,40 +138,54 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
                             concat!("invalid `--check-cfg` argument: `{}` (", $reason, ")"),
                             s
                         ),
-                    );
+                    )
                 };
             }
+
+            let expected_error = || {
+                error!(
+                    "expected `names(name1, name2, ... nameN)` or \
+                        `values(name, \"value1\", \"value2\", ... \"valueN\")`"
+                )
+            };
 
             match maybe_new_parser_from_source_str(&sess, filename, s.to_string()) {
                 Ok(mut parser) => match parser.parse_meta_item() {
                     Ok(meta_item) if parser.token == token::Eof => {
                         if let Some(args) = meta_item.meta_item_list() {
                             if meta_item.has_name(sym::names) {
-                                let names_valid =
-                                    cfg.names_valid.get_or_insert_with(|| FxHashSet::default());
+                                check_cfg.exhaustive_names = true;
                                 for arg in args {
                                     if arg.is_word() && arg.ident().is_some() {
                                         let ident = arg.ident().expect("multi-segment cfg key");
-                                        names_valid.insert(ident.name.to_string());
+                                        check_cfg
+                                            .expecteds
+                                            .entry(ident.name.to_string())
+                                            .or_insert(ExpectedValues::Any);
                                     } else {
                                         error!("`names()` arguments must be simple identifiers");
                                     }
                                 }
-                                continue 'specs;
                             } else if meta_item.has_name(sym::values) {
                                 if let Some((name, values)) = args.split_first() {
                                     if name.is_word() && name.ident().is_some() {
                                         let ident = name.ident().expect("multi-segment cfg key");
-                                        let ident_values = cfg
-                                            .values_valid
+                                        let expected_values = check_cfg
+                                            .expecteds
                                             .entry(ident.name.to_string())
-                                            .or_insert_with(|| FxHashSet::default());
+                                            .or_insert_with(|| {
+                                                ExpectedValues::Some(FxHashSet::default())
+                                            });
+
+                                        let ExpectedValues::Some(expected_values) = expected_values else {
+                                            bug!("shoudn't be possible")
+                                        };
 
                                         for val in values {
                                             if let Some(LitKind::Str(s, _)) =
                                                 val.lit().map(|lit| &lit.kind)
                                             {
-                                                ident_values.insert(s.to_string());
+                                                expected_values.insert(Some(s.to_string()));
                                             } else {
                                                 error!(
                                                     "`values()` arguments must be string literals"
@@ -178,35 +193,40 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
                                             }
                                         }
 
-                                        continue 'specs;
+                                        if values.is_empty() {
+                                            expected_values.insert(None);
+                                        }
                                     } else {
                                         error!(
                                             "`values()` first argument must be a simple identifier"
                                         );
                                     }
                                 } else if args.is_empty() {
-                                    cfg.well_known_values = true;
-                                    continue 'specs;
+                                    check_cfg.exhaustive_values = true;
+                                } else {
+                                    expected_error();
                                 }
+                            } else {
+                                expected_error();
                             }
+                        } else {
+                            expected_error();
                         }
                     }
-                    Ok(..) => {}
-                    Err(err) => err.cancel(),
+                    Ok(..) => expected_error(),
+                    Err(err) => {
+                        err.cancel();
+                        expected_error();
+                    }
                 },
-                Err(errs) => drop(errs),
+                Err(errs) => {
+                    drop(errs);
+                    expected_error();
+                }
             }
-
-            error!(
-                "expected `names(name1, name2, ... nameN)` or \
-                `values(name, \"value1\", \"value2\", ... \"valueN\")`"
-            );
         }
 
-        if let Some(names_valid) = &mut cfg.names_valid {
-            names_valid.extend(cfg.values_valid.keys().cloned());
-        }
-        cfg
+        check_cfg
     })
 }
 
