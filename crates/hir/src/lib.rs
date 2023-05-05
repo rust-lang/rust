@@ -2611,6 +2611,10 @@ impl LocalSource {
         self.source.file_id.original_file(db.upcast())
     }
 
+    pub fn file(&self) -> HirFileId {
+        self.source.file_id
+    }
+
     pub fn name(&self) -> Option<ast::Name> {
         self.source.value.name()
     }
@@ -3232,6 +3236,21 @@ impl ClosureCapture {
         Local { parent: self.owner, binding_id: self.capture.local() }
     }
 
+    pub fn kind(&self) -> CaptureKind {
+        match self.capture.kind() {
+            hir_ty::CaptureKind::ByRef(
+                hir_ty::mir::BorrowKind::Shallow | hir_ty::mir::BorrowKind::Shared,
+            ) => CaptureKind::SharedRef,
+            hir_ty::CaptureKind::ByRef(hir_ty::mir::BorrowKind::Unique) => {
+                CaptureKind::UniqueSharedRef
+            }
+            hir_ty::CaptureKind::ByRef(hir_ty::mir::BorrowKind::Mut { .. }) => {
+                CaptureKind::MutableRef
+            }
+            hir_ty::CaptureKind::ByValue => CaptureKind::Move,
+        }
+    }
+
     pub fn display_kind(&self) -> &'static str {
         self.capture.display_kind()
     }
@@ -3239,6 +3258,13 @@ impl ClosureCapture {
     pub fn display_place(&self, owner: ClosureId, db: &dyn HirDatabase) -> String {
         self.capture.display_place(owner, db)
     }
+}
+
+pub enum CaptureKind {
+    SharedRef,
+    UniqueSharedRef,
+    MutableRef,
+    Move,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]

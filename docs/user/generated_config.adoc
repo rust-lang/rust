@@ -474,6 +474,11 @@ Whether to show inlay hints after a closing `}` to indicate what item it belongs
 Minimum number of lines required before the `}` until the hint is shown (set to 0 or 1
 to always show them).
 --
+[[rust-analyzer.inlayHints.closureCaptureHints.enable]]rust-analyzer.inlayHints.closureCaptureHints.enable (default: `false`)::
++
+--
+Whether to show inlay hints for closure captures.
+--
 [[rust-analyzer.inlayHints.closureReturnTypeHints.enable]]rust-analyzer.inlayHints.closureReturnTypeHints.enable (default: `"never"`)::
 +
 --

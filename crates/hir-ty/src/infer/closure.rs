@@ -148,7 +148,7 @@ impl HirPlace {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) enum CaptureKind {
+pub enum CaptureKind {
     ByRef(BorrowKind),
     ByValue,
 }
@@ -164,6 +164,10 @@ pub struct CapturedItem {
 impl CapturedItem {
     pub fn local(&self) -> BindingId {
         self.place.local
+    }
+
+    pub fn kind(&self) -> CaptureKind {
+        self.kind
     }
 
     pub fn display_kind(&self) -> &'static str {

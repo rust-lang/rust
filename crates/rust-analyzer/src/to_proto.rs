@@ -456,6 +456,7 @@ pub(crate) fn inlay_hint(
             | InlayKind::BindingMode => position(line_index, inlay_hint.range.start()),
             // after annotated thing
             InlayKind::ClosureReturnType
+            | InlayKind::ClosureCapture
             | InlayKind::Type
             | InlayKind::Discriminant
             | InlayKind::Chaining
@@ -469,6 +470,7 @@ pub(crate) fn inlay_hint(
             InlayKind::Type => !render_colons,
             InlayKind::Chaining | InlayKind::ClosingBrace => true,
             InlayKind::ClosingParenthesis
+            | InlayKind::ClosureCapture
             | InlayKind::Discriminant
             | InlayKind::OpeningParenthesis
             | InlayKind::BindingMode
@@ -490,6 +492,9 @@ pub(crate) fn inlay_hint(
             | InlayKind::Type
             | InlayKind::Discriminant
             | InlayKind::ClosingBrace => false,
+            InlayKind::ClosureCapture => {
+                matches!(&label, lsp_types::InlayHintLabel::String(s) if s == ")")
+            }
             InlayKind::BindingMode => {
                 matches!(&label, lsp_types::InlayHintLabel::String(s) if s != "&")
             }
@@ -501,6 +506,7 @@ pub(crate) fn inlay_hint(
                 Some(lsp_types::InlayHintKind::TYPE)
             }
             InlayKind::ClosingParenthesis
+            | InlayKind::ClosureCapture
             | InlayKind::Discriminant
             | InlayKind::OpeningParenthesis
             | InlayKind::BindingMode

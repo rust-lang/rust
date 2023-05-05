@@ -122,6 +122,7 @@ impl StaticIndex<'_> {
                     param_names_for_lifetime_elision_hints: false,
                     binding_mode_hints: false,
                     max_length: Some(25),
+                    closure_capture_hints: false,
                     closing_brace_hints_min_lines: Some(25),
                 },
                 file_id,
