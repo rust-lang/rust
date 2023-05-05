@@ -77,7 +77,7 @@ if [ -z "$COMMAND" ]; then
 fi
 shift
 # macOS does not have a useful readlink/realpath so we have to use Python instead...
-MIRIDIR=$(python3 -c 'import os, sys; print(os.path.dirname(os.path.realpath(sys.argv[1])))' "$0")
+MIRIDIR=$(python3 -c 'import pathlib, sys; print(pathlib.Path(sys.argv[1]).resolve().parent.as_posix())' "$0")
 # Used for rustc syncs.
 JOSH_FILTER=":rev(75dd959a3a40eb5b4574f8d2e23aa6efbeb33573:prefix=src/tools/miri):/src/tools/miri"
 # Needed for `./miri bench`.
