@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::{multispan_sugg_with_applicability, span_lint_and
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Span;
 
 declare_clippy_lint! {
@@ -64,7 +64,78 @@ declare_clippy_lint! {
     restriction,
     "add a semicolon outside the block"
 }
-declare_lint_pass!(SemicolonBlock => [SEMICOLON_INSIDE_BLOCK, SEMICOLON_OUTSIDE_BLOCK]);
+impl_lint_pass!(SemicolonBlock => [SEMICOLON_INSIDE_BLOCK, SEMICOLON_OUTSIDE_BLOCK]);
+
+#[derive(Copy, Clone)]
+pub struct SemicolonBlock {
+    semicolon_inside_block_ignore_singleline: bool,
+    semicolon_outside_block_ignore_multiline: bool,
+}
+
+impl SemicolonBlock {
+    pub fn new(semicolon_inside_block_ignore_singleline: bool, semicolon_outside_block_ignore_multiline: bool) -> Self {
+        Self {
+            semicolon_inside_block_ignore_singleline,
+            semicolon_outside_block_ignore_multiline,
+        }
+    }
+
+    fn semicolon_inside_block(self, cx: &LateContext<'_>, block: &Block<'_>, tail: &Expr<'_>, semi_span: Span) {
+        let insert_span = tail.span.source_callsite().shrink_to_hi();
+        let remove_span = semi_span.with_lo(block.span.hi());
+
+        if self.semicolon_inside_block_ignore_singleline && get_line(cx, remove_span) == get_line(cx, insert_span) {
+            return;
+        }
+
+        span_lint_and_then(
+            cx,
+            SEMICOLON_INSIDE_BLOCK,
+            semi_span,
+            "consider moving the `;` inside the block for consistent formatting",
+            |diag| {
+                multispan_sugg_with_applicability(
+                    diag,
+                    "put the `;` here",
+                    Applicability::MachineApplicable,
+                    [(remove_span, String::new()), (insert_span, ";".to_owned())],
+                );
+            },
+        );
+    }
+
+    fn semicolon_outside_block(
+        self,
+        cx: &LateContext<'_>,
+        block: &Block<'_>,
+        tail_stmt_expr: &Expr<'_>,
+        semi_span: Span,
+    ) {
+        let insert_span = block.span.with_lo(block.span.hi());
+        // account for macro calls
+        let semi_span = cx.sess().source_map().stmt_span(semi_span, block.span);
+        let remove_span = semi_span.with_lo(tail_stmt_expr.span.source_callsite().hi());
+
+        if self.semicolon_outside_block_ignore_multiline && get_line(cx, remove_span) != get_line(cx, insert_span) {
+            return;
+        }
+
+        span_lint_and_then(
+            cx,
+            SEMICOLON_OUTSIDE_BLOCK,
+            block.span,
+            "consider moving the `;` outside the block for consistent formatting",
+            |diag| {
+                multispan_sugg_with_applicability(
+                    diag,
+                    "put the `;` here",
+                    Applicability::MachineApplicable,
+                    [(remove_span, String::new()), (insert_span, ";".to_owned())],
+                );
+            },
+        );
+    }
+}
 
 impl LateLintPass<'_> for SemicolonBlock {
     fn check_stmt(&mut self, cx: &LateContext<'_>, stmt: &Stmt<'_>) {
@@ -83,55 +154,23 @@ impl LateLintPass<'_> for SemicolonBlock {
                     span,
                     ..
                 } = stmt else { return };
-                semicolon_outside_block(cx, block, expr, span);
+                self.semicolon_outside_block(cx, block, expr, span);
             },
             StmtKind::Semi(Expr {
                 kind: ExprKind::Block(block @ Block { expr: Some(tail), .. }, _),
                 ..
-            }) if !block.span.from_expansion() => semicolon_inside_block(cx, block, tail, stmt.span),
+            }) if !block.span.from_expansion() => {
+                self.semicolon_inside_block(cx, block, tail, stmt.span);
+            },
             _ => (),
         }
     }
 }
 
-fn semicolon_inside_block(cx: &LateContext<'_>, block: &Block<'_>, tail: &Expr<'_>, semi_span: Span) {
-    let insert_span = tail.span.source_callsite().shrink_to_hi();
-    let remove_span = semi_span.with_lo(block.span.hi());
+fn get_line(cx: &LateContext<'_>, span: Span) -> Option<usize> {
+    if let Ok(line) = cx.sess().source_map().lookup_line(span.lo()) {
+        return Some(line.line);
+    }
 
-    span_lint_and_then(
-        cx,
-        SEMICOLON_INSIDE_BLOCK,
-        semi_span,
-        "consider moving the `;` inside the block for consistent formatting",
-        |diag| {
-            multispan_sugg_with_applicability(
-                diag,
-                "put the `;` here",
-                Applicability::MachineApplicable,
-                [(remove_span, String::new()), (insert_span, ";".to_owned())],
-            );
-        },
-    );
-}
-
-fn semicolon_outside_block(cx: &LateContext<'_>, block: &Block<'_>, tail_stmt_expr: &Expr<'_>, semi_span: Span) {
-    let insert_span = block.span.with_lo(block.span.hi());
-    // account for macro calls
-    let semi_span = cx.sess().source_map().stmt_span(semi_span, block.span);
-    let remove_span = semi_span.with_lo(tail_stmt_expr.span.source_callsite().hi());
-
-    span_lint_and_then(
-        cx,
-        SEMICOLON_OUTSIDE_BLOCK,
-        block.span,
-        "consider moving the `;` outside the block for consistent formatting",
-        |diag| {
-            multispan_sugg_with_applicability(
-                diag,
-                "put the `;` here",
-                Applicability::MachineApplicable,
-                [(remove_span, String::new()), (insert_span, ";".to_owned())],
-            );
-        },
-    );
+    None
 }

@@ -1,5 +1,5 @@
 error: items were found after the testing module
-  --> $DIR/items_after_test_module.rs:13:1
+  --> $DIR/block_module.rs:13:1
    |
 LL | / mod tests {
 LL | |     #[test]

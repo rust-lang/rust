@@ -1,0 +1,55 @@
+error: consider moving the `;` outside the block for consistent formatting
+  --> $DIR/both.rs:43:5
+   |
+LL |     { unit_fn_block(); }
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::semicolon-outside-block` implied by `-D warnings`
+help: put the `;` here
+   |
+LL -     { unit_fn_block(); }
+LL +     { unit_fn_block() };
+   |
+
+error: consider moving the `;` outside the block for consistent formatting
+  --> $DIR/both.rs:44:5
+   |
+LL |     unsafe { unit_fn_block(); }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: put the `;` here
+   |
+LL -     unsafe { unit_fn_block(); }
+LL +     unsafe { unit_fn_block() };
+   |
+
+error: consider moving the `;` inside the block for consistent formatting
+  --> $DIR/both.rs:49:5
+   |
+LL | /     {
+LL | |         unit_fn_block();
+LL | |         unit_fn_block()
+LL | |     };
+   | |______^
+   |
+   = note: `-D clippy::semicolon-inside-block` implied by `-D warnings`
+help: put the `;` here
+   |
+LL ~         unit_fn_block();
+LL ~     }
+   |
+
+error: consider moving the `;` outside the block for consistent formatting
+  --> $DIR/both.rs:63:5
+   |
+LL |     { m!(()); }
+   |     ^^^^^^^^^^^
+   |
+help: put the `;` here
+   |
+LL -     { m!(()); }
+LL +     { m!(()) };
+   |
+
+error: aborting due to 4 previous errors
+

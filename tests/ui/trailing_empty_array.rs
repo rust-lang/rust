@@ -144,7 +144,7 @@ struct ReprCAlign {
 
 // NOTE: because of https://doc.rust-lang.org/stable/reference/type-layout.html#primitive-representation-of-enums-with-fields and I'm not sure when in the compilation pipeline that would happen
 #[repr(C)]
-enum DontLintAnonymousStructsFromDesuraging {
+enum DontLintAnonymousStructsFromDesugaring {
     A(u32),
     B(f32, [u64; 0]),
     C { x: u32, y: [u64; 0] },

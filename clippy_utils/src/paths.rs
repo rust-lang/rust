@@ -159,3 +159,7 @@ pub const WEAK_RC: [&str; 3] = ["alloc", "rc", "Weak"];
 pub const PTR_NON_NULL: [&str; 4] = ["core", "ptr", "non_null", "NonNull"];
 pub const INSTANT_NOW: [&str; 4] = ["std", "time", "Instant", "now"];
 pub const INSTANT: [&str; 3] = ["std", "time", "Instant"];
+pub const VEC_IS_EMPTY: [&str; 4] = ["alloc", "vec", "Vec", "is_empty"];
+pub const VEC_POP: [&str; 4] = ["alloc", "vec", "Vec", "pop"];
+pub const OPTION_UNWRAP: [&str; 4] = ["core", "option", "Option", "unwrap"];
+pub const OPTION_EXPECT: [&str; 4] = ["core", "option", "Option", "expect"];
