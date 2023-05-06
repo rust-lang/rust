@@ -76,6 +76,29 @@ fn generic_arg(p: &mut Parser<'_>) -> bool {
                 }
             }
         }
+        IDENT if p.nth_at(1, T!['(']) => {
+            let m = p.start();
+            name_ref(p);
+            params::param_list_fn_trait(p);
+            if p.at(T![:]) && !p.at(T![::]) {
+                // test associated_return_type_bounds
+                // fn foo<T: Foo<foo(): Send, bar(i32): Send, baz(i32, i32): Send>>() {}
+                generic_params::bounds(p);
+                m.complete(p, ASSOC_TYPE_ARG);
+            } else {
+                // test bare_dyn_types_with_paren_as_generic_args
+                // type A = S<Fn(i32)>;
+                // type A = S<Fn(i32) + Send>;
+                // type B = S<Fn(i32) -> i32>;
+                // type C = S<Fn(i32) -> i32 + Send>;
+                opt_ret_type(p);
+                let m = m.complete(p, PATH_SEGMENT).precede(p).complete(p, PATH);
+                let m = paths::type_path_for_qualifier(p, m);
+                let m = m.precede(p).complete(p, PATH_TYPE);
+                let m = types::opt_type_bounds_as_dyn_trait_type(p, m);
+                m.precede(p).complete(p, TYPE_ARG);
+            }
+        }
         _ if p.at_ts(types::TYPE_FIRST) => type_arg(p),
         _ => return false,
     }

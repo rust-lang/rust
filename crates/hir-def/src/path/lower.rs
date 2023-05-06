@@ -189,6 +189,10 @@ pub(super) fn lower_generic_args(
                 args.push(GenericArg::Type(type_ref));
             }
             ast::GenericArg::AssocTypeArg(assoc_type_arg) => {
+                if assoc_type_arg.param_list().is_some() {
+                    // We currently ignore associated return type bounds.
+                    continue;
+                }
                 if let Some(name_ref) = assoc_type_arg.name_ref() {
                     let name = name_ref.as_name();
                     let args = assoc_type_arg
