@@ -87,8 +87,8 @@ pub struct LineIndex {
     newlines: Box<[TextSize]>,
     /// List of non-ASCII characters on each line.
     line_wide_chars: IntMap<u32, Box<[WideChar]>>,
-    /// The size of the entire text.
-    size: TextSize,
+    /// The length of the entire text.
+    len: TextSize,
 }
 
 impl LineIndex {
@@ -135,7 +135,7 @@ impl LineIndex {
         LineIndex {
             newlines: newlines.into_boxed_slice(),
             line_wide_chars,
-            size: TextSize::of(text),
+            len: TextSize::of(text),
         }
     }
 
@@ -153,7 +153,7 @@ impl LineIndex {
     /// Returns `None` if the `offset` was invalid, e.g. if it extends past the end of the text or
     /// points to the middle of a multi-byte character.
     pub fn try_line_col(&self, offset: TextSize) -> Option<LineCol> {
-        if offset > self.size {
+        if offset > self.len {
             return None;
         }
         let line = self.newlines.partition_point(|&it| it <= offset);
