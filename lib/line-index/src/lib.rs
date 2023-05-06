@@ -66,7 +66,7 @@ impl WideChar {
     }
 
     /// Returns the length in UTF-16 or UTF-32 code units.
-    fn wide_len(&self, enc: WideEncoding) -> usize {
+    fn wide_len(&self, enc: WideEncoding) -> u32 {
         match enc {
             WideEncoding::Utf16 => {
                 if self.len() == TextSize::from(4) {
@@ -75,7 +75,6 @@ impl WideChar {
                     1
                 }
             }
-
             WideEncoding::Utf32 => 1,
         }
     }
@@ -157,12 +156,11 @@ impl LineIndex {
 
     /// Transforms the `LineCol` with the given `WideEncoding` into a `WideLineCol`.
     pub fn to_wide(&self, enc: WideEncoding, line_col: LineCol) -> Option<WideLineCol> {
-        let col: TextSize = line_col.col.into();
-        let mut res: usize = col.into();
+        let mut col = line_col.col;
         if let Some(wide_chars) = self.line_wide_chars.get(&line_col.line) {
             for c in wide_chars.iter() {
                 if u32::from(c.end) <= line_col.col {
-                    res -= usize::from(c.len()) - c.wide_len(enc);
+                    col -= u32::from(c.len()) - c.wide_len(enc);
                 } else {
                     // From here on, all utf16 characters come *after* the character we are mapping,
                     // so we don't need to take them into account
@@ -170,7 +168,7 @@ impl LineIndex {
                 }
             }
         }
-        Some(WideLineCol { line: line_col.line, col: res as u32 })
+        Some(WideLineCol { line: line_col.line, col })
     }
 
     /// Transforms the `WideLineCol` with the given `WideEncoding` into a `LineCol`.
