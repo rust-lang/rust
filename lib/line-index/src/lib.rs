@@ -20,11 +20,22 @@ pub struct LineCol {
 
 /// A kind of wide character encoding.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum WideEncoding {
     /// UTF-16.
     Utf16,
     /// UTF-32.
     Utf32,
+}
+
+impl WideEncoding {
+    /// Returns the number of units it takes to encode `text` in this encoding.
+    pub fn measure(&self, text: &str) -> usize {
+        match self {
+            WideEncoding::Utf16 => text.encode_utf16().count(),
+            WideEncoding::Utf32 => text.chars().count(),
+        }
+    }
 }
 
 /// Line/Column information in legacy encodings.

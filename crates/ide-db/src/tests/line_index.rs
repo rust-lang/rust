@@ -28,16 +28,11 @@ fn test_every_chars() {
         let got_lin_col = line_index.line_col(got_offset);
         assert_eq!(got_lin_col, lin_col);
 
-        for enc in [WideEncoding::Utf16, WideEncoding::Utf32] {
+        for (enc, col) in [(WideEncoding::Utf16, col_utf16), (WideEncoding::Utf32, col_utf32)] {
             let wide_lin_col = line_index.to_wide(enc, lin_col);
             let got_lin_col = line_index.to_utf8(enc, wide_lin_col);
             assert_eq!(got_lin_col, lin_col);
-
-            let want_col = match enc {
-                WideEncoding::Utf16 => col_utf16,
-                WideEncoding::Utf32 => col_utf32,
-            };
-            assert_eq!(wide_lin_col.col, want_col)
+            assert_eq!(wide_lin_col.col, col)
         }
 
         if c == '\n' {

@@ -3,7 +3,6 @@
 use std::collections::HashMap;
 
 use flycheck::{Applicability, DiagnosticLevel, DiagnosticSpan};
-use ide_db::line_index::WideEncoding;
 use itertools::Itertools;
 use stdx::format_to;
 use vfs::{AbsPath, AbsPathBuf};
@@ -94,17 +93,16 @@ fn position(
             };
         }
         let mut char_offset = 0;
-        let len_func = match position_encoding {
-            PositionEncoding::Utf8 => char::len_utf8,
-            PositionEncoding::Wide(WideEncoding::Utf16) => char::len_utf16,
-            PositionEncoding::Wide(WideEncoding::Utf32) => |_| 1,
-        };
         for c in line.text.chars() {
             char_offset += 1;
             if char_offset > column_offset {
                 break;
             }
-            true_column_offset += len_func(c) - 1;
+            let len = match position_encoding {
+                PositionEncoding::Utf8 => c.len_utf8(),
+                PositionEncoding::Wide(w) => w.measure(&c.to_string()),
+            };
+            true_column_offset += len - 1;
         }
     }
 
