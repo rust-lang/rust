@@ -161,7 +161,7 @@ impl LineIndex {
         let mut res: usize = col.into();
         if let Some(wide_chars) = self.line_wide_chars.get(&line_col.line) {
             for c in wide_chars.iter() {
-                if c.end <= col {
+                if u32::from(c.end) <= line_col.col {
                     res -= usize::from(c.len()) - c.wide_len(enc);
                 } else {
                     // From here on, all utf16 characters come *after* the character we are mapping,
