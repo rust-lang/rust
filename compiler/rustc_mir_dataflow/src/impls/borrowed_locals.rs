@@ -37,6 +37,10 @@ impl<'tcx> AnalysisDomain<'tcx> for MaybeBorrowedLocals {
 impl<'tcx> GenKillAnalysis<'tcx> for MaybeBorrowedLocals {
     type Idx = Local;
 
+    fn domain_size(&self, body: &Body<'tcx>) -> usize {
+        body.local_decls.len()
+    }
+
     fn statement_effect(
         &mut self,
         trans: &mut impl GenKill<Self::Idx>,

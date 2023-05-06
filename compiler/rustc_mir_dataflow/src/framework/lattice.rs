@@ -187,10 +187,6 @@ impl<T: Idx> MeetSemiLattice for ChunkedBitSet<T> {
 pub struct Dual<T>(pub T);
 
 impl<T: Idx> BitSetExt<T> for Dual<BitSet<T>> {
-    fn domain_size(&self) -> usize {
-        self.0.domain_size()
-    }
-
     fn contains(&self, elem: T) -> bool {
         self.0.contains(elem)
     }

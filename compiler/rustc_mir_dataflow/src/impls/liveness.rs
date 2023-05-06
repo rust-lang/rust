@@ -43,6 +43,10 @@ impl<'tcx> AnalysisDomain<'tcx> for MaybeLiveLocals {
 impl<'tcx> GenKillAnalysis<'tcx> for MaybeLiveLocals {
     type Idx = Local;
 
+    fn domain_size(&self, body: &mir::Body<'tcx>) -> usize {
+        body.local_decls.len()
+    }
+
     fn statement_effect(
         &mut self,
         trans: &mut impl GenKill<Self::Idx>,

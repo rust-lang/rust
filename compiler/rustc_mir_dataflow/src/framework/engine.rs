@@ -165,7 +165,7 @@ where
 
         // Otherwise, compute and store the cumulative transfer function for each block.
 
-        let identity = GenKillSet::identity(analysis.bottom_value(body).domain_size());
+        let identity = GenKillSet::identity(analysis.domain_size(body));
         let mut trans_for_block = IndexVec::from_elem(identity, &body.basic_blocks);
 
         for (block, block_data) in body.basic_blocks.iter_enumerated() {

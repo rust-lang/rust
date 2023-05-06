@@ -290,6 +290,10 @@ impl<'tcx> AnalysisDomain<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
 impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
     type Idx = MovePathIndex;
 
+    fn domain_size(&self, _: &Body<'tcx>) -> usize {
+        self.move_data().move_paths.len()
+    }
+
     fn statement_effect(
         &mut self,
         trans: &mut impl GenKill<Self::Idx>,
@@ -416,6 +420,10 @@ impl<'tcx> AnalysisDomain<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
 impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
     type Idx = MovePathIndex;
 
+    fn domain_size(&self, _: &Body<'tcx>) -> usize {
+        self.move_data().move_paths.len()
+    }
+
     fn statement_effect(
         &mut self,
         trans: &mut impl GenKill<Self::Idx>,
@@ -536,6 +544,10 @@ impl<'a, 'tcx> AnalysisDomain<'tcx> for DefinitelyInitializedPlaces<'a, 'tcx> {
 impl<'tcx> GenKillAnalysis<'tcx> for DefinitelyInitializedPlaces<'_, 'tcx> {
     type Idx = MovePathIndex;
 
+    fn domain_size(&self, _: &Body<'tcx>) -> usize {
+        self.move_data().move_paths.len()
+    }
+
     fn statement_effect(
         &mut self,
         trans: &mut impl GenKill<Self::Idx>,
@@ -599,6 +611,10 @@ impl<'tcx> AnalysisDomain<'tcx> for EverInitializedPlaces<'_, 'tcx> {
 
 impl<'tcx> GenKillAnalysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
     type Idx = InitIndex;
+
+    fn domain_size(&self, _: &Body<'tcx>) -> usize {
+        self.move_data().inits.len()
+    }
 
     #[instrument(skip(self, trans), level = "debug")]
     fn statement_effect(

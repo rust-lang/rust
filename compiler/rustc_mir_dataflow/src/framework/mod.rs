@@ -54,17 +54,12 @@ pub use self::visitor::{visit_results, ResultsVisitable, ResultsVisitor};
 /// Analysis domains are all bitsets of various kinds. This trait holds
 /// operations needed by all of them.
 pub trait BitSetExt<T> {
-    fn domain_size(&self) -> usize;
     fn contains(&self, elem: T) -> bool;
     fn union(&mut self, other: &HybridBitSet<T>);
     fn subtract(&mut self, other: &HybridBitSet<T>);
 }
 
 impl<T: Idx> BitSetExt<T> for BitSet<T> {
-    fn domain_size(&self) -> usize {
-        self.domain_size()
-    }
-
     fn contains(&self, elem: T) -> bool {
         self.contains(elem)
     }
@@ -79,10 +74,6 @@ impl<T: Idx> BitSetExt<T> for BitSet<T> {
 }
 
 impl<T: Idx> BitSetExt<T> for ChunkedBitSet<T> {
-    fn domain_size(&self) -> usize {
-        self.domain_size()
-    }
-
     fn contains(&self, elem: T) -> bool {
         self.contains(elem)
     }
@@ -294,6 +285,8 @@ where
 /// `Analysis` is automatically implemented for all implementers of `GenKillAnalysis`.
 pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
     type Idx: Idx;
+
+    fn domain_size(&self, body: &mir::Body<'tcx>) -> usize;
 
     /// See `Analysis::apply_statement_effect`.
     fn statement_effect(

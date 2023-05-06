@@ -49,6 +49,10 @@ impl<'tcx, 'a> crate::AnalysisDomain<'tcx> for MaybeStorageLive<'a> {
 impl<'tcx, 'a> crate::GenKillAnalysis<'tcx> for MaybeStorageLive<'a> {
     type Idx = Local;
 
+    fn domain_size(&self, body: &Body<'tcx>) -> usize {
+        body.local_decls.len()
+    }
+
     fn statement_effect(
         &mut self,
         trans: &mut impl GenKill<Self::Idx>,
@@ -115,6 +119,10 @@ impl<'tcx> crate::AnalysisDomain<'tcx> for MaybeStorageDead {
 
 impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeStorageDead {
     type Idx = Local;
+
+    fn domain_size(&self, body: &Body<'tcx>) -> usize {
+        body.local_decls.len()
+    }
 
     fn statement_effect(
         &mut self,
@@ -190,6 +198,10 @@ impl<'tcx> crate::AnalysisDomain<'tcx> for MaybeRequiresStorage<'_, '_, 'tcx> {
 
 impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, '_, 'tcx> {
     type Idx = Local;
+
+    fn domain_size(&self, body: &Body<'tcx>) -> usize {
+        body.local_decls.len()
+    }
 
     fn before_statement_effect(
         &mut self,

@@ -334,6 +334,10 @@ impl<'tcx> rustc_mir_dataflow::AnalysisDomain<'tcx> for Borrows<'_, 'tcx> {
 impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
     type Idx = BorrowIndex;
 
+    fn domain_size(&self, _: &mir::Body<'tcx>) -> usize {
+        self.borrow_set.len()
+    }
+
     fn before_statement_effect(
         &mut self,
         trans: &mut impl GenKill<Self::Idx>,
