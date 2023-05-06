@@ -94,6 +94,7 @@ cfg_if!(
             [Box<T, A> where T: ?Sized + DynSend, A: std::alloc::Allocator + DynSend]
             [crate::sync::Lock<T> where T: DynSend]
             [crate::sync::RwLock<T> where T: DynSend]
+            [crate::tagged_ptr::CopyTaggedPtr<P, T, CP> where P: Send + crate::tagged_ptr::Pointer, T: Send + crate::tagged_ptr::Tag, const CP: bool]
             [rustc_arena::TypedArena<T> where T: DynSend]
             [indexmap::IndexSet<V, S> where V: DynSend, S: DynSend]
             [indexmap::IndexMap<K, V, S> where K: DynSend, V: DynSend, S: DynSend]
@@ -175,6 +176,7 @@ cfg_if!(
             [crate::sync::OneThread<T> where T]
             [crate::sync::WorkerLocal<T> where T: DynSend]
             [crate::intern::Interned<'a, T> where 'a, T: DynSync]
+            [crate::tagged_ptr::CopyTaggedPtr<P, T, CP> where P: Sync + crate::tagged_ptr::Pointer, T: Sync + crate::tagged_ptr::Tag, const CP: bool]
             [parking_lot::lock_api::Mutex<R, T> where R: DynSync, T: ?Sized + DynSend]
             [parking_lot::lock_api::RwLock<R, T> where R: DynSync, T: ?Sized + DynSend + DynSync]
             [indexmap::IndexSet<V, S> where V: DynSync, S: DynSync]
@@ -218,9 +220,10 @@ unsafe impl<T: DynSend> Send for FromDyn<T> {}
 #[cfg(parallel_compiler)]
 unsafe impl<T: DynSync> Sync for FromDyn<T> {}
 
-impl<T> const std::ops::Deref for FromDyn<T> {
+impl<T> std::ops::Deref for FromDyn<T> {
     type Target = T;
 
+    #[inline(always)]
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -237,15 +240,17 @@ unsafe impl<T: ?Sized + Send> DynSend for IntoDynSyncSend<T> {}
 #[cfg(parallel_compiler)]
 unsafe impl<T: ?Sized + Sync> DynSync for IntoDynSyncSend<T> {}
 
-impl<T> const std::ops::Deref for IntoDynSyncSend<T> {
+impl<T> std::ops::Deref for IntoDynSyncSend<T> {
     type Target = T;
 
+    #[inline(always)]
     fn deref(&self) -> &T {
         &self.0
     }
 }
 
-impl<T> const std::ops::DerefMut for IntoDynSyncSend<T> {
+impl<T> std::ops::DerefMut for IntoDynSyncSend<T> {
+    #[inline(always)]
     fn deref_mut(&mut self) -> &mut T {
         &mut self.0
     }
