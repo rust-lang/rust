@@ -1491,6 +1491,30 @@ impl<'a> IoSlice<'a> {
             bufs[0].advance(left);
         }
     }
+
+    /// Get the underlying bytes as a rust slice with the original lifetime
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::io::IoSlice;
+    ///
+    /// let data = b"abcdef";
+    ///
+    /// let mut io_slice = IoSlice::new(data);
+    /// let tail = io_slice.as_bytes()[3..];
+    ///
+    /// // This works because `tail` doesn't borrow `io_slice`
+    /// io_slice = IoSlice::new(tail);
+    ///
+    /// assert_eq!(io_slice.as_bytes(), b"def");
+    /// ```
+    #[unstable(feature = "io_slice_as_bytes")]
+    #[inline]
+    #[must_use]
+    pub const fn as_bytes(&self) -> &'a [u8] {
+        self.0.as_slice()
+    }
 }
 
 #[stable(feature = "iovec", since = "1.36.0")]
