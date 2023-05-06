@@ -168,7 +168,7 @@ impl<T> IdxRange<T> {
         Idx::from_raw(RawIdx::from(self.range.start))
     }
 
-    /// Returns the start of the index range.
+    /// Returns the end of the index range.
     pub fn end(&self) -> Idx<T> {
         Idx::from_raw(RawIdx::from(self.range.end))
     }
