@@ -2358,9 +2358,10 @@ impl str {
     /// assert!(!non_ascii.is_ascii());
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
+    #[rustc_const_unstable(feature = "const_slice_is_ascii", issue = "111090")]
     #[must_use]
     #[inline]
-    pub fn is_ascii(&self) -> bool {
+    pub const fn is_ascii(&self) -> bool {
         // We can treat each byte as character here: all multibyte characters
         // start with a byte that is not in the ASCII range, so we will stop
         // there already.
@@ -2372,7 +2373,7 @@ impl str {
     #[unstable(feature = "ascii_char", issue = "110998")]
     #[must_use]
     #[inline]
-    pub fn as_ascii(&self) -> Option<&[ascii::Char]> {
+    pub const fn as_ascii(&self) -> Option<&[ascii::Char]> {
         // Like in `is_ascii`, we can work on the bytes directly.
         self.as_bytes().as_ascii()
     }
