@@ -1203,6 +1203,7 @@ symbols! {
         require,
         residual,
         result,
+        resume,
         return_position_impl_trait_in_trait,
         return_type_notation,
         rhs,
