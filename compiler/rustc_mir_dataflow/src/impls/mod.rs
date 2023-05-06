@@ -4,7 +4,6 @@
 
 use rustc_index::bit_set::{BitSet, ChunkedBitSet};
 use rustc_index::Idx;
-use rustc_middle::mir::visit::{MirVisitable, Visitor};
 use rustc_middle::mir::{self, Body, Location};
 use rustc_middle::ty::{self, TyCtxt};
 
@@ -316,43 +315,29 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
             Self::update_bits(trans, path, s)
         });
 
-        if !self.tcx.sess.opts.unstable_opts.precise_enum_drop_elaboration {
-            return;
-        }
-
         // Mark all places as "maybe init" if they are mutably borrowed. See #90752.
-        for_each_mut_borrow(statement, location, |place| {
-            let LookupResult::Exact(mpi) = self.move_data().rev_lookup.find(place.as_ref()) else {
-                return;
-            };
+        if self.tcx.sess.opts.unstable_opts.precise_enum_drop_elaboration
+            && let Some((_, rvalue)) = statement.kind.as_assign()
+            && let mir::Rvalue::Ref(_, mir::BorrowKind::Mut { .. }, place)
+                // FIXME: Does `&raw const foo` allow mutation? See #90413.
+                | mir::Rvalue::AddressOf(_, place) = rvalue
+            && let LookupResult::Exact(mpi) = self.move_data().rev_lookup.find(place.as_ref())
+        {
             on_all_children_bits(self.tcx, self.body, self.move_data(), mpi, |child| {
                 trans.gen(child);
             })
-        })
+        }
     }
 
     fn terminator_effect(
         &mut self,
         trans: &mut impl GenKill<Self::Idx>,
-        terminator: &mir::Terminator<'tcx>,
+        _: &mir::Terminator<'tcx>,
         location: Location,
     ) {
         drop_flag_effects_for_location(self.tcx, self.body, self.mdpe, location, |path, s| {
             Self::update_bits(trans, path, s)
         });
-
-        if !self.tcx.sess.opts.unstable_opts.precise_enum_drop_elaboration {
-            return;
-        }
-
-        for_each_mut_borrow(terminator, location, |place| {
-            let LookupResult::Exact(mpi) = self.move_data().rev_lookup.find(place.as_ref()) else {
-                return;
-            };
-            on_all_children_bits(self.tcx, self.body, self.move_data(), mpi, |child| {
-                trans.gen(child);
-            })
-        })
     }
 
     fn call_return_effect(
@@ -732,38 +717,4 @@ fn switch_on_enum_discriminant<'mir, 'tcx>(
         }
     }
     None
-}
-
-struct OnMutBorrow<F>(F);
-
-impl<'tcx, F> Visitor<'tcx> for OnMutBorrow<F>
-where
-    F: FnMut(&mir::Place<'tcx>),
-{
-    fn visit_rvalue(&mut self, rvalue: &mir::Rvalue<'tcx>, location: Location) {
-        // FIXME: Does `&raw const foo` allow mutation? See #90413.
-        match rvalue {
-            mir::Rvalue::Ref(_, mir::BorrowKind::Mut { .. }, place)
-            | mir::Rvalue::AddressOf(_, place) => (self.0)(place),
-
-            _ => {}
-        }
-
-        self.super_rvalue(rvalue, location)
-    }
-}
-
-/// Calls `f` for each mutable borrow or raw reference in the program.
-///
-/// This DOES NOT call `f` for a shared borrow of a type with interior mutability. That's okay for
-/// initializedness, because we cannot move from an `UnsafeCell` (outside of `core::cell`), but
-/// other analyses will likely need to check for `!Freeze`.
-fn for_each_mut_borrow<'tcx>(
-    mir: &impl MirVisitable<'tcx>,
-    location: Location,
-    f: impl FnMut(&mir::Place<'tcx>),
-) {
-    let mut vis = OnMutBorrow(f);
-
-    mir.apply(location, &mut vis);
 }
