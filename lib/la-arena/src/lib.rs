@@ -176,8 +176,13 @@ impl<T> IdxRange<T> {
 
 impl<T> Iterator for IdxRange<T> {
     type Item = Idx<T>;
+
     fn next(&mut self) -> Option<Self::Item> {
         self.range.next().map(|raw| Idx::from_raw(raw.into()))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.range.size_hint()
     }
 }
 
@@ -186,6 +191,8 @@ impl<T> DoubleEndedIterator for IdxRange<T> {
         self.range.next_back().map(|raw| Idx::from_raw(raw.into()))
     }
 }
+
+impl<T> ExactSizeIterator for IdxRange<T> {}
 
 impl<T> fmt::Debug for IdxRange<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
