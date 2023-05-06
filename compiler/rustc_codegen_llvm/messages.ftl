@@ -82,7 +82,7 @@ codegen_llvm_prepare_thin_lto_module_with_llvm_err = failed to prepare thin LTO 
 codegen_llvm_parse_bitcode = failed to parse bitcode for LTO module
 codegen_llvm_parse_bitcode_with_llvm_err = failed to parse bitcode for LTO module: {$llvm_err}
 
-codegen_llvm_from_llvm_optimization_diag = {$filename}:{$line}:{$column} {$pass_name}: {$message}
+codegen_llvm_from_llvm_optimization_diag = {$filename}:{$line}:{$column} {$pass_name} ({$kind}): {$message}
 codegen_llvm_from_llvm_diag = {$message}
 
 codegen_llvm_write_bytecode = failed to write bytecode to {$path}: {$err}
