@@ -868,7 +868,7 @@ impl VClockAlloc {
     pub fn read<'tcx>(
         &self,
         alloc_id: AllocId,
-        range: AllocRange,
+        access_range: AllocRange,
         machine: &MiriMachine<'_, '_>,
     ) -> InterpResult<'tcx> {
         let current_span = machine.current_span();
@@ -876,7 +876,9 @@ impl VClockAlloc {
         if global.race_detecting() {
             let (index, mut thread_clocks) = global.current_thread_state_mut(&machine.threads);
             let mut alloc_ranges = self.alloc_ranges.borrow_mut();
-            for (offset, mem_clocks) in alloc_ranges.iter_mut(range.start, range.size) {
+            for (mem_clocks_range, mem_clocks) in
+                alloc_ranges.iter_mut(access_range.start, access_range.size)
+            {
                 if let Err(DataRace) =
                     mem_clocks.read_race_detect(&mut thread_clocks, index, current_span)
                 {
@@ -888,7 +890,7 @@ impl VClockAlloc {
                         mem_clocks,
                         "Read",
                         false,
-                        Pointer::new(alloc_id, offset),
+                        Pointer::new(alloc_id, Size::from_bytes(mem_clocks_range.start)),
                     );
                 }
             }
@@ -902,7 +904,7 @@ impl VClockAlloc {
     fn unique_access<'tcx>(
         &mut self,
         alloc_id: AllocId,
-        range: AllocRange,
+        access_range: AllocRange,
         write_type: WriteType,
         machine: &mut MiriMachine<'_, '_>,
     ) -> InterpResult<'tcx> {
@@ -910,8 +912,8 @@ impl VClockAlloc {
         let global = machine.data_race.as_mut().unwrap();
         if global.race_detecting() {
             let (index, mut thread_clocks) = global.current_thread_state_mut(&machine.threads);
-            for (offset, mem_clocks) in
-                self.alloc_ranges.get_mut().iter_mut(range.start, range.size)
+            for (mem_clocks_range, mem_clocks) in
+                self.alloc_ranges.get_mut().iter_mut(access_range.start, access_range.size)
             {
                 if let Err(DataRace) = mem_clocks.write_race_detect(
                     &mut thread_clocks,
@@ -927,7 +929,7 @@ impl VClockAlloc {
                         mem_clocks,
                         write_type.get_descriptor(),
                         false,
-                        Pointer::new(alloc_id, offset),
+                        Pointer::new(alloc_id, Size::from_bytes(mem_clocks_range.start)),
                     );
                 }
             }
@@ -1150,7 +1152,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
                     &this.machine.threads,
                     current_span,
                     |index, mut thread_clocks| {
-                        for (offset, mem_clocks) in
+                        for (mem_clocks_range, mem_clocks) in
                             alloc_meta.alloc_ranges.borrow_mut().iter_mut(base_offset, size)
                         {
                             if let Err(DataRace) = op(mem_clocks, &mut thread_clocks, index, atomic)
@@ -1162,7 +1164,10 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
                                     mem_clocks,
                                     description,
                                     true,
-                                    Pointer::new(alloc_id, offset),
+                                    Pointer::new(
+                                        alloc_id,
+                                        Size::from_bytes(mem_clocks_range.start),
+                                    ),
                                 )
                                 .map(|_| true);
                             }

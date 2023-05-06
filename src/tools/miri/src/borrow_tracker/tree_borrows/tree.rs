@@ -311,7 +311,7 @@ impl<'tcx> Tree {
         parent_tag: BorTag,
         new_tag: BorTag,
         default_initial_perm: Permission,
-        range: AllocRange,
+        reborrow_range: AllocRange,
         span: Span,
     ) -> InterpResult<'tcx> {
         assert!(!self.tag_mapping.contains_key(&new_tag));
@@ -332,7 +332,8 @@ impl<'tcx> Tree {
         self.nodes.get_mut(parent_idx).unwrap().children.push(idx);
         // Initialize perms
         let perm = LocationState::new(default_initial_perm).with_access();
-        for (_range, perms) in self.rperms.iter_mut(range.start, range.size) {
+        for (_perms_range, perms) in self.rperms.iter_mut(reborrow_range.start, reborrow_range.size)
+        {
             perms.insert(idx, perm);
         }
         Ok(())
@@ -344,12 +345,12 @@ impl<'tcx> Tree {
     pub fn dealloc(
         &mut self,
         tag: BorTag,
-        range: AllocRange,
+        access_range: AllocRange,
         global: &GlobalState,
         span: Span, // diagnostics
     ) -> InterpResult<'tcx> {
-        self.perform_access(AccessKind::Write, tag, range, global, span)?;
-        for (offset, perms) in self.rperms.iter_mut(range.start, range.size) {
+        self.perform_access(AccessKind::Write, tag, access_range, global, span)?;
+        for (perms_range, perms) in self.rperms.iter_mut(access_range.start, access_range.size) {
             TreeVisitor { nodes: &mut self.nodes, tag_mapping: &self.tag_mapping, perms }
                 .traverse_parents_this_children_others(
                     tag,
@@ -368,7 +369,7 @@ impl<'tcx> Tree {
                         TbError {
                             conflicting_info,
                             access_kind: AccessKind::Write,
-                            error_offset: offset,
+                            error_offset: perms_range.start,
                             error_kind,
                             accessed_info,
                         }
@@ -388,11 +389,11 @@ impl<'tcx> Tree {
         &mut self,
         access_kind: AccessKind,
         tag: BorTag,
-        range: AllocRange,
+        access_range: AllocRange,
         global: &GlobalState,
         span: Span, // diagnostics
     ) -> InterpResult<'tcx> {
-        for (offset, perms) in self.rperms.iter_mut(range.start, range.size) {
+        for (perms_range, perms) in self.rperms.iter_mut(access_range.start, access_range.size) {
             TreeVisitor { nodes: &mut self.nodes, tag_mapping: &self.tag_mapping, perms }
                 .traverse_parents_this_children_others(
                     tag,
@@ -456,9 +457,9 @@ impl<'tcx> Tree {
                             node.debug_info.history.push(diagnostics::Event {
                                 transition,
                                 access_kind,
-                                access_range: range,
                                 is_foreign: rel_pos.is_foreign(),
-                                offset,
+                                access_range,
+                                transition_range: perms_range.clone(),
                                 span,
                             });
                             old_state.permission =
@@ -472,7 +473,7 @@ impl<'tcx> Tree {
                         TbError {
                             conflicting_info,
                             access_kind,
-                            error_offset: offset,
+                            error_offset: perms_range.start,
                             error_kind,
                             accessed_info,
                         }
@@ -530,7 +531,7 @@ impl Tree {
             // the tag from the mapping.
             let tag = node.tag;
             self.nodes.remove(idx);
-            for perms in self.rperms.iter_mut_all() {
+            for (_perms_range, perms) in self.rperms.iter_mut_all() {
                 perms.remove(idx);
             }
             self.tag_mapping.remove(&tag);
