@@ -83,7 +83,7 @@ impl WideChar {
 /// Maps flat [`TextSize`] offsets to/from `(line, column)` representation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LineIndex {
-    /// Offset the beginning of each line, zero-based.
+    /// Offset the beginning of each line (except the first, which always has offset 0).
     newlines: Box<[TextSize]>,
     /// List of non-ASCII characters on each line.
     line_wide_chars: IntMap<u32, Box<[WideChar]>>,
@@ -99,8 +99,6 @@ impl LineIndex {
         let mut cur_row = TextSize::from(0);
         let mut cur_col = TextSize::from(0);
         let mut line = 0;
-
-        newlines.push(TextSize::from(0));
 
         for c in text.chars() {
             let c_len = TextSize::of(c);
@@ -147,8 +145,8 @@ impl LineIndex {
     /// Transforms the `TextSize` into a `LineCol`, or returns `None` if the `offset` was invalid,
     /// e.g. if it points to the middle of a multi-byte character.
     pub fn try_line_col(&self, offset: TextSize) -> Option<LineCol> {
-        let line = self.newlines.partition_point(|&it| it <= offset).checked_sub(1)?;
-        let start = self.newlines.get(line)?;
+        let line = self.newlines.partition_point(|&it| it <= offset);
+        let start = self.start_offset(line)?;
         let col = offset - start;
         let ret = LineCol { line: line as u32, col: col.into() };
         self.line_wide_chars
@@ -162,9 +160,14 @@ impl LineIndex {
 
     /// Transforms the `LineCol` into a `TextSize`.
     pub fn offset(&self, line_col: LineCol) -> Option<TextSize> {
-        self.newlines
-            .get(line_col.line as usize)
-            .map(|offset| offset + TextSize::from(line_col.col))
+        self.start_offset(line_col.line as usize).map(|start| start + TextSize::from(line_col.col))
+    }
+
+    fn start_offset(&self, line: usize) -> Option<TextSize> {
+        match line.checked_sub(1) {
+            None => Some(TextSize::from(0)),
+            Some(it) => self.newlines.get(it).copied(),
+        }
     }
 
     /// Transforms the `LineCol` with the given `WideEncoding` into a `WideLineCol`.
