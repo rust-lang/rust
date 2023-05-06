@@ -31,6 +31,7 @@ use rustc_span::symbol::sym;
 use rustc_span::InnerSpan;
 use rustc_target::spec::{CodeModel, RelocModel, SanitizerSet, SplitDebuginfo};
 
+use crate::llvm::diagnostic::OptimizationDiagnosticKind;
 use libc::{c_char, c_int, c_uint, c_void, size_t};
 use std::ffi::CString;
 use std::fs;
@@ -363,6 +364,15 @@ unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void
                     line: opt.line,
                     column: opt.column,
                     pass_name: &opt.pass_name,
+                    kind: match opt.kind {
+                        OptimizationDiagnosticKind::OptimizationRemark => "success",
+                        OptimizationDiagnosticKind::OptimizationMissed
+                        | OptimizationDiagnosticKind::OptimizationFailure => "missed",
+                        OptimizationDiagnosticKind::OptimizationAnalysis
+                        | OptimizationDiagnosticKind::OptimizationAnalysisFPCommute
+                        | OptimizationDiagnosticKind::OptimizationAnalysisAliasing => "analysis",
+                        OptimizationDiagnosticKind::OptimizationRemarkOther => "other",
+                    },
                     message: &opt.message,
                 });
             }
