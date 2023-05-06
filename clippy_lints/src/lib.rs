@@ -331,8 +331,11 @@ mod zero_div_zero;
 mod zero_sized_map_values;
 // end lints modules, do not remove this comment, it’s used in `update_lints`
 
-use crate::utils::conf::{format_error, TryConf};
 pub use crate::utils::conf::{lookup_conf_file, Conf};
+use crate::utils::{
+    conf::{format_error, metadata::get_configuration_metadata, TryConf},
+    FindAll,
+};
 
 /// Register all pre expansion lints
 ///
@@ -388,7 +391,7 @@ pub fn read_conf(sess: &Session, path: &io::Result<(Option<PathBuf>, Vec<String>
     conf
 }
 
-#[derive(Default)]
+#[derive(Default)] //~ ERROR no such field
 struct RegistrationGroups {
     all: Vec<LintId>,
     cargo: Vec<LintId>,
@@ -471,7 +474,22 @@ pub(crate) struct LintInfo {
 pub fn explain(name: &str) {
     let target = format!("clippy::{}", name.to_ascii_uppercase());
     match declared_lints::LINTS.iter().find(|info| info.lint.name == target) {
-        Some(info) => print!("{}", info.explanation),
+        Some(info) => {
+            println!("{}", info.explanation);
+            // Check if the lint has configuration
+            let mdconf = get_configuration_metadata();
+            if let Some(config_vec_positions) = mdconf
+                .iter()
+                .find_all(|cconf| cconf.lints.contains(&info.lint.name_lower()[8..].to_owned()))
+            {
+                // If it has, print it
+                println!("### Configuration for {}:", info.lint.name_lower());
+                for position in config_vec_positions {
+                    let conf = &mdconf[position];
+                    println!("    - {}: {} (default: {})", conf.name, conf.doc, conf.default);
+                }
+            }
+        },
         None => println!("unknown lint: {name}"),
     }
 }

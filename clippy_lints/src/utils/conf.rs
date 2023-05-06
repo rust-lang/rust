@@ -174,16 +174,15 @@ macro_rules! define_Conf {
             }
         }
 
-        #[cfg(feature = "internal")]
         pub mod metadata {
-            use crate::utils::internal_lints::metadata_collector::ClippyConfiguration;
+            use crate::utils::ClippyConfiguration;
 
             macro_rules! wrap_option {
                 () => (None);
                 ($x:literal) => (Some($x));
             }
 
-            pub(crate) fn get_configuration_metadata() -> Vec<ClippyConfiguration> {
+            pub fn get_configuration_metadata() -> Vec<ClippyConfiguration> {
                 vec![
                     $(
                         {
