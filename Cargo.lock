@@ -919,7 +919,7 @@ version = "0.0.0"
 
 [[package]]
 name = "line-index"
-version = "0.1.0"
+version = "0.1.0-pre.1"
 dependencies = [
  "nohash-hasher",
  "text-size",

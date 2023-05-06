@@ -79,8 +79,8 @@ impl WideChar {
     }
 }
 
-/// Maps flat [`TextSize`] offsets into `(line, column)` representation.
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// Maps flat [`TextSize`] offsets to/from `(line, column)` representation.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LineIndex {
     /// Offset the beginning of each line, zero-based.
     newlines: Box<[TextSize]>,
