@@ -272,3 +272,88 @@ impl<T> HasBottom for FlatSet<T> {
 impl<T> HasTop for FlatSet<T> {
     const TOP: Self = Self::Top;
 }
+
+#[derive(PartialEq, Eq, Debug)]
+pub enum MaybeUnreachable<T> {
+    Unreachable,
+    Reachable(T),
+}
+
+impl<T> MaybeUnreachable<T> {
+    pub fn is_reachable(&self) -> bool {
+        matches!(self, MaybeUnreachable::Reachable(_))
+    }
+}
+
+impl<T> HasBottom for MaybeUnreachable<T> {
+    const BOTTOM: Self = MaybeUnreachable::Unreachable;
+}
+
+impl<T: HasTop> HasTop for MaybeUnreachable<T> {
+    const TOP: Self = MaybeUnreachable::Reachable(T::TOP);
+}
+
+impl<S> MaybeUnreachable<S> {
+    pub fn contains<T>(&self, elem: T) -> bool
+    where
+        S: BitSetExt<T>,
+    {
+        match self {
+            MaybeUnreachable::Unreachable => false,
+            MaybeUnreachable::Reachable(set) => set.contains(elem),
+        }
+    }
+}
+
+impl<T, S: BitSetExt<T>> BitSetExt<T> for MaybeUnreachable<S> {
+    fn contains(&self, elem: T) -> bool {
+        self.contains(elem)
+    }
+
+    fn union(&mut self, other: &HybridBitSet<T>) {
+        match self {
+            MaybeUnreachable::Unreachable => {}
+            MaybeUnreachable::Reachable(set) => set.union(other),
+        }
+    }
+
+    fn subtract(&mut self, other: &HybridBitSet<T>) {
+        match self {
+            MaybeUnreachable::Unreachable => {}
+            MaybeUnreachable::Reachable(set) => set.subtract(other),
+        }
+    }
+}
+
+impl<V: Clone> Clone for MaybeUnreachable<V> {
+    fn clone(&self) -> Self {
+        match self {
+            MaybeUnreachable::Reachable(x) => MaybeUnreachable::Reachable(x.clone()),
+            MaybeUnreachable::Unreachable => MaybeUnreachable::Unreachable,
+        }
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        match (&mut *self, source) {
+            (MaybeUnreachable::Reachable(x), MaybeUnreachable::Reachable(y)) => {
+                x.clone_from(&y);
+            }
+            _ => *self = source.clone(),
+        }
+    }
+}
+
+impl<T: JoinSemiLattice + Clone> JoinSemiLattice for MaybeUnreachable<T> {
+    fn join(&mut self, other: &Self) -> bool {
+        match (&mut *self, &other) {
+            (_, MaybeUnreachable::Unreachable) => false,
+            (MaybeUnreachable::Unreachable, _) => {
+                *self = other.clone();
+                true
+            }
+            (MaybeUnreachable::Reachable(this), MaybeUnreachable::Reachable(other)) => {
+                this.join(other)
+            }
+        }
+    }
+}

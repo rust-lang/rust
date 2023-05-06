@@ -48,7 +48,7 @@ mod visitor;
 pub use self::cursor::{AnalysisResults, ResultsClonedCursor, ResultsCursor, ResultsRefCursor};
 pub use self::direction::{Backward, Direction, Forward};
 pub use self::engine::{Engine, EntrySets, Results, ResultsCloned};
-pub use self::lattice::{JoinSemiLattice, MeetSemiLattice};
+pub use self::lattice::{JoinSemiLattice, MaybeUnreachable, MeetSemiLattice};
 pub use self::visitor::{visit_results, ResultsVisitable, ResultsVisitor};
 
 /// Analysis domains are all bitsets of various kinds. This trait holds
@@ -521,6 +521,22 @@ impl<T: Idx> GenKill<T> for ChunkedBitSet<T> {
 
     fn kill(&mut self, elem: T) {
         self.remove(elem);
+    }
+}
+
+impl<T, S: GenKill<T>> GenKill<T> for MaybeUnreachable<S> {
+    fn gen(&mut self, elem: T) {
+        match self {
+            MaybeUnreachable::Unreachable => {}
+            MaybeUnreachable::Reachable(set) => set.gen(elem),
+        }
+    }
+
+    fn kill(&mut self, elem: T) {
+        match self {
+            MaybeUnreachable::Unreachable => {}
+            MaybeUnreachable::Reachable(set) => set.kill(elem),
+        }
     }
 }
 

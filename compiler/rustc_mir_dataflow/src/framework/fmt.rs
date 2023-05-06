@@ -1,6 +1,7 @@
 //! Custom formatting traits used when outputting Graphviz diagrams with the results of a dataflow
 //! analysis.
 
+use super::lattice::MaybeUnreachable;
 use rustc_index::bit_set::{BitSet, ChunkedBitSet, HybridBitSet};
 use rustc_index::Idx;
 use std::fmt;
@@ -121,6 +122,37 @@ where
         }
 
         fmt_diff(&set_in_self, &cleared_in_self, ctxt, f)
+    }
+}
+
+impl<S, C> DebugWithContext<C> for MaybeUnreachable<S>
+where
+    S: DebugWithContext<C>,
+{
+    fn fmt_with(&self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            MaybeUnreachable::Unreachable => {
+                write!(f, "unreachable")
+            }
+            MaybeUnreachable::Reachable(set) => set.fmt_with(ctxt, f),
+        }
+    }
+
+    fn fmt_diff_with(&self, old: &Self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match (self, old) {
+            (MaybeUnreachable::Unreachable, MaybeUnreachable::Unreachable) => Ok(()),
+            (MaybeUnreachable::Unreachable, MaybeUnreachable::Reachable(set)) => {
+                write!(f, "\u{001f}+")?;
+                set.fmt_with(ctxt, f)
+            }
+            (MaybeUnreachable::Reachable(set), MaybeUnreachable::Unreachable) => {
+                write!(f, "\u{001f}-")?;
+                set.fmt_with(ctxt, f)
+            }
+            (MaybeUnreachable::Reachable(this), MaybeUnreachable::Reachable(old)) => {
+                this.fmt_diff_with(old, ctxt, f)
+            }
+        }
     }
 }
 
