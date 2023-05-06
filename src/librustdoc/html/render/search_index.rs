@@ -391,12 +391,14 @@ fn get_index_type_id(clean_type: &clean::Type) -> Option<RenderTypeId> {
         clean::BorrowedRef { ref type_, .. } | clean::RawPointer(_, ref type_) => {
             get_index_type_id(type_)
         }
+        // The type parameters are converted to generics in `add_generics_and_bounds_as_types`
+        clean::Slice(_) => Some(RenderTypeId::Primitive(clean::PrimitiveType::Slice)),
+        clean::Array(_, _) => Some(RenderTypeId::Primitive(clean::PrimitiveType::Array)),
+        // Not supported yet
         clean::BareFunction(_)
         | clean::Generic(_)
         | clean::ImplTrait(_)
         | clean::Tuple(_)
-        | clean::Slice(_)
-        | clean::Array(_, _)
         | clean::QPath { .. }
         | clean::Infer => None,
     }
@@ -562,6 +564,30 @@ fn add_generics_and_bounds_as_types<'tcx, 'a>(
                 );
             }
         }
+        insert_ty(res, arg.clone(), ty_generics);
+    } else if let Type::Slice(ref ty) = *arg {
+        let mut ty_generics = Vec::new();
+        add_generics_and_bounds_as_types(
+            self_,
+            generics,
+            &ty,
+            tcx,
+            recurse + 1,
+            &mut ty_generics,
+            cache,
+        );
+        insert_ty(res, arg.clone(), ty_generics);
+    } else if let Type::Array(ref ty, _) = *arg {
+        let mut ty_generics = Vec::new();
+        add_generics_and_bounds_as_types(
+            self_,
+            generics,
+            &ty,
+            tcx,
+            recurse + 1,
+            &mut ty_generics,
+            cache,
+        );
         insert_ty(res, arg.clone(), ty_generics);
     } else {
         // This is not a type parameter. So for example if we have `T, U: Option<T>`, and we're
