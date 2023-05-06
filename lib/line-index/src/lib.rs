@@ -93,29 +93,30 @@ pub struct LineIndex {
 impl LineIndex {
     /// Returns a `LineIndex` for the `text`.
     pub fn new(text: &str) -> LineIndex {
-        let mut line_wide_chars = IntMap::default();
-        let mut wide_chars = Vec::new();
-
         let mut newlines = Vec::with_capacity(16);
+        let mut line_wide_chars = IntMap::default();
+
+        let mut wide_chars = Vec::new();
+        let mut cur_row = TextSize::from(0);
+        let mut cur_col = TextSize::from(0);
+        let mut line = 0;
+
         newlines.push(TextSize::from(0));
 
-        let mut cur_row = 0.into();
-        let mut cur_col = 0.into();
-        let mut line = 0;
         for c in text.chars() {
             let c_len = TextSize::of(c);
             cur_row += c_len;
             if c == '\n' {
                 newlines.push(cur_row);
 
-                // Save any utf-16 characters seen in the previous line
+                // Save any wide characters seen in the previous line
                 if !wide_chars.is_empty() {
-                    line_wide_chars
-                        .insert(line, std::mem::take(&mut wide_chars).into_boxed_slice());
+                    let cs = std::mem::take(&mut wide_chars).into_boxed_slice();
+                    line_wide_chars.insert(line, cs);
                 }
 
                 // Prepare for processing the next line
-                cur_col = 0.into();
+                cur_col = TextSize::from(0);
                 line += 1;
                 continue;
             }
@@ -127,7 +128,7 @@ impl LineIndex {
             cur_col += c_len;
         }
 
-        // Save any utf-16 characters seen in the last line
+        // Save any wide characters seen in the last line
         if !wide_chars.is_empty() {
             line_wide_chars.insert(line, wide_chars.into_boxed_slice());
         }
@@ -136,6 +137,10 @@ impl LineIndex {
     }
 
     /// Transforms the `TextSize` into a `LineCol`.
+    ///
+    /// # Panics
+    ///
+    /// If the offset is invalid.
     pub fn line_col(&self, offset: TextSize) -> LineCol {
         let line = self.newlines.partition_point(|&it| it <= offset) - 1;
         let line_start_offset = self.newlines[line];
