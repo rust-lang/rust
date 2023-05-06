@@ -1,0 +1,35 @@
+error[E0277]: the trait bound `T: Copy` is not satisfied
+  --> $DIR/explicit-drop-bounds.rs:27:18
+   |
+LL | impl<T> Drop for DropMe<T>
+   |                  ^^^^^^^^^ the trait `Copy` is not implemented for `T`
+   |
+note: required by a bound in `DropMe`
+  --> $DIR/explicit-drop-bounds.rs:7:18
+   |
+LL | struct DropMe<T: Copy>(T);
+   |                  ^^^^ required by this bound in `DropMe`
+help: consider further restricting type parameter `T`
+   |
+LL |     [T; 1]: Copy, T: std::marker::Copy // But `[T; 1]: Copy` does not imply `T: Copy`
+   |                 ~~~~~~~~~~~~~~~~~~~~~~
+
+error[E0277]: the trait bound `T: Copy` is not satisfied
+  --> $DIR/explicit-drop-bounds.rs:32:13
+   |
+LL |     fn drop(&mut self) {}
+   |             ^^^^^^^^^ the trait `Copy` is not implemented for `T`
+   |
+note: required by a bound in `DropMe`
+  --> $DIR/explicit-drop-bounds.rs:7:18
+   |
+LL | struct DropMe<T: Copy>(T);
+   |                  ^^^^ required by this bound in `DropMe`
+help: consider further restricting type parameter `T`
+   |
+LL |     [T; 1]: Copy, T: std::marker::Copy // But `[T; 1]: Copy` does not imply `T: Copy`
+   |                 ~~~~~~~~~~~~~~~~~~~~~~
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
