@@ -1,9 +1,11 @@
-pub use super::*;
-
-use crate::{CallReturnPlaces, GenKill, ResultsClonedCursor};
+use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
+
 use std::borrow::Cow;
+
+use super::MaybeBorrowedLocals;
+use crate::{CallReturnPlaces, GenKill, ResultsClonedCursor};
 
 #[derive(Clone)]
 pub struct MaybeStorageLive<'a> {
@@ -27,12 +29,12 @@ impl<'tcx, 'a> crate::AnalysisDomain<'tcx> for MaybeStorageLive<'a> {
 
     const NAME: &'static str = "maybe_storage_live";
 
-    fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
+    fn bottom_value(&self, body: &Body<'tcx>) -> Self::Domain {
         // bottom = dead
         BitSet::new_empty(body.local_decls.len())
     }
 
-    fn initialize_start_block(&self, body: &mir::Body<'tcx>, on_entry: &mut Self::Domain) {
+    fn initialize_start_block(&self, body: &Body<'tcx>, on_entry: &mut Self::Domain) {
         assert_eq!(body.local_decls.len(), self.always_live_locals.domain_size());
         for local in self.always_live_locals.iter() {
             on_entry.insert(local);
@@ -50,7 +52,7 @@ impl<'tcx, 'a> crate::GenKillAnalysis<'tcx> for MaybeStorageLive<'a> {
     fn statement_effect(
         &mut self,
         trans: &mut impl GenKill<Self::Idx>,
-        stmt: &mir::Statement<'tcx>,
+        stmt: &Statement<'tcx>,
         _: Location,
     ) {
         match stmt.kind {
@@ -63,7 +65,7 @@ impl<'tcx, 'a> crate::GenKillAnalysis<'tcx> for MaybeStorageLive<'a> {
     fn terminator_effect(
         &mut self,
         _trans: &mut impl GenKill<Self::Idx>,
-        _: &mir::Terminator<'tcx>,
+        _: &Terminator<'tcx>,
         _: Location,
     ) {
         // Terminators have no effect
@@ -95,12 +97,12 @@ impl<'tcx> crate::AnalysisDomain<'tcx> for MaybeStorageDead {
 
     const NAME: &'static str = "maybe_storage_dead";
 
-    fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
+    fn bottom_value(&self, body: &Body<'tcx>) -> Self::Domain {
         // bottom = live
         BitSet::new_empty(body.local_decls.len())
     }
 
-    fn initialize_start_block(&self, body: &mir::Body<'tcx>, on_entry: &mut Self::Domain) {
+    fn initialize_start_block(&self, body: &Body<'tcx>, on_entry: &mut Self::Domain) {
         assert_eq!(body.local_decls.len(), self.always_live_locals.domain_size());
         // Do not iterate on return place and args, as they are trivially always live.
         for local in body.vars_and_temps_iter() {
@@ -117,7 +119,7 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeStorageDead {
     fn statement_effect(
         &mut self,
         trans: &mut impl GenKill<Self::Idx>,
-        stmt: &mir::Statement<'tcx>,
+        stmt: &Statement<'tcx>,
         _: Location,
     ) {
         match stmt.kind {
@@ -130,7 +132,7 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeStorageDead {
     fn terminator_effect(
         &mut self,
         _trans: &mut impl GenKill<Self::Idx>,
-        _: &mir::Terminator<'tcx>,
+        _: &Terminator<'tcx>,
         _: Location,
     ) {
         // Terminators have no effect
@@ -172,12 +174,12 @@ impl<'tcx> crate::AnalysisDomain<'tcx> for MaybeRequiresStorage<'_, '_, 'tcx> {
 
     const NAME: &'static str = "requires_storage";
 
-    fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
+    fn bottom_value(&self, body: &Body<'tcx>) -> Self::Domain {
         // bottom = dead
         BitSet::new_empty(body.local_decls.len())
     }
 
-    fn initialize_start_block(&self, body: &mir::Body<'tcx>, on_entry: &mut Self::Domain) {
+    fn initialize_start_block(&self, body: &Body<'tcx>, on_entry: &mut Self::Domain) {
         // The resume argument is live on function entry (we don't care about
         // the `self` argument)
         for arg in body.args_iter().skip(1) {
@@ -192,7 +194,7 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, '_, 'tcx> {
     fn before_statement_effect(
         &mut self,
         trans: &mut impl GenKill<Self::Idx>,
-        stmt: &mir::Statement<'tcx>,
+        stmt: &Statement<'tcx>,
         loc: Location,
     ) {
         // If a place is borrowed in a statement, it needs storage for that statement.
@@ -225,7 +227,7 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, '_, 'tcx> {
     fn statement_effect(
         &mut self,
         trans: &mut impl GenKill<Self::Idx>,
-        _: &mir::Statement<'tcx>,
+        _: &Statement<'tcx>,
         loc: Location,
     ) {
         // If we move from a place then it only stops needing storage *after*
@@ -236,7 +238,7 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, '_, 'tcx> {
     fn before_terminator_effect(
         &mut self,
         trans: &mut impl GenKill<Self::Idx>,
-        terminator: &mir::Terminator<'tcx>,
+        terminator: &Terminator<'tcx>,
         loc: Location,
     ) {
         // If a place is borrowed in a terminator, it needs storage for that terminator.
@@ -289,7 +291,7 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, '_, 'tcx> {
     fn terminator_effect(
         &mut self,
         trans: &mut impl GenKill<Self::Idx>,
-        terminator: &mir::Terminator<'tcx>,
+        terminator: &Terminator<'tcx>,
         loc: Location,
     ) {
         match terminator.kind {
@@ -338,7 +340,7 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, '_, 'tcx> {
         &mut self,
         trans: &mut impl GenKill<Self::Idx>,
         _resume_block: BasicBlock,
-        resume_place: mir::Place<'tcx>,
+        resume_place: Place<'tcx>,
     ) {
         trans.gen(resume_place.local);
     }
