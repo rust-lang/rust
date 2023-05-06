@@ -453,7 +453,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
     }
 }
 
-impl<'a> chalk_ir::UnificationDatabase<Interner> for &'a dyn HirDatabase {
+impl chalk_ir::UnificationDatabase<Interner> for &dyn HirDatabase {
     fn fn_def_variance(
         &self,
         fn_def_id: chalk_ir::FnDefId<Interner>,

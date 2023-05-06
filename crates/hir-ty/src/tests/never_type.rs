@@ -483,3 +483,22 @@ fn example() -> bool {
 "#,
     );
 }
+
+#[test]
+fn reservation_impl_should_be_ignored() {
+    // See rust-lang/rust#64631.
+    check_types(
+        r#"
+//- minicore: from
+struct S;
+#[rustc_reservation_impl]
+impl<T> From<!> for T {}
+fn foo<T, U: From<T>>(_: U) -> T { loop {} }
+
+fn test() {
+    let s = foo(S);
+      //^ S
+}
+"#,
+    );
+}
