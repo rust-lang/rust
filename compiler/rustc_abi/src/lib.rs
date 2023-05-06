@@ -1272,6 +1272,50 @@ impl Abi {
     pub fn is_scalar(&self) -> bool {
         matches!(*self, Abi::Scalar(_))
     }
+
+    /// Returns the fixed alignment of this ABI, if any is mandated.
+    pub fn inherent_align<C: HasDataLayout>(&self, cx: &C) -> Option<AbiAndPrefAlign> {
+        Some(match *self {
+            Abi::Scalar(s) => s.align(cx),
+            Abi::ScalarPair(s1, s2) => s1.align(cx).max(s2.align(cx)),
+            Abi::Vector { element, count } => {
+                cx.data_layout().vector_align(element.size(cx) * count)
+            }
+            Abi::Uninhabited | Abi::Aggregate { .. } => return None,
+        })
+    }
+
+    /// Returns the fixed size of this ABI, if any is mandated.
+    pub fn inherent_size<C: HasDataLayout>(&self, cx: &C) -> Option<Size> {
+        Some(match *self {
+            Abi::Scalar(s) => {
+                // No padding in scalars.
+                s.size(cx)
+            }
+            Abi::ScalarPair(s1, s2) => {
+                // May have some padding between the pair.
+                let field2_offset = s1.size(cx).align_to(s2.align(cx).abi);
+                (field2_offset + s2.size(cx)).align_to(self.inherent_align(cx)?.abi)
+            }
+            Abi::Vector { element, count } => {
+                // No padding in vectors, except possibly for trailing padding
+                // to make the size a multiple of align (e.g. for vectors of size 3).
+                (element.size(cx) * count).align_to(self.inherent_align(cx)?.abi)
+            }
+            Abi::Uninhabited | Abi::Aggregate { .. } => return None,
+        })
+    }
+
+    /// Discard validity range information and allow undef.
+    pub fn to_union(&self) -> Self {
+        assert!(self.is_sized());
+        match *self {
+            Abi::Scalar(s) => Abi::Scalar(s.to_union()),
+            Abi::ScalarPair(s1, s2) => Abi::ScalarPair(s1.to_union(), s2.to_union()),
+            Abi::Vector { element, count } => Abi::Vector { element: element.to_union(), count },
+            Abi::Uninhabited | Abi::Aggregate { .. } => Abi::Aggregate { sized: true },
+        }
+    }
 }
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]

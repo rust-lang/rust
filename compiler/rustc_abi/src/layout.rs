@@ -729,41 +729,72 @@ pub trait LayoutCalculator {
             align = align.max(AbiAndPrefAlign::new(repr_align));
         }
 
-        let optimize = !repr.inhibit_union_abi_opt();
+        // If all the non-ZST fields have the same ABI and union ABI optimizations aren't
+        // disabled, we can use that common ABI for the union as a whole.
+        struct AbiMismatch;
+        let mut common_non_zst_abi_and_align = if repr.inhibit_union_abi_opt() {
+            // Can't optimize
+            Err(AbiMismatch)
+        } else {
+            Ok(None)
+        };
+
         let mut size = Size::ZERO;
-        let mut abi = Abi::Aggregate { sized: true };
         let only_variant = &variants[FIRST_VARIANT];
         for field in only_variant {
             assert!(field.0.is_sized());
+
             align = align.max(field.align());
+            size = cmp::max(size, field.size());
 
-            // If all non-ZST fields have the same ABI, forward this ABI
-            if optimize && !field.0.is_zst() {
-                // Discard valid range information and allow undef
-                let field_abi = match field.abi() {
-                    Abi::Scalar(x) => Abi::Scalar(x.to_union()),
-                    Abi::ScalarPair(x, y) => Abi::ScalarPair(x.to_union(), y.to_union()),
-                    Abi::Vector { element: x, count } => {
-                        Abi::Vector { element: x.to_union(), count }
-                    }
-                    Abi::Uninhabited | Abi::Aggregate { .. } => Abi::Aggregate { sized: true },
-                };
-
-                if size == Size::ZERO {
-                    // first non ZST: initialize 'abi'
-                    abi = field_abi;
-                } else if abi != field_abi {
-                    // different fields have different ABI: reset to Aggregate
-                    abi = Abi::Aggregate { sized: true };
-                }
+            if field.0.is_zst() {
+                // Nothing more to do for ZST fields
+                continue;
             }
 
-            size = cmp::max(size, field.size());
+            if let Ok(common) = common_non_zst_abi_and_align {
+                // Discard valid range information and allow undef
+                let field_abi = field.abi().to_union();
+
+                if let Some((common_abi, common_align)) = common {
+                    if common_abi != field_abi {
+                        // Different fields have different ABI: disable opt
+                        common_non_zst_abi_and_align = Err(AbiMismatch);
+                    } else {
+                        // Fields with the same non-Aggregate ABI should also
+                        // have the same alignment
+                        if !matches!(common_abi, Abi::Aggregate { .. }) {
+                            assert_eq!(
+                                common_align,
+                                field.align().abi,
+                                "non-Aggregate field with matching ABI but differing alignment"
+                            );
+                        }
+                    }
+                } else {
+                    // First non-ZST field: record its ABI and alignment
+                    common_non_zst_abi_and_align = Ok(Some((field_abi, field.align().abi)));
+                }
+            }
         }
 
         if let Some(pack) = repr.pack {
             align = align.min(AbiAndPrefAlign::new(pack));
         }
+
+        // If all non-ZST fields have the same ABI, we may forward that ABI
+        // for the union as a whole, unless otherwise inhibited.
+        let abi = match common_non_zst_abi_and_align {
+            Err(AbiMismatch) | Ok(None) => Abi::Aggregate { sized: true },
+            Ok(Some((abi, _))) => {
+                if abi.inherent_align(dl).map(|a| a.abi) != Some(align.abi) {
+                    // Mismatched alignment (e.g. union is #[repr(packed)]): disable opt
+                    Abi::Aggregate { sized: true }
+                } else {
+                    abi
+                }
+            }
+        };
 
         Some(LayoutS {
             variants: Variants::Single { index: FIRST_VARIANT },
