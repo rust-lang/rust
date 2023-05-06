@@ -187,6 +187,15 @@ impl TraitImpls {
     fn collect_def_map(&mut self, db: &dyn HirDatabase, def_map: &DefMap) {
         for (_module_id, module_data) in def_map.modules() {
             for impl_id in module_data.scope.impls() {
+                // Reservation impls should be ignored during trait resolution, so we never need
+                // them during type analysis. See rust-lang/rust#64631 for details.
+                //
+                // FIXME: Reservation impls should be considered during coherence checks. If we are
+                // (ever) to implement coherence checks, this filtering should be done by the trait
+                // solver.
+                if db.attrs(impl_id.into()).by_key("rustc_reservation_impl").exists() {
+                    continue;
+                }
                 let target_trait = match db.impl_trait(impl_id) {
                     Some(tr) => tr.skip_binders().hir_trait_id(),
                     None => continue,
