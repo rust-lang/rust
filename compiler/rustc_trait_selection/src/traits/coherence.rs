@@ -419,13 +419,6 @@ pub fn trait_ref_is_knowable<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
 ) -> Result<(), Conflict> {
-    if Some(trait_ref.def_id) == tcx.lang_items().fn_ptr_trait() {
-        // The only types implementing `FnPtr` are function pointers,
-        // so if there's no impl of `FnPtr` in the current crate,
-        // then such an impl will never be added in the future.
-        return Ok(());
-    }
-
     if orphan_check_trait_ref(trait_ref, InCrate::Remote).is_ok() {
         // A downstream or cousin crate is allowed to implement some
         // substitution of this trait-ref.

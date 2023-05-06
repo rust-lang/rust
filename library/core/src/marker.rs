@@ -1014,6 +1014,7 @@ marker_impls! {
 )]
 #[lang = "fn_ptr_trait"]
 #[rustc_deny_explicit_impl]
+#[fundamental]
 pub trait FnPtr: Copy + Clone {
     /// Returns the address of the function pointer.
     #[lang = "fn_ptr_addr"]

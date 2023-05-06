@@ -2439,6 +2439,33 @@ impl<'tcx> Ty<'tcx> {
             _ => false,
         }
     }
+
+    pub fn is_known_rigid(self) -> bool {
+        match self.kind() {
+            Bool
+            | Char
+            | Int(_)
+            | Uint(_)
+            | Float(_)
+            | Adt(_, _)
+            | Foreign(_)
+            | Str
+            | Array(_, _)
+            | Slice(_)
+            | RawPtr(_)
+            | Ref(_, _, _)
+            | FnDef(_, _)
+            | FnPtr(_)
+            | Dynamic(_, _, _)
+            | Closure(_, _)
+            | Generator(_, _, _)
+            | GeneratorWitness(_)
+            | GeneratorWitnessMIR(_, _)
+            | Never
+            | Tuple(_) => true,
+            Error(_) | Infer(_) | Alias(_, _) | Param(_) | Bound(_, _) | Placeholder(_) => false,
+        }
+    }
 }
 
 /// Extra information about why we ended up with a particular variance.

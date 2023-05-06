@@ -52,11 +52,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let mut candidates = SelectionCandidateSet { vec: Vec::new(), ambiguous: false };
 
-        // The only way to prove a NotImplemented(T: Foo) predicate is via a negative impl.
-        // There are no compiler built-in rules for this.
+        // Negative trait predicates have different rules than positive trait predicates.
         if obligation.polarity() == ty::ImplPolarity::Negative {
             self.assemble_candidates_for_trait_alias(obligation, &mut candidates);
             self.assemble_candidates_from_impls(obligation, &mut candidates);
+            if self.tcx().lang_items().fn_ptr_trait() == Some(obligation.predicate.def_id()) {
+                self.assemble_candidates_for_fn_ptr_trait(obligation, &mut candidates);
+            }
             self.assemble_candidates_from_caller_bounds(stack, &mut candidates)?;
         } else {
             self.assemble_candidates_for_trait_alias(obligation, &mut candidates);
@@ -988,6 +990,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty());
+
+        if obligation.predicate.polarity() == ty::ImplPolarity::Negative {
+            // If the type is rigid (and not a fn-ptr), then we know for certain
+            // that it does *not* implement `FnPtr`.
+            if !self_ty.skip_binder().is_fn_ptr() && self_ty.skip_binder().is_known_rigid() {
+                candidates.vec.push(BuiltinCandidate { has_nested: false });
+            }
+            return;
+        }
+
         match self_ty.skip_binder().kind() {
             ty::FnPtr(_) => candidates.vec.push(BuiltinCandidate { has_nested: false }),
             ty::Bool
