@@ -9,15 +9,6 @@ use nohash_hasher::IntMap;
 
 pub use text_size::{TextRange, TextSize};
 
-/// Maps flat [`TextSize`] offsets into `(line, column)` representation.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct LineIndex {
-    /// Offset the beginning of each line, zero-based.
-    newlines: Box<[TextSize]>,
-    /// List of non-ASCII characters on each line.
-    line_wide_chars: IntMap<u32, Box<[WideChar]>>,
-}
-
 /// Line/Column information in native, utf8 format.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct LineCol {
@@ -75,6 +66,15 @@ impl WideChar {
             WideEncoding::Utf32 => 1,
         }
     }
+}
+
+/// Maps flat [`TextSize`] offsets into `(line, column)` representation.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LineIndex {
+    /// Offset the beginning of each line, zero-based.
+    newlines: Box<[TextSize]>,
+    /// List of non-ASCII characters on each line.
+    line_wide_chars: IntMap<u32, Box<[WideChar]>>,
 }
 
 impl LineIndex {
