@@ -90,6 +90,7 @@ declare_lint_pass!(QueryStability => [POTENTIAL_QUERY_INSTABILITY]);
 impl LateLintPass<'_> for QueryStability {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         let Some((span, def_id, substs)) = typeck_results_of_method_fn(cx, expr) else { return };
+        let substs = cx.tcx.normalize_erasing_regions(cx.param_env, substs);
         if let Ok(Some(instance)) = ty::Instance::resolve(cx.tcx, cx.param_env, def_id, substs) {
             let def_id = instance.def_id();
             if cx.tcx.has_attr(def_id, sym::rustc_lint_query_instability) {
@@ -380,6 +381,7 @@ declare_lint_pass!(Diagnostics => [ UNTRANSLATABLE_DIAGNOSTIC, DIAGNOSTIC_OUTSID
 impl LateLintPass<'_> for Diagnostics {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         let Some((span, def_id, substs)) = typeck_results_of_method_fn(cx, expr) else { return };
+        let substs = cx.tcx.normalize_erasing_regions(cx.param_env, substs);
         debug!(?span, ?def_id, ?substs);
         let has_attr = ty::Instance::resolve(cx.tcx, cx.param_env, def_id, substs)
             .ok()

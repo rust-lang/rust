@@ -18,13 +18,7 @@ fn resolve_instance<'tcx>(
 
     let result = if let Some(trait_def_id) = tcx.trait_of_item(def) {
         debug!(" => associated item, attempting to find impl in param_env {:#?}", param_env);
-        resolve_associated_item(
-            tcx,
-            def,
-            param_env,
-            trait_def_id,
-            tcx.normalize_erasing_regions(param_env, substs),
-        )
+        resolve_associated_item(tcx, def, param_env, trait_def_id, substs)
     } else {
         let ty = tcx.type_of(def);
         let item_type =

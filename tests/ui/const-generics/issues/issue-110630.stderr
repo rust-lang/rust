@@ -1,0 +1,14 @@
+error[E0277]: the trait bound `I: Concat` is not satisfied
+  --> $DIR/issue-110630.rs:20:26
+   |
+LL |     type Output = Tensor<<I as Concat>::Output>;
+   |                          ^^^^^^^^^^^^^^^^^^^^^ the trait `Concat` is not implemented for `I`
+   |
+help: consider further restricting this bound
+   |
+LL | impl<I: Indices<42> + Concat> Concat for Tensor<I>
+   |                     ++++++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

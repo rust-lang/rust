@@ -82,7 +82,12 @@ impl<'tcx> TyCtxt<'tcx> {
             bug!("did not expect inference variables here");
         }
 
-        match ty::Instance::resolve(self, param_env, ct.def, ct.substs) {
+        let substs = match self.try_normalize_erasing_regions(param_env, ct.substs) {
+            Ok(substs) => substs,
+            Err(_) => return Err(ErrorHandled::TooGeneric),
+        };
+
+        match ty::Instance::resolve(self, param_env, ct.def, substs) {
             Ok(Some(instance)) => {
                 let cid = GlobalId { instance, promoted: None };
                 self.const_eval_global_id_for_typeck(param_env, cid, span).inspect(|_| {
