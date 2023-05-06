@@ -385,7 +385,7 @@ impl<'tcx> Instance<'tcx> {
     /// couldn't complete due to errors elsewhere - this is distinct
     /// from `Ok(None)` to avoid misleading diagnostics when an error
     /// has already been/will be emitted, for the original cause
-    #[instrument(level = "debug", skip(tcx))]
+    #[instrument(level = "debug", skip(tcx), ret)]
     pub fn resolve(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
