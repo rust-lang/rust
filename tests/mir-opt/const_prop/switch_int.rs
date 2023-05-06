@@ -1,3 +1,5 @@
+// unit-test: ConstProp
+// compile-flags: -Zmir-enable-passes=+SimplifyConstCondition-after-const-prop
 // ignore-wasm32 compiled with panic=abort by default
 #[inline(never)]
 fn foo(_: i32) { }

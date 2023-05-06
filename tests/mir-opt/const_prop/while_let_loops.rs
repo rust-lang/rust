@@ -1,5 +1,5 @@
+// unit-test: ConstProp
 // EMIT_MIR while_let_loops.change_loop_body.ConstProp.diff
-// EMIT_MIR while_let_loops.change_loop_body.PreCodegen.after.mir
 
 pub fn change_loop_body() {
     let mut _x = 0;
