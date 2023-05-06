@@ -312,6 +312,21 @@ impl<T> Arena<T> {
         idx
     }
 
+    /// Densely allocates multiple values, returning the values’ index range.
+    ///
+    /// ```
+    /// let mut arena = la_arena::Arena::new();
+    /// let range = arena.alloc_many(0..4);
+    ///
+    /// assert_eq!(arena[range], [0, 1, 2, 3]);
+    /// ```
+    pub fn alloc_many<II: IntoIterator<Item = T>>(&mut self, iter: II) -> IdxRange<T> {
+        let start = self.next_idx();
+        self.extend(iter);
+        let end = self.next_idx();
+        IdxRange::new(start..end)
+    }
+
     /// Returns an iterator over the arena’s elements.
     ///
     /// ```
