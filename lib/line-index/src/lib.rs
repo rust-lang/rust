@@ -143,14 +143,15 @@ impl LineIndex {
     ///
     /// # Panics
     ///
-    /// If the offset is invalid.
+    /// If the offset is invalid. See [`Self::try_line_col`].
     pub fn line_col(&self, offset: TextSize) -> LineCol {
         self.try_line_col(offset).expect("invalid offset")
     }
 
-    /// Transforms the `TextSize` into a `LineCol`, or returns `None` if the `offset` was invalid,
-    /// e.g. if it extends past the end of the text or points to the middle of a multi-byte
-    /// character.
+    /// Transforms the `TextSize` into a `LineCol`.
+    ///
+    /// Returns `None` if the `offset` was invalid, e.g. if it extends past the end of the text or
+    /// points to the middle of a multi-byte character.
     pub fn try_line_col(&self, offset: TextSize) -> Option<LineCol> {
         if offset > self.size {
             return None;
