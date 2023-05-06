@@ -48,6 +48,7 @@ use std::fmt;
 pub struct ElaborateDrops;
 
 impl<'tcx> MirPass<'tcx> for ElaborateDrops {
+    #[instrument(level = "trace", skip(self, tcx, body))]
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!("elaborate_drops({:?} @ {:?})", body.source, body.span);
 
@@ -65,22 +66,28 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
         };
         let elaborate_patch = {
             let env = MoveDataParamEnv { move_data, param_env };
-            remove_dead_unwinds(tcx, body, &env);
 
-            let inits = MaybeInitializedPlaces::new(tcx, body, &env)
+            let mut inits = MaybeInitializedPlaces::new(tcx, body, &env)
+                .skipping_unreachable_unwind()
                 .into_engine(tcx, body)
                 .pass_name("elaborate_drops")
                 .iterate_to_fixpoint()
                 .into_results_cursor(body);
+            let dead_unwinds = compute_dead_unwinds(&body, &mut inits);
+            let mut reachable = BitSet::new_empty(body.basic_blocks.len());
+            for bb in body.basic_blocks.indices() {
+                if inits.results().entry_set_for_block(bb).is_reachable() {
+                    reachable.insert(bb);
+                }
+            }
 
             let uninits = MaybeUninitializedPlaces::new(tcx, body, &env)
                 .mark_inactive_variants_as_uninit()
+                .skipping_unreachable_unwind(dead_unwinds)
                 .into_engine(tcx, body)
                 .pass_name("elaborate_drops")
                 .iterate_to_fixpoint()
                 .into_results_cursor(body);
-
-            let reachable = traversal::reachable_as_bitset(body);
 
             let drop_flags = IndexVec::from_elem(None, &env.move_data.move_paths);
             ElaborateDropsCtxt {
@@ -101,63 +108,28 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
 
 /// Removes unwind edges which are known to be unreachable, because they are in `drop` terminators
 /// that can't drop anything.
-fn remove_dead_unwinds<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    body: &mut Body<'tcx>,
-    env: &MoveDataParamEnv<'tcx>,
-) {
-    debug!("remove_dead_unwinds({:?})", body.span);
+#[instrument(level = "trace", skip(body, flow_inits), ret)]
+fn compute_dead_unwinds<'mir, 'tcx>(
+    body: &'mir Body<'tcx>,
+    flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'mir, 'tcx>>,
+) -> BitSet<BasicBlock> {
     // We only need to do this pass once, because unwind edges can only
     // reach cleanup blocks, which can't have unwind edges themselves.
-    let mut dead_unwinds = Vec::new();
-    let mut flow_inits = MaybeInitializedPlaces::new(tcx, body, &env)
-        .into_engine(tcx, body)
-        .pass_name("remove_dead_unwinds")
-        .iterate_to_fixpoint()
-        .into_results_cursor(body);
+    let mut dead_unwinds = BitSet::new_empty(body.basic_blocks.len());
     for (bb, bb_data) in body.basic_blocks.iter_enumerated() {
-        let place = match bb_data.terminator().kind {
-            TerminatorKind::Drop { place, unwind: UnwindAction::Cleanup(_), .. } => place,
-            _ => continue,
-        };
-
-        debug!("remove_dead_unwinds @ {:?}: {:?}", bb, bb_data);
-
-        let LookupResult::Exact(path) = env.move_data.rev_lookup.find(place.as_ref()) else {
-            debug!("remove_dead_unwinds: has parent; skipping");
+        let TerminatorKind::Drop { place, unwind: UnwindAction::Cleanup(_), .. } =
+            bb_data.terminator().kind
+        else {
             continue;
         };
 
         flow_inits.seek_before_primary_effect(body.terminator_loc(bb));
-        debug!(
-            "remove_dead_unwinds @ {:?}: path({:?})={:?}; init_data={:?}",
-            bb,
-            place,
-            path,
-            flow_inits.get()
-        );
-
-        let mut maybe_live = false;
-        on_all_drop_children_bits(tcx, body, &env, path, |child| {
-            maybe_live |= flow_inits.contains(child);
-        });
-
-        debug!("remove_dead_unwinds @ {:?}: maybe_live={}", bb, maybe_live);
-        if !maybe_live {
-            dead_unwinds.push(bb);
+        if flow_inits.analysis().is_unwind_dead(place, flow_inits.get()) {
+            dead_unwinds.insert(bb);
         }
     }
 
-    if dead_unwinds.is_empty() {
-        return;
-    }
-
-    let basic_blocks = body.basic_blocks.as_mut();
-    for &bb in dead_unwinds.iter() {
-        if let Some(unwind) = basic_blocks[bb].terminator_mut().unwind_mut() {
-            *unwind = UnwindAction::Unreachable;
-        }
-    }
+    dead_unwinds
 }
 
 struct InitializationData<'mir, 'tcx> {

@@ -80,10 +80,6 @@
   
       bb8 (cleanup): {
           resume;
-+     }
-+ 
-+     bb9 (cleanup): {
-+         unreachable;
       }
   }
   

@@ -10,8 +10,8 @@ use crate::framework::SwitchIntEdgeEffects;
 use crate::move_paths::{HasMoveData, InitIndex, InitKind, LookupResult, MoveData, MovePathIndex};
 use crate::on_lookup_result_bits;
 use crate::MoveDataParamEnv;
-use crate::{drop_flag_effects, on_all_children_bits};
-use crate::{lattice, AnalysisDomain, GenKill, GenKillAnalysis};
+use crate::{drop_flag_effects, on_all_children_bits, on_all_drop_children_bits};
+use crate::{lattice, AnalysisDomain, GenKill, GenKillAnalysis, MaybeUnreachable};
 
 /// `MaybeInitializedPlaces` tracks all places that might be
 /// initialized upon reaching a particular point in the control flow
@@ -52,11 +52,33 @@ pub struct MaybeInitializedPlaces<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
     mdpe: &'a MoveDataParamEnv<'tcx>,
+    skip_unreachable_unwind: bool,
 }
 
 impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, mdpe: &'a MoveDataParamEnv<'tcx>) -> Self {
-        MaybeInitializedPlaces { tcx, body, mdpe }
+        MaybeInitializedPlaces { tcx, body, mdpe, skip_unreachable_unwind: false }
+    }
+
+    pub fn skipping_unreachable_unwind(mut self) -> Self {
+        self.skip_unreachable_unwind = true;
+        self
+    }
+
+    pub fn is_unwind_dead(
+        &self,
+        place: mir::Place<'tcx>,
+        state: &MaybeUnreachable<ChunkedBitSet<MovePathIndex>>,
+    ) -> bool {
+        if let LookupResult::Exact(path) = self.move_data().rev_lookup.find(place.as_ref()) {
+            let mut maybe_live = false;
+            on_all_drop_children_bits(self.tcx, self.body, self.mdpe, path, |child| {
+                maybe_live |= state.contains(child);
+            });
+            !maybe_live
+        } else {
+            false
+        }
     }
 }
 
@@ -107,11 +129,18 @@ pub struct MaybeUninitializedPlaces<'a, 'tcx> {
     mdpe: &'a MoveDataParamEnv<'tcx>,
 
     mark_inactive_variants_as_uninit: bool,
+    skip_unreachable_unwind: BitSet<mir::BasicBlock>,
 }
 
 impl<'a, 'tcx> MaybeUninitializedPlaces<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, mdpe: &'a MoveDataParamEnv<'tcx>) -> Self {
-        MaybeUninitializedPlaces { tcx, body, mdpe, mark_inactive_variants_as_uninit: false }
+        MaybeUninitializedPlaces {
+            tcx,
+            body,
+            mdpe,
+            mark_inactive_variants_as_uninit: false,
+            skip_unreachable_unwind: BitSet::new_empty(body.basic_blocks.len()),
+        }
     }
 
     /// Causes inactive enum variants to be marked as "maybe uninitialized" after a switch on an
@@ -121,6 +150,14 @@ impl<'a, 'tcx> MaybeUninitializedPlaces<'a, 'tcx> {
     /// checker, where this information gets propagated along `FakeEdge`s.
     pub fn mark_inactive_variants_as_uninit(mut self) -> Self {
         self.mark_inactive_variants_as_uninit = true;
+        self
+    }
+
+    pub fn skipping_unreachable_unwind(
+        mut self,
+        unreachable_unwind: BitSet<mir::BasicBlock>,
+    ) -> Self {
+        self.skip_unreachable_unwind = unreachable_unwind;
         self
     }
 }
@@ -271,18 +308,21 @@ impl<'a, 'tcx> DefinitelyInitializedPlaces<'a, 'tcx> {
 }
 
 impl<'tcx> AnalysisDomain<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
-    type Domain = ChunkedBitSet<MovePathIndex>;
+    type Domain = MaybeUnreachable<ChunkedBitSet<MovePathIndex>>;
     const NAME: &'static str = "maybe_init";
 
     fn bottom_value(&self, _: &mir::Body<'tcx>) -> Self::Domain {
         // bottom = uninitialized
-        ChunkedBitSet::new_empty(self.move_data().move_paths.len())
+        MaybeUnreachable::Unreachable
     }
 
     fn initialize_start_block(&self, _: &mir::Body<'tcx>, state: &mut Self::Domain) {
+        *state = MaybeUnreachable::Reachable(ChunkedBitSet::new_empty(
+            self.move_data().move_paths.len(),
+        ));
         drop_flag_effects_for_function_entry(self.tcx, self.body, self.mdpe, |path, s| {
             assert!(s == DropFlagState::Present);
-            state.insert(path);
+            state.gen(path);
         });
     }
 }
@@ -324,10 +364,18 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
     ) -> TerminatorEdge<'mir, 'tcx> {
+        let mut edges = terminator.edges();
+        if self.skip_unreachable_unwind
+            && let mir::TerminatorKind::Drop { target, unwind, place, replace: _ } = terminator.kind
+            && matches!(unwind, mir::UnwindAction::Cleanup(_))
+            && self.is_unwind_dead(place, state)
+        {
+            edges = TerminatorEdge::Single(target);
+        }
         drop_flag_effects_for_location(self.tcx, self.body, self.mdpe, location, |path, s| {
             Self::update_bits(state, path, s)
         });
-        terminator.edges()
+        edges
     }
 
     fn call_return_effect(
@@ -448,7 +496,13 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         drop_flag_effects_for_location(self.tcx, self.body, self.mdpe, location, |path, s| {
             Self::update_bits(trans, path, s)
         });
-        terminator.edges()
+        if self.skip_unreachable_unwind.contains(location.block) {
+            let mir::TerminatorKind::Drop { target, unwind, .. } = terminator.kind else { bug!() };
+            assert!(matches!(unwind, mir::UnwindAction::Cleanup(_)));
+            TerminatorEdge::Single(target)
+        } else {
+            terminator.edges()
+        }
     }
 
     fn call_return_effect(
