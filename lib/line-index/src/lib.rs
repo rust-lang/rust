@@ -161,7 +161,7 @@ impl LineIndex {
             .get(&ret.line)
             .into_iter()
             .flat_map(|it| it.iter())
-            .all(|it| !(it.start < col && col < it.end))
+            .all(|it| col <= it.start || it.end <= col)
             .then_some(ret)
     }
 
