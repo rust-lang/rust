@@ -1509,7 +1509,7 @@ impl<'a> IoSlice<'a> {
     ///
     /// assert_eq!(io_slice.as_bytes(), b"def");
     /// ```
-    #[unstable(feature = "io_slice_as_bytes")]
+    #[unstable(feature = "io_slice_as_bytes", issue = "111277")]
     #[inline]
     #[must_use]
     pub const fn as_bytes(&self) -> &'a [u8] {
