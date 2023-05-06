@@ -308,6 +308,16 @@ extern "C" {
     fn vpkswus(a: vector_signed_int, b: vector_signed_int) -> vector_unsigned_short;
     #[link_name = "llvm.ppc.altivec.vpkuwus"]
     fn vpkuwus(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_short;
+
+    #[link_name = "llvm.ppc.altivec.vupkhsb"]
+    fn vupkhsb(a: vector_signed_char) -> vector_signed_short;
+    #[link_name = "llvm.ppc.altivec.vupklsb"]
+    fn vupklsb(a: vector_signed_char) -> vector_signed_short;
+
+    #[link_name = "llvm.ppc.altivec.vupkhsh"]
+    fn vupkhsh(a: vector_signed_short) -> vector_signed_int;
+    #[link_name = "llvm.ppc.altivec.vupklsh"]
+    fn vupklsh(a: vector_signed_short) -> vector_signed_int;
 }
 
 macro_rules! s_t_l {
@@ -2270,6 +2280,47 @@ mod sealed {
     impl_vec_trait! { [VectorPacksu vec_packsu] vec_vpkuhus (vector_unsigned_short, vector_unsigned_short) -> vector_unsigned_char }
     impl_vec_trait! { [VectorPacksu vec_packsu] vec_vpkswus (vector_signed_int, vector_signed_int) -> vector_unsigned_short }
     impl_vec_trait! { [VectorPacksu vec_packsu] vec_vpkuwus (vector_unsigned_int, vector_unsigned_int) -> vector_unsigned_short }
+
+    macro_rules! impl_vec_unpack {
+        ($fun:ident ($a:ident) -> $r:ident [$little:ident, $big:ident]) => {
+            #[inline]
+            #[target_feature(enable = "altivec")]
+            #[cfg_attr(all(test, target_endiant = "little"), assert_instr($little))]
+            #[cfg_attr(all(test, target_endiant = "big"), assert_instr($big))]
+            unsafe fn $fun(a: $a) -> $r {
+                if cfg!(target_endian = "little") {
+                    $little(a)
+                } else {
+                    $big(a)
+                }
+            }
+        };
+    }
+
+    impl_vec_unpack! { vec_vupkhsb (vector_signed_char) -> vector_signed_short [vupklsb, vupkhsb] }
+    impl_vec_unpack! { vec_vupklsb (vector_signed_char) -> vector_signed_short [vupkhsb, vupklsb] }
+    impl_vec_unpack! { vec_vupkhsh (vector_signed_short) -> vector_signed_int [vupklsh, vupkhsh] }
+    impl_vec_unpack! { vec_vupklsh (vector_signed_short) -> vector_signed_int [vupkhsh, vupklsh] }
+
+    pub trait VectorUnpackh {
+        type Result;
+        unsafe fn vec_unpackh(self) -> Self::Result;
+    }
+
+    impl_vec_trait! { [VectorUnpackh vec_unpackh] vec_vupkhsb (vector_signed_char) -> vector_signed_short }
+    impl_vec_trait! { [VectorUnpackh vec_unpackh]+ vec_vupkhsb (vector_bool_char) -> vector_bool_short }
+    impl_vec_trait! { [VectorUnpackh vec_unpackh] vec_vupkhsh (vector_signed_short) -> vector_signed_int }
+    impl_vec_trait! { [VectorUnpackh vec_unpackh]+ vec_vupkhsh (vector_bool_short) -> vector_bool_int }
+
+    pub trait VectorUnpackl {
+        type Result;
+        unsafe fn vec_unpackl(self) -> Self::Result;
+    }
+
+    impl_vec_trait! { [VectorUnpackl vec_unpackl] vec_vupklsb (vector_signed_char) -> vector_signed_short }
+    impl_vec_trait! { [VectorUnpackl vec_unpackl]+ vec_vupklsb (vector_bool_char) -> vector_bool_short }
+    impl_vec_trait! { [VectorUnpackl vec_unpackl] vec_vupklsh (vector_signed_short) -> vector_signed_int }
+    impl_vec_trait! { [VectorUnpackl vec_unpackl]+ vec_vupklsh (vector_bool_short) -> vector_bool_int }
 }
 
 /// Vector Merge Low
@@ -2320,6 +2371,26 @@ where
     T: sealed::VectorPacksu<U>,
 {
     a.vec_packsu(b)
+}
+
+/// Vector Unpack High
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_unpackh<T>(a: T) -> <T as sealed::VectorUnpackh>::Result
+where
+    T: sealed::VectorUnpackh,
+{
+    a.vec_unpackh()
+}
+
+/// Vector Unpack Low
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_unpackl<T>(a: T) -> <T as sealed::VectorUnpackl>::Result
+where
+    T: sealed::VectorUnpackl,
+{
+    a.vec_unpackl()
 }
 
 /// Vector Load Indexed.

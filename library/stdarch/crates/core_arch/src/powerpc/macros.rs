@@ -39,6 +39,16 @@ macro_rules! impl_vec_trait {
             }
         }
     };
+    ([$Trait:ident $m:ident]+ $fun:ident ($a:ty) -> $r:ty) => {
+        impl $Trait for $a {
+            type Result = $r;
+            #[inline]
+            #[target_feature(enable = "altivec")]
+            unsafe fn $m(self) -> Self::Result {
+                transmute($fun(transmute(self)))
+            }
+        }
+    };
     ([$Trait:ident $m:ident] 1 ($ub:ident, $sb:ident, $uh:ident, $sh:ident, $uw:ident, $sw:ident, $sf: ident)) => {
         impl_vec_trait!{ [$Trait $m] $ub (vector_unsigned_char) -> vector_unsigned_char }
         impl_vec_trait!{ [$Trait $m] $sb (vector_signed_char) -> vector_signed_char }
