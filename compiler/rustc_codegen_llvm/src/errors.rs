@@ -196,6 +196,7 @@ pub(crate) struct FromLlvmOptimizationDiag<'a> {
     pub line: std::ffi::c_uint,
     pub column: std::ffi::c_uint,
     pub pass_name: &'a str,
+    pub kind: &'a str,
     pub message: &'a str,
 }
 

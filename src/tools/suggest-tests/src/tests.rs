@@ -12,7 +12,7 @@ macro_rules! sugg_test {
 
 sugg_test! {
     test_error_code_docs: ["compiler/rustc_error_codes/src/error_codes/E0000.md"] =>
-        ["check N/A", "test compiler/rustc_error_codes N/A", "test linkchecker 0", "test src/test/ui src/test/run-make 1"],
+        ["check N/A", "test compiler/rustc_error_codes N/A", "test linkchecker 0", "test tests/ui tests/run-make 1"],
 
     test_rustdoc: ["src/librustdoc/src/lib.rs"] => ["test rustdoc 1"],
 
