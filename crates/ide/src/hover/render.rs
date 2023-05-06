@@ -473,7 +473,10 @@ pub(super) fn definition(
         }),
         Definition::Trait(it) => label_and_docs(db, it),
         Definition::TraitAlias(it) => label_and_docs(db, it),
-        Definition::TypeAlias(it) => label_and_docs(db, it),
+        Definition::TypeAlias(it) => label_and_layout_info_and_docs(db, it, |&it| {
+            let layout = it.ty(db).layout(db).ok()?;
+            Some(format!("size = {}, align = {}", layout.size.bytes(), layout.align.abi.bytes()))
+        }),
         Definition::BuiltinType(it) => {
             return famous_defs
                 .and_then(|fd| builtin(fd, it))

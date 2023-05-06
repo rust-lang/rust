@@ -1405,7 +1405,7 @@ fn test_hover_function_pointer_show_identifiers() {
                 ```
 
                 ```rust
-                type foo = fn(a: i32, b: i32) -> i32
+                type foo = fn(a: i32, b: i32) -> i32 // size = 8, align = 8
                 ```
             "#]],
     );
@@ -1423,7 +1423,7 @@ fn test_hover_function_pointer_no_identifier() {
                 ```
 
                 ```rust
-                type foo = fn(i32, i32) -> i32
+                type foo = fn(i32, i32) -> i32 // size = 8, align = 8
                 ```
             "#]],
     );
@@ -3555,7 +3555,7 @@ type Fo$0o2 = Foo<2>;
                 ```
 
                 ```rust
-                type Foo2 = Foo<2>
+                type Foo2 = Foo<2> // size = 0, align = 1
                 ```
             "#]],
     );
