@@ -1,0 +1,4 @@
+error: Error calling dlltool 'does_not_exit.exe': program not found
+
+error: aborting due to previous error
+

@@ -547,6 +547,7 @@ fn test_codegen_options_tracking_hash() {
     untracked!(ar, String::from("abc"));
     untracked!(codegen_units, Some(42));
     untracked!(default_linker_libraries, true);
+    untracked!(dlltool, Some(PathBuf::from("custom_dlltool.exe")));
     untracked!(extra_filename, String::from("extra-filename"));
     untracked!(incremental, Some(String::from("abc")));
     // `link_arg` is omitted because it just forwards to `link_args`.
@@ -651,7 +652,6 @@ fn test_unstable_options_tracking_hash() {
     untracked!(assert_incr_state, Some(String::from("loaded")));
     untracked!(deduplicate_diagnostics, false);
     untracked!(dep_tasks, true);
-    untracked!(dlltool, Some(PathBuf::from("custom_dlltool.exe")));
     untracked!(dont_buffer_diagnostics, true);
     untracked!(dump_dep_graph, true);
     untracked!(dump_drop_tracking_cfg, Some("cfg.dot".to_string()));
