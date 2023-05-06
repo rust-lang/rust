@@ -94,13 +94,13 @@ pub struct LineIndex {
 impl LineIndex {
     /// Returns a `LineIndex` for the `text`.
     pub fn new(text: &str) -> LineIndex {
-        let mut newlines = Vec::with_capacity(16);
-        let mut line_wide_chars = IntMap::default();
+        let mut newlines = Vec::<TextSize>::with_capacity(16);
+        let mut line_wide_chars = IntMap::<u32, Box<[WideChar]>>::default();
 
-        let mut wide_chars = Vec::new();
+        let mut wide_chars = Vec::<WideChar>::new();
         let mut cur_row = TextSize::from(0);
         let mut cur_col = TextSize::from(0);
-        let mut line = 0;
+        let mut line = 0u32;
 
         for c in text.chars() {
             let c_len = TextSize::of(c);
