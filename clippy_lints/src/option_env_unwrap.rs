@@ -1,10 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::is_direct_expn_of;
-use if_chain::if_chain;
 use rustc_ast::ast::{Expr, ExprKind, MethodCall};
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::sym;
+use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -36,21 +35,24 @@ declare_lint_pass!(OptionEnvUnwrap => [OPTION_ENV_UNWRAP]);
 
 impl EarlyLintPass for OptionEnvUnwrap {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        if_chain! {
-            if let ExprKind::MethodCall(box MethodCall { seg, receiver, .. }) = &expr.kind;
-            if matches!(seg.ident.name, sym::expect | sym::unwrap);
-            if let ExprKind::Call(caller, _) = &receiver.kind;
-            if is_direct_expn_of(caller.span, "option_env").is_some();
-            then {
-                span_lint_and_help(
-                    cx,
-                    OPTION_ENV_UNWRAP,
-                    expr.span,
-                    "this will panic at run-time if the environment variable doesn't exist at compile-time",
-                    None,
-                    "consider using the `env!` macro instead"
-                );
-            }
+        fn lint(cx: &EarlyContext<'_>, span: Span) {
+            span_lint_and_help(
+                cx,
+                OPTION_ENV_UNWRAP,
+                span,
+                "this will panic at run-time if the environment variable doesn't exist at compile-time",
+                None,
+                "consider using the `env!` macro instead",
+            );
         }
+
+        if let ExprKind::MethodCall(box MethodCall { seg, receiver, .. }) = &expr.kind &&
+		matches!(seg.ident.name, sym::expect | sym::unwrap) {
+			if let ExprKind::Call(caller, _) = &receiver.kind && is_direct_expn_of(caller.span, "option_env").is_some() {
+				lint(cx, expr.span);
+			} else if let ExprKind::Path(_, caller) = &receiver.kind && is_direct_expn_of(caller.span, "option_env").is_some() {
+				lint(cx, expr.span);
+			}
+		}
     }
 }
