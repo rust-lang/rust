@@ -84,11 +84,11 @@ impl WideChar {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LineIndex {
     /// Offset the beginning of each line (except the first, which always has offset 0).
-    ///
-    /// Invariant: Always non-empty and the last element holds the length of the original text.
     newlines: Box<[TextSize]>,
     /// List of non-ASCII characters on each line.
     line_wide_chars: IntMap<u32, Box<[WideChar]>>,
+    /// The size of the entire text.
+    size: TextSize,
 }
 
 impl LineIndex {
@@ -127,14 +127,16 @@ impl LineIndex {
             cur_col += c_len;
         }
 
-        newlines.push(TextSize::of(text));
-
         // Save any wide characters seen in the last line
         if !wide_chars.is_empty() {
             line_wide_chars.insert(line, wide_chars.into_boxed_slice());
         }
 
-        LineIndex { newlines: newlines.into_boxed_slice(), line_wide_chars }
+        LineIndex {
+            newlines: newlines.into_boxed_slice(),
+            line_wide_chars,
+            size: TextSize::of(text),
+        }
     }
 
     /// Transforms the `TextSize` into a `LineCol`.
@@ -150,7 +152,7 @@ impl LineIndex {
     /// e.g. if it extends past the end of the text or points to the middle of a multi-byte
     /// character.
     pub fn try_line_col(&self, offset: TextSize) -> Option<LineCol> {
-        if offset > *self.newlines.last().unwrap() {
+        if offset > self.size {
             return None;
         }
         let line = self.newlines.partition_point(|&it| it <= offset);
