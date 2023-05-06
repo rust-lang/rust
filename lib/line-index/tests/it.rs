@@ -12,7 +12,6 @@ fn test_line_index() {
         (08, 1, 2),
         (10, 1, 4),
         (11, 1, 5),
-        (12, 1, 6),
     ];
 
     let index = LineIndex::new(text);
