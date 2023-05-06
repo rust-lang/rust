@@ -657,7 +657,6 @@ pub enum ImplNotMarkedDefault {
     #[note]
     Err {
         #[primary_span]
-        #[label]
         span: Span,
         cname: Symbol,
         ident: Symbol,

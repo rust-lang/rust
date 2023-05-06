@@ -192,6 +192,7 @@ impl EmissionGuarantee for ErrorGuaranteed {
                      became non-error ({:?}), after original `.emit()`",
                     db.inner.diagnostic.level,
                 );
+                #[allow(deprecated)]
                 ErrorGuaranteed::unchecked_claim_error_was_emitted()
             }
         }

@@ -26,7 +26,7 @@ IMAGE_BASE:
 .Lxsave_clear:
 .org .+24
 .Lxsave_mxcsr:
-    .short 0x1f80
+    .short 0x1fbf
 
 /*  We can store a bunch of data in the gap between MXCSR and the XSAVE header */
 
@@ -178,6 +178,7 @@ sgx_entry:
     mov $-1, %rax
     mov $-1, %rdx
     xrstor .Lxsave_clear(%rip)
+    lfence
     mov %r10, %rdx
 
 /*  check if returning from usercall */
@@ -311,6 +312,9 @@ usercall:
     movq $0,%gs:tcsls_last_rsp
 /*  restore callee-saved state, cf. "save" above */
     mov %r11,%rsp
+    /* MCDT mitigation requires an lfence after ldmxcsr _before_ any of the affected  */
+    /* vector instructions is used. We omit the lfence here as one is required before */
+    /* the jmp instruction anyway. */
     ldmxcsr (%rsp)
     fldcw 4(%rsp)
     add $8, %rsp
