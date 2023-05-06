@@ -214,7 +214,9 @@ impl LineIndex {
         Some(LineCol { line: line_col.line, col })
     }
 
-    /// Returns an iterator over the ranges for the lines.
+    /// Given a range [start, end), returns a sorted iterator of non-empty ranges [start, x1), [x1,
+    /// x2), ..., [xn, end) where all the xi, which are positions of newlines, are inside the range
+    /// [start, end).
     pub fn lines(&self, range: TextRange) -> impl Iterator<Item = TextRange> + '_ {
         let lo = self.newlines.partition_point(|&it| it < range.start());
         let hi = self.newlines.partition_point(|&it| it <= range.end());
