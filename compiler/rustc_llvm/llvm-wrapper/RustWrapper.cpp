@@ -831,6 +831,28 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFunction(
   return wrap(Sub);
 }
 
+extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateMethod(
+    LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope,
+    const char *Name, size_t NameLen,
+    const char *LinkageName, size_t LinkageNameLen,
+    LLVMMetadataRef File, unsigned LineNo,
+    LLVMMetadataRef Ty, LLVMRustDIFlags Flags,
+    LLVMRustDISPFlags SPFlags, LLVMMetadataRef TParam) {
+  DITemplateParameterArray TParams =
+      DITemplateParameterArray(unwrap<MDTuple>(TParam));
+  DISubprogram::DISPFlags llvmSPFlags = fromRust(SPFlags);
+  DINode::DIFlags llvmFlags = fromRust(Flags);
+  DISubprogram *Sub = Builder->createMethod(
+      unwrapDI<DIScope>(Scope),
+      StringRef(Name, NameLen),
+      StringRef(LinkageName, LinkageNameLen),
+      unwrapDI<DIFile>(File), LineNo,
+      unwrapDI<DISubroutineType>(Ty),
+      0, 0, nullptr, // VTable params aren't used
+      llvmFlags, llvmSPFlags, TParams);
+  return wrap(Sub);
+}
+
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateBasicType(
     LLVMRustDIBuilderRef Builder, const char *Name, size_t NameLen,
     uint64_t SizeInBits, unsigned Encoding) {
