@@ -93,10 +93,10 @@ fn rustc_statement_to_statement(
     }
 }
 
-fn rustc_rvalue_to_rvalue(rvalue: &rustc_middle::mir::Rvalue<'_>) -> stable_mir::mir::Operand {
+fn rustc_rvalue_to_rvalue(rvalue: &rustc_middle::mir::Rvalue<'_>) -> stable_mir::mir::Rvalue {
     use rustc_middle::mir::Rvalue::*;
     match rvalue {
-        Use(op) => rustc_op_to_op(op),
+        Use(op) => stable_mir::mir::Rvalue::Use(rustc_op_to_op(op)),
         Repeat(_, _) => todo!(),
         Ref(_, _, _) => todo!(),
         ThreadLocalRef(_) => todo!(),
@@ -104,9 +104,15 @@ fn rustc_rvalue_to_rvalue(rvalue: &rustc_middle::mir::Rvalue<'_>) -> stable_mir:
         Len(_) => todo!(),
         Cast(_, _, _) => todo!(),
         BinaryOp(_, _) => todo!(),
-        CheckedBinaryOp(_, _) => todo!(),
+        CheckedBinaryOp(bin_op, ops) => stable_mir::mir::Rvalue::CheckedBinaryOp(
+            rustc_bin_op_to_bin_op(bin_op),
+            rustc_op_to_op(&ops.0),
+            rustc_op_to_op(&ops.1),
+        ),
         NullaryOp(_, _) => todo!(),
-        UnaryOp(_, _) => todo!(),
+        UnaryOp(un_op, op) => {
+            stable_mir::mir::Rvalue::UnaryOp(rustc_un_op_to_un_op(un_op), rustc_op_to_op(op))
+        }
         Discriminant(_) => todo!(),
         Aggregate(_, _) => todo!(),
         ShallowInitBox(_, _) => todo!(),
@@ -124,8 +130,10 @@ fn rustc_op_to_op(op: &rustc_middle::mir::Operand<'_>) -> stable_mir::mir::Opera
 }
 
 fn rustc_place_to_place(place: &rustc_middle::mir::Place<'_>) -> stable_mir::mir::Place {
-    assert_eq!(&place.projection[..], &[]);
-    stable_mir::mir::Place { local: place.local.as_usize() }
+    stable_mir::mir::Place {
+        local: place.local.as_usize(),
+        projection: format!("{:?}", place.projection),
+    }
 }
 
 fn rustc_unwind_to_unwind(
@@ -137,6 +145,96 @@ fn rustc_unwind_to_unwind(
         UnwindAction::Unreachable => stable_mir::mir::UnwindAction::Unreachable,
         UnwindAction::Terminate => stable_mir::mir::UnwindAction::Terminate,
         UnwindAction::Cleanup(bb) => stable_mir::mir::UnwindAction::Cleanup(bb.as_usize()),
+    }
+}
+
+fn rustc_assert_msg_to_msg<'tcx>(
+    assert_message: &rustc_middle::mir::AssertMessage<'tcx>,
+) -> stable_mir::mir::AssertMessage {
+    use rustc_middle::mir::AssertKind;
+    match assert_message {
+        AssertKind::BoundsCheck { len, index } => stable_mir::mir::AssertMessage::BoundsCheck {
+            len: rustc_op_to_op(len),
+            index: rustc_op_to_op(index),
+        },
+        AssertKind::Overflow(bin_op, op1, op2) => stable_mir::mir::AssertMessage::Overflow(
+            rustc_bin_op_to_bin_op(bin_op),
+            rustc_op_to_op(op1),
+            rustc_op_to_op(op2),
+        ),
+        AssertKind::OverflowNeg(op) => {
+            stable_mir::mir::AssertMessage::OverflowNeg(rustc_op_to_op(op))
+        }
+        AssertKind::DivisionByZero(op) => {
+            stable_mir::mir::AssertMessage::DivisionByZero(rustc_op_to_op(op))
+        }
+        AssertKind::RemainderByZero(op) => {
+            stable_mir::mir::AssertMessage::RemainderByZero(rustc_op_to_op(op))
+        }
+        AssertKind::ResumedAfterReturn(generator) => {
+            stable_mir::mir::AssertMessage::ResumedAfterReturn(rustc_generator_to_generator(
+                generator,
+            ))
+        }
+        AssertKind::ResumedAfterPanic(generator) => {
+            stable_mir::mir::AssertMessage::ResumedAfterPanic(rustc_generator_to_generator(
+                generator,
+            ))
+        }
+        AssertKind::MisalignedPointerDereference { required, found } => {
+            stable_mir::mir::AssertMessage::MisalignedPointerDereference {
+                required: rustc_op_to_op(required),
+                found: rustc_op_to_op(found),
+            }
+        }
+    }
+}
+
+fn rustc_bin_op_to_bin_op(bin_op: &rustc_middle::mir::BinOp) -> stable_mir::mir::BinOp {
+    use rustc_middle::mir::BinOp;
+    match bin_op {
+        BinOp::Add => stable_mir::mir::BinOp::Add,
+        BinOp::Sub => stable_mir::mir::BinOp::Sub,
+        BinOp::Mul => stable_mir::mir::BinOp::Mul,
+        BinOp::Div => stable_mir::mir::BinOp::Div,
+        BinOp::Rem => stable_mir::mir::BinOp::Rem,
+        BinOp::BitXor => stable_mir::mir::BinOp::BitXor,
+        BinOp::BitAnd => stable_mir::mir::BinOp::BitAnd,
+        BinOp::BitOr => stable_mir::mir::BinOp::BitOr,
+        BinOp::Shl => stable_mir::mir::BinOp::Shl,
+        BinOp::Shr => stable_mir::mir::BinOp::Shr,
+        BinOp::Eq => stable_mir::mir::BinOp::Eq,
+        BinOp::Lt => stable_mir::mir::BinOp::Lt,
+        BinOp::Le => stable_mir::mir::BinOp::Le,
+        BinOp::Ne => stable_mir::mir::BinOp::Ne,
+        BinOp::Ge => stable_mir::mir::BinOp::Ge,
+        BinOp::Gt => stable_mir::mir::BinOp::Gt,
+        BinOp::Offset => stable_mir::mir::BinOp::Offset,
+    }
+}
+
+fn rustc_un_op_to_un_op(unary_op: &rustc_middle::mir::UnOp) -> stable_mir::mir::UnOp {
+    use rustc_middle::mir::UnOp;
+    match unary_op {
+        UnOp::Not => stable_mir::mir::UnOp::Not,
+        UnOp::Neg => stable_mir::mir::UnOp::Neg,
+    }
+}
+
+fn rustc_generator_to_generator(
+    generator: &rustc_hir::GeneratorKind,
+) -> stable_mir::mir::GeneratorKind {
+    use rustc_hir::{AsyncGeneratorKind, GeneratorKind};
+    match generator {
+        GeneratorKind::Async(async_gen) => {
+            let async_gen = match async_gen {
+                AsyncGeneratorKind::Block => stable_mir::mir::AsyncGeneratorKind::Block,
+                AsyncGeneratorKind::Closure => stable_mir::mir::AsyncGeneratorKind::Closure,
+                AsyncGeneratorKind::Fn => stable_mir::mir::AsyncGeneratorKind::Fn,
+            };
+            stable_mir::mir::GeneratorKind::Async(async_gen)
+        }
+        GeneratorKind::Gen => stable_mir::mir::GeneratorKind::Gen,
     }
 }
 
@@ -162,7 +260,11 @@ fn rustc_terminator_to_terminator(
         Terminate => Terminator::Abort,
         Return => Terminator::Return,
         Unreachable => Terminator::Unreachable,
-        Drop { .. } => todo!(),
+        Drop { place, target, unwind } => Terminator::Drop {
+            place: rustc_place_to_place(place),
+            target: target.as_usize(),
+            unwind: rustc_unwind_to_unwind(unwind),
+        },
         Call { func, args, destination, target, unwind, from_hir_call: _, fn_span: _ } => {
             Terminator::Call {
                 func: rustc_op_to_op(func),
@@ -172,9 +274,15 @@ fn rustc_terminator_to_terminator(
                 unwind: rustc_unwind_to_unwind(unwind),
             }
         }
-        Assert { .. } => todo!(),
+        Assert { cond, expected, msg, target, unwind } => Terminator::Assert {
+            cond: rustc_op_to_op(cond),
+            expected: *expected,
+            msg: rustc_assert_msg_to_msg(msg),
+            target: target.as_usize(),
+            unwind: rustc_unwind_to_unwind(unwind),
+        },
         Yield { .. } => todo!(),
-        GeneratorDrop => todo!(),
+        GeneratorDrop => Terminator::GeneratorDrop,
         FalseEdge { .. } => todo!(),
         FalseUnwind { .. } => todo!(),
         InlineAsm { .. } => todo!(),
