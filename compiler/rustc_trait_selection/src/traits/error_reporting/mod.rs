@@ -1,5 +1,4 @@
 mod ambiguity;
-pub mod method_chain;
 pub mod on_unimplemented;
 pub mod suggestions;
 
@@ -559,6 +558,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             suggest_increasing_limit,
             |err| {
                 self.note_obligation_cause_code(
+                    obligation.cause.body_id,
                     err,
                     predicate,
                     obligation.param_env,
@@ -1431,6 +1431,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 | ObligationCauseCode::ExprItemObligation(..) = code
                 {
                     self.note_obligation_cause_code(
+                        error.obligation.cause.body_id,
                         &mut diag,
                         error.obligation.predicate,
                         error.obligation.param_env,
@@ -2544,6 +2545,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         // message, and fall back to regular note otherwise.
         if !self.maybe_note_obligation_cause_for_async_await(err, obligation) {
             self.note_obligation_cause_code(
+                obligation.cause.body_id,
                 err,
                 obligation.predicate,
                 obligation.param_env,

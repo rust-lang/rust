@@ -73,6 +73,8 @@ impl<'tcx> InferCtxt<'tcx> {
         R: ObligationEmittingRelation<'tcx>,
     {
         let a_is_expected = relation.a_is_expected();
+        debug_assert!(!a.has_escaping_bound_vars());
+        debug_assert!(!b.has_escaping_bound_vars());
 
         match (a.kind(), b.kind()) {
             // Relate integral variables to other types
@@ -163,6 +165,8 @@ impl<'tcx> InferCtxt<'tcx> {
         R: ObligationEmittingRelation<'tcx>,
     {
         debug!("{}.consts({:?}, {:?})", relation.tag(), a, b);
+        debug_assert!(!a.has_escaping_bound_vars());
+        debug_assert!(!b.has_escaping_bound_vars());
         if a == b {
             return Ok(a);
         }
@@ -238,21 +242,11 @@ impl<'tcx> InferCtxt<'tcx> {
             (_, ty::ConstKind::Infer(InferConst::Var(vid))) => {
                 return self.unify_const_variable(vid, a);
             }
-            (ty::ConstKind::Unevaluated(..), _) if self.tcx.lazy_normalization() => {
-                // FIXME(#59490): Need to remove the leak check to accommodate
-                // escaping bound variables here.
-                if !a.has_escaping_bound_vars() && !b.has_escaping_bound_vars() {
-                    relation.register_const_equate_obligation(a, b);
-                }
+            (ty::ConstKind::Unevaluated(..), _) | (_, ty::ConstKind::Unevaluated(..))
+                if self.tcx.lazy_normalization() =>
+            {
+                relation.register_const_equate_obligation(a, b);
                 return Ok(b);
-            }
-            (_, ty::ConstKind::Unevaluated(..)) if self.tcx.lazy_normalization() => {
-                // FIXME(#59490): Need to remove the leak check to accommodate
-                // escaping bound variables here.
-                if !a.has_escaping_bound_vars() && !b.has_escaping_bound_vars() {
-                    relation.register_const_equate_obligation(a, b);
-                }
-                return Ok(a);
             }
             _ => {}
         }
