@@ -25,8 +25,10 @@ cfg_if! {
     ))] {
         mod sse2;
         use sse2 as imp;
+    } else if #[cfg(all(target_arch = "aarch64", target_feature = "neon"))] {
+        mod neon;
+        use neon as imp;
     } else {
-        #[path = "generic.rs"]
         mod generic;
         use generic as imp;
     }
@@ -37,7 +39,7 @@ pub(crate) use self::alloc::{do_alloc, Allocator, Global};
 
 mod bitmask;
 
-use self::bitmask::{BitMask, BitMaskIter};
+use self::bitmask::BitMaskIter;
 use self::imp::Group;
 
 // Branch prediction hint. This is currently only available on nightly but it
@@ -2751,7 +2753,7 @@ impl<T, A: Allocator + Clone> IntoIterator for RawTable<T, A> {
 pub(crate) struct RawIterRange<T> {
     // Mask of full buckets in the current group. Bits are cleared from this
     // mask as each element is processed.
-    current_group: BitMask,
+    current_group: BitMaskIter,
 
     // Pointer to the buckets for the current group.
     data: Bucket<T>,
@@ -2779,7 +2781,7 @@ impl<T> RawIterRange<T> {
         let next_ctrl = ctrl.add(Group::WIDTH);
 
         Self {
-            current_group,
+            current_group: current_group.into_iter(),
             data,
             next_ctrl,
             end,
@@ -2836,8 +2838,7 @@ impl<T> RawIterRange<T> {
     #[cfg_attr(feature = "inline-more", inline)]
     unsafe fn next_impl<const DO_CHECK_PTR_RANGE: bool>(&mut self) -> Option<Bucket<T>> {
         loop {
-            if let Some(index) = self.current_group.lowest_set_bit() {
-                self.current_group = self.current_group.remove_lowest_bit();
+            if let Some(index) = self.current_group.next() {
                 return Some(self.data.next_n(index));
             }
 
@@ -2850,7 +2851,7 @@ impl<T> RawIterRange<T> {
             // than the group size where the trailing control bytes are all
             // EMPTY. On larger tables self.end is guaranteed to be aligned
             // to the group size (since tables are power-of-two sized).
-            self.current_group = Group::load_aligned(self.next_ctrl).match_full();
+            self.current_group = Group::load_aligned(self.next_ctrl).match_full().into_iter();
             self.data = self.data.next_n(Group::WIDTH);
             self.next_ctrl = self.next_ctrl.add(Group::WIDTH);
         }
@@ -2990,7 +2991,7 @@ impl<T> RawIter<T> {
         //  - Otherwise, update the iterator cached group so that it won't
         //    yield a to-be-removed bucket, or _will_ yield a to-be-added bucket.
         //    We'll also need to update the item count accordingly.
-        if let Some(index) = self.iter.current_group.lowest_set_bit() {
+        if let Some(index) = self.iter.current_group.0.lowest_set_bit() {
             let next_bucket = self.iter.data.next_n(index);
             if b.as_ptr() > next_bucket.as_ptr() {
                 // The toggled bucket is "before" the bucket the iterator would yield next. We
@@ -3023,10 +3024,10 @@ impl<T> RawIter<T> {
                 if cfg!(debug_assertions) {
                     if b.as_ptr() == next_bucket.as_ptr() {
                         // The removed bucket should no longer be next
-                        debug_assert_ne!(self.iter.current_group.lowest_set_bit(), Some(index));
+                        debug_assert_ne!(self.iter.current_group.0.lowest_set_bit(), Some(index));
                     } else {
                         // We should not have changed what bucket comes next.
-                        debug_assert_eq!(self.iter.current_group.lowest_set_bit(), Some(index));
+                        debug_assert_eq!(self.iter.current_group.0.lowest_set_bit(), Some(index));
                     }
                 }
             }

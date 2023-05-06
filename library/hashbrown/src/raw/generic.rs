@@ -25,6 +25,7 @@ pub(crate) const BITMASK_STRIDE: usize = 8;
 // We only care about the highest bit of each byte for the mask.
 #[allow(clippy::cast_possible_truncation, clippy::unnecessary_cast)]
 pub(crate) const BITMASK_MASK: BitMaskWord = 0x8080_8080_8080_8080_u64 as GroupWord;
+pub(crate) const BITMASK_ITER_MASK: BitMaskWord = !0;
 
 /// Helper function to replicate a byte across a `GroupWord`.
 #[inline]
