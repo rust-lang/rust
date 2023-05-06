@@ -157,13 +157,36 @@ impl LineIndex {
 
     /// Transforms the `LineCol` with the given `WideEncoding` into a `WideLineCol`.
     pub fn to_wide(&self, enc: WideEncoding, line_col: LineCol) -> Option<WideLineCol> {
-        let col = self.utf8_to_wide_col(enc, line_col.line, line_col.col.into());
-        Some(WideLineCol { line: line_col.line, col: col as u32 })
+        let col: TextSize = line_col.col.into();
+        let mut res: usize = col.into();
+        if let Some(wide_chars) = self.line_wide_chars.get(&line_col.line) {
+            for c in wide_chars.iter() {
+                if c.end <= col {
+                    res -= usize::from(c.len()) - c.wide_len(enc);
+                } else {
+                    // From here on, all utf16 characters come *after* the character we are mapping,
+                    // so we don't need to take them into account
+                    break;
+                }
+            }
+        }
+        Some(WideLineCol { line: line_col.line, col: res as u32 })
     }
 
     /// Transforms the `WideLineCol` with the given `WideEncoding` into a `LineCol`.
     pub fn to_utf8(&self, enc: WideEncoding, line_col: WideLineCol) -> Option<LineCol> {
-        let col = self.wide_to_utf8_col(enc, line_col.line, line_col.col);
+        let mut col = line_col.col;
+        if let Some(wide_chars) = self.line_wide_chars.get(&line_col.line) {
+            for c in wide_chars.iter() {
+                if col > u32::from(c.start) {
+                    col += u32::from(c.len()) - c.wide_len(enc) as u32;
+                } else {
+                    // From here on, all utf16 characters come *after* the character we are mapping,
+                    // so we don't need to take them into account
+                    break;
+                }
+            }
+        }
         Some(LineCol { line: line_col.line, col: col.into() })
     }
 
@@ -179,37 +202,5 @@ impl LineIndex {
             .zip(all.skip(1))
             .map(|(lo, hi)| TextRange::new(lo, hi))
             .filter(|it| !it.is_empty())
-    }
-
-    fn utf8_to_wide_col(&self, enc: WideEncoding, line: u32, col: TextSize) -> usize {
-        let mut res: usize = col.into();
-        if let Some(wide_chars) = self.line_wide_chars.get(&line) {
-            for c in wide_chars.iter() {
-                if c.end <= col {
-                    res -= usize::from(c.len()) - c.wide_len(enc);
-                } else {
-                    // From here on, all utf16 characters come *after* the character we are mapping,
-                    // so we don't need to take them into account
-                    break;
-                }
-            }
-        }
-        res
-    }
-
-    fn wide_to_utf8_col(&self, enc: WideEncoding, line: u32, mut col: u32) -> TextSize {
-        if let Some(wide_chars) = self.line_wide_chars.get(&line) {
-            for c in wide_chars.iter() {
-                if col > u32::from(c.start) {
-                    col += u32::from(c.len()) - c.wide_len(enc) as u32;
-                } else {
-                    // From here on, all utf16 characters come *after* the character we are mapping,
-                    // so we don't need to take them into account
-                    break;
-                }
-            }
-        }
-
-        col.into()
     }
 }
