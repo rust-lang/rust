@@ -209,7 +209,7 @@ impl LineIndex {
                 }
             }
         }
-        Some(LineCol { line: line_col.line, col: col.into() })
+        Some(LineCol { line: line_col.line, col })
     }
 
     /// Returns an iterator over the ranges for the lines.
