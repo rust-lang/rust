@@ -865,6 +865,17 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         }
     }
 
+    fn inject_forced_externs(&mut self) {
+        for (name, entry) in self.sess.opts.externs.iter() {
+            if entry.force {
+                let name_interned = Symbol::intern(name);
+                if !self.used_extern_options.contains(&name_interned) {
+                    self.resolve_crate(name_interned, DUMMY_SP, CrateDepKind::Explicit);
+                }
+            }
+        }
+    }
+
     fn inject_dependency_if(
         &self,
         krate: CrateNum,
@@ -913,7 +924,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                 // Don't worry about pathless `--extern foo` sysroot references
                 continue;
             }
-            if entry.nounused_dep {
+            if entry.nounused_dep || entry.force {
                 // We're not worried about this one
                 continue;
             }
@@ -942,6 +953,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     }
 
     pub fn postprocess(&mut self, krate: &ast::Crate) {
+        self.inject_forced_externs();
         self.inject_profiler_runtime(krate);
         self.inject_allocator_crate(krate);
         self.inject_panic_runtime(krate);

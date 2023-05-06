@@ -518,6 +518,12 @@ pub struct ExternEntry {
     /// `--extern nounused:std=/path/to/lib/libstd.rlib`. This is used to
     /// suppress `unused-crate-dependencies` warnings.
     pub nounused_dep: bool,
+    /// If the extern entry is not referenced in the crate, force it to be resolved anyway.
+    ///
+    /// Allows a dependency satisfying, for instance, a missing panic handler to be injected
+    /// without modifying source:
+    /// `--extern force:extras=/path/to/lib/libstd.rlib`
+    pub force: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -556,7 +562,13 @@ impl Externs {
 
 impl ExternEntry {
     fn new(location: ExternLocation) -> ExternEntry {
-        ExternEntry { location, is_private_dep: false, add_prelude: false, nounused_dep: false }
+        ExternEntry {
+            location,
+            is_private_dep: false,
+            add_prelude: false,
+            nounused_dep: false,
+            force: false,
+        }
     }
 
     pub fn files(&self) -> Option<impl Iterator<Item = &CanonicalizedPath>> {
@@ -2261,6 +2273,7 @@ pub fn parse_externs(
         let mut is_private_dep = false;
         let mut add_prelude = true;
         let mut nounused_dep = false;
+        let mut force = false;
         if let Some(opts) = options {
             if !is_unstable_enabled {
                 early_error(
@@ -2283,6 +2296,7 @@ pub fn parse_externs(
                         }
                     }
                     "nounused" => nounused_dep = true,
+                    "force" => force = true,
                     _ => early_error(error_format, &format!("unknown --extern option `{opt}`")),
                 }
             }
@@ -2293,6 +2307,8 @@ pub fn parse_externs(
         entry.is_private_dep |= is_private_dep;
         // likewise `nounused`
         entry.nounused_dep |= nounused_dep;
+        // and `force`
+        entry.force |= force;
         // If any flag is missing `noprelude`, then add to the prelude.
         entry.add_prelude |= add_prelude;
     }
