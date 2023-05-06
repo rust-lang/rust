@@ -201,11 +201,12 @@ where
         analysis: A,
         apply_trans_for_block: Option<Box<dyn Fn(BasicBlock, &mut A::Domain)>>,
     ) -> Self {
-        let bottom_value = analysis.bottom_value(body);
-        let mut entry_sets = IndexVec::from_elem(bottom_value.clone(), &body.basic_blocks);
+        let mut entry_sets =
+            IndexVec::from_fn_n(|_| analysis.bottom_value(body), body.basic_blocks.len());
         analysis.initialize_start_block(body, &mut entry_sets[mir::START_BLOCK]);
 
-        if A::Direction::IS_BACKWARD && entry_sets[mir::START_BLOCK] != bottom_value {
+        if A::Direction::IS_BACKWARD && entry_sets[mir::START_BLOCK] != analysis.bottom_value(body)
+        {
             bug!("`initialize_start_block` is not yet supported for backward dataflow analyses");
         }
 
