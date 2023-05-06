@@ -108,13 +108,6 @@ pub enum ChangeKind {
 }
 
 impl Vfs {
-    /// Amount of files currently stored.
-    ///
-    /// Note that this includes deleted files.
-    pub fn len(&self) -> usize {
-        self.data.len()
-    }
-
     /// Id of the given path if it exists in the `Vfs` and is not deleted.
     pub fn file_id(&self, path: &VfsPath) -> Option<FileId> {
         self.interner.get(path).filter(|&it| self.get(it).is_some())
