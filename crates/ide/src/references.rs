@@ -17,7 +17,7 @@ use ide_db::{
     RootDatabase,
 };
 use itertools::Itertools;
-use stdx::hash::NoHashHashMap;
+use nohash_hasher::IntMap;
 use syntax::{
     algo::find_node_at_offset,
     ast::{self, HasName},
@@ -31,7 +31,7 @@ use crate::{FilePosition, NavigationTarget, TryToNav};
 #[derive(Debug, Clone)]
 pub struct ReferenceSearchResult {
     pub declaration: Option<Declaration>,
-    pub references: NoHashHashMap<FileId, Vec<(TextRange, Option<ReferenceCategory>)>>,
+    pub references: IntMap<FileId, Vec<(TextRange, Option<ReferenceCategory>)>>,
 }
 
 #[derive(Debug, Clone)]

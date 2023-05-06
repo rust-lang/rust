@@ -31,7 +31,10 @@ pub(crate) fn offset(line_index: &LineIndex, position: lsp_types::Position) -> R
         PositionEncoding::Utf8 => LineCol { line: position.line, col: position.character },
         PositionEncoding::Wide(enc) => {
             let line_col = WideLineCol { line: position.line, col: position.character };
-            line_index.index.to_utf8(enc, line_col)
+            line_index
+                .index
+                .to_utf8(enc, line_col)
+                .ok_or_else(|| format_err!("Invalid wide col offset"))?
         }
     };
     let text_size =

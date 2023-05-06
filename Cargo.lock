@@ -587,6 +587,7 @@ dependencies = [
  "itertools",
  "la-arena",
  "limit",
+ "nohash-hasher",
  "once_cell",
  "profile",
  "project-model",
@@ -650,6 +651,7 @@ dependencies = [
  "ide-diagnostics",
  "ide-ssr",
  "itertools",
+ "nohash-hasher",
  "oorandom",
  "profile",
  "pulldown-cmark",
@@ -717,7 +719,9 @@ dependencies = [
  "indexmap",
  "itertools",
  "limit",
+ "line-index",
  "memchr",
+ "nohash-hasher",
  "once_cell",
  "oorandom",
  "parser",
@@ -763,6 +767,7 @@ dependencies = [
  "hir",
  "ide-db",
  "itertools",
+ "nohash-hasher",
  "parser",
  "stdx",
  "syntax",
@@ -913,6 +918,14 @@ name = "limit"
 version = "0.0.0"
 
 [[package]]
+name = "line-index"
+version = "0.1.0-pre.1"
+dependencies = [
+ "nohash-hasher",
+ "text-size",
+]
+
+[[package]]
 name = "lock_api"
 version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1053,6 +1066,12 @@ dependencies = [
  "libc",
  "static_assertions",
 ]
+
+[[package]]
+name = "nohash-hasher"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2bf50223579dc7cdcfb3bfcacf7069ff68243f8c363f62ffa99cf000a6b9c451"
 
 [[package]]
 name = "notify"
@@ -1470,6 +1489,7 @@ dependencies = [
  "mbe",
  "mimalloc",
  "mio",
+ "nohash-hasher",
  "num_cpus",
  "oorandom",
  "parking_lot 0.12.1",
@@ -2050,6 +2070,7 @@ version = "0.0.0"
 dependencies = [
  "fst",
  "indexmap",
+ "nohash-hasher",
  "paths",
  "rustc-hash",
  "stdx",

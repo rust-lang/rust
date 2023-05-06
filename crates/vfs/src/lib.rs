@@ -62,7 +62,8 @@ pub use paths::{AbsPath, AbsPathBuf};
 #[derive(Copy, Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct FileId(pub u32);
 
-impl stdx::hash::NoHashHashable for FileId {}
+/// safe because `FileId` is a newtype of `u32`
+impl nohash_hasher::IsEnabled for FileId {}
 
 /// Storage for all files read by rust-analyzer.
 ///

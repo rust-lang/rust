@@ -11,9 +11,9 @@ use hir::{
     AsAssocItem, DefWithBody, HasAttrs, HasSource, InFile, ModuleSource, Semantics, Visibility,
 };
 use memchr::memmem::Finder;
+use nohash_hasher::IntMap;
 use once_cell::unsync::Lazy;
 use parser::SyntaxKind;
-use stdx::hash::NoHashHashMap;
 use syntax::{ast, match_ast, AstNode, TextRange, TextSize};
 use triomphe::Arc;
 
@@ -25,7 +25,7 @@ use crate::{
 
 #[derive(Debug, Default, Clone)]
 pub struct UsageSearchResult {
-    pub references: NoHashHashMap<FileId, Vec<FileReference>>,
+    pub references: IntMap<FileId, Vec<FileReference>>,
 }
 
 impl UsageSearchResult {
@@ -50,7 +50,7 @@ impl UsageSearchResult {
 
 impl IntoIterator for UsageSearchResult {
     type Item = (FileId, Vec<FileReference>);
-    type IntoIter = <NoHashHashMap<FileId, Vec<FileReference>> as IntoIterator>::IntoIter;
+    type IntoIter = <IntMap<FileId, Vec<FileReference>> as IntoIterator>::IntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
         self.references.into_iter()
@@ -84,17 +84,17 @@ pub enum ReferenceCategory {
 /// e.g. for things like local variables.
 #[derive(Clone, Debug)]
 pub struct SearchScope {
-    entries: NoHashHashMap<FileId, Option<TextRange>>,
+    entries: IntMap<FileId, Option<TextRange>>,
 }
 
 impl SearchScope {
-    fn new(entries: NoHashHashMap<FileId, Option<TextRange>>) -> SearchScope {
+    fn new(entries: IntMap<FileId, Option<TextRange>>) -> SearchScope {
         SearchScope { entries }
     }
 
     /// Build a search scope spanning the entire crate graph of files.
     fn crate_graph(db: &RootDatabase) -> SearchScope {
-        let mut entries = NoHashHashMap::default();
+        let mut entries = IntMap::default();
 
         let graph = db.crate_graph();
         for krate in graph.iter() {
@@ -108,7 +108,7 @@ impl SearchScope {
 
     /// Build a search scope spanning all the reverse dependencies of the given crate.
     fn reverse_dependencies(db: &RootDatabase, of: hir::Crate) -> SearchScope {
-        let mut entries = NoHashHashMap::default();
+        let mut entries = IntMap::default();
         for rev_dep in of.transitive_reverse_dependencies(db) {
             let root_file = rev_dep.root_file(db);
             let source_root_id = db.file_source_root(root_file);
@@ -128,7 +128,7 @@ impl SearchScope {
 
     /// Build a search scope spanning the given module and all its submodules.
     fn module_and_children(db: &RootDatabase, module: hir::Module) -> SearchScope {
-        let mut entries = NoHashHashMap::default();
+        let mut entries = IntMap::default();
 
         let (file_id, range) = {
             let InFile { file_id, value } = module.definition_source(db);
@@ -161,7 +161,7 @@ impl SearchScope {
 
     /// Build an empty search scope.
     pub fn empty() -> SearchScope {
-        SearchScope::new(NoHashHashMap::default())
+        SearchScope::new(IntMap::default())
     }
 
     /// Build a empty search scope spanning the given file.

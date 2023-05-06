@@ -32,7 +32,7 @@ pub(crate) fn position(line_index: &LineIndex, offset: TextSize) -> lsp_types::P
     match line_index.encoding {
         PositionEncoding::Utf8 => lsp_types::Position::new(line_col.line, line_col.col),
         PositionEncoding::Wide(enc) => {
-            let line_col = line_index.index.to_wide(enc, line_col);
+            let line_col = line_index.index.to_wide(enc, line_col).unwrap();
             lsp_types::Position::new(line_col.line, line_col.col)
         }
     }

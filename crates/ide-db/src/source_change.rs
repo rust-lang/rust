@@ -5,16 +5,16 @@
 
 use std::{collections::hash_map::Entry, iter, mem};
 
+use crate::SnippetCap;
 use base_db::{AnchoredPathBuf, FileId};
-use stdx::{hash::NoHashHashMap, never};
+use nohash_hasher::IntMap;
+use stdx::never;
 use syntax::{algo, ast, ted, AstNode, SyntaxNode, SyntaxNodePtr, TextRange, TextSize};
 use text_edit::{TextEdit, TextEditBuilder};
 
-use crate::SnippetCap;
-
 #[derive(Default, Debug, Clone)]
 pub struct SourceChange {
-    pub source_file_edits: NoHashHashMap<FileId, TextEdit>,
+    pub source_file_edits: IntMap<FileId, TextEdit>,
     pub file_system_edits: Vec<FileSystemEdit>,
     pub is_snippet: bool,
 }
@@ -23,7 +23,7 @@ impl SourceChange {
     /// Creates a new SourceChange with the given label
     /// from the edits.
     pub fn from_edits(
-        source_file_edits: NoHashHashMap<FileId, TextEdit>,
+        source_file_edits: IntMap<FileId, TextEdit>,
         file_system_edits: Vec<FileSystemEdit>,
     ) -> Self {
         SourceChange { source_file_edits, file_system_edits, is_snippet: false }
@@ -77,8 +77,8 @@ impl Extend<FileSystemEdit> for SourceChange {
     }
 }
 
-impl From<NoHashHashMap<FileId, TextEdit>> for SourceChange {
-    fn from(source_file_edits: NoHashHashMap<FileId, TextEdit>) -> SourceChange {
+impl From<IntMap<FileId, TextEdit>> for SourceChange {
+    fn from(source_file_edits: IntMap<FileId, TextEdit>) -> SourceChange {
         SourceChange { source_file_edits, file_system_edits: Vec::new(), is_snippet: false }
     }
 }
