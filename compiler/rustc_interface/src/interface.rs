@@ -173,12 +173,21 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
                                         let expected_values = check_cfg
                                             .expecteds
                                             .entry(ident.name.to_string())
+                                            .and_modify(|expected_values| match expected_values {
+                                                ExpectedValues::Some(_) => {}
+                                                ExpectedValues::Any => {
+                                                    // handle the case where names(...) was done
+                                                    // before values by changing to a list
+                                                    *expected_values =
+                                                        ExpectedValues::Some(FxHashSet::default());
+                                                }
+                                            })
                                             .or_insert_with(|| {
                                                 ExpectedValues::Some(FxHashSet::default())
                                             });
 
                                         let ExpectedValues::Some(expected_values) = expected_values else {
-                                            bug!("shoudn't be possible")
+                                            bug!("`expected_values` should be a list a values")
                                         };
 
                                         for val in values {
