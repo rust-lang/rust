@@ -10,7 +10,7 @@ use crate::ty::TyCtxt;
 use field_offset::FieldOffset;
 use measureme::StringId;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::AtomicU64;
+use rustc_data_structures::sync::{AtomicU64, Lrc, SLock, SMutex, SRefCell, WorkerLocal};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::hir_id::OwnerId;
@@ -20,6 +20,7 @@ pub(crate) use rustc_query_system::query::QueryJobId;
 use rustc_query_system::query::*;
 use rustc_query_system::HandleCycleError;
 use rustc_span::{Span, DUMMY_SP};
+use std::intrinsics::likely;
 use std::ops::Deref;
 
 pub struct QueryKeyStringCache {
@@ -77,12 +78,14 @@ pub struct QuerySystemFns<'tcx> {
     ),
     pub try_mark_green: fn(tcx: TyCtxt<'tcx>, dep_node: &dep_graph::DepNode) -> bool,
 }
-
 pub struct QuerySystem<'tcx> {
     pub states: QueryStates<'tcx>,
     pub arenas: QueryArenas<'tcx>,
-    pub caches: QueryCaches<'tcx>,
     pub dynamic_queries: DynamicQueries<'tcx>,
+
+    pub single_thread: bool,
+    pub single_caches: QueryCaches<'tcx, SRefCell>,
+    pub parallel_caches: QueryCaches<'tcx, SMutex>,
 
     /// This provides access to the incremental compilation on-disk cache for query results.
     /// Do not access this directly. It is only meant to be used by
@@ -321,7 +324,7 @@ macro_rules! define_callbacks {
             use super::*;
 
             $(
-                pub type $name<'tcx> = <<$($K)* as Key>::CacheSelector as CacheSelector<'tcx, Erase<$V>>>::Cache;
+                pub type $name<'tcx, L> = <<$($K)* as Key>::CacheSelector as CacheSelector<'tcx, Erase<$V>, L>>::Cache;
             )*
         }
 
@@ -374,21 +377,31 @@ macro_rules! define_callbacks {
         }
 
         #[derive(Default)]
-        pub struct QueryCaches<'tcx> {
-            $($(#[$attr])* pub $name: query_storage::$name<'tcx>,)*
+        pub struct QueryCaches<'tcx, L: SLock> {
+            $($(#[$attr])* pub $name: query_storage::$name<'tcx, L>,)*
         }
 
         impl<'tcx> TyCtxtEnsure<'tcx> {
             $($(#[$attr])*
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
-                query_ensure(
-                    self.tcx,
-                    self.tcx.query_system.fns.engine.$name,
-                    &self.tcx.query_system.caches.$name,
-                    key.into_query_param(),
-                    false,
-                );
+                if likely(self.tcx.query_system.single_thread) {
+                    query_ensure(
+                        self.tcx,
+                        self.tcx.query_system.fns.engine.$name,
+                        &self.tcx.query_system.single_caches.$name,
+                        key.into_query_param(),
+                        false,
+                    )
+                } else {
+                    query_ensure(
+                        self.tcx,
+                        self.tcx.query_system.fns.engine.$name,
+                        &self.tcx.query_system.parallel_caches.$name,
+                        key.into_query_param(),
+                        false,
+                    )
+                };
             })*
         }
 
@@ -396,13 +409,23 @@ macro_rules! define_callbacks {
             $($(#[$attr])*
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
-                query_ensure(
-                    self.tcx,
-                    self.tcx.query_system.fns.engine.$name,
-                    &self.tcx.query_system.caches.$name,
-                    key.into_query_param(),
-                    true,
-                );
+                if likely(self.tcx.query_system.single_thread) {
+                    query_ensure(
+                        self.tcx,
+                        self.tcx.query_system.fns.engine.$name,
+                        &self.tcx.query_system.single_caches.$name,
+                        key.into_query_param(),
+                        true,
+                    );
+                } else {
+                    query_ensure(
+                        self.tcx,
+                        self.tcx.query_system.fns.engine.$name,
+                        &self.tcx.query_system.parallel_caches.$name,
+                        key.into_query_param(),
+                        true,
+                    );
+                };
             })*
         }
 
@@ -421,13 +444,23 @@ macro_rules! define_callbacks {
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> $V
             {
-                restore::<$V>(query_get_at(
-                    self.tcx,
-                    self.tcx.query_system.fns.engine.$name,
-                    &self.tcx.query_system.caches.$name,
-                    self.span,
-                    key.into_query_param(),
-                ))
+                if likely(self.tcx.query_system.single_thread) {
+                    restore::<$V>(query_get_at(
+                        self.tcx,
+                        self.tcx.query_system.fns.engine.$name,
+                        &self.tcx.query_system.single_caches.$name,
+                        self.span,
+                        key.into_query_param(),
+                    ))
+                } else {
+                    restore::<$V>(query_get_at(
+                        self.tcx,
+                        self.tcx.query_system.fns.engine.$name,
+                        &self.tcx.query_system.parallel_caches.$name,
+                        self.span,
+                        key.into_query_param(),
+                    ))
+                }
             })*
         }
 
@@ -523,38 +556,75 @@ macro_rules! define_feedable {
                 let tcx = self.tcx;
                 let erased = query_provided_to_value::$name(tcx, value);
                 let value = restore::<$V>(erased);
-                let cache = &tcx.query_system.caches.$name;
+                if likely(tcx.query_system.single_thread) {
+                    let cache = &tcx.query_system.single_caches.$name;
 
-                let hasher: Option<fn(&mut StableHashingContext<'_>, &_) -> _> = hash_result!([$($modifiers)*]);
-                match try_get_cached(tcx, cache, &key) {
-                    Some(old) => {
-                        let old = restore::<$V>(old);
-                        if let Some(hasher) = hasher {
-                            let (value_hash, old_hash): (Fingerprint, Fingerprint) = tcx.with_stable_hashing_context(|mut hcx|
-                                (hasher(&mut hcx, &value), hasher(&mut hcx, &old))
+                    let hasher: Option<fn(&mut StableHashingContext<'_>, &_) -> _> = hash_result!([$($modifiers)*]);
+                    match try_get_cached(tcx, cache, &key) {
+                        Some(old) => {
+                            let old = restore::<$V>(old);
+                            if let Some(hasher) = hasher {
+                                let (value_hash, old_hash): (Fingerprint, Fingerprint) = tcx.with_stable_hashing_context(|mut hcx|
+                                    (hasher(&mut hcx, &value), hasher(&mut hcx, &old))
+                                );
+                                assert_eq!(
+                                    old_hash, value_hash,
+                                    "Trying to feed an already recorded value for query {} key={key:?}:\nold value: {old:?}\nnew value: {value:?}",
+                                    stringify!($name),
+                                )
+                            } else {
+                                bug!(
+                                    "Trying to feed an already recorded value for query {} key={key:?}:\nold value: {old:?}\nnew value: {value:?}",
+                                    stringify!($name),
+                                )
+                            }
+                        }
+                        None => {
+                            let dep_node = dep_graph::DepNode::construct(tcx, dep_graph::DepKind::$name, &key);
+                            let dep_node_index = tcx.dep_graph.with_feed_task(
+                                dep_node,
+                                tcx,
+                                key,
+                                &value,
+                                hash_result!([$($modifiers)*]),
                             );
-                            assert_eq!(
-                                old_hash, value_hash,
-                                "Trying to feed an already recorded value for query {} key={key:?}:\nold value: {old:?}\nnew value: {value:?}",
-                                stringify!($name),
-                            )
-                        } else {
-                            bug!(
-                                "Trying to feed an already recorded value for query {} key={key:?}:\nold value: {old:?}\nnew value: {value:?}",
-                                stringify!($name),
-                            )
+                            cache.complete(key, erased, dep_node_index);
                         }
                     }
-                    None => {
-                        let dep_node = dep_graph::DepNode::construct(tcx, dep_graph::DepKind::$name, &key);
-                        let dep_node_index = tcx.dep_graph.with_feed_task(
-                            dep_node,
-                            tcx,
-                            key,
-                            &value,
-                            hash_result!([$($modifiers)*]),
-                        );
-                        cache.complete(key, erased, dep_node_index);
+                } else {
+                    let cache = &tcx.query_system.parallel_caches.$name;
+
+                    let hasher: Option<fn(&mut StableHashingContext<'_>, &_) -> _> = hash_result!([$($modifiers)*]);
+                    match try_get_cached(tcx, cache, &key) {
+                        Some(old) => {
+                            let old = restore::<$V>(old);
+                            if let Some(hasher) = hasher {
+                                let (value_hash, old_hash): (Fingerprint, Fingerprint) = tcx.with_stable_hashing_context(|mut hcx|
+                                    (hasher(&mut hcx, &value), hasher(&mut hcx, &old))
+                                );
+                                assert_eq!(
+                                    old_hash, value_hash,
+                                    "Trying to feed an already recorded value for query {} key={key:?}:\nold value: {old:?}\nnew value: {value:?}",
+                                    stringify!($name),
+                                )
+                            } else {
+                                bug!(
+                                    "Trying to feed an already recorded value for query {} key={key:?}:\nold value: {old:?}\nnew value: {value:?}",
+                                    stringify!($name),
+                                )
+                            }
+                        }
+                        None => {
+                            let dep_node = dep_graph::DepNode::construct(tcx, dep_graph::DepKind::$name, &key);
+                            let dep_node_index = tcx.dep_graph.with_feed_task(
+                                dep_node,
+                                tcx,
+                                key,
+                                &value,
+                                hash_result!([$($modifiers)*]),
+                            );
+                            cache.complete(key, erased, dep_node_index);
+                        }
                     }
                 }
             }

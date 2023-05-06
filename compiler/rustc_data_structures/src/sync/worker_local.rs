@@ -5,7 +5,6 @@ use std::ops::Deref;
 use std::ptr;
 use std::sync::Arc;
 
-#[cfg(parallel_compiler)]
 use {crate::cold_path, crate::sync::CacheAligned};
 
 /// A pointer to the `RegistryData` which uniquely identifies a registry.
@@ -21,7 +20,6 @@ impl RegistryId {
     ///
     /// Note that there's a race possible where the identifer in `THREAD_DATA` could be reused
     /// so this can succeed from a different registry.
-    #[cfg(parallel_compiler)]
     fn verify(self) -> usize {
         let (id, index) = THREAD_DATA.with(|data| (data.registry_id.get(), data.index.get()));
 
@@ -33,13 +31,14 @@ impl RegistryId {
     }
 }
 
+#[derive(Debug)]
 struct RegistryData {
     thread_limit: usize,
     threads: Lock<usize>,
 }
 
 /// Represents a list of threads which can access worker locals.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Registry(Arc<RegistryData>);
 
 thread_local! {
@@ -105,12 +104,9 @@ impl Registry {
 /// Holds worker local values for each possible thread in a registry. You can only access the
 /// worker local value through the `Deref` impl on the registry associated with the thread it was
 /// created on. It will panic otherwise.
-pub struct WorkerLocal<T> {
-    #[cfg(not(parallel_compiler))]
-    local: T,
-    #[cfg(parallel_compiler)]
+#[derive(Debug)]
+pub(crate) struct WorkerLocal<T> {
     locals: Box<[CacheAligned<T>]>,
-    #[cfg(parallel_compiler)]
     registry: Registry,
 }
 
@@ -118,7 +114,6 @@ pub struct WorkerLocal<T> {
 // or it will panic for threads without an associated local. So there isn't a need for `T` to do
 // it's own synchronization. The `verify` method on `RegistryId` has an issue where the the id
 // can be reused, but `WorkerLocal` has a reference to `Registry` which will prevent any reuse.
-#[cfg(parallel_compiler)]
 unsafe impl<T: Send> Sync for WorkerLocal<T> {}
 
 impl<T> WorkerLocal<T> {
@@ -126,38 +121,11 @@ impl<T> WorkerLocal<T> {
     /// value this worker local should take for each thread in the registry.
     #[inline]
     pub fn new<F: FnMut(usize) -> T>(mut initial: F) -> WorkerLocal<T> {
-        #[cfg(parallel_compiler)]
-        {
-            let registry = Registry::current();
-            WorkerLocal {
-                locals: (0..registry.0.thread_limit).map(|i| CacheAligned(initial(i))).collect(),
-                registry,
-            }
+        let registry = Registry::current();
+        WorkerLocal {
+            locals: (0..registry.0.thread_limit).map(|i| CacheAligned(initial(i))).collect(),
+            registry,
         }
-        #[cfg(not(parallel_compiler))]
-        {
-            WorkerLocal { local: initial(0) }
-        }
-    }
-
-    /// Returns the worker-local values for each thread
-    #[inline]
-    pub fn into_inner(self) -> impl Iterator<Item = T> {
-        #[cfg(parallel_compiler)]
-        {
-            self.locals.into_vec().into_iter().map(|local| local.0)
-        }
-        #[cfg(not(parallel_compiler))]
-        {
-            std::iter::once(self.local)
-        }
-    }
-}
-
-impl<T> WorkerLocal<Vec<T>> {
-    /// Joins the elements of all the worker locals into one Vec
-    pub fn join(self) -> Vec<T> {
-        self.into_inner().into_iter().flat_map(|v| v).collect()
     }
 }
 
@@ -165,13 +133,6 @@ impl<T> Deref for WorkerLocal<T> {
     type Target = T;
 
     #[inline(always)]
-    #[cfg(not(parallel_compiler))]
-    fn deref(&self) -> &T {
-        &self.local
-    }
-
-    #[inline(always)]
-    #[cfg(parallel_compiler)]
     fn deref(&self) -> &T {
         // This is safe because `verify` will only return values less than
         // `self.registry.thread_limit` which is the size of the `self.locals` array.

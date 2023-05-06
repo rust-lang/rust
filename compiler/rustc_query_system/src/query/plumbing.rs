@@ -26,6 +26,7 @@ use std::cell::Cell;
 use std::collections::hash_map::Entry;
 use std::fmt::Debug;
 use std::hash::Hash;
+use std::intrinsics::likely;
 use std::mem;
 use std::ops::DerefMut;
 use thin_vec::ThinVec;
@@ -268,7 +269,7 @@ where
 
     match result {
         Ok(()) => {
-            let Some((v, index)) = query.query_cache(qcx).lookup(&key) else {
+            let Some((v, index)) = query.look_up(qcx, &key) else {
                 cold_path(|| panic!("value must be in cache after waiting"))
             };
 
@@ -304,7 +305,7 @@ where
     // executing, but another thread may have already completed the query and stores it result
     // in the query cache.
     if cfg!(parallel_compiler) && qcx.dep_context().sess().threads() > 1 {
-        if let Some((value, index)) = query.query_cache(qcx).lookup(&key) {
+        if let Some((value, index)) = query.look_up(qcx, &key) {
             qcx.dep_context().profiler().query_cache_hit(index.into());
             return (value, Some(index));
         }
@@ -389,13 +390,12 @@ where
         execute_job_non_incr(query, qcx, key, id)
     };
 
-    let cache = query.query_cache(qcx);
     if query.feedable() {
         // We should not compute queries that also got a value via feeding.
         // This can't happen, as query feeding adds the very dependencies to the fed query
         // as its feeding query had. So if the fed query is red, so is its feeder, which will
         // get evaluated first, and re-feed the query.
-        if let Some((cached_result, _)) = cache.lookup(&key) {
+        if let Some((cached_result, _)) = query.look_up(qcx, &key) {
             let Some(hasher) = query.hash_result() else {
                 panic!(
                     "no_hash fed query later has its value computed.\n\
@@ -421,7 +421,12 @@ where
             );
         }
     }
-    job_owner.complete(cache, result, dep_node_index);
+
+    if likely(query.single_thread(qcx)) {
+        job_owner.complete(query.single_query_cache(qcx), result, dep_node_index)
+    } else {
+        job_owner.complete(query.parallel_query_cache(qcx), result, dep_node_index)
+    };
 
     (result, Some(dep_node_index))
 }
@@ -824,7 +829,7 @@ pub fn force_query<Q, Qcx>(
 {
     // We may be concurrently trying both execute and force a query.
     // Ensure that only one of them runs the query.
-    if let Some((_, index)) = query.query_cache(qcx).lookup(&key) {
+    if let Some((_, index)) = query.look_up(qcx, &key) {
         qcx.dep_context().profiler().query_cache_hit(index.into());
         return;
     }

@@ -28,6 +28,7 @@ use rustc_serialize::Decodable;
 use rustc_serialize::Encodable;
 use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;
+use std::intrinsics::likely;
 use std::num::NonZeroU64;
 use thin_vec::ThinVec;
 
@@ -354,19 +355,35 @@ pub(crate) fn encode_query_results<'a, 'tcx, Q>(
         qcx.profiler().verbose_generic_activity_with_arg("encode_query_results_for", query.name());
 
     assert!(query.query_state(qcx).all_inactive());
-    let cache = query.query_cache(qcx);
-    cache.iter(&mut |key, value, dep_node| {
-        if query.cache_on_disk(qcx.tcx, &key) {
-            let dep_node = SerializedDepNodeIndex::new(dep_node.index());
+    if likely(query.single_thread(qcx)) {
+        let cache = query.single_query_cache(qcx);
+        cache.iter(&mut |key, value, dep_node| {
+            if query.cache_on_disk(qcx.tcx, &key) {
+                let dep_node = SerializedDepNodeIndex::new(dep_node.index());
 
-            // Record position of the cache entry.
-            query_result_index.push((dep_node, AbsoluteBytePos::new(encoder.position())));
+                // Record position of the cache entry.
+                query_result_index.push((dep_node, AbsoluteBytePos::new(encoder.position())));
 
-            // Encode the type check tables with the `SerializedDepNodeIndex`
-            // as tag.
-            encoder.encode_tagged(dep_node, &Q::restore(*value));
-        }
-    });
+                // Encode the type check tables with the `SerializedDepNodeIndex`
+                // as tag.
+                encoder.encode_tagged(dep_node, &Q::restore(*value));
+            }
+        });
+    } else {
+        let cache = query.parallel_query_cache(qcx);
+        cache.iter(&mut |key, value, dep_node| {
+            if query.cache_on_disk(qcx.tcx, &key) {
+                let dep_node = SerializedDepNodeIndex::new(dep_node.index());
+
+                // Record position of the cache entry.
+                query_result_index.push((dep_node, AbsoluteBytePos::new(encoder.position())));
+
+                // Encode the type check tables with the `SerializedDepNodeIndex`
+                // as tag.
+                encoder.encode_tagged(dep_node, &Q::restore(*value));
+            }
+        });
+    }
 }
 
 fn try_load_from_on_disk_cache<'tcx, Q>(query: Q, tcx: TyCtxt<'tcx>, dep_node: DepNode)
@@ -613,6 +630,42 @@ macro_rules! define_queries {
                         },
                         hash_result: hash_result!([$($modifiers)*][query_values::$name<'tcx>]),
                         format_value: |value| format!("{:?}", restore::<query_values::$name<'tcx>>(*value)),
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                     }
                 }
             )*
@@ -754,12 +807,21 @@ macro_rules! define_queries {
                     )
                 },
                 alloc_self_profile_query_strings: |tcx, string_cache| {
-                    $crate::profiling_support::alloc_self_profile_query_strings_for_query_cache(
-                        tcx,
-                        stringify!($name),
-                        &tcx.query_system.caches.$name,
-                        string_cache,
-                    )
+                    if tcx.query_system.single_thread {
+                        $crate::profiling_support::alloc_self_profile_query_strings_for_query_cache(
+                            tcx,
+                            stringify!($name),
+                            &tcx.query_system.single_caches.$name,
+                            string_cache,
+                        )
+                    } else {
+                        $crate::profiling_support::alloc_self_profile_query_strings_for_query_cache(
+                            tcx,
+                            stringify!($name),
+                            &tcx.query_system.parallel_caches.$name,
+                            string_cache,
+                        )
+                    }
                 },
                 encode_query_results: expand_if_cached!([$($modifiers)*], |tcx, encoder, query_result_index|
                     $crate::plumbing::encode_query_results::<super::queries::$name<'tcx>>(

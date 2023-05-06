@@ -7,6 +7,7 @@
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
+#![feature(core_intrinsics)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability, unused_parens)]
 #![deny(rustc::untranslatable_diagnostic)]
@@ -18,7 +19,7 @@ extern crate rustc_middle;
 use crate::plumbing::{encode_all_query_results, try_mark_green};
 use field_offset::offset_of;
 use rustc_data_structures::stable_hasher::HashStable;
-use rustc_data_structures::sync::AtomicU64;
+use rustc_data_structures::sync::{SLock, SMutex, SRefCell};
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepNodeIndex;
 use rustc_middle::dep_graph::{self, DepKind, DepKindStruct};
@@ -31,7 +32,7 @@ use rustc_middle::query::{
     DynamicQueries, ExternProviders, Providers, QueryCaches, QueryEngine, QueryStates,
 };
 use rustc_middle::ty::TyCtxt;
-use rustc_query_system::dep_graph::SerializedDepNodeIndex;
+use rustc_query_system::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
     get_query_incr, get_query_non_incr, HashResult, QueryCache, QueryConfig, QueryInfo, QueryMap,
@@ -40,6 +41,7 @@ use rustc_query_system::query::{
 use rustc_query_system::HandleCycleError;
 use rustc_query_system::Value;
 use rustc_span::Span;
+use std::intrinsics::likely;
 
 #[macro_use]
 mod plumbing;

@@ -1,6 +1,6 @@
 //! Query configuration and description traits.
 
-use crate::dep_graph::{DepNode, DepNodeParams, SerializedDepNodeIndex};
+use crate::dep_graph::{DepNode, DepNodeIndex, DepNodeParams, SerializedDepNodeIndex};
 use crate::error::HandleCycleError;
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
@@ -8,6 +8,7 @@ use crate::query::DepNodeIndex;
 use crate::query::{QueryContext, QueryInfo, QueryState};
 
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::sync::{SLock, SMutex, SRefCell};
 use std::fmt::Debug;
 use std::hash::Hash;
 
@@ -21,17 +22,24 @@ pub trait QueryConfig<Qcx: QueryContext>: Copy {
     type Key: DepNodeParams<Qcx::DepContext> + Eq + Hash + Copy + Debug;
     type Value: Copy;
 
-    type Cache: QueryCache<Key = Self::Key, Value = Self::Value>;
+    type Cache<L: SLock>: QueryCache<Key = Self::Key, Value = Self::Value>;
+
+    fn single_thread(self, tcx: Qcx) -> bool;
 
     fn format_value(self) -> fn(&Self::Value) -> String;
 
-    // Don't use this method to access query results, instead use the methods on TyCtxt
-    fn query_state<'a>(self, tcx: Qcx) -> &'a QueryState<Self::Key, Qcx::DepKind>
+    fn look_up(self, tcx: Qcx, key: &Self::Key) -> Option<(Self::Value, DepNodeIndex)>;
+
+    fn single_query_cache<'a>(self, tcx: Qcx) -> &'a Self::Cache<SRefCell>
+    where
+        Qcx: 'a;
+
+    fn parallel_query_cache<'a>(self, tcx: Qcx) -> &'a Self::Cache<SMutex>
     where
         Qcx: 'a;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
-    fn query_cache<'a>(self, tcx: Qcx) -> &'a Self::Cache
+    fn query_state<'a>(self, tcx: Qcx) -> &'a QueryState<Self::Key, Qcx::DepKind>
     where
         Qcx: 'a;
 

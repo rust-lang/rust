@@ -40,7 +40,7 @@
 //! [^2] `MTLockRef` is a typedef.
 
 pub use crate::marker::*;
-use std::cell::{Cell, UnsafeCell};
+use std::cell::{Cell, RefCell, RefMut, UnsafeCell};
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use std::hash::{BuildHasher, Hash};
@@ -50,10 +50,10 @@ use std::ops::{Deref, DerefMut};
 use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
 
 mod worker_local;
-pub use worker_local::{Registry, WorkerLocal};
 
 pub use std::sync::atomic::Ordering;
 pub use std::sync::atomic::Ordering::SeqCst;
+use std::sync::{Mutex, MutexGuard};
 
 pub use vec::{AppendOnlyIndexVec, AppendOnlyVec};
 
@@ -559,8 +559,8 @@ impl<T> FromDyn<T> {
     }
 }
 
-#[derive(Default)]
-#[cfg_attr(parallel_compiler, repr(align(64)))]
+#[derive(Default, Debug)]
+#[repr(align(64))]
 pub struct CacheAligned<T>(pub T);
 
 pub trait HashMapExt<K, V> {
@@ -765,6 +765,103 @@ impl<'a, T> Drop for LockGuard<'a, T> {
         } else {
             unlock_mt(self)
         }
+    }
+}
+
+pub trait SLock: Copy {
+    type Lock<T>: LockLike<T>;
+}
+
+pub trait LockLike<T> {
+    type LockGuard<'a>: DerefMut<Target = T>
+    where
+        Self: 'a;
+
+    fn new(val: T) -> Self;
+
+    fn into_inner(self) -> T;
+
+    fn get_mut(&mut self) -> &mut T;
+
+    fn try_lock(&self) -> Option<Self::LockGuard<'_>>;
+
+    fn lock(&self) -> Self::LockGuard<'_>;
+}
+
+#[derive(Copy, Clone, Default)]
+pub struct SRefCell;
+
+impl SLock for SRefCell {
+    type Lock<T> = RefCell<T>;
+}
+
+impl<T> LockLike<T> for RefCell<T> {
+    type LockGuard<'a> = RefMut<'a, T> where T: 'a;
+
+    #[inline]
+    fn new(val: T) -> Self {
+        RefCell::new(val)
+    }
+
+    #[inline]
+    fn into_inner(self) -> T {
+        self.into_inner()
+    }
+
+    #[inline]
+    fn get_mut(&mut self) -> &mut T {
+        self.get_mut()
+    }
+
+    #[inline]
+    fn try_lock(&self) -> Option<RefMut<'_, T>> {
+        self.try_borrow_mut().ok()
+    }
+
+    #[inline(always)]
+    #[track_caller]
+    fn lock(&self) -> RefMut<'_, T> {
+        self.borrow_mut()
+    }
+}
+
+#[derive(Copy, Clone, Default)]
+pub struct SMutex;
+
+impl SLock for SMutex {
+    type Lock<T> = Mutex<T>;
+}
+
+impl<T> LockLike<T> for Mutex<T> {
+    type LockGuard<'a> = MutexGuard<'a, T> where T: 'a;
+
+    #[inline]
+    fn new(val: T) -> Self {
+        Mutex::new(val)
+    }
+
+    #[inline]
+    fn into_inner(self) -> T {
+        self.into_inner().unwrap()
+    }
+
+    #[inline]
+    fn get_mut(&mut self) -> &mut T {
+        self.get_mut().unwrap()
+    }
+
+    #[inline]
+    fn try_lock(&self) -> Option<MutexGuard<'_, T>> {
+        self.try_lock().ok()
+    }
+
+    #[inline(always)]
+    #[track_caller]
+    fn lock(&self) -> MutexGuard<'_, T> {
+        self.lock().unwrap_or_else(|e| {
+            self.clear_poison();
+            e.into_inner()
+        })
     }
 }
 
@@ -1138,7 +1235,7 @@ impl<T: Clone> Clone for RwLock<T> {
 pub struct WorkerLocal<T> {
     single_thread: bool,
     inner: Option<T>,
-    mt_inner: Option<rayon_core::WorkerLocal<T>>,
+    mt_inner: Option<worker_local::WorkerLocal<T>>,
 }
 
 impl<T> WorkerLocal<T> {
@@ -1152,18 +1249,8 @@ impl<T> WorkerLocal<T> {
             WorkerLocal {
                 single_thread: false,
                 inner: None,
-                mt_inner: Some(rayon_core::WorkerLocal::new(f)),
+                mt_inner: Some(worker_local::WorkerLocal::new(f)),
             }
-        }
-    }
-
-    /// Returns the worker-local value for each thread
-    #[inline]
-    pub fn into_inner(self) -> Vec<T> {
-        if self.single_thread {
-            vec![self.inner.unwrap()]
-        } else {
-            self.mt_inner.unwrap().into_inner()
         }
     }
 }
@@ -1185,6 +1272,7 @@ impl<T> Deref for WorkerLocal<T> {
 unsafe impl<T: Send> std::marker::Sync for WorkerLocal<T> {}
 
 use std::thread;
+pub use worker_local::Registry;
 
 /// A type which only allows its inner value to be used in one thread.
 /// It will panic if it is used on multiple threads.

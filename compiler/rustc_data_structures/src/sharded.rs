@@ -1,5 +1,5 @@
 use crate::fx::{FxHashMap, FxHasher};
-use crate::sync::{CacheAligned, Lock, LockGuard};
+use crate::sync::{Lock, LockGuard};
 use std::borrow::Borrow;
 use std::collections::hash_map::RawEntryMut;
 use std::hash::{Hash, Hasher};
