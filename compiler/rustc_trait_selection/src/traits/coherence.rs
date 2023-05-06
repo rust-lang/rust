@@ -514,13 +514,6 @@ pub fn trait_ref_is_knowable<'tcx, E: Debug>(
     trait_ref: ty::TraitRef<'tcx>,
     mut lazily_normalize_ty: impl FnMut(Ty<'tcx>) -> Result<Ty<'tcx>, E>,
 ) -> Result<Result<(), Conflict>, E> {
-    if Some(trait_ref.def_id) == tcx.lang_items().fn_ptr_trait() {
-        // The only types implementing `FnPtr` are function pointers,
-        // so if there's no impl of `FnPtr` in the current crate,
-        // then such an impl will never be added in the future.
-        return Ok(Ok(()));
-    }
-
     if orphan_check_trait_ref(trait_ref, InCrate::Remote, &mut lazily_normalize_ty)?.is_ok() {
         // A downstream or cousin crate is allowed to implement some
         // substitution of this trait-ref.
