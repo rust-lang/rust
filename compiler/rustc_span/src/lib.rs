@@ -1744,6 +1744,28 @@ impl SourceFile {
         BytePos::from_u32(pos.0 - self.start_pos.0 + diff)
     }
 
+    /// Calculates a normalized byte position from a byte offset relative to the
+    /// start of the file.
+    ///
+    /// When we get an inline assembler error from LLVM during codegen, we
+    /// import the expanded assembly code as a new `SourceFile`, which can then
+    /// be used for error reporting with spans. However the byte offsets given
+    /// to us by LLVM are relative to the start of the original buffer, not the
+    /// normalized one. Hence we need to convert those offsets to the normalized
+    /// form when constructing spans.
+    pub fn normalized_byte_pos(&self, offset: u32) -> BytePos {
+        let diff = match self
+            .normalized_pos
+            .binary_search_by(|np| (np.pos.0 + np.diff).cmp(&(self.start_pos.0 + offset)))
+        {
+            Ok(i) => self.normalized_pos[i].diff,
+            Err(i) if i == 0 => 0,
+            Err(i) => self.normalized_pos[i - 1].diff,
+        };
+
+        BytePos::from_u32(self.start_pos.0 + offset - diff)
+    }
+
     /// Converts an absolute `BytePos` to a `CharPos` relative to the `SourceFile`.
     pub fn bytepos_to_file_charpos(&self, bpos: BytePos) -> CharPos {
         // The number of extra bytes due to multibyte chars in the `SourceFile`.
