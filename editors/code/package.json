@@ -1512,6 +1512,18 @@
                         "endColumn": 6
                     }
                 ]
+            },
+            {
+                "name": "rust-panic",
+                "patterns": [
+                    {
+                        "regexp": "^thread '.*' panicked at '(.*)', (.*):(\\d*):(\\d*)$",
+                        "message": 1,
+                        "file": 2,
+                        "line": 3,
+                        "column": 4
+                    }
+                ]
             }
         ],
         "languages": [
@@ -1560,6 +1572,16 @@
                     "${workspaceRoot}"
                 ],
                 "pattern": "$rustc-json"
+            },
+            {
+                "name": "rust-panic",
+                "owner": "rust-panic",
+                "source": "panic",
+                "fileLocation": [
+                    "autoDetect",
+                    "${workspaceRoot}"
+                ],
+                "pattern": "$rust-panic"
             },
             {
                 "name": "rustc-watch",
