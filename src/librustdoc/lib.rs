@@ -156,15 +156,19 @@ pub fn main() {
         }
     }
 
-    rustc_driver::install_ice_hook();
+    rustc_driver::install_ice_hook(
+        "https://github.com/rust-lang/rust/issues/new\
+    ?labels=C-bug%2C+I-ICE%2C+T-rustdoc&template=ice.md",
+        |_| (),
+    );
 
-    // When using CI artifacts (with `download_stage1 = true`), tracing is unconditionally built
+    // When using CI artifacts with `download-rustc`, tracing is unconditionally built
     // with `--features=static_max_level_info`, which disables almost all rustdoc logging. To avoid
     // this, compile our own version of `tracing` that logs all levels.
     // NOTE: this compiles both versions of tracing unconditionally, because
     // - The compile time hit is not that bad, especially compared to rustdoc's incremental times, and
-    // - Otherwise, there's no warning that logging is being ignored when `download_stage1 = true`.
-    // NOTE: The reason this doesn't show double logging when `download_stage1 = false` and
+    // - Otherwise, there's no warning that logging is being ignored when `download-rustc` is enabled
+    // NOTE: The reason this doesn't show double logging when `download-rustc = false` and
     // `debug_logging = true` is because all rustc logging goes to its version of tracing (the one
     // in the sysroot), and all of rustdoc's logging goes to its version (the one in Cargo.toml).
     init_logging();
