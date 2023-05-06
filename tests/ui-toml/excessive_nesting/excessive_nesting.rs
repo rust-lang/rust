@@ -10,6 +10,8 @@
 #![warn(clippy::excessive_nesting)]
 #![allow(clippy::collapsible_if)]
 
+mod auxiliary;
+
 #[macro_use]
 extern crate macro_rules;
 
@@ -39,7 +41,7 @@ macro_rules! xx {
                                     {
                                         {
                                             {
-                                                println!("ehe");
+                                                println!("ehe"); // should not lint
                                             }
                                         }
                                     }
@@ -135,7 +137,7 @@ fn main() {
     })();
 
     excessive_nesting!(); // ensure this isn't linted in external macros
-    xx!();
+    xx!(); // ensure this is never linted
     let boo = true;
     !{boo as u32 + !{boo as u32 + !{boo as u32}}};
 

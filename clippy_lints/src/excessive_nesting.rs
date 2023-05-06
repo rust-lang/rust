@@ -11,7 +11,7 @@ use rustc_span::Span;
 declare_clippy_lint! {
     /// ### What it does
     ///
-    /// Checks for blocks which are indented beyond a certain threshold.
+    /// Checks for blocks which are nested beyond a certain threshold.
     ///
     /// ### Why is this bad?
     ///
@@ -106,6 +106,11 @@ impl NestingVisitor<'_, '_> {
 
 impl<'conf, 'cx> Visitor<'_> for NestingVisitor<'conf, 'cx> {
     fn visit_block(&mut self, block: &Block) {
+        // TODO: Probably not necessary, since any block would already be ignored by the check in visit_item
+        if block.span.from_expansion() {
+            return;
+        }
+
         self.nest_level += 1;
 
         if !self.check_indent(block.span) {
@@ -116,6 +121,10 @@ impl<'conf, 'cx> Visitor<'_> for NestingVisitor<'conf, 'cx> {
     }
 
     fn visit_item(&mut self, item: &Item) {
+        if item.span.from_expansion() {
+            return;
+        }
+
         match &item.kind {
             ItemKind::Trait(_) | ItemKind::Impl(_) | ItemKind::Mod(.., ModKind::Loaded(_, Inline::Yes, _)) => {
                 self.nest_level += 1;
@@ -126,10 +135,15 @@ impl<'conf, 'cx> Visitor<'_> for NestingVisitor<'conf, 'cx> {
 
                 self.nest_level -= 1;
             },
-            // Mod: Don't visit non-inline modules
-            // ForeignMod: I don't think this is necessary, but just incase let's not take any chances (don't want to
-            // cause any false positives)
-            ItemKind::Mod(..) | ItemKind::ForeignMod(..) => {},
+            // Reset nesting level for non-inline modules (since these are in another file)
+            ItemKind::Mod(..) => walk_item(
+                &mut NestingVisitor {
+                    conf: self.conf,
+                    cx: self.cx,
+                    nest_level: 0,
+                },
+                item,
+            ),
             _ => walk_item(self, item),
         }
     }
