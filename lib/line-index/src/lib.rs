@@ -229,4 +229,9 @@ impl LineIndex {
             .map(|(lo, hi)| TextRange::new(lo, hi))
             .filter(|it| !it.is_empty())
     }
+
+    /// Returns the length of the original text.
+    pub fn len(&self) -> TextSize {
+        self.len
+    }
 }
