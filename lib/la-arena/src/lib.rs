@@ -6,7 +6,7 @@
 use std::{
     cmp, fmt,
     hash::{Hash, Hasher},
-    iter::Enumerate,
+    iter::{Enumerate, FusedIterator},
     marker::PhantomData,
     ops::{Index, IndexMut, Range, RangeInclusive},
 };
@@ -211,6 +211,8 @@ impl<T> DoubleEndedIterator for IdxRange<T> {
 }
 
 impl<T> ExactSizeIterator for IdxRange<T> {}
+
+impl<T> FusedIterator for IdxRange<T> {}
 
 impl<T> fmt::Debug for IdxRange<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
