@@ -9,8 +9,8 @@ use nohash_hasher::IntMap;
 
 pub use text_size::{TextRange, TextSize};
 
-/// Line/Column information in native, utf8 format.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+/// `(line, column)` information in the native, UTF-8 encoding.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct LineCol {
     /// Zero-based.
     pub line: u32,
@@ -19,7 +19,7 @@ pub struct LineCol {
 }
 
 /// A kind of wide character encoding.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum WideEncoding {
     /// UTF-16.
@@ -29,7 +29,7 @@ pub enum WideEncoding {
 }
 
 impl WideEncoding {
-    /// Returns the number of units it takes to encode `text` in this encoding.
+    /// Returns the number of code units it takes to encode `text` in this encoding.
     pub fn measure(&self, text: &str) -> usize {
         match self {
             WideEncoding::Utf16 => text.encode_utf16().count(),
@@ -38,10 +38,12 @@ impl WideEncoding {
     }
 }
 
-/// Line/Column information in legacy encodings.
+/// `(line, column)` information in wide encodings.
+///
+/// See [`WideEncoding`] for the kinds of wide encodings available.
 //
 // Deliberately not a generic type and different from `LineCol`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct WideLineCol {
     /// Zero-based.
     pub line: u32,
@@ -49,11 +51,11 @@ pub struct WideLineCol {
     pub col: u32,
 }
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct WideChar {
-    /// Start offset of a character inside a line, zero-based
+    /// Start offset of a character inside a line, zero-based.
     start: TextSize,
-    /// End offset of a character inside a line, zero-based
+    /// End offset of a character inside a line, zero-based.
     end: TextSize,
 }
 
