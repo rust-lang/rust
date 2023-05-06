@@ -186,7 +186,6 @@ fn find_sugg_for_if_let<'tcx>(
 }
 
 pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op: &Expr<'_>, arms: &[Arm<'_>]) {
-    //eprintln!("{:#?}", expr);
     if arms.len() == 2 {
         let node_pair = (&arms[0].pat.kind, &arms[1].pat.kind);
         let found_good_method = match node_pair {

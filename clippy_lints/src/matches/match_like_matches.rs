@@ -1,10 +1,12 @@
+use super::REDUNDANT_PATTERN_MATCHING;
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_lint_allowed;
 use clippy_utils::is_wild;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::span_contains_comment;
 use rustc_ast::{Attribute, LitKind};
 use rustc_errors::Applicability;
-use rustc_hir::{Arm, BorrowKind, Expr, ExprKind, Guard, Pat};
+use rustc_hir::{Arm, BorrowKind, Expr, ExprKind, Guard, Pat, PatKind, QPath};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty;
 use rustc_span::source_map::Spanned;
@@ -99,6 +101,14 @@ where
                 }
             }
 
+            for arm in iter_without_last.clone() {
+                if let Some(pat) = arm.1 {
+                    if !is_lint_allowed(cx, REDUNDANT_PATTERN_MATCHING, pat.hir_id) && is_some(pat.kind) {
+                        return false;
+                    }
+                }
+            }
+
             // The suggestion may be incorrect, because some arms can have `cfg` attributes
             // evaluated into `false` and so such arms will be stripped before.
             let mut applicability = Applicability::MaybeIncorrect;
@@ -168,5 +178,21 @@ fn find_bool_lit(ex: &ExprKind<'_>) -> Option<bool> {
             }
         },
         _ => None,
+    }
+}
+
+fn is_some(path_kind: PatKind<'_>) -> bool {
+    match path_kind {
+        PatKind::TupleStruct(ref path_left, patterns, _) if is_wild(&patterns[0]) => match path_left {
+            QPath::Resolved(_, path) => {
+                let name = path.segments[0].ident;
+                if name.as_str() == "Some" {
+                    return true;
+                }
+                return false;
+            },
+            _ => false,
+        },
+        _ => false,
     }
 }

@@ -15,7 +15,7 @@ fn main() {
     let _y = matches!(x, Some(0));
 
     // Lint
-    let _w = matches!(x, Some(_));
+    let _w = x.is_some();
 
     // Turn into is_none
     let _z = x.is_none();
