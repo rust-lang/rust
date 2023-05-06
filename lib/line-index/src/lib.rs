@@ -184,7 +184,7 @@ impl LineIndex {
         if let Some(wide_chars) = self.line_wide_chars.get(&line_col.line) {
             for c in wide_chars.iter() {
                 if u32::from(c.end) <= line_col.col {
-                    col -= u32::from(c.len()) - c.wide_len(enc);
+                    col = col.checked_sub(u32::from(c.len()) - c.wide_len(enc))?;
                 } else {
                     // From here on, all utf16 characters come *after* the character we are mapping,
                     // so we don't need to take them into account
@@ -201,7 +201,7 @@ impl LineIndex {
         if let Some(wide_chars) = self.line_wide_chars.get(&line_col.line) {
             for c in wide_chars.iter() {
                 if col > u32::from(c.start) {
-                    col += u32::from(c.len()) - c.wide_len(enc) as u32;
+                    col = col.checked_add(u32::from(c.len()) - c.wide_len(enc))?;
                 } else {
                     // From here on, all utf16 characters come *after* the character we are mapping,
                     // so we don't need to take them into account
