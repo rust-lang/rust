@@ -29,8 +29,8 @@ fn test_every_chars() {
         assert_eq!(got_lin_col, lin_col);
 
         for (enc, col) in [(WideEncoding::Utf16, col_utf16), (WideEncoding::Utf32, col_utf32)] {
-            let wide_lin_col = line_index.to_wide(enc, lin_col);
-            let got_lin_col = line_index.to_utf8(enc, wide_lin_col);
+            let wide_lin_col = line_index.to_wide(enc, lin_col).unwrap();
+            let got_lin_col = line_index.to_utf8(enc, wide_lin_col).unwrap();
             assert_eq!(got_lin_col, lin_col);
             assert_eq!(wide_lin_col.col, col)
         }

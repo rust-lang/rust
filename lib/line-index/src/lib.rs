@@ -156,15 +156,15 @@ impl LineIndex {
     }
 
     /// Transforms the `LineCol` with the given `WideEncoding` into a `WideLineCol`.
-    pub fn to_wide(&self, enc: WideEncoding, line_col: LineCol) -> WideLineCol {
+    pub fn to_wide(&self, enc: WideEncoding, line_col: LineCol) -> Option<WideLineCol> {
         let col = self.utf8_to_wide_col(enc, line_col.line, line_col.col.into());
-        WideLineCol { line: line_col.line, col: col as u32 }
+        Some(WideLineCol { line: line_col.line, col: col as u32 })
     }
 
     /// Transforms the `WideLineCol` with the given `WideEncoding` into a `LineCol`.
-    pub fn to_utf8(&self, enc: WideEncoding, line_col: WideLineCol) -> LineCol {
+    pub fn to_utf8(&self, enc: WideEncoding, line_col: WideLineCol) -> Option<LineCol> {
         let col = self.wide_to_utf8_col(enc, line_col.line, line_col.col);
-        LineCol { line: line_col.line, col: col.into() }
+        Some(LineCol { line: line_col.line, col: col.into() })
     }
 
     /// Returns an iterator over the ranges for the lines.
