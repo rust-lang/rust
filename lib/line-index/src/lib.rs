@@ -144,12 +144,20 @@ impl LineIndex {
         self.try_line_col(offset).expect("invalid offset")
     }
 
-    /// Transforms the `TextSize` into a `LineCol`, or returns `None` if the `offset` was invalid.
+    /// Transforms the `TextSize` into a `LineCol`, or returns `None` if the `offset` was invalid,
+    /// e.g. if it points to the middle of a multi-byte character.
     pub fn try_line_col(&self, offset: TextSize) -> Option<LineCol> {
         let line = self.newlines.partition_point(|&it| it <= offset).checked_sub(1)?;
         let line_start_offset = self.newlines.get(line)?;
         let col = offset - line_start_offset;
-        Some(LineCol { line: line as u32, col: col.into() })
+        let ret = LineCol { line: line as u32, col: col.into() };
+        self.line_wide_chars
+            .get(&ret.line)
+            .into_iter()
+            .flat_map(|it| it.iter())
+            .find(|it| it.start < col && col < it.end)
+            .is_none()
+            .then_some(ret)
     }
 
     /// Transforms the `LineCol` into a `TextSize`.
