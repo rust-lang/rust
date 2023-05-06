@@ -1512,7 +1512,7 @@ impl<'a> IoSlice<'a> {
     #[unstable(feature = "io_slice_as_bytes", issue = "111277")]
     #[inline]
     #[must_use]
-    pub const fn as_bytes(&self) -> &'a [u8] {
+    pub const fn into_bytes(&self) -> &'a [u8] {
         self.0.as_slice()
     }
 }
