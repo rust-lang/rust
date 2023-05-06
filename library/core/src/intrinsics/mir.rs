@@ -15,7 +15,6 @@
 //! ```rust
 //! #![feature(core_intrinsics, custom_mir)]
 //!
-//! extern crate core;
 //! use core::intrinsics::mir::*;
 //!
 //! #[custom_mir(dialect = "built")]
@@ -65,7 +64,6 @@
 //! ```rust
 //! #![feature(core_intrinsics, custom_mir)]
 //!
-//! extern crate core;
 //! use core::intrinsics::mir::*;
 //!
 //! #[custom_mir(dialect = "built")]
@@ -317,7 +315,6 @@ define!(
     /// ```rust
     /// #![feature(custom_mir, core_intrinsics)]
     ///
-    /// extern crate core;
     /// use core::intrinsics::mir::*;
     ///
     /// #[custom_mir(dialect = "built")]

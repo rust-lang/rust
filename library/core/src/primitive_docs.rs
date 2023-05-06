@@ -555,6 +555,7 @@ impl Copy for () {
 ///
 /// ```
 /// # #![feature(rustc_private)]
+/// #[allow(unused_extern_crates)]
 /// extern crate libc;
 ///
 /// use std::mem;

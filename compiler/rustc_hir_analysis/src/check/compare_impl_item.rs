@@ -60,19 +60,21 @@ pub(super) fn compare_impl_method<'tcx>(
     };
 }
 
-/// This function is best explained by example. Consider a trait:
+/// This function is best explained by example. Consider a trait with it's implementation:
 ///
-///     trait Trait<'t, T> {
-///         // `trait_m`
-///         fn method<'a, M>(t: &'t T, m: &'a M) -> Self;
-///     }
+/// ```rust
+/// trait Trait<'t, T> {
+///     // `trait_m`
+///     fn method<'a, M>(t: &'t T, m: &'a M) -> Self;
+/// }
 ///
-/// And an impl:
+/// struct Foo;
 ///
-///     impl<'i, 'j, U> Trait<'j, &'i U> for Foo {
-///          // `impl_m`
-///          fn method<'b, N>(t: &'j &'i U, m: &'b N) -> Foo;
-///     }
+/// impl<'i, 'j, U> Trait<'j, &'i U> for Foo {
+///     // `impl_m`
+///     fn method<'b, N>(t: &'j &'i U, m: &'b N) -> Foo { Foo }
+/// }
+/// ```
 ///
 /// We wish to decide if those two method types are compatible.
 /// For this we have to show that, assuming the bounds of the impl hold, the
@@ -82,7 +84,9 @@ pub(super) fn compare_impl_method<'tcx>(
 /// type parameters to impl type parameters. This is taken from the
 /// impl trait reference:
 ///
-///     trait_to_impl_substs = {'t => 'j, T => &'i U, Self => Foo}
+/// ```rust,ignore (pseudo-Rust)
+/// trait_to_impl_substs = {'t => 'j, T => &'i U, Self => Foo}
+/// ```
 ///
 /// We create a mapping `dummy_substs` that maps from the impl type
 /// parameters to fresh types and regions. For type parameters,
@@ -91,13 +95,17 @@ pub(super) fn compare_impl_method<'tcx>(
 /// regions (Note: but only early-bound regions, i.e., those
 /// declared on the impl or used in type parameter bounds).
 ///
-///     impl_to_placeholder_substs = {'i => 'i0, U => U0, N => N0 }
+/// ```rust,ignore (pseudo-Rust)
+/// impl_to_placeholder_substs = {'i => 'i0, U => U0, N => N0 }
+/// ```
 ///
 /// Now we can apply `placeholder_substs` to the type of the impl method
 /// to yield a new function type in terms of our fresh, placeholder
 /// types:
 ///
-///     <'b> fn(t: &'i0 U0, m: &'b) -> Foo
+/// ```rust,ignore (pseudo-Rust)
+/// <'b> fn(t: &'i0 U0, m: &'b) -> Foo
+/// ```
 ///
 /// We now want to extract and substitute the type of the *trait*
 /// method and compare it. To do so, we must create a compound
@@ -106,11 +114,15 @@ pub(super) fn compare_impl_method<'tcx>(
 /// type parameters. We extend the mapping to also include
 /// the method parameters.
 ///
-///     trait_to_placeholder_substs = { T => &'i0 U0, Self => Foo, M => N0 }
+/// ```rust,ignore (pseudo-Rust)
+/// trait_to_placeholder_substs = { T => &'i0 U0, Self => Foo, M => N0 }
+/// ```
 ///
 /// Applying this to the trait method type yields:
 ///
-///     <'a> fn(t: &'i0 U0, m: &'a) -> Foo
+/// ```rust,ignore (pseudo-Rust)
+/// <'a> fn(t: &'i0 U0, m: &'a) -> Foo
+/// ```
 ///
 /// This type is also the same but the name of the bound region (`'a`
 /// vs `'b`). However, the normal subtyping rules on fn types handle
@@ -1163,7 +1175,7 @@ fn compare_self_type<'tcx>(
 /// as the number of generics on the respective assoc item in the trait definition.
 ///
 /// For example this code emits the errors in the following code:
-/// ```
+/// ```rust,compile_fail
 /// trait Trait {
 ///     fn foo();
 ///     type Assoc<T>;
@@ -1547,7 +1559,7 @@ fn compare_synthetic_generics<'tcx>(
 /// the same kind as the respective generic parameter in the trait def.
 ///
 /// For example all 4 errors in the following code are emitted here:
-/// ```
+/// ```rust,ignore (pseudo-Rust)
 /// trait Foo {
 ///     fn foo<const N: u8>();
 ///     type bar<const N: u8>;

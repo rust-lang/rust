@@ -333,6 +333,7 @@ declare_lint! {
     ///
     /// ```rust,compile_fail
     /// #![deny(unused_extern_crates)]
+    /// #![deny(warnings)]
     /// extern crate proc_macro;
     /// ```
     ///
@@ -1667,6 +1668,7 @@ declare_lint! {
     ///
     /// ```rust,compile_fail
     /// #![deny(elided_lifetimes_in_paths)]
+    /// #![deny(warnings)]
     /// struct Foo<'a> {
     ///     x: &'a u32
     /// }
@@ -2158,6 +2160,7 @@ declare_lint! {
     /// ```rust,compile_fail
     /// # #![allow(unused)]
     /// #![deny(explicit_outlives_requirements)]
+    /// #![deny(warnings)]
     ///
     /// struct SharedRef<'a, T>
     /// where

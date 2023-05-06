@@ -31,7 +31,7 @@ pub enum TypeAnnotationNeeded {
     /// ```
     E0282,
     /// An implementation cannot be chosen unambiguously because of lack of information.
-    /// ```compile_fail,E0283
+    /// ```compile_fail,E0790
     /// let _ = Default::default();
     /// ```
     E0283,
