@@ -2,6 +2,11 @@
 
 # See ./x for why these scripts exist.
 
+$ErrorActionPreference = "Stop"
+
+# syntax check
+Get-Command -syntax ${PSCommandPath}
+
 $xpy = Join-Path $PSScriptRoot x.py
 # Start-Process for some reason splits arguments on spaces. (Isn't powershell supposed to be simpler than bash?)
 # Double-quote all the arguments so it doesn't do that.
