@@ -33,16 +33,16 @@ fn reference_propagation<'a, T: Copy>(single: &'a T, mut multiple: &'a T) {
         let b = &a;
         let d = &b;
         let c = *b; // `b` is immutably borrowed, we know its value, but do not propagate it
-        opaque(());
+        opaque(d); // prevent `d` from being removed.
     }
 
     // Propagation through a borrowed reference.
     {
         let a = 5_usize;
         let mut b = &a;
-        let d = &mut b;
+        let d = &raw mut b;
         let c = *b; // `b` is mutably borrowed, we cannot know its value.
-        opaque(());
+        opaque(d); // prevent `d` from being removed.
     }
 
     // Propagation through an escaping borrow.
@@ -108,16 +108,16 @@ fn reference_propagation_mut<'a, T: Copy>(single: &'a mut T, mut multiple: &'a m
         let b = &mut a;
         let d = &b;
         let c = *b; // `b` is immutably borrowed, we know its value, but cannot be removed.
-        opaque(());
+        opaque(d); // prevent `d` from being removed.
     }
 
     // Propagation through a borrowed reference.
     {
         let mut a = 5_usize;
         let mut b = &mut a;
-        let d = &mut b;
+        let d = &raw mut b;
         let c = *b; // `b` is mutably borrowed, we cannot know its value.
-        opaque(());
+        opaque(d); // prevent `d` from being removed.
     }
 
     // Propagation through an escaping borrow.
@@ -183,16 +183,16 @@ fn reference_propagation_const_ptr<T: Copy>(single: *const T, mut multiple: *con
         let b = &raw const a;
         let d = &b;
         let c = *b; // `b` is immutably borrowed, we know its value, but cannot be removed.
-        opaque(());
+        opaque(d); // prevent `d` from being removed.
     }
 
     // Propagation through a borrowed reference.
     unsafe {
         let a = 5_usize;
         let mut b = &raw const a;
-        let d = &mut b;
+        let d = &raw mut b;
         let c = *b; // `b` is mutably borrowed, we cannot know its value.
-        opaque(());
+        opaque(d); // prevent `d` from being removed.
     }
 
     // Propagation through an escaping borrow.
@@ -267,16 +267,16 @@ fn reference_propagation_mut_ptr<T: Copy>(single: *mut T, mut multiple: *mut T) 
         let b = &raw mut a;
         let d = &b;
         let c = *b; // `b` is immutably borrowed, we know its value, but cannot be removed.
-        opaque(());
+        opaque(d); // prevent `d` from being removed.
     }
 
     // Propagation through a borrowed reference.
     unsafe {
         let mut a = 5_usize;
         let mut b = &raw mut a;
-        let d = &mut b;
+        let d = &raw mut b;
         let c = *b; // `b` is mutably borrowed, we cannot know its value.
-        opaque(());
+        opaque(d); // prevent `d` from being removed.
     }
 
     // Propagation through an escaping borrow.

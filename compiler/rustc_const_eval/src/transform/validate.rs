@@ -448,7 +448,15 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         };
         match debuginfo.value {
             VarDebugInfoContents::Const(_) => {}
-            VarDebugInfoContents::Place(place) => check_place(place),
+            VarDebugInfoContents::Place(place) => {
+                check_place(place);
+                if debuginfo.references != 0 && place.projection.last() == Some(&PlaceElem::Deref) {
+                    self.fail(
+                        START_BLOCK.start_location(),
+                        format!("debuginfo {:?}, has both ref and deref", debuginfo),
+                    );
+                }
+            }
             VarDebugInfoContents::Composite { ty, ref fragments } => {
                 for f in fragments {
                     check_place(f.contents);

@@ -1111,6 +1111,10 @@ pub struct VarDebugInfo<'tcx> {
     /// originated from (starting from 1). Note, if MIR inlining is enabled, then this is the
     /// argument number in the original function before it was inlined.
     pub argument_index: Option<u16>,
+
+    /// The data represents `name` dereferenced `references` times,
+    /// and not the direct value.
+    pub references: u8,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1639,18 +1643,7 @@ impl<'tcx> Place<'tcx> {
             return self;
         }
 
-        let mut v: Vec<PlaceElem<'tcx>>;
-
-        let new_projections = if self.projection.is_empty() {
-            more_projections
-        } else {
-            v = Vec::with_capacity(self.projection.len() + more_projections.len());
-            v.extend(self.projection);
-            v.extend(more_projections);
-            &v
-        };
-
-        Place { local: self.local, projection: tcx.mk_place_elems(new_projections) }
+        self.as_ref().project_deeper(more_projections, tcx)
     }
 }
 
@@ -1720,6 +1713,27 @@ impl<'tcx> PlaceRef<'tcx> {
             let base = PlaceRef { local: self.local, projection: &self.projection[..i] };
             (base, *proj)
         })
+    }
+
+    /// Generates a new place by appending `more_projections` to the existing ones
+    /// and interning the result.
+    pub fn project_deeper(
+        self,
+        more_projections: &[PlaceElem<'tcx>],
+        tcx: TyCtxt<'tcx>,
+    ) -> Place<'tcx> {
+        let mut v: Vec<PlaceElem<'tcx>>;
+
+        let new_projections = if self.projection.is_empty() {
+            more_projections
+        } else {
+            v = Vec::with_capacity(self.projection.len() + more_projections.len());
+            v.extend(self.projection);
+            v.extend(more_projections);
+            &v
+        };
+
+        Place { local: self.local, projection: tcx.mk_place_elems(new_projections) }
     }
 }
 

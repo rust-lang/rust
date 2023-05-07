@@ -263,6 +263,7 @@ fn compute_replacement<'tcx>(
         targets,
         storage_to_remove,
         allowed_replacements,
+        fully_replacable_locals,
         any_replacement: false,
     };
 
@@ -343,11 +344,29 @@ struct Replacer<'tcx> {
     storage_to_remove: BitSet<Local>,
     allowed_replacements: FxHashSet<(Local, Location)>,
     any_replacement: bool,
+    fully_replacable_locals: BitSet<Local>,
 }
 
 impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
+    }
+
+    fn visit_var_debug_info(&mut self, debuginfo: &mut VarDebugInfo<'tcx>) {
+        if let VarDebugInfoContents::Place(ref mut place) = debuginfo.value
+            && place.projection.is_empty()
+            && let Value::Pointer(target, _) = self.targets[place.local]
+            && target.projection.iter().all(|p| p.can_use_in_debuginfo())
+        {
+            if let Some((&PlaceElem::Deref, rest)) = target.projection.split_last() {
+                *place = Place::from(target.local).project_deeper(rest, self.tcx);
+                self.any_replacement = true;
+            } else if self.fully_replacable_locals.contains(place.local) {
+                debuginfo.references += 1;
+                *place = target;
+                self.any_replacement = true;
+            }
+        }
     }
 
     fn visit_place(&mut self, place: &mut Place<'tcx>, ctxt: PlaceContext, loc: Location) {

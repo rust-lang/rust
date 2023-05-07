@@ -13,11 +13,11 @@
       let _15: ();                         // in scope 0 at $DIR/reference_prop.rs:+17:9: +17:19
       let mut _16: ();                     // in scope 0 at $DIR/reference_prop.rs:+17:16: +17:18
       let _17: ();                         // in scope 0 at $DIR/reference_prop.rs:+21:5: +27:6
-      let _22: ();                         // in scope 0 at $DIR/reference_prop.rs:+26:9: +26:19
-      let mut _23: ();                     // in scope 0 at $DIR/reference_prop.rs:+26:16: +26:18
+      let _22: ();                         // in scope 0 at $DIR/reference_prop.rs:+26:9: +26:18
+      let mut _23: &*const usize;          // in scope 0 at $DIR/reference_prop.rs:+26:16: +26:17
       let _24: ();                         // in scope 0 at $DIR/reference_prop.rs:+30:5: +36:6
-      let _29: ();                         // in scope 0 at $DIR/reference_prop.rs:+35:9: +35:19
-      let mut _30: ();                     // in scope 0 at $DIR/reference_prop.rs:+35:16: +35:18
+      let _29: ();                         // in scope 0 at $DIR/reference_prop.rs:+35:9: +35:18
+      let mut _30: *mut *const usize;      // in scope 0 at $DIR/reference_prop.rs:+35:16: +35:17
       let _31: ();                         // in scope 0 at $DIR/reference_prop.rs:+39:5: +44:6
       let _35: ();                         // in scope 0 at $DIR/reference_prop.rs:+43:9: +43:18
       let mut _36: *const usize;           // in scope 0 at $DIR/reference_prop.rs:+43:16: +43:17
@@ -39,7 +39,8 @@
               debug a => _4;               // in scope 2 at $DIR/reference_prop.rs:+3:13: +3:14
               let _5: *const usize;        // in scope 2 at $DIR/reference_prop.rs:+4:13: +4:14
               scope 3 {
-                  debug b => _5;           // in scope 3 at $DIR/reference_prop.rs:+4:13: +4:14
+-                 debug b => _5;           // in scope 3 at $DIR/reference_prop.rs:+4:13: +4:14
++                 debug b => &_4;          // in scope 3 at $DIR/reference_prop.rs:+4:13: +4:14
                   let _6: usize;           // in scope 3 at $DIR/reference_prop.rs:+5:13: +5:14
                   scope 4 {
                       debug c => _6;       // in scope 4 at $DIR/reference_prop.rs:+5:13: +5:14
@@ -90,7 +91,7 @@
               let mut _26: *const usize;   // in scope 16 at $DIR/reference_prop.rs:+32:13: +32:18
               scope 17 {
                   debug b => _26;          // in scope 17 at $DIR/reference_prop.rs:+32:13: +32:18
-                  let _27: &mut *const usize; // in scope 17 at $DIR/reference_prop.rs:+33:13: +33:14
+                  let _27: *mut *const usize; // in scope 17 at $DIR/reference_prop.rs:+33:13: +33:14
                   scope 18 {
                       debug d => _27;      // in scope 18 at $DIR/reference_prop.rs:+33:13: +33:14
                       let _28: usize;      // in scope 18 at $DIR/reference_prop.rs:+34:13: +34:14
@@ -144,7 +145,8 @@
       scope 31 {
           let _47: *const T;               // in scope 31 at $DIR/reference_prop.rs:+61:13: +61:14
           scope 32 {
-              debug a => _47;              // in scope 32 at $DIR/reference_prop.rs:+61:13: +61:14
+-             debug a => _47;              // in scope 32 at $DIR/reference_prop.rs:+61:13: +61:14
++             debug a => _1;               // in scope 32 at $DIR/reference_prop.rs:+61:13: +61:14
               let _48: T;                  // in scope 32 at $DIR/reference_prop.rs:+62:13: +62:14
               scope 33 {
                   debug b => _48;          // in scope 33 at $DIR/reference_prop.rs:+62:13: +62:14
@@ -167,10 +169,12 @@
               debug a => _57;              // in scope 38 at $DIR/reference_prop.rs:+76:13: +76:14
               let _58: *const usize;       // in scope 38 at $DIR/reference_prop.rs:+77:13: +77:14
               scope 39 {
-                  debug b => _58;          // in scope 39 at $DIR/reference_prop.rs:+77:13: +77:14
+-                 debug b => _58;          // in scope 39 at $DIR/reference_prop.rs:+77:13: +77:14
++                 debug b => &_57;         // in scope 39 at $DIR/reference_prop.rs:+77:13: +77:14
                   let _59: *const usize;   // in scope 39 at $DIR/reference_prop.rs:+78:13: +78:14
                   scope 40 {
-                      debug c => _59;      // in scope 40 at $DIR/reference_prop.rs:+78:13: +78:14
+-                     debug c => _59;      // in scope 40 at $DIR/reference_prop.rs:+78:13: +78:14
++                     debug c => &_57;     // in scope 40 at $DIR/reference_prop.rs:+78:13: +78:14
                       let _60: usize;      // in scope 40 at $DIR/reference_prop.rs:+79:13: +79:14
                       scope 41 {
                           debug e => _60;  // in scope 41 at $DIR/reference_prop.rs:+79:13: +79:14
@@ -184,8 +188,8 @@
 -         StorageLive(_3);                 // scope 0 at $DIR/reference_prop.rs:+2:5: +7:6
           StorageLive(_4);                 // scope 1 at $DIR/reference_prop.rs:+3:13: +3:14
           _4 = const 5_usize;              // scope 1 at $DIR/reference_prop.rs:+3:17: +3:24
-          StorageLive(_5);                 // scope 2 at $DIR/reference_prop.rs:+4:13: +4:14
-          _5 = &raw const _4;              // scope 2 at $DIR/reference_prop.rs:+4:17: +4:29
+-         StorageLive(_5);                 // scope 2 at $DIR/reference_prop.rs:+4:13: +4:14
+-         _5 = &raw const _4;              // scope 2 at $DIR/reference_prop.rs:+4:17: +4:29
           StorageLive(_6);                 // scope 3 at $DIR/reference_prop.rs:+5:13: +5:14
 -         _6 = (*_5);                      // scope 3 at $DIR/reference_prop.rs:+5:17: +5:19
 +         _6 = _4;                         // scope 3 at $DIR/reference_prop.rs:+5:17: +5:19
@@ -203,7 +207,7 @@
           StorageDead(_7);                 // scope 4 at $DIR/reference_prop.rs:+6:19: +6:20
 -         _3 = const ();                   // scope 1 at $DIR/reference_prop.rs:+2:5: +7:6
           StorageDead(_6);                 // scope 3 at $DIR/reference_prop.rs:+7:5: +7:6
-          StorageDead(_5);                 // scope 2 at $DIR/reference_prop.rs:+7:5: +7:6
+-         StorageDead(_5);                 // scope 2 at $DIR/reference_prop.rs:+7:5: +7:6
           StorageDead(_4);                 // scope 1 at $DIR/reference_prop.rs:+7:5: +7:6
 -         StorageDead(_3);                 // scope 0 at $DIR/reference_prop.rs:+7:5: +7:6
 -         StorageLive(_9);                 // scope 0 at $DIR/reference_prop.rs:+10:5: +18:6
@@ -246,18 +250,18 @@
           _20 = &_19;                      // scope 12 at $DIR/reference_prop.rs:+24:17: +24:19
           StorageLive(_21);                // scope 13 at $DIR/reference_prop.rs:+25:13: +25:14
           _21 = (*_19);                    // scope 13 at $DIR/reference_prop.rs:+25:17: +25:19
-          StorageLive(_22);                // scope 14 at $DIR/reference_prop.rs:+26:9: +26:19
-          StorageLive(_23);                // scope 14 at $DIR/reference_prop.rs:+26:16: +26:18
-          _23 = ();                        // scope 14 at $DIR/reference_prop.rs:+26:16: +26:18
-          _22 = opaque::<()>(move _23) -> bb3; // scope 14 at $DIR/reference_prop.rs:+26:9: +26:19
+          StorageLive(_22);                // scope 14 at $DIR/reference_prop.rs:+26:9: +26:18
+          StorageLive(_23);                // scope 14 at $DIR/reference_prop.rs:+26:16: +26:17
+          _23 = _20;                       // scope 14 at $DIR/reference_prop.rs:+26:16: +26:17
+          _22 = opaque::<&*const usize>(move _23) -> bb3; // scope 14 at $DIR/reference_prop.rs:+26:9: +26:18
                                            // mir::Constant
                                            // + span: $DIR/reference_prop.rs:186:9: 186:15
-                                           // + literal: Const { ty: fn(()) {opaque::<()>}, val: Value(<ZST>) }
+                                           // + literal: Const { ty: fn(&*const usize) {opaque::<&*const usize>}, val: Value(<ZST>) }
       }
   
       bb3: {
-          StorageDead(_23);                // scope 14 at $DIR/reference_prop.rs:+26:18: +26:19
-          StorageDead(_22);                // scope 14 at $DIR/reference_prop.rs:+26:19: +26:20
+          StorageDead(_23);                // scope 14 at $DIR/reference_prop.rs:+26:17: +26:18
+          StorageDead(_22);                // scope 14 at $DIR/reference_prop.rs:+26:18: +26:19
 -         _17 = const ();                  // scope 10 at $DIR/reference_prop.rs:+21:5: +27:6
           StorageDead(_21);                // scope 13 at $DIR/reference_prop.rs:+27:5: +27:6
           StorageDead(_20);                // scope 12 at $DIR/reference_prop.rs:+27:5: +27:6
@@ -270,21 +274,21 @@
           StorageLive(_26);                // scope 16 at $DIR/reference_prop.rs:+32:13: +32:18
           _26 = &raw const _25;            // scope 16 at $DIR/reference_prop.rs:+32:21: +32:33
           StorageLive(_27);                // scope 17 at $DIR/reference_prop.rs:+33:13: +33:14
-          _27 = &mut _26;                  // scope 17 at $DIR/reference_prop.rs:+33:17: +33:23
+          _27 = &raw mut _26;              // scope 17 at $DIR/reference_prop.rs:+33:17: +33:27
           StorageLive(_28);                // scope 18 at $DIR/reference_prop.rs:+34:13: +34:14
           _28 = (*_26);                    // scope 18 at $DIR/reference_prop.rs:+34:17: +34:19
-          StorageLive(_29);                // scope 19 at $DIR/reference_prop.rs:+35:9: +35:19
-          StorageLive(_30);                // scope 19 at $DIR/reference_prop.rs:+35:16: +35:18
-          _30 = ();                        // scope 19 at $DIR/reference_prop.rs:+35:16: +35:18
-          _29 = opaque::<()>(move _30) -> bb4; // scope 19 at $DIR/reference_prop.rs:+35:9: +35:19
+          StorageLive(_29);                // scope 19 at $DIR/reference_prop.rs:+35:9: +35:18
+          StorageLive(_30);                // scope 19 at $DIR/reference_prop.rs:+35:16: +35:17
+          _30 = _27;                       // scope 19 at $DIR/reference_prop.rs:+35:16: +35:17
+          _29 = opaque::<*mut *const usize>(move _30) -> bb4; // scope 19 at $DIR/reference_prop.rs:+35:9: +35:18
                                            // mir::Constant
                                            // + span: $DIR/reference_prop.rs:195:9: 195:15
-                                           // + literal: Const { ty: fn(()) {opaque::<()>}, val: Value(<ZST>) }
+                                           // + literal: Const { ty: fn(*mut *const usize) {opaque::<*mut *const usize>}, val: Value(<ZST>) }
       }
   
       bb4: {
-          StorageDead(_30);                // scope 19 at $DIR/reference_prop.rs:+35:18: +35:19
-          StorageDead(_29);                // scope 19 at $DIR/reference_prop.rs:+35:19: +35:20
+          StorageDead(_30);                // scope 19 at $DIR/reference_prop.rs:+35:17: +35:18
+          StorageDead(_29);                // scope 19 at $DIR/reference_prop.rs:+35:18: +35:19
 -         _24 = const ();                  // scope 15 at $DIR/reference_prop.rs:+30:5: +36:6
           StorageDead(_28);                // scope 18 at $DIR/reference_prop.rs:+36:5: +36:6
           StorageDead(_27);                // scope 17 at $DIR/reference_prop.rs:+36:5: +36:6
@@ -352,8 +356,8 @@
           StorageDead(_38);                // scope 24 at $DIR/reference_prop.rs:+57:5: +57:6
 -         StorageDead(_37);                // scope 0 at $DIR/reference_prop.rs:+57:5: +57:6
 -         StorageLive(_46);                // scope 0 at $DIR/reference_prop.rs:+60:5: +64:6
-          StorageLive(_47);                // scope 31 at $DIR/reference_prop.rs:+61:13: +61:14
-          _47 = &raw const (*_1);          // scope 31 at $DIR/reference_prop.rs:+61:17: +61:35
+-         StorageLive(_47);                // scope 31 at $DIR/reference_prop.rs:+61:13: +61:14
+-         _47 = &raw const (*_1);          // scope 31 at $DIR/reference_prop.rs:+61:17: +61:35
           StorageLive(_48);                // scope 32 at $DIR/reference_prop.rs:+62:13: +62:14
 -         _48 = (*_47);                    // scope 32 at $DIR/reference_prop.rs:+62:17: +62:19
 +         _48 = (*_1);                     // scope 32 at $DIR/reference_prop.rs:+62:17: +62:19
@@ -371,7 +375,7 @@
           StorageDead(_49);                // scope 33 at $DIR/reference_prop.rs:+63:19: +63:20
 -         _46 = const ();                  // scope 31 at $DIR/reference_prop.rs:+60:5: +64:6
           StorageDead(_48);                // scope 32 at $DIR/reference_prop.rs:+64:5: +64:6
-          StorageDead(_47);                // scope 31 at $DIR/reference_prop.rs:+64:5: +64:6
+-         StorageDead(_47);                // scope 31 at $DIR/reference_prop.rs:+64:5: +64:6
 -         StorageDead(_46);                // scope 0 at $DIR/reference_prop.rs:+64:5: +64:6
 -         StorageLive(_51);                // scope 0 at $DIR/reference_prop.rs:+67:5: +72:6
           StorageLive(_52);                // scope 34 at $DIR/reference_prop.rs:+68:13: +68:14
@@ -400,11 +404,10 @@
 -         StorageDead(_51);                // scope 0 at $DIR/reference_prop.rs:+72:5: +72:6
           StorageLive(_57);                // scope 37 at $DIR/reference_prop.rs:+76:13: +76:14
           _57 = const 13_usize;            // scope 37 at $DIR/reference_prop.rs:+76:17: +76:25
-          StorageLive(_58);                // scope 38 at $DIR/reference_prop.rs:+77:13: +77:14
-          _58 = &raw const _57;            // scope 38 at $DIR/reference_prop.rs:+77:17: +77:29
-          StorageLive(_59);                // scope 39 at $DIR/reference_prop.rs:+78:13: +78:14
+-         StorageLive(_58);                // scope 38 at $DIR/reference_prop.rs:+77:13: +77:14
+-         _58 = &raw const _57;            // scope 38 at $DIR/reference_prop.rs:+77:17: +77:29
+-         StorageLive(_59);                // scope 39 at $DIR/reference_prop.rs:+78:13: +78:14
 -         _59 = &raw const (*_58);         // scope 39 at $DIR/reference_prop.rs:+78:17: +78:30
-+         _59 = &raw const _57;            // scope 39 at $DIR/reference_prop.rs:+78:17: +78:30
           StorageLive(_60);                // scope 40 at $DIR/reference_prop.rs:+79:13: +79:14
 -         _60 = (*_59);                    // scope 40 at $DIR/reference_prop.rs:+79:17: +79:19
 +         _60 = _57;                       // scope 40 at $DIR/reference_prop.rs:+79:17: +79:19
@@ -422,8 +425,8 @@
           StorageDead(_61);                // scope 41 at $DIR/reference_prop.rs:+80:19: +80:20
           _0 = const ();                   // scope 37 at $DIR/reference_prop.rs:+75:5: +81:6
           StorageDead(_60);                // scope 40 at $DIR/reference_prop.rs:+81:5: +81:6
-          StorageDead(_59);                // scope 39 at $DIR/reference_prop.rs:+81:5: +81:6
-          StorageDead(_58);                // scope 38 at $DIR/reference_prop.rs:+81:5: +81:6
+-         StorageDead(_59);                // scope 39 at $DIR/reference_prop.rs:+81:5: +81:6
+-         StorageDead(_58);                // scope 38 at $DIR/reference_prop.rs:+81:5: +81:6
           StorageDead(_57);                // scope 37 at $DIR/reference_prop.rs:+81:5: +81:6
           return;                          // scope 0 at $DIR/reference_prop.rs:+82:2: +82:2
       }
