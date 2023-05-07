@@ -1,5 +1,5 @@
 use super::operand::OperandRef;
-use super::operand::OperandValue::{Immediate, Pair, Ref};
+use super::operand::OperandValue::{Immediate, Pair, Ref, ZeroSized};
 use super::place::PlaceRef;
 use super::{CachedLlbb, FunctionCx, LocalRef};
 
@@ -427,6 +427,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         assert_eq!(align, op.layout.align.abi, "return place is unaligned!");
                         llval
                     }
+                    ZeroSized => bug!("ZST return value shouldn't be in PassMode::Cast"),
                 };
                 let ty = bx.cast_backend_type(cast_ty);
                 let addr = bx.pointercast(llslot, bx.type_ptr_to(ty));
@@ -1386,6 +1387,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     (llval, align, true)
                 }
             }
+            ZeroSized => match arg.mode {
+                PassMode::Indirect { .. } => {
+                    // Though `extern "Rust"` doesn't pass ZSTs, some ABIs pass
+                    // a pointer for `repr(C)` structs even when empty, so get
+                    // one from an `alloca` (which can be left uninitialized).
+                    let scratch = PlaceRef::alloca(bx, arg.layout);
+                    (scratch.llval, scratch.align, true)
+                }
+                _ => bug!("ZST {op:?} wasn't ignored, but was passed with abi {arg:?}"),
+            },
         };
 
         if by_ref && !arg.is_indirect() {

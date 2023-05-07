@@ -45,6 +45,14 @@ pub enum OperandValue<V> {
     /// as returned by [`LayoutTypeMethods::scalar_pair_element_backend_type`]
     /// with `immediate: true`.
     Pair(V, V),
+    /// A value taking no bytes, and which therefore needs no LLVM value at all.
+    ///
+    /// If you ever need a `V` to pass to something, get a fresh poison value
+    /// from [`ConstMethods::const_poison`].
+    ///
+    /// An `OperandValue` *must* be this variant for any type for which
+    /// `is_zst` on its `Layout` returns `true`.
+    ZeroSized,
 }
 
 /// An `OperandRef` is an "SSA" reference to a Rust value, along with
@@ -71,15 +79,9 @@ impl<V: CodegenObject> fmt::Debug for OperandRef<'_, V> {
 }
 
 impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
-    pub fn new_zst<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
-        bx: &mut Bx,
-        layout: TyAndLayout<'tcx>,
-    ) -> OperandRef<'tcx, V> {
+    pub fn zero_sized(layout: TyAndLayout<'tcx>) -> OperandRef<'tcx, V> {
         assert!(layout.is_zst());
-        OperandRef {
-            val: OperandValue::Immediate(bx.const_poison(bx.immediate_backend_type(layout))),
-            layout,
-        }
+        OperandRef { val: OperandValue::ZeroSized, layout }
     }
 
     pub fn from_const<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
@@ -97,7 +99,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 let llval = bx.scalar_to_backend(x, scalar, bx.immediate_backend_type(layout));
                 OperandValue::Immediate(llval)
             }
-            ConstValue::ZeroSized => return OperandRef::new_zst(bx, layout),
+            ConstValue::ZeroSized => return OperandRef::zero_sized(layout),
             ConstValue::Slice { data, start, end } => {
                 let Abi::ScalarPair(a_scalar, _) = layout.abi else {
                     bug!("from_const: invalid ScalarPair layout: {:#?}", layout);
@@ -178,7 +180,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 );
                 OperandRef { val: OperandValue::Pair(a_val, b_val), layout }
             }
-            _ if layout.is_zst() => OperandRef::new_zst(bx, layout),
+            _ if layout.is_zst() => OperandRef::zero_sized(layout),
             _ => {
                 // Neither a scalar nor scalar pair. Load from a place
                 let init = bx.const_data_from_alloc(alloc);
@@ -216,6 +218,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             OperandValue::Immediate(llptr) => (llptr, None),
             OperandValue::Pair(llptr, llextra) => (llptr, Some(llextra)),
             OperandValue::Ref(..) => bug!("Deref of by-Ref operand {:?}", self),
+            OperandValue::ZeroSized => bug!("Deref of ZST operand {:?}", self),
         };
         let layout = cx.layout_of(projected_ty);
         PlaceRef { llval: llptr, llextra, layout, align: layout.align.abi }
@@ -273,9 +276,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
 
         let mut val = match (self.val, self.layout.abi) {
             // If the field is ZST, it has no data.
-            _ if field.is_zst() => {
-                return OperandRef::new_zst(bx, field);
-            }
+            _ if field.is_zst() => OperandValue::ZeroSized,
 
             // Newtype of a scalar, scalar pair or vector.
             (OperandValue::Immediate(_) | OperandValue::Pair(..), _)
@@ -306,6 +307,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         };
 
         match (&mut val, field.abi) {
+            (OperandValue::ZeroSized, _) => {}
             (
                 OperandValue::Immediate(llval),
                 Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. },
@@ -359,8 +361,8 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
 impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
     /// Returns an `OperandValue` that's generally UB to use in any way.
     ///
-    /// Depending on the `layout`, returns an `Immediate` or `Pair` containing
-    /// poison value(s), or a `Ref` containing a poison pointer.
+    /// Depending on the `layout`, returns `ZeroSized` for ZSTs, an `Immediate` or
+    /// `Pair` containing poison value(s), or a `Ref` containing a poison pointer.
     ///
     /// Supports sized types only.
     pub fn poison<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
@@ -368,7 +370,9 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
         layout: TyAndLayout<'tcx>,
     ) -> OperandValue<V> {
         assert!(layout.is_sized());
-        if bx.cx().is_backend_immediate(layout) {
+        if layout.is_zst() {
+            OperandValue::ZeroSized
+        } else if bx.cx().is_backend_immediate(layout) {
             let ibty = bx.cx().immediate_backend_type(layout);
             OperandValue::Immediate(bx.const_poison(ibty))
         } else if bx.cx().is_backend_scalar_pair(layout) {
@@ -421,12 +425,11 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
         flags: MemFlags,
     ) {
         debug!("OperandRef::store: operand={:?}, dest={:?}", self, dest);
-        // Avoid generating stores of zero-sized values, because the only way to have a zero-sized
-        // value is through `undef`, and store itself is useless.
-        if dest.layout.is_zst() {
-            return;
-        }
         match self {
+            OperandValue::ZeroSized => {
+                // Avoid generating stores of zero-sized values, because the only way to have a zero-sized
+                // value is through `undef`/`poison`, and the store itself is useless.
+            }
             OperandValue::Ref(r, None, source_align) => {
                 if flags.contains(MemFlags::NONTEMPORAL) {
                     // HACK(nox): This is inefficient but there is no nontemporal memcpy.
@@ -527,7 +530,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             // checks in `codegen_consume` and `extract_field`.
                             let elem = o.layout.field(bx.cx(), 0);
                             if elem.is_zst() {
-                                o = OperandRef::new_zst(bx, elem);
+                                o = OperandRef::zero_sized(elem);
                             } else {
                                 return None;
                             }
@@ -561,7 +564,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // ZSTs don't require any actual memory access.
         if layout.is_zst() {
-            return OperandRef::new_zst(bx, layout);
+            return OperandRef::zero_sized(layout);
         }
 
         if let Some(o) = self.maybe_codegen_consume_direct(bx, place_ref) {
