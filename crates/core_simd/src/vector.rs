@@ -122,6 +122,7 @@ where
     /// let v = u32x4::splat(0);
     /// assert_eq!(v.lanes(), 4);
     /// ```
+    #[inline]
     pub const fn lanes(&self) -> usize {
         Self::LANES
     }
@@ -136,6 +137,7 @@ where
     /// let v = u32x4::splat(8);
     /// assert_eq!(v.as_array(), &[8, 8, 8, 8]);
     /// ```
+    #[inline]
     pub fn splat(value: T) -> Self {
         // This is preferred over `[value; N]`, since it's explicitly a splat:
         // https://github.com/rust-lang/rust/issues/97804
@@ -156,6 +158,7 @@ where
     /// let v: u64x4 = Simd::from_array([0, 1, 2, 3]);
     /// assert_eq!(v.as_array(), &[0, 1, 2, 3]);
     /// ```
+    #[inline]
     pub const fn as_array(&self) -> &[T; N] {
         // SAFETY: `Simd<T, N>` is just an overaligned `[T; N]` with
         // potential padding at the end, so pointer casting to a
@@ -167,6 +170,7 @@ where
     }
 
     /// Returns a mutable array reference containing the entire SIMD vector.
+    #[inline]
     pub fn as_mut_array(&mut self) -> &mut [T; N] {
         // SAFETY: `Simd<T, N>` is just an overaligned `[T; N]` with
         // potential padding at the end, so pointer casting to a
@@ -184,6 +188,7 @@ where
     ///
     /// # Safety
     /// Reading `ptr` must be safe, as if by `<*const [T; N]>::read_unaligned`.
+    #[inline]
     const unsafe fn load(ptr: *const [T; N]) -> Self {
         // There are potentially simpler ways to write this function, but this should result in
         // LLVM `load <N x T>`
@@ -204,6 +209,7 @@ where
     ///
     /// # Safety
     /// Writing to `ptr` must be safe, as if by `<*mut [T; N]>::write_unaligned`.
+    #[inline]
     const unsafe fn store(self, ptr: *mut [T; N]) {
         // There are potentially simpler ways to write this function, but this should result in
         // LLVM `store <N x T>`
@@ -216,6 +222,7 @@ where
     }
 
     /// Converts an array to a SIMD vector.
+    #[inline]
     pub const fn from_array(array: [T; N]) -> Self {
         // SAFETY: `&array` is safe to read.
         //
@@ -228,6 +235,7 @@ where
     }
 
     /// Converts a SIMD vector to an array.
+    #[inline]
     pub const fn to_array(self) -> [T; N] {
         let mut tmp = core::mem::MaybeUninit::uninit();
         // SAFETY: writing to `tmp` is safe and initializes it.
@@ -258,7 +266,8 @@ where
     /// let v = u32x4::from_slice(&source);
     /// assert_eq!(v.as_array(), &[1, 2, 3, 4]);
     /// ```
-    #[must_use]
+    #[inline]
+    #[track_caller]
     pub const fn from_slice(slice: &[T]) -> Self {
         assert!(
             slice.len() >= Self::LANES,
@@ -287,6 +296,8 @@ where
     /// v.copy_to_slice(&mut dest);
     /// assert_eq!(&dest, &[1, 2, 3, 4, 0, 0]);
     /// ```
+    #[inline]
+    #[track_caller]
     pub fn copy_to_slice(self, slice: &mut [T]) {
         assert!(
             slice.len() >= Self::LANES,
@@ -718,6 +729,7 @@ where
     LaneCount<N>: SupportedLaneCount,
     T: SimdElement,
 {
+    #[inline]
     fn clone(&self) -> Self {
         *self
     }
@@ -862,6 +874,7 @@ where
     LaneCount<N>: SupportedLaneCount,
     T: SimdElement,
 {
+    #[inline]
     fn from(array: [T; N]) -> Self {
         Self::from_array(array)
     }
@@ -872,6 +885,7 @@ where
     LaneCount<N>: SupportedLaneCount,
     T: SimdElement,
 {
+    #[inline]
     fn from(vector: Simd<T, N>) -> Self {
         vector.to_array()
     }
@@ -884,6 +898,7 @@ where
 {
     type Error = core::array::TryFromSliceError;
 
+    #[inline]
     fn try_from(slice: &[T]) -> Result<Self, core::array::TryFromSliceError> {
         Ok(Self::from_array(slice.try_into()?))
     }
@@ -896,6 +911,7 @@ where
 {
     type Error = core::array::TryFromSliceError;
 
+    #[inline]
     fn try_from(slice: &mut [T]) -> Result<Self, core::array::TryFromSliceError> {
         Ok(Self::from_array(slice.try_into()?))
     }
