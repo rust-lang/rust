@@ -44,15 +44,11 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
                                     debug ptr => _9;
                                     scope 16 (inlined ptr::mut_ptr::<impl *mut T>::is_null) {
                                         debug self => _9;
-                                        let mut _22: *mut u8;
                                         scope 17 {
                                             scope 18 (inlined ptr::mut_ptr::<impl *mut T>::is_null::runtime_impl) {
-                                                debug ptr => _22;
                                                 scope 19 (inlined ptr::mut_ptr::<impl *mut u8>::addr) {
-                                                    debug self => _22;
                                                     scope 20 {
                                                         scope 21 (inlined ptr::mut_ptr::<impl *mut u8>::cast::<()>) {
-                                                            debug self => _22;
                                                         }
                                                     }
                                                 }
@@ -120,10 +116,8 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         StorageLive(_9);
         _9 = _4 as *mut T (PtrToPtr);
         StorageLive(_10);
-        StorageLive(_22);
         _10 = _9 as *const T (Pointer(MutToConstPointer));
         _11 = NonNull::<T> { pointer: _10 };
-        StorageDead(_22);
         StorageDead(_10);
         StorageDead(_9);
         StorageLive(_12);

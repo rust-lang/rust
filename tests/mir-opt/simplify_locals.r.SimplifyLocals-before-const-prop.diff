@@ -3,11 +3,11 @@
   
   fn r() -> () {
       let mut _0: ();
-      let mut _1: i32;
+-     let mut _1: i32;
 -     let mut _2: &i32;
 -     let mut _3: &mut i32;
       scope 1 {
-          debug a => _1;
+-         debug a => _1;
           scope 2 {
               scope 3 {
               }
@@ -15,8 +15,8 @@
       }
   
       bb0: {
-          StorageLive(_1);
-          _1 = const 1_i32;
+-         StorageLive(_1);
+-         _1 = const 1_i32;
 -         StorageLive(_2);
 -         _2 = &_1;
 -         StorageDead(_2);
@@ -24,7 +24,7 @@
 -         _3 = &mut _1;
 -         StorageDead(_3);
           _0 = const ();
-          StorageDead(_1);
+-         StorageDead(_1);
           return;
       }
   }

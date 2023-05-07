@@ -54,15 +54,11 @@
 +                                                 debug ptr => _16;
 +                                                 scope 26 (inlined ptr::mut_ptr::<impl *mut u8>::is_null) {
 +                                                     debug self => _16;
-+                                                     let mut _20: *mut u8;
 +                                                     scope 27 {
 +                                                         scope 28 (inlined ptr::mut_ptr::<impl *mut T>::is_null::runtime_impl) {
-+                                                             debug ptr => _20;
 +                                                             scope 29 (inlined ptr::mut_ptr::<impl *mut u8>::addr) {
-+                                                                 debug self => _20;
 +                                                                 scope 30 {
 +                                                                     scope 31 (inlined ptr::mut_ptr::<impl *mut u8>::cast::<()>) {
-+                                                                         debug self => _20;
 +                                                                     }
 +                                                                 }
 +                                                             }
@@ -76,7 +72,7 @@
 +                             }
 +                             scope 32 (inlined NonNull::<u8>::as_ptr) {
 +                                 debug self => _15;
-+                                 let mut _21: *const u8;
++                                 let mut _20: *const u8;
 +                             }
 +                         }
 +                     }
@@ -163,16 +159,14 @@
 +         _16 = _17 as *mut u8 (PtrToPtr);
 +         StorageDead(_17);
 +         StorageLive(_19);
-+         StorageLive(_20);
 +         _19 = _16 as *const u8 (Pointer(MutToConstPointer));
 +         _15 = NonNull::<u8> { pointer: _19 };
-+         StorageDead(_20);
 +         StorageDead(_19);
 +         StorageDead(_16);
-+         StorageLive(_21);
-+         _21 = (_15.0: *const u8);
-+         _6 = move _21 as *mut u8 (PtrToPtr);
-+         StorageDead(_21);
++         StorageLive(_20);
++         _20 = (_15.0: *const u8);
++         _6 = move _20 as *mut u8 (PtrToPtr);
++         StorageDead(_20);
 +         StorageDead(_15);
 +         StorageDead(_9);
 +         StorageDead(_13);

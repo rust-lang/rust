@@ -4,7 +4,6 @@ fn process_void(_1: *const Void) -> () {
     debug input => _1;
     let mut _0: ();
     scope 1 {
-        debug _input => _1;
     }
     scope 2 {
     }

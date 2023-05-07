@@ -16,10 +16,8 @@
 -     let _11: ();
 -     let mut _12: !;
 +     let mut _4: bool;
-+     let _5: i32;
       scope 1 {
 -         debug temp => _6;
-+         debug temp => _5;
       }
   
       bb0: {
@@ -55,8 +53,7 @@
 -         StorageDead(_9);
 -         _4 = const ();
 -         StorageDead(_6);
-+         StorageLive(_5);
-          StorageDead(_5);
+-         StorageDead(_5);
 +         StorageDead(_4);
           goto -> bb1;
       }

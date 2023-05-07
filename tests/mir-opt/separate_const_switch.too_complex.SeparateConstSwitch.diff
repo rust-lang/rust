@@ -13,7 +13,6 @@
       let mut _8: isize;
       let _9: i32;
       let mut _10: i32;
-      let _11: usize;
       scope 1 {
           debug v => _4;
       }
@@ -24,7 +23,6 @@
           debug v => _9;
       }
       scope 4 {
-          debug r => _11;
       }
   
       bb0: {
@@ -55,10 +53,7 @@
       }
   
       bb5: {
-          StorageLive(_11);
-          _11 = ((_2 as Break).0: usize);
           _0 = Option::<i32>::None;
-          StorageDead(_11);
           goto -> bb7;
       }
   

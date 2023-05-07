@@ -1,5 +1,5 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-// compile-flags: -Zmir-enable-passes=-NormalizeArrayLen
+// compile-flags: -Zmir-enable-passes=-NormalizeArrayLen -C debuginfo=2
 // Check that we do not insert StorageDead at each target if StorageDead was never seen
 
 // EMIT_MIR issue_76432.test.SimplifyComparisonIntegral.diff

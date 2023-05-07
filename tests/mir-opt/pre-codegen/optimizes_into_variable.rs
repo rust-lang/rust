@@ -1,5 +1,5 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-// compile-flags: -C overflow-checks=on
+// compile-flags: -C overflow-checks=on -C debuginfo=2
 
 struct Point {
     x: u32,
