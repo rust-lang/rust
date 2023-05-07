@@ -163,18 +163,15 @@ fn compute_replacement<'tcx>(
     };
 
     let mut can_perform_opt = |target: Place<'tcx>, loc: Location| {
-        maybe_dead.seek_after_primary_effect(loc);
-        let maybe_dead = maybe_dead.contains(target.local);
-
         if target.projection.first() == Some(&PlaceElem::Deref) {
             // We are creating a reborrow. As `place.local` is a reference, removing the storage
             // statements should not make it much harder for LLVM to optimize.
-            if maybe_dead {
-                storage_to_remove.insert(target.local);
-            }
+            storage_to_remove.insert(target.local);
             true
         } else {
             // This is a proper dereference. We can only allow it if `target` is live.
+            maybe_dead.seek_after_primary_effect(loc);
+            let maybe_dead = maybe_dead.contains(target.local);
             !maybe_dead
         }
     };
