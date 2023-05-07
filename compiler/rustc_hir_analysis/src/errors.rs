@@ -6,7 +6,7 @@ use rustc_errors::{
     MultiSpan,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{self, print::TraitRefPrintOnlyTraitPath, Ty};
 use rustc_span::{symbol::Ident, Span, Symbol};
 
 #[derive(Diagnostic)]
@@ -512,8 +512,20 @@ pub(crate) struct ReturnTypeNotationEqualityBound {
 pub(crate) struct ReturnTypeNotationMissingMethod {
     #[primary_span]
     pub span: Span,
-    pub trait_name: Symbol,
+    pub ty_name: String,
     pub assoc_name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_return_type_notation_conflicting_bound)]
+#[note]
+pub(crate) struct ReturnTypeNotationConflictingBound<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub ty_name: String,
+    pub assoc_name: Symbol,
+    pub first_bound: ty::Binder<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
+    pub second_bound: ty::Binder<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
 }
 
 #[derive(Diagnostic)]

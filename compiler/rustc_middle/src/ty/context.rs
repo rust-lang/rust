@@ -1567,11 +1567,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Given the def_id of a Trait `trait_def_id` and the name of an associated item `assoc_name`
     /// returns true if the `trait_def_id` defines an associated item of name `assoc_name`.
-    pub fn trait_may_define_assoc_type(self, trait_def_id: DefId, assoc_name: Ident) -> bool {
+    pub fn trait_may_define_assoc_item(self, trait_def_id: DefId, assoc_name: Ident) -> bool {
         self.super_traits_of(trait_def_id).any(|trait_did| {
             self.associated_items(trait_did)
-                .find_by_name_and_kind(self, assoc_name, ty::AssocKind::Type, trait_did)
-                .is_some()
+                .filter_by_name_unhygienic(assoc_name.name)
+                .any(|item| self.hygienic_eq(assoc_name, item.ident(self), trait_did))
         })
     }
 
