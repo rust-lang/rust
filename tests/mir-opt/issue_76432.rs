@@ -1,4 +1,5 @@
 // skip-filecheck
+//@ compile-flags: -C debuginfo=full
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // Check that we do not insert StorageDead at each target if StorageDead was never seen
 

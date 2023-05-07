@@ -1,6 +1,6 @@
 // skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-//@ compile-flags: -C overflow-checks=on -Zdump-mir-exclude-alloc-bytes
+//@ compile-flags: -C overflow-checks=on -Zdump-mir-exclude-alloc-bytes -C debuginfo=full
 
 struct Point {
     x: u32,

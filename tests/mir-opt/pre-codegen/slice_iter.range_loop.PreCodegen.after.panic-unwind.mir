@@ -14,7 +14,6 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     let _16: ();
     scope 1 {
         debug ((iter: std::ops::Range<usize>).0: usize) => _4;
-        debug ((iter: std::ops::Range<usize>).1: usize) => _3;
         let _10: usize;
         scope 2 {
             debug i => _10;

@@ -10,7 +10,6 @@
       let _5: usize;
       let mut _6: isize;
       let _7: i32;
-      let _8: usize;
       scope 1 {
           debug v => _4;
       }
@@ -21,7 +20,6 @@
           debug v => _7;
       }
       scope 4 {
-          debug r => _8;
       }
   
       bb0: {
@@ -54,10 +52,7 @@
       }
   
       bb5: {
-          StorageLive(_8);
-          _8 = ((_2 as Break).0: usize);
           _0 = const Option::<i32>::None;
-          StorageDead(_8);
           goto -> bb7;
       }
   
