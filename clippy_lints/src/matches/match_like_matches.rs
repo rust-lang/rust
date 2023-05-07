@@ -183,15 +183,12 @@ fn find_bool_lit(ex: &ExprKind<'_>) -> Option<bool> {
 
 fn is_some(path_kind: PatKind<'_>) -> bool {
     match path_kind {
-        PatKind::TupleStruct(ref path_left, patterns, _) if is_wild(&patterns[0]) => match path_left {
-            QPath::Resolved(_, path) => {
-                let name = path.segments[0].ident;
-                if name.as_str() == "Some" {
-                    return true;
-                }
-                return false;
-            },
-            _ => false,
+        PatKind::TupleStruct(QPath::Resolved(_, path), patterns, _) if is_wild(&patterns[0]) => {
+            let name = path.segments[0].ident;
+            if name.as_str() == "Some" {
+                return true;
+            }
+            false
         },
         _ => false,
     }

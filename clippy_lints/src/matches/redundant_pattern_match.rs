@@ -188,132 +188,7 @@ fn find_sugg_for_if_let<'tcx>(
 pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op: &Expr<'_>, arms: &[Arm<'_>]) {
     if arms.len() == 2 {
         let node_pair = (&arms[0].pat.kind, &arms[1].pat.kind);
-        let found_good_method = match node_pair {
-            (
-                PatKind::TupleStruct(ref path_left, patterns_left, _),
-                PatKind::TupleStruct(ref path_right, patterns_right, _),
-            ) if patterns_left.len() == 1 && patterns_right.len() == 1 => {
-                if let (PatKind::Wild, PatKind::Wild) = (&patterns_left[0].kind, &patterns_right[0].kind) {
-                    find_good_method_for_match(
-                        cx,
-                        arms,
-                        path_left,
-                        path_right,
-                        Item::Lang(ResultOk),
-                        Item::Lang(ResultErr),
-                        "is_ok()",
-                        "is_err()",
-                    )
-                    .or_else(|| {
-                        find_good_method_for_match(
-                            cx,
-                            arms,
-                            path_left,
-                            path_right,
-                            Item::Diag(sym::IpAddr, sym!(V4)),
-                            Item::Diag(sym::IpAddr, sym!(V6)),
-                            "is_ipv4()",
-                            "is_ipv6()",
-                        )
-                    })
-                } else {
-                    None
-                }
-            },
-            (PatKind::TupleStruct(ref path_left, patterns, _), PatKind::Path(ref path_right))
-            | (PatKind::Path(ref path_left), PatKind::TupleStruct(ref path_right, patterns, _))
-                if patterns.len() == 1 =>
-            {
-                if let PatKind::Wild = patterns[0].kind {
-                    find_good_method_for_match(
-                        cx,
-                        arms,
-                        path_left,
-                        path_right,
-                        Item::Lang(OptionSome),
-                        Item::Lang(OptionNone),
-                        "is_some()",
-                        "is_none()",
-                    )
-                    .or_else(|| {
-                        find_good_method_for_match(
-                            cx,
-                            arms,
-                            path_left,
-                            path_right,
-                            Item::Lang(PollReady),
-                            Item::Lang(PollPending),
-                            "is_ready()",
-                            "is_pending()",
-                        )
-                    })
-                } else {
-                    None
-                }
-            },
-            (PatKind::TupleStruct(ref path_left, patterns, _), PatKind::Wild) if patterns.len() == 1 => {
-                if let PatKind::Wild = patterns[0].kind {
-                    let ident = match path_left {
-                        QPath::Resolved(_, path) => {
-                            let name = path.segments[0].ident;
-                            Some(name)
-                        },
-                        _ => None,
-                    };
-                    if let Some(name) = ident {
-                        match name.as_str() {
-                            "Ok" => find_good_method_for_matches_macro(
-                                cx,
-                                arms,
-                                path_left,
-                                Item::Lang(ResultOk),
-                                "is_ok()",
-                                "is_err()",
-                            ),
-                            "Some" => find_good_method_for_matches_macro(
-                                cx,
-                                arms,
-                                path_left,
-                                Item::Lang(OptionSome),
-                                "is_some()",
-                                "is_none()",
-                            ),
-                            _ => None,
-                        }
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            },
-            (PatKind::Path(ref path_left), PatKind::Wild) => {
-                let ident = match path_left {
-                    QPath::Resolved(_, path) => {
-                        let name = path.segments[0].ident;
-                        Some(name)
-                    },
-                    _ => None,
-                };
-
-                if let Some(name) = ident {
-                    match name.as_str() {
-                        "None" => find_good_method_for_matches_macro(
-                            cx,
-                            arms,
-                            path_left,
-                            Item::Lang(OptionNone),
-                            "is_none()",
-                            "is_some()",
-                        ),
-                        _ => None,
-                    }
-                } else {
-                    None
-                }
-            },
-            _ => None,
-        };
+        let found_good_method = found_good_method(cx, arms, node_pair);
 
         if let Some(good_method) = found_good_method {
             let span = expr.span.to(op.span);
@@ -337,6 +212,132 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op
             );
         }
     }
+}
+
+fn found_good_method<'a>(
+    cx: &LateContext<'_>,
+    arms: &[Arm<'_>],
+    node: (&PatKind<'_>, &PatKind<'_>),
+) -> Option<&'a str> {
+    match node {
+        (
+            PatKind::TupleStruct(ref path_left, patterns_left, _),
+            PatKind::TupleStruct(ref path_right, patterns_right, _),
+        ) if patterns_left.len() == 1 && patterns_right.len() == 1 => {
+            if let (PatKind::Wild, PatKind::Wild) = (&patterns_left[0].kind, &patterns_right[0].kind) {
+                find_good_method_for_match(
+                    cx,
+                    arms,
+                    path_left,
+                    path_right,
+                    Item::Lang(ResultOk),
+                    Item::Lang(ResultErr),
+                    "is_ok()",
+                    "is_err()",
+                )
+                .or_else(|| {
+                    find_good_method_for_match(
+                        cx,
+                        arms,
+                        path_left,
+                        path_right,
+                        Item::Diag(sym::IpAddr, sym!(V4)),
+                        Item::Diag(sym::IpAddr, sym!(V6)),
+                        "is_ipv4()",
+                        "is_ipv6()",
+                    )
+                })
+            } else {
+                None
+            }
+        },
+        (PatKind::TupleStruct(ref path_left, patterns, _), PatKind::Path(ref path_right))
+        | (PatKind::Path(ref path_left), PatKind::TupleStruct(ref path_right, patterns, _))
+            if patterns.len() == 1 =>
+        {
+            if let PatKind::Wild = patterns[0].kind {
+                find_good_method_for_match(
+                    cx,
+                    arms,
+                    path_left,
+                    path_right,
+                    Item::Lang(OptionSome),
+                    Item::Lang(OptionNone),
+                    "is_some()",
+                    "is_none()",
+                )
+                .or_else(|| {
+                    find_good_method_for_match(
+                        cx,
+                        arms,
+                        path_left,
+                        path_right,
+                        Item::Lang(PollReady),
+                        Item::Lang(PollPending),
+                        "is_ready()",
+                        "is_pending()",
+                    )
+                })
+            } else {
+                None
+            }
+        },
+        (PatKind::TupleStruct(ref path_left, patterns, _), PatKind::Wild) if patterns.len() == 1 => {
+            if let PatKind::Wild = patterns[0].kind {
+                get_good_method(cx, arms, path_left)
+            } else {
+                None
+            }
+        },
+        (PatKind::Path(ref path_left), PatKind::Wild) => {
+            if let Some(name) = get_ident(path_left) {
+                match name.as_str() {
+                    "None" => find_good_method_for_matches_macro(
+                        cx,
+                        arms,
+                        path_left,
+                        Item::Lang(OptionNone),
+                        "is_none()",
+                        "is_some()",
+                    ),
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        },
+        _ => None,
+    }
+}
+
+fn get_ident(path: &QPath<'_>) -> Option<rustc_span::symbol::Ident> {
+    match path {
+        QPath::Resolved(_, path) => {
+            let name = path.segments[0].ident;
+            Some(name)
+        },
+        _ => None,
+    }
+}
+
+fn get_good_method<'a>(cx: &LateContext<'_>, arms: &[Arm<'_>], path_left: &QPath<'_>) -> Option<&'a str> {
+    if let Some(name) = get_ident(path_left) {
+        return match name.as_str() {
+            "Ok" => {
+                find_good_method_for_matches_macro(cx, arms, path_left, Item::Lang(ResultOk), "is_ok()", "is_err()")
+            },
+            "Some" => find_good_method_for_matches_macro(
+                cx,
+                arms,
+                path_left,
+                Item::Lang(OptionSome),
+                "is_some()",
+                "is_none()",
+            ),
+            _ => None,
+        };
+    }
+    None
 }
 
 #[derive(Clone, Copy)]
@@ -406,7 +407,6 @@ fn find_good_method_for_match<'a>(
     }
 }
 
-#[expect(clippy::too_many_arguments)]
 fn find_good_method_for_matches_macro<'a>(
     cx: &LateContext<'_>,
     arms: &[Arm<'_>],
