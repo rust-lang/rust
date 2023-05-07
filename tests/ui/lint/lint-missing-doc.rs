@@ -3,6 +3,7 @@
 #![deny(missing_docs)]
 #![allow(dead_code)]
 #![feature(associated_type_defaults, extern_types)]
+#![feature(trait_alias)]
 
 //! Some garbage docs for the crate here
 #![doc="More garbage"]
@@ -201,5 +202,7 @@ extern "C" {
     pub type ExternTyUndocumented;
     //~^ ERROR: missing documentation for a foreign type
 }
+
+pub trait T = Sync; //~ ERROR: missing documentation for a trait alias
 
 fn main() {}

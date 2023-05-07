@@ -2,6 +2,7 @@ use super::place::PlaceRef;
 use super::{FunctionCx, LocalRef};
 
 use crate::base;
+use crate::common::TypeKind;
 use crate::glue;
 use crate::traits::*;
 use crate::MemFlags;
@@ -236,19 +237,47 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         };
 
         match (&mut val, field.abi) {
-            (OperandValue::Immediate(llval), _) => {
+            (
+                OperandValue::Immediate(llval),
+                Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. },
+            ) => {
                 // Bools in union fields needs to be truncated.
                 *llval = bx.to_immediate(*llval, field);
                 // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
-                *llval = bx.bitcast(*llval, bx.cx().immediate_backend_type(field));
+                let ty = bx.cx().immediate_backend_type(field);
+                if bx.type_kind(ty) == TypeKind::Pointer {
+                    *llval = bx.pointercast(*llval, ty);
+                }
             }
             (OperandValue::Pair(a, b), Abi::ScalarPair(a_abi, b_abi)) => {
                 // Bools in union fields needs to be truncated.
                 *a = bx.to_immediate_scalar(*a, a_abi);
                 *b = bx.to_immediate_scalar(*b, b_abi);
                 // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
-                *a = bx.bitcast(*a, bx.cx().scalar_pair_element_backend_type(field, 0, true));
-                *b = bx.bitcast(*b, bx.cx().scalar_pair_element_backend_type(field, 1, true));
+                let a_ty = bx.cx().scalar_pair_element_backend_type(field, 0, true);
+                let b_ty = bx.cx().scalar_pair_element_backend_type(field, 1, true);
+                if bx.type_kind(a_ty) == TypeKind::Pointer {
+                    *a = bx.pointercast(*a, a_ty);
+                }
+                if bx.type_kind(b_ty) == TypeKind::Pointer {
+                    *b = bx.pointercast(*b, b_ty);
+                }
+            }
+            // Newtype vector of array, e.g. #[repr(simd)] struct S([i32; 4]);
+            (OperandValue::Immediate(llval), Abi::Aggregate { sized: true }) => {
+                assert!(matches!(self.layout.abi, Abi::Vector { .. }));
+
+                let llty = bx.cx().backend_type(self.layout);
+                let llfield_ty = bx.cx().backend_type(field);
+
+                // Can't bitcast an aggregate, so round trip through memory.
+                let lltemp = bx.alloca(llfield_ty, field.align.abi);
+                let llptr = bx.pointercast(lltemp, bx.cx().type_ptr_to(llty));
+                bx.store(*llval, llptr, field.align.abi);
+                *llval = bx.load(llfield_ty, lltemp, field.align.abi);
+            }
+            (OperandValue::Immediate(_), Abi::Uninhabited | Abi::Aggregate { sized: false }) => {
+                bug!()
             }
             (OperandValue::Pair(..), _) => bug!(),
             (OperandValue::Ref(..), _) => bug!(),

@@ -1,7 +1,6 @@
 // See src/libstd/primitive_docs.rs for documentation.
 
 use crate::cmp::Ordering::{self, *};
-use crate::mem::transmute;
 
 // Recursive macro for implementing n-ary tuple functions and operations
 //
@@ -142,16 +141,13 @@ macro_rules! maybe_tuple_doc {
 #[inline]
 const fn ordering_is_some(c: Option<Ordering>, x: Ordering) -> bool {
     // FIXME: Just use `==` once that's const-stable on `Option`s.
-    // This isn't using `match` because that optimizes worse due to
-    // making a two-step check (`Some` *then* the inner value).
-
-    // SAFETY: There's no public guarantee for `Option<Ordering>`,
-    // but we're core so we know that it's definitely a byte.
-    unsafe {
-        let c: i8 = transmute(c);
-        let x: i8 = transmute(Some(x));
-        c == x
-    }
+    // This is mapping `None` to 2 and then doing the comparison afterwards
+    // because it optimizes better (`None::<Ordering>` is represented as 2).
+    x as i8
+        == match c {
+            Some(c) => c as i8,
+            None => 2,
+        }
 }
 
 // Constructs an expression that performs a lexical ordering using method `$rel`.

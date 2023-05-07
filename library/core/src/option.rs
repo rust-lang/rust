@@ -1641,10 +1641,8 @@ impl<T> Option<T> {
     where
         F: FnOnce() -> T,
     {
-        if let None = *self {
-            // the compiler isn't smart enough to know that we are not dropping a `T`
-            // here and wants us to ensure `T` can be dropped at compile time.
-            mem::forget(mem::replace(self, Some(f())))
+        if let None = self {
+            *self = Some(f());
         }
 
         // SAFETY: a `None` variant for `self` would have been replaced by a `Some`
