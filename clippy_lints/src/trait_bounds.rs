@@ -174,15 +174,11 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
             if let TyKind::TraitObject(bounds, ..) = mut_ty.ty.kind;
             if bounds.len() > 2;
             then {
-                let mut bounds_span = bounds[0].span;
-
-                for bound in bounds.iter().skip(1) {
-                    bounds_span = bounds_span.to(bound.span);
-                }
-
                 let mut seen_def_ids = FxHashSet::default();
                 let mut fixed_traits = Vec::new();
 
+                // Iterate the bounds and add them to our seen hash
+                // If we haven't yet seen it, add it to the fixed traits
                 for bound in bounds.iter() {
                     let Some(def_id) = bound.trait_ref.trait_def_id() else { continue; };
 
@@ -193,7 +189,15 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
                     }
                 }
 
+                // If the number added to fixed (which are not duplicates) isn't the same as the number found,
+                // there must be 1 or more duplicates
                 if bounds.len() != fixed_traits.len() {
+                    let mut bounds_span = bounds[0].span;
+
+                    for bound in bounds.iter().skip(1) {
+                        bounds_span = bounds_span.to(bound.span);
+                    }
+
                     let fixed_trait_snippet = fixed_traits
                         .iter()
                         .filter_map(|b| snippet_opt(cx, b.span))
