@@ -35,11 +35,10 @@ pub(super) fn print_body_hir(db: &dyn DefDatabase, body: &Body, owner: DefWithBo
         DefWithBodyId::VariantId(it) => {
             let src = it.parent.child_source(db);
             let variant = &src.value[it.local_id];
-            let name = match &variant.name() {
+            match &variant.name() {
                 Some(name) => name.to_string(),
                 None => "_".to_string(),
-            };
-            format!("{name}")
+            }
         }
     };
 
@@ -445,7 +444,7 @@ impl<'a> Printer<'a> {
     fn print_block(
         &mut self,
         label: Option<&str>,
-        statements: &Box<[Statement]>,
+        statements: &[Statement],
         tail: &Option<la_arena::Idx<Expr>>,
     ) {
         self.whitespace();
@@ -455,7 +454,7 @@ impl<'a> Printer<'a> {
         w!(self, "{{");
         if !statements.is_empty() || tail.is_some() {
             self.indented(|p| {
-                for stmt in &**statements {
+                for stmt in statements {
                     p.print_stmt(stmt);
                 }
                 if let Some(tail) = tail {

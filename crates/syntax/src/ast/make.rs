@@ -195,7 +195,7 @@ pub fn ty_alias(
         }
     }
 
-    s.push_str(";");
+    s.push(';');
     ast_from_text(&s)
 }
 
@@ -399,7 +399,7 @@ pub fn hacky_block_expr(
                     format_to!(buf, "    {t}\n")
                 } else if kind == SyntaxKind::WHITESPACE {
                     let content = t.text().trim_matches(|c| c != '\n');
-                    if content.len() >= 1 {
+                    if !content.is_empty() {
                         format_to!(buf, "{}", &content[1..])
                     }
                 }
