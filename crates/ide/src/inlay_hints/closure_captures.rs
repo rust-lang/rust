@@ -65,7 +65,7 @@ pub(super) fn hints(
                         hir::CaptureKind::MutableRef => "&mut ",
                         hir::CaptureKind::Move => "",
                     },
-                    local.name(sema.db)
+                    capture.display_place(sema.db)
                 ),
                 None,
                 source.name().and_then(|name| sema.original_range_opt(name.syntax())),
@@ -156,13 +156,12 @@ fn main() {
 // ^ )
         &mut baz;
     };
-    // FIXME: &mut qux should be &unique qux
     || {
 // ^ move
 // ^ (
 // ^ &mut baz
 // ^ , $
-// ^ &mut qux
+// ^ &mut *qux
 // ^ )
         baz = NonCopy;
         *qux = NonCopy;

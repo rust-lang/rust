@@ -3214,7 +3214,11 @@ impl Closure {
         let owner = db.lookup_intern_closure((self.id).into()).0;
         let infer = &db.infer(owner);
         let info = infer.closure_info(&self.id);
-        info.0.iter().cloned().map(|capture| ClosureCapture { owner, capture }).collect()
+        info.0
+            .iter()
+            .cloned()
+            .map(|capture| ClosureCapture { owner, closure: self.id, capture })
+            .collect()
     }
 
     pub fn fn_trait(&self, db: &dyn HirDatabase) -> FnTrait {
@@ -3228,6 +3232,7 @@ impl Closure {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ClosureCapture {
     owner: DefWithBodyId,
+    closure: ClosureId,
     capture: hir_ty::CapturedItem,
 }
 
@@ -3251,12 +3256,8 @@ impl ClosureCapture {
         }
     }
 
-    pub fn display_kind(&self) -> &'static str {
-        self.capture.display_kind()
-    }
-
-    pub fn display_place(&self, owner: ClosureId, db: &dyn HirDatabase) -> String {
-        self.capture.display_place(owner, db)
+    pub fn display_place(&self, db: &dyn HirDatabase) -> String {
+        self.capture.display_place(self.owner, db)
     }
 }
 

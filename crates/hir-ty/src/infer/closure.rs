@@ -170,23 +170,7 @@ impl CapturedItem {
         self.kind
     }
 
-    pub fn display_kind(&self) -> &'static str {
-        match self.kind {
-            CaptureKind::ByRef(k) => match k {
-                BorrowKind::Shared => "immutable borrow",
-                BorrowKind::Shallow => {
-                    never!("shallow borrow should not happen in closure captures");
-                    "shallow borrow"
-                },
-                BorrowKind::Unique => "unique immutable borrow ([read more](https://doc.rust-lang.org/stable/reference/types/closure.html#unique-immutable-borrows-in-captures))",
-                BorrowKind::Mut { .. } => "mutable borrow",
-            },
-            CaptureKind::ByValue => "move",
-        }
-    }
-
-    pub fn display_place(&self, owner: ClosureId, db: &dyn HirDatabase) -> String {
-        let owner = db.lookup_intern_closure(owner.into()).0;
+    pub fn display_place(&self, owner: DefWithBodyId, db: &dyn HirDatabase) -> String {
         let body = db.body(owner);
         let mut result = body[self.place.local].name.to_string();
         let mut field_need_paren = false;

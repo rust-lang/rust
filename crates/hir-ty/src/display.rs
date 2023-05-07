@@ -304,7 +304,6 @@ pub struct HirDisplayWrapper<'a, T> {
 pub enum ClosureStyle {
     /// `impl FnX(i32, i32) -> i32`, where `FnX` is the most special trait between `Fn`, `FnMut`, `FnOnce` that the
     /// closure implements. This is the default.
-    // FIXME: Allow rendering non capturing closures as plain function pointers?
     ImplFn,
     /// `|i32, i32| -> i32`
     RANotation,
