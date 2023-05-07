@@ -289,23 +289,7 @@ fn found_good_method<'a>(
                 None
             }
         },
-        (PatKind::Path(ref path_left), PatKind::Wild) => {
-            if let Some(name) = get_ident(path_left) {
-                match name.as_str() {
-                    "None" => find_good_method_for_matches_macro(
-                        cx,
-                        arms,
-                        path_left,
-                        Item::Lang(OptionNone),
-                        "is_none()",
-                        "is_some()",
-                    ),
-                    _ => None,
-                }
-            } else {
-                None
-            }
-        },
+        (PatKind::Path(ref path_left), PatKind::Wild) => get_good_method(cx, arms, path_left),
         _ => None,
     }
 }
@@ -333,6 +317,14 @@ fn get_good_method<'a>(cx: &LateContext<'_>, arms: &[Arm<'_>], path_left: &QPath
                 Item::Lang(OptionSome),
                 "is_some()",
                 "is_none()",
+            ),
+            "None" => find_good_method_for_matches_macro(
+                cx,
+                arms,
+                path_left,
+                Item::Lang(OptionNone),
+                "is_none()",
+                "is_some()",
             ),
             _ => None,
         };
