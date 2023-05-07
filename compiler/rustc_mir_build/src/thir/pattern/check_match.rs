@@ -334,9 +334,6 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
                     let refutable = !is_let_irrefutable(&mut ncx, local_lint_level, tpat);
                     Some((expr.span, refutable))
                 }
-                ExprKind::LogicalOp { op: LogicalOp::And, .. } => {
-                    bug!()
-                }
                 _ => None,
             }
         };

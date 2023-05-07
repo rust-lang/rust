@@ -349,7 +349,10 @@ fn link_rlib<'a>(
         let NativeLibKind::Static { bundle: None | Some(true), whole_archive } = lib.kind else {
             continue;
         };
-        if whole_archive == Some(true) && !codegen_results.crate_info.feature_packed_bundled_libs {
+        if whole_archive == Some(true)
+            && flavor == RlibFlavor::Normal
+            && !codegen_results.crate_info.feature_packed_bundled_libs
+        {
             sess.emit_err(errors::IncompatibleLinkingModifiers);
         }
         if flavor == RlibFlavor::Normal && let Some(filename) = lib.filename {
