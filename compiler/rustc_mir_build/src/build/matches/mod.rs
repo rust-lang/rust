@@ -157,7 +157,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// [ 0. Pre-match ]
     ///        |
     /// [ 1. Evaluate Scrutinee (expression being matched on) ]
-    /// [ (fake read of scrutinee) ]
+    /// [ (PlaceMention of scrutinee) ]
     ///        |
     /// [ 2. Decision tree -- check discriminants ] <--------+
     ///        |                                             |
@@ -184,7 +184,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// We generate MIR in the following steps:
     ///
-    /// 1. Evaluate the scrutinee and add the fake read of it ([Builder::lower_scrutinee]).
+    /// 1. Evaluate the scrutinee and add the PlaceMention of it ([Builder::lower_scrutinee]).
     /// 2. Create the decision tree ([Builder::lower_match_tree]).
     /// 3. Determine the fake borrows that are needed from the places that were
     ///    matched against and create the required temporaries for them
@@ -239,7 +239,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         )
     }
 
-    /// Evaluate the scrutinee and add the fake read of it.
+    /// Evaluate the scrutinee and add the PlaceMention for it.
     fn lower_scrutinee(
         &mut self,
         mut block: BasicBlock,
