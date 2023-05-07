@@ -241,11 +241,19 @@ pub trait ValueAnalysis<'tcx> {
 
     /// The effect of a successful function call return should not be
     /// applied here, see [`Analysis::apply_terminator_effect`].
-    fn handle_terminator(&self, terminator: &Terminator<'tcx>, state: &mut State<Self::Value>) {
+    fn handle_terminator<'mir>(
+        &self,
+        terminator: &'mir Terminator<'tcx>,
+        state: &mut State<Self::Value>,
+    ) -> TerminatorEdge<'mir, 'tcx> {
         self.super_terminator(terminator, state)
     }
 
-    fn super_terminator(&self, terminator: &Terminator<'tcx>, state: &mut State<Self::Value>) {
+    fn super_terminator<'mir>(
+        &self,
+        terminator: &'mir Terminator<'tcx>,
+        state: &mut State<Self::Value>,
+    ) -> TerminatorEdge<'mir, 'tcx> {
         match &terminator.kind {
             TerminatorKind::Call { .. } | TerminatorKind::InlineAsm { .. } => {
                 // Effect is applied by `handle_call_return`.
@@ -257,8 +265,10 @@ pub trait ValueAnalysis<'tcx> {
                 // They would have an effect, but are not allowed in this phase.
                 bug!("encountered disallowed terminator");
             }
+            TerminatorKind::SwitchInt { discr, targets } => {
+                return self.handle_switch_int(discr, targets, state);
+            }
             TerminatorKind::Goto { .. }
-            | TerminatorKind::SwitchInt { .. }
             | TerminatorKind::Resume
             | TerminatorKind::Terminate
             | TerminatorKind::Return
@@ -270,6 +280,7 @@ pub trait ValueAnalysis<'tcx> {
                 // These terminators have no effect on the analysis.
             }
         }
+        terminator.edges()
     }
 
     fn handle_call_return(
@@ -290,19 +301,22 @@ pub trait ValueAnalysis<'tcx> {
         })
     }
 
-    fn handle_switch_int(
+    fn handle_switch_int<'mir>(
         &self,
-        discr: &Operand<'tcx>,
-        apply_edge_effects: &mut impl SwitchIntEdgeEffects<State<Self::Value>>,
-    ) {
-        self.super_switch_int(discr, apply_edge_effects)
+        discr: &'mir Operand<'tcx>,
+        targets: &'mir SwitchTargets,
+        state: &mut State<Self::Value>,
+    ) -> TerminatorEdge<'mir, 'tcx> {
+        self.super_switch_int(discr, targets, state)
     }
 
-    fn super_switch_int(
+    fn super_switch_int<'mir>(
         &self,
-        _discr: &Operand<'tcx>,
-        _apply_edge_effects: &mut impl SwitchIntEdgeEffects<State<Self::Value>>,
-    ) {
+        discr: &'mir Operand<'tcx>,
+        targets: &'mir SwitchTargets,
+        _state: &mut State<Self::Value>,
+    ) -> TerminatorEdge<'mir, 'tcx> {
+        TerminatorEdge::SwitchInt { discr, targets }
     }
 
     fn wrap(self) -> ValueAnalysisWrapper<Self>
@@ -359,9 +373,10 @@ where
         _location: Location,
     ) -> TerminatorEdge<'mir, 'tcx> {
         if state.is_reachable() {
-            self.0.handle_terminator(terminator, state);
+            self.0.handle_terminator(terminator, state)
+        } else {
+            TerminatorEdge::None
         }
-        terminator.edges()
     }
 
     fn apply_call_return_effect(
@@ -378,11 +393,9 @@ where
     fn apply_switch_int_edge_effects(
         &mut self,
         _block: BasicBlock,
-        discr: &Operand<'tcx>,
-        apply_edge_effects: &mut impl SwitchIntEdgeEffects<Self::Domain>,
+        _discr: &Operand<'tcx>,
+        _apply_edge_effects: &mut impl SwitchIntEdgeEffects<Self::Domain>,
     ) {
-        // FIXME: Dataflow framework provides no access to current state here.
-        self.0.handle_switch_int(discr, apply_edge_effects)
     }
 }
 
