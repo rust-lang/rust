@@ -417,7 +417,7 @@ fn postfix_expr(
         allow_calls = true;
         block_like = BlockLike::NotBlock;
     }
-    return (lhs, block_like);
+    (lhs, block_like)
 }
 
 fn postfix_dot_expr<const FLOAT_RECOVERY: bool>(
