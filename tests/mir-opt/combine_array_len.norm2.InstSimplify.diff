@@ -1,5 +1,5 @@
-- // MIR for `norm2` before InstCombine
-+ // MIR for `norm2` after InstCombine
+- // MIR for `norm2` before InstSimplify
++ // MIR for `norm2` after InstSimplify
   
   fn norm2(_1: [f32; 2]) -> f32 {
       debug x => _1;                       // in scope 0 at $DIR/combine_array_len.rs:+0:10: +0:11

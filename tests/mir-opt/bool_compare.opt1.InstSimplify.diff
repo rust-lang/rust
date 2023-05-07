@@ -1,5 +1,5 @@
-- // MIR for `opt1` before InstCombine
-+ // MIR for `opt1` after InstCombine
+- // MIR for `opt1` before InstSimplify
++ // MIR for `opt1` after InstSimplify
   
   fn opt1(_1: bool) -> u32 {
       debug x => _1;                       // in scope 0 at $DIR/bool_compare.rs:+0:9: +0:10

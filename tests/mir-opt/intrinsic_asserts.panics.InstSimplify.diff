@@ -1,5 +1,5 @@
-- // MIR for `panics` before InstCombine
-+ // MIR for `panics` after InstCombine
+- // MIR for `panics` before InstSimplify
++ // MIR for `panics` after InstSimplify
   
   fn panics() -> () {
       let mut _0: ();                      // return place in scope 0 at $DIR/intrinsic_asserts.rs:+0:17: +0:17

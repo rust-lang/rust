@@ -73,7 +73,7 @@ mod ffi_unwind_calls;
 mod function_item_references;
 mod generator;
 mod inline;
-mod instcombine;
+mod instsimplify;
 mod large_enums;
 mod lower_intrinsics;
 mod lower_slice_len;
@@ -547,7 +547,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &match_branches::MatchBranchSimplification,
             // inst combine is after MatchBranchSimplification to clean up Ne(_1, false)
             &multiple_return_terminators::MultipleReturnTerminators,
-            &instcombine::InstCombine,
+            &instsimplify::InstSimplify,
             &separate_const_switch::SeparateConstSwitch,
             &simplify::SimplifyLocals::BeforeConstProp,
             &copy_prop::CopyProp,

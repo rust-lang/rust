@@ -1,5 +1,5 @@
-- // MIR for `f` before InstCombine
-+ // MIR for `f` after InstCombine
+- // MIR for `f` before InstSimplify
++ // MIR for `f` after InstSimplify
   
   fn f(_1: &T) -> *const T {
       debug a => _1;                       // in scope 0 at $DIR/issue_78192.rs:+0:13: +0:14

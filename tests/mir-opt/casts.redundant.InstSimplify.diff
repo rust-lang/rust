@@ -1,5 +1,5 @@
-- // MIR for `redundant` before InstCombine
-+ // MIR for `redundant` after InstCombine
+- // MIR for `redundant` before InstSimplify
++ // MIR for `redundant` after InstSimplify
   
   fn redundant(_1: *const &u8) -> *const &u8 {
       debug x => _1;                       // in scope 0 at $DIR/casts.rs:+0:30: +0:31

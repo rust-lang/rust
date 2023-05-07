@@ -1,5 +1,5 @@
-- // MIR for `removable` before InstCombine
-+ // MIR for `removable` after InstCombine
+- // MIR for `removable` before InstSimplify
++ // MIR for `removable` after InstSimplify
   
   fn removable() -> () {
       let mut _0: ();                      // return place in scope 0 at $DIR/intrinsic_asserts.rs:+0:20: +0:20

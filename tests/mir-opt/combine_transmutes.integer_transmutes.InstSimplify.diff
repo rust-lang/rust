@@ -1,5 +1,5 @@
-- // MIR for `integer_transmutes` before InstCombine
-+ // MIR for `integer_transmutes` after InstCombine
+- // MIR for `integer_transmutes` before InstSimplify
++ // MIR for `integer_transmutes` after InstSimplify
   
   fn integer_transmutes() -> () {
       let mut _0: ();                      // return place in scope 0 at $DIR/combine_transmutes.rs:+0:36: +0:36
