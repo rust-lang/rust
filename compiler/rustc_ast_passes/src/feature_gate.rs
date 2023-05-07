@@ -2,7 +2,7 @@ use rustc_ast as ast;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::{attr, AssocConstraint, AssocConstraintKind, NodeId};
 use rustc_ast::{PatKind, RangeEnd};
-use rustc_errors::{Applicability, StashKey};
+use rustc_errors::StashKey;
 use rustc_feature::{AttributeGate, BuiltinAttribute, Features, GateIssue, BUILTIN_ATTRIBUTE_MAP};
 use rustc_session::parse::{feature_err, feature_err_issue, feature_warn};
 use rustc_session::Session;
@@ -375,43 +375,13 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_stmt(&mut self, stmt: &'a ast::Stmt) {
-        if let ast::StmtKind::Semi(expr) = &stmt.kind
-            && let ast::ExprKind::Assign(lhs, _, _) = &expr.kind
-            && let ast::ExprKind::Type(..) = lhs.kind
-            && self.sess.parse_sess.span_diagnostic.err_count() == 0
-            && !self.features.type_ascription
-            && !lhs.span.allows_unstable(sym::type_ascription)
-        {
-            // When we encounter a statement of the form `foo: Ty = val;`, this will emit a type
-            // ascription error, but the likely intention was to write a `let` statement. (#78907).
-            feature_err(
-                &self.sess.parse_sess,
-                sym::type_ascription,
-                lhs.span,
-                "type ascription is experimental",
-            ).span_suggestion_verbose(
-                lhs.span.shrink_to_lo(),
-                "you might have meant to introduce a new binding",
-                "let ",
-                Applicability::MachineApplicable,
-            ).emit();
-        }
         visit::walk_stmt(self, stmt);
     }
 
     fn visit_expr(&mut self, e: &'a ast::Expr) {
         match e.kind {
             ast::ExprKind::Type(..) => {
-                if self.sess.parse_sess.span_diagnostic.err_count() == 0 {
-                    // To avoid noise about type ascription in common syntax errors,
-                    // only emit if it is the *only* error.
-                    gate_feature_post!(
-                        &self,
-                        type_ascription,
-                        e.span,
-                        "type ascription is experimental"
-                    );
-                } else {
+                if self.sess.parse_sess.span_diagnostic.err_count() > 0 {
                     // And if it isn't, cancel the early-pass warning.
                     if let Some(err) = self
                         .sess
@@ -629,7 +599,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     gate_all!(box_patterns, "box pattern syntax is experimental");
     gate_all!(exclusive_range_pattern, "exclusive range pattern syntax is experimental");
     gate_all!(try_blocks, "`try` blocks are unstable");
-    gate_all!(type_ascription, "type ascription is experimental");
 
     visit::walk_crate(&mut visitor, krate);
 }
