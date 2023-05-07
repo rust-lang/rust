@@ -955,7 +955,12 @@
                     "type": "boolean"
                 },
                 "rust-analyzer.hover.links.enable": {
-                    "markdownDescription": "Use markdown syntax for links in hover.",
+                    "markdownDescription": "Use markdown syntax for links on hover.",
+                    "default": true,
+                    "type": "boolean"
+                },
+                "rust-analyzer.hover.memoryLayout.enable": {
+                    "markdownDescription": "Whether to show memory layout data on hover.",
                     "default": true,
                     "type": "boolean"
                 },

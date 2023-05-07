@@ -313,8 +313,10 @@ config_data! {
         /// Whether to show keyword hover popups. Only applies when
         /// `#rust-analyzer.hover.documentation.enable#` is set.
         hover_documentation_keywords_enable: bool  = "true",
-        /// Use markdown syntax for links in hover.
+        /// Use markdown syntax for links on hover.
         hover_links_enable: bool = "true",
+        /// Whether to show memory layout data on hover.
+        hover_memoryLayout_enable: bool = "true",
 
         /// Whether to enforce the import granularity setting for all files. If set to false rust-analyzer will try to keep import styles consistent per file.
         imports_granularity_enforce: bool              = "false",
@@ -1472,6 +1474,7 @@ impl Config {
     pub fn hover(&self) -> HoverConfig {
         HoverConfig {
             links_in_hover: self.data.hover_links_enable,
+            memory_layout: self.data.hover_memoryLayout_enable,
             documentation: self.data.hover_documentation_enable,
             format: {
                 let is_markdown = try_or_def!(self

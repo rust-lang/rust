@@ -27,6 +27,7 @@ use crate::{
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HoverConfig {
     pub links_in_hover: bool,
+    pub memory_layout: bool,
     pub documentation: bool,
     pub keywords: bool,
     pub format: HoverDocFormat,
@@ -226,7 +227,7 @@ fn hover_simple(
                     return None;
                 }
                 let c = token.parent().and_then(|x| x.parent()).and_then(ast::ClosureExpr::cast)?;
-                render::closure_expr(sema, c)
+                render::closure_expr(sema, config, c)
             })
         });
 
