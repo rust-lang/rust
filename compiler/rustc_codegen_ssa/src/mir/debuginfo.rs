@@ -358,54 +358,56 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let vars = vars.iter().cloned().chain(fallback_var);
 
         for var in vars {
-            let Some(dbg_var) = var.dbg_var else { continue };
-            let Some(dbg_loc) = self.dbg_loc(var.source_info) else { continue };
+            self.debug_introduce_local_as_var(bx, local, base, var);
+        }
+    }
 
-            let DebugInfoOffset { direct_offset, indirect_offsets, result: _ } =
-                calculate_debuginfo_offset(bx, local, &var, base.layout);
+    fn debug_introduce_local_as_var(
+        &self,
+        bx: &mut Bx,
+        local: mir::Local,
+        base: PlaceRef<'tcx, Bx::Value>,
+        var: PerLocalVarDebugInfo<'tcx, Bx::DIVariable>,
+    ) {
+        let Some(dbg_var) = var.dbg_var else { return };
+        let Some(dbg_loc) = self.dbg_loc(var.source_info) else { return };
 
-            // When targeting MSVC, create extra allocas for arguments instead of pointing multiple
-            // dbg_var_addr() calls into the same alloca with offsets. MSVC uses CodeView records
-            // not DWARF and LLVM doesn't support translating the resulting
-            // [DW_OP_deref, DW_OP_plus_uconst, offset, DW_OP_deref] debug info to CodeView.
-            // Creating extra allocas on the stack makes the resulting debug info simple enough
-            // that LLVM can generate correct CodeView records and thus the values appear in the
-            // debugger. (#83709)
-            let should_create_individual_allocas = bx.cx().sess().target.is_like_msvc
-                && self.mir.local_kind(local) == mir::LocalKind::Arg
-                // LLVM can handle simple things but anything more complex than just a direct
-                // offset or one indirect offset of 0 is too complex for it to generate CV records
-                // correctly.
-                && (direct_offset != Size::ZERO
-                    || !matches!(&indirect_offsets[..], [Size::ZERO] | []));
+        let DebugInfoOffset { direct_offset, indirect_offsets, result: _ } =
+            calculate_debuginfo_offset(bx, local, &var, base.layout);
 
-            if should_create_individual_allocas {
-                let DebugInfoOffset { direct_offset: _, indirect_offsets: _, result: place } =
-                    calculate_debuginfo_offset(bx, local, &var, base);
+        // When targeting MSVC, create extra allocas for arguments instead of pointing multiple
+        // dbg_var_addr() calls into the same alloca with offsets. MSVC uses CodeView records
+        // not DWARF and LLVM doesn't support translating the resulting
+        // [DW_OP_deref, DW_OP_plus_uconst, offset, DW_OP_deref] debug info to CodeView.
+        // Creating extra allocas on the stack makes the resulting debug info simple enough
+        // that LLVM can generate correct CodeView records and thus the values appear in the
+        // debugger. (#83709)
+        let should_create_individual_allocas = bx.cx().sess().target.is_like_msvc
+            && self.mir.local_kind(local) == mir::LocalKind::Arg
+            // LLVM can handle simple things but anything more complex than just a direct
+            // offset or one indirect offset of 0 is too complex for it to generate CV records
+            // correctly.
+            && (direct_offset != Size::ZERO || !matches!(&indirect_offsets[..], [Size::ZERO] | []));
 
-                // Create a variable which will be a pointer to the actual value
-                let ptr_ty = bx
-                    .tcx()
-                    .mk_ptr(ty::TypeAndMut { mutbl: mir::Mutability::Mut, ty: place.layout.ty });
-                let ptr_layout = bx.layout_of(ptr_ty);
-                let alloca = PlaceRef::alloca(bx, ptr_layout);
-                bx.set_var_name(alloca.llval, &(var.name.to_string() + ".dbg.spill"));
+        if should_create_individual_allocas {
+            let DebugInfoOffset { direct_offset: _, indirect_offsets: _, result: place } =
+                calculate_debuginfo_offset(bx, local, &var, base);
 
-                // Write the pointer to the variable
-                bx.store(place.llval, alloca.llval, alloca.align);
+            // Create a variable which will be a pointer to the actual value
+            let ptr_ty = bx
+                .tcx()
+                .mk_ptr(ty::TypeAndMut { mutbl: mir::Mutability::Mut, ty: place.layout.ty });
+            let ptr_layout = bx.layout_of(ptr_ty);
+            let alloca = PlaceRef::alloca(bx, ptr_layout);
+            bx.set_var_name(alloca.llval, &(var.name.to_string() + ".dbg.spill"));
 
-                // Point the debug info to `*alloca` for the current variable
-                bx.dbg_var_addr(dbg_var, dbg_loc, alloca.llval, Size::ZERO, &[Size::ZERO], None);
-            } else {
-                bx.dbg_var_addr(
-                    dbg_var,
-                    dbg_loc,
-                    base.llval,
-                    direct_offset,
-                    &indirect_offsets,
-                    None,
-                );
-            }
+            // Write the pointer to the variable
+            bx.store(place.llval, alloca.llval, alloca.align);
+
+            // Point the debug info to `*alloca` for the current variable
+            bx.dbg_var_addr(dbg_var, dbg_loc, alloca.llval, Size::ZERO, &[Size::ZERO], None);
+        } else {
+            bx.dbg_var_addr(dbg_var, dbg_loc, base.llval, direct_offset, &indirect_offsets, None);
         }
     }
 
