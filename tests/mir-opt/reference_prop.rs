@@ -12,6 +12,7 @@ fn reference_propagation<'a, T: Copy>(single: &'a T, mut multiple: &'a T) {
         let a = 5_usize;
         let b = &a; // This borrow is only used once.
         let c = *b; // This should be optimized.
+        opaque(()); // We use opaque to separate cases into basic blocks in the MIR.
     }
 
     // Propagation through a two references.
@@ -22,6 +23,7 @@ fn reference_propagation<'a, T: Copy>(single: &'a T, mut multiple: &'a T) {
         b = &a2;
         // `b` is assigned twice, so we cannot propagate it.
         let c = *b;
+        opaque(());
     }
 
     // Propagation through a borrowed reference.
@@ -29,7 +31,8 @@ fn reference_propagation<'a, T: Copy>(single: &'a T, mut multiple: &'a T) {
         let a = 5_usize;
         let b = &a;
         let d = &b;
-        let c = *b; // `b` is immutably borrowed, we know its value, but cannot be removed.
+        let c = *b; // `b` is immutably borrowed, we know its value, but do not propagate it
+        opaque(());
     }
 
     // Propagation through a borrowed reference.
@@ -38,6 +41,7 @@ fn reference_propagation<'a, T: Copy>(single: &'a T, mut multiple: &'a T) {
         let mut b = &a;
         let d = &mut b;
         let c = *b; // `b` is mutably borrowed, we cannot know its value.
+        opaque(());
     }
 
     // Propagation through an escaping borrow.
@@ -45,7 +49,7 @@ fn reference_propagation<'a, T: Copy>(single: &'a T, mut multiple: &'a T) {
         let a = 7_usize;
         let b = &a;
         let c = *b;
-        opaque(b); // `b` escapes here, so we can only replace immutable borrow
+        opaque(b); // `b` escapes here, but we can still replace immutable borrow
     }
 
     // Propagation through a transitively escaping borrow.
@@ -65,6 +69,7 @@ fn reference_propagation<'a, T: Copy>(single: &'a T, mut multiple: &'a T) {
     {
         let a = &*single;
         let b = *a; // This should be optimized as `*single`.
+        opaque(());
     }
 
     // Propagation a reborrow of a mutated argument.
@@ -72,6 +77,7 @@ fn reference_propagation<'a, T: Copy>(single: &'a T, mut multiple: &'a T) {
         let a = &*multiple;
         multiple = &*single;
         let b = *a; // This should not be optimized.
+        opaque(());
     }
 }
 
@@ -81,6 +87,7 @@ fn reference_propagation_mut<'a, T: Copy>(single: &'a mut T, mut multiple: &'a m
         let mut a = 5_usize;
         let b = &mut a; // This borrow is only used once.
         let c = *b; // This should be optimized.
+        opaque(());
     }
 
     // Propagation through a two references.
@@ -91,6 +98,7 @@ fn reference_propagation_mut<'a, T: Copy>(single: &'a mut T, mut multiple: &'a m
         b = &mut a2;
         // `b` is assigned twice, so we cannot propagate it.
         let c = *b;
+        opaque(());
     }
 
     // Propagation through a borrowed reference.
@@ -99,6 +107,7 @@ fn reference_propagation_mut<'a, T: Copy>(single: &'a mut T, mut multiple: &'a m
         let b = &mut a;
         let d = &b;
         let c = *b; // `b` is immutably borrowed, we know its value, but cannot be removed.
+        opaque(());
     }
 
     // Propagation through a borrowed reference.
@@ -107,6 +116,7 @@ fn reference_propagation_mut<'a, T: Copy>(single: &'a mut T, mut multiple: &'a m
         let mut b = &mut a;
         let d = &mut b;
         let c = *b; // `b` is mutably borrowed, we cannot know its value.
+        opaque(());
     }
 
     // Propagation through an escaping borrow.
@@ -134,6 +144,7 @@ fn reference_propagation_mut<'a, T: Copy>(single: &'a mut T, mut multiple: &'a m
     {
         let a = &mut *single;
         let b = *a; // This should be optimized as `*single`.
+        opaque(());
     }
 
     // Propagation a reborrow of a mutated argument.
@@ -141,6 +152,7 @@ fn reference_propagation_mut<'a, T: Copy>(single: &'a mut T, mut multiple: &'a m
         let a = &mut *multiple;
         multiple = &mut *single;
         let b = *a; // This should not be optimized.
+        opaque(());
     }
 }
 
@@ -150,6 +162,7 @@ fn reference_propagation_const_ptr<T: Copy>(single: *const T, mut multiple: *con
         let a = 5_usize;
         let b = &raw const a; // This borrow is only used once.
         let c = *b; // This should be optimized.
+        opaque(());
     }
 
     // Propagation through a two references.
@@ -160,6 +173,7 @@ fn reference_propagation_const_ptr<T: Copy>(single: *const T, mut multiple: *con
         b = &raw const a2;
         // `b` is assigned twice, so we cannot propagate it.
         let c = *b;
+        opaque(());
     }
 
     // Propagation through a borrowed reference.
@@ -168,6 +182,7 @@ fn reference_propagation_const_ptr<T: Copy>(single: *const T, mut multiple: *con
         let b = &raw const a;
         let d = &b;
         let c = *b; // `b` is immutably borrowed, we know its value, but cannot be removed.
+        opaque(());
     }
 
     // Propagation through a borrowed reference.
@@ -176,6 +191,7 @@ fn reference_propagation_const_ptr<T: Copy>(single: *const T, mut multiple: *con
         let mut b = &raw const a;
         let d = &mut b;
         let c = *b; // `b` is mutably borrowed, we cannot know its value.
+        opaque(());
     }
 
     // Propagation through an escaping borrow.
@@ -203,6 +219,7 @@ fn reference_propagation_const_ptr<T: Copy>(single: *const T, mut multiple: *con
     unsafe {
         let a = &raw const *single;
         let b = *a; // This should be optimized as `*single`.
+        opaque(());
     }
 
     // Propagation a reborrow of a mutated argument.
@@ -210,6 +227,7 @@ fn reference_propagation_const_ptr<T: Copy>(single: *const T, mut multiple: *con
         let a = &raw const *multiple;
         multiple = &raw const *single;
         let b = *a; // This should not be optimized.
+        opaque(());
     }
 
     // Propagation through a reborrow.
@@ -218,6 +236,7 @@ fn reference_propagation_const_ptr<T: Copy>(single: *const T, mut multiple: *con
         let b = &raw const a;
         let c = &raw const *b;
         let e = *c;
+        opaque(());
     }
 }
 
@@ -227,6 +246,7 @@ fn reference_propagation_mut_ptr<T: Copy>(single: *mut T, mut multiple: *mut T) 
         let mut a = 5_usize;
         let b = &raw mut a; // This borrow is only used once.
         let c = *b; // This should be optimized.
+        opaque(());
     }
 
     // Propagation through a two references.
@@ -237,6 +257,7 @@ fn reference_propagation_mut_ptr<T: Copy>(single: *mut T, mut multiple: *mut T) 
         b = &raw mut a2;
         // `b` is assigned twice, so we cannot propagate it.
         let c = *b;
+        opaque(());
     }
 
     // Propagation through a borrowed reference.
@@ -245,6 +266,7 @@ fn reference_propagation_mut_ptr<T: Copy>(single: *mut T, mut multiple: *mut T) 
         let b = &raw mut a;
         let d = &b;
         let c = *b; // `b` is immutably borrowed, we know its value, but cannot be removed.
+        opaque(());
     }
 
     // Propagation through a borrowed reference.
@@ -253,6 +275,7 @@ fn reference_propagation_mut_ptr<T: Copy>(single: *mut T, mut multiple: *mut T) 
         let mut b = &raw mut a;
         let d = &mut b;
         let c = *b; // `b` is mutably borrowed, we cannot know its value.
+        opaque(());
     }
 
     // Propagation through an escaping borrow.
@@ -280,6 +303,7 @@ fn reference_propagation_mut_ptr<T: Copy>(single: *mut T, mut multiple: *mut T) 
     unsafe {
         let a = &raw mut *single;
         let b = *a; // This should be optimized as `*single`.
+        opaque(());
     }
 
     // Propagation a reborrow of a mutated argument.
@@ -287,6 +311,7 @@ fn reference_propagation_mut_ptr<T: Copy>(single: *mut T, mut multiple: *mut T) 
         let a = &raw mut *multiple;
         multiple = &raw mut *single;
         let b = *a; // This should not be optimized.
+        opaque(());
     }
 }
 
@@ -381,12 +406,14 @@ fn maybe_dead(m: bool) {
             let b = &mut y;
             // As we don't replace `b` in `bb2`, we cannot replace it here either.
             *b = 7;
+            // But this can still be replaced.
+            let u = *a;
             match m { true => bb1, _ => bb2 }
         }
         bb1 = {
             StorageDead(x);
             StorageDead(y);
-            Goto(bb2)
+            Call(RET, bb2, opaque(u))
         }
         bb2 = {
             // As `x` may be `StorageDead`, `a` may be dangling, so we do nothing.
