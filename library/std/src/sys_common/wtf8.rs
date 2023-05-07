@@ -31,6 +31,7 @@ use crate::ops;
 use crate::rc::Rc;
 use crate::slice;
 use crate::str;
+use crate::str::pattern::{Pattern, SearchStep, Searcher};
 use crate::sync::Arc;
 use crate::sys_common::AsInner;
 
@@ -780,6 +781,42 @@ impl Wtf8 {
     #[inline]
     pub fn eq_ignore_ascii_case(&self, other: &Self) -> bool {
         self.bytes.eq_ignore_ascii_case(&other.bytes)
+    }
+
+    fn to_str_prefix(&self) -> &str {
+        let utf8_bytes = match self.next_surrogate(0) {
+            None => &self.bytes,
+            Some((0, _)) => b"",
+            Some((surrogate_pos, _)) => {
+                let (utf8_bytes, _) = self.bytes.split_at(surrogate_pos);
+                utf8_bytes
+            }
+        };
+
+        // SAFETY: `utf8_bytes` is a prefix of a WTF-8 value that contains no
+        // surrogates, and well-formed WTF-8 that contains no surrogates is
+        // also well-formed UTF-8.
+        unsafe { str::from_utf8_unchecked(utf8_bytes) }
+    }
+
+    #[inline]
+    pub fn starts_with<'a, P: Pattern<'a>>(&'a self, pattern: P) -> bool {
+        self.to_str_prefix().starts_with(pattern)
+    }
+
+    pub fn strip_prefix<'a, P: Pattern<'a>>(&'a self, prefix: P) -> Option<&'a Wtf8> {
+        let p = self.to_str_prefix();
+        let prefix_len = match prefix.into_searcher(p).next() {
+            SearchStep::Match(0, prefix_len) => prefix_len,
+            _ => return None,
+        };
+
+        // SAFETY: `p` is guaranteed to be a prefix of `self.bytes`,
+        // and `Searcher` is known to return valid indices.
+        unsafe {
+            let suffix = self.bytes.get_unchecked(prefix_len..);
+            Some(Wtf8::from_bytes_unchecked(suffix))
+        }
     }
 }
 

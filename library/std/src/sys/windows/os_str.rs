@@ -5,6 +5,7 @@ use crate::collections::TryReserveError;
 use crate::fmt;
 use crate::mem;
 use crate::rc::Rc;
+use crate::str::pattern::Pattern;
 use crate::sync::Arc;
 use crate::sys_common::wtf8::{Wtf8, Wtf8Buf};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
@@ -156,6 +157,13 @@ impl Slice {
         unsafe { mem::transmute(Wtf8::from_str(s)) }
     }
 
+    #[inline]
+    fn from_inner(inner: &Wtf8) -> &Slice {
+        // SAFETY: Slice is just a wrapper of Wtf8,
+        // therefore converting &Wtf8 to &Slice is safe.
+        unsafe { &*(inner as *const Wtf8 as *const Slice) }
+    }
+
     pub fn to_str(&self) -> Option<&str> {
         self.inner.as_str()
     }
@@ -221,5 +229,15 @@ impl Slice {
     #[inline]
     pub fn eq_ignore_ascii_case(&self, other: &Self) -> bool {
         self.inner.eq_ignore_ascii_case(&other.inner)
+    }
+
+    #[inline]
+    pub fn starts_with<'a, P: Pattern<'a>>(&'a self, pattern: P) -> bool {
+        self.inner.starts_with(pattern)
+    }
+
+    #[inline]
+    pub fn strip_prefix<'a, P: Pattern<'a>>(&'a self, prefix: P) -> Option<&'a Slice> {
+        Some(Slice::from_inner(self.inner.strip_prefix(prefix)?))
     }
 }

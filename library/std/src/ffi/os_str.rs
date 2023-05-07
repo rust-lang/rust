@@ -8,6 +8,7 @@ use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::ops;
 use crate::rc::Rc;
+use crate::str::pattern::Pattern;
 use crate::str::FromStr;
 use crate::sync::Arc;
 
@@ -977,6 +978,69 @@ impl OsStr {
     #[stable(feature = "osstring_ascii", since = "1.53.0")]
     pub fn eq_ignore_ascii_case<S: AsRef<OsStr>>(&self, other: S) -> bool {
         self.inner.eq_ignore_ascii_case(&other.as_ref().inner)
+    }
+
+    /// Returns `true` if the given pattern matches a prefix of this `OsStr`.
+    ///
+    /// Returns `false` if it does not.
+    ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: prim@char
+    /// [pattern]: crate::str::pattern
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(osstr_str_prefix_fns)]
+    ///
+    /// use std::ffi::OsString;
+    ///
+    /// let bananas = OsString::from("bananas");
+    ///
+    /// assert!(bananas.starts_with("bana"));
+    /// assert!(!bananas.starts_with("nana"));
+    /// ```
+    #[unstable(feature = "osstr_str_prefix_fns", issue = "none")]
+    #[must_use]
+    #[inline]
+    pub fn starts_with<'a, P: Pattern<'a>>(&'a self, pattern: P) -> bool {
+        self.inner.starts_with(pattern)
+    }
+
+    /// Returns this `OsStr` with the given prefix removed.
+    ///
+    /// If the `OsStr` starts with the pattern `prefix`, returns the substring
+    /// after the prefix, wrapped in `Some`.
+    ///
+    /// If the `OsStr` does not start with `prefix`, returns `None`.
+    ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: prim@char
+    /// [pattern]: crate::str::pattern
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(osstr_str_prefix_fns)]
+    ///
+    /// use std::ffi::{OsStr, OsString};
+    ///
+    /// let foobar = OsString::from("foo:bar");
+    ///
+    /// assert_eq!(foobar.strip_prefix("foo:"), Some(OsStr::new("bar")));
+    /// assert_eq!(foobar.strip_prefix("bar"), None);
+    /// ```
+    #[unstable(feature = "osstr_str_prefix_fns", issue = "none")]
+    #[must_use]
+    #[inline]
+    pub fn strip_prefix<'a, P: Pattern<'a>>(&'a self, prefix: P) -> Option<&'a OsStr> {
+        Some(OsStr::from_inner(self.inner.strip_prefix(prefix)?))
     }
 }
 

@@ -8,6 +8,7 @@ use crate::fmt::Write;
 use crate::mem;
 use crate::rc::Rc;
 use crate::str;
+use crate::str::pattern::{Pattern, SearchStep, Searcher};
 use crate::sync::Arc;
 use crate::sys_common::{AsInner, IntoInner};
 
@@ -269,5 +270,39 @@ impl Slice {
     #[inline]
     pub fn eq_ignore_ascii_case(&self, other: &Self) -> bool {
         self.inner.eq_ignore_ascii_case(&other.inner)
+    }
+
+    fn to_str_prefix(&self) -> &str {
+        let utf8_err = match str::from_utf8(&self.inner) {
+            Ok(prefix) => return prefix,
+            Err(err) => err,
+        };
+        let utf8_len = utf8_err.valid_up_to();
+        if utf8_len == 0 {
+            return "";
+        }
+        // SAFETY: `Utf8Error::valid_up_to()` returns an index up to which
+        // valid UTF-8 has been verified.
+        unsafe { str::from_utf8_unchecked(&self.inner[..utf8_len]) }
+    }
+
+    #[inline]
+    pub fn starts_with<'a, P: Pattern<'a>>(&'a self, pattern: P) -> bool {
+        self.to_str_prefix().starts_with(pattern)
+    }
+
+    pub fn strip_prefix<'a, P: Pattern<'a>>(&'a self, prefix: P) -> Option<&'a Slice> {
+        let p = self.to_str_prefix();
+        let prefix_len = match prefix.into_searcher(p).next() {
+            SearchStep::Match(0, prefix_len) => prefix_len,
+            _ => return None,
+        };
+
+        // SAFETY: `p` is guaranteed to be a prefix of `self.inner`,
+        // and `Searcher` is known to return valid indices.
+        unsafe {
+            let suffix = self.inner.get_unchecked(prefix_len..);
+            Some(Slice::from_u8_slice(suffix))
+        }
     }
 }
