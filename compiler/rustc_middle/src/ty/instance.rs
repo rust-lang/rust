@@ -586,7 +586,7 @@ impl<'tcx> Instance<'tcx> {
         if let Some(substs) = self.substs_for_mir_body() {
             v.subst(tcx, substs)
         } else {
-            v.subst_identity()
+            v.skip_binder()
         }
     }
 
@@ -603,7 +603,7 @@ impl<'tcx> Instance<'tcx> {
         if let Some(substs) = self.substs_for_mir_body() {
             tcx.subst_and_normalize_erasing_regions(substs, param_env, v)
         } else {
-            tcx.normalize_erasing_regions(param_env, v.subst_identity())
+            tcx.normalize_erasing_regions(param_env, v.skip_binder())
         }
     }
 
@@ -620,7 +620,7 @@ impl<'tcx> Instance<'tcx> {
         if let Some(substs) = self.substs_for_mir_body() {
             tcx.try_subst_and_normalize_erasing_regions(substs, param_env, v)
         } else {
-            tcx.try_normalize_erasing_regions(param_env, v.subst_identity())
+            tcx.try_normalize_erasing_regions(param_env, v.skip_binder())
         }
     }
 
