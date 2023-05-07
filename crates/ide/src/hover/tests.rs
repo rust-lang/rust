@@ -6,6 +6,7 @@ use crate::{fixture, HoverConfig, HoverDocFormat};
 
 const HOVER_BASE_CONFIG: HoverConfig = HoverConfig {
     links_in_hover: false,
+    memory_layout: true,
     documentation: true,
     format: HoverDocFormat::Markdown,
     keywords: true,
@@ -45,6 +46,23 @@ fn check_hover_no_links(ra_fixture: &str, expect: Expect) {
     let hover = analysis
         .hover(
             &HOVER_BASE_CONFIG,
+            FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
+        )
+        .unwrap()
+        .unwrap();
+
+    let content = analysis.db.file_text(position.file_id);
+    let hovered_element = &content[hover.range];
+
+    let actual = format!("*{hovered_element}*\n{}\n", hover.info.markup);
+    expect.assert_eq(&actual)
+}
+
+fn check_hover_no_memory_layout(ra_fixture: &str, expect: Expect) {
+    let (analysis, position) = fixture::position(ra_fixture);
+    let hover = analysis
+        .hover(
+            &HoverConfig { memory_layout: false, ..HOVER_BASE_CONFIG },
             FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
         )
         .unwrap()
@@ -1742,6 +1760,26 @@ pub fn fo$0o() {}
 
                 [^example]: https://www.example.com/
             "#]],
+    );
+}
+
+#[test]
+fn test_hover_no_memory_layout() {
+    check_hover_no_memory_layout(
+        r#"
+struct Foo { fiel$0d_a: u8, field_b: i32, field_c: i16 }
+"#,
+        expect![[r#"
+            *field_a*
+
+            ```rust
+            test::Foo
+            ```
+
+            ```rust
+            field_a: u8
+            ```
+        "#]],
     );
 }
 

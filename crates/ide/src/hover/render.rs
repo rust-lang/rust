@@ -415,7 +415,7 @@ pub(super) fn definition(
     let mod_path = definition_mod_path(db, &def);
     let (label, docs) = match def {
         Definition::Macro(it) => label_and_docs(db, it),
-        Definition::Field(it) => label_and_layout_info_and_docs(db, it, |&it| {
+        Definition::Field(it) => label_and_layout_info_and_docs(db, it, config, |&it| {
             let var_def = it.parent_def(db);
             let id = it.index();
             let layout = it.layout(db).ok()?;
@@ -435,7 +435,7 @@ pub(super) fn definition(
         }),
         Definition::Module(it) => label_and_docs(db, it),
         Definition::Function(it) => label_and_docs(db, it),
-        Definition::Adt(it) => label_and_layout_info_and_docs(db, it, |&it| {
+        Definition::Adt(it) => label_and_layout_info_and_docs(db, it, config, |&it| {
             let layout = it.layout(db).ok()?;
             Some(format!("size = {}, align = {}", layout.size.bytes(), layout.align.abi.bytes()))
         }),
@@ -473,7 +473,7 @@ pub(super) fn definition(
         }),
         Definition::Trait(it) => label_and_docs(db, it),
         Definition::TraitAlias(it) => label_and_docs(db, it),
-        Definition::TypeAlias(it) => label_and_layout_info_and_docs(db, it, |&it| {
+        Definition::TypeAlias(it) => label_and_layout_info_and_docs(db, it, config, |&it| {
             let layout = it.ty(db).layout(db).ok()?;
             Some(format!("size = {}, align = {}", layout.size.bytes(), layout.align.abi.bytes()))
         }),
@@ -577,6 +577,7 @@ where
 fn label_and_layout_info_and_docs<D, E, V>(
     db: &RootDatabase,
     def: D,
+    config: &HoverConfig,
     value_extractor: E,
 ) -> (String, Option<hir::Documentation>)
 where
@@ -584,10 +585,9 @@ where
     E: Fn(&D) -> Option<V>,
     V: Display,
 {
-    let label = if let Some(value) = value_extractor(&def) {
-        format!("{} // {value}", def.display(db))
-    } else {
-        def.display(db).to_string()
+    let label = match value_extractor(&def) {
+        Some(value) if config.memory_layout => format!("{} // {value}", def.display(db)),
+        _ => def.display(db).to_string(),
     };
     let docs = def.attrs(db).docs();
     (label, docs)

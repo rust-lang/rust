@@ -27,6 +27,7 @@ use crate::{
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HoverConfig {
     pub links_in_hover: bool,
+    pub memory_layout: bool,
     pub documentation: bool,
     pub keywords: bool,
     pub format: HoverDocFormat,

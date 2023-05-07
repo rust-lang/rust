@@ -137,6 +137,7 @@ impl StaticIndex<'_> {
         });
         let hover_config = HoverConfig {
             links_in_hover: true,
+            memory_layout: true,
             documentation: true,
             keywords: true,
             format: crate::HoverDocFormat::Markdown,
