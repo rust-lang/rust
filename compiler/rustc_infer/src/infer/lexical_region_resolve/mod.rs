@@ -102,6 +102,17 @@ pub enum RegionResolutionError<'tcx> {
     ),
 }
 
+impl<'tcx> RegionResolutionError<'tcx> {
+    pub fn origin(&self) -> &SubregionOrigin<'tcx> {
+        match self {
+            RegionResolutionError::ConcreteFailure(origin, _, _)
+            | RegionResolutionError::GenericBoundFailure(origin, _, _)
+            | RegionResolutionError::SubSupConflict(_, _, origin, _, _, _, _)
+            | RegionResolutionError::UpperBoundUniverseConflict(_, _, _, origin, _) => origin,
+        }
+    }
+}
+
 struct RegionAndOrigin<'tcx> {
     region: Region<'tcx>,
     origin: SubregionOrigin<'tcx>,

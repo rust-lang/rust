@@ -337,6 +337,8 @@ pub enum LitKind {
     StrRaw(u8),
     ByteStr,
     ByteStrRaw(u8),
+    CStr,
+    CStrRaw(u8),
     Err,
 }
 
@@ -350,6 +352,8 @@ rpc_encode_decode!(
         StrRaw(n),
         ByteStr,
         ByteStrRaw(n),
+        CStr,
+        CStrRaw(n),
         Err,
     }
 );

@@ -1,4 +1,5 @@
-use super::{Config, TomlConfig};
+use super::{Config, Flags, TomlConfig};
+use clap::CommandFactory;
 use std::{env, path::Path};
 
 fn toml(config: &str) -> impl '_ + Fn(&Path) -> TomlConfig {
@@ -87,4 +88,9 @@ fn detect_src_and_out() {
         let build_dir = if cfg!(windows) { Some("C:\\tmp") } else { Some("/tmp") };
         test(parse("build.build-dir = \"/tmp\""), build_dir);
     }
+}
+
+#[test]
+fn clap_verify() {
+    Flags::command().debug_assert();
 }

@@ -284,6 +284,7 @@ impl<'a> NormalizedPat<'a> {
                     LitKind::Str(sym, _) => Self::LitStr(sym),
                     LitKind::ByteStr(ref bytes, _) => Self::LitBytes(bytes),
                     LitKind::Byte(val) => Self::LitInt(val.into()),
+                    LitKind::CStr(ref bytes, _) => Self::LitBytes(bytes),
                     LitKind::Char(val) => Self::LitInt(val.into()),
                     LitKind::Int(val, _) => Self::LitInt(val),
                     LitKind::Bool(val) => Self::LitBool(val),

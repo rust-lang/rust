@@ -236,7 +236,7 @@ mod defaults {
     fn doc_default() {
         let mut config = configure("doc", &["A"], &["A"]);
         config.compiler_docs = true;
-        config.cmd = Subcommand::Doc { paths: Vec::new(), open: false, json: false };
+        config.cmd = Subcommand::Doc { open: false, json: false };
         let mut cache = run_build(&[], config);
         let a = TargetSelection::from_user("A");
 
@@ -545,12 +545,13 @@ mod dist {
     fn test_with_no_doc_stage0() {
         let mut config = configure(&["A"], &["A"]);
         config.stage = 0;
+        config.paths = vec!["library/std".into()];
         config.cmd = Subcommand::Test {
-            paths: vec!["library/std".into()],
             test_args: vec![],
             rustc_args: vec![],
-            fail_fast: true,
-            doc_tests: DocTests::No,
+            no_fail_fast: false,
+            no_doc: true,
+            doc: false,
             bless: false,
             force_rerun: false,
             compare_mode: None,
@@ -558,6 +559,7 @@ mod dist {
             pass: None,
             run: None,
             only_modified: false,
+            skip: vec![],
         };
 
         let build = Build::new(config);
@@ -587,7 +589,7 @@ mod dist {
     fn doc_ci() {
         let mut config = configure(&["A"], &["A"]);
         config.compiler_docs = true;
-        config.cmd = Subcommand::Doc { paths: Vec::new(), open: false, json: false };
+        config.cmd = Subcommand::Doc { open: false, json: false };
         let build = Build::new(config);
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Doc), &[]);
@@ -616,11 +618,12 @@ mod dist {
         // Behavior of `x.py test` doing various documentation tests.
         let mut config = configure(&["A"], &["A"]);
         config.cmd = Subcommand::Test {
-            paths: vec![],
             test_args: vec![],
             rustc_args: vec![],
-            fail_fast: true,
-            doc_tests: DocTests::Yes,
+            no_fail_fast: false,
+            doc: true,
+            no_doc: false,
+            skip: vec![],
             bless: false,
             force_rerun: false,
             compare_mode: None,

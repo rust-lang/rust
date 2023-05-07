@@ -177,15 +177,55 @@ fn resolve_associated_item<'tcx>(
 
             Some(ty::Instance::new(leaf_def.item.def_id, substs))
         }
-        traits::ImplSource::Generator(generator_data) => Some(Instance {
-            def: ty::InstanceDef::Item(generator_data.generator_def_id),
-            substs: generator_data.substs,
-        }),
-        traits::ImplSource::Future(future_data) => Some(Instance {
-            def: ty::InstanceDef::Item(future_data.generator_def_id),
-            substs: future_data.substs,
-        }),
+        traits::ImplSource::Generator(generator_data) => {
+            if cfg!(debug_assertions) && tcx.item_name(trait_item_id) != sym::resume {
+                // For compiler developers who'd like to add new items to `Generator`,
+                // you either need to generate a shim body, or perhaps return
+                // `InstanceDef::Item` pointing to a trait default method body if
+                // it is given a default implementation by the trait.
+                span_bug!(
+                    tcx.def_span(generator_data.generator_def_id),
+                    "no definition for `{trait_ref}::{}` for built-in generator type",
+                    tcx.item_name(trait_item_id)
+                )
+            }
+            Some(Instance {
+                def: ty::InstanceDef::Item(generator_data.generator_def_id),
+                substs: generator_data.substs,
+            })
+        }
+        traits::ImplSource::Future(future_data) => {
+            if cfg!(debug_assertions) && tcx.item_name(trait_item_id) != sym::poll {
+                // For compiler developers who'd like to add new items to `Future`,
+                // you either need to generate a shim body, or perhaps return
+                // `InstanceDef::Item` pointing to a trait default method body if
+                // it is given a default implementation by the trait.
+                span_bug!(
+                    tcx.def_span(future_data.generator_def_id),
+                    "no definition for `{trait_ref}::{}` for built-in async generator type",
+                    tcx.item_name(trait_item_id)
+                )
+            }
+            Some(Instance {
+                def: ty::InstanceDef::Item(future_data.generator_def_id),
+                substs: future_data.substs,
+            })
+        }
         traits::ImplSource::Closure(closure_data) => {
+            if cfg!(debug_assertions)
+                && ![sym::call, sym::call_mut, sym::call_once]
+                    .contains(&tcx.item_name(trait_item_id))
+            {
+                // For compiler developers who'd like to add new items to `Fn`/`FnMut`/`FnOnce`,
+                // you either need to generate a shim body, or perhaps return
+                // `InstanceDef::Item` pointing to a trait default method body if
+                // it is given a default implementation by the trait.
+                span_bug!(
+                    tcx.def_span(closure_data.closure_def_id),
+                    "no definition for `{trait_ref}::{}` for built-in closure type",
+                    tcx.item_name(trait_item_id)
+                )
+            }
             let trait_closure_kind = tcx.fn_trait_kind_from_def_id(trait_id).unwrap();
             Instance::resolve_closure(
                 tcx,
@@ -195,11 +235,29 @@ fn resolve_associated_item<'tcx>(
             )
         }
         traits::ImplSource::FnPointer(ref data) => match data.fn_ty.kind() {
-            ty::FnDef(..) | ty::FnPtr(..) => Some(Instance {
-                def: ty::InstanceDef::FnPtrShim(trait_item_id, data.fn_ty),
-                substs: rcvr_substs,
-            }),
-            _ => None,
+            ty::FnDef(..) | ty::FnPtr(..) => {
+                if cfg!(debug_assertions)
+                    && ![sym::call, sym::call_mut, sym::call_once]
+                        .contains(&tcx.item_name(trait_item_id))
+                {
+                    // For compiler developers who'd like to add new items to `Fn`/`FnMut`/`FnOnce`,
+                    // you either need to generate a shim body, or perhaps return
+                    // `InstanceDef::Item` pointing to a trait default method body if
+                    // it is given a default implementation by the trait.
+                    bug!(
+                        "no definition for `{trait_ref}::{}` for built-in fn type",
+                        tcx.item_name(trait_item_id)
+                    )
+                }
+                Some(Instance {
+                    def: ty::InstanceDef::FnPtrShim(trait_item_id, data.fn_ty),
+                    substs: rcvr_substs,
+                })
+            }
+            _ => bug!(
+                "no built-in definition for `{trait_ref}::{}` for non-fn type",
+                tcx.item_name(trait_item_id)
+            ),
         },
         traits::ImplSource::Object(ref data) => {
             traits::get_vtable_index_of_object_method(tcx, data, trait_item_id).map(|index| {

@@ -362,7 +362,7 @@ thread_local! {
     /// able to access the many features of a [`LateContext`].
     ///
     /// A thread local is used because [`FormatArgs`] is `!Send` and `!Sync`, we are making an
-    /// assumption that the early pass the populates the map and the later late passes will all be
+    /// assumption that the early pass that populates the map and the later late passes will all be
     /// running on the same thread.
     static AST_FORMAT_ARGS: RefCell<FxHashMap<Span, FormatArgs>> = {
         static CALLED: AtomicBool = AtomicBool::new(false);

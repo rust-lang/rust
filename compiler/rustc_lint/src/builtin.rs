@@ -63,6 +63,7 @@ use rustc_middle::ty::layout::{LayoutError, LayoutOf};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, VariantDef};
+use rustc_session::config::ExpectedValues;
 use rustc_session::lint::{BuiltinLintDiagnostics, FutureIncompatibilityReason};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
@@ -116,8 +117,7 @@ impl EarlyLintPass for WhileTrue {
     #[inline]
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
         if let ast::ExprKind::While(cond, _, label) = &e.kind
-            && let cond = pierce_parens(cond)
-            && let ast::ExprKind::Lit(token_lit) = cond.kind
+            && let ast::ExprKind::Lit(token_lit) = pierce_parens(cond).kind
             && let token::Lit { kind: token::Bool, symbol: kw::True, .. } = token_lit
             && !cond.span.from_expansion()
         {
@@ -546,32 +546,13 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     }
 
     fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
-        match it.kind {
-            hir::ItemKind::Trait(..) => {
-                // Issue #11592: traits are always considered exported, even when private.
-                if cx.tcx.visibility(it.owner_id)
-                    == ty::Visibility::Restricted(
-                        cx.tcx.parent_module_from_def_id(it.owner_id.def_id).to_def_id(),
-                    )
-                {
-                    return;
-                }
-            }
-            hir::ItemKind::TyAlias(..)
-            | hir::ItemKind::Fn(..)
-            | hir::ItemKind::Macro(..)
-            | hir::ItemKind::Mod(..)
-            | hir::ItemKind::Enum(..)
-            | hir::ItemKind::Struct(..)
-            | hir::ItemKind::Union(..)
-            | hir::ItemKind::Const(..)
-            | hir::ItemKind::Static(..) => {}
-
-            _ => return,
-        };
+        // Previously the Impl and Use types have been excluded from missing docs,
+        // so we will continue to exclude them for compatibility
+        if let hir::ItemKind::Impl(..) | hir::ItemKind::Use(..) = it.kind {
+            return;
+        }
 
         let (article, desc) = cx.tcx.article_and_description(it.owner_id.to_def_id());
-
         self.check_missing_docs_attrs(cx, it.owner_id.def_id, article, desc);
     }
 
@@ -3306,16 +3287,15 @@ impl EarlyLintPass for UnexpectedCfgs {
         let cfg = &cx.sess().parse_sess.config;
         let check_cfg = &cx.sess().parse_sess.check_config;
         for &(name, value) in cfg {
-            if let Some(names_valid) = &check_cfg.names_valid && !names_valid.contains(&name){
-                cx.emit_lint(UNEXPECTED_CFGS, BuiltinUnexpectedCliConfigName {
-                    name,
-                });
-            }
-            if let Some(value) = value && let Some(values) = check_cfg.values_valid.get(&name) && !values.contains(&value) {
-                cx.emit_lint(
-                    UNEXPECTED_CFGS,
-                    BuiltinUnexpectedCliConfigValue { name, value },
-                );
+            match check_cfg.expecteds.get(&name) {
+                Some(ExpectedValues::Some(values)) if !values.contains(&value) => {
+                    let value = value.unwrap_or(kw::Empty);
+                    cx.emit_lint(UNEXPECTED_CFGS, BuiltinUnexpectedCliConfigValue { name, value });
+                }
+                None if check_cfg.exhaustive_names => {
+                    cx.emit_lint(UNEXPECTED_CFGS, BuiltinUnexpectedCliConfigName { name });
+                }
+                _ => { /* expected */ }
             }
         }
     }

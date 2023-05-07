@@ -839,6 +839,7 @@ pub enum InlineAsmClobberAbi {
     AArch64,
     AArch64NoX18,
     RiscV,
+    LoongArch,
 }
 
 impl InlineAsmClobberAbi {
@@ -878,6 +879,10 @@ impl InlineAsmClobberAbi {
             },
             InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => match name {
                 "C" | "system" | "efiapi" => Ok(InlineAsmClobberAbi::RiscV),
+                _ => Err(&["C", "system", "efiapi"]),
+            },
+            InlineAsmArch::LoongArch64 => match name {
+                "C" | "system" | "efiapi" => Ok(InlineAsmClobberAbi::LoongArch),
                 _ => Err(&["C", "system", "efiapi"]),
             },
             _ => Err(&[]),
@@ -1020,6 +1025,21 @@ impl InlineAsmClobberAbi {
                     v8, v9, v10, v11, v12, v13, v14, v15,
                     v16, v17, v18, v19, v20, v21, v22, v23,
                     v24, v25, v26, v27, v28, v29, v30, v31,
+                }
+            },
+            InlineAsmClobberAbi::LoongArch => clobbered_regs! {
+                LoongArch LoongArchInlineAsmReg {
+                    // ra
+                    r1,
+                    // a0-a7
+                    r4, r5, r6, r7, r8, r9, r10, r11,
+                    // t0-t8
+                    r12, r13, r14, r15, r16, r17, r18, r19, r20,
+                    // fa0-fa7
+                    f0, f1, f2, f3, f4, f5, f6, f7,
+                    // ft0-ft15
+                    f8, f9, f10, f11, f12, f13, f14, f15,
+                    f16, f17, f18, f19, f20, f21, f22, f23,
                 }
             },
         }

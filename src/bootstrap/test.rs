@@ -1545,7 +1545,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
 
         // Get paths from cmd args
         let paths = match &builder.config.cmd {
-            Subcommand::Test { ref paths, .. } => &paths[..],
+            Subcommand::Test { .. } => &builder.config.paths[..],
             _ => &[],
         };
 

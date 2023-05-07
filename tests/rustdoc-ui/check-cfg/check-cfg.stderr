@@ -2,7 +2,7 @@ warning: unexpected `cfg` condition name
   --> $DIR/check-cfg.rs:5:7
    |
 LL | #[cfg(uniz)]
-   |       ^^^^ help: did you mean: `unix`
+   |       ^^^^ help: there is a config with a similar name: `unix`
    |
    = note: `#[warn(unexpected_cfgs)]` on by default
 

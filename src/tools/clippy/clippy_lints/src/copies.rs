@@ -591,7 +591,7 @@ fn lint_same_cond(cx: &LateContext<'_>, conds: &[&Expr<'_>], ignored_ty_ids: &De
         conds,
         |e| hash_expr(cx, e),
         |lhs, rhs| {
-            // Ignore eq_expr side effects iff one of the expressin kind is a method call
+            // Ignore eq_expr side effects iff one of the expression kind is a method call
             // and the caller is not a mutable, including inner mutable type.
             if let ExprKind::MethodCall(_, caller, _, _) = lhs.kind {
                 if method_caller_is_mutable(cx, caller, ignored_ty_ids) {

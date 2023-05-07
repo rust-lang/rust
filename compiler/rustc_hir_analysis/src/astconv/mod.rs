@@ -1062,7 +1062,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
     /// Convert the bounds in `ast_bounds` that refer to traits which define an associated type
     /// named `assoc_name` into ty::Bounds. Ignore the rest.
-    pub(crate) fn compute_bounds_that_match_assoc_type(
+    pub(crate) fn compute_bounds_that_match_assoc_item(
         &self,
         param_ty: Ty<'tcx>,
         ast_bounds: &[hir::GenericBound<'_>],
@@ -1073,7 +1073,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         for ast_bound in ast_bounds {
             if let Some(trait_ref) = ast_bound.trait_ref()
                 && let Some(trait_did) = trait_ref.trait_def_id()
-                && self.tcx().trait_may_define_assoc_type(trait_did, assoc_name)
+                && self.tcx().trait_may_define_assoc_item(trait_did, assoc_name)
             {
                 result.push(ast_bound.clone());
             }
@@ -1141,11 +1141,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             ) {
                 trait_ref
             } else {
-                return Err(tcx.sess.emit_err(crate::errors::ReturnTypeNotationMissingMethod {
-                    span: binding.span,
-                    trait_name: tcx.item_name(trait_ref.def_id()),
-                    assoc_name: binding.item_name.name,
-                }));
+                self.one_bound_for_assoc_method(
+                    traits::supertraits(tcx, trait_ref),
+                    trait_ref.print_only_trait_path(),
+                    binding.item_name,
+                    path_span,
+                )?
             }
         } else if self.trait_defines_associated_item_named(
             trait_ref.def_id(),
@@ -1946,7 +1947,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let param_name = tcx.hir().ty_param_name(ty_param_def_id);
         self.one_bound_for_assoc_type(
             || {
-                traits::transitive_bounds_that_define_assoc_type(
+                traits::transitive_bounds_that_define_assoc_item(
                     tcx,
                     predicates.iter().filter_map(|(p, _)| {
                         Some(p.to_opt_poly_trait_pred()?.map_bound(|t| t.trait_ref))
@@ -2079,6 +2080,46 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         Ok(bound)
+    }
+
+    #[instrument(level = "debug", skip(self, all_candidates, ty_name), ret)]
+    fn one_bound_for_assoc_method(
+        &self,
+        all_candidates: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
+        ty_name: impl Display,
+        assoc_name: Ident,
+        span: Span,
+    ) -> Result<ty::PolyTraitRef<'tcx>, ErrorGuaranteed> {
+        let mut matching_candidates = all_candidates.filter(|r| {
+            self.trait_defines_associated_item_named(r.def_id(), ty::AssocKind::Fn, assoc_name)
+        });
+
+        let candidate = match matching_candidates.next() {
+            Some(candidate) => candidate,
+            None => {
+                return Err(self.tcx().sess.emit_err(
+                    crate::errors::ReturnTypeNotationMissingMethod {
+                        span,
+                        ty_name: ty_name.to_string(),
+                        assoc_name: assoc_name.name,
+                    },
+                ));
+            }
+        };
+
+        if let Some(conflicting_candidate) = matching_candidates.next() {
+            return Err(self.tcx().sess.emit_err(
+                crate::errors::ReturnTypeNotationConflictingBound {
+                    span,
+                    ty_name: ty_name.to_string(),
+                    assoc_name: assoc_name.name,
+                    first_bound: candidate.print_only_trait_path(),
+                    second_bound: conflicting_candidate.print_only_trait_path(),
+                },
+            ));
+        }
+
+        Ok(candidate)
     }
 
     // Create a type from a path to an associated type or to an enum variant.

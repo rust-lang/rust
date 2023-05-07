@@ -211,6 +211,7 @@ pub fn lit_to_mir_constant(lit: &LitKind, ty: Option<Ty<'_>>) -> Constant {
         LitKind::Str(ref is, _) => Constant::Str(is.to_string()),
         LitKind::Byte(b) => Constant::Int(u128::from(b)),
         LitKind::ByteStr(ref s, _) => Constant::Binary(Lrc::clone(s)),
+        LitKind::CStr(ref s, _) => Constant::Binary(Lrc::clone(s)),
         LitKind::Char(c) => Constant::Char(c),
         LitKind::Int(n, _) => Constant::Int(n),
         LitKind::Float(ref is, LitFloatType::Suffixed(fty)) => match fty {
@@ -324,7 +325,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
         match e.kind {
             ExprKind::Path(ref qpath) => self.fetch_path(qpath, e.hir_id, self.typeck_results.expr_ty(e)),
             ExprKind::Block(block, _) => self.block(block),
-            ExprKind::Lit(ref lit) => {
+            ExprKind::Lit(lit) => {
                 if is_direct_expn_of(e.span, "cfg").is_some() {
                     None
                 } else {
