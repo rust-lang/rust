@@ -5,6 +5,7 @@ use crate::passes;
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::CodegenResults;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{AppendOnlyIndexVec, Lrc, OnceCell, RwLock, WorkerLocal};
@@ -195,7 +196,8 @@ impl<'tcx> Queries<'tcx> {
                 .and_then(|future| {
                     let (prev_graph, prev_work_products) =
                         sess.time("blocked_on_dep_graph_loading", || future.open().open(sess));
-
+                    let prev_work_products =
+                        FxIndexMap::from_iter(prev_work_products.into_sorted(&(), false));
                     rustc_incremental::build_dep_graph(sess, prev_graph, prev_work_products)
                 })
                 .unwrap_or_else(DepGraph::new_disabled);

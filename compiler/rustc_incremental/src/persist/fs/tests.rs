@@ -2,26 +2,26 @@ use super::*;
 
 #[test]
 fn test_all_except_most_recent() {
+    let computed: UnordMap<_, Option<flock::Lock>> = UnordMap::from_iter([
+        ((UNIX_EPOCH + Duration::new(4, 0), PathBuf::from("4")), None),
+        ((UNIX_EPOCH + Duration::new(1, 0), PathBuf::from("1")), None),
+        ((UNIX_EPOCH + Duration::new(5, 0), PathBuf::from("5")), None),
+        ((UNIX_EPOCH + Duration::new(3, 0), PathBuf::from("3")), None),
+        ((UNIX_EPOCH + Duration::new(2, 0), PathBuf::from("2")), None),
+    ]);
+    let mut paths = UnordSet::default();
+    UnordSet::extend_unord(&mut paths, computed.into_items().map(|((_, path), _)| path));
     assert_eq!(
-        all_except_most_recent(vec![
-            (UNIX_EPOCH + Duration::new(4, 0), PathBuf::from("4"), None),
-            (UNIX_EPOCH + Duration::new(1, 0), PathBuf::from("1"), None),
-            (UNIX_EPOCH + Duration::new(5, 0), PathBuf::from("5"), None),
-            (UNIX_EPOCH + Duration::new(3, 0), PathBuf::from("3"), None),
-            (UNIX_EPOCH + Duration::new(2, 0), PathBuf::from("2"), None),
+        UnordSet::from(paths),
+        UnordSet::from_iter([
+            PathBuf::from("1"),
+            PathBuf::from("2"),
+            PathBuf::from("3"),
+            PathBuf::from("4")
         ])
-        .keys()
-        .cloned()
-        .collect::<FxHashSet<PathBuf>>(),
-        [PathBuf::from("1"), PathBuf::from("2"), PathBuf::from("3"), PathBuf::from("4"),]
-            .into_iter()
-            .collect::<FxHashSet<PathBuf>>()
     );
 
-    assert_eq!(
-        all_except_most_recent(vec![]).keys().cloned().collect::<FxHashSet<PathBuf>>(),
-        FxHashSet::default()
-    );
+    assert!(all_except_most_recent(UnordMap::default()).is_empty());
 }
 
 #[test]
