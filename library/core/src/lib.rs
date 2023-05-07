@@ -150,6 +150,7 @@
 #![feature(const_slice_from_raw_parts_mut)]
 #![feature(const_slice_from_ref)]
 #![feature(const_slice_index)]
+#![feature(const_slice_is_ascii)]
 #![feature(const_slice_ptr_len)]
 #![feature(const_slice_split_at_mut)]
 #![feature(const_str_from_utf8_unchecked_mut)]

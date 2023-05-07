@@ -44,6 +44,10 @@ mod raw;
 mod rotate;
 mod specialize;
 
+#[unstable(feature = "str_internals", issue = "none")]
+#[doc(hidden)]
+pub use ascii::is_ascii_simple;
+
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use iter::{Chunks, ChunksMut, Windows};
 #[stable(feature = "rust1", since = "1.0.0")]
