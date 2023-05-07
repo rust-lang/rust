@@ -129,16 +129,13 @@ enum LocalRef<'tcx, V> {
     PendingOperand,
 }
 
-impl<'a, 'tcx, V: CodegenObject> LocalRef<'tcx, V> {
-    fn new_operand<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
-        bx: &mut Bx,
-        layout: TyAndLayout<'tcx>,
-    ) -> LocalRef<'tcx, V> {
+impl<'tcx, V: CodegenObject> LocalRef<'tcx, V> {
+    fn new_operand(layout: TyAndLayout<'tcx>) -> LocalRef<'tcx, V> {
         if layout.is_zst() {
             // Zero-size temporaries aren't always initialized, which
             // doesn't matter because they don't contain data, but
             // we need something in the operand.
-            LocalRef::Operand(OperandRef::new_zst(bx, layout))
+            LocalRef::Operand(OperandRef::zero_sized(layout))
         } else {
             LocalRef::PendingOperand
         }
@@ -249,7 +246,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 }
             } else {
                 debug!("alloc: {:?} -> operand", local);
-                LocalRef::new_operand(&mut start_bx, layout)
+                LocalRef::new_operand(layout)
             }
         };
 
@@ -355,7 +352,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 let local = |op| LocalRef::Operand(op);
                 match arg.mode {
                     PassMode::Ignore => {
-                        return local(OperandRef::new_zst(bx, arg.layout));
+                        return local(OperandRef::zero_sized(arg.layout));
                     }
                     PassMode::Direct(_) => {
                         let llarg = bx.get_param(llarg_idx);
