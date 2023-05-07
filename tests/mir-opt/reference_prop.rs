@@ -80,6 +80,24 @@ fn reference_propagation<'a, T: Copy>(single: &'a T, mut multiple: &'a T) {
         let b = *a; // This should not be optimized.
         opaque(());
     }
+
+    // Fixed-point propagation through a borrowed reference.
+    {
+        let a = 5_usize;
+        let b = &a;
+        let d = &b; // first round promotes debuginfo for `d`
+        let c = *b; // second round propagates this dereference
+        opaque(());
+    }
+
+    // Fixed-point propagation through a borrowed reference.
+    {
+        let a = 5_usize;
+        let mut b = &a;
+        let d = &mut b; // first round promotes debuginfo for `d`
+        let c = *b; // second round propagates this dereference
+        opaque(());
+    }
 }
 
 fn reference_propagation_mut<'a, T: Copy>(single: &'a mut T, mut multiple: &'a mut T) {
@@ -153,6 +171,24 @@ fn reference_propagation_mut<'a, T: Copy>(single: &'a mut T, mut multiple: &'a m
         let a = &mut *multiple;
         multiple = &mut *single;
         let b = *a; // This should not be optimized.
+        opaque(());
+    }
+
+    // Fixed-point propagation through a borrowed reference.
+    {
+        let mut a = 5_usize;
+        let b = &mut a;
+        let d = &b; // first round promotes debuginfo for `d`
+        let c = *b; // second round propagates this dereference
+        opaque(());
+    }
+
+    // Fixed-point propagation through a borrowed reference.
+    {
+        let mut a = 5_usize;
+        let mut b = &mut a;
+        let d = &mut b; // first round promotes debuginfo for `d`
+        let c = *b; // second round propagates this dereference
         opaque(());
     }
 }
@@ -239,6 +275,24 @@ fn reference_propagation_const_ptr<T: Copy>(single: *const T, mut multiple: *con
         let e = *c;
         opaque(());
     }
+
+    // Fixed-point propagation through a borrowed reference.
+    unsafe {
+        let a = 5_usize;
+        let b = &raw const a;
+        let d = &b; // first round promotes debuginfo for `d`
+        let c = *b; // second round propagates this dereference
+        opaque(());
+    }
+
+    // Fixed-point propagation through a borrowed reference.
+    unsafe {
+        let a = 5_usize;
+        let mut b = &raw const a;
+        let d = &mut b; // first round promotes debuginfo for `d`
+        let c = *b; // second round propagates this dereference
+        opaque(());
+    }
 }
 
 fn reference_propagation_mut_ptr<T: Copy>(single: *mut T, mut multiple: *mut T) {
@@ -312,6 +366,24 @@ fn reference_propagation_mut_ptr<T: Copy>(single: *mut T, mut multiple: *mut T) 
         let a = &raw mut *multiple;
         multiple = &raw mut *single;
         let b = *a; // This should not be optimized.
+        opaque(());
+    }
+
+    // Fixed-point propagation through a borrowed reference.
+    unsafe {
+        let mut a = 5_usize;
+        let b = &raw mut a;
+        let d = &b; // first round promotes debuginfo for `d`
+        let c = *b; // second round propagates this dereference
+        opaque(());
+    }
+
+    // Fixed-point propagation through a borrowed reference.
+    unsafe {
+        let mut a = 5_usize;
+        let mut b = &raw mut a;
+        let d = &mut b; // first round promotes debuginfo for `d`
+        let c = *b; // second round propagates this dereference
         opaque(());
     }
 }

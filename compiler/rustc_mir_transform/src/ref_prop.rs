@@ -77,11 +77,11 @@ impl<'tcx> MirPass<'tcx> for ReferencePropagation {
     #[instrument(level = "trace", skip(self, tcx, body))]
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!(def_id = ?body.source.def_id());
-        propagate_ssa(tcx, body);
+        while propagate_ssa(tcx, body) {}
     }
 }
 
-fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
     let ssa = SsaLocals::new(body);
 
     let mut replacer = compute_replacement(tcx, body, &ssa);
@@ -94,6 +94,8 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     if replacer.any_replacement {
         crate::simplify::remove_unused_definitions(body);
     }
+
+    replacer.any_replacement
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

@@ -28,7 +28,7 @@
               let _5: &u8;                 // in scope 2 at $DIR/reference_prop.rs:+7:9: +7:17
               scope 3 {
 -                 debug reborrow => _5;    // in scope 3 at $DIR/reference_prop.rs:+7:9: +7:17
-+                 debug reborrow => _1;    // in scope 3 at $DIR/reference_prop.rs:+7:9: +7:17
++                 debug reborrow => &_2;   // in scope 3 at $DIR/reference_prop.rs:+7:9: +7:17
                   let _9: &i32;            // in scope 3 at $DIR/reference_prop.rs:+11:14: +11:31
                   let mut _22: &std::option::Option<i32>; // in scope 3 at $DIR/reference_prop.rs:+11:14: +11:31
                   scope 4 {
@@ -50,14 +50,14 @@
       }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/reference_prop.rs:+3:9: +3:19
+-         StorageLive(_1);                 // scope 0 at $DIR/reference_prop.rs:+3:9: +3:19
           StorageLive(_2);                 // scope 0 at $DIR/reference_prop.rs:+3:27: +3:31
           _2 = const 5_u8;                 // scope 0 at $DIR/reference_prop.rs:+3:27: +3:31
-          _1 = &mut _2;                    // scope 0 at $DIR/reference_prop.rs:+3:22: +3:31
+-         _1 = &mut _2;                    // scope 0 at $DIR/reference_prop.rs:+3:22: +3:31
 -         StorageLive(_3);                 // scope 1 at $DIR/reference_prop.rs:+4:9: +4:14
           _23 = const _;                   // scope 1 at $DIR/reference_prop.rs:+4:17: +4:24
                                            // mir::Constant
-                                           // + span: $DIR/reference_prop.rs:463:17: 463:24
+                                           // + span: $DIR/reference_prop.rs:535:17: 535:24
                                            // + literal: Const { ty: &T, val: Unevaluated(debuginfo, [], Some(promoted[2])) }
 -         _3 = &((*_23).0: u8);            // scope 1 at $DIR/reference_prop.rs:+4:17: +4:24
 -         StorageLive(_5);                 // scope 2 at $DIR/reference_prop.rs:+7:9: +7:17
@@ -73,7 +73,7 @@
 -         StorageLive(_9);                 // scope 3 at $DIR/reference_prop.rs:+11:14: +11:31
           _22 = const _;                   // scope 3 at $DIR/reference_prop.rs:+11:14: +11:31
                                            // mir::Constant
-                                           // + span: $DIR/reference_prop.rs:470:14: 470:31
+                                           // + span: $DIR/reference_prop.rs:542:14: 542:31
                                            // + literal: Const { ty: &Option<i32>, val: Unevaluated(debuginfo, [], Some(promoted[1])) }
 -         _9 = &(((*_22) as Some).0: i32); // scope 3 at $DIR/reference_prop.rs:+11:14: +11:31
 -         _6 = const ();                   // scope 4 at $DIR/reference_prop.rs:+11:36: +11:38
@@ -98,14 +98,14 @@
           StorageLive(_12);                // scope 5 at $DIR/reference_prop.rs:+16:83: +16:90
           _21 = const _;                   // scope 5 at $DIR/reference_prop.rs:+16:83: +16:90
                                            // mir::Constant
-                                           // + span: $DIR/reference_prop.rs:475:83: 475:90
+                                           // + span: $DIR/reference_prop.rs:547:83: 547:90
                                            // + literal: Const { ty: &[i32; 10], val: Unevaluated(debuginfo, [], Some(promoted[0])) }
           _12 = &(*_21);                   // scope 5 at $DIR/reference_prop.rs:+16:83: +16:90
           StorageLive(_14);                // scope 5 at $DIR/reference_prop.rs:+16:91: +16:93
           _14 = RangeFull;                 // scope 5 at $DIR/reference_prop.rs:+16:91: +16:93
           _11 = <[i32; 10] as Index<RangeFull>>::index(move _12, move _14) -> bb5; // scope 5 at $DIR/reference_prop.rs:+16:83: +16:94
                                            // mir::Constant
-                                           // + span: $DIR/reference_prop.rs:475:83: 475:94
+                                           // + span: $DIR/reference_prop.rs:547:83: 547:94
                                            // + literal: Const { ty: for<'a> fn(&'a [i32; 10], RangeFull) -> &'a <[i32; 10] as Index<RangeFull>>::Output {<[i32; 10] as Index<RangeFull>>::index}, val: Value(<ZST>) }
       }
   
@@ -142,7 +142,7 @@
 -         StorageDead(_5);                 // scope 2 at $DIR/reference_prop.rs:+18:1: +18:2
 -         StorageDead(_3);                 // scope 1 at $DIR/reference_prop.rs:+18:1: +18:2
           StorageDead(_2);                 // scope 0 at $DIR/reference_prop.rs:+18:1: +18:2
-          StorageDead(_1);                 // scope 0 at $DIR/reference_prop.rs:+18:1: +18:2
+-         StorageDead(_1);                 // scope 0 at $DIR/reference_prop.rs:+18:1: +18:2
           StorageDead(_11);                // scope 0 at $DIR/reference_prop.rs:+18:1: +18:2
           StorageDead(_10);                // scope 0 at $DIR/reference_prop.rs:+18:1: +18:2
           return;                          // scope 0 at $DIR/reference_prop.rs:+18:2: +18:2

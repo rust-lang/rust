@@ -36,7 +36,7 @@
           _5 = (*_3);                      // scope 4 at $DIR/reference_prop.rs:+5:25: +5:27
           _4 = opaque::<i32>(move _5) -> bb1; // scope 4 at $DIR/reference_prop.rs:+5:18: +5:28
                                            // mir::Constant
-                                           // + span: $DIR/reference_prop.rs:452:18: 452:24
+                                           // + span: $DIR/reference_prop.rs:524:18: 524:24
                                            // + literal: Const { ty: fn(i32) {opaque::<i32>}, val: Value(<ZST>) }
       }
   
@@ -52,7 +52,7 @@
 +         _7 = (*_3);                      // scope 5 at $DIR/reference_prop.rs:+9:21: +9:23
           _6 = opaque::<i32>(move _7) -> bb2; // scope 5 at $DIR/reference_prop.rs:+9:14: +9:24
                                            // mir::Constant
-                                           // + span: $DIR/reference_prop.rs:456:14: 456:20
+                                           // + span: $DIR/reference_prop.rs:528:14: 528:20
                                            // + literal: Const { ty: fn(i32) {opaque::<i32>}, val: Value(<ZST>) }
       }
   
