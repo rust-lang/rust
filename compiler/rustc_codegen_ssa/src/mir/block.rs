@@ -1587,6 +1587,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 //      } catch (...) {
                 //          bar();
                 //      }
+                //
+                // which creates an IR snippet like
+                //
+                //      cs_terminate:
+                //         %cs = catchswitch within none [%cp_terminate] unwind to caller
+                //      cp_terminate:
+                //         %cp = catchpad within %cs [null, i32 64, null]
+                //         ...
+
                 llbb = Bx::append_block(self.cx, self.llfn, "cs_terminate");
                 let cp_llbb = Bx::append_block(self.cx, self.llfn, "cp_terminate");
 
