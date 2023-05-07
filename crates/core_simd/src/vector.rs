@@ -156,9 +156,9 @@ where
     /// assert_eq!(v.as_array(), &[0, 1, 2, 3]);
     /// ```
     pub const fn as_array(&self) -> &[T; N] {
-        // SAFETY: Transmuting between `Simd<T, N>` and `[T; N]`
-        // is always valid and `Simd<T, N>` never has a lower alignment
-        // than `[T; N]`.
+        // SAFETY: `Simd<T, N>` is just an overaligned `[T; N]` with
+        // potential padding at the end, so pointer casting to a
+        // `&[T; N]` is safe.
         //
         // NOTE: This deliberately doesn't just use `&self.0`, see the comment
         // on the struct definition for details.
@@ -167,9 +167,9 @@ where
 
     /// Returns a mutable array reference containing the entire SIMD vector.
     pub fn as_mut_array(&mut self) -> &mut [T; N] {
-        // SAFETY: Transmuting between `Simd<T, N>` and `[T; N]`
-        // is always valid and `Simd<T, N>` never has a lower alignment
-        // than `[T; N]`.
+        // SAFETY: `Simd<T, N>` is just an overaligned `[T; N]` with
+        // potential padding at the end, so pointer casting to a
+        // `&mut [T; N]` is safe.
         //
         // NOTE: This deliberately doesn't just use `&mut self.0`, see the comment
         // on the struct definition for details.
