@@ -423,7 +423,7 @@ Whether to show keyword hover popups. Only applies when
 --
 Use markdown syntax for links on hover.
 --
-[[rust-analyzer.hover.memory.layout.enable]]rust-analyzer.hover.memory.layout.enable (default: `true`)::
+[[rust-analyzer.hover.memoryLayout.enable]]rust-analyzer.hover.memoryLayout.enable (default: `true`)::
 +
 --
 Whether to show memory layout data on hover.

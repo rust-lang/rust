@@ -959,7 +959,7 @@
                     "default": true,
                     "type": "boolean"
                 },
-                "rust-analyzer.hover.memory.layout.enable": {
+                "rust-analyzer.hover.memoryLayout.enable": {
                     "markdownDescription": "Whether to show memory layout data on hover.",
                     "default": true,
                     "type": "boolean"
