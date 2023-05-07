@@ -4,6 +4,8 @@
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::fmt;
+use std::path::Path;
+use std::process;
 
 use rand::rngs::StdRng;
 use rand::SeedableRng;
@@ -498,7 +500,17 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
         let layouts =
             PrimitiveLayouts::new(layout_cx).expect("Couldn't get layouts of primitive types");
         let profiler = config.measureme_out.as_ref().map(|out| {
-            measureme::Profiler::new(out).expect("Couldn't create `measureme` profiler")
+            let crate_name = layout_cx
+                .tcx
+                .sess
+                .opts
+                .crate_name
+                .clone()
+                .unwrap_or_else(|| "unknown-crate".to_string());
+            let pid = process::id();
+            let filename = format!("{crate_name}-{pid:07}");
+            let path = Path::new(out).join(filename);
+            measureme::Profiler::new(path).expect("Couldn't create `measureme` profiler")
         });
         let rng = StdRng::seed_from_u64(config.seed.unwrap_or(0));
         let borrow_tracker = config.borrow_tracker.map(|bt| bt.instantiate_global_state(config));
