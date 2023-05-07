@@ -4,6 +4,8 @@
 
 pub(crate) static LINTS: &[&crate::LintInfo] = &[
     #[cfg(feature = "internal")]
+    crate::utils::internal_lints::almost_standard_lint_formulation::ALMOST_STANDARD_LINT_FORMULATION_INFO,
+    #[cfg(feature = "internal")]
     crate::utils::internal_lints::clippy_lints_internal::CLIPPY_LINTS_INTERNAL_INFO,
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::collapsible_calls::COLLAPSIBLE_SPAN_LINT_CALLS_INFO,

@@ -8,7 +8,7 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Check for construction on unit struct using `default`.
+    /// Checks for construction on unit struct using `default`.
     ///
     /// ### Why is this bad?
     /// This adds code complexity and an unnecessary function call.

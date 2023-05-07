@@ -479,7 +479,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Check for unnecessary `if let` usage in a for loop
+    /// Checks for unnecessary `if let` usage in a for loop
     /// where only the `Some` or `Ok` variant of the iterator element is used.
     ///
     /// ### Why is this bad?
@@ -511,7 +511,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Check for empty spin loops
+    /// Checks for empty spin loops
     ///
     /// ### Why is this bad?
     /// The loop body should have something like `thread::park()` or at least
@@ -547,7 +547,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Check for manual implementations of Iterator::find
+    /// Checks for manual implementations of Iterator::find
     ///
     /// ### Why is this bad?
     /// It doesn't affect performance, but using `find` is shorter and easier to read.

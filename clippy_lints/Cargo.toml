@@ -22,6 +22,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", optional = true }
 tempfile = { version = "3.3.0", optional = true }
 toml = "0.7.3"
+regex = { version = "1.5", optional = true }
 unicode-normalization = "0.1"
 unicode-script = { version = "0.5", default-features = false }
 semver = "1.0"
@@ -31,7 +32,7 @@ url = "2.2"
 [features]
 deny-warnings = ["clippy_utils/deny-warnings"]
 # build clippy with internal lints enabled, off by default
-internal = ["clippy_utils/internal", "serde_json", "tempfile"]
+internal = ["clippy_utils/internal", "serde_json", "tempfile", "regex"]
 
 [package.metadata.rust-analyzer]
 # This crate uses #[feature(rustc_private)]

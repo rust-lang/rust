@@ -522,7 +522,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Check for the usage of `as _` conversion using inferred type.
+    /// Checks for the usage of `as _` conversion using inferred type.
     ///
     /// ### Why is this bad?
     /// The conversion might include lossy conversion and dangerous cast that might go
