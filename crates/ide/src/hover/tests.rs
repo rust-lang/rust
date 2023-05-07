@@ -1766,9 +1766,7 @@ pub fn fo$0o() {}
 #[test]
 fn test_hover_no_memory_layout() {
     check_hover_no_memory_layout(
-        r#"
-struct Foo { fiel$0d_a: u8, field_b: i32, field_c: i16 }
-"#,
+        r#"struct Foo { fiel$0d_a: u8, field_b: i32, field_c: i16 }"#,
         expect![[r#"
             *field_a*
 
@@ -1779,6 +1777,26 @@ struct Foo { fiel$0d_a: u8, field_b: i32, field_c: i16 }
             ```rust
             field_a: u8
             ```
+        "#]],
+    );
+
+    check_hover_no_memory_layout(
+        r#"
+//- minicore: copy
+fn main() {
+    let x = 2;
+    let y = $0|z| x + z;
+}
+"#,
+        expect![[r#"
+            *|*
+            ```rust
+            {closure#0}
+            impl Fn(i32) -> i32
+            ```
+
+            ## Captures
+            * `x` by immutable borrow
         "#]],
     );
 }

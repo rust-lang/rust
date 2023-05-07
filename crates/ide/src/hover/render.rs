@@ -43,13 +43,17 @@ pub(super) fn type_info_of(
 
 pub(super) fn closure_expr(
     sema: &Semantics<'_, RootDatabase>,
+    config: &HoverConfig,
     c: ast::ClosureExpr,
 ) -> Option<HoverResult> {
     let ty = &sema.type_of_expr(&c.into())?.original;
-    let layout = ty
-        .layout(sema.db)
-        .map(|x| format!(" // size = {}, align = {}", x.size.bytes(), x.align.abi.bytes()))
-        .unwrap_or_default();
+    let layout = if config.memory_layout {
+        ty.layout(sema.db)
+            .map(|x| format!(" // size = {}, align = {}", x.size.bytes(), x.align.abi.bytes()))
+            .unwrap_or_default()
+    } else {
+        String::default()
+    };
     let c = ty.as_closure()?;
     let mut captures = c
         .captured_items(sema.db)

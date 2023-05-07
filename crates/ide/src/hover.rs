@@ -227,7 +227,7 @@ fn hover_simple(
                     return None;
                 }
                 let c = token.parent().and_then(|x| x.parent()).and_then(ast::ClosureExpr::cast)?;
-                render::closure_expr(sema, c)
+                render::closure_expr(sema, config, c)
             })
         });
 
