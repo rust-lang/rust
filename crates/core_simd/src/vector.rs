@@ -263,11 +263,9 @@ where
             slice.len() >= Self::N,
             "slice length must be at least the number of elements"
         );
-        assert!(core::mem::size_of::<Self>() == Self::N * core::mem::size_of::<T>());
-        // Safety:
-        // - We've checked the length is sufficient.
-        // - `T` and `Simd<T, N>` are Copy types.
-        unsafe { slice.as_ptr().cast::<Self>().read_unaligned() }
+        // SAFETY: We just checked that the slice contains
+        // at least `N` elements.
+        unsafe { Self::load(slice.as_ptr().cast()) }
     }
 
     /// Writes a SIMD vector to the first `N` elements of a slice.
@@ -293,11 +291,9 @@ where
             slice.len() >= Self::N,
             "slice length must be at least the number of elements"
         );
-        assert!(core::mem::size_of::<Self>() == Self::N * core::mem::size_of::<T>());
-        // Safety:
-        // - We've checked the length is sufficient
-        // - `T` and `Simd<T, N>` are Copy types.
-        unsafe { slice.as_mut_ptr().cast::<Self>().write_unaligned(self) }
+        // SAFETY: We just checked that the slice contains
+        // at least `N` elements.
+        unsafe { self.store(slice.as_mut_ptr().cast()) }
     }
 
     /// Performs elementwise conversion of a SIMD vector's elements to another SIMD-valid type.
