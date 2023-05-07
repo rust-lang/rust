@@ -1,6 +1,4 @@
-// revisions: no_drop_tracking drop_tracking drop_tracking_mir
-// [drop_tracking] compile-flags: -Zdrop-tracking
-// [drop_tracking_mir] compile-flags: -Zdrop-tracking-mir
+// compile-flags: -Zdrop-tracking
 
 #![feature(generators, negative_impls, rustc_attrs)]
 
@@ -28,7 +26,6 @@ macro_rules! type_combinations {
             //~^ ERROR cannot be sent between threads
             //~| ERROR cannot be sent between threads
             //~| ERROR cannot be sent between threads
-            //[no_drop_tracking]~^^^^ ERROR cannot be sent between threads
         }
 
         // Simple owned value. This works because the Client is considered moved into `drop`,
@@ -38,10 +35,6 @@ macro_rules! type_combinations {
                 _ => yield,
             };
             assert_send(g);
-            //[no_drop_tracking]~^ ERROR cannot be sent between threads
-            //[no_drop_tracking]~| ERROR cannot be sent between threads
-            //[no_drop_tracking]~| ERROR cannot be sent between threads
-            //[no_drop_tracking]~| ERROR cannot be sent between threads
         }
     )* }
 }
