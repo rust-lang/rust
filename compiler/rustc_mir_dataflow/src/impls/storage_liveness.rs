@@ -5,7 +5,7 @@ use rustc_middle::mir::*;
 use std::borrow::Cow;
 
 use super::MaybeBorrowedLocals;
-use crate::{CallReturnPlaces, GenKill, ResultsClonedCursor};
+use crate::{GenKill, ResultsClonedCursor};
 
 #[derive(Clone)]
 pub struct MaybeStorageLive<'a> {
@@ -66,13 +66,14 @@ impl<'tcx, 'a> crate::GenKillAnalysis<'tcx> for MaybeStorageLive<'a> {
         }
     }
 
-    fn terminator_effect(
+    fn terminator_effect<'mir>(
         &mut self,
-        _trans: &mut impl GenKill<Self::Idx>,
-        _: &Terminator<'tcx>,
+        _trans: &mut Self::Domain,
+        terminator: &'mir Terminator<'tcx>,
         _: Location,
-    ) {
+    ) -> TerminatorEdge<'mir, 'tcx> {
         // Terminators have no effect
+        terminator.edges()
     }
 
     fn call_return_effect(
@@ -137,13 +138,14 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeStorageDead {
         }
     }
 
-    fn terminator_effect(
+    fn terminator_effect<'mir>(
         &mut self,
-        _trans: &mut impl GenKill<Self::Idx>,
-        _: &Terminator<'tcx>,
+        _: &mut Self::Domain,
+        terminator: &'mir Terminator<'tcx>,
         _: Location,
-    ) {
+    ) -> TerminatorEdge<'mir, 'tcx> {
         // Terminators have no effect
+        terminator.edges()
     }
 
     fn call_return_effect(
@@ -254,7 +256,10 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, '_, 'tcx> {
         loc: Location,
     ) {
         // If a place is borrowed in a terminator, it needs storage for that terminator.
-        self.borrowed_locals.mut_analysis().terminator_effect(trans, terminator, loc);
+        self.borrowed_locals
+            .mut_analysis()
+            .transfer_function(trans)
+            .visit_terminator(terminator, loc);
 
         match &terminator.kind {
             TerminatorKind::Call { destination, .. } => {
@@ -300,12 +305,12 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, '_, 'tcx> {
         }
     }
 
-    fn terminator_effect(
+    fn terminator_effect<'t>(
         &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
-        terminator: &Terminator<'tcx>,
+        trans: &mut Self::Domain,
+        terminator: &'t Terminator<'tcx>,
         loc: Location,
-    ) {
+    ) -> TerminatorEdge<'t, 'tcx> {
         match terminator.kind {
             // For call terminators the destination requires storage for the call
             // and after the call returns successfully, but not after a panic.
@@ -337,6 +342,7 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, '_, 'tcx> {
         }
 
         self.check_for_move(trans, loc);
+        terminator.edges()
     }
 
     fn call_return_effect(
@@ -346,15 +352,6 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, '_, 'tcx> {
         return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
         return_places.for_each(|place| trans.gen(place.local));
-    }
-
-    fn yield_resume_effect(
-        &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
-        _resume_block: BasicBlock,
-        resume_place: Place<'tcx>,
-    ) {
-        trans.gen(resume_place.local);
     }
 }
 

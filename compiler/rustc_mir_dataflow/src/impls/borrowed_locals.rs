@@ -2,7 +2,6 @@ use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 
-use crate::framework::CallReturnPlaces;
 use crate::{AnalysisDomain, GenKill, GenKillAnalysis};
 
 /// A dataflow analysis that tracks whether a pointer or reference could possibly exist that points
@@ -15,7 +14,7 @@ use crate::{AnalysisDomain, GenKill, GenKillAnalysis};
 pub struct MaybeBorrowedLocals;
 
 impl MaybeBorrowedLocals {
-    fn transfer_function<'a, T>(&'a self, trans: &'a mut T) -> TransferFunction<'a, T> {
+    pub(super) fn transfer_function<'a, T>(&'a self, trans: &'a mut T) -> TransferFunction<'a, T> {
         TransferFunction { trans }
     }
 }
@@ -50,13 +49,14 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeBorrowedLocals {
         self.transfer_function(trans).visit_statement(statement, location);
     }
 
-    fn terminator_effect(
+    fn terminator_effect<'mir>(
         &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
-        terminator: &Terminator<'tcx>,
+        trans: &mut Self::Domain,
+        terminator: &'mir Terminator<'tcx>,
         location: Location,
-    ) {
+    ) -> TerminatorEdge<'mir, 'tcx> {
         self.transfer_function(trans).visit_terminator(terminator, location);
+        terminator.edges()
     }
 
     fn call_return_effect(
@@ -69,7 +69,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeBorrowedLocals {
 }
 
 /// A `Visitor` that defines the transfer function for `MaybeBorrowedLocals`.
-struct TransferFunction<'a, T> {
+pub(super) struct TransferFunction<'a, T> {
     trans: &'a mut T,
 }
 

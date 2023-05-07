@@ -1,12 +1,12 @@
 use rustc_index::bit_set::{BitSet, ChunkedBitSet};
 use rustc_index::Idx;
-use rustc_middle::mir::{self, Body, Location};
+use rustc_middle::mir::{self, Body, CallReturnPlaces, Location, TerminatorEdge};
 use rustc_middle::ty::{self, TyCtxt};
 
 use crate::drop_flag_effects_for_function_entry;
 use crate::drop_flag_effects_for_location;
 use crate::elaborate_drops::DropFlagState;
-use crate::framework::{CallReturnPlaces, SwitchIntEdgeEffects};
+use crate::framework::SwitchIntEdgeEffects;
 use crate::move_paths::{HasMoveData, InitIndex, InitKind, LookupResult, MoveData, MovePathIndex};
 use crate::on_lookup_result_bits;
 use crate::MoveDataParamEnv;
@@ -318,15 +318,16 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         }
     }
 
-    fn terminator_effect(
+    fn terminator_effect<'mir>(
         &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
-        _: &mir::Terminator<'tcx>,
+        state: &mut Self::Domain,
+        terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
-    ) {
+    ) -> TerminatorEdge<'mir, 'tcx> {
         drop_flag_effects_for_location(self.tcx, self.body, self.mdpe, location, |path, s| {
-            Self::update_bits(trans, path, s)
+            Self::update_bits(state, path, s)
         });
+        terminator.edges()
     }
 
     fn call_return_effect(
@@ -438,15 +439,16 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         // mutable borrow occurs. Places cannot become uninitialized through a mutable reference.
     }
 
-    fn terminator_effect(
+    fn terminator_effect<'mir>(
         &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
-        _terminator: &mir::Terminator<'tcx>,
+        trans: &mut Self::Domain,
+        terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
-    ) {
+    ) -> TerminatorEdge<'mir, 'tcx> {
         drop_flag_effects_for_location(self.tcx, self.body, self.mdpe, location, |path, s| {
             Self::update_bits(trans, path, s)
         });
+        terminator.edges()
     }
 
     fn call_return_effect(
@@ -559,15 +561,16 @@ impl<'tcx> GenKillAnalysis<'tcx> for DefinitelyInitializedPlaces<'_, 'tcx> {
         })
     }
 
-    fn terminator_effect(
+    fn terminator_effect<'mir>(
         &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
-        _terminator: &mir::Terminator<'tcx>,
+        trans: &mut Self::Domain,
+        terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
-    ) {
+    ) -> TerminatorEdge<'mir, 'tcx> {
         drop_flag_effects_for_location(self.tcx, self.body, self.mdpe, location, |path, s| {
             Self::update_bits(trans, path, s)
-        })
+        });
+        terminator.edges()
     }
 
     fn call_return_effect(
@@ -640,13 +643,13 @@ impl<'tcx> GenKillAnalysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
         }
     }
 
-    #[instrument(skip(self, trans, _terminator), level = "debug")]
-    fn terminator_effect(
+    #[instrument(skip(self, trans, terminator), level = "debug")]
+    fn terminator_effect<'mir>(
         &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
-        _terminator: &mir::Terminator<'tcx>,
+        trans: &mut Self::Domain,
+        terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
-    ) {
+    ) -> TerminatorEdge<'mir, 'tcx> {
         let (body, move_data) = (self.body, self.move_data());
         let term = body[location.block].terminator();
         let init_loc_map = &move_data.init_loc_map;
@@ -660,6 +663,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
                 })
                 .copied(),
         );
+        terminator.edges()
     }
 
     fn call_return_effect(

@@ -1,8 +1,10 @@
 use rustc_index::bit_set::{BitSet, ChunkedBitSet};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
-use rustc_middle::mir::{self, Local, Location, Place, StatementKind};
+use rustc_middle::mir::{
+    self, CallReturnPlaces, Local, Location, Place, StatementKind, TerminatorEdge,
+};
 
-use crate::{Analysis, AnalysisDomain, Backward, CallReturnPlaces, GenKill, GenKillAnalysis};
+use crate::{Analysis, AnalysisDomain, Backward, GenKill, GenKillAnalysis};
 
 /// A [live-variable dataflow analysis][liveness].
 ///
@@ -56,13 +58,14 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeLiveLocals {
         TransferFunction(trans).visit_statement(statement, location);
     }
 
-    fn terminator_effect(
+    fn terminator_effect<'mir>(
         &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
-        terminator: &mir::Terminator<'tcx>,
+        trans: &mut Self::Domain,
+        terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
-    ) {
+    ) -> TerminatorEdge<'mir, 'tcx> {
         TransferFunction(trans).visit_terminator(terminator, location);
+        terminator.edges()
     }
 
     fn call_return_effect(
@@ -72,23 +75,12 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeLiveLocals {
         return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
         return_places.for_each(|place| {
-            if let Some(local) = place.as_local() {
-                trans.kill(local);
-            }
+            YieldResumeEffect(trans).visit_place(
+                &place,
+                PlaceContext::MutatingUse(MutatingUseContext::Yield),
+                Location::START,
+            )
         });
-    }
-
-    fn yield_resume_effect(
-        &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
-        _resume_block: mir::BasicBlock,
-        resume_place: mir::Place<'tcx>,
-    ) {
-        YieldResumeEffect(trans).visit_place(
-            &resume_place,
-            PlaceContext::MutatingUse(MutatingUseContext::Yield),
-            Location::START,
-        )
     }
 }
 
@@ -99,16 +91,12 @@ where
     T: GenKill<Local>,
 {
     fn visit_place(&mut self, place: &mir::Place<'tcx>, context: PlaceContext, location: Location) {
-        if let PlaceContext::MutatingUse(MutatingUseContext::Yield) = context {
-            // The resume place is evaluated and assigned to only after generator resumes, so its
-            // effect is handled separately in `yield_resume_effect`.
-            return;
-        }
-
         match DefUse::for_place(*place, context) {
             Some(DefUse::Def) => {
                 if let PlaceContext::MutatingUse(
-                    MutatingUseContext::Call | MutatingUseContext::AsmOutput,
+                    MutatingUseContext::Yield
+                    | MutatingUseContext::Call
+                    | MutatingUseContext::AsmOutput,
                 ) = context
                 {
                     // For the associated terminators, this is only a `Def` when the terminator returns
@@ -287,13 +275,14 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
         TransferFunction(trans).visit_statement(statement, location);
     }
 
-    fn apply_terminator_effect(
+    fn apply_terminator_effect<'mir>(
         &mut self,
         trans: &mut Self::Domain,
-        terminator: &mir::Terminator<'tcx>,
+        terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
-    ) {
+    ) -> TerminatorEdge<'mir, 'tcx> {
         TransferFunction(trans).visit_terminator(terminator, location);
+        TerminatorEdge::None
     }
 
     fn apply_call_return_effect(
@@ -303,22 +292,11 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
         return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
         return_places.for_each(|place| {
-            if let Some(local) = place.as_local() {
-                trans.remove(local);
-            }
+            YieldResumeEffect(trans).visit_place(
+                &place,
+                PlaceContext::MutatingUse(MutatingUseContext::Yield),
+                Location::START,
+            )
         });
-    }
-
-    fn apply_yield_resume_effect(
-        &mut self,
-        trans: &mut Self::Domain,
-        _resume_block: mir::BasicBlock,
-        resume_place: mir::Place<'tcx>,
-    ) {
-        YieldResumeEffect(trans).visit_place(
-            &resume_place,
-            PlaceContext::MutatingUse(MutatingUseContext::Yield),
-            Location::START,
-        )
     }
 }

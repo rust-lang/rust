@@ -47,8 +47,7 @@ use rustc_target::abi::{FieldIdx, VariantIdx};
 
 use crate::lattice::{HasBottom, HasTop};
 use crate::{
-    fmt::DebugWithContext, Analysis, AnalysisDomain, CallReturnPlaces, JoinSemiLattice,
-    SwitchIntEdgeEffects,
+    fmt::DebugWithContext, Analysis, AnalysisDomain, JoinSemiLattice, SwitchIntEdgeEffects,
 };
 
 pub trait ValueAnalysis<'tcx> {
@@ -353,22 +352,23 @@ where
         }
     }
 
-    fn apply_terminator_effect(
+    fn apply_terminator_effect<'mir>(
         &mut self,
         state: &mut Self::Domain,
-        terminator: &Terminator<'tcx>,
+        terminator: &'mir Terminator<'tcx>,
         _location: Location,
-    ) {
+    ) -> TerminatorEdge<'mir, 'tcx> {
         if state.is_reachable() {
             self.0.handle_terminator(terminator, state);
         }
+        terminator.edges()
     }
 
     fn apply_call_return_effect(
         &mut self,
         state: &mut Self::Domain,
         _block: BasicBlock,
-        return_places: crate::CallReturnPlaces<'_, 'tcx>,
+        return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
         if state.is_reachable() {
             self.0.handle_call_return(return_places, state)

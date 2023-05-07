@@ -264,19 +264,20 @@ where
             state.clone_from(&entry_sets[bb]);
 
             // Apply the block transfer function, using the cached one if it exists.
-            match &apply_trans_for_block {
-                Some(apply) => apply(bb, &mut state),
-                None => {
-                    A::Direction::apply_effects_in_block(&mut analysis, &mut state, bb, bb_data)
-                }
-            }
+            let edges = A::Direction::apply_effects_in_block(
+                &mut analysis,
+                &mut state,
+                bb,
+                bb_data,
+                apply_trans_for_block.as_deref(),
+            );
 
             A::Direction::join_state_into_successors_of(
                 &mut analysis,
-                tcx,
                 body,
                 &mut state,
-                (bb, bb_data),
+                bb,
+                edges,
                 |target: BasicBlock, state: &A::Domain| {
                     let set_changed = entry_sets[target].join(state);
                     if set_changed {
