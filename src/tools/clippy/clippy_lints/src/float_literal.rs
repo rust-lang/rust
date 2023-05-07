@@ -66,7 +66,7 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
         let ty = cx.typeck_results().expr_ty(expr);
         if_chain! {
             if let ty::Float(fty) = *ty.kind();
-            if let hir::ExprKind::Lit(ref lit) = expr.kind;
+            if let hir::ExprKind::Lit(lit) = expr.kind;
             if let LitKind::Float(sym, lit_float_ty) = lit.node;
             then {
                 let sym_str = sym.as_str();

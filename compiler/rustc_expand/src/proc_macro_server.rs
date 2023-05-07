@@ -61,6 +61,8 @@ impl FromInternal<token::LitKind> for LitKind {
             token::StrRaw(n) => LitKind::StrRaw(n),
             token::ByteStr => LitKind::ByteStr,
             token::ByteStrRaw(n) => LitKind::ByteStrRaw(n),
+            token::CStr => LitKind::CStr,
+            token::CStrRaw(n) => LitKind::CStrRaw(n),
             token::Err => LitKind::Err,
             token::Bool => unreachable!(),
         }
@@ -78,6 +80,8 @@ impl ToInternal<token::LitKind> for LitKind {
             LitKind::StrRaw(n) => token::StrRaw(n),
             LitKind::ByteStr => token::ByteStr,
             LitKind::ByteStrRaw(n) => token::ByteStrRaw(n),
+            LitKind::CStr => token::CStr,
+            LitKind::CStrRaw(n) => token::CStrRaw(n),
             LitKind::Err => token::Err,
         }
     }
@@ -436,6 +440,8 @@ impl server::FreeFunctions for Rustc<'_, '_> {
                 | token::LitKind::StrRaw(_)
                 | token::LitKind::ByteStr
                 | token::LitKind::ByteStrRaw(_)
+                | token::LitKind::CStr
+                | token::LitKind::CStrRaw(_)
                 | token::LitKind::Err => return Err(()),
                 token::LitKind::Integer | token::LitKind::Float => {}
             }

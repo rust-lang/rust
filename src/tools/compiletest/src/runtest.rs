@@ -1483,7 +1483,16 @@ impl<'test> TestCx<'test> {
     }
 
     fn compile_test(&self, will_execute: WillExecute, emit: Emit) -> ProcRes {
-        self.compile_test_general(will_execute, emit, self.props.local_pass_mode())
+        self.compile_test_general(will_execute, emit, self.props.local_pass_mode(), Vec::new())
+    }
+
+    fn compile_test_with_passes(
+        &self,
+        will_execute: WillExecute,
+        emit: Emit,
+        passes: Vec<String>,
+    ) -> ProcRes {
+        self.compile_test_general(will_execute, emit, self.props.local_pass_mode(), passes)
     }
 
     fn compile_test_general(
@@ -1491,6 +1500,7 @@ impl<'test> TestCx<'test> {
         will_execute: WillExecute,
         emit: Emit,
         local_pm: Option<PassMode>,
+        passes: Vec<String>,
     ) -> ProcRes {
         // Only use `make_exe_name` when the test ends up being executed.
         let output_file = match will_execute {
@@ -1527,6 +1537,7 @@ impl<'test> TestCx<'test> {
             emit,
             allow_unused,
             LinkToAux::Yes,
+            passes,
         );
 
         self.compose_and_run_compiler(rustc, None)
@@ -1777,6 +1788,7 @@ impl<'test> TestCx<'test> {
             Emit::None,
             AllowUnused::No,
             LinkToAux::No,
+            Vec::new(),
         );
 
         for key in &aux_props.unset_rustc_env {
@@ -1908,6 +1920,7 @@ impl<'test> TestCx<'test> {
         emit: Emit,
         allow_unused: AllowUnused,
         link_to_aux: LinkToAux,
+        passes: Vec<String>, // Vec of passes under mir-opt test to be dumped
     ) -> Command {
         let is_aux = input_file.components().map(|c| c.as_os_str()).any(|c| c == "auxiliary");
         let is_rustdoc = self.is_rustdoc() && !is_aux;
@@ -2008,9 +2021,18 @@ impl<'test> TestCx<'test> {
                 rustc.arg("-Cstrip=debuginfo");
             }
             MirOpt => {
+                // We check passes under test to minimize the mir-opt test dump
+                // if files_for_miropt_test parses the passes, we dump only those passes
+                // otherwise we conservatively pass -Zdump-mir=all
+                let zdump_arg = if !passes.is_empty() {
+                    format!("-Zdump-mir={}", passes.join(" | "))
+                } else {
+                    "-Zdump-mir=all".to_string()
+                };
+
                 rustc.args(&[
                     "-Copt-level=1",
-                    "-Zdump-mir=all",
+                    &zdump_arg,
                     "-Zvalidate-mir",
                     "-Zdump-mir-exclude-pass-number",
                     "-Zmir-pretty-relative-line-numbers=yes",
@@ -2333,6 +2355,7 @@ impl<'test> TestCx<'test> {
             Emit::LlvmIr,
             AllowUnused::No,
             LinkToAux::Yes,
+            Vec::new(),
         );
 
         self.compose_and_run_compiler(rustc, None)
@@ -2364,8 +2387,14 @@ impl<'test> TestCx<'test> {
             None => self.fatal("missing 'assembly-output' header"),
         }
 
-        let rustc =
-            self.make_compile_args(input_file, output_file, emit, AllowUnused::No, LinkToAux::Yes);
+        let rustc = self.make_compile_args(
+            input_file,
+            output_file,
+            emit,
+            AllowUnused::No,
+            LinkToAux::Yes,
+            Vec::new(),
+        );
 
         (self.compose_and_run_compiler(rustc, None), output_path)
     }
@@ -2496,6 +2525,7 @@ impl<'test> TestCx<'test> {
             Emit::None,
             AllowUnused::Yes,
             LinkToAux::Yes,
+            Vec::new(),
         );
         new_rustdoc.build_all_auxiliary(&mut rustc);
 
@@ -3310,7 +3340,8 @@ impl<'test> TestCx<'test> {
         if let Some(FailMode::Build) = self.props.fail_mode {
             // Make sure a build-fail test cannot fail due to failing analysis (e.g. typeck).
             let pm = Some(PassMode::Check);
-            let proc_res = self.compile_test_general(WillExecute::No, Emit::Metadata, pm);
+            let proc_res =
+                self.compile_test_general(WillExecute::No, Emit::Metadata, pm, Vec::new());
             self.check_if_test_should_compile(&proc_res, pm);
         }
 
@@ -3479,6 +3510,7 @@ impl<'test> TestCx<'test> {
                 emit_metadata,
                 AllowUnused::No,
                 LinkToAux::Yes,
+                Vec::new(),
             );
             let res = self.compose_and_run_compiler(rustc, None);
             if !res.status.success() {
@@ -3497,13 +3529,13 @@ impl<'test> TestCx<'test> {
         let pm = self.pass_mode();
         let should_run = self.should_run(pm);
         let emit_metadata = self.should_emit_metadata(pm);
-        let proc_res = self.compile_test(should_run, emit_metadata);
+        let passes = self.get_passes();
 
+        let proc_res = self.compile_test_with_passes(should_run, emit_metadata, passes);
+        self.check_mir_dump();
         if !proc_res.status.success() {
             self.fatal_proc_rec("compilation failed!", &proc_res);
         }
-
-        self.check_mir_dump();
 
         if let WillExecute::Yes = should_run {
             let proc_res = self.exec_compiled_test();
@@ -3512,6 +3544,26 @@ impl<'test> TestCx<'test> {
                 self.fatal_proc_rec("test run failed!", &proc_res);
             }
         }
+    }
+
+    fn get_passes(&self) -> Vec<String> {
+        let files = miropt_test_tools::files_for_miropt_test(
+            &self.testpaths.file,
+            self.config.get_pointer_width(),
+        );
+
+        let mut out = Vec::new();
+
+        for miropt_test_tools::MiroptTestFiles {
+            from_file: _,
+            to_file: _,
+            expected_file: _,
+            passes,
+        } in files
+        {
+            out.extend(passes);
+        }
+        out
     }
 
     fn check_mir_dump(&self) {
@@ -3543,8 +3595,9 @@ impl<'test> TestCx<'test> {
             &self.testpaths.file,
             self.config.get_pointer_width(),
         );
-
-        for miropt_test_tools::MiroptTestFiles { from_file, to_file, expected_file } in files {
+        for miropt_test_tools::MiroptTestFiles { from_file, to_file, expected_file, passes: _ } in
+            files
+        {
             let dumped_string = if let Some(after) = to_file {
                 self.diff_mir_files(from_file.into(), after.into())
             } else {

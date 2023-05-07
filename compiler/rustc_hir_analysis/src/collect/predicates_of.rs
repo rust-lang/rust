@@ -565,7 +565,7 @@ pub(super) fn super_predicates_of(
     implied_predicates_with_filter(tcx, trait_def_id.to_def_id(), PredicateFilter::SelfOnly)
 }
 
-pub(super) fn super_predicates_that_define_assoc_type(
+pub(super) fn super_predicates_that_define_assoc_item(
     tcx: TyCtxt<'_>,
     (trait_def_id, assoc_name): (DefId, Ident),
 ) -> ty::GenericPredicates<'_> {
@@ -640,7 +640,7 @@ pub(super) fn implied_predicates_with_filter(
         ),
         PredicateFilter::SelfThatDefines(assoc_name) => (
             // Convert the bounds that follow the colon (or equal) that reference the associated name
-            icx.astconv().compute_bounds_that_match_assoc_type(self_param_ty, bounds, assoc_name),
+            icx.astconv().compute_bounds_that_match_assoc_item(self_param_ty, bounds, assoc_name),
             // Include where clause bounds for `Self` that reference the associated name
             icx.type_parameter_bounds_in_generics(
                 generics,
@@ -819,7 +819,7 @@ impl<'tcx> ItemCtxt<'tcx> {
             hir::GenericBound::Trait(poly_trait_ref, _) => {
                 let trait_ref = &poly_trait_ref.trait_ref;
                 if let Some(trait_did) = trait_ref.trait_def_id() {
-                    self.tcx.trait_may_define_assoc_type(trait_did, assoc_name)
+                    self.tcx.trait_may_define_assoc_item(trait_did, assoc_name)
                 } else {
                     false
                 }

@@ -199,7 +199,7 @@ impl<'r, 'a, 'tcx> EffectiveVisibilitiesVisitor<'r, 'a, 'tcx> {
         let tcx = self.r.tcx;
         self.changed |= self.import_effective_visibilities.update(
             binding,
-            nominal_vis,
+            Some(nominal_vis),
             || cheap_private_vis.unwrap_or_else(|| self.r.private_vis_import(binding)),
             inherited_eff_vis,
             parent_id.level(),
@@ -213,7 +213,7 @@ impl<'r, 'a, 'tcx> EffectiveVisibilitiesVisitor<'r, 'a, 'tcx> {
         let tcx = self.r.tcx;
         self.changed |= self.def_effective_visibilities.update(
             def_id,
-            nominal_vis,
+            Some(nominal_vis),
             || cheap_private_vis.unwrap_or_else(|| self.r.private_vis_def(def_id)),
             inherited_eff_vis,
             parent_id.level(),

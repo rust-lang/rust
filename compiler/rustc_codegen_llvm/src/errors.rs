@@ -67,7 +67,8 @@ pub(crate) struct ErrorWritingDEFFile {
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_error_calling_dlltool)]
-pub(crate) struct ErrorCallingDllTool {
+pub(crate) struct ErrorCallingDllTool<'a> {
+    pub dlltool_path: Cow<'a, str>,
     pub error: std::io::Error,
 }
 
@@ -195,6 +196,7 @@ pub(crate) struct FromLlvmOptimizationDiag<'a> {
     pub line: std::ffi::c_uint,
     pub column: std::ffi::c_uint,
     pub pass_name: &'a str,
+    pub kind: &'a str,
     pub message: &'a str,
 }
 

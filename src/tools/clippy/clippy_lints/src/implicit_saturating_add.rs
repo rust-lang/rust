@@ -60,7 +60,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingAdd {
             if expr1.span.ctxt() == ctxt;
             if clippy_utils::SpanlessEq::new(cx).eq_expr(l, target);
             if BinOpKind::Add == op1.node;
-            if let ExprKind::Lit(ref lit) = value.kind;
+            if let ExprKind::Lit(lit) = value.kind;
             if let LitKind::Int(1, LitIntType::Unsuffixed) = lit.node;
             if block.expr.is_none();
             then {

@@ -25,10 +25,9 @@ use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Node};
 use rustc_hir::{Expr, HirId};
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::{InferOk, LateBoundRegionConversionTime};
+use rustc_infer::infer::{DefineOpaqueTypes, InferOk, LateBoundRegionConversionTime};
 use rustc_middle::hir::map;
 use rustc_middle::ty::error::TypeError::{self, Sorts};
-use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::{
     self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind,
     GeneratorDiagnosticData, GeneratorInteriorTypeCause, Infer, InferTy, InternalSubsts,
@@ -39,9 +38,9 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{BytePos, DesugaringKind, ExpnKind, MacroKind, Span, DUMMY_SP};
 use rustc_target::spec::abi;
+use std::iter;
 use std::ops::Deref;
 
-use super::method_chain::CollectAllMismatches;
 use super::InferCtxtPrivExt;
 use crate::infer::InferCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -319,6 +318,7 @@ pub trait TypeErrCtxtExt<'tcx> {
 
     fn note_obligation_cause_code<T>(
         &self,
+        body_id: LocalDefId,
         err: &mut Diagnostic,
         predicate: T,
         param_env: ty::ParamEnv<'tcx>,
@@ -359,8 +359,9 @@ pub trait TypeErrCtxtExt<'tcx> {
     );
     fn note_function_argument_obligation(
         &self,
-        arg_hir_id: HirId,
+        body_id: LocalDefId,
         err: &mut Diagnostic,
+        arg_hir_id: HirId,
         parent_code: &ObligationCauseCode<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         predicate: ty::Predicate<'tcx>,
@@ -2742,6 +2743,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         // bound that introduced the obligation (e.g. `T: Send`).
         debug!(?next_code);
         self.note_obligation_cause_code(
+            obligation.cause.body_id,
             err,
             obligation.predicate,
             obligation.param_env,
@@ -2753,6 +2755,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
     fn note_obligation_cause_code<T>(
         &self,
+        body_id: LocalDefId,
         err: &mut Diagnostic,
         predicate: T,
         param_env: ty::ParamEnv<'tcx>,
@@ -2790,7 +2793,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             | ObligationCauseCode::LetElse
             | ObligationCauseCode::BinOp { .. }
             | ObligationCauseCode::AscribeUserTypeProvePredicate(..)
-            | ObligationCauseCode::RustCall => {}
+            | ObligationCauseCode::RustCall
+            | ObligationCauseCode::DropImpl => {}
             ObligationCauseCode::SliceOrArrayElem => {
                 err.note("slice and array elements must have `Sized` type");
             }
@@ -3152,6 +3156,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     // #74711: avoid a stack overflow
                     ensure_sufficient_stack(|| {
                         self.note_obligation_cause_code(
+                            body_id,
                             err,
                             parent_predicate,
                             param_env,
@@ -3163,6 +3168,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 } else {
                     ensure_sufficient_stack(|| {
                         self.note_obligation_cause_code(
+                            body_id,
                             err,
                             parent_predicate,
                             param_env,
@@ -3292,6 +3298,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // #74711: avoid a stack overflow
                 ensure_sufficient_stack(|| {
                     self.note_obligation_cause_code(
+                        body_id,
                         err,
                         parent_predicate,
                         param_env,
@@ -3307,6 +3314,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // #74711: avoid a stack overflow
                 ensure_sufficient_stack(|| {
                     self.note_obligation_cause_code(
+                        body_id,
                         err,
                         parent_predicate,
                         param_env,
@@ -3323,8 +3331,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 ..
             } => {
                 self.note_function_argument_obligation(
-                    arg_hir_id,
+                    body_id,
                     err,
+                    arg_hir_id,
                     parent_code,
                     param_env,
                     predicate,
@@ -3332,6 +3341,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 );
                 ensure_sufficient_stack(|| {
                     self.note_obligation_cause_code(
+                        body_id,
                         err,
                         predicate,
                         param_env,
@@ -3553,8 +3563,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     }
     fn note_function_argument_obligation(
         &self,
-        arg_hir_id: HirId,
+        body_id: LocalDefId,
         err: &mut Diagnostic,
+        arg_hir_id: HirId,
         parent_code: &ObligationCauseCode<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         failed_pred: ty::Predicate<'tcx>,
@@ -3587,7 +3598,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             // to an associated type (as seen from `trait_pred`) in the predicate. Like in
             // trait_pred `S: Sum<<Self as Iterator>::Item>` and predicate `i32: Sum<&()>`
             let mut type_diffs = vec![];
-
             if let ObligationCauseCode::ExprBindingObligation(def_id, _, _, idx) = parent_code.deref()
                 && let Some(node_substs) = typeck_results.node_substs_opt(call_hir_id)
                 && let where_clauses = self.tcx.predicates_of(def_id).instantiate(self.tcx, node_substs)
@@ -3596,14 +3606,26 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 if let Some(where_pred) = where_pred.to_opt_poly_trait_pred()
                     && let Some(failed_pred) = failed_pred.to_opt_poly_trait_pred()
                 {
-                    let mut c = CollectAllMismatches {
-                        infcx: self.infcx,
-                        param_env,
-                        errors: vec![],
+                    let where_pred = self.instantiate_binder_with_placeholders(where_pred);
+                    let failed_pred = self.instantiate_binder_with_fresh_vars(
+                        expr.span,
+                        LateBoundRegionConversionTime::FnCall,
+                        failed_pred
+                    );
+
+                    let zipped =
+                        iter::zip(where_pred.trait_ref.substs, failed_pred.trait_ref.substs);
+                    for (expected, actual) in zipped {
+                        self.probe(|_| {
+                            match self
+                                .at(&ObligationCause::misc(expr.span, body_id), param_env)
+                                .eq(DefineOpaqueTypes::No, expected, actual)
+                            {
+                                Ok(_) => (), // We ignore nested obligations here for now.
+                                Err(err) => type_diffs.push(err),
+                            }
+                        })
                     };
-                    if let Ok(_) = c.relate(where_pred, failed_pred) {
-                        type_diffs = c.errors;
-                    }
                 } else if let Some(where_pred) = where_pred.to_opt_poly_projection_pred()
                     && let Some(failed_pred) = failed_pred.to_opt_poly_projection_pred()
                     && let Some(found) = failed_pred.skip_binder().term.ty()

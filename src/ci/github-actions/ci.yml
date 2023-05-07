@@ -53,6 +53,7 @@ x--expand-yaml-anchors--remove:
     # (caches, artifacts...).
     CACHES_AWS_ACCESS_KEY_ID: AKIA46X5W6CZI5DHEBFL
     ARTIFACTS_AWS_ACCESS_KEY_ID: AKIA46X5W6CZN24CBO55
+    AWS_REGION: us-west-1
     CACHE_DOMAIN: ci-caches.rust-lang.org
 
   - &dummy-variables
@@ -68,6 +69,7 @@ x--expand-yaml-anchors--remove:
     # (caches, artifacts...).
     CACHES_AWS_ACCESS_KEY_ID: AKIA46X5W6CZOMUQATD5
     ARTIFACTS_AWS_ACCESS_KEY_ID: AKIA46X5W6CZH5AYXDVF
+    AWS_REGION: us-west-1
     CACHE_DOMAIN: ci-caches-gha.rust-lang.org
 
   - &base-job
@@ -156,10 +158,6 @@ x--expand-yaml-anchors--remove:
 
       - name: show the current environment
         run: src/ci/scripts/dump-environment.sh
-        <<: *step
-
-      - name: install awscli
-        run: src/ci/scripts/install-awscli.sh
         <<: *step
 
       - name: install sccache
@@ -300,25 +298,21 @@ jobs:
     env:
       <<: [*shared-ci-variables, *public-variables]
     if: github.event_name == 'pull_request'
-    continue-on-error: ${{ matrix.tidy }}
+    continue-on-error: ${{ matrix.name == 'mingw-check-tidy' }}
     strategy:
       matrix:
         include:
           - name: mingw-check
             <<: *job-linux-16c
-            tidy: false
 
           - name: mingw-check-tidy
             <<: *job-linux-16c
-            tidy: true
 
           - name: x86_64-gnu-llvm-14
             <<: *job-linux-16c
-            tidy: false
 
           - name: x86_64-gnu-tools
             <<: *job-linux-16c
-            tidy: false
 
   auto:
     permissions:

@@ -8,6 +8,7 @@ use crate::testing::crash_test::{CrashTestDummy, Panic};
 use crate::testing::ord_chaos::{Cyclic3, Governed, Governor};
 use crate::testing::rng::DeterministicRng;
 use crate::vec::Vec;
+use core::assert_matches::assert_matches;
 use std::cmp::Ordering;
 use std::iter;
 use std::mem;
@@ -2447,4 +2448,22 @@ fn test_cursor_mut_insert_after_4() {
     let mut map = BTreeMap::from([(1, 'a'), (2, 'b'), (3, 'c')]);
     let mut cur = map.upper_bound_mut(Bound::Included(&2));
     cur.insert_after(4, 'd');
+}
+
+#[test]
+fn cursor_peek_prev_agrees_with_cursor_mut() {
+    let mut map = BTreeMap::from([(1, 1), (2, 2), (3, 3)]);
+
+    let cursor = map.lower_bound(Bound::Excluded(&3));
+    assert!(cursor.key().is_none());
+
+    let prev = cursor.peek_prev();
+    assert_matches!(prev, Some((&3, _)));
+
+    // Shadow names so the two parts of this test match.
+    let mut cursor = map.lower_bound_mut(Bound::Excluded(&3));
+    assert!(cursor.key().is_none());
+
+    let prev = cursor.peek_prev();
+    assert_matches!(prev, Some((&3, _)));
 }

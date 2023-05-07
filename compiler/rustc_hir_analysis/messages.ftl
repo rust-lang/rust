@@ -192,7 +192,11 @@ hir_analysis_return_type_notation_equality_bound =
     return type notation is not allowed to use type equality
 
 hir_analysis_return_type_notation_missing_method =
-    cannot find associated function `{$assoc_name}` in trait `{$trait_name}`
+    cannot find associated function `{$assoc_name}` for `{$ty_name}`
+
+hir_analysis_return_type_notation_conflicting_bound =
+    ambiguous associated function `{$assoc_name}` for `{$ty_name}`
+    .note = `{$assoc_name}` is declared in two supertraits: `{$first_bound}` and `{$second_bound}`
 
 hir_analysis_placeholder_not_allowed_item_signatures = the placeholder `_` is not allowed within types on item signatures for {$kind}
     .label = not allowed in type signatures

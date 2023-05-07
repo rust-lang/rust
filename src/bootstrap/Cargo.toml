@@ -34,7 +34,6 @@ is-terminal = "0.4"
 build_helper = { path = "../tools/build_helper" }
 cmake = "0.1.38"
 filetime = "0.2"
-getopts = "0.2.19"
 cc = "1.0.69"
 libc = "0.2"
 hex = "0.4"
@@ -56,6 +55,7 @@ walkdir = "2"
 
 # Dependencies needed by the build-metrics feature
 sysinfo = { version = "0.26.0", optional = true }
+clap = { version = "4.2.4", default-features = false, features = ["std", "usage", "help", "derive", "error-context"] }
 
 # Solaris doesn't support flock() and thus fd-lock is not option now
 [target.'cfg(not(target_os = "solaris"))'.dependencies]
@@ -86,6 +86,7 @@ build-metrics = ["sysinfo"]
 # dependencies, only bootstrap itself.
 [profile.dev]
 debug = 0
+
 [profile.dev.package]
 # Only use debuginfo=1 to further reduce compile times.
 bootstrap.debug = 1

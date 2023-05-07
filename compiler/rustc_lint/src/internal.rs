@@ -478,8 +478,10 @@ impl EarlyLintPass for Diagnostics {
         }
         if !segments.iter().all(|(name, args)| {
             let arg = match name.as_str() {
-                "struct_span_err" | "span_note" | "span_label" | "span_help" => &args[1],
-                "note" | "help" => &args[0],
+                "struct_span_err" | "span_note" | "span_label" | "span_help" if args.len() == 2 => {
+                    &args[1]
+                }
+                "note" | "help" if args.len() == 1 => &args[0],
                 _ => {
                     return false;
                 }

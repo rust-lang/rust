@@ -380,11 +380,11 @@ pub fn transitive_bounds<'tcx>(
 }
 
 /// A specialized variant of `elaborate` that only elaborates trait references that may
-/// define the given associated type `assoc_name`. It uses the
-/// `super_predicates_that_define_assoc_type` query to avoid enumerating super-predicates that
+/// define the given associated item with the name `assoc_name`. It uses the
+/// `super_predicates_that_define_assoc_item` query to avoid enumerating super-predicates that
 /// aren't related to `assoc_item`. This is used when resolving types like `Self::Item` or
 /// `T::Item` and helps to avoid cycle errors (see e.g. #35237).
-pub fn transitive_bounds_that_define_assoc_type<'tcx>(
+pub fn transitive_bounds_that_define_assoc_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     bounds: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
     assoc_name: Ident,
@@ -397,7 +397,7 @@ pub fn transitive_bounds_that_define_assoc_type<'tcx>(
             let anon_trait_ref = tcx.anonymize_bound_vars(trait_ref);
             if visited.insert(anon_trait_ref) {
                 let super_predicates =
-                    tcx.super_predicates_that_define_assoc_type((trait_ref.def_id(), assoc_name));
+                    tcx.super_predicates_that_define_assoc_item((trait_ref.def_id(), assoc_name));
                 for (super_predicate, _) in super_predicates.predicates {
                     let subst_predicate = super_predicate.subst_supertrait(tcx, &trait_ref);
                     if let Some(binder) = subst_predicate.to_opt_poly_trait_pred() {

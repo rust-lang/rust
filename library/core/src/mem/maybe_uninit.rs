@@ -1287,7 +1287,7 @@ impl<T, const N: usize> MaybeUninit<[T; N]> {
     #[inline]
     pub const fn transpose(self) -> [MaybeUninit<T>; N] {
         // SAFETY: T and MaybeUninit<T> have the same layout
-        unsafe { super::transmute_copy(&ManuallyDrop::new(self)) }
+        unsafe { intrinsics::transmute_unchecked(self) }
     }
 }
 
@@ -1307,6 +1307,6 @@ impl<T, const N: usize> [MaybeUninit<T>; N] {
     #[inline]
     pub const fn transpose(self) -> MaybeUninit<[T; N]> {
         // SAFETY: T and MaybeUninit<T> have the same layout
-        unsafe { super::transmute_copy(&ManuallyDrop::new(self)) }
+        unsafe { intrinsics::transmute_unchecked(self) }
     }
 }

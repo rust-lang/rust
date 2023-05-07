@@ -1,0 +1,19 @@
+warning: the feature `return_type_notation` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/super-method-bound-ambig.rs:3:31
+   |
+LL | #![feature(async_fn_in_trait, return_type_notation)]
+   |                               ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #109417 <https://github.com/rust-lang/rust/issues/109417> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: ambiguous associated function `test` for `Foo`
+  --> $DIR/super-method-bound-ambig.rs:25:12
+   |
+LL |     T: Foo<test(): Send>,
+   |            ^^^^^^^^^^^^
+   |
+   = note: `test` is declared in two supertraits: `Super2` and `Super1<'a>`
+
+error: aborting due to previous error; 1 warning emitted
+

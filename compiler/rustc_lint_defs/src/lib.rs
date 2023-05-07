@@ -496,7 +496,8 @@ pub enum BuiltinLintDiagnostics {
     BreakWithLabelAndLoop(Span),
     NamedAsmLabel(String),
     UnicodeTextFlow(Span, String),
-    UnexpectedCfg((Symbol, Span), Option<(Symbol, Span)>),
+    UnexpectedCfgName((Symbol, Span), Option<(Symbol, Span)>),
+    UnexpectedCfgValue((Symbol, Span), Option<(Symbol, Span)>),
     DeprecatedWhereclauseLocation(Span, String),
     SingleUseLifetime {
         /// Span of the parameter which declares this lifetime.

@@ -854,9 +854,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let result = self
             .resolve_fully_qualified_call(span, item_name, ty.normalized, qself.span, hir_id)
             .or_else(|error| {
+                let guar = self
+                    .tcx
+                    .sess
+                    .delay_span_bug(span, "method resolution should've emitted an error");
                 let result = match error {
                     method::MethodError::PrivateMatch(kind, def_id, _) => Ok((kind, def_id)),
-                    _ => Err(ErrorGuaranteed::unchecked_claim_error_was_emitted()),
+                    _ => Err(guar),
                 };
 
                 // If we have a path like `MyTrait::missing_method`, then don't register
