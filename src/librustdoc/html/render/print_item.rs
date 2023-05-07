@@ -1574,7 +1574,24 @@ fn item_foreign_type(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
 }
 
 fn item_keyword(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
-    write!(w, "{}", document(cx, it, None, HeadingOffset::H2))
+    #[derive(Template)]
+    #[template(path = "item_keyword.html")]
+    struct ItemKeyword<'a, 'cx> {
+        cx: std::cell::RefCell<&'a mut Context<'cx>>,
+        it: &'a clean::Item,
+    }
+
+    impl<'a, 'cx: 'a> ItemKeyword<'a, 'cx> {
+        fn document<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
+            display_fn(move |f| {
+                let mut cx = self.cx.borrow_mut();
+                let v = document(*cx, self.it, None, HeadingOffset::H2);
+                write!(f, "{v}")
+            })
+        }
+    }
+
+    ItemKeyword { cx: std::cell::RefCell::new(cx), it }.render_into(w).unwrap();
 }
 
 /// Compare two strings treating multi-digit numbers as single units (i.e. natural sort order).
