@@ -3,9 +3,9 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - main
+      - master
     paths:
-      - 'lib/**'
+      - "lib/**"
 
 jobs:
   publish-libs:
