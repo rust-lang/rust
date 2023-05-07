@@ -302,8 +302,7 @@ fn compute_copy_classes(ssa: &mut SsaVisitor, body: &Body<'_>) -> IndexVec<Local
 
 #[derive(Debug)]
 pub(crate) struct StorageLiveLocals {
-    /// Set of "StorageLive" statements for each local. When the "StorageLive" statement does not
-    /// dominate all address-taking uses of the local, we mark it as `Set1::Many`.
+    /// Set of "StorageLive" statements for each local.
     storage_live: IndexVec<Local, Set1<LocationExtended>>,
 }
 
