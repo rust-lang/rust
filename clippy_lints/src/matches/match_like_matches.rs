@@ -185,7 +185,7 @@ fn is_some(path_kind: PatKind<'_>) -> bool {
     match path_kind {
         PatKind::TupleStruct(QPath::Resolved(_, path), patterns, _) if is_wild(&patterns[0]) => {
             let name = path.segments[0].ident;
-            if name.as_str() == "Some" {
+            if name.name == rustc_span::sym::Some {
                 return true;
             }
             false
