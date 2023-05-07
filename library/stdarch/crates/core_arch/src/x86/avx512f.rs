@@ -15757,6 +15757,26 @@ pub unsafe fn _mm512_mask_i32scatter_epi64<const SCALE: i32>(
     vpscatterdq(slice, mask, offsets, src, SCALE);
 }
 
+/// Scatter 64-bit integers from a into memory using 32-bit indices. 64-bit elements are stored at addresses starting at base_addr and offset by each 32-bit element in vindex (each index is scaled by the factor in scale). scale should be 1, 2, 4 or 8.
+///
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_i32scatter_epi64&expand=4099)
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[cfg_attr(test, assert_instr(vpscatterdq, SCALE = 1))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm256_i32scatter_epi64<const SCALE: i32>(
+    slice: *mut u8,
+    offsets: __m128i,
+    src: __m256i,
+) {
+    static_assert_imm8_scale!(SCALE);
+    let src = src.as_i64x4();
+    let neg_one = -1;
+    let slice = slice as *mut i8;
+    let offsets = offsets.as_i32x4();
+    vpscatterdq256(slice, neg_one, offsets, src, SCALE);
+}
+
 /// Scatter 64-bit integers from a into memory using 64-bit indices. 64-bit elements are stored at addresses starting at base_addr and offset by each 64-bit element in vindex (each index is scaled by the factor in scale). scale should be 1, 2, 4 or 8.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_i64scatter_epi64&expand=3116)
@@ -38307,6 +38327,8 @@ extern "C" {
     fn vscatterqps(slice: *mut i8, mask: i8, offsets: i64x8, src: f32x8, scale: i32);
     #[link_name = "llvm.x86.avx512.scatter.dpq.512"]
     fn vpscatterdq(slice: *mut i8, mask: i8, offsets: i32x8, src: i64x8, scale: i32);
+    #[link_name = "llvm.x86.avx512.scattersiv4.di"]
+    fn vpscatterdq256(slice: *mut i8, mask: i8, offsets: i32x4, src: i64x4, scale: i32);
 
     #[link_name = "llvm.x86.avx512.scatter.dpi.512"]
     fn vpscatterdd(slice: *mut i8, mask: i16, offsets: i32x16, src: i32x16, scale: i32);

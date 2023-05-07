@@ -1519,7 +1519,7 @@
   * [x] [`_mm512_mask_i32scatter_epi64`]
   * [_] [`_mm_i32scatter_epi64`]//need i1
   * [_] [`_mm_mask_i32scatter_epi64`] //need i1
-  * [_] [`_mm256_i32scatter_epi64`] //need i1
+  * [x] [`_mm256_i32scatter_epi64`]
   * [_] [`_mm256_mask_i32scatter_epi64`] //need i1
   * [x] [`_mm512_i32scatter_ps`]
   * [x] [`_mm512_mask_i32scatter_ps`]

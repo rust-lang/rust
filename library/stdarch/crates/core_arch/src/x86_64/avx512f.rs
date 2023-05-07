@@ -7551,6 +7551,20 @@ mod tests {
         assert_eq!(&arr[..], &expected[..],);
     }
 
+    #[simd_test(enable = "avx512f,avx512vl")]
+    unsafe fn test_mm256_i32scatter_epi64() {
+        let mut arr = [0i64; 64];
+        let index = _mm_setr_epi32(0, 16, 32, 48);
+        let src = _mm256_setr_epi64x(1, 2, 3, 4);
+        // A multiplier of 8 is word-addressing
+        _mm256_i32scatter_epi64::<8>(arr.as_mut_ptr() as *mut u8, index, src);
+        let mut expected = [0i64; 64];
+        for i in 0..4 {
+            expected[i * 16] = (i + 1) as i64;
+        }
+        assert_eq!(&arr[..], &expected[..],);
+    }
+
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_i64scatter_epi64() {
         let mut arr = [0i64; 128];
