@@ -801,10 +801,20 @@ impl Wtf8 {
 
     #[inline]
     pub fn starts_with<'a, P: Pattern<'a>>(&'a self, pattern: P) -> bool {
+        if let Some(pattern_bytes) = pattern.as_bytes() {
+            return self.bytes.starts_with(pattern_bytes);
+        }
         self.to_str_prefix().starts_with(pattern)
     }
 
     pub fn strip_prefix<'a, P: Pattern<'a>>(&'a self, prefix: P) -> Option<&'a Wtf8> {
+        if let Some(prefix_bytes) = prefix.as_bytes() {
+            let suffix = self.bytes.strip_prefix(prefix_bytes)?;
+            // SAFETY: WTF-8 is a superset of UTF-8, so stripping off a UTF-8
+            // prefix will yield a suffix that is valid WTF-8.
+            return unsafe { Some(Wtf8::from_bytes_unchecked(suffix)) };
+        }
+
         let p = self.to_str_prefix();
         let prefix_len = match prefix.into_searcher(p).next() {
             SearchStep::Match(0, prefix_len) => prefix_len,

@@ -160,6 +160,12 @@ pub trait Pattern<'a>: Sized {
             None
         }
     }
+
+    /// Return the pattern as a fixed slice of UTF-8 bytes, if possible.
+    #[inline]
+    fn as_bytes(&self) -> Option<&[u8]> {
+        None
+    }
 }
 
 // Searcher
@@ -917,6 +923,11 @@ where
 /// Delegates to the `&str` impl.
 impl<'a, 'b, 'c> Pattern<'a> for &'c &'b str {
     pattern_methods!(StrSearcher<'a, 'b>, |&s| s, |s| s);
+
+    #[inline]
+    fn as_bytes(&self) -> Option<&[u8]> {
+        (*self).as_bytes()
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1000,6 +1011,11 @@ impl<'a, 'b> Pattern<'a> for &'b str {
         } else {
             None
         }
+    }
+
+    #[inline]
+    fn as_bytes(&self) -> Option<&[u8]> {
+        Some(str::as_bytes(self))
     }
 }
 

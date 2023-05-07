@@ -288,10 +288,18 @@ impl Slice {
 
     #[inline]
     pub fn starts_with<'a, P: Pattern<'a>>(&'a self, pattern: P) -> bool {
+        if let Some(pattern_bytes) = pattern.as_bytes() {
+            return self.inner.starts_with(pattern_bytes);
+        }
         self.to_str_prefix().starts_with(pattern)
     }
 
     pub fn strip_prefix<'a, P: Pattern<'a>>(&'a self, prefix: P) -> Option<&'a Slice> {
+        if let Some(prefix_bytes) = prefix.as_bytes() {
+            let suffix = self.inner.strip_prefix(prefix_bytes)?;
+            return Some(Slice::from_u8_slice(suffix));
+        }
+
         let p = self.to_str_prefix();
         let prefix_len = match prefix.into_searcher(p).next() {
             SearchStep::Match(0, prefix_len) => prefix_len,
