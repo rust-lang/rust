@@ -660,8 +660,8 @@ impl Build {
 
         // hardcoded subcommands
         match &self.config.cmd {
-            Subcommand::Format { check, paths } => {
-                return format::format(&builder::Builder::new(&self), *check, &paths);
+            Subcommand::Format { check } => {
+                return format::format(&builder::Builder::new(&self), *check, &self.config.paths);
             }
             Subcommand::Suggest { run } => {
                 return suggest::suggest(&builder::Builder::new(&self), *run);
