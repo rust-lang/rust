@@ -99,7 +99,13 @@ impl<'a> Parser<'a> {
                 ForceCollect::Yes => {
                     self.collect_tokens_no_attrs(|this| this.parse_stmt_path_start(lo, attrs))?
                 }
-                ForceCollect::No => self.parse_stmt_path_start(lo, attrs)?,
+                ForceCollect::No => match self.parse_stmt_path_start(lo, attrs) {
+                    Ok(stmt) => stmt,
+                    Err(mut err) => {
+                        self.suggest_add_missing_let_for_stmt(&mut err);
+                        return Err(err);
+                    }
+                },
             }
         } else if let Some(item) = self.parse_item_common(
             attrs.clone(),

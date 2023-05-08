@@ -399,29 +399,6 @@ impl<'a> Parser<'a> {
                 }
             }
         }
-        // we suggest add the missing `let` before the identifier
-        // `a: Ty = 1` -> `let a: Ty = 1`
-        if self.token == token::Colon {
-            let prev_span = self.prev_token.span.shrink_to_lo();
-            let snapshot = self.create_snapshot_for_diagnostic();
-            self.bump();
-            match self.parse_ty() {
-                Ok(_) => {
-                    if self.token == token::Eq {
-                        err.span_suggestion_verbose(
-                            prev_span,
-                            "you might have meant to introduce a new binding",
-                            "let ".to_string(),
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
-                }
-                Err(err) => {
-                    err.cancel();
-                }
-            }
-            self.restore_snapshot(snapshot);
-        }
 
         if let Some(recovered_ident) = recovered_ident && recover {
             err.emit();
@@ -1027,6 +1004,35 @@ impl<'a> Parser<'a> {
             }
         }
         Err(e)
+    }
+
+    /// Suggest add the missing `let` before the identifier in stmt
+    /// `a: Ty = 1` -> `let a: Ty = 1`
+    pub(super) fn suggest_add_missing_let_for_stmt(
+        &mut self,
+        err: &mut DiagnosticBuilder<'a, ErrorGuaranteed>,
+    ) {
+        if self.token == token::Colon {
+            let prev_span = self.prev_token.span.shrink_to_lo();
+            let snapshot = self.create_snapshot_for_diagnostic();
+            self.bump();
+            match self.parse_ty() {
+                Ok(_) => {
+                    if self.token == token::Eq {
+                        err.span_suggestion_verbose(
+                            prev_span,
+                            "you might have meant to introduce a new binding",
+                            "let ".to_string(),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
+                Err(e) => {
+                    e.cancel();
+                }
+            }
+            self.restore_snapshot(snapshot);
+        }
     }
 
     /// Check to see if a pair of chained operators looks like an attempt at chained comparison,
