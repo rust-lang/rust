@@ -102,7 +102,6 @@ declare_clippy_lint! {
 pub struct WildcardImports {
     warn_on_all: bool,
     test_modules_deep: u32,
-    ignore: bool,
 }
 
 impl WildcardImports {
@@ -110,7 +109,6 @@ impl WildcardImports {
         Self {
             warn_on_all,
             test_modules_deep: 0,
-            ignore: false,
         }
     }
 }
@@ -118,14 +116,8 @@ impl WildcardImports {
 impl_lint_pass!(WildcardImports => [ENUM_GLOB_USE, WILDCARD_IMPORTS]);
 
 impl LateLintPass<'_> for WildcardImports {
-    fn check_crate(&mut self, cx: &LateContext<'_>) {
-        if cx.sess().opts.test {
-            self.ignore = true;
-        }
-    }
-
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
-        if self.ignore {
+        if cx.sess().is_test_crate() {
             return;
         }
 

@@ -1,4 +1,4 @@
-// compile-flags: --test
+//@compile-flags: --test
 
 #![warn(clippy::wildcard_imports)]
 #![allow(unused, clippy::unnecessary_wraps, clippy::let_unit_value)]
