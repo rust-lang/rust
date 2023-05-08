@@ -1093,11 +1093,13 @@ impl<'tcx> TyCtxt<'tcx> {
         v.0
     }
 
-    /// Given a `DefId` for an `fn`, return all the `dyn` and `impl` traits in its return type and associated alias span when type alias is used
+    /// Given a `DefId` for an `fn`, return all the `dyn` and `impl` traits in
+    /// its return type, and the associated alias span when type alias is used,
+    /// along with a span for lifetime suggestion (if there are existing generics).
     pub fn return_type_impl_or_dyn_traits_with_type_alias(
         self,
         scope_def_id: LocalDefId,
-    ) -> Option<(Vec<&'tcx hir::Ty<'tcx>>, Span)> {
+    ) -> Option<(Vec<&'tcx hir::Ty<'tcx>>, Span, Option<Span>)> {
         let hir_id = self.hir().local_def_id_to_hir_id(scope_def_id);
         let mut v = TraitObjectVisitor(vec![], self.hir());
         // when the return type is a type alias
@@ -1111,7 +1113,7 @@ impl<'tcx> TyCtxt<'tcx> {
         {
             v.visit_ty(alias_ty);
             if !v.0.is_empty() {
-                return Some((v.0, alias_generics.span));
+                return Some((v.0, alias_generics.span, alias_generics.span_for_lifetime_suggestion()));
             }
         }
         return None;
