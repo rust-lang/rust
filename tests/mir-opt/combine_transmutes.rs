@@ -1,4 +1,4 @@
-// unit-test: InstCombine
+// unit-test: InstSimplify
 // compile-flags: -C panic=abort
 
 #![crate_type = "lib"]
@@ -8,7 +8,7 @@
 use std::intrinsics::mir::*;
 use std::mem::{MaybeUninit, ManuallyDrop, transmute};
 
-// EMIT_MIR combine_transmutes.identity_transmutes.InstCombine.diff
+// EMIT_MIR combine_transmutes.identity_transmutes.InstSimplify.diff
 pub unsafe fn identity_transmutes() {
     // These are nops and should be removed
     let _a = transmute::<i32, i32>(1);
@@ -16,7 +16,7 @@ pub unsafe fn identity_transmutes() {
 }
 
 #[custom_mir(dialect = "runtime", phase = "initial")]
-// EMIT_MIR combine_transmutes.integer_transmutes.InstCombine.diff
+// EMIT_MIR combine_transmutes.integer_transmutes.InstSimplify.diff
 pub unsafe fn integer_transmutes() {
     mir! {
         {
@@ -30,7 +30,7 @@ pub unsafe fn integer_transmutes() {
     }
 }
 
-// EMIT_MIR combine_transmutes.adt_transmutes.InstCombine.diff
+// EMIT_MIR combine_transmutes.adt_transmutes.InstSimplify.diff
 pub unsafe fn adt_transmutes() {
     let _a: u8 = transmute(EnumNoRepr::A);
     let _a: i8 = transmute(EnumNoRepr::B);

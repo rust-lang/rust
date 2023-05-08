@@ -1,5 +1,5 @@
-- // MIR for `identity_transmutes` before InstCombine
-+ // MIR for `identity_transmutes` after InstCombine
+- // MIR for `identity_transmutes` before InstSimplify
++ // MIR for `identity_transmutes` after InstSimplify
   
   fn identity_transmutes() -> () {
       let mut _0: ();                      // return place in scope 0 at $DIR/combine_transmutes.rs:+0:37: +0:37

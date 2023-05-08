@@ -1,6 +1,6 @@
 //! Performs various peephole optimizations.
 
-use crate::simplify::combine_duplicate_switch_targets;
+use crate::simplify::simplify_duplicate_switch_targets;
 use crate::MirPass;
 use rustc_hir::Mutability;
 use rustc_middle::mir::*;
@@ -10,15 +10,15 @@ use rustc_middle::ty::{self, ParamEnv, SubstsRef, Ty, TyCtxt};
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::FieldIdx;
 
-pub struct InstCombine;
+pub struct InstSimplify;
 
-impl<'tcx> MirPass<'tcx> for InstCombine {
+impl<'tcx> MirPass<'tcx> for InstSimplify {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() > 0
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let ctx = InstCombineContext {
+        let ctx = InstSimplifyContext {
             tcx,
             local_decls: &body.local_decls,
             param_env: tcx.param_env_reveal_all_normalized(body.source.def_id()),
@@ -27,43 +27,43 @@ impl<'tcx> MirPass<'tcx> for InstCombine {
             for statement in block.statements.iter_mut() {
                 match statement.kind {
                     StatementKind::Assign(box (_place, ref mut rvalue)) => {
-                        ctx.combine_bool_cmp(&statement.source_info, rvalue);
-                        ctx.combine_ref_deref(&statement.source_info, rvalue);
-                        ctx.combine_len(&statement.source_info, rvalue);
-                        ctx.combine_cast(&statement.source_info, rvalue);
+                        ctx.simplify_bool_cmp(&statement.source_info, rvalue);
+                        ctx.simplify_ref_deref(&statement.source_info, rvalue);
+                        ctx.simplify_len(&statement.source_info, rvalue);
+                        ctx.simplify_cast(&statement.source_info, rvalue);
                     }
                     _ => {}
                 }
             }
 
-            ctx.combine_primitive_clone(
+            ctx.simplify_primitive_clone(
                 &mut block.terminator.as_mut().unwrap(),
                 &mut block.statements,
             );
-            ctx.combine_intrinsic_assert(
+            ctx.simplify_intrinsic_assert(
                 &mut block.terminator.as_mut().unwrap(),
                 &mut block.statements,
             );
-            combine_duplicate_switch_targets(block.terminator.as_mut().unwrap());
+            simplify_duplicate_switch_targets(block.terminator.as_mut().unwrap());
         }
     }
 }
 
-struct InstCombineContext<'tcx, 'a> {
+struct InstSimplifyContext<'tcx, 'a> {
     tcx: TyCtxt<'tcx>,
     local_decls: &'a LocalDecls<'tcx>,
     param_env: ParamEnv<'tcx>,
 }
 
-impl<'tcx> InstCombineContext<'tcx, '_> {
-    fn should_combine(&self, source_info: &SourceInfo, rvalue: &Rvalue<'tcx>) -> bool {
+impl<'tcx> InstSimplifyContext<'tcx, '_> {
+    fn should_simplify(&self, source_info: &SourceInfo, rvalue: &Rvalue<'tcx>) -> bool {
         self.tcx.consider_optimizing(|| {
-            format!("InstCombine - Rvalue: {:?} SourceInfo: {:?}", rvalue, source_info)
+            format!("InstSimplify - Rvalue: {:?} SourceInfo: {:?}", rvalue, source_info)
         })
     }
 
     /// Transform boolean comparisons into logical operations.
-    fn combine_bool_cmp(&self, source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
+    fn simplify_bool_cmp(&self, source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
         match rvalue {
             Rvalue::BinaryOp(op @ (BinOp::Eq | BinOp::Ne), box (a, b)) => {
                 let new = match (op, self.try_eval_bool(a), self.try_eval_bool(b)) {
@@ -94,7 +94,7 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
                     _ => None,
                 };
 
-                if let Some(new) = new && self.should_combine(source_info, rvalue) {
+                if let Some(new) = new && self.should_simplify(source_info, rvalue) {
                     *rvalue = new;
                 }
             }
@@ -109,14 +109,14 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
     }
 
     /// Transform "&(*a)" ==> "a".
-    fn combine_ref_deref(&self, source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
+    fn simplify_ref_deref(&self, source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
         if let Rvalue::Ref(_, _, place) = rvalue {
             if let Some((base, ProjectionElem::Deref)) = place.as_ref().last_projection() {
                 if rvalue.ty(self.local_decls, self.tcx) != base.ty(self.local_decls, self.tcx).ty {
                     return;
                 }
 
-                if !self.should_combine(source_info, rvalue) {
+                if !self.should_simplify(source_info, rvalue) {
                     return;
                 }
 
@@ -129,11 +129,11 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
     }
 
     /// Transform "Len([_; N])" ==> "N".
-    fn combine_len(&self, source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
+    fn simplify_len(&self, source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
         if let Rvalue::Len(ref place) = *rvalue {
             let place_ty = place.ty(self.local_decls, self.tcx).ty;
             if let ty::Array(_, len) = *place_ty.kind() {
-                if !self.should_combine(source_info, rvalue) {
+                if !self.should_simplify(source_info, rvalue) {
                     return;
                 }
 
@@ -144,7 +144,7 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
         }
     }
 
-    fn combine_cast(&self, _source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
+    fn simplify_cast(&self, _source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
         if let Rvalue::Cast(kind, operand, cast_ty) = rvalue {
             let operand_ty = operand.ty(self.local_decls, self.tcx);
             if operand_ty == *cast_ty {
@@ -196,7 +196,7 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
         }
     }
 
-    fn combine_primitive_clone(
+    fn simplify_primitive_clone(
         &self,
         terminator: &mut Terminator<'tcx>,
         statements: &mut Vec<Statement<'tcx>>,
@@ -239,7 +239,7 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
 
         if !self.tcx.consider_optimizing(|| {
             format!(
-                "InstCombine - Call: {:?} SourceInfo: {:?}",
+                "InstSimplify - Call: {:?} SourceInfo: {:?}",
                 (fn_def_id, fn_substs),
                 terminator.source_info
             )
@@ -262,7 +262,7 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
         terminator.kind = TerminatorKind::Goto { target: destination_block };
     }
 
-    fn combine_intrinsic_assert(
+    fn simplify_intrinsic_assert(
         &self,
         terminator: &mut Terminator<'tcx>,
         _statements: &mut Vec<Statement<'tcx>>,

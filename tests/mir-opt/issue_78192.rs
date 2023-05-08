@@ -8,4 +8,4 @@ fn main() {
     f(&2);
 }
 
-// EMIT_MIR issue_78192.f.InstCombine.diff
+// EMIT_MIR issue_78192.f.InstSimplify.diff

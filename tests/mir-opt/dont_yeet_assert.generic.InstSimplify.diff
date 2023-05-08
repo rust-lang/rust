@@ -1,5 +1,5 @@
-- // MIR for `generic` before InstCombine
-+ // MIR for `generic` after InstCombine
+- // MIR for `generic` before InstSimplify
++ // MIR for `generic` after InstSimplify
   
   fn generic() -> () {
       let mut _0: ();                      // return place in scope 0 at $DIR/dont_yeet_assert.rs:+0:21: +0:21

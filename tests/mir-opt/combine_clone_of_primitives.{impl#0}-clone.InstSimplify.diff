@@ -1,5 +1,5 @@
-- // MIR for `<impl at $DIR/combine_clone_of_primitives.rs:6:10: 6:15>::clone` before InstCombine
-+ // MIR for `<impl at $DIR/combine_clone_of_primitives.rs:6:10: 6:15>::clone` after InstCombine
+- // MIR for `<impl at $DIR/combine_clone_of_primitives.rs:6:10: 6:15>::clone` before InstSimplify
++ // MIR for `<impl at $DIR/combine_clone_of_primitives.rs:6:10: 6:15>::clone` after InstSimplify
   
   fn <impl at $DIR/combine_clone_of_primitives.rs:6:10: 6:15>::clone(_1: &MyThing<T>) -> MyThing<T> {
       debug self => _1;                    // in scope 0 at $DIR/combine_clone_of_primitives.rs:+0:10: +0:15
