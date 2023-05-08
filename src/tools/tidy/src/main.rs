@@ -16,7 +16,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::{self, scope, ScopedJoinHandle};
 
 fn main() {
-    // Allow using unstable cargo features in the standard library.
+    // Running Cargo will read the libstd Cargo.toml
+    // which uses the unstable `public-dependency` feature.
+    //
     // `setenv` might not be thread safe, so run it before using multiple threads.
     env::set_var("RUSTC_BOOTSTRAP", "1");
 
