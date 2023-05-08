@@ -9,7 +9,7 @@ use stdx::format_to;
 use syntax::{
     ast::{
         self,
-        edit::{self, AstNodeEdit},
+        edit::{AstNodeEdit, IndentLevel},
         edit_in_place::{AttrsOwnerEdit, Removable},
         make, HasArgList, HasAttrs, HasGenericParams, HasName, HasTypeBounds, Whitespace,
     },
@@ -154,7 +154,7 @@ pub fn add_trait_assoc_items_to_impl(
         match &item {
             ast::AssocItem::Fn(fn_) if fn_.body().is_none() => {
                 let body = make::block_expr(None, Some(make::ext::expr_todo()))
-                    .indent(edit::IndentLevel(1));
+                    .indent(IndentLevel::from_node(impl_.syntax()) + 1);
                 ted::replace(fn_.get_or_create_body().syntax(), body.clone_for_update().syntax())
             }
             ast::AssocItem::TypeAlias(type_alias) => {

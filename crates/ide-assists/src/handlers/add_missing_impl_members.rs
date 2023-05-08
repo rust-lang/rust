@@ -1511,11 +1511,111 @@ fn main() {
     struct S;
     impl Tr for S {
         fn method() {
-        ${0:todo!()}
-    }
+            ${0:todo!()}
+        }
     }
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn test_add_missing_impl_members_indentation() {
+        // few trait members, no braces
+        check_assist(
+            add_missing_impl_members,
+            r#"
+mod m {
+    trait Foo { fn foo(&self); }
+    struct S;
+    impl Foo for S$0
+}"#,
+            r#"
+mod m {
+    trait Foo { fn foo(&self); }
+    struct S;
+    impl Foo for S {
+        fn foo(&self) {
+            ${0:todo!()}
+        }
+    }
+}"#,
+        );
+        // few trait members, empty impl def.
+        check_assist(
+            add_missing_impl_members,
+            r#"
+mod m {
+    trait Foo { fn foo(&self); }
+    struct S;
+    impl Foo for S { $0 }
+}"#,
+            r#"
+mod m {
+    trait Foo { fn foo(&self); }
+    struct S;
+    impl Foo for S {
+        fn foo(&self) {
+            ${0:todo!()}
+        }
+    }
+}"#,
+        );
+        // todo - in mod and outside
+        check_assist(
+            add_missing_impl_members,
+            r#"
+mod m {
+    trait Foo {
+        type Output;
+
+        const CONST: usize = 42;
+        const CONST_2: i32;
+
+        fn foo(&self);
+        fn bar(&self);
+        fn baz(&self);
+    }
+
+    struct S;
+
+    impl Foo for S {
+        fn bar(&self) {}
+$0
+    }
+}"#,
+            r#"
+mod m {
+    trait Foo {
+        type Output;
+
+        const CONST: usize = 42;
+        const CONST_2: i32;
+
+        fn foo(&self);
+        fn bar(&self);
+        fn baz(&self);
+    }
+
+    struct S;
+
+    impl Foo for S {
+        fn bar(&self) {}
+
+        $0type Output;
+
+        const CONST_2: i32;
+
+        fn foo(&self) {
+            todo!()
+        }
+
+        fn baz(&self) {
+            todo!()
+        }
+
+    }
+}"#,
         );
     }
 }
