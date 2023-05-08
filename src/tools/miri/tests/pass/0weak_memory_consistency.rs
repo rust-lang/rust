@@ -116,11 +116,13 @@ fn test_message_passing() {
 
     #[rustfmt::skip]
     let j1 = spawn(move || {
+        let x = x; // avoid field capturing
         unsafe { *x.0 = 1 }; // -----------------------------------------+
         y.store(1, Release); // ---------------------+                   |
     }); //                                           |                   |
     #[rustfmt::skip] //                              |synchronizes-with  | happens-before
     let j2 = spawn(move || { //                      |                   |
+        let x = x; // avoid field capturing          |                   |
         acquires_value(&y, 1); // <------------------+                   |
         unsafe { *x.0 } // <---------------------------------------------+
     });

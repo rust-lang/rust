@@ -42,6 +42,7 @@ fn main() {
     };
 
     thread::spawn(move || unsafe {
+        let ptr = ptr; // avoid field capturing
         assert_eq!(*ptr.0, 5);
         assert_eq!(A, 0);
         assert_eq!(B, 0);

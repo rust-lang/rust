@@ -66,6 +66,7 @@ fn block_until_complete() {
     let init_once_ptr = SendPtr(&mut init_once);
 
     let waiter = move || unsafe {
+        let init_once_ptr = init_once_ptr; // avoid field capture
         let mut pending = 0;
 
         assert_eq!(InitOnceBeginInitialize(init_once_ptr.0, 0, &mut pending, null_mut()), TRUE);
@@ -102,6 +103,7 @@ fn retry_on_fail() {
     let init_once_ptr = SendPtr(&mut init_once);
 
     let waiter = move || unsafe {
+        let init_once_ptr = init_once_ptr; // avoid field capture
         let mut pending = 0;
 
         assert_eq!(InitOnceBeginInitialize(init_once_ptr.0, 0, &mut pending, null_mut()), TRUE);
@@ -146,6 +148,8 @@ fn no_data_race_after_complete() {
     let place_ptr = SendPtr(&mut place);
 
     let reader = thread::spawn(move || unsafe {
+        let init_once_ptr = init_once_ptr; // avoid field capture
+        let place_ptr = place_ptr; // avoid field capture
         let mut pending = 0;
 
         // this doesn't block because reader only executes after `InitOnceComplete` is called
