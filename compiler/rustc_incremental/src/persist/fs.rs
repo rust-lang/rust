@@ -674,9 +674,10 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
 
     // Delete all lock files, that don't have an associated directory. They must
     // be some kind of leftover
-    lock_file_to_session_dir.items().for_each(|(lock_file_name, directory_name)| {
-        if directory_name.is_none() {
-            let Ok(timestamp) = extract_timestamp_from_session_dir(lock_file_name) else {
+    lock_file_to_session_dir.to_sorted(&(), false).iter().for_each(
+        |(lock_file_name, directory_name)| {
+            if directory_name.is_none() {
+                let Ok(timestamp) = extract_timestamp_from_session_dir(lock_file_name) else {
                 debug!(
                     "found lock-file with malformed timestamp: {}",
                     crate_directory.join(&lock_file_name).display()
@@ -685,24 +686,25 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
                 return;
             };
 
-            let lock_file_path = crate_directory.join(&**lock_file_name);
+                let lock_file_path = crate_directory.join(&**lock_file_name);
 
-            if is_old_enough_to_be_collected(timestamp) {
-                debug!(
-                    "garbage_collect_session_directories() - deleting \
+                if is_old_enough_to_be_collected(timestamp) {
+                    debug!(
+                        "garbage_collect_session_directories() - deleting \
                         garbage lock file: {}",
-                    lock_file_path.display()
-                );
-                delete_session_dir_lock_file(sess, &lock_file_path);
-            } else {
-                debug!(
-                    "garbage_collect_session_directories() - lock file with \
+                        lock_file_path.display()
+                    );
+                    delete_session_dir_lock_file(sess, &lock_file_path);
+                } else {
+                    debug!(
+                        "garbage_collect_session_directories() - lock file with \
                         no session dir not old enough to be collected: {}",
-                    lock_file_path.display()
-                );
+                        lock_file_path.display()
+                    );
+                }
             }
-        }
-    });
+        },
+    );
 
     // Filter out `None` directories
     let lock_file_to_session_dir: UnordMap<String, String> =
