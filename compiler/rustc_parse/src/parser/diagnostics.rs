@@ -405,13 +405,20 @@ impl<'a> Parser<'a> {
             let prev_span = self.prev_token.span.shrink_to_lo();
             let snapshot = self.create_snapshot_for_diagnostic();
             self.bump();
-            if self.parse_ty().is_ok() && self.token == token::Eq {
-                err.span_suggestion_verbose(
-                    prev_span,
-                    "you might have meant to introduce a new binding",
-                    "let ".to_string(),
-                    Applicability::MaybeIncorrect,
-                );
+            match self.parse_ty() {
+                Ok(_) => {
+                    if self.token == token::Eq {
+                        err.span_suggestion_verbose(
+                            prev_span,
+                            "you might have meant to introduce a new binding",
+                            "let ".to_string(),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
+                Err(err) => {
+                    err.cancel();
+                }
             }
             self.restore_snapshot(snapshot);
         }
