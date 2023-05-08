@@ -334,7 +334,7 @@ fn associated_type_for_impl_trait_in_trait(
             parent_count,
             params,
             param_def_id_to_index,
-            has_self: false,
+            has_self: opaque_ty_generics.has_self,
             has_late_bound_regions: opaque_ty_generics.has_late_bound_regions,
         }
     });

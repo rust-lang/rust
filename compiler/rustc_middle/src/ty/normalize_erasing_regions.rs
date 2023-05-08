@@ -139,7 +139,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         param_substs: SubstsRef<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        value: T,
+        value: EarlyBinder<T>,
     ) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
@@ -151,7 +151,7 @@ impl<'tcx> TyCtxt<'tcx> {
              param_env={:?})",
             param_substs, value, param_env,
         );
-        let substituted = EarlyBinder(value).subst(self, param_substs);
+        let substituted = value.subst(self, param_substs);
         self.normalize_erasing_regions(param_env, substituted)
     }
 
@@ -163,7 +163,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         param_substs: SubstsRef<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        value: T,
+        value: EarlyBinder<T>,
     ) -> Result<T, NormalizationError<'tcx>>
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
@@ -175,7 +175,7 @@ impl<'tcx> TyCtxt<'tcx> {
              param_env={:?})",
             param_substs, value, param_env,
         );
-        let substituted = EarlyBinder(value).subst(self, param_substs);
+        let substituted = value.subst(self, param_substs);
         self.try_normalize_erasing_regions(param_env, substituted)
     }
 }

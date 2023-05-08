@@ -51,7 +51,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || self.suggest_non_zero_new_unwrap(err, expr, expected, expr_ty)
             || self.suggest_calling_boxed_future_when_appropriate(err, expr, expected, expr_ty)
             || self.suggest_no_capture_closure(err, expected, expr_ty)
-            || self.suggest_boxing_when_appropriate(err, expr, expected, expr_ty)
+            || self.suggest_boxing_when_appropriate(err, expr.span, expr.hir_id, expected, expr_ty)
             || self.suggest_block_to_brackets_peeling_refs(err, expr, expr_ty, expected)
             || self.suggest_copied_or_cloned(err, expr, expr_ty, expected)
             || self.suggest_clone_for_ref(err, expr, expr_ty, expected)
