@@ -109,8 +109,9 @@ pub(crate) struct CrateMetadata {
     dep_kind: Lock<CrateDepKind>,
     /// Filesystem location of this crate.
     source: Lrc<CrateSource>,
-    /// Whether or not this crate should be consider a private dependency
-    /// for purposes of the 'exported_private_dependencies' lint
+    /// Whether or not this crate should be consider a private dependency.
+    /// Used by the 'exported_private_dependencies' lint, and for determining
+    /// whether to emit suggestions that reference this crate.
     private_dep: Lock<bool>,
     /// The hash for the host proc macro. Used to support `-Z dual-proc-macro`.
     host_hash: Option<Svh>,
