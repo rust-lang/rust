@@ -7,8 +7,6 @@ use crate::os::windows::ffi::{OsStrExt, OsStringExt};
 use crate::path::PathBuf;
 use crate::time::Duration;
 
-pub use self::rand::hashmap_random_keys;
-
 #[macro_use]
 pub mod compat;
 
@@ -16,6 +14,7 @@ pub mod alloc;
 pub mod args;
 pub mod c;
 pub mod cmath;
+pub mod entropy;
 pub mod env;
 pub mod fs;
 pub mod handle;
@@ -28,7 +27,6 @@ pub mod os_str;
 pub mod path;
 pub mod pipe;
 pub mod process;
-pub mod rand;
 pub mod stdio;
 pub mod thread;
 pub mod thread_local_dtor;

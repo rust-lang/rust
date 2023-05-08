@@ -230,6 +230,20 @@ impl<'a> BorrowedCursor<'a> {
         &mut self.buf.buf[self.buf.filled..]
     }
 
+    /// Returns a pointer to the current position of the cursor, with provenance to the
+    /// rest of the buffer.
+    ///
+    /// The resulting pointer may not be used to deinitialize any bytes in the initialized
+    /// section of the buffer.
+    // FIXME(joboet): Maybe make this public?
+    #[allow(unused)]
+    pub(crate) fn as_ptr(&mut self) -> *mut u8 {
+        // SAFETY: deinitialization requires `unsafe` in the caller, where they have to make
+        // sure not to deinitialize any bytes. The burden of prove is moved to the pointer
+        // operation. Just returning a pointer is sound.
+        unsafe { self.as_mut().as_mut_ptr().cast() }
+    }
+
     /// Advance the cursor by asserting that `n` bytes have been filled.
     ///
     /// After advancing, the `n` bytes are no longer accessible via the cursor and can only be

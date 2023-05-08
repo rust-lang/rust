@@ -21,6 +21,8 @@ pub mod alloc;
 pub mod args;
 #[path = "../unix/cmath.rs"]
 pub mod cmath;
+#[path = "../unsupported/entropy.rs"]
+pub mod entropy;
 pub mod env;
 #[path = "../unsupported/fs.rs"]
 pub mod fs;

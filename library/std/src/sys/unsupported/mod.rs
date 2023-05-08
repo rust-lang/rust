@@ -4,6 +4,7 @@ pub mod alloc;
 pub mod args;
 #[path = "../unix/cmath.rs"]
 pub mod cmath;
+pub mod entropy;
 pub mod env;
 pub mod fs;
 pub mod io;

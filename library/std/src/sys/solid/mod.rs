@@ -23,6 +23,7 @@ pub mod alloc;
 pub mod args;
 #[path = "../unix/cmath.rs"]
 pub mod cmath;
+pub mod entropy;
 pub mod env;
 // `error` is `pub(crate)` so that it can be accessed by `itron/error.rs` as
 // `crate::sys::error`
@@ -79,14 +80,4 @@ pub fn decode_error_kind(code: i32) -> crate::io::ErrorKind {
 #[inline]
 pub fn abort_internal() -> ! {
     unsafe { libc::abort() }
-}
-
-pub fn hashmap_random_keys() -> (u64, u64) {
-    unsafe {
-        let mut out = crate::mem::MaybeUninit::<[u64; 2]>::uninit();
-        let result = abi::SOLID_RNG_SampleRandomBytes(out.as_mut_ptr() as *mut u8, 16);
-        assert_eq!(result, 0, "SOLID_RNG_SampleRandomBytes failed: {result}");
-        let [x1, x2] = out.assume_init();
-        (x1, x2)
-    }
 }

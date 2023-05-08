@@ -3,8 +3,6 @@
 use crate::ffi::CStr;
 use crate::io::ErrorKind;
 
-pub use self::rand::hashmap_random_keys;
-
 #[cfg(not(target_os = "espidf"))]
 #[macro_use]
 pub mod weak;
@@ -14,6 +12,7 @@ pub mod android;
 pub mod args;
 #[path = "../unix/cmath.rs"]
 pub mod cmath;
+pub mod entropy;
 pub mod env;
 pub mod fd;
 pub mod fs;
@@ -34,7 +33,6 @@ pub mod os_str;
 pub mod path;
 pub mod pipe;
 pub mod process;
-pub mod rand;
 pub mod stack_overflow;
 pub mod stdio;
 pub mod thread;
