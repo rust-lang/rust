@@ -340,6 +340,8 @@ config_data! {
         /// Minimum number of lines required before the `}` until the hint is shown (set to 0 or 1
         /// to always show them).
         inlayHints_closingBraceHints_minLines: usize               = "25",
+        /// Whether to show inlay hints for closure captures.
+        inlayHints_closureCaptureHints_enable: bool                          = "false",
         /// Whether to show inlay type hints for return types of closures.
         inlayHints_closureReturnTypeHints_enable: ClosureReturnTypeHintsDef  = "\"never\"",
         /// Closure notation in type and chaining inlay hints.
@@ -1314,6 +1316,7 @@ impl Config {
                 ClosureStyle::WithId => hir::ClosureStyle::ClosureWithId,
                 ClosureStyle::Hide => hir::ClosureStyle::Hide,
             },
+            closure_capture_hints: self.data.inlayHints_closureCaptureHints_enable,
             adjustment_hints: match self.data.inlayHints_expressionAdjustmentHints_enable {
                 AdjustmentHintsDef::Always => ide::AdjustmentHints::Always,
                 AdjustmentHintsDef::Never => match self.data.inlayHints_reborrowHints_enable {

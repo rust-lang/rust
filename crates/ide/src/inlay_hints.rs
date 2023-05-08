@@ -20,16 +20,17 @@ use text_edit::TextEdit;
 
 use crate::{navigation_target::TryToNav, FileId};
 
-mod closing_brace;
-mod implicit_static;
-mod fn_lifetime_fn;
-mod closure_ret;
 mod adjustment;
-mod chaining;
-mod param_name;
-mod binding_mode;
 mod bind_pat;
+mod binding_mode;
+mod chaining;
+mod closing_brace;
+mod closure_ret;
+mod closure_captures;
 mod discriminant;
+mod fn_lifetime_fn;
+mod implicit_static;
+mod param_name;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InlayHintsConfig {
@@ -42,6 +43,7 @@ pub struct InlayHintsConfig {
     pub adjustment_hints_mode: AdjustmentHintsMode,
     pub adjustment_hints_hide_outside_unsafe: bool,
     pub closure_return_type_hints: ClosureReturnTypeHints,
+    pub closure_capture_hints: bool,
     pub binding_mode_hints: bool,
     pub lifetime_elision_hints: LifetimeElisionHints,
     pub param_names_for_lifetime_elision_hints: bool,
@@ -88,6 +90,8 @@ pub enum AdjustmentHintsMode {
     PreferPostfix,
 }
 
+// FIXME: Clean up this mess, the kinds are mainly used for setting different rendering properties in the lsp layer
+// We should probably turns this into such a property holding struct. Or clean this up in some other form.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum InlayKind {
     BindingMode,
@@ -98,6 +102,7 @@ pub enum InlayKind {
     Adjustment,
     AdjustmentPostfix,
     Lifetime,
+    ClosureCapture,
     Parameter,
     Type,
     Discriminant,
@@ -444,10 +449,10 @@ fn hints(
                     ast::Expr::MethodCallExpr(it) => {
                         param_name::hints(hints, sema, config, ast::Expr::from(it))
                     }
-                    ast::Expr::ClosureExpr(it) => closure_ret::hints(hints, famous_defs, config, file_id, it),
-                    // We could show reborrows for all expressions, but usually that is just noise to the user
-                    // and the main point here is to show why "moving" a mutable reference doesn't necessarily move it
-                    // ast::Expr::PathExpr(_) => reborrow_hints(hints, sema, config, &expr),
+                    ast::Expr::ClosureExpr(it) => {
+                        closure_captures::hints(hints, famous_defs, config, file_id, it.clone());
+                        closure_ret::hints(hints, famous_defs, config, file_id, it)
+                    },
                     _ => None,
                 }
             },
@@ -535,6 +540,7 @@ mod tests {
         chaining_hints: false,
         lifetime_elision_hints: LifetimeElisionHints::Never,
         closure_return_type_hints: ClosureReturnTypeHints::Never,
+        closure_capture_hints: false,
         adjustment_hints: AdjustmentHints::Never,
         adjustment_hints_mode: AdjustmentHintsMode::Prefix,
         adjustment_hints_hide_outside_unsafe: false,

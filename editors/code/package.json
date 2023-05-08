@@ -1037,6 +1037,11 @@
                     "type": "integer",
                     "minimum": 0
                 },
+                "rust-analyzer.inlayHints.closureCaptureHints.enable": {
+                    "markdownDescription": "Whether to show inlay hints for closure captures.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "rust-analyzer.inlayHints.closureReturnTypeHints.enable": {
                     "markdownDescription": "Whether to show inlay type hints for return types of closures.",
                     "default": "never",

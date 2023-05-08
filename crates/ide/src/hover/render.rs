@@ -3,7 +3,8 @@ use std::fmt::Display;
 
 use either::Either;
 use hir::{
-    Adt, AsAssocItem, AttributeTemplate, HasAttrs, HasSource, HirDisplay, Semantics, TypeInfo,
+    Adt, AsAssocItem, AttributeTemplate, CaptureKind, HasAttrs, HasSource, HirDisplay, Semantics,
+    TypeInfo,
 };
 use ide_db::{
     base_db::SourceDatabase,
@@ -58,8 +59,14 @@ pub(super) fn closure_expr(
     let mut captures = c
         .captured_items(sema.db)
         .into_iter()
-        .map(|x| {
-            format!("* `{}` by {}", x.display_place(c.clone().into(), sema.db), x.display_kind())
+        .map(|it| {
+            let borrow_kind=   match it.kind() {
+                CaptureKind::SharedRef => "immutable borrow",
+                CaptureKind::UniqueSharedRef => "unique immutable borrow ([read more](https://doc.rust-lang.org/stable/reference/types/closure.html#unique-immutable-borrows-in-captures))",
+                CaptureKind::MutableRef => "mutable borrow",
+                CaptureKind::Move => "move",
+            };
+            format!("* `{}` by {}", it.display_place(sema.db), borrow_kind)
         })
         .join("\n");
     if captures.trim().is_empty() {
