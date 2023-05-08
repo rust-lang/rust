@@ -3682,16 +3682,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
                 // note if the user wants to use associated items of a trait directly
                 if in_path && res.len() == 0 {
-                    if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(self_ty.span) {
-                        diag.note(format!(
-                            "desired associated item not found in trait `{}` if you want to use such one",
-                            snippet,
-                        ));
-                    } else {
-                        diag.note(format!(
-                            "desired associated item not found in this trait if you want to use such one",
-                        ));
-                    }
+                    diag.span_label(
+                        self_ty.span,
+                        "no desired associated item found in this trait if you want to use such one",
+                    );
                 }
                 // check if the impl trait that we are considering is a impl of a local trait
                 self.maybe_lint_blanket_trait_impl(&self_ty, &mut diag);

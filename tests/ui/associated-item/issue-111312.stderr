@@ -2,9 +2,8 @@ error[E0782]: trait objects must include the `dyn` keyword
   --> $DIR/issue-111312.rs:10:5
    |
 LL |     HasNot::has();
-   |     ^^^^^^
+      |     ^^^^^^ no desired associated item found in this trait if you want to use such one
    |
-   = note: desired associated item not found in trait `HasNot` if you want to use such one
 help: add `dyn` keyword before this trait
    |
 LL |     <dyn HasNot>::has();

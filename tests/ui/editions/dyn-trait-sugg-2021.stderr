@@ -2,9 +2,8 @@ error[E0782]: trait objects must include the `dyn` keyword
   --> $DIR/dyn-trait-sugg-2021.rs:10:5
    |
 LL |     Foo::hi(123);
-   |     ^^^
+   |     ^^^ no desired associated item found in this trait if you want to use such one
    |
-   = note: desired associated item not found in trait `Foo` if you want to use such one
 help: add `dyn` keyword before this trait
    |
 LL |     <dyn Foo>::hi(123);
