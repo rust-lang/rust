@@ -16,7 +16,7 @@ pub fn target() -> Target {
             linker: Some("rust-lld".into()),
             relocation_model: RelocModel::Static,
             panic_strategy: PanicStrategy::Abort,
-            max_atomic_width: Some(32),
+            max_atomic_width: Some(64),
             emit_debug_gdb_scripts: false,
             // GCC and Clang default to 8 for arm-none here
             c_enum_min_bits: Some(8),
