@@ -287,7 +287,8 @@
             },
             {
                 "command": "rust-analyzer.revealDependency",
-                "title": "Reveal File"
+                "title": "Reveal File",
+                "category": "rust-analyzer"
             }
         ],
         "keybindings": [
@@ -1996,7 +1997,8 @@
             "explorer": [
                 {
                     "id": "rustDependencies",
-                    "name": "Rust Dependencies"
+                    "name": "Rust Dependencies",
+                    "when": "inRustProject"
                 }
             ]
         },
