@@ -27,8 +27,7 @@ fn resolve_instance<'tcx>(
         )
     } else {
         let ty = tcx.type_of(def);
-        let item_type =
-            tcx.subst_and_normalize_erasing_regions(substs, param_env, ty.skip_binder());
+        let item_type = tcx.subst_and_normalize_erasing_regions(substs, param_env, ty);
 
         let def = match *item_type.kind() {
             ty::FnDef(def_id, ..) if tcx.is_intrinsic(def_id) => {
