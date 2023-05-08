@@ -3684,7 +3684,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 if in_path && res.len() == 0 {
                     diag.span_label(
                         self_ty.span,
-                        "no desired associated item found in this trait if you want to use such one",
+                        "no desired associated item found in this trait, if you do not want to use a bare trait object here",
                     );
                 }
                 // check if the impl trait that we are considering is a impl of a local trait
