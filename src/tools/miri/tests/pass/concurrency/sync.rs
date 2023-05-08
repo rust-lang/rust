@@ -201,8 +201,9 @@ fn park_timeout() {
     thread::park_timeout(Duration::from_millis(200));
     // Normally, waiting in park/park_timeout may spuriously wake up early, but we
     // know Miri's timed synchronization primitives do not do that.
-
-    assert!((200..1000).contains(&start.elapsed().as_millis()));
+    // We allow much longer sleeps as well since the macOS GHA runners seem very oversubscribed
+    // and sometimes just pause for 1 second or more.
+    assert!((200..2000).contains(&start.elapsed().as_millis()));
 }
 
 fn park_unpark() {
@@ -219,8 +220,9 @@ fn park_unpark() {
     thread::park();
     // Normally, waiting in park/park_timeout may spuriously wake up early, but we
     // know Miri's timed synchronization primitives do not do that.
-
-    assert!((200..1000).contains(&start.elapsed().as_millis()));
+    // We allow much longer sleeps as well since the macOS GHA runners seem very oversubscribed
+    // and sometimes just pause for 1 second or more.
+    assert!((200..2000).contains(&start.elapsed().as_millis()));
 
     t2.join().unwrap();
 }
