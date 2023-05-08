@@ -369,8 +369,11 @@ const fn block_end(end: usize, block_size: usize) -> usize {
     if end >= block_size { end - block_size + 1 } else { 0 }
 }
 
-#[inline(always)]
-const fn utf8_char_width(byte: u8) -> usize {
+/// Given a first byte, determines how many bytes are in this UTF-8 character.
+#[unstable(feature = "str_internals", issue = "none")]
+#[must_use]
+#[inline]
+pub const fn utf8_char_width(byte: u8) -> usize {
     // https://tools.ietf.org/html/rfc3629
     const UTF8_CHAR_WIDTH: [u8; 256] = [
         // 1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
