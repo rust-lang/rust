@@ -65,7 +65,7 @@ mod attr_impl {
     // The subset of llvm::Attribute needed for arguments, packed into a bitfield.
     bitflags::bitflags! {
         #[derive(Default, HashStable_Generic)]
-        pub struct ArgAttribute: u16 {
+        pub struct ArgAttribute: u8 {
             const NoAlias   = 1 << 1;
             const NoCapture = 1 << 2;
             const NonNull   = 1 << 3;
