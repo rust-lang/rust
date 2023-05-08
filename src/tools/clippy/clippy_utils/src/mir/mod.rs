@@ -1,7 +1,7 @@
 use rustc_hir::{Expr, HirId};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{
-    traversal, Body, InlineAsmOperand, Local, Location, Place, StatementKind, TerminatorKind, START_BLOCK,
+    traversal, Body, InlineAsmOperand, Local, Location, Place, StatementKind, TerminatorKind, FIRST_STATEMENT,
 };
 use rustc_middle::ty::TyCtxt;
 
@@ -81,14 +81,7 @@ impl<'a, 'tcx> Visitor<'tcx> for V<'a> {
 
 /// Convenience wrapper around `visit_local_usage`.
 pub fn used_exactly_once(mir: &rustc_middle::mir::Body<'_>, local: rustc_middle::mir::Local) -> Option<bool> {
-    visit_local_usage(
-        &[local],
-        mir,
-        Location {
-            block: START_BLOCK,
-            statement_index: 0,
-        },
-    )
+    visit_local_usage(&[local], mir, Location::START)
     .map(|mut vec| {
         let LocalUsage { local_use_locs, .. } = vec.remove(0);
         local_use_locs
@@ -123,7 +116,7 @@ pub fn expr_local(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> Option<Local> {
 pub fn local_assignments(mir: &Body<'_>, local: Local) -> Vec<Location> {
     let mut locations = Vec::new();
     for (block, data) in mir.basic_blocks.iter_enumerated() {
-        for statement_index in 0..=data.statements.len() {
+        for statement_index in FIRST_STATEMENT..=data.statements.next_index() {
             let location = Location { block, statement_index };
             if is_local_assignment(mir, local, location) {
                 locations.push(location);
@@ -138,8 +131,7 @@ pub fn local_assignments(mir: &Body<'_>, local: Local) -> Vec<Location> {
 fn is_local_assignment(mir: &Body<'_>, local: Local, location: Location) -> bool {
     let Location { block, statement_index } = location;
     let basic_block = &mir.basic_blocks[block];
-    if statement_index < basic_block.statements.len() {
-        let statement = &basic_block.statements[statement_index];
+    if let Some(statement) = basic_block.statements.get(statement_index) {
         if let StatementKind::Assign(box (place, _)) = statement.kind {
             place.as_local() == Some(local)
         } else {

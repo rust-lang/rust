@@ -120,10 +120,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
             // `{ arg = &cloned; clone(move arg); }` or `{ arg = &cloned; to_path_buf(arg); }`
             let (cloned, cannot_move_out) = unwrap_or_continue!(find_stmt_assigns_to(cx, mir, arg, from_borrow, bb));
 
-            let loc = mir::Location {
-                block: bb,
-                statement_index: bbdata.statements.len(),
-            };
+            let loc = mir::Location::terminator(bb, &bbdata.statements);
 
             // `Local` to be cloned, and a local of `clone` call's destination
             let (local, ret_local) = if from_borrow {
@@ -162,10 +159,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
 
                 let (local, cannot_move_out) =
                     unwrap_or_continue!(find_stmt_assigns_to(cx, mir, pred_arg, true, ps[0]));
-                let loc = mir::Location {
-                    block: bb,
-                    statement_index: mir.basic_blocks[bb].statements.len(),
-                };
+                let loc = mir.terminator_loc(bb);
 
                 // This can be turned into `res = move local` if `arg` and `cloned` are not borrowed
                 // at the last statement:
@@ -366,10 +360,7 @@ fn visit_clone_usage(cloned: mir::Local, clone: mir::Local, mir: &mir::Body<'_>,
     )) = visit_local_usage(
         &[cloned, clone],
         mir,
-        mir::Location {
-            block: bb,
-            statement_index: mir.basic_blocks[bb].statements.len(),
-        },
+        mir.terminator_loc(bb),
     )
     .map(|mut vec| (vec.remove(0), vec.remove(0)))
     {
