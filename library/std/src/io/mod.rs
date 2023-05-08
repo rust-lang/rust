@@ -1502,12 +1502,12 @@ impl<'a> IoSlice<'a> {
     /// let data = b"abcdef";
     ///
     /// let mut io_slice = IoSlice::new(data);
-    /// let tail = io_slice.as_bytes()[3..];
+    /// let tail = io_slice.into_bytes()[3..];
     ///
     /// // This works because `tail` doesn't borrow `io_slice`
     /// io_slice = IoSlice::new(tail);
     ///
-    /// assert_eq!(io_slice.as_bytes(), b"def");
+    /// assert_eq!(io_slice.into_bytes(), b"def");
     /// ```
     #[unstable(feature = "io_slice_as_bytes", issue = "111277")]
     #[inline]
