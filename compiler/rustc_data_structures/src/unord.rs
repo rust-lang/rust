@@ -63,6 +63,11 @@ impl<T, I: Iterator<Item = T>> UnordItems<T, I> {
     }
 
     #[inline]
+    pub fn for_each<F: Fn(T) -> ()>(self, f: F) {
+        self.0.for_each(|x| f(x));
+    }
+
+    #[inline]
     pub fn max(self) -> Option<T>
     where
         T: Ord,

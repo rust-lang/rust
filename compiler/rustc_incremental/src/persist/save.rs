@@ -105,7 +105,7 @@ pub fn save_work_product_index(
         if !new_work_products.contains_key(id) {
             work_product::delete_workproduct_files(sess, wp);
             debug_assert!(
-                !wp.saved_files.iter().all(|(_, path)| in_incr_comp_dir_sess(sess, path).exists())
+                !wp.saved_files.items().all(|(_, path)| in_incr_comp_dir_sess(sess, path).exists())
             );
         }
     }
@@ -113,7 +113,7 @@ pub fn save_work_product_index(
     // Check that we did not delete one of the current work-products:
     debug_assert!({
         new_work_products.iter().all(|(_, wp)| {
-            wp.saved_files.iter().all(|(_, path)| in_incr_comp_dir_sess(sess, path).exists())
+            wp.saved_files.items().all(|(_, path)| in_incr_comp_dir_sess(sess, path).exists())
         })
     });
 }

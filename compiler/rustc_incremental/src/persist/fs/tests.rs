@@ -10,7 +10,7 @@ fn test_all_except_most_recent() {
         ((UNIX_EPOCH + Duration::new(2, 0), PathBuf::from("2")), None),
     ]);
     let mut paths = UnordSet::default();
-    UnordSet::extend_unord(&mut paths, computed.into_items().map(|((_, path), _)| path));
+    paths.extend_unord(all_except_most_recent(computed).into_items().map(|(path, _)| path));
     assert_eq!(
         UnordSet::from(paths),
         UnordSet::from_iter([

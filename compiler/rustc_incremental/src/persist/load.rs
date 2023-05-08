@@ -163,7 +163,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
                 Decodable::decode(&mut work_product_decoder);
 
             for swp in work_products {
-                let all_files_exist = swp.work_product.saved_files.iter().all(|(_, path)| {
+                let all_files_exist = swp.work_product.saved_files.items().all(|(_, path)| {
                     let exists = in_incr_comp_dir_sess(sess, path).exists();
                     if !exists && sess.opts.unstable_opts.incremental_info {
                         eprintln!("incremental: could not find file for work product: {path}",);

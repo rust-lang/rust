@@ -377,20 +377,17 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
                 continue;
             };
             self.checked_attrs.insert(attr.id);
-            assertion.clean.items().all(|label| {
+            assertion.clean.items().for_each(|label| {
                 let dep_node = DepNode::from_label_string(self.tcx, &label, def_path_hash).unwrap();
                 self.assert_clean(item_span, dep_node);
-                true
             });
-            assertion.dirty.items().all(|label| {
+            assertion.dirty.items().for_each(|label| {
                 let dep_node = DepNode::from_label_string(self.tcx, &label, def_path_hash).unwrap();
                 self.assert_dirty(item_span, dep_node);
-                true
             });
-            assertion.loaded_from_disk.items().all(|label| {
+            assertion.loaded_from_disk.items().for_each(|label| {
                 let dep_node = DepNode::from_label_string(self.tcx, &label, def_path_hash).unwrap();
                 self.assert_loaded_from_disk(item_span, dep_node);
-                true
             });
         }
     }

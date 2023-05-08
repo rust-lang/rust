@@ -674,7 +674,7 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
 
     // Delete all lock files, that don't have an associated directory. They must
     // be some kind of leftover
-    lock_file_to_session_dir.items().all(|(lock_file_name, directory_name)| {
+    lock_file_to_session_dir.items().for_each(|(lock_file_name, directory_name)| {
         if directory_name.is_none() {
             let Ok(timestamp) = extract_timestamp_from_session_dir(lock_file_name) else {
                 debug!(
@@ -682,7 +682,7 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
                     crate_directory.join(&lock_file_name).display()
                 );
                 // Ignore it
-                return true;
+                return;
             };
 
             let lock_file_path = crate_directory.join(&**lock_file_name);
@@ -702,7 +702,6 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
                 );
             }
         }
-        true
     });
 
     // Filter out `None` directories

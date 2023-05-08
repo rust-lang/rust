@@ -6,6 +6,7 @@ use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc, Ordering};
+use rustc_data_structures::unord::UnordMap;
 use rustc_index::IndexVec;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use smallvec::{smallvec, SmallVec};
@@ -1048,7 +1049,7 @@ pub struct WorkProduct {
     ///
     /// By convention, file extensions are currently used as identifiers, i.e. the key "o" maps to
     /// the object file's path, and "dwo" to the dwarf object file's path.
-    pub saved_files: FxIndexMap<String, String>,
+    pub saved_files: UnordMap<String, String>,
 }
 
 // Index type for `DepNodeData`'s edges.
