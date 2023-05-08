@@ -1268,7 +1268,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 // If we have a projection type, make sure to normalize it so we replace it
                 // with a fresh infer variable
-                ty::Alias(ty::Projection, ..) => {
+                ty::Alias(ty::Projection | ty::Inherent, ..) => {
                     let predicate = normalize_with_depth_to(
                         self,
                         obligation.param_env,

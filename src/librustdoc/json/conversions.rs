@@ -574,7 +574,7 @@ impl FromWithTcx<clean::Type> for Type {
                 name: assoc.name.to_string(),
                 args: Box::new(assoc.args.into_tcx(tcx)),
                 self_type: Box::new(self_type.into_tcx(tcx)),
-                trait_: trait_.into_tcx(tcx),
+                trait_: trait_.map(|trait_| trait_.into_tcx(tcx)),
             },
         }
     }

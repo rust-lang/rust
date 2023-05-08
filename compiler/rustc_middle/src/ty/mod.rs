@@ -1004,7 +1004,7 @@ impl<'tcx> Term<'tcx> {
         match self.unpack() {
             TermKind::Ty(ty) => match ty.kind() {
                 ty::Alias(kind, alias_ty) => match kind {
-                    AliasKind::Projection => Some(*alias_ty),
+                    AliasKind::Projection | AliasKind::Inherent => Some(*alias_ty),
                     AliasKind::Opaque => None,
                 },
                 _ => None,

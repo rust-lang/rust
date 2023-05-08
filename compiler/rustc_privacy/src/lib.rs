@@ -243,6 +243,39 @@ where
                 // This will also visit substs if necessary, so we don't need to recurse.
                 return self.visit_projection_ty(proj);
             }
+            ty::Alias(ty::Inherent, data) => {
+                if self.def_id_visitor.skip_assoc_tys() {
+                    // Visitors searching for minimal visibility/reachability want to
+                    // conservatively approximate associated types like `Type::Alias`
+                    // as visible/reachable even if `Type` is private.
+                    // Ideally, associated types should be substituted in the same way as
+                    // free type aliases, but this isn't done yet.
+                    return ControlFlow::Continue(());
+                }
+
+                self.def_id_visitor.visit_def_id(
+                    data.def_id,
+                    "associated type",
+                    &LazyDefPathStr { def_id: data.def_id, tcx },
+                )?;
+
+                struct LazyDefPathStr<'tcx> {
+                    def_id: DefId,
+                    tcx: TyCtxt<'tcx>,
+                }
+                impl<'tcx> fmt::Display for LazyDefPathStr<'tcx> {
+                    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                        write!(f, "{}", self.tcx.def_path_str(self.def_id))
+                    }
+                }
+
+                // This will also visit substs if necessary, so we don't need to recurse.
+                return if self.def_id_visitor.shallow() {
+                    ControlFlow::Continue(())
+                } else {
+                    data.substs.iter().try_for_each(|subst| subst.visit_with(self))
+                };
+            }
             ty::Dynamic(predicates, ..) => {
                 // All traits in the list are considered the "primary" part of the type
                 // and are visited by shallow visitors.

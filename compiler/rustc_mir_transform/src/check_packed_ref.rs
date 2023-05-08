@@ -1,10 +1,9 @@
-use rustc_errors::struct_span_err;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
 
-use crate::util;
 use crate::MirLint;
+use crate::{errors, util};
 
 pub struct CheckPackedRef;
 
@@ -49,25 +48,7 @@ impl<'tcx> Visitor<'tcx> for PackedRefChecker<'_, 'tcx> {
                     // shouldn't do.
                     span_bug!(self.source_info.span, "builtin derive created an unaligned reference");
                 } else {
-                    struct_span_err!(
-                        self.tcx.sess,
-                        self.source_info.span,
-                        E0793,
-                        "reference to packed field is unaligned"
-                    )
-                    .note(
-                        "packed structs are only aligned by one byte, and many modern architectures \
-                        penalize unaligned field accesses"
-                    )
-                    .note(
-                        "creating a misaligned reference is undefined behavior (even if that \
-                        reference is never dereferenced)",
-                    ).help(
-                        "copy the field contents to a local variable, or replace the \
-                        reference with a raw pointer and use `read_unaligned`/`write_unaligned` \
-                        (loads and stores via `*p` must be properly aligned even when using raw pointers)"
-                    )
-                    .emit();
+                    self.tcx.sess.emit_err(errors::UnalignedPackedRef { span: self.source_info.span });
                 }
             }
         }

@@ -1,8 +1,8 @@
 error[E0282]: type annotations needed
-  --> $DIR/inference-fail.rs:14:14
+  --> $DIR/inference-fail.rs:10:12
    |
-LL |     let _: S<_>::P;
-   |              ^ cannot infer type
+LL |     let _: S<_>::P = ();
+   |            ^^^^^^^ cannot infer type for type parameter `T`
 
 error: aborting due to previous error
 

@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 /// rustdoc format-version.
-pub const FORMAT_VERSION: u32 = 24;
+pub const FORMAT_VERSION: u32 = 25;
 
 /// A `Crate` is the root of the emitted JSON blob. It contains all type/documentation information
 /// about the language items in the local crate, as well as info about external items to allow
@@ -581,13 +581,15 @@ pub enum Type {
         #[serde(rename = "type")]
         type_: Box<Type>,
     },
-    /// `<Type as Trait>::Name` or associated types like `T::Item` where `T: Iterator`
+    /// Associated types like `<Type as Trait>::Name` and `T::Item` where
+    /// `T: Iterator` or inherent associated types like `Struct::Name`.
     QualifiedPath {
         name: String,
         args: Box<GenericArgs>,
         self_type: Box<Type>,
+        /// `None` iff this is an *inherent* associated type.
         #[serde(rename = "trait")]
-        trait_: Path,
+        trait_: Option<Path>,
     },
 }
 

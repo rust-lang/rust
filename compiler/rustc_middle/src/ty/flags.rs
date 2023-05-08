@@ -176,14 +176,14 @@ impl FlagComputation {
                 self.add_substs(substs);
             }
 
-            &ty::Alias(ty::Projection, data) => {
-                self.add_flags(TypeFlags::HAS_TY_PROJECTION);
-                self.add_alias_ty(data);
-            }
+            &ty::Alias(kind, data) => {
+                self.add_flags(match kind {
+                    ty::Projection => TypeFlags::HAS_TY_PROJECTION,
+                    ty::Inherent => TypeFlags::HAS_TY_INHERENT,
+                    ty::Opaque => TypeFlags::HAS_TY_OPAQUE,
+                });
 
-            &ty::Alias(ty::Opaque, ty::AliasTy { substs, .. }) => {
-                self.add_flags(TypeFlags::HAS_TY_OPAQUE);
-                self.add_substs(substs);
+                self.add_alias_ty(data);
             }
 
             &ty::Dynamic(obj, r, _) => {

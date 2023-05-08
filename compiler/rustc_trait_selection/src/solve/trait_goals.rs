@@ -655,7 +655,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             ty::Dynamic(..)
             | ty::Param(..)
             | ty::Foreign(..)
-            | ty::Alias(ty::Projection, ..)
+            | ty::Alias(ty::Projection | ty::Inherent, ..)
             | ty::Placeholder(..) => Some(Err(NoSolution)),
 
             ty::Infer(_) | ty::Bound(_, _) => bug!("unexpected type `{self_ty}`"),

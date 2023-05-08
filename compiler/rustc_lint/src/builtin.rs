@@ -62,6 +62,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::GenericArgKind;
+use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, VariantDef};
 use rustc_session::config::ExpectedValues;
 use rustc_session::lint::{BuiltinLintDiagnostics, FutureIncompatibilityReason};
@@ -1442,6 +1443,10 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
             // Bounds are respected for `type X = impl Trait`
             return;
         }
+        if cx.tcx.type_of(item.owner_id).skip_binder().has_inherent_projections() {
+            // Bounds are respected for `type X = … Type::Inherent …`
+            return;
+        }
         // There must not be a where clause
         if type_alias_generics.predicates.is_empty() {
             return;
@@ -1561,7 +1566,6 @@ declare_lint_pass!(
 
 impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
-        use rustc_middle::ty::visit::TypeVisitableExt;
         use rustc_middle::ty::Clause;
         use rustc_middle::ty::PredicateKind::*;
 
@@ -2898,6 +2902,7 @@ impl ClashingExternDeclarations {
                         | (Generator(..), Generator(..))
                         | (GeneratorWitness(..), GeneratorWitness(..))
                         | (Alias(ty::Projection, ..), Alias(ty::Projection, ..))
+                        | (Alias(ty::Inherent, ..), Alias(ty::Inherent, ..))
                         | (Alias(ty::Opaque, ..), Alias(ty::Opaque, ..)) => false,
 
                         // These definitely should have been caught above.
