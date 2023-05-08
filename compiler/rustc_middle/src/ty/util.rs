@@ -827,7 +827,10 @@ impl<'tcx> TyCtxt<'tcx> {
         // | Yes     | No     | No      | !(true && !false)  |
         // | No      | No     | Yes     | !(false && !false) |
         !(self.is_private_dep(key)
-            && !self.extern_crate(key.as_def_id()).expect("crate must exist").is_direct())
+            // If `extern_crate` is `None`, then the crate was injected (e.g., by the allocator).
+            // Treat that kind of crate as "indirect", since it's an implementation detail of
+            // the language.
+            && !self.extern_crate(key.as_def_id()).map_or(false, |e| e.is_direct()))
     }
 }
 
