@@ -49,13 +49,12 @@ fn main() {
 
     // Std panics
     test(None, |_old_val| std::panic!("Hello from panic: std"));
-    test(None, |old_val| std::panic!(format!("Hello from panic: {:?}", old_val)));
+    test(None, |old_val| std::panic::panic_any(format!("Hello from panic: {:?}", old_val)));
     test(None, |old_val| std::panic!("Hello from panic: {:?}", old_val));
-    test(None, |_old_val| std::panic!(1337));
+    test(None, |_old_val| std::panic::panic_any(1337));
 
     // Core panics
     test(None, |_old_val| core::panic!("Hello from panic: core"));
-    test(None, |old_val| core::panic!(&format!("Hello from panic: {:?}", old_val)));
     test(None, |old_val| core::panic!("Hello from panic: {:?}", old_val));
 
     // Built-in panics; also make sure the message is right.

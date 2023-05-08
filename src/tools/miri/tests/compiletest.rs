@@ -52,7 +52,7 @@ fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> R
         mode,
         program: miri_path(),
         quiet: false,
-        edition: Some("2018".into()),
+        edition: Some("2021".into()),
         ..Config::default()
     };
 

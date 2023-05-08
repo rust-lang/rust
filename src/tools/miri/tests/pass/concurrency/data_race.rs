@@ -17,12 +17,14 @@ fn test_fence_sync() {
     let evil_ptr = EvilSend(ptr);
 
     let j1 = spawn(move || {
+        let evil_ptr = evil_ptr; // avoid field capturing
         unsafe { *evil_ptr.0 = 1 };
         fence(Ordering::Release);
         SYNC.store(1, Ordering::Relaxed)
     });
 
     let j2 = spawn(move || {
+        let evil_ptr = evil_ptr; // avoid field capturing
         if SYNC.load(Ordering::Relaxed) == 1 {
             fence(Ordering::Acquire);
             unsafe { *evil_ptr.0 }
@@ -40,10 +42,10 @@ fn test_multiple_reads() {
     let ptr = &mut var as *mut u32;
     let evil_ptr = EvilSend(ptr);
 
-    let j1 = spawn(move || unsafe { *evil_ptr.0 });
-    let j2 = spawn(move || unsafe { *evil_ptr.0 });
-    let j3 = spawn(move || unsafe { *evil_ptr.0 });
-    let j4 = spawn(move || unsafe { *evil_ptr.0 });
+    let j1 = spawn(move || unsafe { *{ evil_ptr }.0 });
+    let j2 = spawn(move || unsafe { *{ evil_ptr }.0 });
+    let j3 = spawn(move || unsafe { *{ evil_ptr }.0 });
+    let j4 = spawn(move || unsafe { *{ evil_ptr }.0 });
 
     assert_eq!(j1.join().unwrap(), 42);
     assert_eq!(j2.join().unwrap(), 42);
@@ -63,6 +65,7 @@ pub fn test_rmw_no_block() {
 
     unsafe {
         let j1 = spawn(move || {
+            let c = c; // avoid field capturing
             *c.0 = 1;
             SYNC.store(1, Ordering::Release);
         });
@@ -73,7 +76,10 @@ pub fn test_rmw_no_block() {
             }
         });
 
-        let j3 = spawn(move || if SYNC.load(Ordering::Acquire) == 2 { *c.0 } else { 0 });
+        let j3 = spawn(move || {
+            let c = c; // avoid field capturing
+            if SYNC.load(Ordering::Acquire) == 2 { *c.0 } else { 0 }
+        });
 
         j1.join().unwrap();
         j2.join().unwrap();
@@ -91,11 +97,15 @@ pub fn test_simple_release() {
 
     unsafe {
         let j1 = spawn(move || {
+            let c = c; // avoid field capturing
             *c.0 = 1;
             SYNC.store(1, Ordering::Release);
         });
 
-        let j2 = spawn(move || if SYNC.load(Ordering::Acquire) == 1 { *c.0 } else { 0 });
+        let j2 = spawn(move || {
+            let c = c; // avoid field capturing
+            if SYNC.load(Ordering::Acquire) == 1 { *c.0 } else { 0 }
+        });
 
         j1.join().unwrap();
         assert_eq!(j2.join().unwrap(), 1); // relies on thread 2 going last

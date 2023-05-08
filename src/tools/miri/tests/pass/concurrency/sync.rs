@@ -204,7 +204,7 @@ fn park_timeout() {
     // We allow much longer sleeps as well since the macOS GHA runners seem very oversubscribed
     // and sometimes just pause for 1 second or more.
     let elapsed = start.elapsed();
-    assert!((200..2000).contains(&elapsed.as_millis()), "bad sleep time: {:?}", elapsed);
+    assert!((200..2000).contains(&elapsed.as_millis()), "bad sleep time: {elapsed:?}");
 }
 
 fn park_unpark() {
@@ -224,7 +224,7 @@ fn park_unpark() {
     // We allow much longer sleeps as well since the macOS GHA runners seem very oversubscribed
     // and sometimes just pause for 1 second or more.
     let elapsed = start.elapsed();
-    assert!((200..2000).contains(&elapsed.as_millis()), "bad sleep time: {:?}", elapsed);
+    assert!((200..2000).contains(&elapsed.as_millis()), "bad sleep time: {elapsed:?}");
 
     t2.join().unwrap();
 }

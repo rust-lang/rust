@@ -11,8 +11,6 @@ thread 'main' panicked at 'Hello from panic: core', $DIR/catch_panic.rs:LL:CC
 Caught panic message (&str): Hello from panic: core
 thread 'main' panicked at 'Hello from panic: 5', $DIR/catch_panic.rs:LL:CC
 Caught panic message (String): Hello from panic: 5
-thread 'main' panicked at 'Hello from panic: 6', $DIR/catch_panic.rs:LL:CC
-Caught panic message (String): Hello from panic: 6
 thread 'main' panicked at 'index out of bounds: the len is 3 but the index is 4', $DIR/catch_panic.rs:LL:CC
 Caught panic message (String): index out of bounds: the len is 3 but the index is 4
 thread 'main' panicked at 'attempt to divide by zero', $DIR/catch_panic.rs:LL:CC

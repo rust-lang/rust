@@ -13,7 +13,7 @@ fn main() {
 fn race(local: i32) {
     let ptr = MakeSend(&local as *const i32);
     thread::spawn(move || {
-        let ptr = ptr;
+        let ptr = ptr; // avoid field capturing
         let _val = unsafe { *ptr.0 };
     });
     // Make the other thread go first so that it does not UAF.
