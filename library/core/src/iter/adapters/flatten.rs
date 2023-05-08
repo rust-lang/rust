@@ -310,7 +310,6 @@ where
 /// Real logic of both `Flatten` and `FlatMap` which simply delegate to
 /// this type.
 #[derive(Clone, Debug)]
-#[unstable(feature = "trusted_len", issue = "37572")]
 struct FlattenCompat<I, U> {
     iter: Fuse<I>,
     frontiter: Option<U>,
@@ -464,7 +463,6 @@ where
     }
 }
 
-#[unstable(feature = "trusted_len", issue = "37572")]
 impl<I, U> Iterator for FlattenCompat<I, U>
 where
     I: Iterator<Item: IntoIterator<IntoIter = U, Item = U::Item>>,
@@ -579,7 +577,6 @@ where
     }
 }
 
-#[unstable(feature = "trusted_len", issue = "37572")]
 impl<I, U> DoubleEndedIterator for FlattenCompat<I, U>
 where
     I: DoubleEndedIterator<Item: IntoIterator<IntoIter = U, Item = U::Item>>,
@@ -649,7 +646,6 @@ where
     }
 }
 
-#[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<const N: usize, I, T> TrustedLen
     for FlattenCompat<I, <[T; N] as IntoIterator>::IntoIter>
 where
@@ -657,7 +653,6 @@ where
 {
 }
 
-#[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<'a, const N: usize, I, T> TrustedLen
     for FlattenCompat<I, <&'a [T; N] as IntoIterator>::IntoIter>
 where
@@ -665,7 +660,6 @@ where
 {
 }
 
-#[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<'a, const N: usize, I, T> TrustedLen
     for FlattenCompat<I, <&'a mut [T; N] as IntoIterator>::IntoIter>
 where
