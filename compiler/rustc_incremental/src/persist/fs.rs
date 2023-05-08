@@ -658,6 +658,7 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
             // This is something we don't know, leave it alone
         }
     }
+    session_directories.sort();
 
     // Now map from lock files to session directories
     let lock_file_to_session_dir: UnordMap<String, Option<String>> =
