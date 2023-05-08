@@ -680,7 +680,9 @@ pub type InlineAsmDiagHandlerTy = unsafe extern "C" fn(&SMDiagnostic, *const c_v
 pub mod coverageinfo {
     use super::coverage_map;
 
-    /// Aligns with [llvm::coverage::CounterMappingRegion::RegionKind](https://github.com/rust-lang/llvm-project/blob/rustc/13.0-2021-09-30/llvm/include/llvm/ProfileData/Coverage/CoverageMapping.h#L209-L230)
+    /// Corresponds to enum `llvm::coverage::CounterMappingRegion::RegionKind`.
+    ///
+    /// Must match the layout of `LLVMRustCounterMappingRegionKind`.
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
     pub enum RegionKind {
@@ -714,7 +716,9 @@ pub mod coverageinfo {
     /// array", encoded separately), and source location (start and end positions of the represented
     /// code region).
     ///
-    /// Matches LLVMRustCounterMappingRegion.
+    /// Corresponds to struct `llvm::coverage::CounterMappingRegion`.
+    ///
+    /// Must match the layout of `LLVMRustCounterMappingRegion`.
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
     pub struct CounterMappingRegion {
