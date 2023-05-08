@@ -1,0 +1,47 @@
+// MIR for `forward` after built
+
+fn forward(_1: [usize], _2: usize) -> () {
+    debug x => _1;                       // in scope 0 at $DIR/unsized_arg_forwarding.rs:+0:12: +0:17
+    debug i => _2;                       // in scope 0 at $DIR/unsized_arg_forwarding.rs:+0:28: +0:29
+    let mut _0: ();                      // return place in scope 0 at $DIR/unsized_arg_forwarding.rs:+0:38: +0:38
+    let _3: ();                          // in scope 0 at $DIR/unsized_arg_forwarding.rs:+4:5: +7:7
+    let mut _4: ();                      // in scope 0 at $DIR/unsized_arg_forwarding.rs:+4:12: +7:6
+    let mut _5: usize;                   // in scope 0 at $DIR/unsized_arg_forwarding.rs:+5:16: +5:17
+    let _6: usize;                       // in scope 0 at $DIR/unsized_arg_forwarding.rs:+5:11: +5:12
+    let mut _7: usize;                   // in scope 0 at $DIR/unsized_arg_forwarding.rs:+5:9: +5:13
+    let mut _8: bool;                    // in scope 0 at $DIR/unsized_arg_forwarding.rs:+5:9: +5:13
+
+    bb0: {
+        StorageLive(_3);                 // scope 0 at $DIR/unsized_arg_forwarding.rs:+4:5: +7:7
+        StorageLive(_4);                 // scope 0 at $DIR/unsized_arg_forwarding.rs:+4:12: +7:6
+        StorageLive(_5);                 // scope 0 at $DIR/unsized_arg_forwarding.rs:+5:16: +5:17
+        _5 = _2;                         // scope 0 at $DIR/unsized_arg_forwarding.rs:+5:16: +5:17
+        StorageLive(_6);                 // scope 0 at $DIR/unsized_arg_forwarding.rs:+5:11: +5:12
+        _6 = _2;                         // scope 0 at $DIR/unsized_arg_forwarding.rs:+5:11: +5:12
+        _7 = Len(_1);                    // scope 0 at $DIR/unsized_arg_forwarding.rs:+5:9: +5:13
+        _8 = Lt(_6, _7);                 // scope 0 at $DIR/unsized_arg_forwarding.rs:+5:9: +5:13
+        assert(move _8, "index out of bounds: the length is {} but the index is {}", move _7, _6) -> [success: bb1, unwind: bb3]; // scope 0 at $DIR/unsized_arg_forwarding.rs:+5:9: +5:13
+    }
+
+    bb1: {
+        _1[_6] = move _5;                // scope 0 at $DIR/unsized_arg_forwarding.rs:+5:9: +5:17
+        StorageDead(_5);                 // scope 0 at $DIR/unsized_arg_forwarding.rs:+5:16: +5:17
+        StorageDead(_6);                 // scope 0 at $DIR/unsized_arg_forwarding.rs:+5:17: +5:18
+        _4 = ();                         // scope 0 at $DIR/unsized_arg_forwarding.rs:+6:9: +6:11
+        _3 = nop(move _1, move _4) -> [return: bb2, unwind: bb3]; // scope 0 at $DIR/unsized_arg_forwarding.rs:+4:5: +7:7
+                                         // mir::Constant
+                                         // + span: $DIR/unsized_arg_forwarding.rs:10:5: 10:8
+                                         // + literal: Const { ty: fn([usize], ()) {nop}, val: Value(<ZST>) }
+    }
+
+    bb2: {
+        StorageDead(_4);                 // scope 0 at $DIR/unsized_arg_forwarding.rs:+7:6: +7:7
+        StorageDead(_3);                 // scope 0 at $DIR/unsized_arg_forwarding.rs:+7:7: +7:8
+        _0 = const ();                   // scope 0 at $DIR/unsized_arg_forwarding.rs:+0:38: +8:2
+        return;                          // scope 0 at $DIR/unsized_arg_forwarding.rs:+8:2: +8:2
+    }
+
+    bb3 (cleanup): {
+        resume;                          // scope 0 at $DIR/unsized_arg_forwarding.rs:+0:1: +8:2
+    }
+}

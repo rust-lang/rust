@@ -163,8 +163,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // !sized means !copy, so this is an unsized move
                 assert!(!ty.is_copy_modulo_regions(tcx, param_env));
 
-                // As described above, detect the case where we are passing a value of unsized
-                // type, and that value is coming from the deref of a box.
                 if let ExprKind::Deref { arg } = expr.kind {
                     // Generate let tmp0 = arg0
                     let operand = unpack!(
@@ -177,6 +175,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         projection: tcx.mk_place_elems(&[PlaceElem::Deref]),
                     };
 
+                    return block.and(Operand::Move(place));
+                } else {
+                    // FIXME: This does not prevent the place from being modified before being used,
+                    // see `tests/mir-opt/unsized_arg_forwarding.rs`.
+                    let place = unpack!(block = this.as_place(block, expr));
                     return block.and(Operand::Move(place));
                 }
             }
