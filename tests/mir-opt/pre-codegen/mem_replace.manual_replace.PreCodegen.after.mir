@@ -3,14 +3,18 @@
 fn manual_replace(_1: &mut u32, _2: u32) -> u32 {
     debug r => _1;                       // in scope 0 at $DIR/mem_replace.rs:+0:23: +0:24
     debug v => _2;                       // in scope 0 at $DIR/mem_replace.rs:+0:36: +0:37
-    let mut _0: u32;                     // return place in scope 0 at $DIR/mem_replace.rs:+1:9: +1:13
+    let mut _0: u32;                     // return place in scope 0 at $DIR/mem_replace.rs:+0:47: +0:50
+    let _3: u32;                         // in scope 0 at $DIR/mem_replace.rs:+1:9: +1:13
     scope 1 {
-        debug temp => _0;                // in scope 1 at $DIR/mem_replace.rs:+1:9: +1:13
+        debug temp => _3;                // in scope 1 at $DIR/mem_replace.rs:+1:9: +1:13
     }
 
     bb0: {
-        _0 = (*_1);                      // scope 0 at $DIR/mem_replace.rs:+1:16: +1:18
+        StorageLive(_3);                 // scope 0 at $DIR/mem_replace.rs:+1:9: +1:13
+        _3 = (*_1);                      // scope 0 at $DIR/mem_replace.rs:+1:16: +1:18
         (*_1) = _2;                      // scope 1 at $DIR/mem_replace.rs:+2:5: +2:11
+        _0 = _3;                         // scope 1 at $DIR/mem_replace.rs:+3:5: +3:9
+        StorageDead(_3);                 // scope 0 at $DIR/mem_replace.rs:+4:1: +4:2
         return;                          // scope 0 at $DIR/mem_replace.rs:+4:2: +4:2
     }
 }
