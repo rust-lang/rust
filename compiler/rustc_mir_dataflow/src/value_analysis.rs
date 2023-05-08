@@ -632,11 +632,11 @@ impl Map {
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
         filter: impl Fn(Ty<'tcx>) -> bool,
-        place_limit: Option<usize>,
+        value_limit: Option<usize>,
     ) -> Self {
         let mut map = Self::new();
         let exclude = excluded_locals(body);
-        map.register_with_filter(tcx, body, filter, exclude, place_limit);
+        map.register_with_filter(tcx, body, filter, exclude, value_limit);
         debug!("registered {} places ({} nodes in total)", map.value_count, map.places.len());
         map
     }
@@ -648,10 +648,11 @@ impl Map {
         body: &Body<'tcx>,
         filter: impl Fn(Ty<'tcx>) -> bool,
         exclude: BitSet<Local>,
-        place_limit: Option<usize>,
+        value_limit: Option<usize>,
     ) {
-        // We use this vector as stack, pushing and popping projections.
-        let mut worklist = VecDeque::with_capacity(place_limit.unwrap_or(body.local_decls.len()));
+        let mut worklist = VecDeque::with_capacity(value_limit.unwrap_or(body.local_decls.len()));
+
+        // Start by constructing the places for each bare local.
         self.locals = IndexVec::from_elem(None, &body.local_decls);
         for (local, decl) in body.local_decls.iter_enumerated() {
             if exclude.contains(local) {
@@ -668,8 +669,10 @@ impl Map {
         }
 
         // `place.elem1.elem2` with type `ty`.
+        // `elem1` is either `Some(Variant(i))` or `None`.
         while let Some((mut place, elem1, elem2, ty)) = worklist.pop_front() {
-            if let Some(place_limit) = place_limit && self.value_count >= place_limit {
+            // The user requires a bound on the number of created values.
+            if let Some(value_limit) = value_limit && self.value_count >= value_limit {
                 break
             }
 
@@ -688,6 +691,9 @@ impl Map {
             self.register_children(tcx, place, ty, &filter, &mut worklist);
         }
 
+        // Pre-compute the tree of ValueIndex nested in each PlaceIndex.
+        // `inner_values_buffer[inner_values[place]]` is the set of all the values
+        // reachable by projecting `place`.
         self.inner_values_buffer = Vec::with_capacity(self.value_count);
         self.inner_values = IndexVec::from_elem(0..0, &self.places);
         for local in body.local_decls.indices() {
