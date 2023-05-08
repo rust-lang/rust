@@ -454,6 +454,8 @@ struct EmbargoVisitor<'tcx> {
     ///     n::p::f()
     /// }
     macro_reachable: FxHashSet<(LocalDefId, LocalDefId)>,
+    /// Preliminary pass for marking all underlying types of `impl Trait`s as reachable.
+    impl_trait_pass: bool,
     /// Has something changed in the level map?
     changed: bool,
 }
@@ -700,6 +702,20 @@ impl<'tcx> EmbargoVisitor<'tcx> {
 
 impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
+        if self.impl_trait_pass
+            && let hir::ItemKind::OpaqueTy(ref opaque) = item.kind
+            && !opaque.in_trait {
+            // FIXME: This is some serious pessimization intended to workaround deficiencies
+            // in the reachability pass (`middle/reachable.rs`). Types are marked as link-time
+            // reachable if they are returned via `impl Trait`, even from private functions.
+            let pub_ev = EffectiveVisibility::from_vis(ty::Visibility::Public);
+            self.reach_through_impl_trait(item.owner_id.def_id, pub_ev)
+                .generics()
+                .predicates()
+                .ty();
+            return;
+        }
+
         // Update levels of nested things and mark all items
         // in interfaces of reachable items as reachable.
         let item_ev = self.get(item.owner_id.def_id);
@@ -709,26 +725,10 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
             | hir::ItemKind::ExternCrate(..)
             | hir::ItemKind::GlobalAsm(..) => {}
             // The interface is empty, and all nested items are processed by `visit_item`.
-            hir::ItemKind::Mod(..) => {}
+            hir::ItemKind::Mod(..) | hir::ItemKind::OpaqueTy(..) => {}
             hir::ItemKind::Macro(ref macro_def, _) => {
                 if let Some(item_ev) = item_ev {
                     self.update_reachability_from_macro(item.owner_id.def_id, macro_def, item_ev);
-                }
-            }
-            hir::ItemKind::OpaqueTy(ref opaque) => {
-                // HACK(jynelson): trying to infer the type of `impl trait` breaks `async-std` (and `pub async fn` in general)
-                // Since rustdoc never needs to do codegen and doesn't care about link-time reachability,
-                // mark this as unreachable.
-                // See https://github.com/rust-lang/rust/issues/75100
-                if !opaque.in_trait && !self.tcx.sess.opts.actually_rustdoc {
-                    // FIXME: This is some serious pessimization intended to workaround deficiencies
-                    // in the reachability pass (`middle/reachable.rs`). Types are marked as link-time
-                    // reachable if they are returned via `impl Trait`, even from private functions.
-                    let exist_ev = EffectiveVisibility::from_vis(ty::Visibility::Public);
-                    self.reach_through_impl_trait(item.owner_id.def_id, exist_ev)
-                        .generics()
-                        .predicates()
-                        .ty();
                 }
             }
             hir::ItemKind::Const(..)
@@ -2130,10 +2130,22 @@ fn effective_visibilities(tcx: TyCtxt<'_>, (): ()) -> &EffectiveVisibilities {
         tcx,
         effective_visibilities: tcx.resolutions(()).effective_visibilities.clone(),
         macro_reachable: Default::default(),
+        // HACK(jynelson): trying to infer the type of `impl Trait` breaks `async-std` (and
+        // `pub async fn` in general). Since rustdoc never needs to do codegen and doesn't
+        // care about link-time reachability, keep them unreachable (issue #75100).
+        impl_trait_pass: !tcx.sess.opts.actually_rustdoc,
         changed: false,
     };
 
     visitor.effective_visibilities.check_invariants(tcx, true);
+    if visitor.impl_trait_pass {
+        // Underlying types of `impl Trait`s are marked as reachable unconditionally,
+        // so this pass doesn't need to be a part of the fixed point iteration below.
+        tcx.hir().visit_all_item_likes_in_crate(&mut visitor);
+        visitor.impl_trait_pass = false;
+        visitor.changed = false;
+    }
+
     loop {
         tcx.hir().visit_all_item_likes_in_crate(&mut visitor);
         if visitor.changed {
