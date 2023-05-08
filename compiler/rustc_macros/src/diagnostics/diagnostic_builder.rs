@@ -9,7 +9,7 @@ use crate::diagnostics::utils::{
     FieldInnerTy, FieldMap, HasFieldMap, SetOnce, SpannedOption, SubdiagnosticKind,
 };
 use proc_macro2::{Ident, Span, TokenStream};
-use quote::{format_ident, quote};
+use quote::{format_ident, quote, quote_spanned};
 use syn::Token;
 use syn::{parse_quote, spanned::Spanned, Attribute, Meta, Path, Type};
 use synstructure::{BindingInfo, Structure, VariantInfo};
@@ -251,7 +251,8 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
         let diag = &self.parent.diag;
 
         let field = binding_info.ast();
-        let field_binding = &binding_info.binding;
+        let mut field_binding = binding_info.binding.clone();
+        field_binding.set_span(field.ty.span());
 
         let ident = field.ident.as_ref().unwrap();
         let ident = format_ident!("{}", ident); // strip `r#` prefix, if present
@@ -284,9 +285,9 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
                     name == "primary_span" && matches!(inner_ty, FieldInnerTy::Vec(_));
                 let (binding, needs_destructure) = if needs_clone {
                     // `primary_span` can accept a `Vec<Span>` so don't destructure that.
-                    (quote! { #field_binding.clone() }, false)
+                    (quote_spanned! {inner_ty.span()=> #field_binding.clone() }, false)
                 } else {
-                    (quote! { #field_binding }, true)
+                    (quote_spanned! {inner_ty.span()=> #field_binding }, true)
                 };
 
                 let generated_code = self
