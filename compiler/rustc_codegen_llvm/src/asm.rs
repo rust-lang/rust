@@ -238,7 +238,9 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 InlineAsmArch::Hexagon => {}
                 InlineAsmArch::LoongArch64 => {}
                 InlineAsmArch::Mips | InlineAsmArch::Mips64 => {}
-                InlineAsmArch::S390x => {}
+                InlineAsmArch::S390x => {
+                    constraints.push("~{cc}".to_string());
+                }
                 InlineAsmArch::SpirV => {}
                 InlineAsmArch::Wasm32 | InlineAsmArch::Wasm64 => {}
                 InlineAsmArch::Bpf => {}
