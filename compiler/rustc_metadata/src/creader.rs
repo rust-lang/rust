@@ -361,7 +361,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         lib: Library,
         dep_kind: CrateDepKind,
         name: Symbol,
-        private_dep: bool,
+        private_dep: Option<bool>,
     ) -> Result<CrateNum, CrateError> {
         let _prof_timer = self.sess.prof.generic_activity("metadata_register_crate");
 
@@ -369,8 +369,13 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         let crate_root = metadata.get_root();
         let host_hash = host_lib.as_ref().map(|lib| lib.metadata.get_root().hash());
 
-        let private_dep =
-            self.sess.opts.externs.get(name.as_str()).map_or(private_dep, |e| e.is_private_dep);
+        let private_dep = self
+            .sess
+            .opts
+            .externs
+            .get(name.as_str())
+            .map_or(private_dep.unwrap_or(false), |e| e.is_private_dep)
+            && private_dep.unwrap_or(true);
 
         // Claim this crate number and cache it
         let cnum = self.cstore.intern_stable_crate_id(&crate_root)?;
@@ -522,9 +527,9 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                 dep.host_hash,
                 Some(&dep.extra_filename[..]),
                 PathKind::Dependency,
-                dep.is_private,
+                Some(dep.is_private),
             ),
-            None => (None, None, None, None, PathKind::Crate, false),
+            None => (None, None, None, None, PathKind::Crate, None),
         };
         let result = if let Some(cnum) = self.existing_match(name, hash, path_kind) {
             (LoadResult::Previous(cnum), None)
@@ -560,7 +565,9 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                     dep_kind = CrateDepKind::MacrosOnly;
                 }
                 data.update_dep_kind(|data_dep_kind| cmp::max(data_dep_kind, dep_kind));
-                data.update_private_dep(|p_d| p_d && private_dep);
+                if let Some(private_dep) = private_dep {
+                    data.update_private_dep(|p_d| p_d && private_dep);
+                }
                 Ok(cnum)
             }
             (LoadResult::Loaded(library), host_library) => {
