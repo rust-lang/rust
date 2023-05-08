@@ -4,7 +4,7 @@ error[E0271]: expected `foo` to be a fn item that returns `i32`, but it returns 
 LL | fn bar() -> impl Iterator<Item = i32> {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found `i32`
    |
-   = note: required for `Map<std::slice::IterMut<'_, Vec<u8>>, for<'a> fn(&'a mut Vec<u8>) {foo}>` to implement `Iterator`
+   = note: required for `std::iter::Map<std::slice::IterMut<'_, Vec<u8>>, for<'a> fn(&'a mut Vec<u8>) {foo}>` to implement `Iterator`
 
 error: aborting due to previous error
 

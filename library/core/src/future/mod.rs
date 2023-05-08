@@ -15,6 +15,8 @@ use crate::task::Context;
 mod future;
 mod into_future;
 mod join;
+#[cfg(not(bootstrap))]
+mod map;
 mod pending;
 mod poll_fn;
 mod ready;
@@ -35,6 +37,10 @@ pub use ready::{ready, Ready};
 
 #[stable(feature = "future_poll_fn", since = "1.64.0")]
 pub use poll_fn::{poll_fn, PollFn};
+
+#[cfg(not(bootstrap))]
+#[unstable(feature = "future_map", issue = "none")]
+pub use map::Map;
 
 /// This type is needed because:
 ///

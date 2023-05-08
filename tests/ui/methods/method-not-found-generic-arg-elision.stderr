@@ -19,7 +19,7 @@ LL | struct Point<T> {
 LL |     let d = point_i32.other();
    |                       ^^^^^ method not found in `Point<i32>`
 
-error[E0599]: no method named `extend` found for struct `Map` in the current scope
+error[E0599]: no method named `extend` found for struct `std::iter::Map` in the current scope
   --> $DIR/method-not-found-generic-arg-elision.rs:87:67
    |
 LL |     v.iter().map(Box::new(|x| x * x) as Box<dyn Fn(&i32) -> i32>).extend(std::iter::once(100));

@@ -99,7 +99,7 @@ mod test_join_function_like_value_arg_semantics {
     }
 }
 
-fn block_on(fut: impl Future) {
+fn block_on<F: Future>(fut: F) -> F::Output {
     struct Waker;
     impl Wake for Waker {
         fn wake(self: Arc<Self>) {
@@ -113,7 +113,7 @@ fn block_on(fut: impl Future) {
 
     loop {
         match fut.as_mut().poll(&mut cx) {
-            Poll::Ready(_) => break,
+            Poll::Ready(value) => break value,
             Poll::Pending => thread::park(),
         }
     }
@@ -125,4 +125,12 @@ fn _pending_impl_all_auto_traits<T>() {
     fn all_auto_traits<T: Send + Sync + Unpin + UnwindSafe + RefUnwindSafe>() {}
 
     all_auto_traits::<std::future::Pending<T>>();
+}
+
+#[cfg(not(bootstrap))]
+#[test]
+fn test_map() {
+    let future = async { 1 };
+    let future = future.map(|x| x + 3);
+    assert_eq!(block_on(future), 4);
 }

@@ -85,7 +85,7 @@ fn main() {
     //~^ ERROR no method named `other` found for struct `Point
     let v = vec![1, 2, 3];
     v.iter().map(Box::new(|x| x * x) as Box<dyn Fn(&i32) -> i32>).extend(std::iter::once(100));
-    //~^ ERROR no method named `extend` found for struct `Map
+    //~^ ERROR no method named `extend` found for struct `std::iter::Map
     let wrapper = Wrapper(true);
     wrapper.method();
     //~^ ERROR no method named `method` found for struct `Wrapper<bool>

@@ -1,5 +1,7 @@
 #![stable(feature = "futures_api", since = "1.36.0")]
 
+#[cfg(not(bootstrap))]
+use crate::future::Map;
 use crate::marker::Unpin;
 use crate::ops;
 use crate::pin::Pin;
@@ -103,6 +105,38 @@ pub trait Future {
     #[lang = "poll"]
     #[stable(feature = "futures_api", since = "1.36.0")]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output>;
+
+    /// Map this future's output to a different type, returning a new future of
+    /// the resulting type.
+    ///
+    /// This function is similar to [`Option::map`] or [`Iterator::map`] where
+    /// it will change the type of the underlying future. This is useful to
+    /// chain along a computation once a future has been resolved.
+    ///
+    /// Note that this function consumes the receiving future and returns a
+    /// wrapped version of it, similar to the existing `map` methods in the
+    /// standard library.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(future_map)]
+    /// use core::future::Future;
+    /// # async fn f() {
+    /// let future = async { 1 };
+    /// let new_future = future.map(|x| x + 3);
+    /// assert_eq!(new_future.await, 4);
+    /// # }
+    /// ```
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "future_map", issue = "none")]
+    fn map<U, F>(self, f: F) -> Map<Self, F>
+    where
+        F: FnOnce(Self::Output) -> U,
+        Self: Sized,
+    {
+        Map::new(self, f)
+    }
 }
 
 #[stable(feature = "futures_api", since = "1.36.0")]
