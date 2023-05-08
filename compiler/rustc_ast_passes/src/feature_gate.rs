@@ -2,7 +2,6 @@ use rustc_ast as ast;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::{attr, AssocConstraint, AssocConstraintKind, NodeId};
 use rustc_ast::{PatKind, RangeEnd};
-use rustc_errors::StashKey;
 use rustc_feature::{AttributeGate, BuiltinAttribute, Features, GateIssue, BUILTIN_ATTRIBUTE_MAP};
 use rustc_session::parse::{feature_err, feature_err_issue, feature_warn};
 use rustc_session::Session;
@@ -380,19 +379,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_expr(&mut self, e: &'a ast::Expr) {
         match e.kind {
-            ast::ExprKind::Type(..) => {
-                if self.sess.parse_sess.span_diagnostic.err_count() > 0 {
-                    // And if it isn't, cancel the early-pass warning.
-                    if let Some(err) = self
-                        .sess
-                        .parse_sess
-                        .span_diagnostic
-                        .steal_diagnostic(e.span, StashKey::EarlySyntaxWarning)
-                    {
-                        err.cancel()
-                    }
-                }
-            }
             ast::ExprKind::TryBlock(_) => {
                 gate_feature_post!(&self, try_blocks, e.span, "`try` expression is experimental");
             }
