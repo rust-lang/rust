@@ -37,6 +37,7 @@ use std::fmt::{Debug, Formatter};
 use std::ops::Range;
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_index::bit_set::BitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
@@ -774,7 +775,7 @@ impl Map {
         // We manually iterate instead of using `children` as we need to mutate `self`.
         let mut next_child = self.places[root].first_child;
         while let Some(child) = next_child {
-            self.cache_preorder_invoke(child);
+            ensure_sufficient_stack(|| self.cache_preorder_invoke(child));
             next_child = self.places[child].next_sibling;
         }
 
