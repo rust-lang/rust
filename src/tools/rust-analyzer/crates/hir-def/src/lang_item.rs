@@ -379,7 +379,6 @@ language_item_table! {
     // FIXME(swatinem): the following lang items are used for async lowering and
     // should become obsolete eventually.
     ResumeTy,                ResumeTy,            resume_ty,                  Target::Struct,         GenericRequirement::None;
-    IdentityFuture,          identity_future,     identity_future_fn,         Target::Fn,             GenericRequirement::None;
     GetContext,              get_context,         get_context_fn,             Target::Fn,             GenericRequirement::None;
 
     Context,                 Context,             context,                    Target::Struct,         GenericRequirement::None;
