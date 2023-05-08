@@ -792,6 +792,7 @@ checksum = "6245d59a3e82a7fc217c5828a6692dbc6dfb63a0c8c90495621f7b9d79704a0e"
 name = "core"
 version = "0.0.0"
 dependencies = [
+ "pin-project-lite 0.2.9",
  "rand",
  "rand_xorshift",
 ]
@@ -1429,7 +1430,7 @@ dependencies = [
  "futures-sink",
  "futures-task",
  "memchr",
- "pin-project-lite",
+ "pin-project-lite 0.2.8",
  "pin-utils",
  "slab",
 ]
@@ -2592,6 +2593,11 @@ name = "pin-project-lite"
 version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e280fbe77cc62c91527259e9442153f4688736748d24660126286329742b4c6c"
+
+[[package]]
+name = "pin-project-lite"
+version = "0.2.9"
+source = "git+https://github.com/taiki-e/pin-project-lite?branch=rustc-dep-of-core#50373ad4115c79de3819d72192ad5c8a6cd406fb"
 
 [[package]]
 name = "pin-utils"
@@ -4964,7 +4970,7 @@ dependencies = [
  "autocfg",
  "bytes",
  "memchr",
- "pin-project-lite",
+ "pin-project-lite 0.2.8",
 ]
 
 [[package]]
@@ -4989,7 +4995,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a400e31aa60b9d44a52a8ee0343b5b18566b03a8321e0d321f695cf56e940160"
 dependencies = [
  "cfg-if",
- "pin-project-lite",
+ "pin-project-lite 0.2.8",
  "tracing-attributes",
  "tracing-core",
 ]

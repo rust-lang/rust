@@ -2,25 +2,29 @@ use crate::future::Future;
 use crate::pin::Pin;
 use crate::task::{Context, Poll};
 
-/// A future that is immediately ready with a value.
-///
-/// This `struct` is created by [`ready()`]. See its
-/// documentation for more.
-#[stable(feature = "future_readiness_fns", since = "1.48.0")]
-#[derive(Debug, Clone)]
-#[must_use = "futures do nothing unless you `.await` or poll them"]
-pub struct Ready<T>(Option<T>);
+pin_project_lite::pin_project! {
+    /// A future that is immediately ready with a value.
+    ///
+    /// This `struct` is created by [`ready()`]. See its
+    /// documentation for more.
+    #[stable(feature = "future_readiness_fns", since = "1.48.0")]
+    #[derive(Debug, Clone)]
+    #[must_use = "futures do nothing unless you `.await` or poll them"]
+    pub struct Ready<T> {
+        inner: Option<T>,
+    }
+}
 
-#[stable(feature = "future_readiness_fns", since = "1.48.0")]
-impl<T> Unpin for Ready<T> {}
+// #[stable(feature = "future_readiness_fns", since = "1.48.0")]
+// impl<T> Unpin for Ready<T> {}
 
 #[stable(feature = "future_readiness_fns", since = "1.48.0")]
 impl<T> Future for Ready<T> {
     type Output = T;
 
     #[inline]
-    fn poll(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<T> {
-        Poll::Ready(self.0.take().expect("`Ready` polled after completion"))
+    fn poll(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<T> {
+        Poll::Ready(self.project().inner.take().expect("`Ready` polled after completion"))
     }
 }
 
@@ -44,7 +48,7 @@ impl<T> Ready<T> {
     #[must_use]
     #[inline]
     pub fn into_inner(self) -> T {
-        self.0.expect("Called `into_inner()` on `Ready` after completion")
+        self.inner.expect("Called `into_inner()` on `Ready` after completion")
     }
 }
 
@@ -66,5 +70,5 @@ impl<T> Ready<T> {
 /// ```
 #[stable(feature = "future_readiness_fns", since = "1.48.0")]
 pub fn ready<T>(t: T) -> Ready<T> {
-    Ready(Some(t))
+    Ready { inner: Some(t) }
 }

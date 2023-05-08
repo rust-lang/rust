@@ -76,13 +76,13 @@ crate0::{{expn4}}: parent: crate0::{{expn3}}, call_site_ctxt: #6, def_site_ctxt:
 crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Attr, "derive")
 crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Attr, "derive")
 crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Bang, "include")
-crate2::{{expn1}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: AstPass(StdImports)
+crate3::{{expn1}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: AstPass(StdImports)
 
 SyntaxContexts:
 #0: parent: #0, outer_mark: (crate0::{{expn0}}, Opaque)
 #1: parent: #0, outer_mark: (crate0::{{expn1}}, Opaque)
 #2: parent: #0, outer_mark: (crate0::{{expn1}}, Transparent)
-#3: parent: #0, outer_mark: (crate2::{{expn1}}, Opaque)
+#3: parent: #0, outer_mark: (crate3::{{expn1}}, Opaque)
 #4: parent: #0, outer_mark: (crate0::{{expn2}}, SemiTransparent)
 #5: parent: #0, outer_mark: (crate0::{{expn3}}, Opaque)
 #6: parent: #4, outer_mark: (crate0::{{expn3}}, Opaque)
