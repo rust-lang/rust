@@ -813,10 +813,6 @@ impl<'tcx> TyCtxt<'tcx> {
     /// dependency, or a [direct] private dependency. This is used to decide whether the crate can
     /// be shown in `impl` suggestions.
     ///
-    /// # Panics
-    ///
-    /// This function assumes `key` exists.
-    ///
     /// [public]: TyCtxt::is_private_dep
     /// [direct]: rustc_session::cstore::ExternCrate::is_direct
     pub fn is_user_visible_dep(self, key: CrateNum) -> bool {
