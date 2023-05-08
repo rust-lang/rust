@@ -288,10 +288,6 @@
             {
                 "command": "rust-analyzer.revealDependency",
                 "title": "Reveal File"
-            },
-            {
-                "command": "rust-analyzer.revealDependency",
-                "title": "Reveal File"
             }
         ],
         "keybindings": [
