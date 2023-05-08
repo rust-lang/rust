@@ -288,7 +288,7 @@ fn statement_span_viewable<'tcx>(
         return None;
     }
     let id = format!("{}[{}]", bb.index(), i);
-    let tooltip = tooltip(tcx, &id, span, vec![statement.clone()], &None);
+    let tooltip = tooltip(tcx, &id, span, [statement.clone()].into(), &None);
     Some(SpanViewable { bb, span, id, tooltip })
 }
 
@@ -304,7 +304,7 @@ fn terminator_span_viewable<'tcx>(
         return None;
     }
     let id = format!("{}:{}", bb.index(), terminator_kind_name(term));
-    let tooltip = tooltip(tcx, &id, span, vec![], &data.terminator);
+    let tooltip = tooltip(tcx, &id, span, IndexVec::new(), &data.terminator);
     Some(SpanViewable { bb, span, id, tooltip })
 }
 
@@ -619,7 +619,7 @@ fn tooltip<'tcx>(
     tcx: TyCtxt<'tcx>,
     spanview_id: &str,
     span: Span,
-    statements: Vec<Statement<'tcx>>,
+    statements: IndexVec<StatementIdx, Statement<'tcx>>,
     terminator: &Option<Terminator<'tcx>>,
 ) -> String {
     let source_map = tcx.sess.source_map();

@@ -10,6 +10,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{walk_block, walk_expr, Visitor};
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, LangItem};
+use rustc_index::Idx;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::mir::tcx::PlaceTy;
@@ -17,6 +18,7 @@ use rustc_middle::mir::{
     self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, ConstraintCategory,
     FakeReadCause, LocalDecl, LocalInfo, LocalKind, Location, Operand, Place, PlaceRef,
     ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind, VarBindingForm,
+    FIRST_STATEMENT,
 };
 use rustc_middle::ty::{self, suggest_constraining_type_params, PredicateKind, Ty};
 use rustc_middle::util::CallKind;
@@ -2363,12 +2365,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             body: &'a mir::Body<'tcx>,
             location: Location,
         ) -> impl Iterator<Item = Location> + Captures<'tcx> + 'a {
-            if location.statement_index == 0 {
+            if location.statement_index == FIRST_STATEMENT {
                 let predecessors = body.basic_blocks.predecessors()[location.block].to_vec();
                 Either::Left(predecessors.into_iter().map(move |bb| body.terminator_loc(bb)))
             } else {
                 Either::Right(std::iter::once(Location {
-                    statement_index: location.statement_index - 1,
+                    statement_index: location.statement_index.minus(1),
                     ..location
                 }))
             }
@@ -2820,7 +2822,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             // Next, look through the rest of the block, checking if we are assigning the
             // `target` (that is, the place that contains our borrow) to anything.
             let mut annotated_closure = None;
-            for stmt in &self.body[location.block].statements[location.statement_index + 1..] {
+            for stmt in
+                &self.body[location.block].statements.raw[location.statement_index.as_usize() + 1..]
+            {
                 debug!(
                     "annotate_argument_and_return_for_borrow: target={:?} stmt={:?}",
                     target, stmt

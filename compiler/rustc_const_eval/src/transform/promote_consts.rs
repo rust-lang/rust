@@ -226,10 +226,7 @@ impl<'tcx> Validator<'_, 'tcx> {
     // FIXME(eddyb) maybe cache this?
     fn qualif_local<Q: qualifs::Qualif>(&mut self, local: Local) -> bool {
         if let TempState::Defined { location: loc, .. } = self.temps[local] {
-            let num_stmts = self.body[loc.block].statements.len();
-
-            if loc.statement_index < num_stmts {
-                let statement = &self.body[loc.block].statements[loc.statement_index];
+            if let Some(statement) = self.body[loc.block].statements.get(loc.statement_index) {
                 match &statement.kind {
                     StatementKind::Assign(box (_, rhs)) => qualifs::in_rvalue::<Q, _>(
                         &self.ccx,
@@ -271,10 +268,8 @@ impl<'tcx> Validator<'_, 'tcx> {
             valid.or_else(|_| {
                 let ok = {
                     let block = &self.body[loc.block];
-                    let num_stmts = block.statements.len();
 
-                    if loc.statement_index < num_stmts {
-                        let statement = &block.statements[loc.statement_index];
+                    if let Some(statement) = block.statements.get(loc.statement_index) {
                         match &statement.kind {
                             StatementKind::Assign(box (_, rhs)) => self.validate_rvalue(rhs),
                             _ => {
@@ -369,8 +364,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                             self.temps[local]
                         {
                             let block = &self.body[loc.block];
-                            if loc.statement_index < block.statements.len() {
-                                let statement = &block.statements[loc.statement_index];
+                            if let Some(statement) = block.statements.get(loc.statement_index) {
                                 match &statement.kind {
                                     StatementKind::Assign(box (
                                         _,
@@ -698,7 +692,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
     fn new_block(&mut self) -> BasicBlock {
         let span = self.promoted.span;
         self.promoted.basic_blocks_mut().push(BasicBlockData {
-            statements: vec![],
+            statements: IndexVec::new(),
             terminator: Some(Terminator {
                 source_info: SourceInfo::outermost(span),
                 kind: TerminatorKind::Return,
@@ -739,7 +733,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             self.temps[temp] = TempState::PromotedOut;
         }
 
-        let num_stmts = self.source[loc.block].statements.len();
+        let num_stmts = self.source[loc.block].statements.next_index();
         let new_temp = self.promoted.local_decls.push(LocalDecl::new(
             self.source.local_decls[temp].ty,
             self.source.local_decls[temp].source_info.span,
@@ -900,7 +894,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         assert_eq!(self.new_block(), START_BLOCK);
         self.visit_rvalue(
             &mut rvalue,
-            Location { block: START_BLOCK, statement_index: usize::MAX },
+            Location { block: START_BLOCK, statement_index: StatementIdx::MAX },
         );
 
         let span = self.promoted.span;
@@ -984,13 +978,13 @@ pub fn promote_candidates<'tcx>(
     // has to be done in reverse location order, to not invalidate the rest.
     extra_statements.sort_by_key(|&(loc, _)| cmp::Reverse(loc));
     for (loc, statement) in extra_statements {
-        body[loc.block].statements.insert(loc.statement_index, statement);
+        body[loc.block].statements.raw.insert(loc.statement_index.as_usize(), statement);
     }
 
     // Eliminate assignments to, and drops of promoted temps.
     let promoted = |index: Local| temps[index] == TempState::PromotedOut;
     for block in body.basic_blocks_mut() {
-        block.statements.retain(|statement| match &statement.kind {
+        block.statements.raw.retain(|statement| match &statement.kind {
             StatementKind::Assign(box (place, _)) => {
                 if let Some(index) = place.as_local() {
                     !promoted(index)

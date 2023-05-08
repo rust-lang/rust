@@ -70,7 +70,7 @@ fn find_optimization_opportunities<'tcx>(body: &Body<'tcx>) -> Vec<(Local, Const
             let bb = &body[location.block];
 
             // The value is assigned as the result of a call, not a constant
-            if bb.statements.len() == location.statement_index {
+            if bb.statements.next_index() == location.statement_index {
                 continue;
             }
 

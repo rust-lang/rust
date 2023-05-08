@@ -3,6 +3,7 @@
 use crate::simplify::simplify_duplicate_switch_targets;
 use crate::MirPass;
 use rustc_hir::Mutability;
+use rustc_index::IndexVec;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::util::IntTypeExt;
@@ -199,7 +200,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
     fn simplify_primitive_clone(
         &self,
         terminator: &mut Terminator<'tcx>,
-        statements: &mut Vec<Statement<'tcx>>,
+        statements: &mut IndexVec<StatementIdx, Statement<'tcx>>,
     ) {
         let TerminatorKind::Call { func, args, destination, target, .. } = &mut terminator.kind
         else { return };
@@ -265,7 +266,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
     fn simplify_intrinsic_assert(
         &self,
         terminator: &mut Terminator<'tcx>,
-        _statements: &mut Vec<Statement<'tcx>>,
+        _statements: &mut IndexVec<StatementIdx, Statement<'tcx>>,
     ) {
         let TerminatorKind::Call { func, target, .. } = &mut terminator.kind  else { return; };
         let Some(target_block) = target else { return; };

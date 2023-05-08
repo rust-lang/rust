@@ -4,6 +4,7 @@
 
 use either::Either;
 
+use rustc_index::Idx;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
 use rustc_middle::ty::layout::LayoutOf;
@@ -58,7 +59,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // Make sure we are not updating `statement_index` of the wrong frame.
             assert_eq!(old_frames, self.frame_idx());
             // Advance the program counter.
-            self.frame_mut().loc.as_mut().left().unwrap().statement_index += 1;
+            self.frame_mut().loc.as_mut().left().unwrap().statement_index.increment_by(1);
             return Ok(true);
         }
 

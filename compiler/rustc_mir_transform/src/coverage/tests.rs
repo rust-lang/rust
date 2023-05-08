@@ -72,7 +72,7 @@ impl<'tcx> MockBlocks<'tcx> {
         };
         let next_hi = next_lo + BytePos(1);
         self.blocks.push(BasicBlockData {
-            statements: vec![],
+            statements: IndexVec::new(),
             terminator: Some(Terminator {
                 source_info: SourceInfo::outermost(Span::with_root_ctxt(next_lo, next_hi)),
                 kind,

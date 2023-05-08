@@ -349,8 +349,8 @@ where
     writeln!(w, "{}{:?}{}: {{", INDENT, block, cleanup_text)?;
 
     // List of statements in the middle.
-    let mut current_location = Location { block, statement_index: 0 };
-    for statement in &data.statements {
+    for (idx, statement) in data.statements.iter_enumerated() {
+        let current_location = Location { block, statement_index: idx };
         extra_data(PassWhere::BeforeLocation(current_location), w)?;
         let indented_body = format!("{0}{0}{1:?};", INDENT, statement);
         writeln!(
@@ -367,27 +367,26 @@ where
         })?;
 
         extra_data(PassWhere::AfterLocation(current_location), w)?;
-
-        current_location.statement_index += 1;
     }
 
     // Terminator at the bottom.
-    extra_data(PassWhere::BeforeLocation(current_location), w)?;
+    let terminator_location = body.terminator_loc(block);
+    extra_data(PassWhere::BeforeLocation(terminator_location), w)?;
     let indented_terminator = format!("{0}{0}{1:?};", INDENT, data.terminator().kind);
     writeln!(
         w,
         "{:A$} // {}{}",
         indented_terminator,
-        if tcx.sess.verbose() { format!("{:?}: ", current_location) } else { String::new() },
+        if tcx.sess.verbose() { format!("{:?}: ", terminator_location) } else { String::new() },
         comment(tcx, data.terminator().source_info, body.span),
         A = ALIGN,
     )?;
 
     write_extra(tcx, w, |visitor| {
-        visitor.visit_terminator(data.terminator(), current_location);
+        visitor.visit_terminator(data.terminator(), terminator_location);
     })?;
 
-    extra_data(PassWhere::AfterLocation(current_location), w)?;
+    extra_data(PassWhere::AfterLocation(terminator_location), w)?;
     extra_data(PassWhere::AfterTerminator(block), w)?;
 
     writeln!(w, "{}}}", INDENT)

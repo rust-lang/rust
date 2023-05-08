@@ -65,7 +65,7 @@ impl<'tcx> MirPatch<'tcx> {
         }
 
         let bb = self.new_block(BasicBlockData {
-            statements: vec![],
+            statements: IndexVec::new(),
             terminator: Some(Terminator {
                 source_info: SourceInfo::outermost(self.body_span),
                 kind: TerminatorKind::Resume,
@@ -82,7 +82,7 @@ impl<'tcx> MirPatch<'tcx> {
         }
 
         let bb = self.new_block(BasicBlockData {
-            statements: vec![],
+            statements: IndexVec::new(),
             terminator: Some(Terminator {
                 source_info: SourceInfo::outermost(self.body_span),
                 kind: TerminatorKind::Unreachable,
@@ -99,7 +99,7 @@ impl<'tcx> MirPatch<'tcx> {
         }
 
         let bb = self.new_block(BasicBlockData {
-            statements: vec![],
+            statements: IndexVec::new(),
             terminator: Some(Terminator {
                 source_info: SourceInfo::outermost(self.body_span),
                 kind: TerminatorKind::Terminate,
@@ -115,11 +115,11 @@ impl<'tcx> MirPatch<'tcx> {
     }
 
     pub fn terminator_loc(&self, body: &Body<'tcx>, bb: BasicBlock) -> Location {
-        let offset = match bb.index().checked_sub(body.basic_blocks.len()) {
-            Some(index) => self.new_blocks[index].statements.len(),
-            None => body[bb].statements.len(),
+        let idx = match bb.index().checked_sub(body.basic_blocks.len()) {
+            Some(index) => self.new_blocks[index].statements.next_index(),
+            None => body[bb].statements.next_index(),
         };
-        Location { block: bb, statement_index: offset }
+        Location { block: bb, statement_index: idx }
     }
 
     pub fn new_internal_with_info(
@@ -210,11 +210,12 @@ impl<'tcx> MirPatch<'tcx> {
                 last_bb = loc.block;
             }
             debug!("MirPatch: adding statement {:?} at loc {:?}+{}", stmt, loc, delta);
-            loc.statement_index += delta;
+            loc.statement_index.increment_by(delta);
             let source_info = Self::source_info_for_index(&body[loc.block], loc);
             body[loc.block]
                 .statements
-                .insert(loc.statement_index, Statement { source_info, kind: stmt });
+                .raw
+                .insert(loc.statement_index.as_usize(), Statement { source_info, kind: stmt });
             delta += 1;
         }
     }

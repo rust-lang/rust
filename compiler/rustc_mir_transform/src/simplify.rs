@@ -149,9 +149,9 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
 
                 if statements_to_merge > 0 {
                     let mut statements = std::mem::take(&mut self.basic_blocks[bb].statements);
-                    statements.reserve(statements_to_merge);
+                    statements.raw.reserve(statements_to_merge);
                     for &from in &merged_blocks {
-                        statements.append(&mut self.basic_blocks[from].statements);
+                        statements.raw.append(&mut self.basic_blocks[from].statements.raw);
                     }
                     self.basic_blocks[bb].statements = statements;
                 }
@@ -273,7 +273,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
 
     fn strip_nops(&mut self) {
         for blk in self.basic_blocks.iter_mut() {
-            blk.statements.retain(|stmt| !matches!(stmt.kind, StatementKind::Nop))
+            blk.statements.raw.retain(|stmt| !matches!(stmt.kind, StatementKind::Nop))
         }
     }
 }
@@ -647,7 +647,7 @@ fn remove_unused_definitions_helper(used_locals: &mut UsedLocals, body: &mut Bod
 
         for data in body.basic_blocks.as_mut_preserves_cfg() {
             // Remove unnecessary StorageLive and StorageDead annotations.
-            data.statements.retain(|statement| {
+            data.statements.raw.retain(|statement| {
                 let keep = match &statement.kind {
                     StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
                         used_locals.is_used(*local)

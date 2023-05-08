@@ -62,7 +62,7 @@ impl<'cx, 'tcx> UseFinder<'cx, 'tcx> {
                 }
 
                 None => {
-                    if p.statement_index < block_data.statements.len() {
+                    if p.statement_index < block_data.statements.next_index() {
                         queue.push_back(p.successor_within_block());
                     } else {
                         queue.extend(
@@ -73,7 +73,7 @@ impl<'cx, 'tcx> UseFinder<'cx, 'tcx> {
                                     Some(&mir::UnwindAction::Cleanup(bb))
                                         != block_data.terminator().unwind()
                                 })
-                                .map(|bb| Location { statement_index: 0, block: bb }),
+                                .map(|bb| bb.start_location()),
                         );
                     }
                 }

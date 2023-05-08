@@ -30,7 +30,7 @@ pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, borrowed: &BitS
 
     let mut patch = Vec::new();
     for (bb, bb_data) in traversal::preorder(body) {
-        for (statement_index, statement) in bb_data.statements.iter().enumerate().rev() {
+        for (statement_index, statement) in bb_data.statements.iter_enumerated().rev() {
             let loc = Location { block: bb, statement_index };
             if let StatementKind::Assign(assign) = &statement.kind {
                 if !assign.1.is_safe_to_remove() {

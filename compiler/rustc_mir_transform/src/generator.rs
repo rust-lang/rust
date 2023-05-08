@@ -255,7 +255,7 @@ impl<'tcx> TransformVisitor<'tcx> {
         val: Operand<'tcx>,
         source_info: SourceInfo,
         is_return: bool,
-        statements: &mut Vec<Statement<'tcx>>,
+        statements: &mut IndexVec<StatementIdx, Statement<'tcx>>,
     ) {
         let idx = VariantIdx::new(match (is_return, self.is_async_kind) {
             (true, false) => 1,  // GeneratorState::Complete
@@ -621,7 +621,7 @@ fn locals_live_across_suspend_points<'tcx>(
 
     for (block, data) in body.basic_blocks.iter_enumerated() {
         if let TerminatorKind::Yield { .. } = data.terminator().kind {
-            let loc = Location { block, statement_index: data.statements.len() };
+            let loc = Location::terminator(block, &data.statements);
 
             liveness.seek_to_block_end(block);
             let mut live_locals: BitSet<_> = BitSet::new_empty(body.local_decls.len());
@@ -1012,10 +1012,10 @@ fn insert_switch<'tcx>(
     let switch = TerminatorKind::SwitchInt { discr: Operand::Move(discr), targets: switch_targets };
 
     let source_info = SourceInfo::outermost(body.span);
-    body.basic_blocks_mut().raw.insert(
-        0,
+    body.basic_blocks_mut().insert_before(
+        START_BLOCK,
         BasicBlockData {
-            statements: vec![assign],
+            statements: [assign].into(),
             terminator: Some(Terminator { source_info, kind: switch }),
             is_cleanup: false,
         },
@@ -1024,7 +1024,7 @@ fn insert_switch<'tcx>(
     let blocks = body.basic_blocks_mut().iter_mut();
 
     for target in blocks.flat_map(|b| b.terminator_mut().successors_mut()) {
-        *target = BasicBlock::new(target.index() + 1);
+        target.increment_by(1);
     }
 }
 
@@ -1131,7 +1131,7 @@ fn create_generator_drop_shim<'tcx>(
 fn insert_term_block<'tcx>(body: &mut Body<'tcx>, kind: TerminatorKind<'tcx>) -> BasicBlock {
     let source_info = SourceInfo::outermost(body.span);
     body.basic_blocks_mut().push(BasicBlockData {
-        statements: Vec::new(),
+        statements: IndexVec::new(),
         terminator: Some(Terminator { source_info, kind }),
         is_cleanup: false,
     })
@@ -1157,7 +1157,7 @@ fn insert_panic_block<'tcx>(
 
     let source_info = SourceInfo::outermost(body.span);
     body.basic_blocks_mut().push(BasicBlockData {
-        statements: Vec::new(),
+        statements: IndexVec::new(),
         terminator: Some(Terminator { source_info, kind: term }),
         is_cleanup: false,
     });
@@ -1233,7 +1233,7 @@ fn create_generator_resume_function<'tcx>(
     if can_unwind {
         let source_info = SourceInfo::outermost(body.span);
         let poison_block = body.basic_blocks_mut().push(BasicBlockData {
-            statements: vec![transform.set_discr(VariantIdx::new(POISONED), source_info)],
+            statements: [transform.set_discr(VariantIdx::new(POISONED), source_info)].into(),
             terminator: Some(Terminator { source_info, kind: TerminatorKind::Resume }),
             is_cleanup: true,
         });
@@ -1308,7 +1308,7 @@ fn insert_clean_drop(body: &mut Body<'_>) -> BasicBlock {
 
     // Create a block to destroy an unresumed generators. This can only destroy upvars.
     body.basic_blocks_mut().push(BasicBlockData {
-        statements: Vec::new(),
+        statements: IndexVec::new(),
         terminator: Some(Terminator { source_info, kind: term }),
         is_cleanup: false,
     })
@@ -1343,7 +1343,7 @@ fn create_cases<'tcx>(
         .filter_map(|point| {
             // Find the target for this suspension point, if applicable
             operation.target_block(point).map(|target| {
-                let mut statements = Vec::new();
+                let mut statements = IndexVec::new();
 
                 // Create StorageLive instructions for locals with live storage
                 for i in 0..(body.local_decls.len()) {
@@ -1493,8 +1493,8 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         // When first entering the generator, move the resume argument into its new local.
         let source_info = SourceInfo::outermost(body.span);
         let stmts = &mut body.basic_blocks_mut()[START_BLOCK].statements;
-        stmts.insert(
-            0,
+        stmts.insert_before(
+            FIRST_STATEMENT,
             Statement {
                 source_info,
                 kind: StatementKind::Assign(Box::new((

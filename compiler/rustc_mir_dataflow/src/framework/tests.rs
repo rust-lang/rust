@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
-use rustc_middle::mir::{self, BasicBlock, Location};
+use rustc_middle::mir::{self, BasicBlock, Location, FIRST_STATEMENT};
 use rustc_middle::ty;
 use rustc_span::DUMMY_SP;
 
@@ -112,8 +112,8 @@ impl<D: Direction> MockAnalysis<'_, D> {
     /// Returns the index that should be added to the dataflow state at the given target.
     fn effect(&self, loc: EffectIndex) -> usize {
         let idx = match loc.effect {
-            Effect::Before => loc.statement_index * 2,
-            Effect::Primary => loc.statement_index * 2 + 1,
+            Effect::Before => loc.statement_index.as_usize() * 2,
+            Effect::Primary => loc.statement_index.as_usize() * 2 + 1,
         };
 
         assert!(idx < Self::BASIC_BLOCK_OFFSET, "Too many statements in basic block");
@@ -141,9 +141,9 @@ impl<D: Direction> MockAnalysis<'_, D> {
         };
 
         let mut pos = if D::IS_FORWARD {
-            Effect::Before.at_index(0)
+            Effect::Before.at_index(FIRST_STATEMENT)
         } else {
-            Effect::Before.at_index(self.body[block].statements.len())
+            Effect::Before.at_index(self.body[block].statements.next_index())
         };
 
         loop {
@@ -247,7 +247,7 @@ impl SeekTarget {
     /// An iterator over all possible `SeekTarget`s in a given block in order, starting with
     /// `BlockEntry`.
     fn iter_in_block(body: &mir::Body<'_>, block: BasicBlock) -> impl Iterator<Item = Self> {
-        let statements_and_terminator = (0..=body[block].statements.len())
+        let statements_and_terminator = (FIRST_STATEMENT..=body[block].statements.next_index())
             .flat_map(|i| (0..2).map(move |j| (i, j)))
             .map(move |(i, kind)| {
                 let loc = Location { block, statement_index: i };

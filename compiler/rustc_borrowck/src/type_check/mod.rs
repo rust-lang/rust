@@ -2662,16 +2662,16 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
 
         for (block, block_data) in body.basic_blocks.iter_enumerated() {
-            let mut location = Location { block, statement_index: 0 };
-            for stmt in &block_data.statements {
+            for (idx, stmt) in block_data.statements.iter_enumerated() {
+                let location = Location { block, statement_index: idx };
                 if !stmt.source_info.span.is_dummy() {
                     self.last_span = stmt.source_info.span;
                 }
                 self.check_stmt(body, stmt, location);
-                location.statement_index += 1;
             }
 
-            self.check_terminator(&body, block_data.terminator(), location);
+            let terminator_location = Location::terminator(block, &block_data.statements);
+            self.check_terminator(&body, block_data.terminator(), terminator_location);
             self.check_iscleanup(&body, block_data);
         }
     }

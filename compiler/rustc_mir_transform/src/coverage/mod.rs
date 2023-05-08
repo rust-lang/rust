@@ -23,7 +23,7 @@ use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::dump_enabled;
 use rustc_middle::mir::{
     self, BasicBlock, BasicBlockData, Coverage, SourceInfo, Statement, StatementKind, Terminator,
-    TerminatorKind,
+    TerminatorKind, FIRST_STATEMENT,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
@@ -448,7 +448,7 @@ fn inject_edge_counter_basic_block(
 ) -> BasicBlock {
     let span = mir_body[from_bb].terminator().source_info.span.shrink_to_hi();
     let new_bb = mir_body.basic_blocks_mut().push(BasicBlockData {
-        statements: vec![], // counter will be injected here
+        statements: IndexVec::new(), // counter will be injected here
         terminator: Some(Terminator {
             source_info: SourceInfo::outermost(span),
             kind: TerminatorKind::Goto { target: to_bb },
@@ -483,7 +483,7 @@ fn inject_statement(
             code_region: some_code_region,
         })),
     };
-    data.statements.insert(0, statement);
+    data.statements.insert_before(FIRST_STATEMENT, statement);
 }
 
 // Non-code expressions are injected into the coverage map, without generating executable code.

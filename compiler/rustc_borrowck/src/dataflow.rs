@@ -1,8 +1,8 @@
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_index::bit_set::BitSet;
-use rustc_middle::mir::{self, BasicBlock, Body, Location, Place};
+use rustc_index::{bit_set::BitSet, Idx};
+use rustc_middle::mir::{self, BasicBlock, Body, Location, Place, StatementIdx, FIRST_STATEMENT};
 use rustc_middle::ty::RegionVid;
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::{EverInitializedPlaces, MaybeUninitializedPlaces};
@@ -127,8 +127,8 @@ pub struct Borrows<'a, 'tcx> {
 
 struct StackEntry {
     bb: mir::BasicBlock,
-    lo: usize,
-    hi: usize,
+    lo: StatementIdx,
+    hi: StatementIdx,
 }
 
 struct OutOfScopePrecomputer<'a, 'tcx> {
@@ -171,7 +171,7 @@ impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
         self.visited.insert(location.block);
 
         let mut first_lo = location.statement_index;
-        let first_hi = self.body[location.block].statements.len();
+        let first_hi = self.body[location.block].statements.next_index();
 
         self.visit_stack.push(StackEntry { bb: location.block, lo: first_lo, hi: first_hi });
 
@@ -197,30 +197,30 @@ impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
             if !finished_early {
                 // Add successor BBs to the work list, if necessary.
                 let bb_data = &self.body[bb];
-                debug_assert!(hi == bb_data.statements.len());
+                debug_assert!(hi == bb_data.statements.next_index());
                 for succ_bb in bb_data.terminator().successors() {
                     if !self.visited.insert(succ_bb) {
-                        if succ_bb == location.block && first_lo > 0 {
+                        if succ_bb == location.block && first_lo > FIRST_STATEMENT {
                             // `succ_bb` has been seen before. If it wasn't
                             // fully processed, add its first part to `stack`
                             // for processing.
                             self.visit_stack.push(StackEntry {
                                 bb: succ_bb,
-                                lo: 0,
-                                hi: first_lo - 1,
+                                lo: FIRST_STATEMENT,
+                                hi: first_lo.minus(1),
                             });
 
                             // And update this entry with 0, to represent the
                             // whole BB being processed.
-                            first_lo = 0;
+                            first_lo = FIRST_STATEMENT;
                         }
                     } else {
                         // succ_bb hasn't been seen before. Add it to
                         // `stack` for processing.
                         self.visit_stack.push(StackEntry {
                             bb: succ_bb,
-                            lo: 0,
-                            hi: self.body[succ_bb].statements.len(),
+                            lo: FIRST_STATEMENT,
+                            hi: self.body[succ_bb].statements.next_index(),
                         });
                     }
                 }

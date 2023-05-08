@@ -19,6 +19,17 @@ pub trait Idx: Copy + 'static + Eq + PartialEq + Debug + Hash {
     fn plus(self, amount: usize) -> Self {
         Self::new(self.index() + amount)
     }
+
+    #[inline]
+    fn decrement_by(&mut self, amount: usize) {
+        *self = self.minus(amount);
+    }
+
+    #[inline]
+    #[must_use = "Use `decrement_by` if you wanted to update the index in-place"]
+    fn minus(self, amount: usize) -> Self {
+        Self::new(self.index() - amount)
+    }
 }
 
 impl Idx for usize {

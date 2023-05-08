@@ -116,8 +116,7 @@ pub fn sanity_check_via_rustc_peek<'tcx, A>(
         //    rustc_peek(_2);
         let (statement_index, peek_rval) = block_data
             .statements
-            .iter()
-            .enumerate()
+            .iter_enumerated()
             .find_map(|(i, stmt)| value_assigned_to_local(stmt, call.arg).map(|rval| (i, rval)))
             .expect(
                 "call to rustc_peek should be preceded by \

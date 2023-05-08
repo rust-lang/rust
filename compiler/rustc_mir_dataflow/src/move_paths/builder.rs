@@ -244,12 +244,12 @@ pub(super) fn gather_moves<'tcx>(
     builder.gather_args();
 
     for (bb, block) in body.basic_blocks.iter_enumerated() {
-        for (i, stmt) in block.statements.iter().enumerate() {
+        for (i, stmt) in block.statements.iter_enumerated() {
             let source = Location { block: bb, statement_index: i };
             builder.gather_statement(source, stmt);
         }
 
-        let terminator_loc = Location { block: bb, statement_index: block.statements.len() };
+        let terminator_loc = body.terminator_loc(bb);
         builder.gather_terminator(terminator_loc, block.terminator());
     }
 

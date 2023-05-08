@@ -57,7 +57,7 @@ impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
 
         // Clean up the `NOP`s we inserted for statements made useless by our renaming.
         for block_data in body.basic_blocks.as_mut_preserves_cfg() {
-            block_data.statements.retain(|stmt| stmt.kind != mir::StatementKind::Nop);
+            block_data.statements.raw.retain(|stmt| stmt.kind != mir::StatementKind::Nop);
         }
 
         // Overwrite the debuginfo of `_0` with that of the renamed local.

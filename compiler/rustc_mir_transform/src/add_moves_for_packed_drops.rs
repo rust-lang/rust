@@ -55,7 +55,7 @@ fn add_moves_for_packed_drops_patch<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) 
     let param_env = tcx.param_env(def_id);
 
     for (bb, data) in body.basic_blocks.iter_enumerated() {
-        let loc = Location { block: bb, statement_index: data.statements.len() };
+        let loc = Location::terminator(bb, &data.statements);
         let terminator = data.terminator();
 
         match terminator.kind {
@@ -89,7 +89,7 @@ fn add_move_for_packed_drop<'tcx>(
     let temp = patch.new_temp(ty, terminator.source_info.span);
 
     let storage_dead_block = patch.new_block(BasicBlockData {
-        statements: vec![Statement { source_info, kind: StatementKind::StorageDead(temp) }],
+        statements: [Statement { source_info, kind: StatementKind::StorageDead(temp) }].into(),
         terminator: Some(Terminator { source_info, kind: TerminatorKind::Goto { target } }),
         is_cleanup,
     });

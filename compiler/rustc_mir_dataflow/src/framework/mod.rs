@@ -34,7 +34,7 @@ use std::cmp::Ordering;
 
 use rustc_index::bit_set::{BitSet, ChunkedBitSet, HybridBitSet};
 use rustc_index::Idx;
-use rustc_middle::mir::{self, BasicBlock, Location};
+use rustc_middle::mir::{self, BasicBlock, Location, StatementIdx};
 use rustc_middle::ty::TyCtxt;
 
 mod cursor;
@@ -538,14 +538,14 @@ pub enum Effect {
 }
 
 impl Effect {
-    pub const fn at_index(self, statement_index: usize) -> EffectIndex {
+    pub const fn at_index(self, statement_index: StatementIdx) -> EffectIndex {
         EffectIndex { effect: self, statement_index }
     }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct EffectIndex {
-    statement_index: usize,
+    statement_index: StatementIdx,
     effect: Effect,
 }
 
@@ -553,14 +553,14 @@ impl EffectIndex {
     fn next_in_forward_order(self) -> Self {
         match self.effect {
             Effect::Before => Effect::Primary.at_index(self.statement_index),
-            Effect::Primary => Effect::Before.at_index(self.statement_index + 1),
+            Effect::Primary => Effect::Before.at_index(self.statement_index.plus(1)),
         }
     }
 
     fn next_in_backward_order(self) -> Self {
         match self.effect {
             Effect::Before => Effect::Primary.at_index(self.statement_index),
-            Effect::Primary => Effect::Before.at_index(self.statement_index - 1),
+            Effect::Primary => Effect::Before.at_index(self.statement_index.minus(1)),
         }
     }
 

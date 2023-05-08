@@ -459,10 +459,10 @@ impl<'tcx> Body<'tcx> {
         let block = &self[location.block];
         let stmts = &block.statements;
         let idx = location.statement_index;
-        if idx < stmts.len() {
+        if idx < stmts.next_index() {
             &stmts[idx].source_info
         } else {
-            assert_eq!(idx, stmts.len());
+            assert_eq!(idx, stmts.next_index());
             &block.terminator().source_info
         }
     }
@@ -482,7 +482,7 @@ impl<'tcx> Body<'tcx> {
     /// Gets the location of the terminator for the given block.
     #[inline]
     pub fn terminator_loc(&self, bb: BasicBlock) -> Location {
-        Location { block: bb, statement_index: self[bb].statements.len() }
+        Location::terminator(bb, &self[bb].statements)
     }
 
     pub fn stmt_at(&self, location: Location) -> Either<&Statement<'tcx>, &Terminator<'tcx>> {
@@ -1148,7 +1148,7 @@ rustc_index::newtype_index! {
 
 impl BasicBlock {
     pub fn start_location(self) -> Location {
-        Location { block: self, statement_index: 0 }
+        Location { block: self, statement_index: FIRST_STATEMENT }
     }
 }
 
@@ -1161,7 +1161,7 @@ impl BasicBlock {
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct BasicBlockData<'tcx> {
     /// List of statements in this block.
-    pub statements: Vec<Statement<'tcx>>,
+    pub statements: IndexVec<StatementIdx, Statement<'tcx>>,
 
     /// Terminator for this block.
     ///
@@ -1182,7 +1182,7 @@ pub struct BasicBlockData<'tcx> {
 
 impl<'tcx> BasicBlockData<'tcx> {
     pub fn new(terminator: Option<Terminator<'tcx>>) -> BasicBlockData<'tcx> {
-        BasicBlockData { statements: vec![], terminator, is_cleanup: false }
+        BasicBlockData { statements: IndexVec::new(), terminator, is_cleanup: false }
     }
 
     /// Accessor for terminator.
@@ -1252,15 +1252,20 @@ impl<'tcx> BasicBlockData<'tcx> {
             while gap.end > splice_end {
                 gap.start -= 1;
                 gap.end -= 1;
-                self.statements.swap(gap.start, gap.end);
+                self.statements.raw.swap(gap.start, gap.end);
             }
-            self.statements.splice(splice_start..splice_end, new_stmts);
+            self.statements.raw.splice(splice_start..splice_end, new_stmts);
             gap.end = splice_start;
         }
     }
 
-    pub fn visitable(&self, index: usize) -> &dyn MirVisitable<'tcx> {
-        if index < self.statements.len() { &self.statements[index] } else { &self.terminator }
+    pub fn visitable(&self, index: StatementIdx) -> &dyn MirVisitable<'tcx> {
+        debug_assert!(index <= self.statements.next_index());
+        if index < self.statements.next_index() {
+            &self.statements[index]
+        } else {
+            &self.terminator
+        }
     }
 
     /// Does the block have no statements and an unreachable terminator?
@@ -1417,6 +1422,21 @@ impl<O: fmt::Debug> fmt::Debug for AssertKind<O> {
             }
             _ => write!(f, "{}", self.description()),
         }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
+// StatementIdx
+
+rustc_index::newtype_index! {
+    /// An index into [`BasicBlockData`]
+    ///
+    /// Most often seen along with a [`BasicBlock`] index in a [`Location`]
+    /// in order to uniquely identify a [`Statement`] or [`Terminator`] in a
+    /// particular [`Body`].
+    #[derive(HashStable)]
+    pub struct StatementIdx {
+        const FIRST_STATEMENT = 0;
     }
 }
 
@@ -3002,21 +3022,31 @@ fn pretty_print_const_value<'tcx>(
 /// `statement_index` equals the number of statements, then the start of the
 /// terminator.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Ord, PartialOrd, HashStable)]
+#[cfg_attr(target_pointer_width = "64", repr(align(8)))]
 pub struct Location {
     /// The block that the location is within.
     pub block: BasicBlock,
 
-    pub statement_index: usize,
+    pub statement_index: StatementIdx,
 }
 
 impl fmt::Debug for Location {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(fmt, "{:?}[{}]", self.block, self.statement_index)
+        write!(fmt, "{:?}[{}]", self.block, self.statement_index.as_u32())
     }
 }
 
 impl Location {
-    pub const START: Location = Location { block: START_BLOCK, statement_index: 0 };
+    pub const START: Location = Location { block: START_BLOCK, statement_index: FIRST_STATEMENT };
+
+    /// Gets the location of the terminator in a basic block
+    #[inline]
+    pub fn terminator(
+        bb: BasicBlock,
+        statements: &IndexSlice<StatementIdx, Statement<'_>>,
+    ) -> Self {
+        Location { block: bb, statement_index: statements.next_index() }
+    }
 
     /// Returns the location immediately after this one within the enclosing block.
     ///
@@ -3075,6 +3105,7 @@ mod size_asserts {
     // tidy-alphabetical-start
     static_assert_size!(BasicBlockData<'_>, 136);
     static_assert_size!(LocalDecl<'_>, 40);
+    static_assert_size!(Location, 8);
     static_assert_size!(SourceScopeData<'_>, 72);
     static_assert_size!(Statement<'_>, 32);
     static_assert_size!(StatementKind<'_>, 16);

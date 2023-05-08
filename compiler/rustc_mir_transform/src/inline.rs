@@ -607,7 +607,7 @@ impl<'tcx> Inliner<'tcx> {
                             n += 1;
                         }
                     }
-                    caller_body[block].statements.rotate_right(n);
+                    caller_body[block].statements.raw.rotate_right(n);
                 }
 
                 // Insert all of the (mapped) parts of the callee body into the caller.
@@ -743,8 +743,8 @@ impl<'tcx> Inliner<'tcx> {
         });
 
         if let Some(block) = callsite.target {
-            caller_body[block].statements.insert(
-                0,
+            caller_body[block].statements.insert_before(
+                FIRST_STATEMENT,
                 Statement {
                     source_info: callsite.source_info,
                     kind: StatementKind::StorageDead(local),

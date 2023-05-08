@@ -97,6 +97,20 @@ impl<I: Idx, T> IndexVec<I, T> {
         self.raw.pop()
     }
 
+    /// This is `Vec::insert`, but is named differently because `IndexVec::insert`
+    /// is a set replace operation, not a shift-everything-after operation.
+    #[inline]
+    pub fn insert_before(&mut self, idx: I, value: T) {
+        self.raw.insert(idx.index(), value);
+    }
+
+    /// The same as `.insert_before(idx + 1, value)`, but convenient in that it
+    /// avoids the need to add 1 in the `I` index type.
+    #[inline]
+    pub fn insert_after(&mut self, idx: I, value: T) {
+        self.raw.insert(idx.index() + 1, value);
+    }
+
     #[inline]
     pub fn into_iter(self) -> vec::IntoIter<T> {
         self.raw.into_iter()
@@ -135,6 +149,11 @@ impl<I: Idx, T> IndexVec<I, T> {
     #[inline]
     pub fn truncate(&mut self, a: usize) {
         self.raw.truncate(a)
+    }
+
+    #[inline]
+    pub fn clear(&mut self) {
+        self.raw.clear();
     }
 
     pub fn convert_index_type<Ix: Idx>(self) -> IndexVec<Ix, T> {

@@ -6,7 +6,7 @@ use rustc_index::interval::IntervalSet;
 use rustc_index::interval::SparseIntervalMatrix;
 use rustc_index::Idx;
 use rustc_index::IndexVec;
-use rustc_middle::mir::{BasicBlock, Body, Location};
+use rustc_middle::mir::{BasicBlock, Body, Location, StatementIdx};
 use rustc_middle::ty::{self, RegionVid};
 use std::fmt::Debug;
 use std::rc::Rc;
@@ -55,7 +55,7 @@ impl RegionValueElements {
     pub(crate) fn point_from_location(&self, location: Location) -> PointIndex {
         let Location { block, statement_index } = location;
         let start_index = self.statements_before_block[block];
-        PointIndex::new(start_index + statement_index)
+        PointIndex::new(start_index + statement_index.as_usize())
     }
 
     /// Converts a `Location` into a `PointIndex`. O(1).
@@ -74,7 +74,7 @@ impl RegionValueElements {
         assert!(index.index() < self.num_points);
         let block = self.basic_blocks[index];
         let start_index = self.statements_before_block[block];
-        let statement_index = index.index() - start_index;
+        let statement_index = StatementIdx::from_usize(index.index() - start_index);
         Location { block, statement_index }
     }
 
@@ -433,7 +433,7 @@ fn region_value_str(elements: impl IntoIterator<Item = RegionElement>) -> String
             RegionElement::Location(l) => {
                 if let Some((location1, location2)) = open_location {
                     if location2.block == l.block
-                        && location2.statement_index == l.statement_index - 1
+                        && location2.statement_index == l.statement_index.minus(1)
                     {
                         open_location = Some((location1, l));
                         continue;
@@ -486,7 +486,9 @@ fn region_value_str(elements: impl IntoIterator<Item = RegionElement>) -> String
             assert_eq!(location1.block, location2.block);
             str.push_str(&format!(
                 "{:?}[{}..={}]",
-                location1.block, location1.statement_index, location2.statement_index
+                location1.block,
+                location1.statement_index.as_u32(),
+                location2.statement_index.as_u32(),
             ));
         }
     }

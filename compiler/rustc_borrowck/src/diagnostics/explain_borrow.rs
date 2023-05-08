@@ -496,7 +496,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     }
                 } else if self.was_captured_by_trait_object(borrow) {
                     LaterUseKind::TraitCapture
-                } else if location.statement_index == block.statements.len() {
+                } else if location.statement_index == block.statements.next_index() {
                     if let TerminatorKind::Call { func, from_hir_call: true, .. } =
                         &block.terminator().kind
                     {
@@ -559,7 +559,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             debug!("was_captured_by_trait: target={:?}", target);
             let block = &self.body[current_location.block];
             // We need to check the current location to find out if it is a terminator.
-            let is_terminator = current_location.statement_index == block.statements.len();
+            let is_terminator = current_location.statement_index == block.statements.next_index();
             if !is_terminator {
                 let stmt = &block.statements[current_location.statement_index];
                 debug!("was_captured_by_trait_object: stmt={:?}", stmt);

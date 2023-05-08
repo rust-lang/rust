@@ -163,7 +163,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
     let mut blocks = IndexVec::with_capacity(2);
     let block = |blocks: &mut IndexVec<_, _>, kind| {
         blocks.push(BasicBlockData {
-            statements: vec![],
+            statements: IndexVec::new(),
             terminator: Some(Terminator { source_info, kind }),
             is_cleanup: false,
         })
@@ -331,13 +331,14 @@ fn build_thread_local_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'t
 
     let mut blocks = IndexVec::with_capacity(1);
     blocks.push(BasicBlockData {
-        statements: vec![Statement {
+        statements: [Statement {
             source_info,
             kind: StatementKind::Assign(Box::new((
                 Place::return_place(),
                 Rvalue::ThreadLocalRef(def_id),
             ))),
-        }],
+        }]
+        .into(),
         terminator: Some(Terminator { source_info, kind: TerminatorKind::Return }),
         is_cleanup: false,
     });
@@ -420,7 +421,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
 
     fn block(
         &mut self,
-        statements: Vec<Statement<'tcx>>,
+        statements: IndexVec<StatementIdx, Statement<'tcx>>,
         kind: TerminatorKind<'tcx>,
         is_cleanup: bool,
     ) -> BasicBlock {
@@ -450,7 +451,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
             Place::return_place(),
             Rvalue::Use(Operand::Copy(rcvr)),
         ))));
-        self.block(vec![ret_statement], TerminatorKind::Return, false);
+        self.block([ret_statement].into(), TerminatorKind::Return, false);
     }
 
     fn make_place(&mut self, mutability: Mutability, ty: Ty<'tcx>) -> Place<'tcx> {
@@ -493,7 +494,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
 
         // `let loc = Clone::clone(ref_loc);`
         self.block(
-            vec![statement],
+            [statement].into(),
             TerminatorKind::Call {
                 func,
                 args: vec![Operand::Move(ref_loc)],
@@ -539,7 +540,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
             let next_block = self.block_index_offset(2);
             self.make_clone_call(dest_field, src_field, ity, next_block, unwind);
             self.block(
-                vec![],
+                IndexVec::new(),
                 TerminatorKind::Drop {
                     place: dest_field,
                     target: unwind,
@@ -550,7 +551,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
             unwind = next_unwind;
         }
         // If all clones succeed then we end up here.
-        self.block(vec![], TerminatorKind::Goto { target }, false);
+        self.block(IndexVec::new(), TerminatorKind::Goto { target }, false);
         unwind
     }
 
@@ -558,9 +559,13 @@ impl<'tcx> CloneShimBuilder<'tcx> {
     where
         I: IntoIterator<Item = Ty<'tcx>>,
     {
-        self.block(vec![], TerminatorKind::Goto { target: self.block_index_offset(3) }, false);
-        let unwind = self.block(vec![], TerminatorKind::Resume, true);
-        let target = self.block(vec![], TerminatorKind::Return, false);
+        self.block(
+            IndexVec::new(),
+            TerminatorKind::Goto { target: self.block_index_offset(3) },
+            false,
+        );
+        let unwind = self.block(IndexVec::new(), TerminatorKind::Resume, true);
+        let target = self.block(IndexVec::new(), TerminatorKind::Return, false);
 
         let _final_cleanup_block = self.clone_fields(dest, src, target, unwind, tys);
     }
@@ -572,13 +577,17 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         gen_def_id: DefId,
         substs: GeneratorSubsts<'tcx>,
     ) {
-        self.block(vec![], TerminatorKind::Goto { target: self.block_index_offset(3) }, false);
-        let unwind = self.block(vec![], TerminatorKind::Resume, true);
+        self.block(
+            IndexVec::new(),
+            TerminatorKind::Goto { target: self.block_index_offset(3) },
+            false,
+        );
+        let unwind = self.block(IndexVec::new(), TerminatorKind::Resume, true);
         // This will get overwritten with a switch once we know the target blocks
-        let switch = self.block(vec![], TerminatorKind::Unreachable, false);
+        let switch = self.block(IndexVec::new(), TerminatorKind::Unreachable, false);
         let unwind = self.clone_fields(dest, src, switch, unwind, substs.upvar_tys());
-        let target = self.block(vec![], TerminatorKind::Return, false);
-        let unreachable = self.block(vec![], TerminatorKind::Unreachable, false);
+        let target = self.block(IndexVec::new(), TerminatorKind::Return, false);
+        let unreachable = self.block(IndexVec::new(), TerminatorKind::Unreachable, false);
         let mut cases = Vec::with_capacity(substs.state_tys(gen_def_id, self.tcx).count());
         for (index, state_tys) in substs.state_tys(gen_def_id, self.tcx).enumerate() {
             let variant_index = VariantIdx::new(index);
@@ -586,10 +595,11 @@ impl<'tcx> CloneShimBuilder<'tcx> {
             let src = self.tcx.mk_place_downcast_unnamed(src, variant_index);
             let clone_block = self.block_index_offset(1);
             let start_block = self.block(
-                vec![self.make_statement(StatementKind::SetDiscriminant {
+                [self.make_statement(StatementKind::SetDiscriminant {
                     place: Box::new(Place::return_place()),
                     variant_index,
-                })],
+                })]
+                .into(),
                 TerminatorKind::Goto { target: clone_block },
                 false,
             );
@@ -691,7 +701,7 @@ fn build_call_shim<'tcx>(
         assert!(rcvr_adjustment.is_some());
         Place::from(Local::new(1 + 0))
     };
-    let mut statements = vec![];
+    let mut statements = IndexVec::new();
 
     let rcvr = rcvr_adjustment.map(|rcvr_adjustment| match rcvr_adjustment {
         Adjustment::Identity => Operand::Move(rcvr_place()),
@@ -795,7 +805,7 @@ fn build_call_shim<'tcx>(
         // BB #1 - drop for Self
         block(
             &mut blocks,
-            vec![],
+            IndexVec::new(),
             TerminatorKind::Drop {
                 place: rcvr_place(),
                 target: BasicBlock::new(2),
@@ -805,12 +815,12 @@ fn build_call_shim<'tcx>(
         );
     }
     // BB #1/#2 - return
-    block(&mut blocks, vec![], TerminatorKind::Return, false);
+    block(&mut blocks, IndexVec::new(), TerminatorKind::Return, false);
     if let Some(Adjustment::RefMut) = rcvr_adjustment {
         // BB #3 - drop if closure panics
         block(
             &mut blocks,
-            vec![],
+            IndexVec::new(),
             TerminatorKind::Drop {
                 place: rcvr_place(),
                 target: BasicBlock::new(4),
@@ -820,7 +830,7 @@ fn build_call_shim<'tcx>(
         );
 
         // BB #4 - resume
-        block(&mut blocks, vec![], TerminatorKind::Resume, true);
+        block(&mut blocks, IndexVec::new(), TerminatorKind::Resume, true);
     }
 
     let mut body =
@@ -885,7 +895,7 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     };
 
     let start_block = BasicBlockData {
-        statements: vec![statement],
+        statements: [statement].into(),
         terminator: Some(Terminator { source_info, kind: TerminatorKind::Return }),
         is_cleanup: false,
     };
@@ -930,9 +940,8 @@ fn build_fn_ptr_addr_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'t
         source_info,
         kind: StatementKind::Assign(Box::new((Place::return_place(), rvalue))),
     };
-    let statements = vec![stmt];
     let start_block = BasicBlockData {
-        statements,
+        statements: [stmt].into(),
         terminator: Some(Terminator { source_info, kind: TerminatorKind::Return }),
         is_cleanup: false,
     };

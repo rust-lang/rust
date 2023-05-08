@@ -5,8 +5,8 @@ use itertools::Itertools;
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_middle::mir::spanview::source_range_no_file;
 use rustc_middle::mir::{
-    self, AggregateKind, BasicBlock, FakeReadCause, Rvalue, Statement, StatementKind, Terminator,
-    TerminatorKind,
+    self, AggregateKind, BasicBlock, FakeReadCause, Rvalue, Statement, StatementIdx, StatementKind,
+    Terminator, TerminatorKind,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_span::source_map::original_sp;
@@ -17,7 +17,7 @@ use std::cmp::Ordering;
 
 #[derive(Debug, Copy, Clone)]
 pub(super) enum CoverageStatement {
-    Statement(BasicBlock, Span, usize),
+    Statement(BasicBlock, Span, StatementIdx),
     Terminator(BasicBlock, Span),
 }
 
@@ -30,7 +30,7 @@ impl CoverageStatement {
                     "{}: @{}[{}]: {:?}",
                     source_range_no_file(tcx, span),
                     bb.index(),
-                    stmt_index,
+                    stmt_index.as_u32(),
                     stmt
                 )
             }
@@ -92,7 +92,7 @@ impl CoverageSpan {
         expn_span: Span,
         bcb: BasicCoverageBlock,
         bb: BasicBlock,
-        stmt_index: usize,
+        stmt_index: StatementIdx,
     ) -> Self {
         let is_closure = match statement.kind {
             StatementKind::Assign(box (_, Rvalue::Aggregate(box ref kind, _))) => {
@@ -106,7 +106,7 @@ impl CoverageSpan {
             expn_span,
             current_macro_or_none: Default::default(),
             bcb,
-            coverage_statements: vec![CoverageStatement::Statement(bb, span, stmt_index)],
+            coverage_statements: [CoverageStatement::Statement(bb, span, stmt_index)].into(),
             is_closure,
         }
     }
@@ -122,7 +122,7 @@ impl CoverageSpan {
             expn_span,
             current_macro_or_none: Default::default(),
             bcb,
-            coverage_statements: vec![CoverageStatement::Terminator(bb, span)],
+            coverage_statements: [CoverageStatement::Terminator(bb, span)].into(),
             is_closure: false,
         }
     }
@@ -168,7 +168,7 @@ impl CoverageSpan {
         let mut sorted_coverage_statements = self.coverage_statements.clone();
         sorted_coverage_statements.sort_unstable_by_key(|covstmt| match *covstmt {
             CoverageStatement::Statement(bb, _, index) => (bb, index),
-            CoverageStatement::Terminator(bb, _) => (bb, usize::MAX),
+            CoverageStatement::Terminator(bb, _) => (bb, StatementIdx::MAX),
         });
         sorted_coverage_statements.iter().map(|covstmt| covstmt.format(tcx, mir_body)).join("\n")
     }
@@ -518,8 +518,7 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
             .flat_map(|&bb| {
                 let data = &self.mir_body[bb];
                 data.statements
-                    .iter()
-                    .enumerate()
+                    .iter_enumerated()
                     .filter_map(move |(index, statement)| {
                         filtered_statement_span(statement).map(|span| {
                             CoverageSpan::for_statement(

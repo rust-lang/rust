@@ -397,7 +397,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             if !self.reachable.contains(bb) {
                 continue;
             }
-            let loc = Location { block: bb, statement_index: data.statements.len() };
+            let loc = Location::terminator(bb, &data.statements);
             let terminator = data.terminator();
 
             match terminator.kind {
@@ -494,7 +494,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             {
                 assert!(!self.patch.is_patched(bb));
 
-                let loc = Location { block: tgt, statement_index: 0 };
+                let loc = tgt.start_location();
                 let path = self.move_data().rev_lookup.find(destination.as_ref());
                 on_lookup_result_bits(self.tcx, self.body, self.move_data(), path, |child| {
                     self.set_drop_flag(loc, child, DropFlagState::Present)
@@ -545,7 +545,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                         }
                     }
                 }
-                let loc = Location { block: bb, statement_index: i };
+                let loc = Location { block: bb, statement_index: StatementIdx::from_usize(i) };
                 rustc_mir_dataflow::drop_flag_effects_for_location(
                     self.tcx,
                     self.body,
@@ -567,7 +567,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             {
                 assert!(!self.patch.is_patched(bb));
 
-                let loc = Location { block: bb, statement_index: data.statements.len() };
+                let loc = Location::terminator(bb, &data.statements);
                 let path = self.move_data().rev_lookup.find(destination.as_ref());
                 on_lookup_result_bits(self.tcx, self.body, self.move_data(), path, |child| {
                     self.set_drop_flag(loc, child, DropFlagState::Present)

@@ -81,7 +81,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ) -> bool {
         debug!("add_moved_or_invoked_closure_note: location={:?} place={:?}", location, place);
         let mut target = place.local_or_deref_local();
-        for stmt in &self.body[location.block].statements[location.statement_index..] {
+        for stmt in &self.body[location.block].statements.raw[location.statement_index.as_usize()..]
+        {
             debug!("add_moved_or_invoked_closure_note: stmt={:?} target={:?}", stmt, target);
             if let StatementKind::Assign(box (into, Rvalue::Use(from))) = &stmt.kind {
                 debug!("add_fnonce_closure_note: into={:?} from={:?}", into, from);
@@ -406,7 +407,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     let InitLocation::Statement(loc) = init.location else { continue };
 
                     let bbd = &self.body[loc.block];
-                    let is_terminator = bbd.statements.len() == loc.statement_index;
+                    let is_terminator = bbd.statements.next_index() == loc.statement_index;
                     debug!(
                         "borrowed_content_source: loc={:?} is_terminator={:?}",
                         loc, is_terminator,
@@ -907,8 +908,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 None
             };
 
-        let statements =
-            self.body[location.block].statements[location.statement_index + 1..].iter();
+        let statements = self.body[location.block].statements.raw
+            [location.statement_index.as_usize() + 1..]
+            .iter();
 
         for stmt in statements.chain(maybe_additional_statement) {
             if let StatementKind::Assign(box (_, Rvalue::Aggregate(kind, places))) = &stmt.kind {

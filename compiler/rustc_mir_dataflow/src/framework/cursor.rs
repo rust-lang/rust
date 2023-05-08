@@ -7,7 +7,7 @@ use std::cmp::Ordering;
 
 #[cfg(debug_assertions)]
 use rustc_index::bit_set::BitSet;
-use rustc_middle::mir::{self, BasicBlock, Location};
+use rustc_middle::mir::{self, BasicBlock, Location, FIRST_STATEMENT};
 
 use super::{Analysis, Direction, Effect, EffectIndex, Results};
 
@@ -112,7 +112,7 @@ where
         if A::Direction::IS_FORWARD {
             self.seek_to_block_entry(block)
         } else {
-            self.seek_after(Location { block, statement_index: 0 }, Effect::Primary)
+            self.seek_after(block.start_location(), Effect::Primary)
         }
     }
 
@@ -176,12 +176,12 @@ where
         let next_effect = if A::Direction::IS_FORWARD {
             #[rustfmt::skip]
             self.pos.curr_effect_index.map_or_else(
-                || Effect::Before.at_index(0),
+                || Effect::Before.at_index(FIRST_STATEMENT),
                 EffectIndex::next_in_forward_order,
             )
         } else {
             self.pos.curr_effect_index.map_or_else(
-                || Effect::Before.at_index(block_data.statements.len()),
+                || Effect::Before.at_index(block_data.statements.next_index()),
                 EffectIndex::next_in_backward_order,
             )
         };

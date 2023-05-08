@@ -301,15 +301,13 @@ macro_rules! make_mir_visitor {
                     is_cleanup: _
                 } = data;
 
-                let mut index = 0;
-                for statement in statements {
+                for (index, statement) in statements_enumerated!(statements, $($mutability)?) {
                     let location = Location { block, statement_index: index };
                     self.visit_statement(statement, location);
-                    index += 1;
                 }
 
                 if let Some(terminator) = terminator {
-                    let location = Location { block, statement_index: index };
+                    let location = Location::terminator(block, &statements);
                     self.visit_terminator(terminator, location);
                 }
             }
@@ -946,7 +944,7 @@ macro_rules! make_mir_visitor {
                 location: Location
             ) {
                 let basic_block = & $($mutability)? basic_blocks!(body, $($mutability, true)?)[location.block];
-                if basic_block.statements.len() == location.statement_index {
+                if basic_block.statements.next_index() == location.statement_index {
                     if let Some(ref $($mutability)? terminator) = basic_block.terminator {
                         self.visit_terminator(terminator, location)
                     }
@@ -978,6 +976,15 @@ macro_rules! basic_blocks_iter {
     };
     ($body:ident,) => {
         basic_blocks!($body,).iter_enumerated()
+    };
+}
+
+macro_rules! statements_enumerated {
+    ($statements:ident, mut) => {
+        $statements.iter_enumerated_mut()
+    };
+    ($statements:ident,) => {
+        $statements.iter_enumerated()
     };
 }
 

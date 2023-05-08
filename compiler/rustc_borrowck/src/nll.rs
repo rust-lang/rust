@@ -8,7 +8,6 @@ use rustc_index::IndexSlice;
 use rustc_middle::mir::{create_dump_file, dump_enabled, dump_mir, PassWhere};
 use rustc_middle::mir::{
     Body, ClosureOutlivesSubject, ClosureRegionRequirements, LocalKind, Location, Promoted,
-    START_BLOCK,
 };
 use rustc_middle::ty::{self, OpaqueHiddenType, TyCtxt};
 use rustc_span::symbol::sym;
@@ -94,15 +93,14 @@ fn populate_polonius_move_facts(
         }
     }
 
-    let fn_entry_start =
-        location_table.start_index(Location { block: START_BLOCK, statement_index: 0 });
+    let fn_entry_start = location_table.start_index(Location::START);
 
     // initialized_at
     for init in move_data.inits.iter() {
         match init.location {
             InitLocation::Statement(location) => {
                 let block_data = &body[location.block];
-                let is_terminator = location.statement_index == block_data.statements.len();
+                let is_terminator = location.statement_index == block_data.statements.next_index();
 
                 if is_terminator && init.kind == InitKind::NonPanicPathOnly {
                     // We are at the terminator of an init that has a panic path,
@@ -115,7 +113,7 @@ fn populate_polonius_move_facts(
 
                         // The initialization happened in (or rather, when arriving at)
                         // the successors, but not in the unwind block.
-                        let first_statement = Location { block: successor, statement_index: 0 };
+                        let first_statement = successor.start_location();
                         all_facts
                             .path_assigned_at_base
                             .push((init.path, location_table.start_index(first_statement)));

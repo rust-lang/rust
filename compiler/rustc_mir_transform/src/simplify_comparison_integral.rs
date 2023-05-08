@@ -4,7 +4,7 @@ use super::MirPass;
 use rustc_middle::{
     mir::{
         interpret::Scalar, BasicBlock, BinOp, Body, Operand, Place, Rvalue, Statement,
-        StatementKind, SwitchTargets, TerminatorKind,
+        StatementIdx, StatementKind, SwitchTargets, TerminatorKind, FIRST_STATEMENT,
     },
     ty::{Ty, TyCtxt},
 };
@@ -36,7 +36,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyComparisonIntegral {
         let helper = OptimizationFinder { body };
         let opts = helper.find_optimizations();
         let mut storage_deads_to_insert = vec![];
-        let mut storage_deads_to_remove: Vec<(usize, BasicBlock)> = vec![];
+        let mut storage_deads_to_remove: Vec<(StatementIdx, BasicBlock)> = vec![];
         let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
         for opt in opts {
             trace!("SUCCESS: Applying {:?}", opt);
@@ -101,7 +101,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyComparisonIntegral {
             let terminator = bb.terminator();
 
             // remove StorageDead (if it exists) being used in the assign of the comparison
-            for (stmt_idx, stmt) in bb.statements.iter().enumerate() {
+            for (stmt_idx, stmt) in bb.statements.iter_enumerated() {
                 if !matches!(stmt.kind, StatementKind::StorageDead(local) if local == opt.to_switch_on.local)
                 {
                     continue;
@@ -136,7 +136,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyComparisonIntegral {
         }
 
         for (idx, stmt) in storage_deads_to_insert {
-            body.basic_blocks_mut()[idx].statements.insert(0, stmt);
+            body.basic_blocks_mut()[idx].statements.insert_before(FIRST_STATEMENT, stmt);
         }
     }
 }
@@ -161,7 +161,7 @@ impl<'tcx> OptimizationFinder<'_, 'tcx> {
                     }?;
 
                 // find the statement that assigns the place being switched on
-                bb.statements.iter().enumerate().rev().find_map(|(stmt_idx, stmt)| {
+                bb.statements.iter_enumerated().rev().find_map(|(stmt_idx, stmt)| {
                     match &stmt.kind {
                         rustc_middle::mir::StatementKind::Assign(box (lhs, rhs))
                             if *lhs == place_switched_on =>
@@ -223,7 +223,7 @@ struct OptimizationInfo<'tcx> {
     /// Basic block to apply the optimization
     bb_idx: BasicBlock,
     /// Statement index of Eq/Ne assignment that can be removed. None if the assignment can not be removed - i.e the statement is used later on
-    bin_op_stmt_idx: usize,
+    bin_op_stmt_idx: StatementIdx,
     /// Can remove Eq/Ne assignment
     can_remove_bin_op_stmt: bool,
     /// Place that needs to be switched on. This place is of type integral

@@ -22,6 +22,13 @@ pub struct IndexSlice<I: Idx, T> {
 }
 
 impl<I: Idx, T> IndexSlice<I, T> {
+    /// Calls `I::new` with the length of the slice, so that the largest possible
+    /// value is known to be supported *before* starting to iterate.
+    #[inline(always)]
+    fn ensure_not_too_long(&self) {
+        let _ = self.next_index();
+    }
+
     #[inline]
     pub const fn empty() -> &'static Self {
         Self::from_raw(&[])
@@ -69,6 +76,7 @@ impl<I: Idx, T> IndexSlice<I, T> {
     pub fn iter_enumerated(
         &self,
     ) -> impl DoubleEndedIterator<Item = (I, &T)> + ExactSizeIterator + '_ {
+        self.ensure_not_too_long();
         self.raw.iter().enumerate().map(|(n, t)| (I::new(n), t))
     }
 
@@ -76,6 +84,7 @@ impl<I: Idx, T> IndexSlice<I, T> {
     pub fn indices(
         &self,
     ) -> impl DoubleEndedIterator<Item = I> + ExactSizeIterator + Clone + 'static {
+        self.ensure_not_too_long();
         (0..self.len()).map(|n| I::new(n))
     }
 
@@ -88,7 +97,18 @@ impl<I: Idx, T> IndexSlice<I, T> {
     pub fn iter_enumerated_mut(
         &mut self,
     ) -> impl DoubleEndedIterator<Item = (I, &mut T)> + ExactSizeIterator + '_ {
+        self.ensure_not_too_long();
         self.raw.iter_mut().enumerate().map(|(n, t)| (I::new(n), t))
+    }
+
+    #[inline]
+    pub fn first(&self) -> Option<&T> {
+        self.raw.first()
+    }
+
+    #[inline]
+    pub fn last(&self) -> Option<&T> {
+        self.raw.last()
     }
 
     #[inline]

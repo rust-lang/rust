@@ -29,7 +29,7 @@ impl<'tcx> MirPass<'tcx> for CheckAlignment {
 
         for block in (0..basic_blocks.len()).rev() {
             let block = block.into();
-            for statement_index in (0..basic_blocks[block].statements.len()).rev() {
+            for statement_index in basic_blocks[block].statements.indices().rev() {
                 let location = Location { block, statement_index };
                 let statement = &basic_blocks[block].statements[statement_index];
                 let source_info = statement.source_info;
@@ -125,7 +125,9 @@ fn split_block(
 
     // Drain every statement after this one and move the current terminator to a new basic block
     let new_block = BasicBlockData {
-        statements: block_data.statements.split_off(location.statement_index),
+        statements: IndexVec::from_raw(
+            block_data.statements.raw.split_off(location.statement_index.as_usize()),
+        ),
         terminator: block_data.terminator.take(),
         is_cleanup: block_data.is_cleanup,
     };

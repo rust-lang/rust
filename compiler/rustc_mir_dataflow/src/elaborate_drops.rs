@@ -1,6 +1,6 @@
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
-use rustc_index::Idx;
+use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::traits::Reveal;
@@ -434,7 +434,7 @@ where
     fn open_drop_for_adt(&mut self, adt: ty::AdtDef<'tcx>, substs: SubstsRef<'tcx>) -> BasicBlock {
         if adt.variants().is_empty() {
             return self.elaborator.patch().new_block(BasicBlockData {
-                statements: vec![],
+                statements: IndexVec::new(),
                 terminator: Some(Terminator {
                     source_info: self.source_info,
                     kind: TerminatorKind::Unreachable,
@@ -591,7 +591,7 @@ where
         let discr = Place::from(self.new_temp(discr_ty));
         let discr_rv = Rvalue::Discriminant(self.place);
         let switch_block = BasicBlockData {
-            statements: vec![self.assign(discr, discr_rv)],
+            statements: [self.assign(discr, discr_rv)].into(),
             terminator: Some(Terminator {
                 source_info: self.source_info,
                 kind: TerminatorKind::SwitchInt {
@@ -621,14 +621,15 @@ where
         let unit_temp = Place::from(self.new_temp(tcx.mk_unit()));
 
         let result = BasicBlockData {
-            statements: vec![self.assign(
+            statements: [self.assign(
                 Place::from(ref_place),
                 Rvalue::Ref(
                     tcx.lifetimes.re_erased,
                     BorrowKind::Mut { allow_two_phase_borrow: false },
                     self.place,
                 ),
-            )],
+            )]
+            .into(),
             terminator: Some(Terminator {
                 kind: TerminatorKind::Call {
                     func: Operand::function_handle(
@@ -680,7 +681,7 @@ where
         let one = self.constant_usize(1);
 
         let drop_block = BasicBlockData {
-            statements: vec![
+            statements: [
                 self.assign(
                     ptr,
                     Rvalue::AddressOf(Mutability::Mut, tcx.mk_place_index(self.place, cur)),
@@ -689,7 +690,8 @@ where
                     cur.into(),
                     Rvalue::BinaryOp(BinOp::Add, Box::new((move_(cur.into()), one))),
                 ),
-            ],
+            ]
+            .into(),
             is_cleanup: unwind.is_cleanup(),
             terminator: Some(Terminator {
                 source_info: self.source_info,
@@ -700,10 +702,11 @@ where
         let drop_block = self.elaborator.patch().new_block(drop_block);
 
         let loop_block = BasicBlockData {
-            statements: vec![self.assign(
+            statements: [self.assign(
                 can_go,
                 Rvalue::BinaryOp(BinOp::Eq, Box::new((copy(Place::from(cur)), copy(len.into())))),
-            )],
+            )]
+            .into(),
             is_cleanup: unwind.is_cleanup(),
             terminator: Some(Terminator {
                 source_info: self.source_info,
@@ -805,10 +808,11 @@ where
 
         let zero = self.constant_usize(0);
         let block = BasicBlockData {
-            statements: vec![
+            statements: [
                 self.assign(len.into(), Rvalue::Len(self.place)),
                 self.assign(cur.into(), Rvalue::Use(zero)),
-            ],
+            ]
+            .into(),
             is_cleanup: unwind.is_cleanup(),
             terminator: Some(Terminator {
                 source_info: self.source_info,
@@ -890,7 +894,7 @@ where
             return succ;
         }
         let block = self.new_block(unwind, TerminatorKind::Goto { target: succ });
-        let block_start = Location { block, statement_index: 0 };
+        let block_start = block.start_location();
         self.elaborator.clear_drop_flag(block_start, self.path, mode);
         block
     }
@@ -956,7 +960,7 @@ where
         }; // FIXME(#43234)
         let free_block = self.new_block(unwind, call);
 
-        let block_start = Location { block: free_block, statement_index: 0 };
+        let block_start = free_block.start_location();
         self.elaborator.clear_drop_flag(block_start, self.path, DropFlagMode::Shallow);
         free_block
     }
@@ -1002,7 +1006,7 @@ where
 
     fn new_block(&mut self, unwind: Unwind, k: TerminatorKind<'tcx>) -> BasicBlock {
         self.elaborator.patch().new_block(BasicBlockData {
-            statements: vec![],
+            statements: IndexVec::new(),
             terminator: Some(Terminator { source_info: self.source_info, kind: k }),
             is_cleanup: unwind.is_cleanup(),
         })

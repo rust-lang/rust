@@ -132,8 +132,7 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
                 Operand::Constant(x) => Operand::Constant(x.clone()),
             };
             let parent_ty = parent_op.ty(body.local_decls(), tcx);
-            let statements_before = bbs[parent].statements.len();
-            let parent_end = Location { block: parent, statement_index: statements_before };
+            let parent_end = body.terminator_loc(parent);
 
             let mut patch = MirPatch::new(body);
 
@@ -201,10 +200,7 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
             // Generate a StorageDead for comp_temp in each of the targets, since we moved it into
             // the switch
             for bb in [false_case, true_case].iter() {
-                patch.add_statement(
-                    Location { block: *bb, statement_index: 0 },
-                    StatementKind::StorageDead(comp_temp),
-                );
+                patch.add_statement(bb.start_location(), StatementKind::StorageDead(comp_temp));
             }
 
             patch.apply(body);
@@ -383,7 +379,7 @@ fn verify_candidate_branch<'tcx>(
         return false;
     }
     // ...assign the discriminant of `place` in that statement
-    let StatementKind::Assign(boxed) = &branch.statements[0].kind else {
+    let StatementKind::Assign(boxed) = &branch.statements[FIRST_STATEMENT].kind else {
         return false
     };
     let (discr_place, Rvalue::Discriminant(from_place)) = &**boxed else {

@@ -26,7 +26,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             // If this is a `Call` terminator, use the `fn_span` instead.
             let block = &frame.body.basic_blocks[loc.block];
-            if loc.statement_index == block.statements.len() {
+            if loc.statement_index == block.statements.next_index() {
                 debug!(
                     "find_closest_untracked_caller_location: got terminator {:?} ({:?})",
                     block.terminator(),

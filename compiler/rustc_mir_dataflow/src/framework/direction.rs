@@ -1,3 +1,4 @@
+use rustc_index::Idx;
 use rustc_middle::mir::{self, BasicBlock, Location, SwitchTargets, UnwindAction};
 use rustc_middle::ty::TyCtxt;
 use std::ops::RangeInclusive;
@@ -75,11 +76,11 @@ impl Direction for Backward {
         A: Analysis<'tcx>,
     {
         let terminator = block_data.terminator();
-        let location = Location { block, statement_index: block_data.statements.len() };
+        let location = Location::terminator(block, &block_data.statements);
         analysis.apply_before_terminator_effect(state, terminator, location);
         analysis.apply_terminator_effect(state, terminator, location);
 
-        for (statement_index, statement) in block_data.statements.iter().enumerate().rev() {
+        for (statement_index, statement) in block_data.statements.iter_enumerated().rev() {
             let location = Location { block, statement_index };
             analysis.apply_before_statement_effect(state, statement, location);
             analysis.apply_statement_effect(state, statement, location);
@@ -95,11 +96,11 @@ impl Direction for Backward {
         A: GenKillAnalysis<'tcx>,
     {
         let terminator = block_data.terminator();
-        let location = Location { block, statement_index: block_data.statements.len() };
+        let location = Location::terminator(block, &block_data.statements);
         analysis.before_terminator_effect(trans, terminator, location);
         analysis.terminator_effect(trans, terminator, location);
 
-        for (statement_index, statement) in block_data.statements.iter().enumerate().rev() {
+        for (statement_index, statement) in block_data.statements.iter_enumerated().rev() {
             let location = Location { block, statement_index };
             analysis.before_statement_effect(trans, statement, location);
             analysis.statement_effect(trans, statement, location);
@@ -116,7 +117,7 @@ impl Direction for Backward {
         A: Analysis<'tcx>,
     {
         let (from, to) = (*effects.start(), *effects.end());
-        let terminator_index = block_data.statements.len();
+        let terminator_index = block_data.statements.next_index();
 
         assert!(from.statement_index <= terminator_index);
         assert!(!to.precedes_in_backward_order(from));
@@ -143,7 +144,7 @@ impl Direction for Backward {
 
                 // If `from.statement_index` is `0`, we will have hit one of the earlier comparisons
                 // with `to`.
-                from.statement_index - 1
+                from.statement_index.minus(1)
             }
 
             Effect::Primary => {
@@ -155,7 +156,7 @@ impl Direction for Backward {
                     return;
                 }
 
-                from.statement_index - 1
+                from.statement_index.minus(1)
             }
 
             Effect::Before => from.statement_index,
@@ -197,14 +198,14 @@ impl Direction for Backward {
         vis.visit_block_end(&state, block_data, block);
 
         // Terminator
-        let loc = Location { block, statement_index: block_data.statements.len() };
+        let loc = Location::terminator(block, &block_data.statements);
         let term = block_data.terminator();
         results.reconstruct_before_terminator_effect(state, term, loc);
         vis.visit_terminator_before_primary_effect(state, term, loc);
         results.reconstruct_terminator_effect(state, term, loc);
         vis.visit_terminator_after_primary_effect(state, term, loc);
 
-        for (statement_index, stmt) in block_data.statements.iter().enumerate().rev() {
+        for (statement_index, stmt) in block_data.statements.iter_enumerated().rev() {
             let loc = Location { block, statement_index };
             results.reconstruct_before_statement_effect(state, stmt, loc);
             vis.visit_statement_before_primary_effect(state, stmt, loc);
@@ -326,14 +327,14 @@ impl Direction for Forward {
     ) where
         A: Analysis<'tcx>,
     {
-        for (statement_index, statement) in block_data.statements.iter().enumerate() {
+        for (statement_index, statement) in block_data.statements.iter_enumerated() {
             let location = Location { block, statement_index };
             analysis.apply_before_statement_effect(state, statement, location);
             analysis.apply_statement_effect(state, statement, location);
         }
 
         let terminator = block_data.terminator();
-        let location = Location { block, statement_index: block_data.statements.len() };
+        let location = Location::terminator(block, &block_data.statements);
         analysis.apply_before_terminator_effect(state, terminator, location);
         analysis.apply_terminator_effect(state, terminator, location);
     }
@@ -346,14 +347,14 @@ impl Direction for Forward {
     ) where
         A: GenKillAnalysis<'tcx>,
     {
-        for (statement_index, statement) in block_data.statements.iter().enumerate() {
+        for (statement_index, statement) in block_data.statements.iter_enumerated() {
             let location = Location { block, statement_index };
             analysis.before_statement_effect(trans, statement, location);
             analysis.statement_effect(trans, statement, location);
         }
 
         let terminator = block_data.terminator();
-        let location = Location { block, statement_index: block_data.statements.len() };
+        let location = Location::terminator(block, &block_data.statements);
         analysis.before_terminator_effect(trans, terminator, location);
         analysis.terminator_effect(trans, terminator, location);
     }
@@ -368,7 +369,7 @@ impl Direction for Forward {
         A: Analysis<'tcx>,
     {
         let (from, to) = (*effects.start(), *effects.end());
-        let terminator_index = block_data.statements.len();
+        let terminator_index = block_data.statements.next_index();
 
         assert!(to.statement_index <= terminator_index);
         assert!(!to.precedes_in_forward_order(from));
@@ -398,7 +399,7 @@ impl Direction for Forward {
                     return;
                 }
 
-                from.statement_index + 1
+                from.statement_index.plus(1)
             }
         };
 
@@ -444,7 +445,7 @@ impl Direction for Forward {
 
         vis.visit_block_start(state, block_data, block);
 
-        for (statement_index, stmt) in block_data.statements.iter().enumerate() {
+        for (statement_index, stmt) in block_data.statements.iter_enumerated() {
             let loc = Location { block, statement_index };
             results.reconstruct_before_statement_effect(state, stmt, loc);
             vis.visit_statement_before_primary_effect(state, stmt, loc);
@@ -452,7 +453,7 @@ impl Direction for Forward {
             vis.visit_statement_after_primary_effect(state, stmt, loc);
         }
 
-        let loc = Location { block, statement_index: block_data.statements.len() };
+        let loc = Location::terminator(block, &block_data.statements);
         let term = block_data.terminator();
         results.reconstruct_before_terminator_effect(state, term, loc);
         vis.visit_terminator_before_primary_effect(state, term, loc);
