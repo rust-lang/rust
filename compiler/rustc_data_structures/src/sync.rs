@@ -106,6 +106,20 @@ cfg_if! {
                 self.0.set(val);
                 result
             }
+            pub fn fetch_update(
+                &self,
+                _order_set: Ordering,
+                _order_get: Ordering,
+                mut f: impl FnMut(bool) -> Option<bool>,
+            ) -> Result<bool, bool> {
+                let prev = self.0.get();
+                if let Some(next) = f(prev) {
+                    self.0.set(next);
+                    Ok(prev)
+                } else {
+                    Err(prev)
+                }
+            }
         }
 
         impl<T: Copy + PartialEq> Atomic<T> {

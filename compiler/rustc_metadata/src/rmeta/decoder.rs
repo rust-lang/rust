@@ -8,7 +8,7 @@ use rustc_ast as ast;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::{AppendOnlyVec, Lock, Lrc, OnceCell};
+use rustc_data_structures::sync::{AppendOnlyVec, AtomicBool, Lock, Lrc, OnceCell};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, DeriveProcMacro};
@@ -38,7 +38,7 @@ use proc_macro::bridge::client::ProcMacro;
 use std::iter::TrustedLen;
 use std::num::NonZeroUsize;
 use std::path::Path;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::Ordering;
 use std::{io, iter, mem};
 
 pub(super) use cstore_impl::provide;
