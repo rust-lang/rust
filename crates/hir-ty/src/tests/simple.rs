@@ -3529,14 +3529,30 @@ fn main() {
 
 #[test]
 fn issue_14275() {
-    // FIXME: evaluate const generic
     check_types(
         r#"
 struct Foo<const T: bool>;
 fn main() {
     const B: bool = false;
     let foo = Foo::<B>;
-      //^^^ Foo<_>
+      //^^^ Foo<false>
+}
+"#,
+    );
+    check_types(
+        r#"
+struct Foo<const T: bool>;
+impl Foo<true> {
+    fn foo(self) -> u8 { 2 }
+}
+impl Foo<false> {
+    fn foo(self) -> u16 { 5 }
+}
+fn main() {
+    const B: bool = false;
+    let foo: Foo<B> = Foo;
+    let x = foo.foo();
+      //^ u16
 }
 "#,
     );
