@@ -1,0 +1,10 @@
+warning: the feature `negative_bounds` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/supertrait.rs:3:12
+   |
+LL | #![feature(negative_bounds)]
+   |            ^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+
+warning: 1 warning emitted
+

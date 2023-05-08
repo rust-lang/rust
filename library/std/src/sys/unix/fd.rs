@@ -75,6 +75,7 @@ const fn max_iov() -> usize {
     target_os = "nto",
     target_os = "openbsd",
     target_os = "horizon",
+    target_os = "vita",
     target_os = "watchos",
 )))]
 const fn max_iov() -> usize {
@@ -93,7 +94,7 @@ impl FileDesc {
         Ok(ret as usize)
     }
 
-    #[cfg(not(any(target_os = "espidf", target_os = "horizon")))]
+    #[cfg(not(any(target_os = "espidf", target_os = "horizon", target_os = "vita")))]
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         let ret = cvt(unsafe {
             libc::readv(
@@ -105,14 +106,14 @@ impl FileDesc {
         Ok(ret as usize)
     }
 
-    #[cfg(any(target_os = "espidf", target_os = "horizon"))]
+    #[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "vita"))]
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         io::default_read_vectored(|b| self.read(b), bufs)
     }
 
     #[inline]
     pub fn is_read_vectored(&self) -> bool {
-        cfg!(not(any(target_os = "espidf", target_os = "horizon")))
+        cfg!(not(any(target_os = "espidf", target_os = "horizon", target_os = "vita")))
     }
 
     pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
@@ -253,7 +254,7 @@ impl FileDesc {
         Ok(ret as usize)
     }
 
-    #[cfg(not(any(target_os = "espidf", target_os = "horizon")))]
+    #[cfg(not(any(target_os = "espidf", target_os = "horizon", target_os = "vita")))]
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         let ret = cvt(unsafe {
             libc::writev(
@@ -265,14 +266,14 @@ impl FileDesc {
         Ok(ret as usize)
     }
 
-    #[cfg(any(target_os = "espidf", target_os = "horizon"))]
+    #[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "vita"))]
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         io::default_write_vectored(|b| self.write(b), bufs)
     }
 
     #[inline]
     pub fn is_write_vectored(&self) -> bool {
-        cfg!(not(any(target_os = "espidf", target_os = "horizon")))
+        cfg!(not(any(target_os = "espidf", target_os = "horizon", target_os = "vita")))
     }
 
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {

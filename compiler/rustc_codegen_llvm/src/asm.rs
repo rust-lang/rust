@@ -236,9 +236,22 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 InlineAsmArch::Nvptx64 => {}
                 InlineAsmArch::PowerPC | InlineAsmArch::PowerPC64 => {}
                 InlineAsmArch::Hexagon => {}
-                InlineAsmArch::LoongArch64 => {}
+                InlineAsmArch::LoongArch64 => {
+                    constraints.extend_from_slice(&[
+                        "~{$fcc0}".to_string(),
+                        "~{$fcc1}".to_string(),
+                        "~{$fcc2}".to_string(),
+                        "~{$fcc3}".to_string(),
+                        "~{$fcc4}".to_string(),
+                        "~{$fcc5}".to_string(),
+                        "~{$fcc6}".to_string(),
+                        "~{$fcc7}".to_string(),
+                    ]);
+                }
                 InlineAsmArch::Mips | InlineAsmArch::Mips64 => {}
-                InlineAsmArch::S390x => {}
+                InlineAsmArch::S390x => {
+                    constraints.push("~{cc}".to_string());
+                }
                 InlineAsmArch::SpirV => {}
                 InlineAsmArch::Wasm32 | InlineAsmArch::Wasm64 => {}
                 InlineAsmArch::Bpf => {}
