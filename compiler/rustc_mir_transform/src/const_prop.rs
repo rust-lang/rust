@@ -806,6 +806,24 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
         }
     }
 
+    fn process_projection_elem(
+        &mut self,
+        elem: PlaceElem<'tcx>,
+        _: Location,
+    ) -> Option<PlaceElem<'tcx>> {
+        if let PlaceElem::Index(local) = elem
+            && let Some(value) = self.get_const(local.into())
+            && self.should_const_prop(&value)
+            && let interpret::Operand::Immediate(interpret::Immediate::Scalar(scalar)) = *value
+            && let Ok(offset) = scalar.to_target_usize(&self.tcx)
+            && let Some(min_length) = offset.checked_add(1)
+        {
+            Some(PlaceElem::ConstantIndex { offset, min_length, from_end: false })
+        } else {
+            None
+        }
+    }
+
     fn visit_assign(
         &mut self,
         place: &mut Place<'tcx>,

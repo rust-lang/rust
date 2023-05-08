@@ -45,7 +45,8 @@
       }
   
       bb1: {
-          _5 = (*_1)[_6];                  // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:+3:18: +3:25
+-         _5 = (*_1)[_6];                  // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:+3:18: +3:25
++         _5 = (*_1)[3 of 4];              // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:+3:18: +3:25
           StorageDead(_6);                 // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:+3:25: +3:26
           _0 = const ();                   // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:+2:5: +4:6
           StorageDead(_5);                 // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:+4:5: +4:6
