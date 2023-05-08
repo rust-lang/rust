@@ -1,6 +1,0 @@
-error: the compiler unexpectedly panicked. this is a bug.
-
-query stack during panic:
-#0 [typeck] type-checking `weird`
-#1 [used_trait_imports] finding used_trait_imports `weird`
-end of query stack

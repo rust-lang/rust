@@ -49,6 +49,9 @@ pub trait TypeVisitableExt<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
     fn has_projections(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_PROJECTION)
     }
+    fn has_inherent_projections(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_TY_INHERENT)
+    }
     fn has_opaque_types(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_OPAQUE)
     }

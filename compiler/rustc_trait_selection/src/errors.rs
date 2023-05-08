@@ -89,3 +89,11 @@ impl IntoDiagnostic<'_> for NegativePositiveConflict<'_> {
         diag
     }
 }
+
+#[derive(Diagnostic)]
+#[diag(trait_selection_inherent_projection_normalization_overflow)]
+pub struct InherentProjectionNormalizationOverflow {
+    #[primary_span]
+    pub span: Span,
+    pub ty: String,
+}

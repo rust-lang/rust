@@ -20,3 +20,5 @@ trait_selection_negative_positive_conflict = found both positive and negative im
     .negative_implementation_in_crate = negative implementation in crate `{$negative_impl_cname}`
     .positive_implementation_here = positive implementation here
     .positive_implementation_in_crate = positive implementation in crate `{$positive_impl_cname}`
+
+trait_selection_inherent_projection_normalization_overflow = overflow evaluating associated type `{$ty}`

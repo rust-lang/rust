@@ -210,6 +210,9 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 );
             }
 
+            // FIXME(inherent_associated_types): Handle this case properly.
+            ty::Alias(ty::Inherent, _) => {}
+
             _ => {}
         }
     }

@@ -1821,6 +1821,16 @@ rustc_queries! {
         desc { "normalizing `{}`", goal.value.value }
     }
 
+    /// Do not call this query directly: invoke `normalize` instead.
+    query normalize_inherent_projection_ty(
+        goal: CanonicalProjectionGoal<'tcx>
+    ) -> Result<
+        &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, NormalizationResult<'tcx>>>,
+        NoSolution,
+    > {
+        desc { "normalizing `{}`", goal.value.value }
+    }
+
     /// Do not call this query directly: invoke `try_normalize_erasing_regions` instead.
     query try_normalize_generic_arg_after_erasing_regions(
         goal: ParamEnvAnd<'tcx, GenericArg<'tcx>>
