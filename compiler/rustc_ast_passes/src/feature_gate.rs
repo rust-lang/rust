@@ -373,10 +373,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
     }
 
-    fn visit_stmt(&mut self, stmt: &'a ast::Stmt) {
-        visit::walk_stmt(self, stmt);
-    }
-
     fn visit_expr(&mut self, e: &'a ast::Expr) {
         match e.kind {
             ast::ExprKind::TryBlock(_) => {
