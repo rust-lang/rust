@@ -104,6 +104,7 @@ pub fn create_session(
         lint_caps,
         file_loader,
         target_override,
+        rustc_version_str().unwrap_or("unknown"),
     );
 
     codegen_backend.init(&sess);

@@ -89,6 +89,7 @@ pub fn register_plugins<'a>(
         crate_name,
         sess.crate_types().contains(&CrateType::Executable),
         sess.opts.cg.metadata.clone(),
+        sess.cfg_version,
     );
     sess.stable_crate_id.set(stable_crate_id).expect("not yet initialized");
     rustc_incremental::prepare_session_directory(sess, crate_name, stable_crate_id)?;

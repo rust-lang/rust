@@ -164,7 +164,7 @@ pub fn build_dep_graph(
         }
     };
 
-    file_format::write_file_header(&mut encoder, sess.is_nightly_build());
+    file_format::write_file_header(&mut encoder, sess);
 
     // First encode the commandline arguments hash
     sess.opts.dep_tracking_hash(false).encode(&mut encoder);

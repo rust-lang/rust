@@ -28,7 +28,7 @@ pub fn erase<T: EraseType>(src: T) -> Erase<T> {
     };
 
     Erased::<<T as EraseType>::Result> {
-        // SAFETY: Is it safe to transmute to MaybeUninit for types with the same sizes.
+        // SAFETY: It is safe to transmute to MaybeUninit for types with the same sizes.
         data: unsafe { transmute_copy(&src) },
     }
 }
