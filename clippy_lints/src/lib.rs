@@ -266,6 +266,7 @@ mod redundant_pub_crate;
 mod redundant_slicing;
 mod redundant_static_lifetimes;
 mod ref_option_ref;
+mod ref_patterns;
 mod reference;
 mod regex;
 mod return_self_not_must_use;
@@ -971,6 +972,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(manual_slice_size_calculation::ManualSliceSizeCalculation));
     store.register_early_pass(|| Box::new(suspicious_doc_comments::SuspiciousDocComments));
     store.register_late_pass(|_| Box::new(items_after_test_module::ItemsAfterTestModule));
+    store.register_early_pass(|| Box::new(ref_patterns::RefPatterns));
     store.register_late_pass(|_| Box::new(default_constructed_unit_structs::DefaultConstructedUnitStructs));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }

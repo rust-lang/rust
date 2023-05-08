@@ -16,8 +16,11 @@ use rustc_span::source_map::{ExpnKind, Span};
 
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{
-    get_parent_expr, in_constant, is_integer_literal, is_no_std_crate, iter_input_pats, last_path_segment, SpanlessEq,
+    get_parent_expr, in_constant, is_integer_literal, is_lint_allowed, is_no_std_crate, iter_input_pats,
+    last_path_segment, SpanlessEq,
 };
+
+use crate::ref_patterns::REF_PATTERNS;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -162,6 +165,10 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
             return;
         }
         for arg in iter_input_pats(decl, body) {
+            // Do not emit if clippy::ref_patterns is not allowed to avoid having two lints for the same issue.
+            if !is_lint_allowed(cx, REF_PATTERNS, arg.pat.hir_id) {
+                return;
+            }
             if let PatKind::Binding(BindingAnnotation(ByRef::Yes, _), ..) = arg.pat.kind {
                 span_lint(
                     cx,
@@ -180,6 +187,8 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
             if let StmtKind::Local(local) = stmt.kind;
             if let PatKind::Binding(BindingAnnotation(ByRef::Yes, mutabl), .., name, None) = local.pat.kind;
             if let Some(init) = local.init;
+            // Do not emit if clippy::ref_patterns is not allowed to avoid having two lints for the same issue.
+            if is_lint_allowed(cx, REF_PATTERNS, local.pat.hir_id);
             then {
                 let ctxt = local.span.ctxt();
                 let mut app = Applicability::MachineApplicable;
