@@ -1923,7 +1923,7 @@ fn is_late_bound_map(
     /// handles cycle detection as we go through the query system.
     ///
     /// This is necessary in the first place for the following case:
-    /// ```
+    /// ```rust,ignore (pseudo-Rust)
     /// type Alias<'a, T> = <T as Trait<'a>>::Assoc;
     /// fn foo<'a>(_: Alias<'a, ()>) -> Alias<'a, ()> { ... }
     /// ```

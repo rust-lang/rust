@@ -2158,6 +2158,10 @@ impl<'a> Builder<'a> {
 #[cfg(test)]
 mod tests;
 
+/// Represents flag values in `String` form with whitespace delimiter to pass it to the compiler later.
+///
+/// `-Z crate-attr` flags will be applied recursively on the target code using the `rustc_parse::parser::Parser`.
+/// See `rustc_builtin_macros::cmdline_attrs::inject` for more information.
 #[derive(Debug, Clone)]
 struct Rustflags(String, TargetSelection);
 
