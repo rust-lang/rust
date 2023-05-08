@@ -1600,7 +1600,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx = Bx::build(self.cx, llbb);
 
                 let llpersonality = self.cx.eh_personality();
-                bx.cleanup_landing_pad(llpersonality);
+                bx.filter_landing_pad(llpersonality);
 
                 funclet = None;
             }

@@ -135,7 +135,7 @@ cfg_if::cfg_if! {
                     EHAction::None | EHAction::Cleanup(_) => {
                         return continue_unwind(exception_object, context);
                     }
-                    EHAction::Catch(_) => {
+                    EHAction::Catch(_) | EHAction::Filter(_) => {
                         // EHABI requires the personality routine to update the
                         // SP value in the barrier cache of the exception object.
                         (*exception_object).private[5] =
@@ -147,7 +147,8 @@ cfg_if::cfg_if! {
             } else {
                 match eh_action {
                     EHAction::None => return continue_unwind(exception_object, context),
-                    EHAction::Cleanup(lpad) | EHAction::Catch(lpad) => {
+                    EHAction::Filter(_) if state & uw::_US_FORCE_UNWIND as c_int != 0 => return continue_unwind(exception_object, context),
+                    EHAction::Cleanup(lpad) | EHAction::Catch(lpad) | EHAction::Filter(lpad) => {
                         uw::_Unwind_SetGR(
                             context,
                             UNWIND_DATA_REG.0,
@@ -201,13 +202,15 @@ cfg_if::cfg_if! {
             if actions as i32 & uw::_UA_SEARCH_PHASE as i32 != 0 {
                 match eh_action {
                     EHAction::None | EHAction::Cleanup(_) => uw::_URC_CONTINUE_UNWIND,
-                    EHAction::Catch(_) => uw::_URC_HANDLER_FOUND,
+                    EHAction::Catch(_) | EHAction::Filter(_) => uw::_URC_HANDLER_FOUND,
                     EHAction::Terminate => uw::_URC_FATAL_PHASE1_ERROR,
                 }
             } else {
                 match eh_action {
                     EHAction::None => uw::_URC_CONTINUE_UNWIND,
-                    EHAction::Cleanup(lpad) | EHAction::Catch(lpad) => {
+                    // Forced unwinding hits a terminate action.
+                    EHAction::Filter(_) if actions as i32 & uw::_UA_FORCE_UNWIND as i32 != 0 => uw::_URC_CONTINUE_UNWIND,
+                    EHAction::Cleanup(lpad) | EHAction::Catch(lpad) | EHAction::Filter(lpad) => {
                         uw::_Unwind_SetGR(
                             context,
                             UNWIND_DATA_REG.0,
