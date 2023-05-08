@@ -18,6 +18,7 @@ use stdarch_test::assert_instr;
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vand))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(and))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vand_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     simd_and(a, b)
 }
@@ -31,6 +32,7 @@ pub unsafe fn vand_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vand))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(and))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vandq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     simd_and(a, b)
 }
@@ -44,6 +46,7 @@ pub unsafe fn vandq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vand))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(and))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vand_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     simd_and(a, b)
 }
@@ -57,6 +60,7 @@ pub unsafe fn vand_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vand))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(and))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vandq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     simd_and(a, b)
 }
@@ -70,6 +74,7 @@ pub unsafe fn vandq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vand))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(and))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vand_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     simd_and(a, b)
 }
@@ -83,6 +88,7 @@ pub unsafe fn vand_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vand))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(and))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vandq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     simd_and(a, b)
 }
@@ -96,6 +102,7 @@ pub unsafe fn vandq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vand))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(and))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vand_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     simd_and(a, b)
 }
@@ -109,6 +116,7 @@ pub unsafe fn vand_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vand))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(and))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vandq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     simd_and(a, b)
 }
@@ -122,6 +130,7 @@ pub unsafe fn vandq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vand))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(and))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vand_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     simd_and(a, b)
 }
@@ -135,6 +144,7 @@ pub unsafe fn vand_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vand))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(and))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vandq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     simd_and(a, b)
 }
@@ -148,6 +158,7 @@ pub unsafe fn vandq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vand))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(and))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vand_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     simd_and(a, b)
 }
@@ -161,6 +172,7 @@ pub unsafe fn vand_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vand))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(and))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vandq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     simd_and(a, b)
 }
@@ -174,6 +186,7 @@ pub unsafe fn vandq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vand))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(and))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vand_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     simd_and(a, b)
 }
@@ -187,6 +200,7 @@ pub unsafe fn vand_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vand))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(and))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vandq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     simd_and(a, b)
 }
@@ -200,6 +214,7 @@ pub unsafe fn vandq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vand))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(and))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vand_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
     simd_and(a, b)
 }
@@ -213,6 +228,7 @@ pub unsafe fn vand_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vand))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(and))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vandq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     simd_and(a, b)
 }
@@ -226,6 +242,7 @@ pub unsafe fn vandq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(orr))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vorr_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     simd_or(a, b)
 }
@@ -239,6 +256,7 @@ pub unsafe fn vorr_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(orr))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vorrq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     simd_or(a, b)
 }
@@ -252,6 +270,7 @@ pub unsafe fn vorrq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(orr))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vorr_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     simd_or(a, b)
 }
@@ -265,6 +284,7 @@ pub unsafe fn vorr_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(orr))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vorrq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     simd_or(a, b)
 }
@@ -278,6 +298,7 @@ pub unsafe fn vorrq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(orr))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vorr_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     simd_or(a, b)
 }
@@ -291,6 +312,7 @@ pub unsafe fn vorr_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(orr))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vorrq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     simd_or(a, b)
 }
@@ -304,6 +326,7 @@ pub unsafe fn vorrq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(orr))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vorr_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     simd_or(a, b)
 }
@@ -317,6 +340,7 @@ pub unsafe fn vorr_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(orr))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vorrq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     simd_or(a, b)
 }
@@ -330,6 +354,7 @@ pub unsafe fn vorrq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(orr))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vorr_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     simd_or(a, b)
 }
@@ -343,6 +368,7 @@ pub unsafe fn vorr_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(orr))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vorrq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     simd_or(a, b)
 }
@@ -356,6 +382,7 @@ pub unsafe fn vorrq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(orr))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vorr_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     simd_or(a, b)
 }
@@ -369,6 +396,7 @@ pub unsafe fn vorr_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(orr))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vorrq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     simd_or(a, b)
 }
@@ -382,6 +410,7 @@ pub unsafe fn vorrq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(orr))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vorr_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     simd_or(a, b)
 }
@@ -395,6 +424,7 @@ pub unsafe fn vorr_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(orr))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vorrq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     simd_or(a, b)
 }
@@ -408,6 +438,7 @@ pub unsafe fn vorrq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(orr))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vorr_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
     simd_or(a, b)
 }
@@ -421,6 +452,7 @@ pub unsafe fn vorr_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(orr))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vorrq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     simd_or(a, b)
 }
@@ -434,6 +466,7 @@ pub unsafe fn vorrq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(veor))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(eor))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn veor_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     simd_xor(a, b)
 }
@@ -447,6 +480,7 @@ pub unsafe fn veor_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(veor))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(eor))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn veorq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     simd_xor(a, b)
 }
@@ -460,6 +494,7 @@ pub unsafe fn veorq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(veor))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(eor))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn veor_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     simd_xor(a, b)
 }
@@ -473,6 +508,7 @@ pub unsafe fn veor_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(veor))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(eor))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn veorq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     simd_xor(a, b)
 }
@@ -486,6 +522,7 @@ pub unsafe fn veorq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(veor))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(eor))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn veor_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     simd_xor(a, b)
 }
@@ -499,6 +536,7 @@ pub unsafe fn veor_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(veor))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(eor))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn veorq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     simd_xor(a, b)
 }
@@ -512,6 +550,7 @@ pub unsafe fn veorq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(veor))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(eor))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn veor_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     simd_xor(a, b)
 }
@@ -525,6 +564,7 @@ pub unsafe fn veor_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(veor))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(eor))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn veorq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     simd_xor(a, b)
 }
@@ -538,6 +578,7 @@ pub unsafe fn veorq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(veor))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(eor))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn veor_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     simd_xor(a, b)
 }
@@ -551,6 +592,7 @@ pub unsafe fn veor_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(veor))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(eor))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn veorq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     simd_xor(a, b)
 }
@@ -564,6 +606,7 @@ pub unsafe fn veorq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(veor))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(eor))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn veor_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     simd_xor(a, b)
 }
@@ -577,6 +620,7 @@ pub unsafe fn veor_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(veor))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(eor))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn veorq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     simd_xor(a, b)
 }
@@ -590,6 +634,7 @@ pub unsafe fn veorq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(veor))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(eor))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn veor_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     simd_xor(a, b)
 }
@@ -603,6 +648,7 @@ pub unsafe fn veor_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(veor))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(eor))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn veorq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     simd_xor(a, b)
 }
@@ -616,6 +662,7 @@ pub unsafe fn veorq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(veor))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(eor))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn veor_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
     simd_xor(a, b)
 }
@@ -629,6 +676,7 @@ pub unsafe fn veor_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(veor))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(eor))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn veorq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     simd_xor(a, b)
 }
@@ -642,6 +690,7 @@ pub unsafe fn veorq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabd.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sabd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vabd_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -661,6 +710,7 @@ vabd_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabd.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sabd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vabdq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -680,6 +730,7 @@ vabdq_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabd.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sabd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vabd_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -699,6 +750,7 @@ vabd_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabd.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sabd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vabdq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -718,6 +770,7 @@ vabdq_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabd.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sabd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vabd_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -737,6 +790,7 @@ vabd_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabd.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sabd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vabdq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -756,6 +810,7 @@ vabdq_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabd.u8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uabd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vabd_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -775,6 +830,7 @@ vabd_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabd.u8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uabd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vabdq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -794,6 +850,7 @@ vabdq_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabd.u16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uabd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vabd_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -813,6 +870,7 @@ vabd_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabd.u16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uabd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vabdq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -832,6 +890,7 @@ vabdq_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabd.u32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uabd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vabd_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -851,6 +910,7 @@ vabd_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabd.u32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uabd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vabdq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -870,6 +930,7 @@ vabdq_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabd.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fabd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vabd_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -889,6 +950,7 @@ vabd_f32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabd.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fabd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vabdq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -908,6 +970,7 @@ vabdq_f32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabdl.u8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uabdl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vabdl_u8(a: uint8x8_t, b: uint8x8_t) -> uint16x8_t {
     simd_cast(vabd_u8(a, b))
 }
@@ -921,6 +984,7 @@ pub unsafe fn vabdl_u8(a: uint8x8_t, b: uint8x8_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabdl.u16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uabdl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vabdl_u16(a: uint16x4_t, b: uint16x4_t) -> uint32x4_t {
     simd_cast(vabd_u16(a, b))
 }
@@ -934,6 +998,7 @@ pub unsafe fn vabdl_u16(a: uint16x4_t, b: uint16x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabdl.u32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uabdl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vabdl_u32(a: uint32x2_t, b: uint32x2_t) -> uint64x2_t {
     simd_cast(vabd_u32(a, b))
 }
@@ -947,6 +1012,7 @@ pub unsafe fn vabdl_u32(a: uint32x2_t, b: uint32x2_t) -> uint64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabdl.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sabdl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vabdl_s8(a: int8x8_t, b: int8x8_t) -> int16x8_t {
     let c: uint8x8_t = simd_cast(vabd_s8(a, b));
     simd_cast(c)
@@ -961,6 +1027,7 @@ pub unsafe fn vabdl_s8(a: int8x8_t, b: int8x8_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabdl.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sabdl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vabdl_s16(a: int16x4_t, b: int16x4_t) -> int32x4_t {
     let c: uint16x4_t = simd_cast(vabd_s16(a, b));
     simd_cast(c)
@@ -975,6 +1042,7 @@ pub unsafe fn vabdl_s16(a: int16x4_t, b: int16x4_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabdl.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sabdl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vabdl_s32(a: int32x2_t, b: int32x2_t) -> int64x2_t {
     let c: uint32x2_t = simd_cast(vabd_s32(a, b));
     simd_cast(c)
@@ -989,6 +1057,7 @@ pub unsafe fn vabdl_s32(a: int32x2_t, b: int32x2_t) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vceq.i8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmeq))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vceq_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     simd_eq(a, b)
 }
@@ -1002,6 +1071,7 @@ pub unsafe fn vceq_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vceq.i8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmeq))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vceqq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     simd_eq(a, b)
 }
@@ -1015,6 +1085,7 @@ pub unsafe fn vceqq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vceq.i16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmeq))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vceq_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     simd_eq(a, b)
 }
@@ -1028,6 +1099,7 @@ pub unsafe fn vceq_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vceq.i16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmeq))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vceqq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     simd_eq(a, b)
 }
@@ -1041,6 +1113,7 @@ pub unsafe fn vceqq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vceq.i32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmeq))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vceq_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     simd_eq(a, b)
 }
@@ -1054,6 +1127,7 @@ pub unsafe fn vceq_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vceq.i32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmeq))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vceqq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     simd_eq(a, b)
 }
@@ -1067,6 +1141,7 @@ pub unsafe fn vceqq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vceq.i8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmeq))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vceq_s8(a: int8x8_t, b: int8x8_t) -> uint8x8_t {
     simd_eq(a, b)
 }
@@ -1080,6 +1155,7 @@ pub unsafe fn vceq_s8(a: int8x8_t, b: int8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vceq.i8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmeq))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vceqq_s8(a: int8x16_t, b: int8x16_t) -> uint8x16_t {
     simd_eq(a, b)
 }
@@ -1093,6 +1169,7 @@ pub unsafe fn vceqq_s8(a: int8x16_t, b: int8x16_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vceq.i16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmeq))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vceq_s16(a: int16x4_t, b: int16x4_t) -> uint16x4_t {
     simd_eq(a, b)
 }
@@ -1106,6 +1183,7 @@ pub unsafe fn vceq_s16(a: int16x4_t, b: int16x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vceq.i16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmeq))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vceqq_s16(a: int16x8_t, b: int16x8_t) -> uint16x8_t {
     simd_eq(a, b)
 }
@@ -1119,6 +1197,7 @@ pub unsafe fn vceqq_s16(a: int16x8_t, b: int16x8_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vceq.i32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmeq))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vceq_s32(a: int32x2_t, b: int32x2_t) -> uint32x2_t {
     simd_eq(a, b)
 }
@@ -1132,6 +1211,7 @@ pub unsafe fn vceq_s32(a: int32x2_t, b: int32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vceq.i32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmeq))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vceqq_s32(a: int32x4_t, b: int32x4_t) -> uint32x4_t {
     simd_eq(a, b)
 }
@@ -1145,6 +1225,7 @@ pub unsafe fn vceqq_s32(a: int32x4_t, b: int32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vceq.i8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmeq))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vceq_p8(a: poly8x8_t, b: poly8x8_t) -> uint8x8_t {
     simd_eq(a, b)
 }
@@ -1158,6 +1239,7 @@ pub unsafe fn vceq_p8(a: poly8x8_t, b: poly8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vceq.i8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmeq))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vceqq_p8(a: poly8x16_t, b: poly8x16_t) -> uint8x16_t {
     simd_eq(a, b)
 }
@@ -1171,6 +1253,7 @@ pub unsafe fn vceqq_p8(a: poly8x16_t, b: poly8x16_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vceq.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fcmeq))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vceq_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
     simd_eq(a, b)
 }
@@ -1184,6 +1267,7 @@ pub unsafe fn vceq_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vceq.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fcmeq))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vceqq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
     simd_eq(a, b)
 }
@@ -1197,6 +1281,7 @@ pub unsafe fn vceqq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtst))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmtst))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtst_s8(a: int8x8_t, b: int8x8_t) -> uint8x8_t {
     let c: int8x8_t = simd_and(a, b);
     let d: i8x8 = i8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
@@ -1212,6 +1297,7 @@ pub unsafe fn vtst_s8(a: int8x8_t, b: int8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtst))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmtst))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtstq_s8(a: int8x16_t, b: int8x16_t) -> uint8x16_t {
     let c: int8x16_t = simd_and(a, b);
     let d: i8x16 = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
@@ -1227,6 +1313,7 @@ pub unsafe fn vtstq_s8(a: int8x16_t, b: int8x16_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtst))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmtst))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtst_s16(a: int16x4_t, b: int16x4_t) -> uint16x4_t {
     let c: int16x4_t = simd_and(a, b);
     let d: i16x4 = i16x4::new(0, 0, 0, 0);
@@ -1242,6 +1329,7 @@ pub unsafe fn vtst_s16(a: int16x4_t, b: int16x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtst))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmtst))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtstq_s16(a: int16x8_t, b: int16x8_t) -> uint16x8_t {
     let c: int16x8_t = simd_and(a, b);
     let d: i16x8 = i16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
@@ -1257,6 +1345,7 @@ pub unsafe fn vtstq_s16(a: int16x8_t, b: int16x8_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtst))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmtst))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtst_s32(a: int32x2_t, b: int32x2_t) -> uint32x2_t {
     let c: int32x2_t = simd_and(a, b);
     let d: i32x2 = i32x2::new(0, 0);
@@ -1272,6 +1361,7 @@ pub unsafe fn vtst_s32(a: int32x2_t, b: int32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtst))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmtst))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtstq_s32(a: int32x4_t, b: int32x4_t) -> uint32x4_t {
     let c: int32x4_t = simd_and(a, b);
     let d: i32x4 = i32x4::new(0, 0, 0, 0);
@@ -1287,6 +1377,7 @@ pub unsafe fn vtstq_s32(a: int32x4_t, b: int32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtst))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmtst))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtst_p8(a: poly8x8_t, b: poly8x8_t) -> uint8x8_t {
     let c: poly8x8_t = simd_and(a, b);
     let d: i8x8 = i8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
@@ -1302,6 +1393,7 @@ pub unsafe fn vtst_p8(a: poly8x8_t, b: poly8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtst))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmtst))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtstq_p8(a: poly8x16_t, b: poly8x16_t) -> uint8x16_t {
     let c: poly8x16_t = simd_and(a, b);
     let d: i8x16 = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
@@ -1317,6 +1409,7 @@ pub unsafe fn vtstq_p8(a: poly8x16_t, b: poly8x16_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtst))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmtst))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtst_p16(a: poly16x4_t, b: poly16x4_t) -> uint16x4_t {
     let c: poly16x4_t = simd_and(a, b);
     let d: i16x4 = i16x4::new(0, 0, 0, 0);
@@ -1332,6 +1425,7 @@ pub unsafe fn vtst_p16(a: poly16x4_t, b: poly16x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtst))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmtst))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtstq_p16(a: poly16x8_t, b: poly16x8_t) -> uint16x8_t {
     let c: poly16x8_t = simd_and(a, b);
     let d: i16x8 = i16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
@@ -1347,6 +1441,7 @@ pub unsafe fn vtstq_p16(a: poly16x8_t, b: poly16x8_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtst))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmtst))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtst_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     let c: uint8x8_t = simd_and(a, b);
     let d: u8x8 = u8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
@@ -1362,6 +1457,7 @@ pub unsafe fn vtst_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtst))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmtst))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtstq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     let c: uint8x16_t = simd_and(a, b);
     let d: u8x16 = u8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
@@ -1377,6 +1473,7 @@ pub unsafe fn vtstq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtst))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmtst))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtst_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     let c: uint16x4_t = simd_and(a, b);
     let d: u16x4 = u16x4::new(0, 0, 0, 0);
@@ -1392,6 +1489,7 @@ pub unsafe fn vtst_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtst))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmtst))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtstq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     let c: uint16x8_t = simd_and(a, b);
     let d: u16x8 = u16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
@@ -1407,6 +1505,7 @@ pub unsafe fn vtstq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtst))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmtst))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtst_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     let c: uint32x2_t = simd_and(a, b);
     let d: u32x2 = u32x2::new(0, 0);
@@ -1422,6 +1521,7 @@ pub unsafe fn vtst_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtst))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmtst))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtstq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     let c: uint32x4_t = simd_and(a, b);
     let d: u32x4 = u32x4::new(0, 0, 0, 0);
@@ -1437,6 +1537,7 @@ pub unsafe fn vtstq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vabs))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fabs))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vabs_f32(a: float32x2_t) -> float32x2_t {
     simd_fabs(a)
 }
@@ -1450,6 +1551,7 @@ pub unsafe fn vabs_f32(a: float32x2_t) -> float32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vabs))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fabs))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vabsq_f32(a: float32x4_t) -> float32x4_t {
     simd_fabs(a)
 }
@@ -1463,6 +1565,7 @@ pub unsafe fn vabsq_f32(a: float32x4_t) -> float32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcgt.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmgt))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcgt_s8(a: int8x8_t, b: int8x8_t) -> uint8x8_t {
     simd_gt(a, b)
 }
@@ -1476,6 +1579,7 @@ pub unsafe fn vcgt_s8(a: int8x8_t, b: int8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcgt.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmgt))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcgtq_s8(a: int8x16_t, b: int8x16_t) -> uint8x16_t {
     simd_gt(a, b)
 }
@@ -1489,6 +1593,7 @@ pub unsafe fn vcgtq_s8(a: int8x16_t, b: int8x16_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcgt.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmgt))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcgt_s16(a: int16x4_t, b: int16x4_t) -> uint16x4_t {
     simd_gt(a, b)
 }
@@ -1502,6 +1607,7 @@ pub unsafe fn vcgt_s16(a: int16x4_t, b: int16x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcgt.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmgt))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcgtq_s16(a: int16x8_t, b: int16x8_t) -> uint16x8_t {
     simd_gt(a, b)
 }
@@ -1515,6 +1621,7 @@ pub unsafe fn vcgtq_s16(a: int16x8_t, b: int16x8_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcgt.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmgt))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcgt_s32(a: int32x2_t, b: int32x2_t) -> uint32x2_t {
     simd_gt(a, b)
 }
@@ -1528,6 +1635,7 @@ pub unsafe fn vcgt_s32(a: int32x2_t, b: int32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcgt.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmgt))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcgtq_s32(a: int32x4_t, b: int32x4_t) -> uint32x4_t {
     simd_gt(a, b)
 }
@@ -1541,6 +1649,7 @@ pub unsafe fn vcgtq_s32(a: int32x4_t, b: int32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcgt.u8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmhi))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcgt_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     simd_gt(a, b)
 }
@@ -1554,6 +1663,7 @@ pub unsafe fn vcgt_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcgt.u8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmhi))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcgtq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     simd_gt(a, b)
 }
@@ -1567,6 +1677,7 @@ pub unsafe fn vcgtq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcgt.u16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmhi))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcgt_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     simd_gt(a, b)
 }
@@ -1580,6 +1691,7 @@ pub unsafe fn vcgt_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcgt.u16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmhi))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcgtq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     simd_gt(a, b)
 }
@@ -1593,6 +1705,7 @@ pub unsafe fn vcgtq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcgt.u32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmhi))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcgt_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     simd_gt(a, b)
 }
@@ -1606,6 +1719,7 @@ pub unsafe fn vcgt_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcgt.u32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmhi))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcgtq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     simd_gt(a, b)
 }
@@ -1619,6 +1733,7 @@ pub unsafe fn vcgtq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcgt.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fcmgt))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcgt_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
     simd_gt(a, b)
 }
@@ -1632,6 +1747,7 @@ pub unsafe fn vcgt_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcgt.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fcmgt))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcgtq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
     simd_gt(a, b)
 }
@@ -1645,6 +1761,7 @@ pub unsafe fn vcgtq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcgt.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmgt))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vclt_s8(a: int8x8_t, b: int8x8_t) -> uint8x8_t {
     simd_lt(a, b)
 }
@@ -1658,6 +1775,7 @@ pub unsafe fn vclt_s8(a: int8x8_t, b: int8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcgt.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmgt))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcltq_s8(a: int8x16_t, b: int8x16_t) -> uint8x16_t {
     simd_lt(a, b)
 }
@@ -1671,6 +1789,7 @@ pub unsafe fn vcltq_s8(a: int8x16_t, b: int8x16_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcgt.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmgt))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vclt_s16(a: int16x4_t, b: int16x4_t) -> uint16x4_t {
     simd_lt(a, b)
 }
@@ -1684,6 +1803,7 @@ pub unsafe fn vclt_s16(a: int16x4_t, b: int16x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcgt.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmgt))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcltq_s16(a: int16x8_t, b: int16x8_t) -> uint16x8_t {
     simd_lt(a, b)
 }
@@ -1697,6 +1817,7 @@ pub unsafe fn vcltq_s16(a: int16x8_t, b: int16x8_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcgt.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmgt))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vclt_s32(a: int32x2_t, b: int32x2_t) -> uint32x2_t {
     simd_lt(a, b)
 }
@@ -1710,6 +1831,7 @@ pub unsafe fn vclt_s32(a: int32x2_t, b: int32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcgt.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmgt))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcltq_s32(a: int32x4_t, b: int32x4_t) -> uint32x4_t {
     simd_lt(a, b)
 }
@@ -1723,6 +1845,7 @@ pub unsafe fn vcltq_s32(a: int32x4_t, b: int32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcgt.u8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmhi))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vclt_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     simd_lt(a, b)
 }
@@ -1736,6 +1859,7 @@ pub unsafe fn vclt_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcgt.u8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmhi))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcltq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     simd_lt(a, b)
 }
@@ -1749,6 +1873,7 @@ pub unsafe fn vcltq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcgt.u16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmhi))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vclt_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     simd_lt(a, b)
 }
@@ -1762,6 +1887,7 @@ pub unsafe fn vclt_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcgt.u16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmhi))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcltq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     simd_lt(a, b)
 }
@@ -1775,6 +1901,7 @@ pub unsafe fn vcltq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcgt.u32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmhi))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vclt_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     simd_lt(a, b)
 }
@@ -1788,6 +1915,7 @@ pub unsafe fn vclt_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcgt.u32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmhi))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcltq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     simd_lt(a, b)
 }
@@ -1801,6 +1929,7 @@ pub unsafe fn vcltq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcgt.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fcmgt))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vclt_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
     simd_lt(a, b)
 }
@@ -1814,6 +1943,7 @@ pub unsafe fn vclt_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcgt.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fcmgt))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcltq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
     simd_lt(a, b)
 }
@@ -1827,6 +1957,7 @@ pub unsafe fn vcltq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcge.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmge))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcle_s8(a: int8x8_t, b: int8x8_t) -> uint8x8_t {
     simd_le(a, b)
 }
@@ -1840,6 +1971,7 @@ pub unsafe fn vcle_s8(a: int8x8_t, b: int8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcge.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmge))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcleq_s8(a: int8x16_t, b: int8x16_t) -> uint8x16_t {
     simd_le(a, b)
 }
@@ -1853,6 +1985,7 @@ pub unsafe fn vcleq_s8(a: int8x16_t, b: int8x16_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcge.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmge))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcle_s16(a: int16x4_t, b: int16x4_t) -> uint16x4_t {
     simd_le(a, b)
 }
@@ -1866,6 +1999,7 @@ pub unsafe fn vcle_s16(a: int16x4_t, b: int16x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcge.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmge))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcleq_s16(a: int16x8_t, b: int16x8_t) -> uint16x8_t {
     simd_le(a, b)
 }
@@ -1879,6 +2013,7 @@ pub unsafe fn vcleq_s16(a: int16x8_t, b: int16x8_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcge.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmge))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcle_s32(a: int32x2_t, b: int32x2_t) -> uint32x2_t {
     simd_le(a, b)
 }
@@ -1892,6 +2027,7 @@ pub unsafe fn vcle_s32(a: int32x2_t, b: int32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcge.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmge))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcleq_s32(a: int32x4_t, b: int32x4_t) -> uint32x4_t {
     simd_le(a, b)
 }
@@ -1905,6 +2041,7 @@ pub unsafe fn vcleq_s32(a: int32x4_t, b: int32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcge.u8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmhs))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcle_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     simd_le(a, b)
 }
@@ -1918,6 +2055,7 @@ pub unsafe fn vcle_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcge.u8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmhs))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcleq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     simd_le(a, b)
 }
@@ -1931,6 +2069,7 @@ pub unsafe fn vcleq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcge.u16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmhs))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcle_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     simd_le(a, b)
 }
@@ -1944,6 +2083,7 @@ pub unsafe fn vcle_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcge.u16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmhs))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcleq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     simd_le(a, b)
 }
@@ -1957,6 +2097,7 @@ pub unsafe fn vcleq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcge.u32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmhs))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcle_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     simd_le(a, b)
 }
@@ -1970,6 +2111,7 @@ pub unsafe fn vcle_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcge.u32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmhs))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcleq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     simd_le(a, b)
 }
@@ -1983,6 +2125,7 @@ pub unsafe fn vcleq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcge.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fcmge))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcle_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
     simd_le(a, b)
 }
@@ -1996,6 +2139,7 @@ pub unsafe fn vcle_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcge.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fcmge))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcleq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
     simd_le(a, b)
 }
@@ -2009,6 +2153,7 @@ pub unsafe fn vcleq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcge.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmge))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcge_s8(a: int8x8_t, b: int8x8_t) -> uint8x8_t {
     simd_ge(a, b)
 }
@@ -2022,6 +2167,7 @@ pub unsafe fn vcge_s8(a: int8x8_t, b: int8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcge.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmge))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcgeq_s8(a: int8x16_t, b: int8x16_t) -> uint8x16_t {
     simd_ge(a, b)
 }
@@ -2035,6 +2181,7 @@ pub unsafe fn vcgeq_s8(a: int8x16_t, b: int8x16_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcge.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmge))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcge_s16(a: int16x4_t, b: int16x4_t) -> uint16x4_t {
     simd_ge(a, b)
 }
@@ -2048,6 +2195,7 @@ pub unsafe fn vcge_s16(a: int16x4_t, b: int16x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcge.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmge))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcgeq_s16(a: int16x8_t, b: int16x8_t) -> uint16x8_t {
     simd_ge(a, b)
 }
@@ -2061,6 +2209,7 @@ pub unsafe fn vcgeq_s16(a: int16x8_t, b: int16x8_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcge.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmge))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcge_s32(a: int32x2_t, b: int32x2_t) -> uint32x2_t {
     simd_ge(a, b)
 }
@@ -2074,6 +2223,7 @@ pub unsafe fn vcge_s32(a: int32x2_t, b: int32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcge.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmge))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcgeq_s32(a: int32x4_t, b: int32x4_t) -> uint32x4_t {
     simd_ge(a, b)
 }
@@ -2087,6 +2237,7 @@ pub unsafe fn vcgeq_s32(a: int32x4_t, b: int32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcge.u8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmhs))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcge_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     simd_ge(a, b)
 }
@@ -2100,6 +2251,7 @@ pub unsafe fn vcge_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcge.u8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmhs))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcgeq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     simd_ge(a, b)
 }
@@ -2113,6 +2265,7 @@ pub unsafe fn vcgeq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcge.u16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmhs))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcge_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     simd_ge(a, b)
 }
@@ -2126,6 +2279,7 @@ pub unsafe fn vcge_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcge.u16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmhs))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcgeq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     simd_ge(a, b)
 }
@@ -2139,6 +2293,7 @@ pub unsafe fn vcgeq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcge.u32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmhs))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcge_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     simd_ge(a, b)
 }
@@ -2152,6 +2307,7 @@ pub unsafe fn vcge_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcge.u32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cmhs))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcgeq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     simd_ge(a, b)
 }
@@ -2165,6 +2321,7 @@ pub unsafe fn vcgeq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcge.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fcmge))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcge_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
     simd_ge(a, b)
 }
@@ -2178,6 +2335,7 @@ pub unsafe fn vcge_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcge.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fcmge))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcgeq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
     simd_ge(a, b)
 }
@@ -2191,6 +2349,7 @@ pub unsafe fn vcgeq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcls.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcls_s8(a: int8x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -2210,6 +2369,7 @@ vcls_s8_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcls.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vclsq_s8(a: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -2229,6 +2389,7 @@ vclsq_s8_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcls.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcls_s16(a: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -2248,6 +2409,7 @@ vcls_s16_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcls.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vclsq_s16(a: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -2267,6 +2429,7 @@ vclsq_s16_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcls.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcls_s32(a: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -2286,6 +2449,7 @@ vcls_s32_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcls.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vclsq_s32(a: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -2305,6 +2469,7 @@ vclsq_s32_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcls))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcls_u8(a: uint8x8_t) -> int8x8_t {
     transmute(vcls_s8(transmute(a)))
 }
@@ -2318,6 +2483,7 @@ pub unsafe fn vcls_u8(a: uint8x8_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcls))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vclsq_u8(a: uint8x16_t) -> int8x16_t {
     transmute(vclsq_s8(transmute(a)))
 }
@@ -2331,6 +2497,7 @@ pub unsafe fn vclsq_u8(a: uint8x16_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcls))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcls_u16(a: uint16x4_t) -> int16x4_t {
     transmute(vcls_s16(transmute(a)))
 }
@@ -2344,6 +2511,7 @@ pub unsafe fn vcls_u16(a: uint16x4_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcls))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vclsq_u16(a: uint16x8_t) -> int16x8_t {
     transmute(vclsq_s16(transmute(a)))
 }
@@ -2357,6 +2525,7 @@ pub unsafe fn vclsq_u16(a: uint16x8_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcls))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcls_u32(a: uint32x2_t) -> int32x2_t {
     transmute(vcls_s32(transmute(a)))
 }
@@ -2370,6 +2539,7 @@ pub unsafe fn vcls_u32(a: uint32x2_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcls))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vclsq_u32(a: uint32x4_t) -> int32x4_t {
     transmute(vclsq_s32(transmute(a)))
 }
@@ -2383,6 +2553,7 @@ pub unsafe fn vclsq_u32(a: uint32x4_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vclz.i8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(clz))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vclz_s8(a: int8x8_t) -> int8x8_t {
     vclz_s8_(a)
 }
@@ -2396,6 +2567,7 @@ pub unsafe fn vclz_s8(a: int8x8_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vclz.i8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(clz))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vclzq_s8(a: int8x16_t) -> int8x16_t {
     vclzq_s8_(a)
 }
@@ -2409,6 +2581,7 @@ pub unsafe fn vclzq_s8(a: int8x16_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vclz.i16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(clz))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vclz_s16(a: int16x4_t) -> int16x4_t {
     vclz_s16_(a)
 }
@@ -2422,6 +2595,7 @@ pub unsafe fn vclz_s16(a: int16x4_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vclz.i16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(clz))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vclzq_s16(a: int16x8_t) -> int16x8_t {
     vclzq_s16_(a)
 }
@@ -2435,6 +2609,7 @@ pub unsafe fn vclzq_s16(a: int16x8_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vclz.i32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(clz))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vclz_s32(a: int32x2_t) -> int32x2_t {
     vclz_s32_(a)
 }
@@ -2448,6 +2623,7 @@ pub unsafe fn vclz_s32(a: int32x2_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vclz.i32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(clz))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vclzq_s32(a: int32x4_t) -> int32x4_t {
     vclzq_s32_(a)
 }
@@ -2461,6 +2637,7 @@ pub unsafe fn vclzq_s32(a: int32x4_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vclz.i8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(clz))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vclz_u8(a: uint8x8_t) -> uint8x8_t {
     transmute(vclz_s8_(transmute(a)))
 }
@@ -2474,6 +2651,7 @@ pub unsafe fn vclz_u8(a: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vclz.i8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(clz))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vclzq_u8(a: uint8x16_t) -> uint8x16_t {
     transmute(vclzq_s8_(transmute(a)))
 }
@@ -2487,6 +2665,7 @@ pub unsafe fn vclzq_u8(a: uint8x16_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vclz.i16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(clz))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vclz_u16(a: uint16x4_t) -> uint16x4_t {
     transmute(vclz_s16_(transmute(a)))
 }
@@ -2500,6 +2679,7 @@ pub unsafe fn vclz_u16(a: uint16x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vclz.i16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(clz))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vclzq_u16(a: uint16x8_t) -> uint16x8_t {
     transmute(vclzq_s16_(transmute(a)))
 }
@@ -2513,6 +2693,7 @@ pub unsafe fn vclzq_u16(a: uint16x8_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vclz.i32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(clz))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vclz_u32(a: uint32x2_t) -> uint32x2_t {
     transmute(vclz_s32_(transmute(a)))
 }
@@ -2526,6 +2707,7 @@ pub unsafe fn vclz_u32(a: uint32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vclz.i32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(clz))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vclzq_u32(a: uint32x4_t) -> uint32x4_t {
     transmute(vclzq_s32_(transmute(a)))
 }
@@ -2539,6 +2721,7 @@ pub unsafe fn vclzq_u32(a: uint32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vacgt.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(facgt))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcagt_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -2558,6 +2741,7 @@ vcagt_f32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vacgt.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(facgt))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcagtq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -2577,6 +2761,7 @@ vcagtq_f32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vacge.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(facge))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcage_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -2596,6 +2781,7 @@ vcage_f32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vacge.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(facge))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcageq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -2615,6 +2801,7 @@ vcageq_f32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vacgt.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(facgt))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcalt_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
     vcagt_f32(b, a)
 }
@@ -2628,6 +2815,7 @@ pub unsafe fn vcalt_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vacgt.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(facgt))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcaltq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
     vcagtq_f32(b, a)
 }
@@ -2641,6 +2829,7 @@ pub unsafe fn vcaltq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vacge.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(facge))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcale_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
     vcage_f32(b, a)
 }
@@ -2654,6 +2843,7 @@ pub unsafe fn vcale_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vacge.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(facge))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcaleq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
     vcageq_f32(b, a)
 }
@@ -2667,6 +2857,7 @@ pub unsafe fn vcaleq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcreate_s8(a: u64) -> int8x8_t {
     transmute(a)
 }
@@ -2680,6 +2871,7 @@ pub unsafe fn vcreate_s8(a: u64) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcreate_s16(a: u64) -> int16x4_t {
     transmute(a)
 }
@@ -2693,6 +2885,7 @@ pub unsafe fn vcreate_s16(a: u64) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcreate_s32(a: u64) -> int32x2_t {
     transmute(a)
 }
@@ -2706,6 +2899,7 @@ pub unsafe fn vcreate_s32(a: u64) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcreate_s64(a: u64) -> int64x1_t {
     transmute(a)
 }
@@ -2719,6 +2913,7 @@ pub unsafe fn vcreate_s64(a: u64) -> int64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcreate_u8(a: u64) -> uint8x8_t {
     transmute(a)
 }
@@ -2732,6 +2927,7 @@ pub unsafe fn vcreate_u8(a: u64) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcreate_u16(a: u64) -> uint16x4_t {
     transmute(a)
 }
@@ -2745,6 +2941,7 @@ pub unsafe fn vcreate_u16(a: u64) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcreate_u32(a: u64) -> uint32x2_t {
     transmute(a)
 }
@@ -2758,6 +2955,7 @@ pub unsafe fn vcreate_u32(a: u64) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcreate_u64(a: u64) -> uint64x1_t {
     transmute(a)
 }
@@ -2771,6 +2969,7 @@ pub unsafe fn vcreate_u64(a: u64) -> uint64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcreate_p8(a: u64) -> poly8x8_t {
     transmute(a)
 }
@@ -2784,6 +2983,7 @@ pub unsafe fn vcreate_p8(a: u64) -> poly8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcreate_p16(a: u64) -> poly16x4_t {
     transmute(a)
 }
@@ -2797,6 +2997,7 @@ pub unsafe fn vcreate_p16(a: u64) -> poly16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcreate_p64(a: u64) -> poly64x1_t {
     transmute(a)
 }
@@ -2810,6 +3011,7 @@ pub unsafe fn vcreate_p64(a: u64) -> poly64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcreate_f32(a: u64) -> float32x2_t {
     transmute(a)
 }
@@ -2823,6 +3025,7 @@ pub unsafe fn vcreate_f32(a: u64) -> float32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcvt))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(scvtf))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcvt_f32_s32(a: int32x2_t) -> float32x2_t {
     simd_cast(a)
 }
@@ -2836,6 +3039,7 @@ pub unsafe fn vcvt_f32_s32(a: int32x2_t) -> float32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcvt))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(scvtf))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcvtq_f32_s32(a: int32x4_t) -> float32x4_t {
     simd_cast(a)
 }
@@ -2849,6 +3053,7 @@ pub unsafe fn vcvtq_f32_s32(a: int32x4_t) -> float32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcvt))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ucvtf))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcvt_f32_u32(a: uint32x2_t) -> float32x2_t {
     simd_cast(a)
 }
@@ -2862,6 +3067,7 @@ pub unsafe fn vcvt_f32_u32(a: uint32x2_t) -> float32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcvt))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ucvtf))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcvtq_f32_u32(a: uint32x4_t) -> float32x4_t {
     simd_cast(a)
 }
@@ -2874,6 +3080,7 @@ pub unsafe fn vcvtq_f32_u32(a: uint32x4_t) -> float32x4_t {
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vcvt, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vcvt_n_f32_s32<const N: i32>(a: int32x2_t) -> float32x2_t {
     static_assert!(N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
@@ -2911,6 +3118,7 @@ vcvt_n_f32_s32_(a, N)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vcvt, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vcvtq_n_f32_s32<const N: i32>(a: int32x4_t) -> float32x4_t {
     static_assert!(N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
@@ -2948,6 +3156,7 @@ vcvtq_n_f32_s32_(a, N)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vcvt, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vcvt_n_f32_u32<const N: i32>(a: uint32x2_t) -> float32x2_t {
     static_assert!(N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
@@ -2985,6 +3194,7 @@ vcvt_n_f32_u32_(a, N)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vcvt, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vcvtq_n_f32_u32<const N: i32>(a: uint32x4_t) -> float32x4_t {
     static_assert!(N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
@@ -3022,6 +3232,7 @@ vcvtq_n_f32_u32_(a, N)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vcvt, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vcvt_n_s32_f32<const N: i32>(a: float32x2_t) -> int32x2_t {
     static_assert!(N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
@@ -3059,6 +3270,7 @@ vcvt_n_s32_f32_(a, N)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vcvt, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vcvtq_n_s32_f32<const N: i32>(a: float32x4_t) -> int32x4_t {
     static_assert!(N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
@@ -3096,6 +3308,7 @@ vcvtq_n_s32_f32_(a, N)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vcvt, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vcvt_n_u32_f32<const N: i32>(a: float32x2_t) -> uint32x2_t {
     static_assert!(N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
@@ -3133,6 +3346,7 @@ vcvt_n_u32_f32_(a, N)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vcvt, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vcvtq_n_u32_f32<const N: i32>(a: float32x4_t) -> uint32x4_t {
     static_assert!(N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
@@ -3171,6 +3385,7 @@ vcvtq_n_u32_f32_(a, N)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcvt))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fcvtzs))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcvt_s32_f32(a: float32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -3190,6 +3405,7 @@ vcvt_s32_f32_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcvt))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fcvtzs))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcvtq_s32_f32(a: float32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -3209,6 +3425,7 @@ vcvtq_s32_f32_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcvt))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fcvtzu))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcvt_u32_f32(a: float32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -3228,6 +3445,7 @@ vcvt_u32_f32_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcvt))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fcvtzu))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcvtq_u32_f32(a: float32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -3248,6 +3466,7 @@ vcvtq_u32_f32_(a)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 4))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdup_lane_s8<const N: i32>(a: int8x8_t) -> int8x8_t {
     static_assert_uimm_bits!(N, 3);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
@@ -3263,6 +3482,7 @@ pub unsafe fn vdup_lane_s8<const N: i32>(a: int8x8_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 8))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdupq_laneq_s8<const N: i32>(a: int8x16_t) -> int8x16_t {
     static_assert_uimm_bits!(N, 4);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
@@ -3278,6 +3498,7 @@ pub unsafe fn vdupq_laneq_s8<const N: i32>(a: int8x16_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdup_lane_s16<const N: i32>(a: int16x4_t) -> int16x4_t {
     static_assert_uimm_bits!(N, 2);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
@@ -3293,6 +3514,7 @@ pub unsafe fn vdup_lane_s16<const N: i32>(a: int16x4_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 4))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdupq_laneq_s16<const N: i32>(a: int16x8_t) -> int16x8_t {
     static_assert_uimm_bits!(N, 3);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
@@ -3308,6 +3530,7 @@ pub unsafe fn vdupq_laneq_s16<const N: i32>(a: int16x8_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 1))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdup_lane_s32<const N: i32>(a: int32x2_t) -> int32x2_t {
     static_assert_uimm_bits!(N, 1);
     simd_shuffle!(a, a, [N as u32, N as u32])
@@ -3323,6 +3546,7 @@ pub unsafe fn vdup_lane_s32<const N: i32>(a: int32x2_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdupq_laneq_s32<const N: i32>(a: int32x4_t) -> int32x4_t {
     static_assert_uimm_bits!(N, 2);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
@@ -3338,6 +3562,7 @@ pub unsafe fn vdupq_laneq_s32<const N: i32>(a: int32x4_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 8))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdup_laneq_s8<const N: i32>(a: int8x16_t) -> int8x8_t {
     static_assert_uimm_bits!(N, 4);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
@@ -3353,6 +3578,7 @@ pub unsafe fn vdup_laneq_s8<const N: i32>(a: int8x16_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 4))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdup_laneq_s16<const N: i32>(a: int16x8_t) -> int16x4_t {
     static_assert_uimm_bits!(N, 3);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
@@ -3368,6 +3594,7 @@ pub unsafe fn vdup_laneq_s16<const N: i32>(a: int16x8_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdup_laneq_s32<const N: i32>(a: int32x4_t) -> int32x2_t {
     static_assert_uimm_bits!(N, 2);
     simd_shuffle!(a, a, [N as u32, N as u32])
@@ -3383,6 +3610,7 @@ pub unsafe fn vdup_laneq_s32<const N: i32>(a: int32x4_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 4))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdupq_lane_s8<const N: i32>(a: int8x8_t) -> int8x16_t {
     static_assert_uimm_bits!(N, 3);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
@@ -3398,6 +3626,7 @@ pub unsafe fn vdupq_lane_s8<const N: i32>(a: int8x8_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdupq_lane_s16<const N: i32>(a: int16x4_t) -> int16x8_t {
     static_assert_uimm_bits!(N, 2);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
@@ -3413,6 +3642,7 @@ pub unsafe fn vdupq_lane_s16<const N: i32>(a: int16x4_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 1))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdupq_lane_s32<const N: i32>(a: int32x2_t) -> int32x4_t {
     static_assert_uimm_bits!(N, 1);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
@@ -3428,6 +3658,7 @@ pub unsafe fn vdupq_lane_s32<const N: i32>(a: int32x2_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 4))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdup_lane_u8<const N: i32>(a: uint8x8_t) -> uint8x8_t {
     static_assert_uimm_bits!(N, 3);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
@@ -3443,6 +3674,7 @@ pub unsafe fn vdup_lane_u8<const N: i32>(a: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 8))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdupq_laneq_u8<const N: i32>(a: uint8x16_t) -> uint8x16_t {
     static_assert_uimm_bits!(N, 4);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
@@ -3458,6 +3690,7 @@ pub unsafe fn vdupq_laneq_u8<const N: i32>(a: uint8x16_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdup_lane_u16<const N: i32>(a: uint16x4_t) -> uint16x4_t {
     static_assert_uimm_bits!(N, 2);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
@@ -3473,6 +3706,7 @@ pub unsafe fn vdup_lane_u16<const N: i32>(a: uint16x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 4))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdupq_laneq_u16<const N: i32>(a: uint16x8_t) -> uint16x8_t {
     static_assert_uimm_bits!(N, 3);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
@@ -3488,6 +3722,7 @@ pub unsafe fn vdupq_laneq_u16<const N: i32>(a: uint16x8_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 1))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdup_lane_u32<const N: i32>(a: uint32x2_t) -> uint32x2_t {
     static_assert_uimm_bits!(N, 1);
     simd_shuffle!(a, a, [N as u32, N as u32])
@@ -3503,6 +3738,7 @@ pub unsafe fn vdup_lane_u32<const N: i32>(a: uint32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdupq_laneq_u32<const N: i32>(a: uint32x4_t) -> uint32x4_t {
     static_assert_uimm_bits!(N, 2);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
@@ -3518,6 +3754,7 @@ pub unsafe fn vdupq_laneq_u32<const N: i32>(a: uint32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 8))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdup_laneq_u8<const N: i32>(a: uint8x16_t) -> uint8x8_t {
     static_assert_uimm_bits!(N, 4);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
@@ -3533,6 +3770,7 @@ pub unsafe fn vdup_laneq_u8<const N: i32>(a: uint8x16_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 4))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdup_laneq_u16<const N: i32>(a: uint16x8_t) -> uint16x4_t {
     static_assert_uimm_bits!(N, 3);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
@@ -3548,6 +3786,7 @@ pub unsafe fn vdup_laneq_u16<const N: i32>(a: uint16x8_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdup_laneq_u32<const N: i32>(a: uint32x4_t) -> uint32x2_t {
     static_assert_uimm_bits!(N, 2);
     simd_shuffle!(a, a, [N as u32, N as u32])
@@ -3563,6 +3802,7 @@ pub unsafe fn vdup_laneq_u32<const N: i32>(a: uint32x4_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 4))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdupq_lane_u8<const N: i32>(a: uint8x8_t) -> uint8x16_t {
     static_assert_uimm_bits!(N, 3);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
@@ -3578,6 +3818,7 @@ pub unsafe fn vdupq_lane_u8<const N: i32>(a: uint8x8_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdupq_lane_u16<const N: i32>(a: uint16x4_t) -> uint16x8_t {
     static_assert_uimm_bits!(N, 2);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
@@ -3593,6 +3834,7 @@ pub unsafe fn vdupq_lane_u16<const N: i32>(a: uint16x4_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 1))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdupq_lane_u32<const N: i32>(a: uint32x2_t) -> uint32x4_t {
     static_assert_uimm_bits!(N, 1);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
@@ -3608,6 +3850,7 @@ pub unsafe fn vdupq_lane_u32<const N: i32>(a: uint32x2_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 4))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdup_lane_p8<const N: i32>(a: poly8x8_t) -> poly8x8_t {
     static_assert_uimm_bits!(N, 3);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
@@ -3623,6 +3866,7 @@ pub unsafe fn vdup_lane_p8<const N: i32>(a: poly8x8_t) -> poly8x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 8))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdupq_laneq_p8<const N: i32>(a: poly8x16_t) -> poly8x16_t {
     static_assert_uimm_bits!(N, 4);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
@@ -3638,6 +3882,7 @@ pub unsafe fn vdupq_laneq_p8<const N: i32>(a: poly8x16_t) -> poly8x16_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdup_lane_p16<const N: i32>(a: poly16x4_t) -> poly16x4_t {
     static_assert_uimm_bits!(N, 2);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
@@ -3653,6 +3898,7 @@ pub unsafe fn vdup_lane_p16<const N: i32>(a: poly16x4_t) -> poly16x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 4))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdupq_laneq_p16<const N: i32>(a: poly16x8_t) -> poly16x8_t {
     static_assert_uimm_bits!(N, 3);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
@@ -3668,6 +3914,7 @@ pub unsafe fn vdupq_laneq_p16<const N: i32>(a: poly16x8_t) -> poly16x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 8))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdup_laneq_p8<const N: i32>(a: poly8x16_t) -> poly8x8_t {
     static_assert_uimm_bits!(N, 4);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
@@ -3683,6 +3930,7 @@ pub unsafe fn vdup_laneq_p8<const N: i32>(a: poly8x16_t) -> poly8x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 4))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdup_laneq_p16<const N: i32>(a: poly16x8_t) -> poly16x4_t {
     static_assert_uimm_bits!(N, 3);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
@@ -3698,6 +3946,7 @@ pub unsafe fn vdup_laneq_p16<const N: i32>(a: poly16x8_t) -> poly16x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 4))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdupq_lane_p8<const N: i32>(a: poly8x8_t) -> poly8x16_t {
     static_assert_uimm_bits!(N, 3);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
@@ -3713,6 +3962,7 @@ pub unsafe fn vdupq_lane_p8<const N: i32>(a: poly8x8_t) -> poly8x16_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdupq_lane_p16<const N: i32>(a: poly16x4_t) -> poly16x8_t {
     static_assert_uimm_bits!(N, 2);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
@@ -3728,6 +3978,7 @@ pub unsafe fn vdupq_lane_p16<const N: i32>(a: poly16x4_t) -> poly16x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 1))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdupq_laneq_s64<const N: i32>(a: int64x2_t) -> int64x2_t {
     static_assert_uimm_bits!(N, 1);
     simd_shuffle!(a, a, [N as u32, N as u32])
@@ -3743,6 +3994,7 @@ pub unsafe fn vdupq_laneq_s64<const N: i32>(a: int64x2_t) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 0))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdupq_lane_s64<const N: i32>(a: int64x1_t) -> int64x2_t {
     static_assert!(N == 0);
     simd_shuffle!(a, a, [N as u32, N as u32])
@@ -3758,6 +4010,7 @@ pub unsafe fn vdupq_lane_s64<const N: i32>(a: int64x1_t) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 1))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdupq_laneq_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
     static_assert_uimm_bits!(N, 1);
     simd_shuffle!(a, a, [N as u32, N as u32])
@@ -3773,6 +4026,7 @@ pub unsafe fn vdupq_laneq_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 0))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdupq_lane_u64<const N: i32>(a: uint64x1_t) -> uint64x2_t {
     static_assert!(N == 0);
     simd_shuffle!(a, a, [N as u32, N as u32])
@@ -3788,6 +4042,7 @@ pub unsafe fn vdupq_lane_u64<const N: i32>(a: uint64x1_t) -> uint64x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 1))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdup_lane_f32<const N: i32>(a: float32x2_t) -> float32x2_t {
     static_assert_uimm_bits!(N, 1);
     simd_shuffle!(a, a, [N as u32, N as u32])
@@ -3803,6 +4058,7 @@ pub unsafe fn vdup_lane_f32<const N: i32>(a: float32x2_t) -> float32x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdupq_laneq_f32<const N: i32>(a: float32x4_t) -> float32x4_t {
     static_assert_uimm_bits!(N, 2);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
@@ -3818,6 +4074,7 @@ pub unsafe fn vdupq_laneq_f32<const N: i32>(a: float32x4_t) -> float32x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdup_laneq_f32<const N: i32>(a: float32x4_t) -> float32x2_t {
     static_assert_uimm_bits!(N, 2);
     simd_shuffle!(a, a, [N as u32, N as u32])
@@ -3833,6 +4090,7 @@ pub unsafe fn vdup_laneq_f32<const N: i32>(a: float32x4_t) -> float32x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup, N = 1))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdupq_lane_f32<const N: i32>(a: float32x2_t) -> float32x4_t {
     static_assert_uimm_bits!(N, 1);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
@@ -3848,6 +4106,7 @@ pub unsafe fn vdupq_lane_f32<const N: i32>(a: float32x2_t) -> float32x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, N = 0))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdup_lane_s64<const N: i32>(a: int64x1_t) -> int64x1_t {
     static_assert!(N == 0);
     a
@@ -3863,6 +4122,7 @@ pub unsafe fn vdup_lane_s64<const N: i32>(a: int64x1_t) -> int64x1_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, N = 0))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdup_lane_u64<const N: i32>(a: uint64x1_t) -> uint64x1_t {
     static_assert!(N == 0);
     a
@@ -3878,6 +4138,7 @@ pub unsafe fn vdup_lane_u64<const N: i32>(a: uint64x1_t) -> uint64x1_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, N = 1))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdup_laneq_s64<const N: i32>(a: int64x2_t) -> int64x1_t {
     static_assert_uimm_bits!(N, 1);
     transmute::<i64, _>(simd_extract(a, N as u32))
@@ -3893,6 +4154,7 @@ pub unsafe fn vdup_laneq_s64<const N: i32>(a: int64x2_t) -> int64x1_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, N = 1))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdup_laneq_u64<const N: i32>(a: uint64x2_t) -> uint64x1_t {
     static_assert_uimm_bits!(N, 1);
     transmute::<u64, _>(simd_extract(a, N as u32))
@@ -3908,6 +4170,7 @@ pub unsafe fn vdup_laneq_u64<const N: i32>(a: uint64x2_t) -> uint64x1_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 7))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vext_s8<const N: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     static_assert_uimm_bits!(N, 3);
     match N & 0b111 {
@@ -3933,6 +4196,7 @@ pub unsafe fn vext_s8<const N: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 15))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vextq_s8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     static_assert_uimm_bits!(N, 4);
     match N & 0b1111 {
@@ -3966,6 +4230,7 @@ pub unsafe fn vextq_s8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 3))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vext_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     static_assert_uimm_bits!(N, 2);
     match N & 0b11 {
@@ -3987,6 +4252,7 @@ pub unsafe fn vext_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 7))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vextq_s16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     static_assert_uimm_bits!(N, 3);
     match N & 0b111 {
@@ -4012,6 +4278,7 @@ pub unsafe fn vextq_s16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vext_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     static_assert_uimm_bits!(N, 1);
     match N & 0b1 {
@@ -4031,6 +4298,7 @@ pub unsafe fn vext_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 3))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vextq_s32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     static_assert_uimm_bits!(N, 2);
     match N & 0b11 {
@@ -4052,6 +4320,7 @@ pub unsafe fn vextq_s32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 7))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vext_u8<const N: i32>(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     static_assert_uimm_bits!(N, 3);
     match N & 0b111 {
@@ -4077,6 +4346,7 @@ pub unsafe fn vext_u8<const N: i32>(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 15))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vextq_u8<const N: i32>(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     static_assert_uimm_bits!(N, 4);
     match N & 0b1111 {
@@ -4110,6 +4380,7 @@ pub unsafe fn vextq_u8<const N: i32>(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 3))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vext_u16<const N: i32>(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     static_assert_uimm_bits!(N, 2);
     match N & 0b11 {
@@ -4131,6 +4402,7 @@ pub unsafe fn vext_u16<const N: i32>(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 7))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vextq_u16<const N: i32>(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     static_assert_uimm_bits!(N, 3);
     match N & 0b111 {
@@ -4156,6 +4428,7 @@ pub unsafe fn vextq_u16<const N: i32>(a: uint16x8_t, b: uint16x8_t) -> uint16x8_
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vext_u32<const N: i32>(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     static_assert_uimm_bits!(N, 1);
     match N & 0b1 {
@@ -4175,6 +4448,7 @@ pub unsafe fn vext_u32<const N: i32>(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 3))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vextq_u32<const N: i32>(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     static_assert_uimm_bits!(N, 2);
     match N & 0b11 {
@@ -4196,6 +4470,7 @@ pub unsafe fn vextq_u32<const N: i32>(a: uint32x4_t, b: uint32x4_t) -> uint32x4_
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 7))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vext_p8<const N: i32>(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
     static_assert_uimm_bits!(N, 3);
     match N & 0b111 {
@@ -4221,6 +4496,7 @@ pub unsafe fn vext_p8<const N: i32>(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 15))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vextq_p8<const N: i32>(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
     static_assert_uimm_bits!(N, 4);
     match N & 0b1111 {
@@ -4254,6 +4530,7 @@ pub unsafe fn vextq_p8<const N: i32>(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 3))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vext_p16<const N: i32>(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
     static_assert_uimm_bits!(N, 2);
     match N & 0b11 {
@@ -4275,6 +4552,7 @@ pub unsafe fn vext_p16<const N: i32>(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 7))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vextq_p16<const N: i32>(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
     static_assert_uimm_bits!(N, 3);
     match N & 0b111 {
@@ -4300,6 +4578,7 @@ pub unsafe fn vextq_p16<const N: i32>(a: poly16x8_t, b: poly16x8_t) -> poly16x8_
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vextq_s64<const N: i32>(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     static_assert_uimm_bits!(N, 1);
     match N & 0b1 {
@@ -4319,6 +4598,7 @@ pub unsafe fn vextq_s64<const N: i32>(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vextq_u64<const N: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     static_assert_uimm_bits!(N, 1);
     match N & 0b1 {
@@ -4338,6 +4618,7 @@ pub unsafe fn vextq_u64<const N: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64x2_
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vext_f32<const N: i32>(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     static_assert_uimm_bits!(N, 1);
     match N & 0b1 {
@@ -4357,6 +4638,7 @@ pub unsafe fn vext_f32<const N: i32>(a: float32x2_t, b: float32x2_t) -> float32x
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 3))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vextq_f32<const N: i32>(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     static_assert_uimm_bits!(N, 2);
     match N & 0b11 {
@@ -4377,6 +4659,7 @@ pub unsafe fn vextq_f32<const N: i32>(a: float32x4_t, b: float32x4_t) -> float32
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmla.i8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmla_s8(a: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t {
     simd_add(a, simd_mul(b, c))
 }
@@ -4390,6 +4673,7 @@ pub unsafe fn vmla_s8(a: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmla.i8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlaq_s8(a: int8x16_t, b: int8x16_t, c: int8x16_t) -> int8x16_t {
     simd_add(a, simd_mul(b, c))
 }
@@ -4403,6 +4687,7 @@ pub unsafe fn vmlaq_s8(a: int8x16_t, b: int8x16_t, c: int8x16_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmla.i16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmla_s16(a: int16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t {
     simd_add(a, simd_mul(b, c))
 }
@@ -4416,6 +4701,7 @@ pub unsafe fn vmla_s16(a: int16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmla.i16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlaq_s16(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t {
     simd_add(a, simd_mul(b, c))
 }
@@ -4429,6 +4715,7 @@ pub unsafe fn vmlaq_s16(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmla.i32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmla_s32(a: int32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t {
     simd_add(a, simd_mul(b, c))
 }
@@ -4442,6 +4729,7 @@ pub unsafe fn vmla_s32(a: int32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmla.i32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlaq_s32(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t {
     simd_add(a, simd_mul(b, c))
 }
@@ -4455,6 +4743,7 @@ pub unsafe fn vmlaq_s32(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmla.i8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmla_u8(a: uint8x8_t, b: uint8x8_t, c: uint8x8_t) -> uint8x8_t {
     simd_add(a, simd_mul(b, c))
 }
@@ -4468,6 +4757,7 @@ pub unsafe fn vmla_u8(a: uint8x8_t, b: uint8x8_t, c: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmla.i8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlaq_u8(a: uint8x16_t, b: uint8x16_t, c: uint8x16_t) -> uint8x16_t {
     simd_add(a, simd_mul(b, c))
 }
@@ -4481,6 +4771,7 @@ pub unsafe fn vmlaq_u8(a: uint8x16_t, b: uint8x16_t, c: uint8x16_t) -> uint8x16_
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmla.i16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmla_u16(a: uint16x4_t, b: uint16x4_t, c: uint16x4_t) -> uint16x4_t {
     simd_add(a, simd_mul(b, c))
 }
@@ -4494,6 +4785,7 @@ pub unsafe fn vmla_u16(a: uint16x4_t, b: uint16x4_t, c: uint16x4_t) -> uint16x4_
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmla.i16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlaq_u16(a: uint16x8_t, b: uint16x8_t, c: uint16x8_t) -> uint16x8_t {
     simd_add(a, simd_mul(b, c))
 }
@@ -4507,6 +4799,7 @@ pub unsafe fn vmlaq_u16(a: uint16x8_t, b: uint16x8_t, c: uint16x8_t) -> uint16x8
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmla.i32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmla_u32(a: uint32x2_t, b: uint32x2_t, c: uint32x2_t) -> uint32x2_t {
     simd_add(a, simd_mul(b, c))
 }
@@ -4520,6 +4813,7 @@ pub unsafe fn vmla_u32(a: uint32x2_t, b: uint32x2_t, c: uint32x2_t) -> uint32x2_
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmla.i32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlaq_u32(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t) -> uint32x4_t {
     simd_add(a, simd_mul(b, c))
 }
@@ -4533,6 +4827,7 @@ pub unsafe fn vmlaq_u32(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t) -> uint32x4
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmla.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmla_f32(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float32x2_t {
     simd_add(a, simd_mul(b, c))
 }
@@ -4546,6 +4841,7 @@ pub unsafe fn vmla_f32(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float3
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmla.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlaq_f32(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float32x4_t {
     simd_add(a, simd_mul(b, c))
 }
@@ -4559,6 +4855,7 @@ pub unsafe fn vmlaq_f32(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmla.i16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmla_n_s16(a: int16x4_t, b: int16x4_t, c: i16) -> int16x4_t {
     vmla_s16(a, b, vdup_n_s16(c))
 }
@@ -4572,6 +4869,7 @@ pub unsafe fn vmla_n_s16(a: int16x4_t, b: int16x4_t, c: i16) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmla.i16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlaq_n_s16(a: int16x8_t, b: int16x8_t, c: i16) -> int16x8_t {
     vmlaq_s16(a, b, vdupq_n_s16(c))
 }
@@ -4585,6 +4883,7 @@ pub unsafe fn vmlaq_n_s16(a: int16x8_t, b: int16x8_t, c: i16) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmla.i32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmla_n_s32(a: int32x2_t, b: int32x2_t, c: i32) -> int32x2_t {
     vmla_s32(a, b, vdup_n_s32(c))
 }
@@ -4598,6 +4897,7 @@ pub unsafe fn vmla_n_s32(a: int32x2_t, b: int32x2_t, c: i32) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmla.i32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlaq_n_s32(a: int32x4_t, b: int32x4_t, c: i32) -> int32x4_t {
     vmlaq_s32(a, b, vdupq_n_s32(c))
 }
@@ -4611,6 +4911,7 @@ pub unsafe fn vmlaq_n_s32(a: int32x4_t, b: int32x4_t, c: i32) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmla.i16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmla_n_u16(a: uint16x4_t, b: uint16x4_t, c: u16) -> uint16x4_t {
     vmla_u16(a, b, vdup_n_u16(c))
 }
@@ -4624,6 +4925,7 @@ pub unsafe fn vmla_n_u16(a: uint16x4_t, b: uint16x4_t, c: u16) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmla.i16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlaq_n_u16(a: uint16x8_t, b: uint16x8_t, c: u16) -> uint16x8_t {
     vmlaq_u16(a, b, vdupq_n_u16(c))
 }
@@ -4637,6 +4939,7 @@ pub unsafe fn vmlaq_n_u16(a: uint16x8_t, b: uint16x8_t, c: u16) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmla.i32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmla_n_u32(a: uint32x2_t, b: uint32x2_t, c: u32) -> uint32x2_t {
     vmla_u32(a, b, vdup_n_u32(c))
 }
@@ -4650,6 +4953,7 @@ pub unsafe fn vmla_n_u32(a: uint32x2_t, b: uint32x2_t, c: u32) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmla.i32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlaq_n_u32(a: uint32x4_t, b: uint32x4_t, c: u32) -> uint32x4_t {
     vmlaq_u32(a, b, vdupq_n_u32(c))
 }
@@ -4663,6 +4967,7 @@ pub unsafe fn vmlaq_n_u32(a: uint32x4_t, b: uint32x4_t, c: u32) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmla.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmla_n_f32(a: float32x2_t, b: float32x2_t, c: f32) -> float32x2_t {
     vmla_f32(a, b, vdup_n_f32(c))
 }
@@ -4676,6 +4981,7 @@ pub unsafe fn vmla_n_f32(a: float32x2_t, b: float32x2_t, c: f32) -> float32x2_t 
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmla.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlaq_n_f32(a: float32x4_t, b: float32x4_t, c: f32) -> float32x4_t {
     vmlaq_f32(a, b, vdupq_n_f32(c))
 }
@@ -4690,6 +4996,7 @@ pub unsafe fn vmlaq_n_f32(a: float32x4_t, b: float32x4_t, c: f32) -> float32x4_t
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmla_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t {
     static_assert_uimm_bits!(LANE, 2);
     vmla_s16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -4705,6 +5012,7 @@ pub unsafe fn vmla_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int1
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmla_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x8_t) -> int16x4_t {
     static_assert_uimm_bits!(LANE, 3);
     vmla_s16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -4720,6 +5028,7 @@ pub unsafe fn vmla_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlaq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16x4_t) -> int16x8_t {
     static_assert_uimm_bits!(LANE, 2);
     vmlaq_s16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -4735,6 +5044,7 @@ pub unsafe fn vmlaq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlaq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t {
     static_assert_uimm_bits!(LANE, 3);
     vmlaq_s16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -4750,6 +5060,7 @@ pub unsafe fn vmlaq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: in
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmla_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 1);
     vmla_s32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
@@ -4765,6 +5076,7 @@ pub unsafe fn vmla_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int3
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmla_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x4_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 2);
     vmla_s32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
@@ -4780,6 +5092,7 @@ pub unsafe fn vmla_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlaq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int32x2_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 1);
     vmlaq_s32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -4795,6 +5108,7 @@ pub unsafe fn vmlaq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlaq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
     vmlaq_s32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -4810,6 +5124,7 @@ pub unsafe fn vmlaq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: in
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmla_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t, c: uint16x4_t) -> uint16x4_t {
     static_assert_uimm_bits!(LANE, 2);
     vmla_u16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -4825,6 +5140,7 @@ pub unsafe fn vmla_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t, c: ui
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmla_laneq_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t, c: uint16x8_t) -> uint16x4_t {
     static_assert_uimm_bits!(LANE, 3);
     vmla_u16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -4840,6 +5156,7 @@ pub unsafe fn vmla_laneq_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t, c: u
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlaq_lane_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t, c: uint16x4_t) -> uint16x8_t {
     static_assert_uimm_bits!(LANE, 2);
     vmlaq_u16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -4855,6 +5172,7 @@ pub unsafe fn vmlaq_lane_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t, c: u
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlaq_laneq_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t, c: uint16x8_t) -> uint16x8_t {
     static_assert_uimm_bits!(LANE, 3);
     vmlaq_u16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -4870,6 +5188,7 @@ pub unsafe fn vmlaq_laneq_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t, c: 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmla_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t, c: uint32x2_t) -> uint32x2_t {
     static_assert_uimm_bits!(LANE, 1);
     vmla_u32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
@@ -4885,6 +5204,7 @@ pub unsafe fn vmla_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t, c: ui
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmla_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t, c: uint32x4_t) -> uint32x2_t {
     static_assert_uimm_bits!(LANE, 2);
     vmla_u32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
@@ -4900,6 +5220,7 @@ pub unsafe fn vmla_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t, c: u
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlaq_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t, c: uint32x2_t) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 1);
     vmlaq_u32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -4915,6 +5236,7 @@ pub unsafe fn vmlaq_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t, c: u
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mla, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlaq_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 2);
     vmlaq_u32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -4930,6 +5252,7 @@ pub unsafe fn vmlaq_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t, c: 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmul, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmla_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 1);
     vmla_f32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
@@ -4945,6 +5268,7 @@ pub unsafe fn vmla_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c: 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmul, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmla_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c: float32x4_t) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 2);
     vmla_f32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
@@ -4960,6 +5284,7 @@ pub unsafe fn vmla_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c:
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmul, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlaq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c: float32x2_t) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 1);
     vmlaq_f32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -4975,6 +5300,7 @@ pub unsafe fn vmlaq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c:
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmul, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlaq_laneq_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 2);
     vmlaq_f32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -4989,6 +5315,7 @@ pub unsafe fn vmlaq_laneq_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmlal.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smlal))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlal_s8(a: int16x8_t, b: int8x8_t, c: int8x8_t) -> int16x8_t {
     simd_add(a, vmull_s8(b, c))
 }
@@ -5002,6 +5329,7 @@ pub unsafe fn vmlal_s8(a: int16x8_t, b: int8x8_t, c: int8x8_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmlal.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smlal))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlal_s16(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t {
     simd_add(a, vmull_s16(b, c))
 }
@@ -5015,6 +5343,7 @@ pub unsafe fn vmlal_s16(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmlal.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smlal))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlal_s32(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t {
     simd_add(a, vmull_s32(b, c))
 }
@@ -5028,6 +5357,7 @@ pub unsafe fn vmlal_s32(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmlal.u8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umlal))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlal_u8(a: uint16x8_t, b: uint8x8_t, c: uint8x8_t) -> uint16x8_t {
     simd_add(a, vmull_u8(b, c))
 }
@@ -5041,6 +5371,7 @@ pub unsafe fn vmlal_u8(a: uint16x8_t, b: uint8x8_t, c: uint8x8_t) -> uint16x8_t 
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmlal.u16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umlal))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlal_u16(a: uint32x4_t, b: uint16x4_t, c: uint16x4_t) -> uint32x4_t {
     simd_add(a, vmull_u16(b, c))
 }
@@ -5054,6 +5385,7 @@ pub unsafe fn vmlal_u16(a: uint32x4_t, b: uint16x4_t, c: uint16x4_t) -> uint32x4
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmlal.u32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umlal))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlal_u32(a: uint64x2_t, b: uint32x2_t, c: uint32x2_t) -> uint64x2_t {
     simd_add(a, vmull_u32(b, c))
 }
@@ -5067,6 +5399,7 @@ pub unsafe fn vmlal_u32(a: uint64x2_t, b: uint32x2_t, c: uint32x2_t) -> uint64x2
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmlal.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smlal))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlal_n_s16(a: int32x4_t, b: int16x4_t, c: i16) -> int32x4_t {
     vmlal_s16(a, b, vdup_n_s16(c))
 }
@@ -5080,6 +5413,7 @@ pub unsafe fn vmlal_n_s16(a: int32x4_t, b: int16x4_t, c: i16) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmlal.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smlal))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlal_n_s32(a: int64x2_t, b: int32x2_t, c: i32) -> int64x2_t {
     vmlal_s32(a, b, vdup_n_s32(c))
 }
@@ -5093,6 +5427,7 @@ pub unsafe fn vmlal_n_s32(a: int64x2_t, b: int32x2_t, c: i32) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmlal.u16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umlal))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlal_n_u16(a: uint32x4_t, b: uint16x4_t, c: u16) -> uint32x4_t {
     vmlal_u16(a, b, vdup_n_u16(c))
 }
@@ -5106,6 +5441,7 @@ pub unsafe fn vmlal_n_u16(a: uint32x4_t, b: uint16x4_t, c: u16) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmlal.u32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umlal))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlal_n_u32(a: uint64x2_t, b: uint32x2_t, c: u32) -> uint64x2_t {
     vmlal_u32(a, b, vdup_n_u32(c))
 }
@@ -5120,6 +5456,7 @@ pub unsafe fn vmlal_n_u32(a: uint64x2_t, b: uint32x2_t, c: u32) -> uint64x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smlal, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlal_lane_s16<const LANE: i32>(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
     vmlal_s16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -5135,6 +5472,7 @@ pub unsafe fn vmlal_lane_s16<const LANE: i32>(a: int32x4_t, b: int16x4_t, c: int
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smlal, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlal_laneq_s16<const LANE: i32>(a: int32x4_t, b: int16x4_t, c: int16x8_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 3);
     vmlal_s16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -5150,6 +5488,7 @@ pub unsafe fn vmlal_laneq_s16<const LANE: i32>(a: int32x4_t, b: int16x4_t, c: in
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smlal, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlal_lane_s32<const LANE: i32>(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t {
     static_assert_uimm_bits!(LANE, 1);
     vmlal_s32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
@@ -5165,6 +5504,7 @@ pub unsafe fn vmlal_lane_s32<const LANE: i32>(a: int64x2_t, b: int32x2_t, c: int
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smlal, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlal_laneq_s32<const LANE: i32>(a: int64x2_t, b: int32x2_t, c: int32x4_t) -> int64x2_t {
     static_assert_uimm_bits!(LANE, 2);
     vmlal_s32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
@@ -5180,6 +5520,7 @@ pub unsafe fn vmlal_laneq_s32<const LANE: i32>(a: int64x2_t, b: int32x2_t, c: in
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umlal, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlal_lane_u16<const LANE: i32>(a: uint32x4_t, b: uint16x4_t, c: uint16x4_t) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 2);
     vmlal_u16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -5195,6 +5536,7 @@ pub unsafe fn vmlal_lane_u16<const LANE: i32>(a: uint32x4_t, b: uint16x4_t, c: u
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umlal, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlal_laneq_u16<const LANE: i32>(a: uint32x4_t, b: uint16x4_t, c: uint16x8_t) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 3);
     vmlal_u16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -5210,6 +5552,7 @@ pub unsafe fn vmlal_laneq_u16<const LANE: i32>(a: uint32x4_t, b: uint16x4_t, c: 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umlal, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlal_lane_u32<const LANE: i32>(a: uint64x2_t, b: uint32x2_t, c: uint32x2_t) -> uint64x2_t {
     static_assert_uimm_bits!(LANE, 1);
     vmlal_u32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
@@ -5225,6 +5568,7 @@ pub unsafe fn vmlal_lane_u32<const LANE: i32>(a: uint64x2_t, b: uint32x2_t, c: u
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umlal, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlal_laneq_u32<const LANE: i32>(a: uint64x2_t, b: uint32x2_t, c: uint32x4_t) -> uint64x2_t {
     static_assert_uimm_bits!(LANE, 2);
     vmlal_u32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
@@ -5239,6 +5583,7 @@ pub unsafe fn vmlal_laneq_u32<const LANE: i32>(a: uint64x2_t, b: uint32x2_t, c: 
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmls.i8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmls_s8(a: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t {
     simd_sub(a, simd_mul(b, c))
 }
@@ -5252,6 +5597,7 @@ pub unsafe fn vmls_s8(a: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmls.i8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsq_s8(a: int8x16_t, b: int8x16_t, c: int8x16_t) -> int8x16_t {
     simd_sub(a, simd_mul(b, c))
 }
@@ -5265,6 +5611,7 @@ pub unsafe fn vmlsq_s8(a: int8x16_t, b: int8x16_t, c: int8x16_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmls.i16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmls_s16(a: int16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t {
     simd_sub(a, simd_mul(b, c))
 }
@@ -5278,6 +5625,7 @@ pub unsafe fn vmls_s16(a: int16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmls.i16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsq_s16(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t {
     simd_sub(a, simd_mul(b, c))
 }
@@ -5291,6 +5639,7 @@ pub unsafe fn vmlsq_s16(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmls.i32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmls_s32(a: int32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t {
     simd_sub(a, simd_mul(b, c))
 }
@@ -5304,6 +5653,7 @@ pub unsafe fn vmls_s32(a: int32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmls.i32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsq_s32(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t {
     simd_sub(a, simd_mul(b, c))
 }
@@ -5317,6 +5667,7 @@ pub unsafe fn vmlsq_s32(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmls.i8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmls_u8(a: uint8x8_t, b: uint8x8_t, c: uint8x8_t) -> uint8x8_t {
     simd_sub(a, simd_mul(b, c))
 }
@@ -5330,6 +5681,7 @@ pub unsafe fn vmls_u8(a: uint8x8_t, b: uint8x8_t, c: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmls.i8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsq_u8(a: uint8x16_t, b: uint8x16_t, c: uint8x16_t) -> uint8x16_t {
     simd_sub(a, simd_mul(b, c))
 }
@@ -5343,6 +5695,7 @@ pub unsafe fn vmlsq_u8(a: uint8x16_t, b: uint8x16_t, c: uint8x16_t) -> uint8x16_
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmls.i16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmls_u16(a: uint16x4_t, b: uint16x4_t, c: uint16x4_t) -> uint16x4_t {
     simd_sub(a, simd_mul(b, c))
 }
@@ -5356,6 +5709,7 @@ pub unsafe fn vmls_u16(a: uint16x4_t, b: uint16x4_t, c: uint16x4_t) -> uint16x4_
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmls.i16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsq_u16(a: uint16x8_t, b: uint16x8_t, c: uint16x8_t) -> uint16x8_t {
     simd_sub(a, simd_mul(b, c))
 }
@@ -5369,6 +5723,7 @@ pub unsafe fn vmlsq_u16(a: uint16x8_t, b: uint16x8_t, c: uint16x8_t) -> uint16x8
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmls.i32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmls_u32(a: uint32x2_t, b: uint32x2_t, c: uint32x2_t) -> uint32x2_t {
     simd_sub(a, simd_mul(b, c))
 }
@@ -5382,6 +5737,7 @@ pub unsafe fn vmls_u32(a: uint32x2_t, b: uint32x2_t, c: uint32x2_t) -> uint32x2_
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmls.i32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsq_u32(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t) -> uint32x4_t {
     simd_sub(a, simd_mul(b, c))
 }
@@ -5395,6 +5751,7 @@ pub unsafe fn vmlsq_u32(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t) -> uint32x4
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmls.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmls_f32(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float32x2_t {
     simd_sub(a, simd_mul(b, c))
 }
@@ -5408,6 +5765,7 @@ pub unsafe fn vmls_f32(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float3
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmls.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsq_f32(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float32x4_t {
     simd_sub(a, simd_mul(b, c))
 }
@@ -5421,6 +5779,7 @@ pub unsafe fn vmlsq_f32(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmls.i16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmls_n_s16(a: int16x4_t, b: int16x4_t, c: i16) -> int16x4_t {
     vmls_s16(a, b, vdup_n_s16(c))
 }
@@ -5434,6 +5793,7 @@ pub unsafe fn vmls_n_s16(a: int16x4_t, b: int16x4_t, c: i16) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmls.i16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsq_n_s16(a: int16x8_t, b: int16x8_t, c: i16) -> int16x8_t {
     vmlsq_s16(a, b, vdupq_n_s16(c))
 }
@@ -5447,6 +5807,7 @@ pub unsafe fn vmlsq_n_s16(a: int16x8_t, b: int16x8_t, c: i16) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmls.i32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmls_n_s32(a: int32x2_t, b: int32x2_t, c: i32) -> int32x2_t {
     vmls_s32(a, b, vdup_n_s32(c))
 }
@@ -5460,6 +5821,7 @@ pub unsafe fn vmls_n_s32(a: int32x2_t, b: int32x2_t, c: i32) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmls.i32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsq_n_s32(a: int32x4_t, b: int32x4_t, c: i32) -> int32x4_t {
     vmlsq_s32(a, b, vdupq_n_s32(c))
 }
@@ -5473,6 +5835,7 @@ pub unsafe fn vmlsq_n_s32(a: int32x4_t, b: int32x4_t, c: i32) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmls.i16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmls_n_u16(a: uint16x4_t, b: uint16x4_t, c: u16) -> uint16x4_t {
     vmls_u16(a, b, vdup_n_u16(c))
 }
@@ -5486,6 +5849,7 @@ pub unsafe fn vmls_n_u16(a: uint16x4_t, b: uint16x4_t, c: u16) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmls.i16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsq_n_u16(a: uint16x8_t, b: uint16x8_t, c: u16) -> uint16x8_t {
     vmlsq_u16(a, b, vdupq_n_u16(c))
 }
@@ -5499,6 +5863,7 @@ pub unsafe fn vmlsq_n_u16(a: uint16x8_t, b: uint16x8_t, c: u16) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmls.i32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmls_n_u32(a: uint32x2_t, b: uint32x2_t, c: u32) -> uint32x2_t {
     vmls_u32(a, b, vdup_n_u32(c))
 }
@@ -5512,6 +5877,7 @@ pub unsafe fn vmls_n_u32(a: uint32x2_t, b: uint32x2_t, c: u32) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmls.i32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsq_n_u32(a: uint32x4_t, b: uint32x4_t, c: u32) -> uint32x4_t {
     vmlsq_u32(a, b, vdupq_n_u32(c))
 }
@@ -5525,6 +5891,7 @@ pub unsafe fn vmlsq_n_u32(a: uint32x4_t, b: uint32x4_t, c: u32) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmls.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmls_n_f32(a: float32x2_t, b: float32x2_t, c: f32) -> float32x2_t {
     vmls_f32(a, b, vdup_n_f32(c))
 }
@@ -5538,6 +5905,7 @@ pub unsafe fn vmls_n_f32(a: float32x2_t, b: float32x2_t, c: f32) -> float32x2_t 
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmls.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsq_n_f32(a: float32x4_t, b: float32x4_t, c: f32) -> float32x4_t {
     vmlsq_f32(a, b, vdupq_n_f32(c))
 }
@@ -5552,6 +5920,7 @@ pub unsafe fn vmlsq_n_f32(a: float32x4_t, b: float32x4_t, c: f32) -> float32x4_t
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmls_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t {
     static_assert_uimm_bits!(LANE, 2);
     vmls_s16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -5567,6 +5936,7 @@ pub unsafe fn vmls_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int1
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmls_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x8_t) -> int16x4_t {
     static_assert_uimm_bits!(LANE, 3);
     vmls_s16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -5582,6 +5952,7 @@ pub unsafe fn vmls_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16x4_t) -> int16x8_t {
     static_assert_uimm_bits!(LANE, 2);
     vmlsq_s16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -5597,6 +5968,7 @@ pub unsafe fn vmlsq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t {
     static_assert_uimm_bits!(LANE, 3);
     vmlsq_s16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -5612,6 +5984,7 @@ pub unsafe fn vmlsq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: in
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmls_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 1);
     vmls_s32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
@@ -5627,6 +6000,7 @@ pub unsafe fn vmls_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int3
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmls_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x4_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 2);
     vmls_s32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
@@ -5642,6 +6016,7 @@ pub unsafe fn vmls_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int32x2_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 1);
     vmlsq_s32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -5657,6 +6032,7 @@ pub unsafe fn vmlsq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
     vmlsq_s32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -5672,6 +6048,7 @@ pub unsafe fn vmlsq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: in
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmls_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t, c: uint16x4_t) -> uint16x4_t {
     static_assert_uimm_bits!(LANE, 2);
     vmls_u16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -5687,6 +6064,7 @@ pub unsafe fn vmls_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t, c: ui
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmls_laneq_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t, c: uint16x8_t) -> uint16x4_t {
     static_assert_uimm_bits!(LANE, 3);
     vmls_u16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -5702,6 +6080,7 @@ pub unsafe fn vmls_laneq_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t, c: u
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsq_lane_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t, c: uint16x4_t) -> uint16x8_t {
     static_assert_uimm_bits!(LANE, 2);
     vmlsq_u16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -5717,6 +6096,7 @@ pub unsafe fn vmlsq_lane_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t, c: u
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsq_laneq_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t, c: uint16x8_t) -> uint16x8_t {
     static_assert_uimm_bits!(LANE, 3);
     vmlsq_u16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -5732,6 +6112,7 @@ pub unsafe fn vmlsq_laneq_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t, c: 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmls_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t, c: uint32x2_t) -> uint32x2_t {
     static_assert_uimm_bits!(LANE, 1);
     vmls_u32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
@@ -5747,6 +6128,7 @@ pub unsafe fn vmls_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t, c: ui
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmls_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t, c: uint32x4_t) -> uint32x2_t {
     static_assert_uimm_bits!(LANE, 2);
     vmls_u32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
@@ -5762,6 +6144,7 @@ pub unsafe fn vmls_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t, c: u
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsq_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t, c: uint32x2_t) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 1);
     vmlsq_u32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -5777,6 +6160,7 @@ pub unsafe fn vmlsq_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t, c: u
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mls, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsq_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 2);
     vmlsq_u32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -5792,6 +6176,7 @@ pub unsafe fn vmlsq_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t, c: 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmul, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmls_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 1);
     vmls_f32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
@@ -5807,6 +6192,7 @@ pub unsafe fn vmls_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c: 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmul, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmls_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c: float32x4_t) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 2);
     vmls_f32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
@@ -5822,6 +6208,7 @@ pub unsafe fn vmls_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c:
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmul, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c: float32x2_t) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 1);
     vmlsq_f32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -5837,6 +6224,7 @@ pub unsafe fn vmlsq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c:
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmul, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsq_laneq_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 2);
     vmlsq_f32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -5851,6 +6239,7 @@ pub unsafe fn vmlsq_laneq_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmlsl.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smlsl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsl_s8(a: int16x8_t, b: int8x8_t, c: int8x8_t) -> int16x8_t {
     simd_sub(a, vmull_s8(b, c))
 }
@@ -5864,6 +6253,7 @@ pub unsafe fn vmlsl_s8(a: int16x8_t, b: int8x8_t, c: int8x8_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmlsl.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smlsl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsl_s16(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t {
     simd_sub(a, vmull_s16(b, c))
 }
@@ -5877,6 +6267,7 @@ pub unsafe fn vmlsl_s16(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmlsl.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smlsl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsl_s32(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t {
     simd_sub(a, vmull_s32(b, c))
 }
@@ -5890,6 +6281,7 @@ pub unsafe fn vmlsl_s32(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmlsl.u8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umlsl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsl_u8(a: uint16x8_t, b: uint8x8_t, c: uint8x8_t) -> uint16x8_t {
     simd_sub(a, vmull_u8(b, c))
 }
@@ -5903,6 +6295,7 @@ pub unsafe fn vmlsl_u8(a: uint16x8_t, b: uint8x8_t, c: uint8x8_t) -> uint16x8_t 
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmlsl.u16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umlsl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsl_u16(a: uint32x4_t, b: uint16x4_t, c: uint16x4_t) -> uint32x4_t {
     simd_sub(a, vmull_u16(b, c))
 }
@@ -5916,6 +6309,7 @@ pub unsafe fn vmlsl_u16(a: uint32x4_t, b: uint16x4_t, c: uint16x4_t) -> uint32x4
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmlsl.u32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umlsl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsl_u32(a: uint64x2_t, b: uint32x2_t, c: uint32x2_t) -> uint64x2_t {
     simd_sub(a, vmull_u32(b, c))
 }
@@ -5929,6 +6323,7 @@ pub unsafe fn vmlsl_u32(a: uint64x2_t, b: uint32x2_t, c: uint32x2_t) -> uint64x2
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmlsl.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smlsl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsl_n_s16(a: int32x4_t, b: int16x4_t, c: i16) -> int32x4_t {
     vmlsl_s16(a, b, vdup_n_s16(c))
 }
@@ -5942,6 +6337,7 @@ pub unsafe fn vmlsl_n_s16(a: int32x4_t, b: int16x4_t, c: i16) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmlsl.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smlsl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsl_n_s32(a: int64x2_t, b: int32x2_t, c: i32) -> int64x2_t {
     vmlsl_s32(a, b, vdup_n_s32(c))
 }
@@ -5955,6 +6351,7 @@ pub unsafe fn vmlsl_n_s32(a: int64x2_t, b: int32x2_t, c: i32) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmlsl.u16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umlsl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsl_n_u16(a: uint32x4_t, b: uint16x4_t, c: u16) -> uint32x4_t {
     vmlsl_u16(a, b, vdup_n_u16(c))
 }
@@ -5968,6 +6365,7 @@ pub unsafe fn vmlsl_n_u16(a: uint32x4_t, b: uint16x4_t, c: u16) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmlsl.u32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umlsl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsl_n_u32(a: uint64x2_t, b: uint32x2_t, c: u32) -> uint64x2_t {
     vmlsl_u32(a, b, vdup_n_u32(c))
 }
@@ -5982,6 +6380,7 @@ pub unsafe fn vmlsl_n_u32(a: uint64x2_t, b: uint32x2_t, c: u32) -> uint64x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smlsl, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsl_lane_s16<const LANE: i32>(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
     vmlsl_s16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -5997,6 +6396,7 @@ pub unsafe fn vmlsl_lane_s16<const LANE: i32>(a: int32x4_t, b: int16x4_t, c: int
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smlsl, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsl_laneq_s16<const LANE: i32>(a: int32x4_t, b: int16x4_t, c: int16x8_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 3);
     vmlsl_s16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -6012,6 +6412,7 @@ pub unsafe fn vmlsl_laneq_s16<const LANE: i32>(a: int32x4_t, b: int16x4_t, c: in
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smlsl, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsl_lane_s32<const LANE: i32>(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t {
     static_assert_uimm_bits!(LANE, 1);
     vmlsl_s32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
@@ -6027,6 +6428,7 @@ pub unsafe fn vmlsl_lane_s32<const LANE: i32>(a: int64x2_t, b: int32x2_t, c: int
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smlsl, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsl_laneq_s32<const LANE: i32>(a: int64x2_t, b: int32x2_t, c: int32x4_t) -> int64x2_t {
     static_assert_uimm_bits!(LANE, 2);
     vmlsl_s32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
@@ -6042,6 +6444,7 @@ pub unsafe fn vmlsl_laneq_s32<const LANE: i32>(a: int64x2_t, b: int32x2_t, c: in
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umlsl, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsl_lane_u16<const LANE: i32>(a: uint32x4_t, b: uint16x4_t, c: uint16x4_t) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 2);
     vmlsl_u16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -6057,6 +6460,7 @@ pub unsafe fn vmlsl_lane_u16<const LANE: i32>(a: uint32x4_t, b: uint16x4_t, c: u
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umlsl, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsl_laneq_u16<const LANE: i32>(a: uint32x4_t, b: uint16x4_t, c: uint16x8_t) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 3);
     vmlsl_u16(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -6072,6 +6476,7 @@ pub unsafe fn vmlsl_laneq_u16<const LANE: i32>(a: uint32x4_t, b: uint16x4_t, c: 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umlsl, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsl_lane_u32<const LANE: i32>(a: uint64x2_t, b: uint32x2_t, c: uint32x2_t) -> uint64x2_t {
     static_assert_uimm_bits!(LANE, 1);
     vmlsl_u32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
@@ -6087,6 +6492,7 @@ pub unsafe fn vmlsl_lane_u32<const LANE: i32>(a: uint64x2_t, b: uint32x2_t, c: u
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umlsl, LANE = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmlsl_laneq_u32<const LANE: i32>(a: uint64x2_t, b: uint32x2_t, c: uint32x4_t) -> uint64x2_t {
     static_assert_uimm_bits!(LANE, 2);
     vmlsl_u32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
@@ -6101,6 +6507,7 @@ pub unsafe fn vmlsl_laneq_u32<const LANE: i32>(a: uint64x2_t, b: uint32x2_t, c: 
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vneg.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(neg))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vneg_s8(a: int8x8_t) -> int8x8_t {
     simd_neg(a)
 }
@@ -6114,6 +6521,7 @@ pub unsafe fn vneg_s8(a: int8x8_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vneg.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(neg))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vnegq_s8(a: int8x16_t) -> int8x16_t {
     simd_neg(a)
 }
@@ -6127,6 +6535,7 @@ pub unsafe fn vnegq_s8(a: int8x16_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vneg.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(neg))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vneg_s16(a: int16x4_t) -> int16x4_t {
     simd_neg(a)
 }
@@ -6140,6 +6549,7 @@ pub unsafe fn vneg_s16(a: int16x4_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vneg.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(neg))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vnegq_s16(a: int16x8_t) -> int16x8_t {
     simd_neg(a)
 }
@@ -6153,6 +6563,7 @@ pub unsafe fn vnegq_s16(a: int16x8_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vneg.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(neg))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vneg_s32(a: int32x2_t) -> int32x2_t {
     simd_neg(a)
 }
@@ -6166,6 +6577,7 @@ pub unsafe fn vneg_s32(a: int32x2_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vneg.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(neg))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vnegq_s32(a: int32x4_t) -> int32x4_t {
     simd_neg(a)
 }
@@ -6179,6 +6591,7 @@ pub unsafe fn vnegq_s32(a: int32x4_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vneg.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fneg))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vneg_f32(a: float32x2_t) -> float32x2_t {
     simd_neg(a)
 }
@@ -6192,6 +6605,7 @@ pub unsafe fn vneg_f32(a: float32x2_t) -> float32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vneg.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fneg))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vnegq_f32(a: float32x4_t) -> float32x4_t {
     simd_neg(a)
 }
@@ -6205,6 +6619,7 @@ pub unsafe fn vnegq_f32(a: float32x4_t) -> float32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqneg.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqneg))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqneg_s8(a: int8x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6224,6 +6639,7 @@ vqneg_s8_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqneg.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqneg))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqnegq_s8(a: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6243,6 +6659,7 @@ vqnegq_s8_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqneg.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqneg))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqneg_s16(a: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6262,6 +6679,7 @@ vqneg_s16_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqneg.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqneg))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqnegq_s16(a: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6281,6 +6699,7 @@ vqnegq_s16_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqneg.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqneg))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqneg_s32(a: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6300,6 +6719,7 @@ vqneg_s32_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqneg.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqneg))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqnegq_s32(a: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6319,6 +6739,7 @@ vqnegq_s32_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqsub.u8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqsub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqsub_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6338,6 +6759,7 @@ vqsub_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqsub.u8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqsub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqsubq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6357,6 +6779,7 @@ vqsubq_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqsub.u16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqsub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqsub_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6376,6 +6799,7 @@ vqsub_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqsub.u16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqsub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqsubq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6395,6 +6819,7 @@ vqsubq_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqsub.u32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqsub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqsub_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6414,6 +6839,7 @@ vqsub_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqsub.u32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqsub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqsubq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6433,6 +6859,7 @@ vqsubq_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqsub.u64"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqsub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqsub_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6452,6 +6879,7 @@ vqsub_u64_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqsub.u64"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqsub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqsubq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6471,6 +6899,7 @@ vqsubq_u64_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqsub.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqsub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqsub_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6490,6 +6919,7 @@ vqsub_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqsub.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqsub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqsubq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6509,6 +6939,7 @@ vqsubq_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqsub.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqsub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqsub_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6528,6 +6959,7 @@ vqsub_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqsub.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqsub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqsubq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6547,6 +6979,7 @@ vqsubq_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqsub.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqsub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqsub_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6566,6 +6999,7 @@ vqsub_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqsub.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqsub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqsubq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6585,6 +7019,7 @@ vqsubq_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqsub.s64"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqsub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqsub_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6604,6 +7039,7 @@ vqsub_s64_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqsub.s64"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqsub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqsubq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6623,6 +7059,7 @@ vqsubq_s64_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vhadd.u8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uhadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vhadd_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6642,6 +7079,7 @@ vhadd_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vhadd.u8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uhadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vhaddq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6661,6 +7099,7 @@ vhaddq_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vhadd.u16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uhadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vhadd_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6680,6 +7119,7 @@ vhadd_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vhadd.u16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uhadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vhaddq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6699,6 +7139,7 @@ vhaddq_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vhadd.u32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uhadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vhadd_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6718,6 +7159,7 @@ vhadd_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vhadd.u32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uhadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vhaddq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6737,6 +7179,7 @@ vhaddq_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vhadd.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vhadd_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6756,6 +7199,7 @@ vhadd_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vhadd.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vhaddq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6775,6 +7219,7 @@ vhaddq_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vhadd.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vhadd_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6794,6 +7239,7 @@ vhadd_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vhadd.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vhaddq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6813,6 +7259,7 @@ vhaddq_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vhadd.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vhadd_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6832,6 +7279,7 @@ vhadd_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vhadd.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vhaddq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6851,6 +7299,7 @@ vhaddq_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrhadd.u8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urhadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrhadd_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6870,6 +7319,7 @@ vrhadd_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrhadd.u8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urhadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrhaddq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6889,6 +7339,7 @@ vrhaddq_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrhadd.u16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urhadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrhadd_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6908,6 +7359,7 @@ vrhadd_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrhadd.u16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urhadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrhaddq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6927,6 +7379,7 @@ vrhaddq_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrhadd.u32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urhadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrhadd_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6946,6 +7399,7 @@ vrhadd_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrhadd.u32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urhadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrhaddq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6965,6 +7419,7 @@ vrhaddq_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrhadd.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srhadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrhadd_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -6984,6 +7439,7 @@ vrhadd_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrhadd.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srhadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrhaddq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7003,6 +7459,7 @@ vrhaddq_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrhadd.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srhadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrhadd_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7022,6 +7479,7 @@ vrhadd_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrhadd.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srhadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrhaddq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7041,6 +7499,7 @@ vrhaddq_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrhadd.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srhadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrhadd_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7060,6 +7519,7 @@ vrhadd_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrhadd.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srhadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrhaddq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7079,6 +7539,7 @@ vrhaddq_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrintn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(frintn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrndn_f32(a: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7098,6 +7559,7 @@ vrndn_f32_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrintn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(frintn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrndnq_f32(a: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7117,6 +7579,7 @@ vrndnq_f32_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqadd.u8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqadd_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7136,6 +7599,7 @@ vqadd_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqadd.u8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqaddq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7155,6 +7619,7 @@ vqaddq_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqadd.u16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqadd_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7174,6 +7639,7 @@ vqadd_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqadd.u16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqaddq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7193,6 +7659,7 @@ vqaddq_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqadd.u32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqadd_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7212,6 +7679,7 @@ vqadd_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqadd.u32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqaddq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7231,6 +7699,7 @@ vqaddq_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqadd.u64"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqadd_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7250,6 +7719,7 @@ vqadd_u64_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqadd.u64"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqaddq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7269,6 +7739,7 @@ vqaddq_u64_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqadd.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqadd_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7288,6 +7759,7 @@ vqadd_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqadd.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqaddq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7307,6 +7779,7 @@ vqaddq_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqadd.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqadd_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7326,6 +7799,7 @@ vqadd_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqadd.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqaddq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7345,6 +7819,7 @@ vqaddq_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqadd.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqadd_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7364,6 +7839,7 @@ vqadd_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqadd.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqaddq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7383,6 +7859,7 @@ vqaddq_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqadd.s64"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqadd_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7402,6 +7879,7 @@ vqadd_s64_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqadd.s64"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqadd))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqaddq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7421,6 +7899,7 @@ vqaddq_s64_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_s8_x2(a: *const i8) -> int8x8x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7440,6 +7919,7 @@ vld1_s8_x2_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_s16_x2(a: *const i16) -> int16x4x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7459,6 +7939,7 @@ vld1_s16_x2_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_s32_x2(a: *const i32) -> int32x2x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7478,6 +7959,7 @@ vld1_s32_x2_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_s64_x2(a: *const i64) -> int64x1x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7497,6 +7979,7 @@ vld1_s64_x2_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_s8_x2(a: *const i8) -> int8x16x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7516,6 +7999,7 @@ vld1q_s8_x2_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_s16_x2(a: *const i16) -> int16x8x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7535,6 +8019,7 @@ vld1q_s16_x2_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_s32_x2(a: *const i32) -> int32x4x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7554,6 +8039,7 @@ vld1q_s32_x2_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_s64_x2(a: *const i64) -> int64x2x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7573,6 +8059,7 @@ vld1q_s64_x2_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_s8_x3(a: *const i8) -> int8x8x3_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7592,6 +8079,7 @@ vld1_s8_x3_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_s16_x3(a: *const i16) -> int16x4x3_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7611,6 +8099,7 @@ vld1_s16_x3_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_s32_x3(a: *const i32) -> int32x2x3_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7630,6 +8119,7 @@ vld1_s32_x3_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_s64_x3(a: *const i64) -> int64x1x3_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7649,6 +8139,7 @@ vld1_s64_x3_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_s8_x3(a: *const i8) -> int8x16x3_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7668,6 +8159,7 @@ vld1q_s8_x3_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_s16_x3(a: *const i16) -> int16x8x3_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7687,6 +8179,7 @@ vld1q_s16_x3_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_s32_x3(a: *const i32) -> int32x4x3_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7706,6 +8199,7 @@ vld1q_s32_x3_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_s64_x3(a: *const i64) -> int64x2x3_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7725,6 +8219,7 @@ vld1q_s64_x3_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_s8_x4(a: *const i8) -> int8x8x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7744,6 +8239,7 @@ vld1_s8_x4_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_s16_x4(a: *const i16) -> int16x4x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7763,6 +8259,7 @@ vld1_s16_x4_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_s32_x4(a: *const i32) -> int32x2x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7782,6 +8279,7 @@ vld1_s32_x4_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_s64_x4(a: *const i64) -> int64x1x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7801,6 +8299,7 @@ vld1_s64_x4_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_s8_x4(a: *const i8) -> int8x16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7820,6 +8319,7 @@ vld1q_s8_x4_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_s16_x4(a: *const i16) -> int16x8x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7839,6 +8339,7 @@ vld1q_s16_x4_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_s32_x4(a: *const i32) -> int32x4x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7858,6 +8359,7 @@ vld1q_s32_x4_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_s64_x4(a: *const i64) -> int64x2x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -7877,6 +8379,7 @@ vld1q_s64_x4_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_u8_x2(a: *const u8) -> uint8x8x2_t {
     transmute(vld1_s8_x2(transmute(a)))
 }
@@ -7890,6 +8393,7 @@ pub unsafe fn vld1_u8_x2(a: *const u8) -> uint8x8x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_u16_x2(a: *const u16) -> uint16x4x2_t {
     transmute(vld1_s16_x2(transmute(a)))
 }
@@ -7903,6 +8407,7 @@ pub unsafe fn vld1_u16_x2(a: *const u16) -> uint16x4x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_u32_x2(a: *const u32) -> uint32x2x2_t {
     transmute(vld1_s32_x2(transmute(a)))
 }
@@ -7916,6 +8421,7 @@ pub unsafe fn vld1_u32_x2(a: *const u32) -> uint32x2x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_u64_x2(a: *const u64) -> uint64x1x2_t {
     transmute(vld1_s64_x2(transmute(a)))
 }
@@ -7929,6 +8435,7 @@ pub unsafe fn vld1_u64_x2(a: *const u64) -> uint64x1x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_u8_x2(a: *const u8) -> uint8x16x2_t {
     transmute(vld1q_s8_x2(transmute(a)))
 }
@@ -7942,6 +8449,7 @@ pub unsafe fn vld1q_u8_x2(a: *const u8) -> uint8x16x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_u16_x2(a: *const u16) -> uint16x8x2_t {
     transmute(vld1q_s16_x2(transmute(a)))
 }
@@ -7955,6 +8463,7 @@ pub unsafe fn vld1q_u16_x2(a: *const u16) -> uint16x8x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_u32_x2(a: *const u32) -> uint32x4x2_t {
     transmute(vld1q_s32_x2(transmute(a)))
 }
@@ -7968,6 +8477,7 @@ pub unsafe fn vld1q_u32_x2(a: *const u32) -> uint32x4x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_u64_x2(a: *const u64) -> uint64x2x2_t {
     transmute(vld1q_s64_x2(transmute(a)))
 }
@@ -7981,6 +8491,7 @@ pub unsafe fn vld1q_u64_x2(a: *const u64) -> uint64x2x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_u8_x3(a: *const u8) -> uint8x8x3_t {
     transmute(vld1_s8_x3(transmute(a)))
 }
@@ -7994,6 +8505,7 @@ pub unsafe fn vld1_u8_x3(a: *const u8) -> uint8x8x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_u16_x3(a: *const u16) -> uint16x4x3_t {
     transmute(vld1_s16_x3(transmute(a)))
 }
@@ -8007,6 +8519,7 @@ pub unsafe fn vld1_u16_x3(a: *const u16) -> uint16x4x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_u32_x3(a: *const u32) -> uint32x2x3_t {
     transmute(vld1_s32_x3(transmute(a)))
 }
@@ -8020,6 +8533,7 @@ pub unsafe fn vld1_u32_x3(a: *const u32) -> uint32x2x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_u64_x3(a: *const u64) -> uint64x1x3_t {
     transmute(vld1_s64_x3(transmute(a)))
 }
@@ -8033,6 +8547,7 @@ pub unsafe fn vld1_u64_x3(a: *const u64) -> uint64x1x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_u8_x3(a: *const u8) -> uint8x16x3_t {
     transmute(vld1q_s8_x3(transmute(a)))
 }
@@ -8046,6 +8561,7 @@ pub unsafe fn vld1q_u8_x3(a: *const u8) -> uint8x16x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_u16_x3(a: *const u16) -> uint16x8x3_t {
     transmute(vld1q_s16_x3(transmute(a)))
 }
@@ -8059,6 +8575,7 @@ pub unsafe fn vld1q_u16_x3(a: *const u16) -> uint16x8x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_u32_x3(a: *const u32) -> uint32x4x3_t {
     transmute(vld1q_s32_x3(transmute(a)))
 }
@@ -8072,6 +8589,7 @@ pub unsafe fn vld1q_u32_x3(a: *const u32) -> uint32x4x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_u64_x3(a: *const u64) -> uint64x2x3_t {
     transmute(vld1q_s64_x3(transmute(a)))
 }
@@ -8085,6 +8603,7 @@ pub unsafe fn vld1q_u64_x3(a: *const u64) -> uint64x2x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_u8_x4(a: *const u8) -> uint8x8x4_t {
     transmute(vld1_s8_x4(transmute(a)))
 }
@@ -8098,6 +8617,7 @@ pub unsafe fn vld1_u8_x4(a: *const u8) -> uint8x8x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_u16_x4(a: *const u16) -> uint16x4x4_t {
     transmute(vld1_s16_x4(transmute(a)))
 }
@@ -8111,6 +8631,7 @@ pub unsafe fn vld1_u16_x4(a: *const u16) -> uint16x4x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_u32_x4(a: *const u32) -> uint32x2x4_t {
     transmute(vld1_s32_x4(transmute(a)))
 }
@@ -8124,6 +8645,7 @@ pub unsafe fn vld1_u32_x4(a: *const u32) -> uint32x2x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_u64_x4(a: *const u64) -> uint64x1x4_t {
     transmute(vld1_s64_x4(transmute(a)))
 }
@@ -8137,6 +8659,7 @@ pub unsafe fn vld1_u64_x4(a: *const u64) -> uint64x1x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_u8_x4(a: *const u8) -> uint8x16x4_t {
     transmute(vld1q_s8_x4(transmute(a)))
 }
@@ -8150,6 +8673,7 @@ pub unsafe fn vld1q_u8_x4(a: *const u8) -> uint8x16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_u16_x4(a: *const u16) -> uint16x8x4_t {
     transmute(vld1q_s16_x4(transmute(a)))
 }
@@ -8163,6 +8687,7 @@ pub unsafe fn vld1q_u16_x4(a: *const u16) -> uint16x8x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_u32_x4(a: *const u32) -> uint32x4x4_t {
     transmute(vld1q_s32_x4(transmute(a)))
 }
@@ -8176,6 +8701,7 @@ pub unsafe fn vld1q_u32_x4(a: *const u32) -> uint32x4x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_u64_x4(a: *const u64) -> uint64x2x4_t {
     transmute(vld1q_s64_x4(transmute(a)))
 }
@@ -8189,6 +8715,7 @@ pub unsafe fn vld1q_u64_x4(a: *const u64) -> uint64x2x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_p8_x2(a: *const p8) -> poly8x8x2_t {
     transmute(vld1_s8_x2(transmute(a)))
 }
@@ -8202,6 +8729,7 @@ pub unsafe fn vld1_p8_x2(a: *const p8) -> poly8x8x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_p8_x3(a: *const p8) -> poly8x8x3_t {
     transmute(vld1_s8_x3(transmute(a)))
 }
@@ -8215,6 +8743,7 @@ pub unsafe fn vld1_p8_x3(a: *const p8) -> poly8x8x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_p8_x4(a: *const p8) -> poly8x8x4_t {
     transmute(vld1_s8_x4(transmute(a)))
 }
@@ -8228,6 +8757,7 @@ pub unsafe fn vld1_p8_x4(a: *const p8) -> poly8x8x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_p8_x2(a: *const p8) -> poly8x16x2_t {
     transmute(vld1q_s8_x2(transmute(a)))
 }
@@ -8241,6 +8771,7 @@ pub unsafe fn vld1q_p8_x2(a: *const p8) -> poly8x16x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_p8_x3(a: *const p8) -> poly8x16x3_t {
     transmute(vld1q_s8_x3(transmute(a)))
 }
@@ -8254,6 +8785,7 @@ pub unsafe fn vld1q_p8_x3(a: *const p8) -> poly8x16x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_p8_x4(a: *const p8) -> poly8x16x4_t {
     transmute(vld1q_s8_x4(transmute(a)))
 }
@@ -8267,6 +8799,7 @@ pub unsafe fn vld1q_p8_x4(a: *const p8) -> poly8x16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_p16_x2(a: *const p16) -> poly16x4x2_t {
     transmute(vld1_s16_x2(transmute(a)))
 }
@@ -8280,6 +8813,7 @@ pub unsafe fn vld1_p16_x2(a: *const p16) -> poly16x4x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_p16_x3(a: *const p16) -> poly16x4x3_t {
     transmute(vld1_s16_x3(transmute(a)))
 }
@@ -8293,6 +8827,7 @@ pub unsafe fn vld1_p16_x3(a: *const p16) -> poly16x4x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_p16_x4(a: *const p16) -> poly16x4x4_t {
     transmute(vld1_s16_x4(transmute(a)))
 }
@@ -8306,6 +8841,7 @@ pub unsafe fn vld1_p16_x4(a: *const p16) -> poly16x4x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_p16_x2(a: *const p16) -> poly16x8x2_t {
     transmute(vld1q_s16_x2(transmute(a)))
 }
@@ -8319,6 +8855,7 @@ pub unsafe fn vld1q_p16_x2(a: *const p16) -> poly16x8x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_p16_x3(a: *const p16) -> poly16x8x3_t {
     transmute(vld1q_s16_x3(transmute(a)))
 }
@@ -8332,6 +8869,7 @@ pub unsafe fn vld1q_p16_x3(a: *const p16) -> poly16x8x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_p16_x4(a: *const p16) -> poly16x8x4_t {
     transmute(vld1q_s16_x4(transmute(a)))
 }
@@ -8345,6 +8883,7 @@ pub unsafe fn vld1q_p16_x4(a: *const p16) -> poly16x8x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_p64_x2(a: *const p64) -> poly64x1x2_t {
     transmute(vld1_s64_x2(transmute(a)))
 }
@@ -8358,6 +8897,7 @@ pub unsafe fn vld1_p64_x2(a: *const p64) -> poly64x1x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_p64_x3(a: *const p64) -> poly64x1x3_t {
     transmute(vld1_s64_x3(transmute(a)))
 }
@@ -8371,6 +8911,7 @@ pub unsafe fn vld1_p64_x3(a: *const p64) -> poly64x1x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_p64_x4(a: *const p64) -> poly64x1x4_t {
     transmute(vld1_s64_x4(transmute(a)))
 }
@@ -8384,6 +8925,7 @@ pub unsafe fn vld1_p64_x4(a: *const p64) -> poly64x1x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_p64_x2(a: *const p64) -> poly64x2x2_t {
     transmute(vld1q_s64_x2(transmute(a)))
 }
@@ -8397,6 +8939,7 @@ pub unsafe fn vld1q_p64_x2(a: *const p64) -> poly64x2x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_p64_x3(a: *const p64) -> poly64x2x3_t {
     transmute(vld1q_s64_x3(transmute(a)))
 }
@@ -8410,6 +8953,7 @@ pub unsafe fn vld1q_p64_x3(a: *const p64) -> poly64x2x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_p64_x4(a: *const p64) -> poly64x2x4_t {
     transmute(vld1q_s64_x4(transmute(a)))
 }
@@ -8423,6 +8967,7 @@ pub unsafe fn vld1q_p64_x4(a: *const p64) -> poly64x2x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_f32_x2(a: *const f32) -> float32x2x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -8442,6 +8987,7 @@ vld1_f32_x2_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_f32_x2(a: *const f32) -> float32x4x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -8461,6 +9007,7 @@ vld1q_f32_x2_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_f32_x3(a: *const f32) -> float32x2x3_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -8480,6 +9027,7 @@ vld1_f32_x3_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_f32_x3(a: *const f32) -> float32x4x3_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -8499,6 +9047,7 @@ vld1q_f32_x3_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1_f32_x4(a: *const f32) -> float32x2x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -8518,6 +9067,7 @@ vld1_f32_x4_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld1q_f32_x4(a: *const f32) -> float32x4x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -8535,6 +9085,7 @@ vld1q_f32_x4_(a)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld2))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld2_s8(a: *const i8) -> int8x8x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -8568,6 +9119,7 @@ vld2_s8_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld2))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld2_s16(a: *const i16) -> int16x4x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -8601,6 +9153,7 @@ vld2_s16_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld2))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld2_s32(a: *const i32) -> int32x2x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -8634,6 +9187,7 @@ vld2_s32_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld2))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld2q_s8(a: *const i8) -> int8x16x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -8667,6 +9221,7 @@ vld2q_s8_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld2))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld2q_s16(a: *const i16) -> int16x8x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -8700,6 +9255,7 @@ vld2q_s16_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld2))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld2q_s32(a: *const i32) -> int32x4x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -8733,6 +9289,7 @@ vld2q_s32_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(nop))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld2_s64(a: *const i64) -> int64x1x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -8768,6 +9325,7 @@ vld2_s64_(a as _)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld2))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld2_u8(a: *const u8) -> uint8x8x2_t {
     transmute(vld2_s8(transmute(a)))
 }
@@ -8781,6 +9339,7 @@ pub unsafe fn vld2_u8(a: *const u8) -> uint8x8x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld2))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld2_u16(a: *const u16) -> uint16x4x2_t {
     transmute(vld2_s16(transmute(a)))
 }
@@ -8794,6 +9353,7 @@ pub unsafe fn vld2_u16(a: *const u16) -> uint16x4x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld2))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld2_u32(a: *const u32) -> uint32x2x2_t {
     transmute(vld2_s32(transmute(a)))
 }
@@ -8807,6 +9367,7 @@ pub unsafe fn vld2_u32(a: *const u32) -> uint32x2x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld2))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld2q_u8(a: *const u8) -> uint8x16x2_t {
     transmute(vld2q_s8(transmute(a)))
 }
@@ -8820,6 +9381,7 @@ pub unsafe fn vld2q_u8(a: *const u8) -> uint8x16x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld2))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld2q_u16(a: *const u16) -> uint16x8x2_t {
     transmute(vld2q_s16(transmute(a)))
 }
@@ -8833,6 +9395,7 @@ pub unsafe fn vld2q_u16(a: *const u16) -> uint16x8x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld2))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld2q_u32(a: *const u32) -> uint32x4x2_t {
     transmute(vld2q_s32(transmute(a)))
 }
@@ -8846,6 +9409,7 @@ pub unsafe fn vld2q_u32(a: *const u32) -> uint32x4x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld2))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld2_p8(a: *const p8) -> poly8x8x2_t {
     transmute(vld2_s8(transmute(a)))
 }
@@ -8859,6 +9423,7 @@ pub unsafe fn vld2_p8(a: *const p8) -> poly8x8x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld2))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld2_p16(a: *const p16) -> poly16x4x2_t {
     transmute(vld2_s16(transmute(a)))
 }
@@ -8872,6 +9437,7 @@ pub unsafe fn vld2_p16(a: *const p16) -> poly16x4x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld2))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld2q_p8(a: *const p8) -> poly8x16x2_t {
     transmute(vld2q_s8(transmute(a)))
 }
@@ -8885,6 +9451,7 @@ pub unsafe fn vld2q_p8(a: *const p8) -> poly8x16x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld2))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld2q_p16(a: *const p16) -> poly16x8x2_t {
     transmute(vld2q_s16(transmute(a)))
 }
@@ -8898,6 +9465,7 @@ pub unsafe fn vld2q_p16(a: *const p16) -> poly16x8x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld2_u64(a: *const u64) -> uint64x1x2_t {
     transmute(vld2_s64(transmute(a)))
 }
@@ -8911,6 +9479,7 @@ pub unsafe fn vld2_u64(a: *const u64) -> uint64x1x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld2_p64(a: *const p64) -> poly64x1x2_t {
     transmute(vld2_s64(transmute(a)))
 }
@@ -8922,6 +9491,7 @@ pub unsafe fn vld2_p64(a: *const p64) -> poly64x1x2_t {
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld2))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld2_f32(a: *const f32) -> float32x2x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -8955,6 +9525,7 @@ vld2_f32_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld2))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld2q_f32(a: *const f32) -> float32x4x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -8988,6 +9559,7 @@ vld2q_f32_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld2))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld2_dup_s8(a: *const i8) -> int8x8x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -9021,6 +9593,7 @@ vld2_dup_s8_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld2))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld2_dup_s16(a: *const i16) -> int16x4x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -9054,6 +9627,7 @@ vld2_dup_s16_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld2))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld2_dup_s32(a: *const i32) -> int32x2x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -9087,6 +9661,7 @@ vld2_dup_s32_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld2))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld2q_dup_s8(a: *const i8) -> int8x16x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -9120,6 +9695,7 @@ vld2q_dup_s8_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld2))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld2q_dup_s16(a: *const i16) -> int16x8x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -9153,6 +9729,7 @@ vld2q_dup_s16_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld2))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld2q_dup_s32(a: *const i32) -> int32x4x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -9186,6 +9763,7 @@ vld2q_dup_s32_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(nop))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld2_dup_s64(a: *const i64) -> int64x1x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -9221,6 +9799,7 @@ vld2_dup_s64_(a as _)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld2r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld2_dup_u8(a: *const u8) -> uint8x8x2_t {
     transmute(vld2_dup_s8(transmute(a)))
 }
@@ -9234,6 +9813,7 @@ pub unsafe fn vld2_dup_u8(a: *const u8) -> uint8x8x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld2r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld2_dup_u16(a: *const u16) -> uint16x4x2_t {
     transmute(vld2_dup_s16(transmute(a)))
 }
@@ -9247,6 +9827,7 @@ pub unsafe fn vld2_dup_u16(a: *const u16) -> uint16x4x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld2r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld2_dup_u32(a: *const u32) -> uint32x2x2_t {
     transmute(vld2_dup_s32(transmute(a)))
 }
@@ -9260,6 +9841,7 @@ pub unsafe fn vld2_dup_u32(a: *const u32) -> uint32x2x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld2r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld2q_dup_u8(a: *const u8) -> uint8x16x2_t {
     transmute(vld2q_dup_s8(transmute(a)))
 }
@@ -9273,6 +9855,7 @@ pub unsafe fn vld2q_dup_u8(a: *const u8) -> uint8x16x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld2r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld2q_dup_u16(a: *const u16) -> uint16x8x2_t {
     transmute(vld2q_dup_s16(transmute(a)))
 }
@@ -9286,6 +9869,7 @@ pub unsafe fn vld2q_dup_u16(a: *const u16) -> uint16x8x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld2r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld2q_dup_u32(a: *const u32) -> uint32x4x2_t {
     transmute(vld2q_dup_s32(transmute(a)))
 }
@@ -9299,6 +9883,7 @@ pub unsafe fn vld2q_dup_u32(a: *const u32) -> uint32x4x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld2r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld2_dup_p8(a: *const p8) -> poly8x8x2_t {
     transmute(vld2_dup_s8(transmute(a)))
 }
@@ -9312,6 +9897,7 @@ pub unsafe fn vld2_dup_p8(a: *const p8) -> poly8x8x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld2r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld2_dup_p16(a: *const p16) -> poly16x4x2_t {
     transmute(vld2_dup_s16(transmute(a)))
 }
@@ -9325,6 +9911,7 @@ pub unsafe fn vld2_dup_p16(a: *const p16) -> poly16x4x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld2r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld2q_dup_p8(a: *const p8) -> poly8x16x2_t {
     transmute(vld2q_dup_s8(transmute(a)))
 }
@@ -9338,6 +9925,7 @@ pub unsafe fn vld2q_dup_p8(a: *const p8) -> poly8x16x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld2r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld2q_dup_p16(a: *const p16) -> poly16x8x2_t {
     transmute(vld2q_dup_s16(transmute(a)))
 }
@@ -9351,6 +9939,7 @@ pub unsafe fn vld2q_dup_p16(a: *const p16) -> poly16x8x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld2r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld2_dup_u64(a: *const u64) -> uint64x1x2_t {
     transmute(vld2_dup_s64(transmute(a)))
 }
@@ -9364,6 +9953,7 @@ pub unsafe fn vld2_dup_u64(a: *const u64) -> uint64x1x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld2r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld2_dup_p64(a: *const p64) -> poly64x1x2_t {
     transmute(vld2_dup_s64(transmute(a)))
 }
@@ -9375,6 +9965,7 @@ pub unsafe fn vld2_dup_p64(a: *const p64) -> poly64x1x2_t {
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld2))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld2_dup_f32(a: *const f32) -> float32x2x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -9408,6 +9999,7 @@ vld2_dup_f32_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld2))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld2q_dup_f32(a: *const f32) -> float32x4x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -9442,6 +10034,7 @@ vld2q_dup_f32_(a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld2, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld2_lane_s8<const LANE: i32>(a: *const i8, b: int8x8x2_t) -> int8x8x2_t {
     static_assert_uimm_bits!(LANE, 3);
     #[allow(improper_ctypes)]
@@ -9479,6 +10072,7 @@ vld2_lane_s8_(b.0, b.1, LANE as i64, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld2, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld2_lane_s16<const LANE: i32>(a: *const i16, b: int16x4x2_t) -> int16x4x2_t {
     static_assert_uimm_bits!(LANE, 2);
     #[allow(improper_ctypes)]
@@ -9516,6 +10110,7 @@ vld2_lane_s16_(b.0, b.1, LANE as i64, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld2, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld2_lane_s32<const LANE: i32>(a: *const i32, b: int32x2x2_t) -> int32x2x2_t {
     static_assert_uimm_bits!(LANE, 1);
     #[allow(improper_ctypes)]
@@ -9553,6 +10148,7 @@ vld2_lane_s32_(b.0, b.1, LANE as i64, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld2, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld2q_lane_s16<const LANE: i32>(a: *const i16, b: int16x8x2_t) -> int16x8x2_t {
     static_assert_uimm_bits!(LANE, 3);
     #[allow(improper_ctypes)]
@@ -9590,6 +10186,7 @@ vld2q_lane_s16_(b.0, b.1, LANE as i64, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld2, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld2q_lane_s32<const LANE: i32>(a: *const i32, b: int32x4x2_t) -> int32x4x2_t {
     static_assert_uimm_bits!(LANE, 2);
     #[allow(improper_ctypes)]
@@ -9629,6 +10226,7 @@ vld2q_lane_s32_(b.0, b.1, LANE as i64, a as _)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld2, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld2_lane_u8<const LANE: i32>(a: *const u8, b: uint8x8x2_t) -> uint8x8x2_t {
     static_assert_uimm_bits!(LANE, 3);
     transmute(vld2_lane_s8::<LANE>(transmute(a), transmute(b)))
@@ -9644,6 +10242,7 @@ pub unsafe fn vld2_lane_u8<const LANE: i32>(a: *const u8, b: uint8x8x2_t) -> uin
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld2, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld2_lane_u16<const LANE: i32>(a: *const u16, b: uint16x4x2_t) -> uint16x4x2_t {
     static_assert_uimm_bits!(LANE, 2);
     transmute(vld2_lane_s16::<LANE>(transmute(a), transmute(b)))
@@ -9659,6 +10258,7 @@ pub unsafe fn vld2_lane_u16<const LANE: i32>(a: *const u16, b: uint16x4x2_t) -> 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld2, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld2_lane_u32<const LANE: i32>(a: *const u32, b: uint32x2x2_t) -> uint32x2x2_t {
     static_assert_uimm_bits!(LANE, 1);
     transmute(vld2_lane_s32::<LANE>(transmute(a), transmute(b)))
@@ -9674,6 +10274,7 @@ pub unsafe fn vld2_lane_u32<const LANE: i32>(a: *const u32, b: uint32x2x2_t) -> 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld2, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld2q_lane_u16<const LANE: i32>(a: *const u16, b: uint16x8x2_t) -> uint16x8x2_t {
     static_assert_uimm_bits!(LANE, 3);
     transmute(vld2q_lane_s16::<LANE>(transmute(a), transmute(b)))
@@ -9689,6 +10290,7 @@ pub unsafe fn vld2q_lane_u16<const LANE: i32>(a: *const u16, b: uint16x8x2_t) ->
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld2, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld2q_lane_u32<const LANE: i32>(a: *const u32, b: uint32x4x2_t) -> uint32x4x2_t {
     static_assert_uimm_bits!(LANE, 2);
     transmute(vld2q_lane_s32::<LANE>(transmute(a), transmute(b)))
@@ -9704,6 +10306,7 @@ pub unsafe fn vld2q_lane_u32<const LANE: i32>(a: *const u32, b: uint32x4x2_t) ->
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld2, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld2_lane_p8<const LANE: i32>(a: *const p8, b: poly8x8x2_t) -> poly8x8x2_t {
     static_assert_uimm_bits!(LANE, 3);
     transmute(vld2_lane_s8::<LANE>(transmute(a), transmute(b)))
@@ -9719,6 +10322,7 @@ pub unsafe fn vld2_lane_p8<const LANE: i32>(a: *const p8, b: poly8x8x2_t) -> pol
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld2, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld2_lane_p16<const LANE: i32>(a: *const p16, b: poly16x4x2_t) -> poly16x4x2_t {
     static_assert_uimm_bits!(LANE, 2);
     transmute(vld2_lane_s16::<LANE>(transmute(a), transmute(b)))
@@ -9734,6 +10338,7 @@ pub unsafe fn vld2_lane_p16<const LANE: i32>(a: *const p16, b: poly16x4x2_t) -> 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld2, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld2q_lane_p16<const LANE: i32>(a: *const p16, b: poly16x8x2_t) -> poly16x8x2_t {
     static_assert_uimm_bits!(LANE, 3);
     transmute(vld2q_lane_s16::<LANE>(transmute(a), transmute(b)))
@@ -9747,6 +10352,7 @@ pub unsafe fn vld2q_lane_p16<const LANE: i32>(a: *const p16, b: poly16x8x2_t) ->
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld2, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld2_lane_f32<const LANE: i32>(a: *const f32, b: float32x2x2_t) -> float32x2x2_t {
     static_assert_uimm_bits!(LANE, 1);
     #[allow(improper_ctypes)]
@@ -9784,6 +10390,7 @@ vld2_lane_f32_(b.0, b.1, LANE as i64, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld2, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld2q_lane_f32<const LANE: i32>(a: *const f32, b: float32x4x2_t) -> float32x4x2_t {
     static_assert_uimm_bits!(LANE, 2);
     #[allow(improper_ctypes)]
@@ -9820,6 +10427,7 @@ vld2q_lane_f32_(b.0, b.1, LANE as i64, a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld3))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld3_s8(a: *const i8) -> int8x8x3_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -9853,6 +10461,7 @@ vld3_s8_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld3))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld3_s16(a: *const i16) -> int16x4x3_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -9886,6 +10495,7 @@ vld3_s16_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld3))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld3_s32(a: *const i32) -> int32x2x3_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -9919,6 +10529,7 @@ vld3_s32_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld3))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld3q_s8(a: *const i8) -> int8x16x3_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -9952,6 +10563,7 @@ vld3q_s8_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld3))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld3q_s16(a: *const i16) -> int16x8x3_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -9985,6 +10597,7 @@ vld3q_s16_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld3))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld3q_s32(a: *const i32) -> int32x4x3_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -10018,6 +10631,7 @@ vld3q_s32_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(nop))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld3_s64(a: *const i64) -> int64x1x3_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -10053,6 +10667,7 @@ vld3_s64_(a as _)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld3))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld3))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld3_u8(a: *const u8) -> uint8x8x3_t {
     transmute(vld3_s8(transmute(a)))
 }
@@ -10066,6 +10681,7 @@ pub unsafe fn vld3_u8(a: *const u8) -> uint8x8x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld3))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld3))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld3_u16(a: *const u16) -> uint16x4x3_t {
     transmute(vld3_s16(transmute(a)))
 }
@@ -10079,6 +10695,7 @@ pub unsafe fn vld3_u16(a: *const u16) -> uint16x4x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld3))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld3))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld3_u32(a: *const u32) -> uint32x2x3_t {
     transmute(vld3_s32(transmute(a)))
 }
@@ -10092,6 +10709,7 @@ pub unsafe fn vld3_u32(a: *const u32) -> uint32x2x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld3))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld3))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld3q_u8(a: *const u8) -> uint8x16x3_t {
     transmute(vld3q_s8(transmute(a)))
 }
@@ -10105,6 +10723,7 @@ pub unsafe fn vld3q_u8(a: *const u8) -> uint8x16x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld3))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld3))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld3q_u16(a: *const u16) -> uint16x8x3_t {
     transmute(vld3q_s16(transmute(a)))
 }
@@ -10118,6 +10737,7 @@ pub unsafe fn vld3q_u16(a: *const u16) -> uint16x8x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld3))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld3))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld3q_u32(a: *const u32) -> uint32x4x3_t {
     transmute(vld3q_s32(transmute(a)))
 }
@@ -10131,6 +10751,7 @@ pub unsafe fn vld3q_u32(a: *const u32) -> uint32x4x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld3))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld3))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld3_p8(a: *const p8) -> poly8x8x3_t {
     transmute(vld3_s8(transmute(a)))
 }
@@ -10144,6 +10765,7 @@ pub unsafe fn vld3_p8(a: *const p8) -> poly8x8x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld3))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld3))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld3_p16(a: *const p16) -> poly16x4x3_t {
     transmute(vld3_s16(transmute(a)))
 }
@@ -10157,6 +10779,7 @@ pub unsafe fn vld3_p16(a: *const p16) -> poly16x4x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld3))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld3))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld3q_p8(a: *const p8) -> poly8x16x3_t {
     transmute(vld3q_s8(transmute(a)))
 }
@@ -10170,6 +10793,7 @@ pub unsafe fn vld3q_p8(a: *const p8) -> poly8x16x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld3))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld3))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld3q_p16(a: *const p16) -> poly16x8x3_t {
     transmute(vld3q_s16(transmute(a)))
 }
@@ -10183,6 +10807,7 @@ pub unsafe fn vld3q_p16(a: *const p16) -> poly16x8x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld3_u64(a: *const u64) -> uint64x1x3_t {
     transmute(vld3_s64(transmute(a)))
 }
@@ -10196,6 +10821,7 @@ pub unsafe fn vld3_u64(a: *const u64) -> uint64x1x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld3_p64(a: *const p64) -> poly64x1x3_t {
     transmute(vld3_s64(transmute(a)))
 }
@@ -10207,6 +10833,7 @@ pub unsafe fn vld3_p64(a: *const p64) -> poly64x1x3_t {
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld3))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld3_f32(a: *const f32) -> float32x2x3_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -10240,6 +10867,7 @@ vld3_f32_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld3))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld3q_f32(a: *const f32) -> float32x4x3_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -10273,6 +10901,7 @@ vld3q_f32_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld3))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld3_dup_s8(a: *const i8) -> int8x8x3_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -10306,6 +10935,7 @@ vld3_dup_s8_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld3))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld3_dup_s16(a: *const i16) -> int16x4x3_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -10339,6 +10969,7 @@ vld3_dup_s16_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld3))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld3_dup_s32(a: *const i32) -> int32x2x3_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -10372,6 +11003,7 @@ vld3_dup_s32_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld3))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld3q_dup_s8(a: *const i8) -> int8x16x3_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -10405,6 +11037,7 @@ vld3q_dup_s8_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld3))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld3q_dup_s16(a: *const i16) -> int16x8x3_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -10438,6 +11071,7 @@ vld3q_dup_s16_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld3))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld3q_dup_s32(a: *const i32) -> int32x4x3_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -10471,6 +11105,7 @@ vld3q_dup_s32_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(nop))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld3_dup_s64(a: *const i64) -> int64x1x3_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -10506,6 +11141,7 @@ vld3_dup_s64_(a as _)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld3))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld3r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld3_dup_u8(a: *const u8) -> uint8x8x3_t {
     transmute(vld3_dup_s8(transmute(a)))
 }
@@ -10519,6 +11155,7 @@ pub unsafe fn vld3_dup_u8(a: *const u8) -> uint8x8x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld3))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld3r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld3_dup_u16(a: *const u16) -> uint16x4x3_t {
     transmute(vld3_dup_s16(transmute(a)))
 }
@@ -10532,6 +11169,7 @@ pub unsafe fn vld3_dup_u16(a: *const u16) -> uint16x4x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld3))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld3r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld3_dup_u32(a: *const u32) -> uint32x2x3_t {
     transmute(vld3_dup_s32(transmute(a)))
 }
@@ -10545,6 +11183,7 @@ pub unsafe fn vld3_dup_u32(a: *const u32) -> uint32x2x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld3))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld3r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld3q_dup_u8(a: *const u8) -> uint8x16x3_t {
     transmute(vld3q_dup_s8(transmute(a)))
 }
@@ -10558,6 +11197,7 @@ pub unsafe fn vld3q_dup_u8(a: *const u8) -> uint8x16x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld3))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld3r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld3q_dup_u16(a: *const u16) -> uint16x8x3_t {
     transmute(vld3q_dup_s16(transmute(a)))
 }
@@ -10571,6 +11211,7 @@ pub unsafe fn vld3q_dup_u16(a: *const u16) -> uint16x8x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld3))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld3r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld3q_dup_u32(a: *const u32) -> uint32x4x3_t {
     transmute(vld3q_dup_s32(transmute(a)))
 }
@@ -10584,6 +11225,7 @@ pub unsafe fn vld3q_dup_u32(a: *const u32) -> uint32x4x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld3))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld3r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld3_dup_p8(a: *const p8) -> poly8x8x3_t {
     transmute(vld3_dup_s8(transmute(a)))
 }
@@ -10597,6 +11239,7 @@ pub unsafe fn vld3_dup_p8(a: *const p8) -> poly8x8x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld3))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld3r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld3_dup_p16(a: *const p16) -> poly16x4x3_t {
     transmute(vld3_dup_s16(transmute(a)))
 }
@@ -10610,6 +11253,7 @@ pub unsafe fn vld3_dup_p16(a: *const p16) -> poly16x4x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld3))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld3r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld3q_dup_p8(a: *const p8) -> poly8x16x3_t {
     transmute(vld3q_dup_s8(transmute(a)))
 }
@@ -10623,6 +11267,7 @@ pub unsafe fn vld3q_dup_p8(a: *const p8) -> poly8x16x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld3))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld3r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld3q_dup_p16(a: *const p16) -> poly16x8x3_t {
     transmute(vld3q_dup_s16(transmute(a)))
 }
@@ -10636,6 +11281,7 @@ pub unsafe fn vld3q_dup_p16(a: *const p16) -> poly16x8x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld3r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld3_dup_u64(a: *const u64) -> uint64x1x3_t {
     transmute(vld3_dup_s64(transmute(a)))
 }
@@ -10649,6 +11295,7 @@ pub unsafe fn vld3_dup_u64(a: *const u64) -> uint64x1x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld3r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld3_dup_p64(a: *const p64) -> poly64x1x3_t {
     transmute(vld3_dup_s64(transmute(a)))
 }
@@ -10660,6 +11307,7 @@ pub unsafe fn vld3_dup_p64(a: *const p64) -> poly64x1x3_t {
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld3))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld3_dup_f32(a: *const f32) -> float32x2x3_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -10693,6 +11341,7 @@ vld3_dup_f32_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld3))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld3q_dup_f32(a: *const f32) -> float32x4x3_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -10727,6 +11376,7 @@ vld3q_dup_f32_(a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld3, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld3_lane_s8<const LANE: i32>(a: *const i8, b: int8x8x3_t) -> int8x8x3_t {
     static_assert_uimm_bits!(LANE, 3);
     #[allow(improper_ctypes)]
@@ -10764,6 +11414,7 @@ vld3_lane_s8_(b.0, b.1, b.2, LANE as i64, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld3, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld3_lane_s16<const LANE: i32>(a: *const i16, b: int16x4x3_t) -> int16x4x3_t {
     static_assert_uimm_bits!(LANE, 2);
     #[allow(improper_ctypes)]
@@ -10801,6 +11452,7 @@ vld3_lane_s16_(b.0, b.1, b.2, LANE as i64, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld3, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld3_lane_s32<const LANE: i32>(a: *const i32, b: int32x2x3_t) -> int32x2x3_t {
     static_assert_uimm_bits!(LANE, 1);
     #[allow(improper_ctypes)]
@@ -10838,6 +11490,7 @@ vld3_lane_s32_(b.0, b.1, b.2, LANE as i64, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld3, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld3q_lane_s16<const LANE: i32>(a: *const i16, b: int16x8x3_t) -> int16x8x3_t {
     static_assert_uimm_bits!(LANE, 3);
     #[allow(improper_ctypes)]
@@ -10875,6 +11528,7 @@ vld3q_lane_s16_(b.0, b.1, b.2, LANE as i64, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld3, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld3q_lane_s32<const LANE: i32>(a: *const i32, b: int32x4x3_t) -> int32x4x3_t {
     static_assert_uimm_bits!(LANE, 2);
     #[allow(improper_ctypes)]
@@ -10914,6 +11568,7 @@ vld3q_lane_s32_(b.0, b.1, b.2, LANE as i64, a as _)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld3, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld3_lane_u8<const LANE: i32>(a: *const u8, b: uint8x8x3_t) -> uint8x8x3_t {
     static_assert_uimm_bits!(LANE, 3);
     transmute(vld3_lane_s8::<LANE>(transmute(a), transmute(b)))
@@ -10929,6 +11584,7 @@ pub unsafe fn vld3_lane_u8<const LANE: i32>(a: *const u8, b: uint8x8x3_t) -> uin
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld3, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld3_lane_u16<const LANE: i32>(a: *const u16, b: uint16x4x3_t) -> uint16x4x3_t {
     static_assert_uimm_bits!(LANE, 2);
     transmute(vld3_lane_s16::<LANE>(transmute(a), transmute(b)))
@@ -10944,6 +11600,7 @@ pub unsafe fn vld3_lane_u16<const LANE: i32>(a: *const u16, b: uint16x4x3_t) -> 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld3, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld3_lane_u32<const LANE: i32>(a: *const u32, b: uint32x2x3_t) -> uint32x2x3_t {
     static_assert_uimm_bits!(LANE, 1);
     transmute(vld3_lane_s32::<LANE>(transmute(a), transmute(b)))
@@ -10959,6 +11616,7 @@ pub unsafe fn vld3_lane_u32<const LANE: i32>(a: *const u32, b: uint32x2x3_t) -> 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld3, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld3q_lane_u16<const LANE: i32>(a: *const u16, b: uint16x8x3_t) -> uint16x8x3_t {
     static_assert_uimm_bits!(LANE, 3);
     transmute(vld3q_lane_s16::<LANE>(transmute(a), transmute(b)))
@@ -10974,6 +11632,7 @@ pub unsafe fn vld3q_lane_u16<const LANE: i32>(a: *const u16, b: uint16x8x3_t) ->
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld3, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld3q_lane_u32<const LANE: i32>(a: *const u32, b: uint32x4x3_t) -> uint32x4x3_t {
     static_assert_uimm_bits!(LANE, 2);
     transmute(vld3q_lane_s32::<LANE>(transmute(a), transmute(b)))
@@ -10989,6 +11648,7 @@ pub unsafe fn vld3q_lane_u32<const LANE: i32>(a: *const u32, b: uint32x4x3_t) ->
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld3, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld3_lane_p8<const LANE: i32>(a: *const p8, b: poly8x8x3_t) -> poly8x8x3_t {
     static_assert_uimm_bits!(LANE, 3);
     transmute(vld3_lane_s8::<LANE>(transmute(a), transmute(b)))
@@ -11004,6 +11664,7 @@ pub unsafe fn vld3_lane_p8<const LANE: i32>(a: *const p8, b: poly8x8x3_t) -> pol
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld3, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld3_lane_p16<const LANE: i32>(a: *const p16, b: poly16x4x3_t) -> poly16x4x3_t {
     static_assert_uimm_bits!(LANE, 2);
     transmute(vld3_lane_s16::<LANE>(transmute(a), transmute(b)))
@@ -11019,6 +11680,7 @@ pub unsafe fn vld3_lane_p16<const LANE: i32>(a: *const p16, b: poly16x4x3_t) -> 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld3, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld3q_lane_p16<const LANE: i32>(a: *const p16, b: poly16x8x3_t) -> poly16x8x3_t {
     static_assert_uimm_bits!(LANE, 3);
     transmute(vld3q_lane_s16::<LANE>(transmute(a), transmute(b)))
@@ -11032,6 +11694,7 @@ pub unsafe fn vld3q_lane_p16<const LANE: i32>(a: *const p16, b: poly16x8x3_t) ->
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld3, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld3_lane_f32<const LANE: i32>(a: *const f32, b: float32x2x3_t) -> float32x2x3_t {
     static_assert_uimm_bits!(LANE, 1);
     #[allow(improper_ctypes)]
@@ -11069,6 +11732,7 @@ vld3_lane_f32_(b.0, b.1, b.2, LANE as i64, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld3, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld3q_lane_f32<const LANE: i32>(a: *const f32, b: float32x4x3_t) -> float32x4x3_t {
     static_assert_uimm_bits!(LANE, 2);
     #[allow(improper_ctypes)]
@@ -11105,6 +11769,7 @@ vld3q_lane_f32_(b.0, b.1, b.2, LANE as i64, a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld4))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4_s8(a: *const i8) -> int8x8x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -11138,6 +11803,7 @@ vld4_s8_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld4))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4_s16(a: *const i16) -> int16x4x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -11171,6 +11837,7 @@ vld4_s16_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld4))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4_s32(a: *const i32) -> int32x2x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -11204,6 +11871,7 @@ vld4_s32_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld4))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4q_s8(a: *const i8) -> int8x16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -11237,6 +11905,7 @@ vld4q_s8_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld4))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4q_s16(a: *const i16) -> int16x8x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -11270,6 +11939,7 @@ vld4q_s16_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld4))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4q_s32(a: *const i32) -> int32x4x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -11303,6 +11973,7 @@ vld4q_s32_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(nop))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4_s64(a: *const i64) -> int64x1x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -11338,6 +12009,7 @@ vld4_s64_(a as _)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld4))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld4))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld4_u8(a: *const u8) -> uint8x8x4_t {
     transmute(vld4_s8(transmute(a)))
 }
@@ -11351,6 +12023,7 @@ pub unsafe fn vld4_u8(a: *const u8) -> uint8x8x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld4))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld4))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld4_u16(a: *const u16) -> uint16x4x4_t {
     transmute(vld4_s16(transmute(a)))
 }
@@ -11364,6 +12037,7 @@ pub unsafe fn vld4_u16(a: *const u16) -> uint16x4x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld4))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld4))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld4_u32(a: *const u32) -> uint32x2x4_t {
     transmute(vld4_s32(transmute(a)))
 }
@@ -11377,6 +12051,7 @@ pub unsafe fn vld4_u32(a: *const u32) -> uint32x2x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld4))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld4))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld4q_u8(a: *const u8) -> uint8x16x4_t {
     transmute(vld4q_s8(transmute(a)))
 }
@@ -11390,6 +12065,7 @@ pub unsafe fn vld4q_u8(a: *const u8) -> uint8x16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld4))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld4))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld4q_u16(a: *const u16) -> uint16x8x4_t {
     transmute(vld4q_s16(transmute(a)))
 }
@@ -11403,6 +12079,7 @@ pub unsafe fn vld4q_u16(a: *const u16) -> uint16x8x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld4))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld4))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld4q_u32(a: *const u32) -> uint32x4x4_t {
     transmute(vld4q_s32(transmute(a)))
 }
@@ -11416,6 +12093,7 @@ pub unsafe fn vld4q_u32(a: *const u32) -> uint32x4x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld4))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld4))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld4_p8(a: *const p8) -> poly8x8x4_t {
     transmute(vld4_s8(transmute(a)))
 }
@@ -11429,6 +12107,7 @@ pub unsafe fn vld4_p8(a: *const p8) -> poly8x8x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld4))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld4))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld4_p16(a: *const p16) -> poly16x4x4_t {
     transmute(vld4_s16(transmute(a)))
 }
@@ -11442,6 +12121,7 @@ pub unsafe fn vld4_p16(a: *const p16) -> poly16x4x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld4))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld4))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld4q_p8(a: *const p8) -> poly8x16x4_t {
     transmute(vld4q_s8(transmute(a)))
 }
@@ -11455,6 +12135,7 @@ pub unsafe fn vld4q_p8(a: *const p8) -> poly8x16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld4))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld4))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld4q_p16(a: *const p16) -> poly16x8x4_t {
     transmute(vld4q_s16(transmute(a)))
 }
@@ -11468,6 +12149,7 @@ pub unsafe fn vld4q_p16(a: *const p16) -> poly16x8x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld4_u64(a: *const u64) -> uint64x1x4_t {
     transmute(vld4_s64(transmute(a)))
 }
@@ -11481,6 +12163,7 @@ pub unsafe fn vld4_u64(a: *const u64) -> uint64x1x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld4_p64(a: *const p64) -> poly64x1x4_t {
     transmute(vld4_s64(transmute(a)))
 }
@@ -11492,6 +12175,7 @@ pub unsafe fn vld4_p64(a: *const p64) -> poly64x1x4_t {
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld4))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4_f32(a: *const f32) -> float32x2x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -11525,6 +12209,7 @@ vld4_f32_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld4))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4q_f32(a: *const f32) -> float32x4x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -11558,6 +12243,7 @@ vld4q_f32_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld4))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4_dup_s8(a: *const i8) -> int8x8x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -11591,6 +12277,7 @@ vld4_dup_s8_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld4))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4_dup_s16(a: *const i16) -> int16x4x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -11624,6 +12311,7 @@ vld4_dup_s16_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld4))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4_dup_s32(a: *const i32) -> int32x2x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -11657,6 +12345,7 @@ vld4_dup_s32_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld4))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4q_dup_s8(a: *const i8) -> int8x16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -11690,6 +12379,7 @@ vld4q_dup_s8_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld4))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4q_dup_s16(a: *const i16) -> int16x8x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -11723,6 +12413,7 @@ vld4q_dup_s16_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld4))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4q_dup_s32(a: *const i32) -> int32x4x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -11756,6 +12447,7 @@ vld4q_dup_s32_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(nop))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4_dup_s64(a: *const i64) -> int64x1x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -11791,6 +12483,7 @@ vld4_dup_s64_(a as _)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld4))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld4r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld4_dup_u8(a: *const u8) -> uint8x8x4_t {
     transmute(vld4_dup_s8(transmute(a)))
 }
@@ -11804,6 +12497,7 @@ pub unsafe fn vld4_dup_u8(a: *const u8) -> uint8x8x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld4))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld4r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld4_dup_u16(a: *const u16) -> uint16x4x4_t {
     transmute(vld4_dup_s16(transmute(a)))
 }
@@ -11817,6 +12511,7 @@ pub unsafe fn vld4_dup_u16(a: *const u16) -> uint16x4x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld4))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld4r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld4_dup_u32(a: *const u32) -> uint32x2x4_t {
     transmute(vld4_dup_s32(transmute(a)))
 }
@@ -11830,6 +12525,7 @@ pub unsafe fn vld4_dup_u32(a: *const u32) -> uint32x2x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld4))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld4r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld4q_dup_u8(a: *const u8) -> uint8x16x4_t {
     transmute(vld4q_dup_s8(transmute(a)))
 }
@@ -11843,6 +12539,7 @@ pub unsafe fn vld4q_dup_u8(a: *const u8) -> uint8x16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld4))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld4r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld4q_dup_u16(a: *const u16) -> uint16x8x4_t {
     transmute(vld4q_dup_s16(transmute(a)))
 }
@@ -11856,6 +12553,7 @@ pub unsafe fn vld4q_dup_u16(a: *const u16) -> uint16x8x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld4))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld4r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld4q_dup_u32(a: *const u32) -> uint32x4x4_t {
     transmute(vld4q_dup_s32(transmute(a)))
 }
@@ -11869,6 +12567,7 @@ pub unsafe fn vld4q_dup_u32(a: *const u32) -> uint32x4x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld4))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld4r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld4_dup_p8(a: *const p8) -> poly8x8x4_t {
     transmute(vld4_dup_s8(transmute(a)))
 }
@@ -11882,6 +12581,7 @@ pub unsafe fn vld4_dup_p8(a: *const p8) -> poly8x8x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld4))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld4r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld4_dup_p16(a: *const p16) -> poly16x4x4_t {
     transmute(vld4_dup_s16(transmute(a)))
 }
@@ -11895,6 +12595,7 @@ pub unsafe fn vld4_dup_p16(a: *const p16) -> poly16x4x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld4))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld4r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld4q_dup_p8(a: *const p8) -> poly8x16x4_t {
     transmute(vld4q_dup_s8(transmute(a)))
 }
@@ -11908,6 +12609,7 @@ pub unsafe fn vld4q_dup_p8(a: *const p8) -> poly8x16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld4))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld4r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld4q_dup_p16(a: *const p16) -> poly16x8x4_t {
     transmute(vld4q_dup_s16(transmute(a)))
 }
@@ -11921,6 +12623,7 @@ pub unsafe fn vld4q_dup_p16(a: *const p16) -> poly16x8x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld4r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld4_dup_u64(a: *const u64) -> uint64x1x4_t {
     transmute(vld4_dup_s64(transmute(a)))
 }
@@ -11934,6 +12637,7 @@ pub unsafe fn vld4_dup_u64(a: *const u64) -> uint64x1x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld4r))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld4_dup_p64(a: *const p64) -> poly64x1x4_t {
     transmute(vld4_dup_s64(transmute(a)))
 }
@@ -11945,6 +12649,7 @@ pub unsafe fn vld4_dup_p64(a: *const p64) -> poly64x1x4_t {
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld4))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4_dup_f32(a: *const f32) -> float32x2x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -11978,6 +12683,7 @@ vld4_dup_f32_(a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld4))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4q_dup_f32(a: *const f32) -> float32x4x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -12012,6 +12718,7 @@ vld4q_dup_f32_(a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld4, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4_lane_s8<const LANE: i32>(a: *const i8, b: int8x8x4_t) -> int8x8x4_t {
     static_assert_uimm_bits!(LANE, 3);
     #[allow(improper_ctypes)]
@@ -12049,6 +12756,7 @@ vld4_lane_s8_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld4, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4_lane_s16<const LANE: i32>(a: *const i16, b: int16x4x4_t) -> int16x4x4_t {
     static_assert_uimm_bits!(LANE, 2);
     #[allow(improper_ctypes)]
@@ -12086,6 +12794,7 @@ vld4_lane_s16_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld4, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4_lane_s32<const LANE: i32>(a: *const i32, b: int32x2x4_t) -> int32x2x4_t {
     static_assert_uimm_bits!(LANE, 1);
     #[allow(improper_ctypes)]
@@ -12123,6 +12832,7 @@ vld4_lane_s32_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld4, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4q_lane_s16<const LANE: i32>(a: *const i16, b: int16x8x4_t) -> int16x8x4_t {
     static_assert_uimm_bits!(LANE, 3);
     #[allow(improper_ctypes)]
@@ -12160,6 +12870,7 @@ vld4q_lane_s16_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld4, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4q_lane_s32<const LANE: i32>(a: *const i32, b: int32x4x4_t) -> int32x4x4_t {
     static_assert_uimm_bits!(LANE, 2);
     #[allow(improper_ctypes)]
@@ -12199,6 +12910,7 @@ vld4q_lane_s32_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld4, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld4_lane_u8<const LANE: i32>(a: *const u8, b: uint8x8x4_t) -> uint8x8x4_t {
     static_assert_uimm_bits!(LANE, 3);
     transmute(vld4_lane_s8::<LANE>(transmute(a), transmute(b)))
@@ -12214,6 +12926,7 @@ pub unsafe fn vld4_lane_u8<const LANE: i32>(a: *const u8, b: uint8x8x4_t) -> uin
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld4, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld4_lane_u16<const LANE: i32>(a: *const u16, b: uint16x4x4_t) -> uint16x4x4_t {
     static_assert_uimm_bits!(LANE, 2);
     transmute(vld4_lane_s16::<LANE>(transmute(a), transmute(b)))
@@ -12229,6 +12942,7 @@ pub unsafe fn vld4_lane_u16<const LANE: i32>(a: *const u16, b: uint16x4x4_t) -> 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld4, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld4_lane_u32<const LANE: i32>(a: *const u32, b: uint32x2x4_t) -> uint32x2x4_t {
     static_assert_uimm_bits!(LANE, 1);
     transmute(vld4_lane_s32::<LANE>(transmute(a), transmute(b)))
@@ -12244,6 +12958,7 @@ pub unsafe fn vld4_lane_u32<const LANE: i32>(a: *const u32, b: uint32x2x4_t) -> 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld4, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld4q_lane_u16<const LANE: i32>(a: *const u16, b: uint16x8x4_t) -> uint16x8x4_t {
     static_assert_uimm_bits!(LANE, 3);
     transmute(vld4q_lane_s16::<LANE>(transmute(a), transmute(b)))
@@ -12259,6 +12974,7 @@ pub unsafe fn vld4q_lane_u16<const LANE: i32>(a: *const u16, b: uint16x8x4_t) ->
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld4, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld4q_lane_u32<const LANE: i32>(a: *const u32, b: uint32x4x4_t) -> uint32x4x4_t {
     static_assert_uimm_bits!(LANE, 2);
     transmute(vld4q_lane_s32::<LANE>(transmute(a), transmute(b)))
@@ -12274,6 +12990,7 @@ pub unsafe fn vld4q_lane_u32<const LANE: i32>(a: *const u32, b: uint32x4x4_t) ->
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld4, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld4_lane_p8<const LANE: i32>(a: *const p8, b: poly8x8x4_t) -> poly8x8x4_t {
     static_assert_uimm_bits!(LANE, 3);
     transmute(vld4_lane_s8::<LANE>(transmute(a), transmute(b)))
@@ -12289,6 +13006,7 @@ pub unsafe fn vld4_lane_p8<const LANE: i32>(a: *const p8, b: poly8x8x4_t) -> pol
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld4, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld4_lane_p16<const LANE: i32>(a: *const p16, b: poly16x4x4_t) -> poly16x4x4_t {
     static_assert_uimm_bits!(LANE, 2);
     transmute(vld4_lane_s16::<LANE>(transmute(a), transmute(b)))
@@ -12304,6 +13022,7 @@ pub unsafe fn vld4_lane_p16<const LANE: i32>(a: *const p16, b: poly16x4x4_t) -> 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld4, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vld4q_lane_p16<const LANE: i32>(a: *const p16, b: poly16x8x4_t) -> poly16x8x4_t {
     static_assert_uimm_bits!(LANE, 3);
     transmute(vld4q_lane_s16::<LANE>(transmute(a), transmute(b)))
@@ -12317,6 +13036,7 @@ pub unsafe fn vld4q_lane_p16<const LANE: i32>(a: *const p16, b: poly16x8x4_t) ->
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld4, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4_lane_f32<const LANE: i32>(a: *const f32, b: float32x2x4_t) -> float32x2x4_t {
     static_assert_uimm_bits!(LANE, 1);
     #[allow(improper_ctypes)]
@@ -12354,6 +13074,7 @@ vld4_lane_f32_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vld4, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vld4q_lane_f32<const LANE: i32>(a: *const f32, b: float32x4x4_t) -> float32x4x4_t {
     static_assert_uimm_bits!(LANE, 2);
     #[allow(improper_ctypes)]
@@ -12393,6 +13114,7 @@ vld4q_lane_f32_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_lane_s8<const LANE: i32>(a: *mut i8, b: int8x8_t) {
     static_assert_uimm_bits!(LANE, 3);
     *a = simd_extract(b, LANE as u32);
@@ -12408,6 +13130,7 @@ pub unsafe fn vst1_lane_s8<const LANE: i32>(a: *mut i8, b: int8x8_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_lane_s16<const LANE: i32>(a: *mut i16, b: int16x4_t) {
     static_assert_uimm_bits!(LANE, 2);
     *a = simd_extract(b, LANE as u32);
@@ -12423,6 +13146,7 @@ pub unsafe fn vst1_lane_s16<const LANE: i32>(a: *mut i16, b: int16x4_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_lane_s32<const LANE: i32>(a: *mut i32, b: int32x2_t) {
     static_assert_uimm_bits!(LANE, 1);
     *a = simd_extract(b, LANE as u32);
@@ -12438,6 +13162,7 @@ pub unsafe fn vst1_lane_s32<const LANE: i32>(a: *mut i32, b: int32x2_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_lane_s64<const LANE: i32>(a: *mut i64, b: int64x1_t) {
     static_assert!(LANE == 0);
     *a = simd_extract(b, LANE as u32);
@@ -12453,6 +13178,7 @@ pub unsafe fn vst1_lane_s64<const LANE: i32>(a: *mut i64, b: int64x1_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_lane_s8<const LANE: i32>(a: *mut i8, b: int8x16_t) {
     static_assert_uimm_bits!(LANE, 4);
     *a = simd_extract(b, LANE as u32);
@@ -12468,6 +13194,7 @@ pub unsafe fn vst1q_lane_s8<const LANE: i32>(a: *mut i8, b: int8x16_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_lane_s16<const LANE: i32>(a: *mut i16, b: int16x8_t) {
     static_assert_uimm_bits!(LANE, 3);
     *a = simd_extract(b, LANE as u32);
@@ -12483,6 +13210,7 @@ pub unsafe fn vst1q_lane_s16<const LANE: i32>(a: *mut i16, b: int16x8_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_lane_s32<const LANE: i32>(a: *mut i32, b: int32x4_t) {
     static_assert_uimm_bits!(LANE, 2);
     *a = simd_extract(b, LANE as u32);
@@ -12498,6 +13226,7 @@ pub unsafe fn vst1q_lane_s32<const LANE: i32>(a: *mut i32, b: int32x4_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_lane_s64<const LANE: i32>(a: *mut i64, b: int64x2_t) {
     static_assert_uimm_bits!(LANE, 1);
     *a = simd_extract(b, LANE as u32);
@@ -12513,6 +13242,7 @@ pub unsafe fn vst1q_lane_s64<const LANE: i32>(a: *mut i64, b: int64x2_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x8_t) {
     static_assert_uimm_bits!(LANE, 3);
     *a = simd_extract(b, LANE as u32);
@@ -12528,6 +13258,7 @@ pub unsafe fn vst1_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x8_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x4_t) {
     static_assert_uimm_bits!(LANE, 2);
     *a = simd_extract(b, LANE as u32);
@@ -12543,6 +13274,7 @@ pub unsafe fn vst1_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x4_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x2_t) {
     static_assert_uimm_bits!(LANE, 1);
     *a = simd_extract(b, LANE as u32);
@@ -12558,6 +13290,7 @@ pub unsafe fn vst1_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x2_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x1_t) {
     static_assert!(LANE == 0);
     *a = simd_extract(b, LANE as u32);
@@ -12573,6 +13306,7 @@ pub unsafe fn vst1_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x1_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x16_t) {
     static_assert_uimm_bits!(LANE, 4);
     *a = simd_extract(b, LANE as u32);
@@ -12588,6 +13322,7 @@ pub unsafe fn vst1q_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x16_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x8_t) {
     static_assert_uimm_bits!(LANE, 3);
     *a = simd_extract(b, LANE as u32);
@@ -12603,6 +13338,7 @@ pub unsafe fn vst1q_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x8_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x4_t) {
     static_assert_uimm_bits!(LANE, 2);
     *a = simd_extract(b, LANE as u32);
@@ -12618,6 +13354,7 @@ pub unsafe fn vst1q_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x4_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x2_t) {
     static_assert_uimm_bits!(LANE, 1);
     *a = simd_extract(b, LANE as u32);
@@ -12633,6 +13370,7 @@ pub unsafe fn vst1q_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x2_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x8_t) {
     static_assert_uimm_bits!(LANE, 3);
     *a = simd_extract(b, LANE as u32);
@@ -12648,6 +13386,7 @@ pub unsafe fn vst1_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x8_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x4_t) {
     static_assert_uimm_bits!(LANE, 2);
     *a = simd_extract(b, LANE as u32);
@@ -12663,6 +13402,7 @@ pub unsafe fn vst1_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x4_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x16_t) {
     static_assert_uimm_bits!(LANE, 4);
     *a = simd_extract(b, LANE as u32);
@@ -12678,6 +13418,7 @@ pub unsafe fn vst1q_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x16_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x8_t) {
     static_assert_uimm_bits!(LANE, 3);
     *a = simd_extract(b, LANE as u32);
@@ -12693,6 +13434,7 @@ pub unsafe fn vst1q_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x8_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x1_t) {
     static_assert!(LANE == 0);
     *a = simd_extract(b, LANE as u32);
@@ -12708,6 +13450,7 @@ pub unsafe fn vst1_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x1_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x2_t) {
     static_assert_uimm_bits!(LANE, 1);
     *a = simd_extract(b, LANE as u32);
@@ -12723,6 +13466,7 @@ pub unsafe fn vst1q_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x2_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_lane_f32<const LANE: i32>(a: *mut f32, b: float32x2_t) {
     static_assert_uimm_bits!(LANE, 1);
     *a = simd_extract(b, LANE as u32);
@@ -12738,6 +13482,7 @@ pub unsafe fn vst1_lane_f32<const LANE: i32>(a: *mut f32, b: float32x2_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_lane_f32<const LANE: i32>(a: *mut f32, b: float32x4_t) {
     static_assert_uimm_bits!(LANE, 2);
     *a = simd_extract(b, LANE as u32);
@@ -12750,6 +13495,7 @@ pub unsafe fn vst1q_lane_f32<const LANE: i32>(a: *mut f32, b: float32x4_t) {
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst1))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst1_s8_x2(a: *mut i8, b: int8x8x2_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -12783,6 +13529,7 @@ vst1_s8_x2_(b.0, b.1, a)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst1))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst1_s16_x2(a: *mut i16, b: int16x4x2_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -12816,6 +13563,7 @@ vst1_s16_x2_(b.0, b.1, a)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst1))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst1_s32_x2(a: *mut i32, b: int32x2x2_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -12849,6 +13597,7 @@ vst1_s32_x2_(b.0, b.1, a)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst1))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst1_s64_x2(a: *mut i64, b: int64x1x2_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -12882,6 +13631,7 @@ vst1_s64_x2_(b.0, b.1, a)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst1))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst1q_s8_x2(a: *mut i8, b: int8x16x2_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -12915,6 +13665,7 @@ vst1q_s8_x2_(b.0, b.1, a)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst1))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst1q_s16_x2(a: *mut i16, b: int16x8x2_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -12948,6 +13699,7 @@ vst1q_s16_x2_(b.0, b.1, a)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst1))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst1q_s32_x2(a: *mut i32, b: int32x4x2_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -12981,6 +13733,7 @@ vst1q_s32_x2_(b.0, b.1, a)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst1))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst1q_s64_x2(a: *mut i64, b: int64x2x2_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -13014,6 +13767,7 @@ vst1q_s64_x2_(b.0, b.1, a)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst1))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst1_s8_x3(a: *mut i8, b: int8x8x3_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -13047,6 +13801,7 @@ vst1_s8_x3_(b.0, b.1, b.2, a)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst1))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst1_s16_x3(a: *mut i16, b: int16x4x3_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -13080,6 +13835,7 @@ vst1_s16_x3_(b.0, b.1, b.2, a)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst1))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst1_s32_x3(a: *mut i32, b: int32x2x3_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -13113,6 +13869,7 @@ vst1_s32_x3_(b.0, b.1, b.2, a)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst1))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst1_s64_x3(a: *mut i64, b: int64x1x3_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -13146,6 +13903,7 @@ vst1_s64_x3_(b.0, b.1, b.2, a)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst1))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst1q_s8_x3(a: *mut i8, b: int8x16x3_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -13179,6 +13937,7 @@ vst1q_s8_x3_(b.0, b.1, b.2, a)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst1))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst1q_s16_x3(a: *mut i16, b: int16x8x3_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -13212,6 +13971,7 @@ vst1q_s16_x3_(b.0, b.1, b.2, a)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst1))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst1q_s32_x3(a: *mut i32, b: int32x4x3_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -13245,6 +14005,7 @@ vst1q_s32_x3_(b.0, b.1, b.2, a)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst1))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst1q_s64_x3(a: *mut i64, b: int64x2x3_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -13278,6 +14039,7 @@ vst1q_s64_x3_(b.0, b.1, b.2, a)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst1))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst1_s8_x4(a: *mut i8, b: int8x8x4_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -13311,6 +14073,7 @@ vst1_s8_x4_(b.0, b.1, b.2, b.3, a)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst1))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst1_s16_x4(a: *mut i16, b: int16x4x4_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -13344,6 +14107,7 @@ vst1_s16_x4_(b.0, b.1, b.2, b.3, a)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst1))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst1_s32_x4(a: *mut i32, b: int32x2x4_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -13377,6 +14141,7 @@ vst1_s32_x4_(b.0, b.1, b.2, b.3, a)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst1))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst1_s64_x4(a: *mut i64, b: int64x1x4_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -13410,6 +14175,7 @@ vst1_s64_x4_(b.0, b.1, b.2, b.3, a)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst1))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst1q_s8_x4(a: *mut i8, b: int8x16x4_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -13443,6 +14209,7 @@ vst1q_s8_x4_(b.0, b.1, b.2, b.3, a)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst1))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst1q_s16_x4(a: *mut i16, b: int16x8x4_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -13476,6 +14243,7 @@ vst1q_s16_x4_(b.0, b.1, b.2, b.3, a)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst1))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst1q_s32_x4(a: *mut i32, b: int32x4x4_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -13509,6 +14277,7 @@ vst1q_s32_x4_(b.0, b.1, b.2, b.3, a)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst1))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst1q_s64_x4(a: *mut i64, b: int64x2x4_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -13544,6 +14313,7 @@ vst1q_s64_x4_(b.0, b.1, b.2, b.3, a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_u8_x2(a: *mut u8, b: uint8x8x2_t) {
     vst1_s8_x2(transmute(a), transmute(b))
 }
@@ -13557,6 +14327,7 @@ pub unsafe fn vst1_u8_x2(a: *mut u8, b: uint8x8x2_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_u16_x2(a: *mut u16, b: uint16x4x2_t) {
     vst1_s16_x2(transmute(a), transmute(b))
 }
@@ -13570,6 +14341,7 @@ pub unsafe fn vst1_u16_x2(a: *mut u16, b: uint16x4x2_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_u32_x2(a: *mut u32, b: uint32x2x2_t) {
     vst1_s32_x2(transmute(a), transmute(b))
 }
@@ -13583,6 +14355,7 @@ pub unsafe fn vst1_u32_x2(a: *mut u32, b: uint32x2x2_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_u64_x2(a: *mut u64, b: uint64x1x2_t) {
     vst1_s64_x2(transmute(a), transmute(b))
 }
@@ -13596,6 +14369,7 @@ pub unsafe fn vst1_u64_x2(a: *mut u64, b: uint64x1x2_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_u8_x2(a: *mut u8, b: uint8x16x2_t) {
     vst1q_s8_x2(transmute(a), transmute(b))
 }
@@ -13609,6 +14383,7 @@ pub unsafe fn vst1q_u8_x2(a: *mut u8, b: uint8x16x2_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_u16_x2(a: *mut u16, b: uint16x8x2_t) {
     vst1q_s16_x2(transmute(a), transmute(b))
 }
@@ -13622,6 +14397,7 @@ pub unsafe fn vst1q_u16_x2(a: *mut u16, b: uint16x8x2_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_u32_x2(a: *mut u32, b: uint32x4x2_t) {
     vst1q_s32_x2(transmute(a), transmute(b))
 }
@@ -13635,6 +14411,7 @@ pub unsafe fn vst1q_u32_x2(a: *mut u32, b: uint32x4x2_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_u64_x2(a: *mut u64, b: uint64x2x2_t) {
     vst1q_s64_x2(transmute(a), transmute(b))
 }
@@ -13648,6 +14425,7 @@ pub unsafe fn vst1q_u64_x2(a: *mut u64, b: uint64x2x2_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_u8_x3(a: *mut u8, b: uint8x8x3_t) {
     vst1_s8_x3(transmute(a), transmute(b))
 }
@@ -13661,6 +14439,7 @@ pub unsafe fn vst1_u8_x3(a: *mut u8, b: uint8x8x3_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_u16_x3(a: *mut u16, b: uint16x4x3_t) {
     vst1_s16_x3(transmute(a), transmute(b))
 }
@@ -13674,6 +14453,7 @@ pub unsafe fn vst1_u16_x3(a: *mut u16, b: uint16x4x3_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_u32_x3(a: *mut u32, b: uint32x2x3_t) {
     vst1_s32_x3(transmute(a), transmute(b))
 }
@@ -13687,6 +14467,7 @@ pub unsafe fn vst1_u32_x3(a: *mut u32, b: uint32x2x3_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_u64_x3(a: *mut u64, b: uint64x1x3_t) {
     vst1_s64_x3(transmute(a), transmute(b))
 }
@@ -13700,6 +14481,7 @@ pub unsafe fn vst1_u64_x3(a: *mut u64, b: uint64x1x3_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_u8_x3(a: *mut u8, b: uint8x16x3_t) {
     vst1q_s8_x3(transmute(a), transmute(b))
 }
@@ -13713,6 +14495,7 @@ pub unsafe fn vst1q_u8_x3(a: *mut u8, b: uint8x16x3_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_u16_x3(a: *mut u16, b: uint16x8x3_t) {
     vst1q_s16_x3(transmute(a), transmute(b))
 }
@@ -13726,6 +14509,7 @@ pub unsafe fn vst1q_u16_x3(a: *mut u16, b: uint16x8x3_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_u32_x3(a: *mut u32, b: uint32x4x3_t) {
     vst1q_s32_x3(transmute(a), transmute(b))
 }
@@ -13739,6 +14523,7 @@ pub unsafe fn vst1q_u32_x3(a: *mut u32, b: uint32x4x3_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_u64_x3(a: *mut u64, b: uint64x2x3_t) {
     vst1q_s64_x3(transmute(a), transmute(b))
 }
@@ -13752,6 +14537,7 @@ pub unsafe fn vst1q_u64_x3(a: *mut u64, b: uint64x2x3_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_u8_x4(a: *mut u8, b: uint8x8x4_t) {
     vst1_s8_x4(transmute(a), transmute(b))
 }
@@ -13765,6 +14551,7 @@ pub unsafe fn vst1_u8_x4(a: *mut u8, b: uint8x8x4_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_u16_x4(a: *mut u16, b: uint16x4x4_t) {
     vst1_s16_x4(transmute(a), transmute(b))
 }
@@ -13778,6 +14565,7 @@ pub unsafe fn vst1_u16_x4(a: *mut u16, b: uint16x4x4_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_u32_x4(a: *mut u32, b: uint32x2x4_t) {
     vst1_s32_x4(transmute(a), transmute(b))
 }
@@ -13791,6 +14579,7 @@ pub unsafe fn vst1_u32_x4(a: *mut u32, b: uint32x2x4_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_u64_x4(a: *mut u64, b: uint64x1x4_t) {
     vst1_s64_x4(transmute(a), transmute(b))
 }
@@ -13804,6 +14593,7 @@ pub unsafe fn vst1_u64_x4(a: *mut u64, b: uint64x1x4_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_u8_x4(a: *mut u8, b: uint8x16x4_t) {
     vst1q_s8_x4(transmute(a), transmute(b))
 }
@@ -13817,6 +14607,7 @@ pub unsafe fn vst1q_u8_x4(a: *mut u8, b: uint8x16x4_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_u16_x4(a: *mut u16, b: uint16x8x4_t) {
     vst1q_s16_x4(transmute(a), transmute(b))
 }
@@ -13830,6 +14621,7 @@ pub unsafe fn vst1q_u16_x4(a: *mut u16, b: uint16x8x4_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_u32_x4(a: *mut u32, b: uint32x4x4_t) {
     vst1q_s32_x4(transmute(a), transmute(b))
 }
@@ -13843,6 +14635,7 @@ pub unsafe fn vst1q_u32_x4(a: *mut u32, b: uint32x4x4_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_u64_x4(a: *mut u64, b: uint64x2x4_t) {
     vst1q_s64_x4(transmute(a), transmute(b))
 }
@@ -13856,6 +14649,7 @@ pub unsafe fn vst1q_u64_x4(a: *mut u64, b: uint64x2x4_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_p8_x2(a: *mut p8, b: poly8x8x2_t) {
     vst1_s8_x2(transmute(a), transmute(b))
 }
@@ -13869,6 +14663,7 @@ pub unsafe fn vst1_p8_x2(a: *mut p8, b: poly8x8x2_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_p8_x3(a: *mut p8, b: poly8x8x3_t) {
     vst1_s8_x3(transmute(a), transmute(b))
 }
@@ -13882,6 +14677,7 @@ pub unsafe fn vst1_p8_x3(a: *mut p8, b: poly8x8x3_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_p8_x4(a: *mut p8, b: poly8x8x4_t) {
     vst1_s8_x4(transmute(a), transmute(b))
 }
@@ -13895,6 +14691,7 @@ pub unsafe fn vst1_p8_x4(a: *mut p8, b: poly8x8x4_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_p8_x2(a: *mut p8, b: poly8x16x2_t) {
     vst1q_s8_x2(transmute(a), transmute(b))
 }
@@ -13908,6 +14705,7 @@ pub unsafe fn vst1q_p8_x2(a: *mut p8, b: poly8x16x2_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_p8_x3(a: *mut p8, b: poly8x16x3_t) {
     vst1q_s8_x3(transmute(a), transmute(b))
 }
@@ -13921,6 +14719,7 @@ pub unsafe fn vst1q_p8_x3(a: *mut p8, b: poly8x16x3_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_p8_x4(a: *mut p8, b: poly8x16x4_t) {
     vst1q_s8_x4(transmute(a), transmute(b))
 }
@@ -13934,6 +14733,7 @@ pub unsafe fn vst1q_p8_x4(a: *mut p8, b: poly8x16x4_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_p16_x2(a: *mut p16, b: poly16x4x2_t) {
     vst1_s16_x2(transmute(a), transmute(b))
 }
@@ -13947,6 +14747,7 @@ pub unsafe fn vst1_p16_x2(a: *mut p16, b: poly16x4x2_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_p16_x3(a: *mut p16, b: poly16x4x3_t) {
     vst1_s16_x3(transmute(a), transmute(b))
 }
@@ -13960,6 +14761,7 @@ pub unsafe fn vst1_p16_x3(a: *mut p16, b: poly16x4x3_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_p16_x4(a: *mut p16, b: poly16x4x4_t) {
     vst1_s16_x4(transmute(a), transmute(b))
 }
@@ -13973,6 +14775,7 @@ pub unsafe fn vst1_p16_x4(a: *mut p16, b: poly16x4x4_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_p16_x2(a: *mut p16, b: poly16x8x2_t) {
     vst1q_s16_x2(transmute(a), transmute(b))
 }
@@ -13986,6 +14789,7 @@ pub unsafe fn vst1q_p16_x2(a: *mut p16, b: poly16x8x2_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_p16_x3(a: *mut p16, b: poly16x8x3_t) {
     vst1q_s16_x3(transmute(a), transmute(b))
 }
@@ -13999,6 +14803,7 @@ pub unsafe fn vst1q_p16_x3(a: *mut p16, b: poly16x8x3_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_p16_x4(a: *mut p16, b: poly16x8x4_t) {
     vst1q_s16_x4(transmute(a), transmute(b))
 }
@@ -14012,6 +14817,7 @@ pub unsafe fn vst1q_p16_x4(a: *mut p16, b: poly16x8x4_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_p64_x2(a: *mut p64, b: poly64x1x2_t) {
     vst1_s64_x2(transmute(a), transmute(b))
 }
@@ -14025,6 +14831,7 @@ pub unsafe fn vst1_p64_x2(a: *mut p64, b: poly64x1x2_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_p64_x3(a: *mut p64, b: poly64x1x3_t) {
     vst1_s64_x3(transmute(a), transmute(b))
 }
@@ -14038,6 +14845,7 @@ pub unsafe fn vst1_p64_x3(a: *mut p64, b: poly64x1x3_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_p64_x4(a: *mut p64, b: poly64x1x4_t) {
     vst1_s64_x4(transmute(a), transmute(b))
 }
@@ -14051,6 +14859,7 @@ pub unsafe fn vst1_p64_x4(a: *mut p64, b: poly64x1x4_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_p64_x2(a: *mut p64, b: poly64x2x2_t) {
     vst1q_s64_x2(transmute(a), transmute(b))
 }
@@ -14064,6 +14873,7 @@ pub unsafe fn vst1q_p64_x2(a: *mut p64, b: poly64x2x2_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_p64_x3(a: *mut p64, b: poly64x2x3_t) {
     vst1q_s64_x3(transmute(a), transmute(b))
 }
@@ -14077,6 +14887,7 @@ pub unsafe fn vst1q_p64_x3(a: *mut p64, b: poly64x2x3_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st1))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_p64_x4(a: *mut p64, b: poly64x2x4_t) {
     vst1q_s64_x4(transmute(a), transmute(b))
 }
@@ -14088,6 +14899,7 @@ pub unsafe fn vst1q_p64_x4(a: *mut p64, b: poly64x2x4_t) {
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst1))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst1_f32_x2(a: *mut f32, b: float32x2x2_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -14121,6 +14933,7 @@ vst1_f32_x2_(b.0, b.1, a)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst1))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst1q_f32_x2(a: *mut f32, b: float32x4x2_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -14154,6 +14967,7 @@ vst1q_f32_x2_(b.0, b.1, a)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst1))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst1_f32_x3(a: *mut f32, b: float32x2x3_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -14187,6 +15001,7 @@ vst1_f32_x3_(b.0, b.1, b.2, a)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst1))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst1q_f32_x3(a: *mut f32, b: float32x4x3_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -14220,6 +15035,7 @@ vst1q_f32_x3_(b.0, b.1, b.2, a)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst1))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst1_f32_x4(a: *mut f32, b: float32x2x4_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -14253,6 +15069,7 @@ vst1_f32_x4_(b.0, b.1, b.2, b.3, a)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst1))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst1q_f32_x4(a: *mut f32, b: float32x4x4_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -14286,6 +15103,7 @@ vst1q_f32_x4_(b.0, b.1, b.2, b.3, a)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst2))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst2_s8(a: *mut i8, b: int8x8x2_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -14319,6 +15137,7 @@ vst2_s8_(b.0, b.1, a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst2))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst2_s16(a: *mut i16, b: int16x4x2_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -14352,6 +15171,7 @@ vst2_s16_(b.0, b.1, a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst2))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst2_s32(a: *mut i32, b: int32x2x2_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -14385,6 +15205,7 @@ vst2_s32_(b.0, b.1, a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst2))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst2q_s8(a: *mut i8, b: int8x16x2_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -14418,6 +15239,7 @@ vst2q_s8_(b.0, b.1, a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst2))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst2q_s16(a: *mut i16, b: int16x8x2_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -14451,6 +15273,7 @@ vst2q_s16_(b.0, b.1, a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst2))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst2q_s32(a: *mut i32, b: int32x4x2_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -14484,6 +15307,7 @@ vst2q_s32_(b.0, b.1, a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(nop))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst2_s64(a: *mut i64, b: int64x1x2_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -14519,6 +15343,7 @@ vst2_s64_(b.0, b.1, a as _)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st2))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2_u8(a: *mut u8, b: uint8x8x2_t) {
     transmute(vst2_s8(transmute(a), transmute(b)))
 }
@@ -14532,6 +15357,7 @@ pub unsafe fn vst2_u8(a: *mut u8, b: uint8x8x2_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st2))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2_u16(a: *mut u16, b: uint16x4x2_t) {
     transmute(vst2_s16(transmute(a), transmute(b)))
 }
@@ -14545,6 +15371,7 @@ pub unsafe fn vst2_u16(a: *mut u16, b: uint16x4x2_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st2))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2_u32(a: *mut u32, b: uint32x2x2_t) {
     transmute(vst2_s32(transmute(a), transmute(b)))
 }
@@ -14558,6 +15385,7 @@ pub unsafe fn vst2_u32(a: *mut u32, b: uint32x2x2_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st2))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2q_u8(a: *mut u8, b: uint8x16x2_t) {
     transmute(vst2q_s8(transmute(a), transmute(b)))
 }
@@ -14571,6 +15399,7 @@ pub unsafe fn vst2q_u8(a: *mut u8, b: uint8x16x2_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st2))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2q_u16(a: *mut u16, b: uint16x8x2_t) {
     transmute(vst2q_s16(transmute(a), transmute(b)))
 }
@@ -14584,6 +15413,7 @@ pub unsafe fn vst2q_u16(a: *mut u16, b: uint16x8x2_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st2))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2q_u32(a: *mut u32, b: uint32x4x2_t) {
     transmute(vst2q_s32(transmute(a), transmute(b)))
 }
@@ -14597,6 +15427,7 @@ pub unsafe fn vst2q_u32(a: *mut u32, b: uint32x4x2_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st2))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2_p8(a: *mut p8, b: poly8x8x2_t) {
     transmute(vst2_s8(transmute(a), transmute(b)))
 }
@@ -14610,6 +15441,7 @@ pub unsafe fn vst2_p8(a: *mut p8, b: poly8x8x2_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st2))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2_p16(a: *mut p16, b: poly16x4x2_t) {
     transmute(vst2_s16(transmute(a), transmute(b)))
 }
@@ -14623,6 +15455,7 @@ pub unsafe fn vst2_p16(a: *mut p16, b: poly16x4x2_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st2))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2q_p8(a: *mut p8, b: poly8x16x2_t) {
     transmute(vst2q_s8(transmute(a), transmute(b)))
 }
@@ -14636,6 +15469,7 @@ pub unsafe fn vst2q_p8(a: *mut p8, b: poly8x16x2_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st2))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2q_p16(a: *mut p16, b: poly16x8x2_t) {
     transmute(vst2q_s16(transmute(a), transmute(b)))
 }
@@ -14649,6 +15483,7 @@ pub unsafe fn vst2q_p16(a: *mut p16, b: poly16x8x2_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2_u64(a: *mut u64, b: uint64x1x2_t) {
     transmute(vst2_s64(transmute(a), transmute(b)))
 }
@@ -14662,6 +15497,7 @@ pub unsafe fn vst2_u64(a: *mut u64, b: uint64x1x2_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2_p64(a: *mut p64, b: poly64x1x2_t) {
     transmute(vst2_s64(transmute(a), transmute(b)))
 }
@@ -14673,6 +15509,7 @@ pub unsafe fn vst2_p64(a: *mut p64, b: poly64x1x2_t) {
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst2))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst2_f32(a: *mut f32, b: float32x2x2_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -14706,6 +15543,7 @@ vst2_f32_(b.0, b.1, a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst2))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst2q_f32(a: *mut f32, b: float32x4x2_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -14740,6 +15578,7 @@ vst2q_f32_(b.0, b.1, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst2, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst2_lane_s8<const LANE: i32>(a: *mut i8, b: int8x8x2_t) {
     static_assert_uimm_bits!(LANE, 3);
     #[allow(improper_ctypes)]
@@ -14777,6 +15616,7 @@ vst2_lane_s8_(b.0, b.1, LANE as i64, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst2, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst2_lane_s16<const LANE: i32>(a: *mut i16, b: int16x4x2_t) {
     static_assert_uimm_bits!(LANE, 2);
     #[allow(improper_ctypes)]
@@ -14814,6 +15654,7 @@ vst2_lane_s16_(b.0, b.1, LANE as i64, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst2, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst2_lane_s32<const LANE: i32>(a: *mut i32, b: int32x2x2_t) {
     static_assert_uimm_bits!(LANE, 1);
     #[allow(improper_ctypes)]
@@ -14851,6 +15692,7 @@ vst2_lane_s32_(b.0, b.1, LANE as i64, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst2, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst2q_lane_s16<const LANE: i32>(a: *mut i16, b: int16x8x2_t) {
     static_assert_uimm_bits!(LANE, 3);
     #[allow(improper_ctypes)]
@@ -14888,6 +15730,7 @@ vst2q_lane_s16_(b.0, b.1, LANE as i64, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst2, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst2q_lane_s32<const LANE: i32>(a: *mut i32, b: int32x4x2_t) {
     static_assert_uimm_bits!(LANE, 2);
     #[allow(improper_ctypes)]
@@ -14927,6 +15770,7 @@ vst2q_lane_s32_(b.0, b.1, LANE as i64, a as _)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st2, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x8x2_t) {
     static_assert_uimm_bits!(LANE, 3);
     transmute(vst2_lane_s8::<LANE>(transmute(a), transmute(b)))
@@ -14942,6 +15786,7 @@ pub unsafe fn vst2_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x8x2_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st2, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x4x2_t) {
     static_assert_uimm_bits!(LANE, 2);
     transmute(vst2_lane_s16::<LANE>(transmute(a), transmute(b)))
@@ -14957,6 +15802,7 @@ pub unsafe fn vst2_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x4x2_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st2, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x2x2_t) {
     static_assert_uimm_bits!(LANE, 1);
     transmute(vst2_lane_s32::<LANE>(transmute(a), transmute(b)))
@@ -14972,6 +15818,7 @@ pub unsafe fn vst2_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x2x2_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st2, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2q_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x8x2_t) {
     static_assert_uimm_bits!(LANE, 3);
     transmute(vst2q_lane_s16::<LANE>(transmute(a), transmute(b)))
@@ -14987,6 +15834,7 @@ pub unsafe fn vst2q_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x8x2_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st2, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2q_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x4x2_t) {
     static_assert_uimm_bits!(LANE, 2);
     transmute(vst2q_lane_s32::<LANE>(transmute(a), transmute(b)))
@@ -15002,6 +15850,7 @@ pub unsafe fn vst2q_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x4x2_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st2, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x8x2_t) {
     static_assert_uimm_bits!(LANE, 3);
     transmute(vst2_lane_s8::<LANE>(transmute(a), transmute(b)))
@@ -15017,6 +15866,7 @@ pub unsafe fn vst2_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x8x2_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st2, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x4x2_t) {
     static_assert_uimm_bits!(LANE, 2);
     transmute(vst2_lane_s16::<LANE>(transmute(a), transmute(b)))
@@ -15032,6 +15882,7 @@ pub unsafe fn vst2_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x4x2_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st2, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2q_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x8x2_t) {
     static_assert_uimm_bits!(LANE, 3);
     transmute(vst2q_lane_s16::<LANE>(transmute(a), transmute(b)))
@@ -15045,6 +15896,7 @@ pub unsafe fn vst2q_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x8x2_t) {
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst2, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst2_lane_f32<const LANE: i32>(a: *mut f32, b: float32x2x2_t) {
     static_assert_uimm_bits!(LANE, 1);
     #[allow(improper_ctypes)]
@@ -15082,6 +15934,7 @@ vst2_lane_f32_(b.0, b.1, LANE as i64, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst2, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst2q_lane_f32<const LANE: i32>(a: *mut f32, b: float32x4x2_t) {
     static_assert_uimm_bits!(LANE, 2);
     #[allow(improper_ctypes)]
@@ -15118,6 +15971,7 @@ vst2q_lane_f32_(b.0, b.1, LANE as i64, a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst3))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst3_s8(a: *mut i8, b: int8x8x3_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -15151,6 +16005,7 @@ vst3_s8_(b.0, b.1, b.2, a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst3))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst3_s16(a: *mut i16, b: int16x4x3_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -15184,6 +16039,7 @@ vst3_s16_(b.0, b.1, b.2, a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst3))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst3_s32(a: *mut i32, b: int32x2x3_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -15217,6 +16073,7 @@ vst3_s32_(b.0, b.1, b.2, a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst3))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst3q_s8(a: *mut i8, b: int8x16x3_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -15250,6 +16107,7 @@ vst3q_s8_(b.0, b.1, b.2, a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst3))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst3q_s16(a: *mut i16, b: int16x8x3_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -15283,6 +16141,7 @@ vst3q_s16_(b.0, b.1, b.2, a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst3))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst3q_s32(a: *mut i32, b: int32x4x3_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -15316,6 +16175,7 @@ vst3q_s32_(b.0, b.1, b.2, a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(nop))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst3_s64(a: *mut i64, b: int64x1x3_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -15351,6 +16211,7 @@ vst3_s64_(b.0, b.1, b.2, a as _)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst3))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st3))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3_u8(a: *mut u8, b: uint8x8x3_t) {
     transmute(vst3_s8(transmute(a), transmute(b)))
 }
@@ -15364,6 +16225,7 @@ pub unsafe fn vst3_u8(a: *mut u8, b: uint8x8x3_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst3))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st3))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3_u16(a: *mut u16, b: uint16x4x3_t) {
     transmute(vst3_s16(transmute(a), transmute(b)))
 }
@@ -15377,6 +16239,7 @@ pub unsafe fn vst3_u16(a: *mut u16, b: uint16x4x3_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst3))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st3))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3_u32(a: *mut u32, b: uint32x2x3_t) {
     transmute(vst3_s32(transmute(a), transmute(b)))
 }
@@ -15390,6 +16253,7 @@ pub unsafe fn vst3_u32(a: *mut u32, b: uint32x2x3_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst3))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st3))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3q_u8(a: *mut u8, b: uint8x16x3_t) {
     transmute(vst3q_s8(transmute(a), transmute(b)))
 }
@@ -15403,6 +16267,7 @@ pub unsafe fn vst3q_u8(a: *mut u8, b: uint8x16x3_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst3))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st3))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3q_u16(a: *mut u16, b: uint16x8x3_t) {
     transmute(vst3q_s16(transmute(a), transmute(b)))
 }
@@ -15416,6 +16281,7 @@ pub unsafe fn vst3q_u16(a: *mut u16, b: uint16x8x3_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst3))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st3))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3q_u32(a: *mut u32, b: uint32x4x3_t) {
     transmute(vst3q_s32(transmute(a), transmute(b)))
 }
@@ -15429,6 +16295,7 @@ pub unsafe fn vst3q_u32(a: *mut u32, b: uint32x4x3_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst3))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st3))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3_p8(a: *mut p8, b: poly8x8x3_t) {
     transmute(vst3_s8(transmute(a), transmute(b)))
 }
@@ -15442,6 +16309,7 @@ pub unsafe fn vst3_p8(a: *mut p8, b: poly8x8x3_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst3))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st3))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3_p16(a: *mut p16, b: poly16x4x3_t) {
     transmute(vst3_s16(transmute(a), transmute(b)))
 }
@@ -15455,6 +16323,7 @@ pub unsafe fn vst3_p16(a: *mut p16, b: poly16x4x3_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst3))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st3))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3q_p8(a: *mut p8, b: poly8x16x3_t) {
     transmute(vst3q_s8(transmute(a), transmute(b)))
 }
@@ -15468,6 +16337,7 @@ pub unsafe fn vst3q_p8(a: *mut p8, b: poly8x16x3_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst3))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st3))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3q_p16(a: *mut p16, b: poly16x8x3_t) {
     transmute(vst3q_s16(transmute(a), transmute(b)))
 }
@@ -15481,6 +16351,7 @@ pub unsafe fn vst3q_p16(a: *mut p16, b: poly16x8x3_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3_u64(a: *mut u64, b: uint64x1x3_t) {
     transmute(vst3_s64(transmute(a), transmute(b)))
 }
@@ -15494,6 +16365,7 @@ pub unsafe fn vst3_u64(a: *mut u64, b: uint64x1x3_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3_p64(a: *mut p64, b: poly64x1x3_t) {
     transmute(vst3_s64(transmute(a), transmute(b)))
 }
@@ -15505,6 +16377,7 @@ pub unsafe fn vst3_p64(a: *mut p64, b: poly64x1x3_t) {
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst3))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst3_f32(a: *mut f32, b: float32x2x3_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -15538,6 +16411,7 @@ vst3_f32_(b.0, b.1, b.2, a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst3))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst3q_f32(a: *mut f32, b: float32x4x3_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -15572,6 +16446,7 @@ vst3q_f32_(b.0, b.1, b.2, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst3, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst3_lane_s8<const LANE: i32>(a: *mut i8, b: int8x8x3_t) {
     static_assert_uimm_bits!(LANE, 3);
     #[allow(improper_ctypes)]
@@ -15609,6 +16484,7 @@ vst3_lane_s8_(b.0, b.1, b.2, LANE as i64, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst3, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst3_lane_s16<const LANE: i32>(a: *mut i16, b: int16x4x3_t) {
     static_assert_uimm_bits!(LANE, 2);
     #[allow(improper_ctypes)]
@@ -15646,6 +16522,7 @@ vst3_lane_s16_(b.0, b.1, b.2, LANE as i64, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst3, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst3_lane_s32<const LANE: i32>(a: *mut i32, b: int32x2x3_t) {
     static_assert_uimm_bits!(LANE, 1);
     #[allow(improper_ctypes)]
@@ -15683,6 +16560,7 @@ vst3_lane_s32_(b.0, b.1, b.2, LANE as i64, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst3, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst3q_lane_s16<const LANE: i32>(a: *mut i16, b: int16x8x3_t) {
     static_assert_uimm_bits!(LANE, 3);
     #[allow(improper_ctypes)]
@@ -15720,6 +16598,7 @@ vst3q_lane_s16_(b.0, b.1, b.2, LANE as i64, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst3, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst3q_lane_s32<const LANE: i32>(a: *mut i32, b: int32x4x3_t) {
     static_assert_uimm_bits!(LANE, 2);
     #[allow(improper_ctypes)]
@@ -15759,6 +16638,7 @@ vst3q_lane_s32_(b.0, b.1, b.2, LANE as i64, a as _)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st3, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x8x3_t) {
     static_assert_uimm_bits!(LANE, 3);
     transmute(vst3_lane_s8::<LANE>(transmute(a), transmute(b)))
@@ -15774,6 +16654,7 @@ pub unsafe fn vst3_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x8x3_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st3, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x4x3_t) {
     static_assert_uimm_bits!(LANE, 2);
     transmute(vst3_lane_s16::<LANE>(transmute(a), transmute(b)))
@@ -15789,6 +16670,7 @@ pub unsafe fn vst3_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x4x3_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st3, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x2x3_t) {
     static_assert_uimm_bits!(LANE, 1);
     transmute(vst3_lane_s32::<LANE>(transmute(a), transmute(b)))
@@ -15804,6 +16686,7 @@ pub unsafe fn vst3_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x2x3_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st3, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3q_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x8x3_t) {
     static_assert_uimm_bits!(LANE, 3);
     transmute(vst3q_lane_s16::<LANE>(transmute(a), transmute(b)))
@@ -15819,6 +16702,7 @@ pub unsafe fn vst3q_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x8x3_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st3, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3q_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x4x3_t) {
     static_assert_uimm_bits!(LANE, 2);
     transmute(vst3q_lane_s32::<LANE>(transmute(a), transmute(b)))
@@ -15834,6 +16718,7 @@ pub unsafe fn vst3q_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x4x3_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st3, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x8x3_t) {
     static_assert_uimm_bits!(LANE, 3);
     transmute(vst3_lane_s8::<LANE>(transmute(a), transmute(b)))
@@ -15849,6 +16734,7 @@ pub unsafe fn vst3_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x8x3_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st3, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x4x3_t) {
     static_assert_uimm_bits!(LANE, 2);
     transmute(vst3_lane_s16::<LANE>(transmute(a), transmute(b)))
@@ -15864,6 +16750,7 @@ pub unsafe fn vst3_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x4x3_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st3, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3q_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x8x3_t) {
     static_assert_uimm_bits!(LANE, 3);
     transmute(vst3q_lane_s16::<LANE>(transmute(a), transmute(b)))
@@ -15877,6 +16764,7 @@ pub unsafe fn vst3q_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x8x3_t) {
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst3, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst3_lane_f32<const LANE: i32>(a: *mut f32, b: float32x2x3_t) {
     static_assert_uimm_bits!(LANE, 1);
     #[allow(improper_ctypes)]
@@ -15914,6 +16802,7 @@ vst3_lane_f32_(b.0, b.1, b.2, LANE as i64, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst3, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst3q_lane_f32<const LANE: i32>(a: *mut f32, b: float32x4x3_t) {
     static_assert_uimm_bits!(LANE, 2);
     #[allow(improper_ctypes)]
@@ -15950,6 +16839,7 @@ vst3q_lane_f32_(b.0, b.1, b.2, LANE as i64, a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst4))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst4_s8(a: *mut i8, b: int8x8x4_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -15983,6 +16873,7 @@ vst4_s8_(b.0, b.1, b.2, b.3, a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst4))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst4_s16(a: *mut i16, b: int16x4x4_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -16016,6 +16907,7 @@ vst4_s16_(b.0, b.1, b.2, b.3, a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst4))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst4_s32(a: *mut i32, b: int32x2x4_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -16049,6 +16941,7 @@ vst4_s32_(b.0, b.1, b.2, b.3, a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst4))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst4q_s8(a: *mut i8, b: int8x16x4_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -16082,6 +16975,7 @@ vst4q_s8_(b.0, b.1, b.2, b.3, a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst4))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst4q_s16(a: *mut i16, b: int16x8x4_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -16115,6 +17009,7 @@ vst4q_s16_(b.0, b.1, b.2, b.3, a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst4))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst4q_s32(a: *mut i32, b: int32x4x4_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -16148,6 +17043,7 @@ vst4q_s32_(b.0, b.1, b.2, b.3, a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(nop))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst4_s64(a: *mut i64, b: int64x1x4_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -16183,6 +17079,7 @@ vst4_s64_(b.0, b.1, b.2, b.3, a as _)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst4))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st4))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4_u8(a: *mut u8, b: uint8x8x4_t) {
     transmute(vst4_s8(transmute(a), transmute(b)))
 }
@@ -16196,6 +17093,7 @@ pub unsafe fn vst4_u8(a: *mut u8, b: uint8x8x4_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst4))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st4))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4_u16(a: *mut u16, b: uint16x4x4_t) {
     transmute(vst4_s16(transmute(a), transmute(b)))
 }
@@ -16209,6 +17107,7 @@ pub unsafe fn vst4_u16(a: *mut u16, b: uint16x4x4_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst4))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st4))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4_u32(a: *mut u32, b: uint32x2x4_t) {
     transmute(vst4_s32(transmute(a), transmute(b)))
 }
@@ -16222,6 +17121,7 @@ pub unsafe fn vst4_u32(a: *mut u32, b: uint32x2x4_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst4))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st4))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4q_u8(a: *mut u8, b: uint8x16x4_t) {
     transmute(vst4q_s8(transmute(a), transmute(b)))
 }
@@ -16235,6 +17135,7 @@ pub unsafe fn vst4q_u8(a: *mut u8, b: uint8x16x4_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst4))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st4))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4q_u16(a: *mut u16, b: uint16x8x4_t) {
     transmute(vst4q_s16(transmute(a), transmute(b)))
 }
@@ -16248,6 +17149,7 @@ pub unsafe fn vst4q_u16(a: *mut u16, b: uint16x8x4_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst4))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st4))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4q_u32(a: *mut u32, b: uint32x4x4_t) {
     transmute(vst4q_s32(transmute(a), transmute(b)))
 }
@@ -16261,6 +17163,7 @@ pub unsafe fn vst4q_u32(a: *mut u32, b: uint32x4x4_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst4))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st4))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4_p8(a: *mut p8, b: poly8x8x4_t) {
     transmute(vst4_s8(transmute(a), transmute(b)))
 }
@@ -16274,6 +17177,7 @@ pub unsafe fn vst4_p8(a: *mut p8, b: poly8x8x4_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst4))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st4))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4_p16(a: *mut p16, b: poly16x4x4_t) {
     transmute(vst4_s16(transmute(a), transmute(b)))
 }
@@ -16287,6 +17191,7 @@ pub unsafe fn vst4_p16(a: *mut p16, b: poly16x4x4_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst4))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st4))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4q_p8(a: *mut p8, b: poly8x16x4_t) {
     transmute(vst4q_s8(transmute(a), transmute(b)))
 }
@@ -16300,6 +17205,7 @@ pub unsafe fn vst4q_p8(a: *mut p8, b: poly8x16x4_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vst4))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st4))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4q_p16(a: *mut p16, b: poly16x8x4_t) {
     transmute(vst4q_s16(transmute(a), transmute(b)))
 }
@@ -16313,6 +17219,7 @@ pub unsafe fn vst4q_p16(a: *mut p16, b: poly16x8x4_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4_u64(a: *mut u64, b: uint64x1x4_t) {
     transmute(vst4_s64(transmute(a), transmute(b)))
 }
@@ -16326,6 +17233,7 @@ pub unsafe fn vst4_u64(a: *mut u64, b: uint64x1x4_t) {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4_p64(a: *mut p64, b: poly64x1x4_t) {
     transmute(vst4_s64(transmute(a), transmute(b)))
 }
@@ -16337,6 +17245,7 @@ pub unsafe fn vst4_p64(a: *mut p64, b: poly64x1x4_t) {
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst4))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst4_f32(a: *mut f32, b: float32x2x4_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -16370,6 +17279,7 @@ vst4_f32_(b.0, b.1, b.2, b.3, a as _)
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst4))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst4q_f32(a: *mut f32, b: float32x4x4_t) {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -16404,6 +17314,7 @@ vst4q_f32_(b.0, b.1, b.2, b.3, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst4, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst4_lane_s8<const LANE: i32>(a: *mut i8, b: int8x8x4_t) {
     static_assert_uimm_bits!(LANE, 3);
     #[allow(improper_ctypes)]
@@ -16441,6 +17352,7 @@ vst4_lane_s8_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst4, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst4_lane_s16<const LANE: i32>(a: *mut i16, b: int16x4x4_t) {
     static_assert_uimm_bits!(LANE, 2);
     #[allow(improper_ctypes)]
@@ -16478,6 +17390,7 @@ vst4_lane_s16_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst4, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst4_lane_s32<const LANE: i32>(a: *mut i32, b: int32x2x4_t) {
     static_assert_uimm_bits!(LANE, 1);
     #[allow(improper_ctypes)]
@@ -16515,6 +17428,7 @@ vst4_lane_s32_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst4, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst4q_lane_s16<const LANE: i32>(a: *mut i16, b: int16x8x4_t) {
     static_assert_uimm_bits!(LANE, 3);
     #[allow(improper_ctypes)]
@@ -16552,6 +17466,7 @@ vst4q_lane_s16_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst4, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst4q_lane_s32<const LANE: i32>(a: *mut i32, b: int32x4x4_t) {
     static_assert_uimm_bits!(LANE, 2);
     #[allow(improper_ctypes)]
@@ -16591,6 +17506,7 @@ vst4q_lane_s32_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st4, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x8x4_t) {
     static_assert_uimm_bits!(LANE, 3);
     transmute(vst4_lane_s8::<LANE>(transmute(a), transmute(b)))
@@ -16606,6 +17522,7 @@ pub unsafe fn vst4_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x8x4_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st4, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x4x4_t) {
     static_assert_uimm_bits!(LANE, 2);
     transmute(vst4_lane_s16::<LANE>(transmute(a), transmute(b)))
@@ -16621,6 +17538,7 @@ pub unsafe fn vst4_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x4x4_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st4, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x2x4_t) {
     static_assert_uimm_bits!(LANE, 1);
     transmute(vst4_lane_s32::<LANE>(transmute(a), transmute(b)))
@@ -16636,6 +17554,7 @@ pub unsafe fn vst4_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x2x4_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st4, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4q_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x8x4_t) {
     static_assert_uimm_bits!(LANE, 3);
     transmute(vst4q_lane_s16::<LANE>(transmute(a), transmute(b)))
@@ -16651,6 +17570,7 @@ pub unsafe fn vst4q_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x8x4_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st4, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4q_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x4x4_t) {
     static_assert_uimm_bits!(LANE, 2);
     transmute(vst4q_lane_s32::<LANE>(transmute(a), transmute(b)))
@@ -16666,6 +17586,7 @@ pub unsafe fn vst4q_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x4x4_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st4, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x8x4_t) {
     static_assert_uimm_bits!(LANE, 3);
     transmute(vst4_lane_s8::<LANE>(transmute(a), transmute(b)))
@@ -16681,6 +17602,7 @@ pub unsafe fn vst4_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x8x4_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st4, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x4x4_t) {
     static_assert_uimm_bits!(LANE, 2);
     transmute(vst4_lane_s16::<LANE>(transmute(a), transmute(b)))
@@ -16696,6 +17618,7 @@ pub unsafe fn vst4_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x4x4_t) {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(st4, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4q_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x8x4_t) {
     static_assert_uimm_bits!(LANE, 3);
     transmute(vst4q_lane_s16::<LANE>(transmute(a), transmute(b)))
@@ -16709,6 +17632,7 @@ pub unsafe fn vst4q_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x8x4_t) {
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst4, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst4_lane_f32<const LANE: i32>(a: *mut f32, b: float32x2x4_t) {
     static_assert_uimm_bits!(LANE, 1);
     #[allow(improper_ctypes)]
@@ -16746,6 +17670,7 @@ vst4_lane_f32_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vst4, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vst4q_lane_f32<const LANE: i32>(a: *mut f32, b: float32x4x4_t) {
     static_assert_uimm_bits!(LANE, 2);
     #[allow(improper_ctypes)]
@@ -16783,6 +17708,7 @@ vst4q_lane_f32_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vusdot))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(usdot))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vusdot_s32(a: int32x2_t, b: uint8x8_t, c: int8x8_t) -> int32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -16801,6 +17727,7 @@ vusdot_s32_(a, b, c)
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vusdot))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(usdot))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vusdotq_s32(a: int32x4_t, b: uint8x16_t, c: int8x16_t) -> int32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -16820,6 +17747,7 @@ vusdotq_s32_(a, b, c)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vusdot, LANE = 0))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(usdot, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vusdot_lane_s32<const LANE: i32>(a: int32x2_t, b: uint8x8_t, c: int8x8_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 1);
     let c: int32x2_t = transmute(c);
@@ -16836,6 +17764,7 @@ pub unsafe fn vusdot_lane_s32<const LANE: i32>(a: int32x2_t, b: uint8x8_t, c: in
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vusdot, LANE = 0))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(usdot, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vusdotq_lane_s32<const LANE: i32>(a: int32x4_t, b: uint8x16_t, c: int8x8_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 1);
     let c: int32x2_t = transmute(c);
@@ -16852,6 +17781,7 @@ pub unsafe fn vusdotq_lane_s32<const LANE: i32>(a: int32x4_t, b: uint8x16_t, c: 
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsudot, LANE = 0))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sudot, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsudot_lane_s32<const LANE: i32>(a: int32x2_t, b: int8x8_t, c: uint8x8_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 1);
     let c: uint32x2_t = transmute(c);
@@ -16868,6 +17798,7 @@ pub unsafe fn vsudot_lane_s32<const LANE: i32>(a: int32x2_t, b: int8x8_t, c: uin
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsudot, LANE = 0))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sudot, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsudotq_lane_s32<const LANE: i32>(a: int32x4_t, b: int8x16_t, c: uint8x8_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 1);
     let c: uint32x2_t = transmute(c);
@@ -16884,6 +17815,7 @@ pub unsafe fn vsudotq_lane_s32<const LANE: i32>(a: int32x4_t, b: int8x16_t, c: u
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmul.i8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmul_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     simd_mul(a, b)
 }
@@ -16897,6 +17829,7 @@ pub unsafe fn vmul_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmul.i8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmulq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     simd_mul(a, b)
 }
@@ -16910,6 +17843,7 @@ pub unsafe fn vmulq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmul.i16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmul_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     simd_mul(a, b)
 }
@@ -16923,6 +17857,7 @@ pub unsafe fn vmul_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmul.i16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmulq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     simd_mul(a, b)
 }
@@ -16936,6 +17871,7 @@ pub unsafe fn vmulq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmul.i32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmul_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     simd_mul(a, b)
 }
@@ -16949,6 +17885,7 @@ pub unsafe fn vmul_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmul.i32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmulq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     simd_mul(a, b)
 }
@@ -16962,6 +17899,7 @@ pub unsafe fn vmulq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmul.i8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmul_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     simd_mul(a, b)
 }
@@ -16975,6 +17913,7 @@ pub unsafe fn vmul_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmul.i8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmulq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     simd_mul(a, b)
 }
@@ -16988,6 +17927,7 @@ pub unsafe fn vmulq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmul.i16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmul_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     simd_mul(a, b)
 }
@@ -17001,6 +17941,7 @@ pub unsafe fn vmul_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmul.i16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmulq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     simd_mul(a, b)
 }
@@ -17014,6 +17955,7 @@ pub unsafe fn vmulq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmul.i32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmul_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     simd_mul(a, b)
 }
@@ -17027,6 +17969,7 @@ pub unsafe fn vmul_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmul.i32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmulq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     simd_mul(a, b)
 }
@@ -17040,6 +17983,7 @@ pub unsafe fn vmulq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmul))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(pmul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmul_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -17059,6 +18003,7 @@ vmul_p8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmul))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(pmul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmulq_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -17078,6 +18023,7 @@ vmulq_p8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmul.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmul_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     simd_mul(a, b)
 }
@@ -17091,6 +18037,7 @@ pub unsafe fn vmul_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmul.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmulq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     simd_mul(a, b)
 }
@@ -17104,6 +18051,7 @@ pub unsafe fn vmulq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmul))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmul_n_s16(a: int16x4_t, b: i16) -> int16x4_t {
     simd_mul(a, vdup_n_s16(b))
 }
@@ -17117,6 +18065,7 @@ pub unsafe fn vmul_n_s16(a: int16x4_t, b: i16) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmul))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmulq_n_s16(a: int16x8_t, b: i16) -> int16x8_t {
     simd_mul(a, vdupq_n_s16(b))
 }
@@ -17130,6 +18079,7 @@ pub unsafe fn vmulq_n_s16(a: int16x8_t, b: i16) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmul))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmul_n_s32(a: int32x2_t, b: i32) -> int32x2_t {
     simd_mul(a, vdup_n_s32(b))
 }
@@ -17143,6 +18093,7 @@ pub unsafe fn vmul_n_s32(a: int32x2_t, b: i32) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmul))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmulq_n_s32(a: int32x4_t, b: i32) -> int32x4_t {
     simd_mul(a, vdupq_n_s32(b))
 }
@@ -17156,6 +18107,7 @@ pub unsafe fn vmulq_n_s32(a: int32x4_t, b: i32) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmul))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmul_n_u16(a: uint16x4_t, b: u16) -> uint16x4_t {
     simd_mul(a, vdup_n_u16(b))
 }
@@ -17169,6 +18121,7 @@ pub unsafe fn vmul_n_u16(a: uint16x4_t, b: u16) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmul))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmulq_n_u16(a: uint16x8_t, b: u16) -> uint16x8_t {
     simd_mul(a, vdupq_n_u16(b))
 }
@@ -17182,6 +18135,7 @@ pub unsafe fn vmulq_n_u16(a: uint16x8_t, b: u16) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmul))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmul_n_u32(a: uint32x2_t, b: u32) -> uint32x2_t {
     simd_mul(a, vdup_n_u32(b))
 }
@@ -17195,6 +18149,7 @@ pub unsafe fn vmul_n_u32(a: uint32x2_t, b: u32) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmul))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmulq_n_u32(a: uint32x4_t, b: u32) -> uint32x4_t {
     simd_mul(a, vdupq_n_u32(b))
 }
@@ -17208,6 +18163,7 @@ pub unsafe fn vmulq_n_u32(a: uint32x4_t, b: u32) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmul))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmul_n_f32(a: float32x2_t, b: f32) -> float32x2_t {
     simd_mul(a, vdup_n_f32(b))
 }
@@ -17221,6 +18177,7 @@ pub unsafe fn vmul_n_f32(a: float32x2_t, b: f32) -> float32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmul))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmul))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmulq_n_f32(a: float32x4_t, b: f32) -> float32x4_t {
     simd_mul(a, vdupq_n_f32(b))
 }
@@ -17235,6 +18192,7 @@ pub unsafe fn vmulq_n_f32(a: float32x4_t, b: f32) -> float32x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul, LANE = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmul_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     static_assert_uimm_bits!(LANE, 2);
     simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -17250,6 +18208,7 @@ pub unsafe fn vmul_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t) -> int1
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul, LANE = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmul_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) -> int16x4_t {
     static_assert_uimm_bits!(LANE, 3);
     simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -17265,6 +18224,7 @@ pub unsafe fn vmul_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) -> int
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul, LANE = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmulq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x4_t) -> int16x8_t {
     static_assert_uimm_bits!(LANE, 2);
     simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -17280,6 +18240,7 @@ pub unsafe fn vmulq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x4_t) -> int
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul, LANE = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmulq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     static_assert_uimm_bits!(LANE, 3);
     simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -17295,6 +18256,7 @@ pub unsafe fn vmulq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) -> in
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul, LANE = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmul_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 1);
     simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32]))
@@ -17310,6 +18272,7 @@ pub unsafe fn vmul_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t) -> int3
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul, LANE = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmul_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 2);
     simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32]))
@@ -17325,6 +18288,7 @@ pub unsafe fn vmul_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) -> int
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul, LANE = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmulq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x2_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 1);
     simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -17340,6 +18304,7 @@ pub unsafe fn vmulq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x2_t) -> int
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul, LANE = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmulq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
     simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -17355,6 +18320,7 @@ pub unsafe fn vmulq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t) -> in
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul, LANE = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmul_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     static_assert_uimm_bits!(LANE, 2);
     simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -17370,6 +18336,7 @@ pub unsafe fn vmul_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t) -> ui
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul, LANE = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmul_laneq_u16<const LANE: i32>(a: uint16x4_t, b: uint16x8_t) -> uint16x4_t {
     static_assert_uimm_bits!(LANE, 3);
     simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -17385,6 +18352,7 @@ pub unsafe fn vmul_laneq_u16<const LANE: i32>(a: uint16x4_t, b: uint16x8_t) -> u
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul, LANE = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmulq_lane_u16<const LANE: i32>(a: uint16x8_t, b: uint16x4_t) -> uint16x8_t {
     static_assert_uimm_bits!(LANE, 2);
     simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -17400,6 +18368,7 @@ pub unsafe fn vmulq_lane_u16<const LANE: i32>(a: uint16x8_t, b: uint16x4_t) -> u
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul, LANE = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmulq_laneq_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     static_assert_uimm_bits!(LANE, 3);
     simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -17415,6 +18384,7 @@ pub unsafe fn vmulq_laneq_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t) -> 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul, LANE = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmul_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     static_assert_uimm_bits!(LANE, 1);
     simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32]))
@@ -17430,6 +18400,7 @@ pub unsafe fn vmul_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t) -> ui
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul, LANE = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmul_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint32x4_t) -> uint32x2_t {
     static_assert_uimm_bits!(LANE, 2);
     simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32]))
@@ -17445,6 +18416,7 @@ pub unsafe fn vmul_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint32x4_t) -> u
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul, LANE = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmulq_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint32x2_t) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 1);
     simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -17460,6 +18432,7 @@ pub unsafe fn vmulq_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint32x2_t) -> u
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mul, LANE = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmulq_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 2);
     simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -17475,6 +18448,7 @@ pub unsafe fn vmulq_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t) -> 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmul, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmul_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 1);
     simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32]))
@@ -17490,6 +18464,7 @@ pub unsafe fn vmul_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t) -> 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmul, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmul_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x4_t) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 2);
     simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32]))
@@ -17505,6 +18480,7 @@ pub unsafe fn vmul_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x4_t) ->
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmul, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmulq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x2_t) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 1);
     simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -17520,6 +18496,7 @@ pub unsafe fn vmulq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x2_t) ->
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmul, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmulq_laneq_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 2);
     simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -17534,6 +18511,7 @@ pub unsafe fn vmulq_laneq_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t) -
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmull.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smull))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmull_s8(a: int8x8_t, b: int8x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -17553,6 +18531,7 @@ vmull_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmull.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smull))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmull_s16(a: int16x4_t, b: int16x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -17572,6 +18551,7 @@ vmull_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmull.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smull))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmull_s32(a: int32x2_t, b: int32x2_t) -> int64x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -17591,6 +18571,7 @@ vmull_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmull.u8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umull))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmull_u8(a: uint8x8_t, b: uint8x8_t) -> uint16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -17610,6 +18591,7 @@ vmull_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmull.u16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umull))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmull_u16(a: uint16x4_t, b: uint16x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -17629,6 +18611,7 @@ vmull_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmull.u32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umull))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmull_u32(a: uint32x2_t, b: uint32x2_t) -> uint64x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -17648,6 +18631,7 @@ vmull_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmull.p8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(pmull))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmull_p8(a: poly8x8_t, b: poly8x8_t) -> poly16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -17667,6 +18651,7 @@ vmull_p8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmull))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smull))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmull_n_s16(a: int16x4_t, b: i16) -> int32x4_t {
     vmull_s16(a, vdup_n_s16(b))
 }
@@ -17680,6 +18665,7 @@ pub unsafe fn vmull_n_s16(a: int16x4_t, b: i16) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmull))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smull))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmull_n_s32(a: int32x2_t, b: i32) -> int64x2_t {
     vmull_s32(a, vdup_n_s32(b))
 }
@@ -17693,6 +18679,7 @@ pub unsafe fn vmull_n_s32(a: int32x2_t, b: i32) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmull))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umull))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmull_n_u16(a: uint16x4_t, b: u16) -> uint32x4_t {
     vmull_u16(a, vdup_n_u16(b))
 }
@@ -17706,6 +18693,7 @@ pub unsafe fn vmull_n_u16(a: uint16x4_t, b: u16) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmull))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umull))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmull_n_u32(a: uint32x2_t, b: u32) -> uint64x2_t {
     vmull_u32(a, vdup_n_u32(b))
 }
@@ -17720,6 +18708,7 @@ pub unsafe fn vmull_n_u32(a: uint32x2_t, b: u32) -> uint64x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smull, LANE = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmull_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
     vmull_s16(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -17735,6 +18724,7 @@ pub unsafe fn vmull_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t) -> int
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smull, LANE = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmull_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 3);
     vmull_s16(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -17750,6 +18740,7 @@ pub unsafe fn vmull_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) -> in
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smull, LANE = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmull_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t) -> int64x2_t {
     static_assert_uimm_bits!(LANE, 1);
     vmull_s32(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32]))
@@ -17765,6 +18756,7 @@ pub unsafe fn vmull_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t) -> int
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smull, LANE = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmull_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) -> int64x2_t {
     static_assert_uimm_bits!(LANE, 2);
     vmull_s32(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32]))
@@ -17780,6 +18772,7 @@ pub unsafe fn vmull_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) -> in
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umull, LANE = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmull_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 2);
     vmull_u16(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -17795,6 +18788,7 @@ pub unsafe fn vmull_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t) -> u
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umull, LANE = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmull_laneq_u16<const LANE: i32>(a: uint16x4_t, b: uint16x8_t) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 3);
     vmull_u16(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
@@ -17810,6 +18804,7 @@ pub unsafe fn vmull_laneq_u16<const LANE: i32>(a: uint16x4_t, b: uint16x8_t) -> 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umull, LANE = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmull_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t) -> uint64x2_t {
     static_assert_uimm_bits!(LANE, 1);
     vmull_u32(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32]))
@@ -17825,6 +18820,7 @@ pub unsafe fn vmull_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t) -> u
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umull, LANE = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmull_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint32x4_t) -> uint64x2_t {
     static_assert_uimm_bits!(LANE, 2);
     vmull_u32(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32]))
@@ -17839,6 +18835,7 @@ pub unsafe fn vmull_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint32x4_t) -> 
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vfma))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmla))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vfma_f32(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -17858,6 +18855,7 @@ vfma_f32_(b, c, a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vfma))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmla))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vfmaq_f32(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -17877,6 +18875,7 @@ vfmaq_f32_(b, c, a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vfma))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmla))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vfma_n_f32(a: float32x2_t, b: float32x2_t, c: f32) -> float32x2_t {
     vfma_f32(a, b, vdup_n_f32_vfp4(c))
 }
@@ -17890,6 +18889,7 @@ pub unsafe fn vfma_n_f32(a: float32x2_t, b: float32x2_t, c: f32) -> float32x2_t 
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vfma))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmla))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vfmaq_n_f32(a: float32x4_t, b: float32x4_t, c: f32) -> float32x4_t {
     vfmaq_f32(a, b, vdupq_n_f32_vfp4(c))
 }
@@ -17903,6 +18903,7 @@ pub unsafe fn vfmaq_n_f32(a: float32x4_t, b: float32x4_t, c: f32) -> float32x4_t
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vfms))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vfms_f32(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float32x2_t {
     let b: float32x2_t = simd_neg(b);
     vfma_f32(a, b, c)
@@ -17917,6 +18918,7 @@ pub unsafe fn vfms_f32(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float3
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vfms))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vfmsq_f32(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float32x4_t {
     let b: float32x4_t = simd_neg(b);
     vfmaq_f32(a, b, c)
@@ -17931,6 +18933,7 @@ pub unsafe fn vfmsq_f32(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vfms))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vfms_n_f32(a: float32x2_t, b: float32x2_t, c: f32) -> float32x2_t {
     vfms_f32(a, b, vdup_n_f32_vfp4(c))
 }
@@ -17944,6 +18947,7 @@ pub unsafe fn vfms_n_f32(a: float32x2_t, b: float32x2_t, c: f32) -> float32x2_t 
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vfms))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmls))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vfmsq_n_f32(a: float32x4_t, b: float32x4_t, c: f32) -> float32x4_t {
     vfmsq_f32(a, b, vdupq_n_f32_vfp4(c))
 }
@@ -17957,6 +18961,7 @@ pub unsafe fn vfmsq_n_f32(a: float32x4_t, b: float32x4_t, c: f32) -> float32x4_t
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vsub.i8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsub_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     simd_sub(a, b)
 }
@@ -17970,6 +18975,7 @@ pub unsafe fn vsub_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vsub.i8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     simd_sub(a, b)
 }
@@ -17983,6 +18989,7 @@ pub unsafe fn vsubq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vsub.i16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsub_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     simd_sub(a, b)
 }
@@ -17996,6 +19003,7 @@ pub unsafe fn vsub_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vsub.i16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     simd_sub(a, b)
 }
@@ -18009,6 +19017,7 @@ pub unsafe fn vsubq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vsub.i32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsub_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     simd_sub(a, b)
 }
@@ -18022,6 +19031,7 @@ pub unsafe fn vsub_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vsub.i32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     simd_sub(a, b)
 }
@@ -18035,6 +19045,7 @@ pub unsafe fn vsubq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vsub.i8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsub_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     simd_sub(a, b)
 }
@@ -18048,6 +19059,7 @@ pub unsafe fn vsub_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vsub.i8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     simd_sub(a, b)
 }
@@ -18061,6 +19073,7 @@ pub unsafe fn vsubq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vsub.i16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsub_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     simd_sub(a, b)
 }
@@ -18074,6 +19087,7 @@ pub unsafe fn vsub_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vsub.i16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     simd_sub(a, b)
 }
@@ -18087,6 +19101,7 @@ pub unsafe fn vsubq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vsub.i32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsub_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     simd_sub(a, b)
 }
@@ -18100,6 +19115,7 @@ pub unsafe fn vsub_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vsub.i32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     simd_sub(a, b)
 }
@@ -18113,6 +19129,7 @@ pub unsafe fn vsubq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vsub.i64"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsub_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     simd_sub(a, b)
 }
@@ -18126,6 +19143,7 @@ pub unsafe fn vsub_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vsub.i64"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     simd_sub(a, b)
 }
@@ -18139,6 +19157,7 @@ pub unsafe fn vsubq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vsub.i64"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsub_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
     simd_sub(a, b)
 }
@@ -18152,6 +19171,7 @@ pub unsafe fn vsub_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vsub.i64"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     simd_sub(a, b)
 }
@@ -18165,6 +19185,7 @@ pub unsafe fn vsubq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vsub.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fsub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsub_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     simd_sub(a, b)
 }
@@ -18178,6 +19199,7 @@ pub unsafe fn vsub_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vsub.f32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fsub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     simd_sub(a, b)
 }
@@ -18191,6 +19213,7 @@ pub unsafe fn vsubq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vadd_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
     simd_xor(a, b)
 }
@@ -18204,6 +19227,7 @@ pub unsafe fn vadd_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vadd_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
     simd_xor(a, b)
 }
@@ -18217,6 +19241,7 @@ pub unsafe fn vadd_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vaddq_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
     simd_xor(a, b)
 }
@@ -18230,6 +19255,7 @@ pub unsafe fn vaddq_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vaddq_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
     simd_xor(a, b)
 }
@@ -18243,6 +19269,7 @@ pub unsafe fn vaddq_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vadd_p64(a: poly64x1_t, b: poly64x1_t) -> poly64x1_t {
     simd_xor(a, b)
 }
@@ -18256,6 +19283,7 @@ pub unsafe fn vadd_p64(a: poly64x1_t, b: poly64x1_t) -> poly64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vaddq_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
     simd_xor(a, b)
 }
@@ -18269,6 +19297,7 @@ pub unsafe fn vaddq_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vaddq_p128(a: p128, b: p128) -> p128 {
     a ^ b
 }
@@ -18282,6 +19311,7 @@ pub unsafe fn vaddq_p128(a: p128, b: p128) -> p128 {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubhn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(subhn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubhn_s16(a: int16x8_t, b: int16x8_t) -> int8x8_t {
     let c: i16x8 = i16x8::new(8, 8, 8, 8, 8, 8, 8, 8);
     simd_cast(simd_shr(simd_sub(a, b), transmute(c)))
@@ -18296,6 +19326,7 @@ pub unsafe fn vsubhn_s16(a: int16x8_t, b: int16x8_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubhn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(subhn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubhn_s32(a: int32x4_t, b: int32x4_t) -> int16x4_t {
     let c: i32x4 = i32x4::new(16, 16, 16, 16);
     simd_cast(simd_shr(simd_sub(a, b), transmute(c)))
@@ -18310,6 +19341,7 @@ pub unsafe fn vsubhn_s32(a: int32x4_t, b: int32x4_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubhn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(subhn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubhn_s64(a: int64x2_t, b: int64x2_t) -> int32x2_t {
     let c: i64x2 = i64x2::new(32, 32);
     simd_cast(simd_shr(simd_sub(a, b), transmute(c)))
@@ -18324,6 +19356,7 @@ pub unsafe fn vsubhn_s64(a: int64x2_t, b: int64x2_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubhn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(subhn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubhn_u16(a: uint16x8_t, b: uint16x8_t) -> uint8x8_t {
     let c: u16x8 = u16x8::new(8, 8, 8, 8, 8, 8, 8, 8);
     simd_cast(simd_shr(simd_sub(a, b), transmute(c)))
@@ -18338,6 +19371,7 @@ pub unsafe fn vsubhn_u16(a: uint16x8_t, b: uint16x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubhn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(subhn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubhn_u32(a: uint32x4_t, b: uint32x4_t) -> uint16x4_t {
     let c: u32x4 = u32x4::new(16, 16, 16, 16);
     simd_cast(simd_shr(simd_sub(a, b), transmute(c)))
@@ -18352,6 +19386,7 @@ pub unsafe fn vsubhn_u32(a: uint32x4_t, b: uint32x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubhn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(subhn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubhn_u64(a: uint64x2_t, b: uint64x2_t) -> uint32x2_t {
     let c: u64x2 = u64x2::new(32, 32);
     simd_cast(simd_shr(simd_sub(a, b), transmute(c)))
@@ -18366,6 +19401,7 @@ pub unsafe fn vsubhn_u64(a: uint64x2_t, b: uint64x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubhn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(subhn2))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubhn_high_s16(a: int8x8_t, b: int16x8_t, c: int16x8_t) -> int8x16_t {
     let d: int8x8_t = vsubhn_s16(b, c);
     simd_shuffle!(a, d, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
@@ -18380,6 +19416,7 @@ pub unsafe fn vsubhn_high_s16(a: int8x8_t, b: int16x8_t, c: int16x8_t) -> int8x1
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubhn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(subhn2))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubhn_high_s32(a: int16x4_t, b: int32x4_t, c: int32x4_t) -> int16x8_t {
     let d: int16x4_t = vsubhn_s32(b, c);
     simd_shuffle!(a, d, [0, 1, 2, 3, 4, 5, 6, 7])
@@ -18394,6 +19431,7 @@ pub unsafe fn vsubhn_high_s32(a: int16x4_t, b: int32x4_t, c: int32x4_t) -> int16
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubhn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(subhn2))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubhn_high_s64(a: int32x2_t, b: int64x2_t, c: int64x2_t) -> int32x4_t {
     let d: int32x2_t = vsubhn_s64(b, c);
     simd_shuffle!(a, d, [0, 1, 2, 3])
@@ -18408,6 +19446,7 @@ pub unsafe fn vsubhn_high_s64(a: int32x2_t, b: int64x2_t, c: int64x2_t) -> int32
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubhn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(subhn2))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubhn_high_u16(a: uint8x8_t, b: uint16x8_t, c: uint16x8_t) -> uint8x16_t {
     let d: uint8x8_t = vsubhn_u16(b, c);
     simd_shuffle!(a, d, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
@@ -18422,6 +19461,7 @@ pub unsafe fn vsubhn_high_u16(a: uint8x8_t, b: uint16x8_t, c: uint16x8_t) -> uin
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubhn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(subhn2))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubhn_high_u32(a: uint16x4_t, b: uint32x4_t, c: uint32x4_t) -> uint16x8_t {
     let d: uint16x4_t = vsubhn_u32(b, c);
     simd_shuffle!(a, d, [0, 1, 2, 3, 4, 5, 6, 7])
@@ -18436,6 +19476,7 @@ pub unsafe fn vsubhn_high_u32(a: uint16x4_t, b: uint32x4_t, c: uint32x4_t) -> ui
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubhn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(subhn2))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubhn_high_u64(a: uint32x2_t, b: uint64x2_t, c: uint64x2_t) -> uint32x4_t {
     let d: uint32x2_t = vsubhn_u64(b, c);
     simd_shuffle!(a, d, [0, 1, 2, 3])
@@ -18450,6 +19491,7 @@ pub unsafe fn vsubhn_high_u64(a: uint32x2_t, b: uint64x2_t, c: uint64x2_t) -> ui
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vhsub.u8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uhsub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vhsub_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -18469,6 +19511,7 @@ vhsub_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vhsub.u8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uhsub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vhsubq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -18488,6 +19531,7 @@ vhsubq_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vhsub.u16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uhsub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vhsub_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -18507,6 +19551,7 @@ vhsub_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vhsub.u16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uhsub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vhsubq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -18526,6 +19571,7 @@ vhsubq_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vhsub.u32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uhsub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vhsub_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -18545,6 +19591,7 @@ vhsub_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vhsub.u32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uhsub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vhsubq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -18564,6 +19611,7 @@ vhsubq_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vhsub.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shsub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vhsub_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -18583,6 +19631,7 @@ vhsub_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vhsub.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shsub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vhsubq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -18602,6 +19651,7 @@ vhsubq_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vhsub.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shsub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vhsub_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -18621,6 +19671,7 @@ vhsub_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vhsub.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shsub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vhsubq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -18640,6 +19691,7 @@ vhsubq_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vhsub.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shsub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vhsub_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -18659,6 +19711,7 @@ vhsub_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vhsub.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shsub))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vhsubq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -18678,6 +19731,7 @@ vhsubq_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubw))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ssubw))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubw_s8(a: int16x8_t, b: int8x8_t) -> int16x8_t {
     simd_sub(a, simd_cast(b))
 }
@@ -18691,6 +19745,7 @@ pub unsafe fn vsubw_s8(a: int16x8_t, b: int8x8_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubw))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ssubw))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubw_s16(a: int32x4_t, b: int16x4_t) -> int32x4_t {
     simd_sub(a, simd_cast(b))
 }
@@ -18704,6 +19759,7 @@ pub unsafe fn vsubw_s16(a: int32x4_t, b: int16x4_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubw))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ssubw))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubw_s32(a: int64x2_t, b: int32x2_t) -> int64x2_t {
     simd_sub(a, simd_cast(b))
 }
@@ -18717,6 +19773,7 @@ pub unsafe fn vsubw_s32(a: int64x2_t, b: int32x2_t) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubw))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(usubw))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubw_u8(a: uint16x8_t, b: uint8x8_t) -> uint16x8_t {
     simd_sub(a, simd_cast(b))
 }
@@ -18730,6 +19787,7 @@ pub unsafe fn vsubw_u8(a: uint16x8_t, b: uint8x8_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubw))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(usubw))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubw_u16(a: uint32x4_t, b: uint16x4_t) -> uint32x4_t {
     simd_sub(a, simd_cast(b))
 }
@@ -18743,6 +19801,7 @@ pub unsafe fn vsubw_u16(a: uint32x4_t, b: uint16x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubw))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(usubw))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubw_u32(a: uint64x2_t, b: uint32x2_t) -> uint64x2_t {
     simd_sub(a, simd_cast(b))
 }
@@ -18756,6 +19815,7 @@ pub unsafe fn vsubw_u32(a: uint64x2_t, b: uint32x2_t) -> uint64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ssubl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubl_s8(a: int8x8_t, b: int8x8_t) -> int16x8_t {
     let c: int16x8_t = simd_cast(a);
     let d: int16x8_t = simd_cast(b);
@@ -18771,6 +19831,7 @@ pub unsafe fn vsubl_s8(a: int8x8_t, b: int8x8_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ssubl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubl_s16(a: int16x4_t, b: int16x4_t) -> int32x4_t {
     let c: int32x4_t = simd_cast(a);
     let d: int32x4_t = simd_cast(b);
@@ -18786,6 +19847,7 @@ pub unsafe fn vsubl_s16(a: int16x4_t, b: int16x4_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ssubl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubl_s32(a: int32x2_t, b: int32x2_t) -> int64x2_t {
     let c: int64x2_t = simd_cast(a);
     let d: int64x2_t = simd_cast(b);
@@ -18801,6 +19863,7 @@ pub unsafe fn vsubl_s32(a: int32x2_t, b: int32x2_t) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(usubl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubl_u8(a: uint8x8_t, b: uint8x8_t) -> uint16x8_t {
     let c: uint16x8_t = simd_cast(a);
     let d: uint16x8_t = simd_cast(b);
@@ -18816,6 +19879,7 @@ pub unsafe fn vsubl_u8(a: uint8x8_t, b: uint8x8_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(usubl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubl_u16(a: uint16x4_t, b: uint16x4_t) -> uint32x4_t {
     let c: uint32x4_t = simd_cast(a);
     let d: uint32x4_t = simd_cast(b);
@@ -18831,6 +19895,7 @@ pub unsafe fn vsubl_u16(a: uint16x4_t, b: uint16x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(usubl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsubl_u32(a: uint32x2_t, b: uint32x2_t) -> uint64x2_t {
     let c: uint64x2_t = simd_cast(a);
     let d: uint64x2_t = simd_cast(b);
@@ -18845,6 +19910,7 @@ pub unsafe fn vsubl_u32(a: uint32x2_t, b: uint32x2_t) -> uint64x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsdot))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sdot))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdot_s32(a: int32x2_t, b: int8x8_t, c: int8x8_t) -> int32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -18863,6 +19929,7 @@ vdot_s32_(a, b, c)
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsdot))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sdot))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdotq_s32(a: int32x4_t, b: int8x16_t, c: int8x16_t) -> int32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -18881,6 +19948,7 @@ vdotq_s32_(a, b, c)
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vudot))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(udot))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdot_u32(a: uint32x2_t, b: uint8x8_t, c: uint8x8_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -18899,6 +19967,7 @@ vdot_u32_(a, b, c)
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vudot))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(udot))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdotq_u32(a: uint32x4_t, b: uint8x16_t, c: uint8x16_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -18918,6 +19987,7 @@ vdotq_u32_(a, b, c)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsdot, LANE = 0))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sdot, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdot_lane_s32<const LANE: i32>(a: int32x2_t, b: int8x8_t, c: int8x8_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 1);
     let c: int32x2_t = transmute(c);
@@ -18934,6 +20004,7 @@ pub unsafe fn vdot_lane_s32<const LANE: i32>(a: int32x2_t, b: int8x8_t, c: int8x
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsdot, LANE = 0))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sdot, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdotq_lane_s32<const LANE: i32>(a: int32x4_t, b: int8x16_t, c: int8x8_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 1);
     let c: int32x2_t = transmute(c);
@@ -18950,6 +20021,7 @@ pub unsafe fn vdotq_lane_s32<const LANE: i32>(a: int32x4_t, b: int8x16_t, c: int
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vudot, LANE = 0))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(udot, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdot_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint8x8_t, c: uint8x8_t) -> uint32x2_t {
     static_assert_uimm_bits!(LANE, 1);
     let c: uint32x2_t = transmute(c);
@@ -18966,6 +20038,7 @@ pub unsafe fn vdot_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint8x8_t, c: uin
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vudot, LANE = 0))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(udot, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdotq_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint8x16_t, c: uint8x8_t) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 1);
     let c: uint32x2_t = transmute(c);
@@ -18982,6 +20055,7 @@ pub unsafe fn vdotq_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint8x16_t, c: u
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmax))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smax))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmax_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19001,6 +20075,7 @@ vmax_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmax))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smax))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmaxq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19020,6 +20095,7 @@ vmaxq_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmax))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smax))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmax_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19039,6 +20115,7 @@ vmax_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmax))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smax))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmaxq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19058,6 +20135,7 @@ vmaxq_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmax))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smax))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmax_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19077,6 +20155,7 @@ vmax_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmax))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smax))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmaxq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19096,6 +20175,7 @@ vmaxq_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmax))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umax))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmax_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19115,6 +20195,7 @@ vmax_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmax))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umax))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmaxq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19134,6 +20215,7 @@ vmaxq_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmax))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umax))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmax_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19153,6 +20235,7 @@ vmax_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmax))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umax))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmaxq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19172,6 +20255,7 @@ vmaxq_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmax))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umax))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmax_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19191,6 +20275,7 @@ vmax_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmax))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umax))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmaxq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19210,6 +20295,7 @@ vmaxq_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmax))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmax))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmax_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19229,6 +20315,7 @@ vmax_f32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmax))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmax))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmaxq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19248,6 +20335,7 @@ vmaxq_f32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmaxnm))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmaxnm))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmaxnm_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19267,6 +20355,7 @@ vmaxnm_f32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmaxnm))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmaxnm))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmaxnmq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19286,6 +20375,7 @@ vmaxnmq_f32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmin))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smin))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmin_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19305,6 +20395,7 @@ vmin_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmin))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smin))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vminq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19324,6 +20415,7 @@ vminq_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmin))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smin))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmin_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19343,6 +20435,7 @@ vmin_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmin))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smin))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vminq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19362,6 +20455,7 @@ vminq_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmin))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smin))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmin_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19381,6 +20475,7 @@ vmin_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmin))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smin))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vminq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19400,6 +20495,7 @@ vminq_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmin))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umin))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmin_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19419,6 +20515,7 @@ vmin_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmin))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umin))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vminq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19438,6 +20535,7 @@ vminq_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmin))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umin))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmin_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19457,6 +20555,7 @@ vmin_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmin))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umin))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vminq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19476,6 +20575,7 @@ vminq_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmin))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umin))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmin_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19495,6 +20595,7 @@ vmin_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmin))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umin))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vminq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19514,6 +20615,7 @@ vminq_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmin))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmin))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vmin_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19533,6 +20635,7 @@ vmin_f32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmin))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmin))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vminq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19552,6 +20655,7 @@ vminq_f32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vminnm))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fminnm))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vminnm_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19571,6 +20675,7 @@ vminnm_f32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vminnm))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fminnm))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vminnmq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19590,6 +20695,7 @@ vminnmq_f32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpadd))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(faddp))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vpadd_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19609,6 +20715,7 @@ vpadd_f32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqdmull))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmull))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmull_s16(a: int16x4_t, b: int16x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19628,6 +20735,7 @@ vqdmull_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqdmull))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmull))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmull_s32(a: int32x2_t, b: int32x2_t) -> int64x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19647,6 +20755,7 @@ vqdmull_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqdmull))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmull))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmull_n_s16(a: int16x4_t, b: i16) -> int32x4_t {
     vqdmull_s16(a, vdup_n_s16(b))
 }
@@ -19660,6 +20769,7 @@ pub unsafe fn vqdmull_n_s16(a: int16x4_t, b: i16) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqdmull))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmull))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmull_n_s32(a: int32x2_t, b: i32) -> int64x2_t {
     vqdmull_s32(a, vdup_n_s32(b))
 }
@@ -19674,6 +20784,7 @@ pub unsafe fn vqdmull_n_s32(a: int32x2_t, b: i32) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmull, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmull_lane_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int32x4_t {
     static_assert_uimm_bits!(N, 2);
     let b: int16x4_t = simd_shuffle!(b, b, [N as u32, N as u32, N as u32, N as u32]);
@@ -19690,6 +20801,7 @@ pub unsafe fn vqdmull_lane_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int3
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmull, N = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmull_lane_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int64x2_t {
     static_assert_uimm_bits!(N, 1);
     let b: int32x2_t = simd_shuffle!(b, b, [N as u32, N as u32]);
@@ -19705,6 +20817,7 @@ pub unsafe fn vqdmull_lane_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int6
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqdmlal))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmlal))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmlal_s16(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t {
     vqaddq_s32(a, vqdmull_s16(b, c))
 }
@@ -19718,6 +20831,7 @@ pub unsafe fn vqdmlal_s16(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqdmlal))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmlal))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmlal_s32(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t {
     vqaddq_s64(a, vqdmull_s32(b, c))
 }
@@ -19731,6 +20845,7 @@ pub unsafe fn vqdmlal_s32(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqdmlal))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmlal))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmlal_n_s16(a: int32x4_t, b: int16x4_t, c: i16) -> int32x4_t {
     vqaddq_s32(a, vqdmull_n_s16(b, c))
 }
@@ -19744,6 +20859,7 @@ pub unsafe fn vqdmlal_n_s16(a: int32x4_t, b: int16x4_t, c: i16) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqdmlal))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmlal))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmlal_n_s32(a: int64x2_t, b: int32x2_t, c: i32) -> int64x2_t {
     vqaddq_s64(a, vqdmull_n_s32(b, c))
 }
@@ -19758,6 +20874,7 @@ pub unsafe fn vqdmlal_n_s32(a: int64x2_t, b: int32x2_t, c: i32) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmlal, N = 2))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmlal_lane_s16<const N: i32>(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t {
     static_assert_uimm_bits!(N, 2);
     vqaddq_s32(a, vqdmull_lane_s16::<N>(b, c))
@@ -19773,6 +20890,7 @@ pub unsafe fn vqdmlal_lane_s16<const N: i32>(a: int32x4_t, b: int16x4_t, c: int1
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmlal, N = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmlal_lane_s32<const N: i32>(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t {
     static_assert_uimm_bits!(N, 1);
     vqaddq_s64(a, vqdmull_lane_s32::<N>(b, c))
@@ -19787,6 +20905,7 @@ pub unsafe fn vqdmlal_lane_s32<const N: i32>(a: int64x2_t, b: int32x2_t, c: int3
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqdmlsl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmlsl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmlsl_s16(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t {
     vqsubq_s32(a, vqdmull_s16(b, c))
 }
@@ -19800,6 +20919,7 @@ pub unsafe fn vqdmlsl_s16(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqdmlsl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmlsl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmlsl_s32(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t {
     vqsubq_s64(a, vqdmull_s32(b, c))
 }
@@ -19813,6 +20933,7 @@ pub unsafe fn vqdmlsl_s32(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqdmlsl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmlsl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmlsl_n_s16(a: int32x4_t, b: int16x4_t, c: i16) -> int32x4_t {
     vqsubq_s32(a, vqdmull_n_s16(b, c))
 }
@@ -19826,6 +20947,7 @@ pub unsafe fn vqdmlsl_n_s16(a: int32x4_t, b: int16x4_t, c: i16) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqdmlsl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmlsl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmlsl_n_s32(a: int64x2_t, b: int32x2_t, c: i32) -> int64x2_t {
     vqsubq_s64(a, vqdmull_n_s32(b, c))
 }
@@ -19840,6 +20962,7 @@ pub unsafe fn vqdmlsl_n_s32(a: int64x2_t, b: int32x2_t, c: i32) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmlsl, N = 2))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmlsl_lane_s16<const N: i32>(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t {
     static_assert_uimm_bits!(N, 2);
     vqsubq_s32(a, vqdmull_lane_s16::<N>(b, c))
@@ -19855,6 +20978,7 @@ pub unsafe fn vqdmlsl_lane_s16<const N: i32>(a: int32x4_t, b: int16x4_t, c: int1
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmlsl, N = 1))]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmlsl_lane_s32<const N: i32>(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t {
     static_assert_uimm_bits!(N, 1);
     vqsubq_s64(a, vqdmull_lane_s32::<N>(b, c))
@@ -19869,6 +20993,7 @@ pub unsafe fn vqdmlsl_lane_s32<const N: i32>(a: int64x2_t, b: int32x2_t, c: int3
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqdmulh))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmulh))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmulh_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19888,6 +21013,7 @@ vqdmulh_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqdmulh))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmulh))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmulhq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19907,6 +21033,7 @@ vqdmulhq_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqdmulh))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmulh))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmulh_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19926,6 +21053,7 @@ vqdmulh_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqdmulh))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmulh))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmulhq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -19945,6 +21073,7 @@ vqdmulhq_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqdmulh))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmulh))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmulh_n_s16(a: int16x4_t, b: i16) -> int16x4_t {
     let b: int16x4_t = vdup_n_s16(b);
     vqdmulh_s16(a, b)
@@ -19959,6 +21088,7 @@ pub unsafe fn vqdmulh_n_s16(a: int16x4_t, b: i16) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqdmulh))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmulh))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmulh_n_s32(a: int32x2_t, b: i32) -> int32x2_t {
     let b: int32x2_t = vdup_n_s32(b);
     vqdmulh_s32(a, b)
@@ -19973,6 +21103,7 @@ pub unsafe fn vqdmulh_n_s32(a: int32x2_t, b: i32) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqdmulh))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmulh))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmulhq_n_s16(a: int16x8_t, b: i16) -> int16x8_t {
     let b: int16x8_t = vdupq_n_s16(b);
     vqdmulhq_s16(a, b)
@@ -19987,6 +21118,7 @@ pub unsafe fn vqdmulhq_n_s16(a: int16x8_t, b: i16) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqdmulh))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmulh))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmulhq_n_s32(a: int32x4_t, b: i32) -> int32x4_t {
     let b: int32x4_t = vdupq_n_s32(b);
     vqdmulhq_s32(a, b)
@@ -20002,6 +21134,7 @@ pub unsafe fn vqdmulhq_n_s32(a: int32x4_t, b: i32) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmulh, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmulhq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     static_assert_uimm_bits!(LANE, 3);
     vqdmulhq_s16(a, vdupq_n_s16(simd_extract(b, LANE as u32)))
@@ -20017,6 +21150,7 @@ pub unsafe fn vqdmulhq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) ->
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmulh, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmulh_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) -> int16x4_t {
     static_assert_uimm_bits!(LANE, 3);
     vqdmulh_s16(a, vdup_n_s16(simd_extract(b, LANE as u32)))
@@ -20032,6 +21166,7 @@ pub unsafe fn vqdmulh_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) -> 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmulh, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmulhq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
     vqdmulhq_s32(a, vdupq_n_s32(simd_extract(b, LANE as u32)))
@@ -20047,6 +21182,7 @@ pub unsafe fn vqdmulhq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t) ->
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqdmulh, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmulh_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 2);
     vqdmulh_s32(a, vdup_n_s32(simd_extract(b, LANE as u32)))
@@ -20061,6 +21197,7 @@ pub unsafe fn vqdmulh_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) -> 
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqmovn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqxtn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqmovn_s16(a: int16x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -20080,6 +21217,7 @@ vqmovn_s16_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqmovn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqxtn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqmovn_s32(a: int32x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -20099,6 +21237,7 @@ vqmovn_s32_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqmovn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqxtn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqmovn_s64(a: int64x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -20118,6 +21257,7 @@ vqmovn_s64_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqmovn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqxtn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqmovn_u16(a: uint16x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -20137,6 +21277,7 @@ vqmovn_u16_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqmovn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqxtn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqmovn_u32(a: uint32x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -20156,6 +21297,7 @@ vqmovn_u32_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqmovn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqxtn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqmovn_u64(a: uint64x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -20175,6 +21317,7 @@ vqmovn_u64_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqmovun))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqxtun))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqmovun_s16(a: int16x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -20194,6 +21337,7 @@ vqmovun_s16_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqmovun))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqxtun))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqmovun_s32(a: int32x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -20213,6 +21357,7 @@ vqmovun_s32_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqmovun))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqxtun))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqmovun_s64(a: int64x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -20232,6 +21377,7 @@ vqmovun_s64_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqrdmulh))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrdmulh))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqrdmulh_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -20251,6 +21397,7 @@ vqrdmulh_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqrdmulh))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrdmulh))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqrdmulhq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -20270,6 +21417,7 @@ vqrdmulhq_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqrdmulh))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrdmulh))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqrdmulh_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -20289,6 +21437,7 @@ vqrdmulh_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqrdmulh))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrdmulh))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqrdmulhq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -20308,6 +21457,7 @@ vqrdmulhq_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqrdmulh))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrdmulh))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqrdmulh_n_s16(a: int16x4_t, b: i16) -> int16x4_t {
     vqrdmulh_s16(a, vdup_n_s16(b))
 }
@@ -20321,6 +21471,7 @@ pub unsafe fn vqrdmulh_n_s16(a: int16x4_t, b: i16) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqrdmulh))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrdmulh))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqrdmulhq_n_s16(a: int16x8_t, b: i16) -> int16x8_t {
     vqrdmulhq_s16(a, vdupq_n_s16(b))
 }
@@ -20334,6 +21485,7 @@ pub unsafe fn vqrdmulhq_n_s16(a: int16x8_t, b: i16) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqrdmulh))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrdmulh))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqrdmulh_n_s32(a: int32x2_t, b: i32) -> int32x2_t {
     vqrdmulh_s32(a, vdup_n_s32(b))
 }
@@ -20347,6 +21499,7 @@ pub unsafe fn vqrdmulh_n_s32(a: int32x2_t, b: i32) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqrdmulh))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrdmulh))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqrdmulhq_n_s32(a: int32x4_t, b: i32) -> int32x4_t {
     vqrdmulhq_s32(a, vdupq_n_s32(b))
 }
@@ -20361,6 +21514,7 @@ pub unsafe fn vqrdmulhq_n_s32(a: int32x4_t, b: i32) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrdmulh, LANE = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqrdmulh_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     static_assert_uimm_bits!(LANE, 2);
     let b: int16x4_t = simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
@@ -20377,6 +21531,7 @@ pub unsafe fn vqrdmulh_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t) -> 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrdmulh, LANE = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqrdmulh_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) -> int16x4_t {
     static_assert_uimm_bits!(LANE, 3);
     let b: int16x4_t = simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
@@ -20393,6 +21548,7 @@ pub unsafe fn vqrdmulh_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) ->
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrdmulh, LANE = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqrdmulhq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x4_t) -> int16x8_t {
     static_assert_uimm_bits!(LANE, 2);
     let b: int16x8_t = simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
@@ -20409,6 +21565,7 @@ pub unsafe fn vqrdmulhq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x4_t) ->
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrdmulh, LANE = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqrdmulhq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     static_assert_uimm_bits!(LANE, 3);
     let b: int16x8_t = simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
@@ -20425,6 +21582,7 @@ pub unsafe fn vqrdmulhq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) -
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrdmulh, LANE = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqrdmulh_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 1);
     let b: int32x2_t = simd_shuffle!(b, b, [LANE as u32, LANE as u32]);
@@ -20441,6 +21599,7 @@ pub unsafe fn vqrdmulh_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t) -> 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrdmulh, LANE = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqrdmulh_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 2);
     let b: int32x2_t = simd_shuffle!(b, b, [LANE as u32, LANE as u32]);
@@ -20457,6 +21616,7 @@ pub unsafe fn vqrdmulh_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) ->
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrdmulh, LANE = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqrdmulhq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x2_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 1);
     let b: int32x4_t = simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
@@ -20473,6 +21633,7 @@ pub unsafe fn vqrdmulhq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x2_t) ->
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrdmulh, LANE = 1))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqrdmulhq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
     let b: int32x4_t = simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
@@ -20488,6 +21649,7 @@ pub unsafe fn vqrdmulhq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t) -
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqrshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqrshl_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -20507,6 +21669,7 @@ vqrshl_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqrshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqrshlq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -20526,6 +21689,7 @@ vqrshlq_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqrshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqrshl_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -20545,6 +21709,7 @@ vqrshl_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqrshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqrshlq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -20564,6 +21729,7 @@ vqrshlq_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqrshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqrshl_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -20583,6 +21749,7 @@ vqrshl_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqrshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqrshlq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -20602,6 +21769,7 @@ vqrshlq_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqrshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqrshl_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -20621,6 +21789,7 @@ vqrshl_s64_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqrshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqrshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqrshlq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -20640,6 +21809,7 @@ vqrshlq_s64_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqrshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqrshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqrshl_u8(a: uint8x8_t, b: int8x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -20659,6 +21829,7 @@ vqrshl_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqrshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqrshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqrshlq_u8(a: uint8x16_t, b: int8x16_t) -> uint8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -20678,6 +21849,7 @@ vqrshlq_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqrshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqrshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqrshl_u16(a: uint16x4_t, b: int16x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -20697,6 +21869,7 @@ vqrshl_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqrshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqrshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqrshlq_u16(a: uint16x8_t, b: int16x8_t) -> uint16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -20716,6 +21889,7 @@ vqrshlq_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqrshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqrshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqrshl_u32(a: uint32x2_t, b: int32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -20735,6 +21909,7 @@ vqrshl_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqrshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqrshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqrshlq_u32(a: uint32x4_t, b: int32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -20754,6 +21929,7 @@ vqrshlq_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqrshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqrshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqrshl_u64(a: uint64x1_t, b: int64x1_t) -> uint64x1_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -20773,6 +21949,7 @@ vqrshl_u64_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqrshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqrshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqrshlq_u64(a: uint64x2_t, b: int64x2_t) -> uint64x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -20791,6 +21968,7 @@ vqrshlq_u64_(a, b)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vqrshrn, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vqrshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
     static_assert!(N >= 1 && N <= 8);
     #[allow(improper_ctypes)]
@@ -20828,6 +22006,7 @@ vqrshrn_n_s16_(a, N)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vqrshrn, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vqrshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
     static_assert!(N >= 1 && N <= 16);
     #[allow(improper_ctypes)]
@@ -20865,6 +22044,7 @@ vqrshrn_n_s32_(a, N)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vqrshrn, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vqrshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
     static_assert!(N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
@@ -20902,6 +22082,7 @@ vqrshrn_n_s64_(a, N)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vqrshrn, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vqrshrn_n_u16<const N: i32>(a: uint16x8_t) -> uint8x8_t {
     static_assert!(N >= 1 && N <= 8);
     #[allow(improper_ctypes)]
@@ -20939,6 +22120,7 @@ vqrshrn_n_u16_(a, N)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vqrshrn, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vqrshrn_n_u32<const N: i32>(a: uint32x4_t) -> uint16x4_t {
     static_assert!(N >= 1 && N <= 16);
     #[allow(improper_ctypes)]
@@ -20976,6 +22158,7 @@ vqrshrn_n_u32_(a, N)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vqrshrn, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vqrshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
     static_assert!(N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
@@ -21013,6 +22196,7 @@ vqrshrn_n_u64_(a, N)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vqrshrun, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vqrshrun_n_s16<const N: i32>(a: int16x8_t) -> uint8x8_t {
     static_assert!(N >= 1 && N <= 8);
     #[allow(improper_ctypes)]
@@ -21050,6 +22234,7 @@ vqrshrun_n_s16_(a, N)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vqrshrun, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vqrshrun_n_s32<const N: i32>(a: int32x4_t) -> uint16x4_t {
     static_assert!(N >= 1 && N <= 16);
     #[allow(improper_ctypes)]
@@ -21087,6 +22272,7 @@ vqrshrun_n_s32_(a, N)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vqrshrun, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vqrshrun_n_s64<const N: i32>(a: int64x2_t) -> uint32x2_t {
     static_assert!(N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
@@ -21125,6 +22311,7 @@ vqrshrun_n_s64_(a, N)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqshl_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -21144,6 +22331,7 @@ vqshl_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqshlq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -21163,6 +22351,7 @@ vqshlq_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqshl_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -21182,6 +22371,7 @@ vqshl_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqshlq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -21201,6 +22391,7 @@ vqshlq_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqshl_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -21220,6 +22411,7 @@ vqshl_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqshlq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -21239,6 +22431,7 @@ vqshlq_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqshl_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -21258,6 +22451,7 @@ vqshl_s64_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqshlq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -21277,6 +22471,7 @@ vqshlq_s64_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqshl_u8(a: uint8x8_t, b: int8x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -21296,6 +22491,7 @@ vqshl_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqshlq_u8(a: uint8x16_t, b: int8x16_t) -> uint8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -21315,6 +22511,7 @@ vqshlq_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqshl_u16(a: uint16x4_t, b: int16x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -21334,6 +22531,7 @@ vqshl_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqshlq_u16(a: uint16x8_t, b: int16x8_t) -> uint16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -21353,6 +22551,7 @@ vqshlq_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqshl_u32(a: uint32x2_t, b: int32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -21372,6 +22571,7 @@ vqshl_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqshlq_u32(a: uint32x4_t, b: int32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -21391,6 +22591,7 @@ vqshlq_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqshl_u64(a: uint64x1_t, b: int64x1_t) -> uint64x1_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -21410,6 +22611,7 @@ vqshl_u64_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqshlq_u64(a: uint64x2_t, b: int64x2_t) -> uint64x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -21430,6 +22632,7 @@ vqshlq_u64_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqshl, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqshl_n_s8<const N: i32>(a: int8x8_t) -> int8x8_t {
     static_assert_uimm_bits!(N, 3);
     vqshl_s8(a, vdup_n_s8(N as _))
@@ -21445,6 +22648,7 @@ pub unsafe fn vqshl_n_s8<const N: i32>(a: int8x8_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqshl, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqshlq_n_s8<const N: i32>(a: int8x16_t) -> int8x16_t {
     static_assert_uimm_bits!(N, 3);
     vqshlq_s8(a, vdupq_n_s8(N as _))
@@ -21460,6 +22664,7 @@ pub unsafe fn vqshlq_n_s8<const N: i32>(a: int8x16_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqshl, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqshl_n_s16<const N: i32>(a: int16x4_t) -> int16x4_t {
     static_assert_uimm_bits!(N, 4);
     vqshl_s16(a, vdup_n_s16(N as _))
@@ -21475,6 +22680,7 @@ pub unsafe fn vqshl_n_s16<const N: i32>(a: int16x4_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqshl, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqshlq_n_s16<const N: i32>(a: int16x8_t) -> int16x8_t {
     static_assert_uimm_bits!(N, 4);
     vqshlq_s16(a, vdupq_n_s16(N as _))
@@ -21490,6 +22696,7 @@ pub unsafe fn vqshlq_n_s16<const N: i32>(a: int16x8_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqshl, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqshl_n_s32<const N: i32>(a: int32x2_t) -> int32x2_t {
     static_assert_uimm_bits!(N, 5);
     vqshl_s32(a, vdup_n_s32(N as _))
@@ -21505,6 +22712,7 @@ pub unsafe fn vqshl_n_s32<const N: i32>(a: int32x2_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqshl, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqshlq_n_s32<const N: i32>(a: int32x4_t) -> int32x4_t {
     static_assert_uimm_bits!(N, 5);
     vqshlq_s32(a, vdupq_n_s32(N as _))
@@ -21520,6 +22728,7 @@ pub unsafe fn vqshlq_n_s32<const N: i32>(a: int32x4_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqshl, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqshl_n_s64<const N: i32>(a: int64x1_t) -> int64x1_t {
     static_assert_uimm_bits!(N, 6);
     vqshl_s64(a, vdup_n_s64(N as _))
@@ -21535,6 +22744,7 @@ pub unsafe fn vqshl_n_s64<const N: i32>(a: int64x1_t) -> int64x1_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqshl, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqshlq_n_s64<const N: i32>(a: int64x2_t) -> int64x2_t {
     static_assert_uimm_bits!(N, 6);
     vqshlq_s64(a, vdupq_n_s64(N as _))
@@ -21550,6 +22760,7 @@ pub unsafe fn vqshlq_n_s64<const N: i32>(a: int64x2_t) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqshl, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqshl_n_u8<const N: i32>(a: uint8x8_t) -> uint8x8_t {
     static_assert_uimm_bits!(N, 3);
     vqshl_u8(a, vdup_n_s8(N as _))
@@ -21565,6 +22776,7 @@ pub unsafe fn vqshl_n_u8<const N: i32>(a: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqshl, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqshlq_n_u8<const N: i32>(a: uint8x16_t) -> uint8x16_t {
     static_assert_uimm_bits!(N, 3);
     vqshlq_u8(a, vdupq_n_s8(N as _))
@@ -21580,6 +22792,7 @@ pub unsafe fn vqshlq_n_u8<const N: i32>(a: uint8x16_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqshl, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqshl_n_u16<const N: i32>(a: uint16x4_t) -> uint16x4_t {
     static_assert_uimm_bits!(N, 4);
     vqshl_u16(a, vdup_n_s16(N as _))
@@ -21595,6 +22808,7 @@ pub unsafe fn vqshl_n_u16<const N: i32>(a: uint16x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqshl, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqshlq_n_u16<const N: i32>(a: uint16x8_t) -> uint16x8_t {
     static_assert_uimm_bits!(N, 4);
     vqshlq_u16(a, vdupq_n_s16(N as _))
@@ -21610,6 +22824,7 @@ pub unsafe fn vqshlq_n_u16<const N: i32>(a: uint16x8_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqshl, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqshl_n_u32<const N: i32>(a: uint32x2_t) -> uint32x2_t {
     static_assert_uimm_bits!(N, 5);
     vqshl_u32(a, vdup_n_s32(N as _))
@@ -21625,6 +22840,7 @@ pub unsafe fn vqshl_n_u32<const N: i32>(a: uint32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqshl, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqshlq_n_u32<const N: i32>(a: uint32x4_t) -> uint32x4_t {
     static_assert_uimm_bits!(N, 5);
     vqshlq_u32(a, vdupq_n_s32(N as _))
@@ -21640,6 +22856,7 @@ pub unsafe fn vqshlq_n_u32<const N: i32>(a: uint32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqshl, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqshl_n_u64<const N: i32>(a: uint64x1_t) -> uint64x1_t {
     static_assert_uimm_bits!(N, 6);
     vqshl_u64(a, vdup_n_s64(N as _))
@@ -21655,6 +22872,7 @@ pub unsafe fn vqshl_n_u64<const N: i32>(a: uint64x1_t) -> uint64x1_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqshl, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqshlq_n_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
     static_assert_uimm_bits!(N, 6);
     vqshlq_u64(a, vdupq_n_s64(N as _))
@@ -21668,6 +22886,7 @@ pub unsafe fn vqshlq_n_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vqshlu, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vqshlu_n_s8<const N: i32>(a: int8x8_t) -> uint8x8_t {
     static_assert_uimm_bits!(N, 3);
     #[allow(improper_ctypes)]
@@ -21705,6 +22924,7 @@ vqshlu_n_s8_(a, int8x8_t(N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vqshlu, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vqshlu_n_s16<const N: i32>(a: int16x4_t) -> uint16x4_t {
     static_assert_uimm_bits!(N, 4);
     #[allow(improper_ctypes)]
@@ -21742,6 +22962,7 @@ vqshlu_n_s16_(a, int16x4_t(N as i16, N as i16, N as i16, N as i16))
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vqshlu, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vqshlu_n_s32<const N: i32>(a: int32x2_t) -> uint32x2_t {
     static_assert_uimm_bits!(N, 5);
     #[allow(improper_ctypes)]
@@ -21779,6 +23000,7 @@ vqshlu_n_s32_(a, int32x2_t(N as i32, N as i32))
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vqshlu, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vqshlu_n_s64<const N: i32>(a: int64x1_t) -> uint64x1_t {
     static_assert_uimm_bits!(N, 6);
     #[allow(improper_ctypes)]
@@ -21816,6 +23038,7 @@ vqshlu_n_s64_(a, int64x1_t(N as i64))
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vqshlu, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vqshluq_n_s8<const N: i32>(a: int8x16_t) -> uint8x16_t {
     static_assert_uimm_bits!(N, 3);
     #[allow(improper_ctypes)]
@@ -21853,6 +23076,7 @@ vqshluq_n_s8_(a, int8x16_t(N as i8, N as i8, N as i8, N as i8, N as i8, N as i8,
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vqshlu, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vqshluq_n_s16<const N: i32>(a: int16x8_t) -> uint16x8_t {
     static_assert_uimm_bits!(N, 4);
     #[allow(improper_ctypes)]
@@ -21890,6 +23114,7 @@ vqshluq_n_s16_(a, int16x8_t(N as i16, N as i16, N as i16, N as i16, N as i16, N 
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vqshlu, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vqshluq_n_s32<const N: i32>(a: int32x4_t) -> uint32x4_t {
     static_assert_uimm_bits!(N, 5);
     #[allow(improper_ctypes)]
@@ -21927,6 +23152,7 @@ vqshluq_n_s32_(a, int32x4_t(N as i32, N as i32, N as i32, N as i32))
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vqshlu, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vqshluq_n_s64<const N: i32>(a: int64x2_t) -> uint64x2_t {
     static_assert_uimm_bits!(N, 6);
     #[allow(improper_ctypes)]
@@ -21964,6 +23190,7 @@ vqshluq_n_s64_(a, int64x2_t(N as i64, N as i64))
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vqshrn, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vqshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
     static_assert!(N >= 1 && N <= 8);
     #[allow(improper_ctypes)]
@@ -22001,6 +23228,7 @@ vqshrn_n_s16_(a, N)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vqshrn, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vqshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
     static_assert!(N >= 1 && N <= 16);
     #[allow(improper_ctypes)]
@@ -22038,6 +23266,7 @@ vqshrn_n_s32_(a, N)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vqshrn, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vqshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
     static_assert!(N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
@@ -22075,6 +23304,7 @@ vqshrn_n_s64_(a, N)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vqshrn, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vqshrn_n_u16<const N: i32>(a: uint16x8_t) -> uint8x8_t {
     static_assert!(N >= 1 && N <= 8);
     #[allow(improper_ctypes)]
@@ -22112,6 +23342,7 @@ vqshrn_n_u16_(a, N)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vqshrn, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vqshrn_n_u32<const N: i32>(a: uint32x4_t) -> uint16x4_t {
     static_assert!(N >= 1 && N <= 16);
     #[allow(improper_ctypes)]
@@ -22149,6 +23380,7 @@ vqshrn_n_u32_(a, N)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vqshrn, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vqshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
     static_assert!(N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
@@ -22186,6 +23418,7 @@ vqshrn_n_u64_(a, N)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vqshrun, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vqshrun_n_s16<const N: i32>(a: int16x8_t) -> uint8x8_t {
     static_assert!(N >= 1 && N <= 8);
     #[allow(improper_ctypes)]
@@ -22223,6 +23456,7 @@ vqshrun_n_s16_(a, N)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vqshrun, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vqshrun_n_s32<const N: i32>(a: int32x4_t) -> uint16x4_t {
     static_assert!(N >= 1 && N <= 16);
     #[allow(improper_ctypes)]
@@ -22260,6 +23494,7 @@ vqshrun_n_s32_(a, N)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vqshrun, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vqshrun_n_s64<const N: i32>(a: int64x2_t) -> uint32x2_t {
     static_assert!(N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
@@ -22298,6 +23533,7 @@ vqshrun_n_s64_(a, N)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrsqrte))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(frsqrte))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrsqrte_f32(a: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -22317,6 +23553,7 @@ vrsqrte_f32_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrsqrte))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(frsqrte))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrsqrteq_f32(a: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -22336,6 +23573,7 @@ vrsqrteq_f32_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrsqrte))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ursqrte))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrsqrte_u32(a: uint32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -22355,6 +23593,7 @@ vrsqrte_u32_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrsqrte))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ursqrte))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrsqrteq_u32(a: uint32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -22374,6 +23613,7 @@ vrsqrteq_u32_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrsqrts))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(frsqrts))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrsqrts_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -22393,6 +23633,7 @@ vrsqrts_f32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrsqrts))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(frsqrts))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrsqrtsq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -22412,6 +23653,7 @@ vrsqrtsq_f32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrecpe))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(frecpe))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrecpe_f32(a: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -22431,6 +23673,7 @@ vrecpe_f32_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrecpe))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(frecpe))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrecpeq_f32(a: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -22450,6 +23693,7 @@ vrecpeq_f32_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrecpe))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urecpe))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrecpe_u32(a: uint32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -22469,6 +23713,7 @@ vrecpe_u32_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrecpe))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urecpe))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrecpeq_u32(a: uint32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -22488,6 +23733,7 @@ vrecpeq_u32_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrecps))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(frecps))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrecps_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -22507,6 +23753,7 @@ vrecps_f32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrecps))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(frecps))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrecpsq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -22526,6 +23773,7 @@ vrecpsq_f32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s8_u8(a: uint8x8_t) -> int8x8_t {
     transmute(a)
 }
@@ -22539,6 +23787,7 @@ pub unsafe fn vreinterpret_s8_u8(a: uint8x8_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s8_p8(a: poly8x8_t) -> int8x8_t {
     transmute(a)
 }
@@ -22552,6 +23801,7 @@ pub unsafe fn vreinterpret_s8_p8(a: poly8x8_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s16_p16(a: poly16x4_t) -> int16x4_t {
     transmute(a)
 }
@@ -22565,6 +23815,7 @@ pub unsafe fn vreinterpret_s16_p16(a: poly16x4_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s16_u16(a: uint16x4_t) -> int16x4_t {
     transmute(a)
 }
@@ -22578,6 +23829,7 @@ pub unsafe fn vreinterpret_s16_u16(a: uint16x4_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s32_u32(a: uint32x2_t) -> int32x2_t {
     transmute(a)
 }
@@ -22591,6 +23843,7 @@ pub unsafe fn vreinterpret_s32_u32(a: uint32x2_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s64_u64(a: uint64x1_t) -> int64x1_t {
     transmute(a)
 }
@@ -22604,6 +23857,7 @@ pub unsafe fn vreinterpret_s64_u64(a: uint64x1_t) -> int64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s8_u8(a: uint8x16_t) -> int8x16_t {
     transmute(a)
 }
@@ -22617,6 +23871,7 @@ pub unsafe fn vreinterpretq_s8_u8(a: uint8x16_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s8_p8(a: poly8x16_t) -> int8x16_t {
     transmute(a)
 }
@@ -22630,6 +23885,7 @@ pub unsafe fn vreinterpretq_s8_p8(a: poly8x16_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s16_p16(a: poly16x8_t) -> int16x8_t {
     transmute(a)
 }
@@ -22643,6 +23899,7 @@ pub unsafe fn vreinterpretq_s16_p16(a: poly16x8_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s16_u16(a: uint16x8_t) -> int16x8_t {
     transmute(a)
 }
@@ -22656,6 +23913,7 @@ pub unsafe fn vreinterpretq_s16_u16(a: uint16x8_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s32_u32(a: uint32x4_t) -> int32x4_t {
     transmute(a)
 }
@@ -22669,6 +23927,7 @@ pub unsafe fn vreinterpretq_s32_u32(a: uint32x4_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s64_u64(a: uint64x2_t) -> int64x2_t {
     transmute(a)
 }
@@ -22682,6 +23941,7 @@ pub unsafe fn vreinterpretq_s64_u64(a: uint64x2_t) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u8_p8(a: poly8x8_t) -> uint8x8_t {
     transmute(a)
 }
@@ -22695,6 +23955,7 @@ pub unsafe fn vreinterpret_u8_p8(a: poly8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u8_s8(a: int8x8_t) -> uint8x8_t {
     transmute(a)
 }
@@ -22708,6 +23969,7 @@ pub unsafe fn vreinterpret_u8_s8(a: int8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u16_p16(a: poly16x4_t) -> uint16x4_t {
     transmute(a)
 }
@@ -22721,6 +23983,7 @@ pub unsafe fn vreinterpret_u16_p16(a: poly16x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u16_s16(a: int16x4_t) -> uint16x4_t {
     transmute(a)
 }
@@ -22734,6 +23997,7 @@ pub unsafe fn vreinterpret_u16_s16(a: int16x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u32_s32(a: int32x2_t) -> uint32x2_t {
     transmute(a)
 }
@@ -22747,6 +24011,7 @@ pub unsafe fn vreinterpret_u32_s32(a: int32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u64_s64(a: int64x1_t) -> uint64x1_t {
     transmute(a)
 }
@@ -22760,6 +24025,7 @@ pub unsafe fn vreinterpret_u64_s64(a: int64x1_t) -> uint64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u8_p8(a: poly8x16_t) -> uint8x16_t {
     transmute(a)
 }
@@ -22773,6 +24039,7 @@ pub unsafe fn vreinterpretq_u8_p8(a: poly8x16_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u8_s8(a: int8x16_t) -> uint8x16_t {
     transmute(a)
 }
@@ -22786,6 +24053,7 @@ pub unsafe fn vreinterpretq_u8_s8(a: int8x16_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u16_p16(a: poly16x8_t) -> uint16x8_t {
     transmute(a)
 }
@@ -22799,6 +24067,7 @@ pub unsafe fn vreinterpretq_u16_p16(a: poly16x8_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u16_s16(a: int16x8_t) -> uint16x8_t {
     transmute(a)
 }
@@ -22812,6 +24081,7 @@ pub unsafe fn vreinterpretq_u16_s16(a: int16x8_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u32_s32(a: int32x4_t) -> uint32x4_t {
     transmute(a)
 }
@@ -22825,6 +24095,7 @@ pub unsafe fn vreinterpretq_u32_s32(a: int32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u64_s64(a: int64x2_t) -> uint64x2_t {
     transmute(a)
 }
@@ -22838,6 +24109,7 @@ pub unsafe fn vreinterpretq_u64_s64(a: int64x2_t) -> uint64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_p8_s8(a: int8x8_t) -> poly8x8_t {
     transmute(a)
 }
@@ -22851,6 +24123,7 @@ pub unsafe fn vreinterpret_p8_s8(a: int8x8_t) -> poly8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_p8_u8(a: uint8x8_t) -> poly8x8_t {
     transmute(a)
 }
@@ -22864,6 +24137,7 @@ pub unsafe fn vreinterpret_p8_u8(a: uint8x8_t) -> poly8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_p16_s16(a: int16x4_t) -> poly16x4_t {
     transmute(a)
 }
@@ -22877,6 +24151,7 @@ pub unsafe fn vreinterpret_p16_s16(a: int16x4_t) -> poly16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_p16_u16(a: uint16x4_t) -> poly16x4_t {
     transmute(a)
 }
@@ -22890,6 +24165,7 @@ pub unsafe fn vreinterpret_p16_u16(a: uint16x4_t) -> poly16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p8_s8(a: int8x16_t) -> poly8x16_t {
     transmute(a)
 }
@@ -22903,6 +24179,7 @@ pub unsafe fn vreinterpretq_p8_s8(a: int8x16_t) -> poly8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p8_u8(a: uint8x16_t) -> poly8x16_t {
     transmute(a)
 }
@@ -22916,6 +24193,7 @@ pub unsafe fn vreinterpretq_p8_u8(a: uint8x16_t) -> poly8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p16_s16(a: int16x8_t) -> poly16x8_t {
     transmute(a)
 }
@@ -22929,6 +24207,7 @@ pub unsafe fn vreinterpretq_p16_s16(a: int16x8_t) -> poly16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p16_u16(a: uint16x8_t) -> poly16x8_t {
     transmute(a)
 }
@@ -22942,6 +24221,7 @@ pub unsafe fn vreinterpretq_p16_u16(a: uint16x8_t) -> poly16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s8_s16(a: int16x4_t) -> int8x8_t {
     transmute(a)
 }
@@ -22955,6 +24235,7 @@ pub unsafe fn vreinterpret_s8_s16(a: int16x4_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s8_u16(a: uint16x4_t) -> int8x8_t {
     transmute(a)
 }
@@ -22968,6 +24249,7 @@ pub unsafe fn vreinterpret_s8_u16(a: uint16x4_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s8_p16(a: poly16x4_t) -> int8x8_t {
     transmute(a)
 }
@@ -22981,6 +24263,7 @@ pub unsafe fn vreinterpret_s8_p16(a: poly16x4_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s16_s32(a: int32x2_t) -> int16x4_t {
     transmute(a)
 }
@@ -22994,6 +24277,7 @@ pub unsafe fn vreinterpret_s16_s32(a: int32x2_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s16_u32(a: uint32x2_t) -> int16x4_t {
     transmute(a)
 }
@@ -23007,6 +24291,7 @@ pub unsafe fn vreinterpret_s16_u32(a: uint32x2_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s32_s64(a: int64x1_t) -> int32x2_t {
     transmute(a)
 }
@@ -23020,6 +24305,7 @@ pub unsafe fn vreinterpret_s32_s64(a: int64x1_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s32_u64(a: uint64x1_t) -> int32x2_t {
     transmute(a)
 }
@@ -23033,6 +24319,7 @@ pub unsafe fn vreinterpret_s32_u64(a: uint64x1_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s8_s16(a: int16x8_t) -> int8x16_t {
     transmute(a)
 }
@@ -23046,6 +24333,7 @@ pub unsafe fn vreinterpretq_s8_s16(a: int16x8_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s8_u16(a: uint16x8_t) -> int8x16_t {
     transmute(a)
 }
@@ -23059,6 +24347,7 @@ pub unsafe fn vreinterpretq_s8_u16(a: uint16x8_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s8_p16(a: poly16x8_t) -> int8x16_t {
     transmute(a)
 }
@@ -23072,6 +24361,7 @@ pub unsafe fn vreinterpretq_s8_p16(a: poly16x8_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s16_s32(a: int32x4_t) -> int16x8_t {
     transmute(a)
 }
@@ -23085,6 +24375,7 @@ pub unsafe fn vreinterpretq_s16_s32(a: int32x4_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s16_u32(a: uint32x4_t) -> int16x8_t {
     transmute(a)
 }
@@ -23098,6 +24389,7 @@ pub unsafe fn vreinterpretq_s16_u32(a: uint32x4_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s32_s64(a: int64x2_t) -> int32x4_t {
     transmute(a)
 }
@@ -23111,6 +24403,7 @@ pub unsafe fn vreinterpretq_s32_s64(a: int64x2_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s32_u64(a: uint64x2_t) -> int32x4_t {
     transmute(a)
 }
@@ -23124,6 +24417,7 @@ pub unsafe fn vreinterpretq_s32_u64(a: uint64x2_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u8_p16(a: poly16x4_t) -> uint8x8_t {
     transmute(a)
 }
@@ -23137,6 +24431,7 @@ pub unsafe fn vreinterpret_u8_p16(a: poly16x4_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u8_s16(a: int16x4_t) -> uint8x8_t {
     transmute(a)
 }
@@ -23150,6 +24445,7 @@ pub unsafe fn vreinterpret_u8_s16(a: int16x4_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u8_u16(a: uint16x4_t) -> uint8x8_t {
     transmute(a)
 }
@@ -23163,6 +24459,7 @@ pub unsafe fn vreinterpret_u8_u16(a: uint16x4_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u16_s32(a: int32x2_t) -> uint16x4_t {
     transmute(a)
 }
@@ -23176,6 +24473,7 @@ pub unsafe fn vreinterpret_u16_s32(a: int32x2_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u16_u32(a: uint32x2_t) -> uint16x4_t {
     transmute(a)
 }
@@ -23189,6 +24487,7 @@ pub unsafe fn vreinterpret_u16_u32(a: uint32x2_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u32_s64(a: int64x1_t) -> uint32x2_t {
     transmute(a)
 }
@@ -23202,6 +24501,7 @@ pub unsafe fn vreinterpret_u32_s64(a: int64x1_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u32_u64(a: uint64x1_t) -> uint32x2_t {
     transmute(a)
 }
@@ -23215,6 +24515,7 @@ pub unsafe fn vreinterpret_u32_u64(a: uint64x1_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u8_p16(a: poly16x8_t) -> uint8x16_t {
     transmute(a)
 }
@@ -23228,6 +24529,7 @@ pub unsafe fn vreinterpretq_u8_p16(a: poly16x8_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u8_s16(a: int16x8_t) -> uint8x16_t {
     transmute(a)
 }
@@ -23241,6 +24543,7 @@ pub unsafe fn vreinterpretq_u8_s16(a: int16x8_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u8_u16(a: uint16x8_t) -> uint8x16_t {
     transmute(a)
 }
@@ -23254,6 +24557,7 @@ pub unsafe fn vreinterpretq_u8_u16(a: uint16x8_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u16_s32(a: int32x4_t) -> uint16x8_t {
     transmute(a)
 }
@@ -23267,6 +24571,7 @@ pub unsafe fn vreinterpretq_u16_s32(a: int32x4_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u16_u32(a: uint32x4_t) -> uint16x8_t {
     transmute(a)
 }
@@ -23280,6 +24585,7 @@ pub unsafe fn vreinterpretq_u16_u32(a: uint32x4_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u32_s64(a: int64x2_t) -> uint32x4_t {
     transmute(a)
 }
@@ -23293,6 +24599,7 @@ pub unsafe fn vreinterpretq_u32_s64(a: int64x2_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u32_u64(a: uint64x2_t) -> uint32x4_t {
     transmute(a)
 }
@@ -23306,6 +24613,7 @@ pub unsafe fn vreinterpretq_u32_u64(a: uint64x2_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_p8_p16(a: poly16x4_t) -> poly8x8_t {
     transmute(a)
 }
@@ -23319,6 +24627,7 @@ pub unsafe fn vreinterpret_p8_p16(a: poly16x4_t) -> poly8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_p8_s16(a: int16x4_t) -> poly8x8_t {
     transmute(a)
 }
@@ -23332,6 +24641,7 @@ pub unsafe fn vreinterpret_p8_s16(a: int16x4_t) -> poly8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_p8_u16(a: uint16x4_t) -> poly8x8_t {
     transmute(a)
 }
@@ -23345,6 +24655,7 @@ pub unsafe fn vreinterpret_p8_u16(a: uint16x4_t) -> poly8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_p16_s32(a: int32x2_t) -> poly16x4_t {
     transmute(a)
 }
@@ -23358,6 +24669,7 @@ pub unsafe fn vreinterpret_p16_s32(a: int32x2_t) -> poly16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_p16_u32(a: uint32x2_t) -> poly16x4_t {
     transmute(a)
 }
@@ -23371,6 +24683,7 @@ pub unsafe fn vreinterpret_p16_u32(a: uint32x2_t) -> poly16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p8_p16(a: poly16x8_t) -> poly8x16_t {
     transmute(a)
 }
@@ -23384,6 +24697,7 @@ pub unsafe fn vreinterpretq_p8_p16(a: poly16x8_t) -> poly8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p8_s16(a: int16x8_t) -> poly8x16_t {
     transmute(a)
 }
@@ -23397,6 +24711,7 @@ pub unsafe fn vreinterpretq_p8_s16(a: int16x8_t) -> poly8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p8_u16(a: uint16x8_t) -> poly8x16_t {
     transmute(a)
 }
@@ -23410,6 +24725,7 @@ pub unsafe fn vreinterpretq_p8_u16(a: uint16x8_t) -> poly8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p16_s32(a: int32x4_t) -> poly16x8_t {
     transmute(a)
 }
@@ -23423,6 +24739,7 @@ pub unsafe fn vreinterpretq_p16_s32(a: int32x4_t) -> poly16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p16_u32(a: uint32x4_t) -> poly16x8_t {
     transmute(a)
 }
@@ -23436,6 +24753,7 @@ pub unsafe fn vreinterpretq_p16_u32(a: uint32x4_t) -> poly16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s32_p64(a: poly64x1_t) -> int32x2_t {
     transmute(a)
 }
@@ -23449,6 +24767,7 @@ pub unsafe fn vreinterpret_s32_p64(a: poly64x1_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u32_p64(a: poly64x1_t) -> uint32x2_t {
     transmute(a)
 }
@@ -23462,6 +24781,7 @@ pub unsafe fn vreinterpret_u32_p64(a: poly64x1_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s32_p64(a: poly64x2_t) -> int32x4_t {
     transmute(a)
 }
@@ -23475,6 +24795,7 @@ pub unsafe fn vreinterpretq_s32_p64(a: poly64x2_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u32_p64(a: poly64x2_t) -> uint32x4_t {
     transmute(a)
 }
@@ -23488,6 +24809,7 @@ pub unsafe fn vreinterpretq_u32_p64(a: poly64x2_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s64_p128(a: p128) -> int64x2_t {
     transmute(a)
 }
@@ -23501,6 +24823,7 @@ pub unsafe fn vreinterpretq_s64_p128(a: p128) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u64_p128(a: p128) -> uint64x2_t {
     transmute(a)
 }
@@ -23514,6 +24837,7 @@ pub unsafe fn vreinterpretq_u64_p128(a: p128) -> uint64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p64_p128(a: p128) -> poly64x2_t {
     transmute(a)
 }
@@ -23527,6 +24851,7 @@ pub unsafe fn vreinterpretq_p64_p128(a: p128) -> poly64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s16_p8(a: poly8x8_t) -> int16x4_t {
     transmute(a)
 }
@@ -23540,6 +24865,7 @@ pub unsafe fn vreinterpret_s16_p8(a: poly8x8_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s16_s8(a: int8x8_t) -> int16x4_t {
     transmute(a)
 }
@@ -23553,6 +24879,7 @@ pub unsafe fn vreinterpret_s16_s8(a: int8x8_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s16_u8(a: uint8x8_t) -> int16x4_t {
     transmute(a)
 }
@@ -23566,6 +24893,7 @@ pub unsafe fn vreinterpret_s16_u8(a: uint8x8_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s32_p16(a: poly16x4_t) -> int32x2_t {
     transmute(a)
 }
@@ -23579,6 +24907,7 @@ pub unsafe fn vreinterpret_s32_p16(a: poly16x4_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s32_s16(a: int16x4_t) -> int32x2_t {
     transmute(a)
 }
@@ -23592,6 +24921,7 @@ pub unsafe fn vreinterpret_s32_s16(a: int16x4_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s32_u16(a: uint16x4_t) -> int32x2_t {
     transmute(a)
 }
@@ -23605,6 +24935,7 @@ pub unsafe fn vreinterpret_s32_u16(a: uint16x4_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s64_s32(a: int32x2_t) -> int64x1_t {
     transmute(a)
 }
@@ -23618,6 +24949,7 @@ pub unsafe fn vreinterpret_s64_s32(a: int32x2_t) -> int64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s64_u32(a: uint32x2_t) -> int64x1_t {
     transmute(a)
 }
@@ -23631,6 +24963,7 @@ pub unsafe fn vreinterpret_s64_u32(a: uint32x2_t) -> int64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s16_p8(a: poly8x16_t) -> int16x8_t {
     transmute(a)
 }
@@ -23644,6 +24977,7 @@ pub unsafe fn vreinterpretq_s16_p8(a: poly8x16_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s16_s8(a: int8x16_t) -> int16x8_t {
     transmute(a)
 }
@@ -23657,6 +24991,7 @@ pub unsafe fn vreinterpretq_s16_s8(a: int8x16_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s16_u8(a: uint8x16_t) -> int16x8_t {
     transmute(a)
 }
@@ -23670,6 +25005,7 @@ pub unsafe fn vreinterpretq_s16_u8(a: uint8x16_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s32_p16(a: poly16x8_t) -> int32x4_t {
     transmute(a)
 }
@@ -23683,6 +25019,7 @@ pub unsafe fn vreinterpretq_s32_p16(a: poly16x8_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s32_s16(a: int16x8_t) -> int32x4_t {
     transmute(a)
 }
@@ -23696,6 +25033,7 @@ pub unsafe fn vreinterpretq_s32_s16(a: int16x8_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s32_u16(a: uint16x8_t) -> int32x4_t {
     transmute(a)
 }
@@ -23709,6 +25047,7 @@ pub unsafe fn vreinterpretq_s32_u16(a: uint16x8_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s64_s32(a: int32x4_t) -> int64x2_t {
     transmute(a)
 }
@@ -23722,6 +25061,7 @@ pub unsafe fn vreinterpretq_s64_s32(a: int32x4_t) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s64_u32(a: uint32x4_t) -> int64x2_t {
     transmute(a)
 }
@@ -23735,6 +25075,7 @@ pub unsafe fn vreinterpretq_s64_u32(a: uint32x4_t) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u16_p8(a: poly8x8_t) -> uint16x4_t {
     transmute(a)
 }
@@ -23748,6 +25089,7 @@ pub unsafe fn vreinterpret_u16_p8(a: poly8x8_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u16_s8(a: int8x8_t) -> uint16x4_t {
     transmute(a)
 }
@@ -23761,6 +25103,7 @@ pub unsafe fn vreinterpret_u16_s8(a: int8x8_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u16_u8(a: uint8x8_t) -> uint16x4_t {
     transmute(a)
 }
@@ -23774,6 +25117,7 @@ pub unsafe fn vreinterpret_u16_u8(a: uint8x8_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u32_p16(a: poly16x4_t) -> uint32x2_t {
     transmute(a)
 }
@@ -23787,6 +25131,7 @@ pub unsafe fn vreinterpret_u32_p16(a: poly16x4_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u32_s16(a: int16x4_t) -> uint32x2_t {
     transmute(a)
 }
@@ -23800,6 +25145,7 @@ pub unsafe fn vreinterpret_u32_s16(a: int16x4_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u32_u16(a: uint16x4_t) -> uint32x2_t {
     transmute(a)
 }
@@ -23813,6 +25159,7 @@ pub unsafe fn vreinterpret_u32_u16(a: uint16x4_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u64_s32(a: int32x2_t) -> uint64x1_t {
     transmute(a)
 }
@@ -23826,6 +25173,7 @@ pub unsafe fn vreinterpret_u64_s32(a: int32x2_t) -> uint64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u64_u32(a: uint32x2_t) -> uint64x1_t {
     transmute(a)
 }
@@ -23839,6 +25187,7 @@ pub unsafe fn vreinterpret_u64_u32(a: uint32x2_t) -> uint64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u16_p8(a: poly8x16_t) -> uint16x8_t {
     transmute(a)
 }
@@ -23852,6 +25201,7 @@ pub unsafe fn vreinterpretq_u16_p8(a: poly8x16_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u16_s8(a: int8x16_t) -> uint16x8_t {
     transmute(a)
 }
@@ -23865,6 +25215,7 @@ pub unsafe fn vreinterpretq_u16_s8(a: int8x16_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u16_u8(a: uint8x16_t) -> uint16x8_t {
     transmute(a)
 }
@@ -23878,6 +25229,7 @@ pub unsafe fn vreinterpretq_u16_u8(a: uint8x16_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u32_p16(a: poly16x8_t) -> uint32x4_t {
     transmute(a)
 }
@@ -23891,6 +25243,7 @@ pub unsafe fn vreinterpretq_u32_p16(a: poly16x8_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u32_s16(a: int16x8_t) -> uint32x4_t {
     transmute(a)
 }
@@ -23904,6 +25257,7 @@ pub unsafe fn vreinterpretq_u32_s16(a: int16x8_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u32_u16(a: uint16x8_t) -> uint32x4_t {
     transmute(a)
 }
@@ -23917,6 +25271,7 @@ pub unsafe fn vreinterpretq_u32_u16(a: uint16x8_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u64_s32(a: int32x4_t) -> uint64x2_t {
     transmute(a)
 }
@@ -23930,6 +25285,7 @@ pub unsafe fn vreinterpretq_u64_s32(a: int32x4_t) -> uint64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u64_u32(a: uint32x4_t) -> uint64x2_t {
     transmute(a)
 }
@@ -23943,6 +25299,7 @@ pub unsafe fn vreinterpretq_u64_u32(a: uint32x4_t) -> uint64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_p16_p8(a: poly8x8_t) -> poly16x4_t {
     transmute(a)
 }
@@ -23956,6 +25313,7 @@ pub unsafe fn vreinterpret_p16_p8(a: poly8x8_t) -> poly16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_p16_s8(a: int8x8_t) -> poly16x4_t {
     transmute(a)
 }
@@ -23969,6 +25327,7 @@ pub unsafe fn vreinterpret_p16_s8(a: int8x8_t) -> poly16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_p16_u8(a: uint8x8_t) -> poly16x4_t {
     transmute(a)
 }
@@ -23982,6 +25341,7 @@ pub unsafe fn vreinterpret_p16_u8(a: uint8x8_t) -> poly16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p16_p8(a: poly8x16_t) -> poly16x8_t {
     transmute(a)
 }
@@ -23995,6 +25355,7 @@ pub unsafe fn vreinterpretq_p16_p8(a: poly8x16_t) -> poly16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p16_s8(a: int8x16_t) -> poly16x8_t {
     transmute(a)
 }
@@ -24008,6 +25369,7 @@ pub unsafe fn vreinterpretq_p16_s8(a: int8x16_t) -> poly16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p16_u8(a: uint8x16_t) -> poly16x8_t {
     transmute(a)
 }
@@ -24021,6 +25383,7 @@ pub unsafe fn vreinterpretq_p16_u8(a: uint8x16_t) -> poly16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_p64_s32(a: int32x2_t) -> poly64x1_t {
     transmute(a)
 }
@@ -24034,6 +25397,7 @@ pub unsafe fn vreinterpret_p64_s32(a: int32x2_t) -> poly64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_p64_u32(a: uint32x2_t) -> poly64x1_t {
     transmute(a)
 }
@@ -24047,6 +25411,7 @@ pub unsafe fn vreinterpret_p64_u32(a: uint32x2_t) -> poly64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p64_s32(a: int32x4_t) -> poly64x2_t {
     transmute(a)
 }
@@ -24060,6 +25425,7 @@ pub unsafe fn vreinterpretq_p64_s32(a: int32x4_t) -> poly64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p64_u32(a: uint32x4_t) -> poly64x2_t {
     transmute(a)
 }
@@ -24073,6 +25439,7 @@ pub unsafe fn vreinterpretq_p64_u32(a: uint32x4_t) -> poly64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p128_s64(a: int64x2_t) -> p128 {
     transmute(a)
 }
@@ -24086,6 +25453,7 @@ pub unsafe fn vreinterpretq_p128_s64(a: int64x2_t) -> p128 {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p128_u64(a: uint64x2_t) -> p128 {
     transmute(a)
 }
@@ -24099,6 +25467,7 @@ pub unsafe fn vreinterpretq_p128_u64(a: uint64x2_t) -> p128 {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p128_p64(a: poly64x2_t) -> p128 {
     transmute(a)
 }
@@ -24112,6 +25481,7 @@ pub unsafe fn vreinterpretq_p128_p64(a: poly64x2_t) -> p128 {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s8_s32(a: int32x2_t) -> int8x8_t {
     transmute(a)
 }
@@ -24125,6 +25495,7 @@ pub unsafe fn vreinterpret_s8_s32(a: int32x2_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s8_u32(a: uint32x2_t) -> int8x8_t {
     transmute(a)
 }
@@ -24138,6 +25509,7 @@ pub unsafe fn vreinterpret_s8_u32(a: uint32x2_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s16_s64(a: int64x1_t) -> int16x4_t {
     transmute(a)
 }
@@ -24151,6 +25523,7 @@ pub unsafe fn vreinterpret_s16_s64(a: int64x1_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s16_u64(a: uint64x1_t) -> int16x4_t {
     transmute(a)
 }
@@ -24164,6 +25537,7 @@ pub unsafe fn vreinterpret_s16_u64(a: uint64x1_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s8_s32(a: int32x4_t) -> int8x16_t {
     transmute(a)
 }
@@ -24177,6 +25551,7 @@ pub unsafe fn vreinterpretq_s8_s32(a: int32x4_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s8_u32(a: uint32x4_t) -> int8x16_t {
     transmute(a)
 }
@@ -24190,6 +25565,7 @@ pub unsafe fn vreinterpretq_s8_u32(a: uint32x4_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s16_s64(a: int64x2_t) -> int16x8_t {
     transmute(a)
 }
@@ -24203,6 +25579,7 @@ pub unsafe fn vreinterpretq_s16_s64(a: int64x2_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s16_u64(a: uint64x2_t) -> int16x8_t {
     transmute(a)
 }
@@ -24216,6 +25593,7 @@ pub unsafe fn vreinterpretq_s16_u64(a: uint64x2_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u8_s32(a: int32x2_t) -> uint8x8_t {
     transmute(a)
 }
@@ -24229,6 +25607,7 @@ pub unsafe fn vreinterpret_u8_s32(a: int32x2_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u8_u32(a: uint32x2_t) -> uint8x8_t {
     transmute(a)
 }
@@ -24242,6 +25621,7 @@ pub unsafe fn vreinterpret_u8_u32(a: uint32x2_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u16_s64(a: int64x1_t) -> uint16x4_t {
     transmute(a)
 }
@@ -24255,6 +25635,7 @@ pub unsafe fn vreinterpret_u16_s64(a: int64x1_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u16_u64(a: uint64x1_t) -> uint16x4_t {
     transmute(a)
 }
@@ -24268,6 +25649,7 @@ pub unsafe fn vreinterpret_u16_u64(a: uint64x1_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u8_s32(a: int32x4_t) -> uint8x16_t {
     transmute(a)
 }
@@ -24281,6 +25663,7 @@ pub unsafe fn vreinterpretq_u8_s32(a: int32x4_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u8_u32(a: uint32x4_t) -> uint8x16_t {
     transmute(a)
 }
@@ -24294,6 +25677,7 @@ pub unsafe fn vreinterpretq_u8_u32(a: uint32x4_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u16_s64(a: int64x2_t) -> uint16x8_t {
     transmute(a)
 }
@@ -24307,6 +25691,7 @@ pub unsafe fn vreinterpretq_u16_s64(a: int64x2_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u16_u64(a: uint64x2_t) -> uint16x8_t {
     transmute(a)
 }
@@ -24320,6 +25705,7 @@ pub unsafe fn vreinterpretq_u16_u64(a: uint64x2_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_p8_s32(a: int32x2_t) -> poly8x8_t {
     transmute(a)
 }
@@ -24333,6 +25719,7 @@ pub unsafe fn vreinterpret_p8_s32(a: int32x2_t) -> poly8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_p8_u32(a: uint32x2_t) -> poly8x8_t {
     transmute(a)
 }
@@ -24346,6 +25733,7 @@ pub unsafe fn vreinterpret_p8_u32(a: uint32x2_t) -> poly8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_p16_s64(a: int64x1_t) -> poly16x4_t {
     transmute(a)
 }
@@ -24359,6 +25747,7 @@ pub unsafe fn vreinterpret_p16_s64(a: int64x1_t) -> poly16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_p16_u64(a: uint64x1_t) -> poly16x4_t {
     transmute(a)
 }
@@ -24372,6 +25761,7 @@ pub unsafe fn vreinterpret_p16_u64(a: uint64x1_t) -> poly16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p8_s32(a: int32x4_t) -> poly8x16_t {
     transmute(a)
 }
@@ -24385,6 +25775,7 @@ pub unsafe fn vreinterpretq_p8_s32(a: int32x4_t) -> poly8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p8_u32(a: uint32x4_t) -> poly8x16_t {
     transmute(a)
 }
@@ -24398,6 +25789,7 @@ pub unsafe fn vreinterpretq_p8_u32(a: uint32x4_t) -> poly8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p16_s64(a: int64x2_t) -> poly16x8_t {
     transmute(a)
 }
@@ -24411,6 +25803,7 @@ pub unsafe fn vreinterpretq_p16_s64(a: int64x2_t) -> poly16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p16_u64(a: uint64x2_t) -> poly16x8_t {
     transmute(a)
 }
@@ -24424,6 +25817,7 @@ pub unsafe fn vreinterpretq_p16_u64(a: uint64x2_t) -> poly16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s16_p64(a: poly64x1_t) -> int16x4_t {
     transmute(a)
 }
@@ -24437,6 +25831,7 @@ pub unsafe fn vreinterpret_s16_p64(a: poly64x1_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u16_p64(a: poly64x1_t) -> uint16x4_t {
     transmute(a)
 }
@@ -24450,6 +25845,7 @@ pub unsafe fn vreinterpret_u16_p64(a: poly64x1_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_p16_p64(a: poly64x1_t) -> poly16x4_t {
     transmute(a)
 }
@@ -24463,6 +25859,7 @@ pub unsafe fn vreinterpret_p16_p64(a: poly64x1_t) -> poly16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s16_p64(a: poly64x2_t) -> int16x8_t {
     transmute(a)
 }
@@ -24476,6 +25873,7 @@ pub unsafe fn vreinterpretq_s16_p64(a: poly64x2_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u16_p64(a: poly64x2_t) -> uint16x8_t {
     transmute(a)
 }
@@ -24489,6 +25887,7 @@ pub unsafe fn vreinterpretq_u16_p64(a: poly64x2_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p16_p64(a: poly64x2_t) -> poly16x8_t {
     transmute(a)
 }
@@ -24502,6 +25901,7 @@ pub unsafe fn vreinterpretq_p16_p64(a: poly64x2_t) -> poly16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s32_p128(a: p128) -> int32x4_t {
     transmute(a)
 }
@@ -24515,6 +25915,7 @@ pub unsafe fn vreinterpretq_s32_p128(a: p128) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u32_p128(a: p128) -> uint32x4_t {
     transmute(a)
 }
@@ -24528,6 +25929,7 @@ pub unsafe fn vreinterpretq_u32_p128(a: p128) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s32_p8(a: poly8x8_t) -> int32x2_t {
     transmute(a)
 }
@@ -24541,6 +25943,7 @@ pub unsafe fn vreinterpret_s32_p8(a: poly8x8_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s32_s8(a: int8x8_t) -> int32x2_t {
     transmute(a)
 }
@@ -24554,6 +25957,7 @@ pub unsafe fn vreinterpret_s32_s8(a: int8x8_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s32_u8(a: uint8x8_t) -> int32x2_t {
     transmute(a)
 }
@@ -24567,6 +25971,7 @@ pub unsafe fn vreinterpret_s32_u8(a: uint8x8_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s64_p16(a: poly16x4_t) -> int64x1_t {
     transmute(a)
 }
@@ -24580,6 +25985,7 @@ pub unsafe fn vreinterpret_s64_p16(a: poly16x4_t) -> int64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s64_s16(a: int16x4_t) -> int64x1_t {
     transmute(a)
 }
@@ -24593,6 +25999,7 @@ pub unsafe fn vreinterpret_s64_s16(a: int16x4_t) -> int64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s64_u16(a: uint16x4_t) -> int64x1_t {
     transmute(a)
 }
@@ -24606,6 +26013,7 @@ pub unsafe fn vreinterpret_s64_u16(a: uint16x4_t) -> int64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s32_p8(a: poly8x16_t) -> int32x4_t {
     transmute(a)
 }
@@ -24619,6 +26027,7 @@ pub unsafe fn vreinterpretq_s32_p8(a: poly8x16_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s32_s8(a: int8x16_t) -> int32x4_t {
     transmute(a)
 }
@@ -24632,6 +26041,7 @@ pub unsafe fn vreinterpretq_s32_s8(a: int8x16_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s32_u8(a: uint8x16_t) -> int32x4_t {
     transmute(a)
 }
@@ -24645,6 +26055,7 @@ pub unsafe fn vreinterpretq_s32_u8(a: uint8x16_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s64_p16(a: poly16x8_t) -> int64x2_t {
     transmute(a)
 }
@@ -24658,6 +26069,7 @@ pub unsafe fn vreinterpretq_s64_p16(a: poly16x8_t) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s64_s16(a: int16x8_t) -> int64x2_t {
     transmute(a)
 }
@@ -24671,6 +26083,7 @@ pub unsafe fn vreinterpretq_s64_s16(a: int16x8_t) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s64_u16(a: uint16x8_t) -> int64x2_t {
     transmute(a)
 }
@@ -24684,6 +26097,7 @@ pub unsafe fn vreinterpretq_s64_u16(a: uint16x8_t) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u32_p8(a: poly8x8_t) -> uint32x2_t {
     transmute(a)
 }
@@ -24697,6 +26111,7 @@ pub unsafe fn vreinterpret_u32_p8(a: poly8x8_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u32_s8(a: int8x8_t) -> uint32x2_t {
     transmute(a)
 }
@@ -24710,6 +26125,7 @@ pub unsafe fn vreinterpret_u32_s8(a: int8x8_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u32_u8(a: uint8x8_t) -> uint32x2_t {
     transmute(a)
 }
@@ -24723,6 +26139,7 @@ pub unsafe fn vreinterpret_u32_u8(a: uint8x8_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u64_p16(a: poly16x4_t) -> uint64x1_t {
     transmute(a)
 }
@@ -24736,6 +26153,7 @@ pub unsafe fn vreinterpret_u64_p16(a: poly16x4_t) -> uint64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u64_s16(a: int16x4_t) -> uint64x1_t {
     transmute(a)
 }
@@ -24749,6 +26167,7 @@ pub unsafe fn vreinterpret_u64_s16(a: int16x4_t) -> uint64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u64_u16(a: uint16x4_t) -> uint64x1_t {
     transmute(a)
 }
@@ -24762,6 +26181,7 @@ pub unsafe fn vreinterpret_u64_u16(a: uint16x4_t) -> uint64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u32_p8(a: poly8x16_t) -> uint32x4_t {
     transmute(a)
 }
@@ -24775,6 +26195,7 @@ pub unsafe fn vreinterpretq_u32_p8(a: poly8x16_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u32_s8(a: int8x16_t) -> uint32x4_t {
     transmute(a)
 }
@@ -24788,6 +26209,7 @@ pub unsafe fn vreinterpretq_u32_s8(a: int8x16_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u32_u8(a: uint8x16_t) -> uint32x4_t {
     transmute(a)
 }
@@ -24801,6 +26223,7 @@ pub unsafe fn vreinterpretq_u32_u8(a: uint8x16_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u64_p16(a: poly16x8_t) -> uint64x2_t {
     transmute(a)
 }
@@ -24814,6 +26237,7 @@ pub unsafe fn vreinterpretq_u64_p16(a: poly16x8_t) -> uint64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u64_s16(a: int16x8_t) -> uint64x2_t {
     transmute(a)
 }
@@ -24827,6 +26251,7 @@ pub unsafe fn vreinterpretq_u64_s16(a: int16x8_t) -> uint64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u64_u16(a: uint16x8_t) -> uint64x2_t {
     transmute(a)
 }
@@ -24840,6 +26265,7 @@ pub unsafe fn vreinterpretq_u64_u16(a: uint16x8_t) -> uint64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_p64_p16(a: poly16x4_t) -> poly64x1_t {
     transmute(a)
 }
@@ -24853,6 +26279,7 @@ pub unsafe fn vreinterpret_p64_p16(a: poly16x4_t) -> poly64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_p64_s16(a: int16x4_t) -> poly64x1_t {
     transmute(a)
 }
@@ -24866,6 +26293,7 @@ pub unsafe fn vreinterpret_p64_s16(a: int16x4_t) -> poly64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_p64_u16(a: uint16x4_t) -> poly64x1_t {
     transmute(a)
 }
@@ -24879,6 +26307,7 @@ pub unsafe fn vreinterpret_p64_u16(a: uint16x4_t) -> poly64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p64_p16(a: poly16x8_t) -> poly64x2_t {
     transmute(a)
 }
@@ -24892,6 +26321,7 @@ pub unsafe fn vreinterpretq_p64_p16(a: poly16x8_t) -> poly64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p64_s16(a: int16x8_t) -> poly64x2_t {
     transmute(a)
 }
@@ -24905,6 +26335,7 @@ pub unsafe fn vreinterpretq_p64_s16(a: int16x8_t) -> poly64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p64_u16(a: uint16x8_t) -> poly64x2_t {
     transmute(a)
 }
@@ -24918,6 +26349,7 @@ pub unsafe fn vreinterpretq_p64_u16(a: uint16x8_t) -> poly64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p128_s32(a: int32x4_t) -> p128 {
     transmute(a)
 }
@@ -24931,6 +26363,7 @@ pub unsafe fn vreinterpretq_p128_s32(a: int32x4_t) -> p128 {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p128_u32(a: uint32x4_t) -> p128 {
     transmute(a)
 }
@@ -24944,6 +26377,7 @@ pub unsafe fn vreinterpretq_p128_u32(a: uint32x4_t) -> p128 {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s8_s64(a: int64x1_t) -> int8x8_t {
     transmute(a)
 }
@@ -24957,6 +26391,7 @@ pub unsafe fn vreinterpret_s8_s64(a: int64x1_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s8_u64(a: uint64x1_t) -> int8x8_t {
     transmute(a)
 }
@@ -24970,6 +26405,7 @@ pub unsafe fn vreinterpret_s8_u64(a: uint64x1_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u8_s64(a: int64x1_t) -> uint8x8_t {
     transmute(a)
 }
@@ -24983,6 +26419,7 @@ pub unsafe fn vreinterpret_u8_s64(a: int64x1_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u8_u64(a: uint64x1_t) -> uint8x8_t {
     transmute(a)
 }
@@ -24996,6 +26433,7 @@ pub unsafe fn vreinterpret_u8_u64(a: uint64x1_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_p8_s64(a: int64x1_t) -> poly8x8_t {
     transmute(a)
 }
@@ -25009,6 +26447,7 @@ pub unsafe fn vreinterpret_p8_s64(a: int64x1_t) -> poly8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_p8_u64(a: uint64x1_t) -> poly8x8_t {
     transmute(a)
 }
@@ -25022,6 +26461,7 @@ pub unsafe fn vreinterpret_p8_u64(a: uint64x1_t) -> poly8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s8_s64(a: int64x2_t) -> int8x16_t {
     transmute(a)
 }
@@ -25035,6 +26475,7 @@ pub unsafe fn vreinterpretq_s8_s64(a: int64x2_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s8_u64(a: uint64x2_t) -> int8x16_t {
     transmute(a)
 }
@@ -25048,6 +26489,7 @@ pub unsafe fn vreinterpretq_s8_u64(a: uint64x2_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u8_s64(a: int64x2_t) -> uint8x16_t {
     transmute(a)
 }
@@ -25061,6 +26503,7 @@ pub unsafe fn vreinterpretq_u8_s64(a: int64x2_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u8_u64(a: uint64x2_t) -> uint8x16_t {
     transmute(a)
 }
@@ -25074,6 +26517,7 @@ pub unsafe fn vreinterpretq_u8_u64(a: uint64x2_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p8_s64(a: int64x2_t) -> poly8x16_t {
     transmute(a)
 }
@@ -25087,6 +26531,7 @@ pub unsafe fn vreinterpretq_p8_s64(a: int64x2_t) -> poly8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p8_u64(a: uint64x2_t) -> poly8x16_t {
     transmute(a)
 }
@@ -25100,6 +26545,7 @@ pub unsafe fn vreinterpretq_p8_u64(a: uint64x2_t) -> poly8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s8_p64(a: poly64x1_t) -> int8x8_t {
     transmute(a)
 }
@@ -25113,6 +26559,7 @@ pub unsafe fn vreinterpret_s8_p64(a: poly64x1_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u8_p64(a: poly64x1_t) -> uint8x8_t {
     transmute(a)
 }
@@ -25126,6 +26573,7 @@ pub unsafe fn vreinterpret_u8_p64(a: poly64x1_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_p8_p64(a: poly64x1_t) -> poly8x8_t {
     transmute(a)
 }
@@ -25139,6 +26587,7 @@ pub unsafe fn vreinterpret_p8_p64(a: poly64x1_t) -> poly8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s8_p64(a: poly64x2_t) -> int8x16_t {
     transmute(a)
 }
@@ -25152,6 +26601,7 @@ pub unsafe fn vreinterpretq_s8_p64(a: poly64x2_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u8_p64(a: poly64x2_t) -> uint8x16_t {
     transmute(a)
 }
@@ -25165,6 +26615,7 @@ pub unsafe fn vreinterpretq_u8_p64(a: poly64x2_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p8_p64(a: poly64x2_t) -> poly8x16_t {
     transmute(a)
 }
@@ -25178,6 +26629,7 @@ pub unsafe fn vreinterpretq_p8_p64(a: poly64x2_t) -> poly8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s16_p128(a: p128) -> int16x8_t {
     transmute(a)
 }
@@ -25191,6 +26643,7 @@ pub unsafe fn vreinterpretq_s16_p128(a: p128) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u16_p128(a: p128) -> uint16x8_t {
     transmute(a)
 }
@@ -25204,6 +26657,7 @@ pub unsafe fn vreinterpretq_u16_p128(a: p128) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p16_p128(a: p128) -> poly16x8_t {
     transmute(a)
 }
@@ -25217,6 +26671,7 @@ pub unsafe fn vreinterpretq_p16_p128(a: p128) -> poly16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s64_p8(a: poly8x8_t) -> int64x1_t {
     transmute(a)
 }
@@ -25230,6 +26685,7 @@ pub unsafe fn vreinterpret_s64_p8(a: poly8x8_t) -> int64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s64_s8(a: int8x8_t) -> int64x1_t {
     transmute(a)
 }
@@ -25243,6 +26699,7 @@ pub unsafe fn vreinterpret_s64_s8(a: int8x8_t) -> int64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s64_u8(a: uint8x8_t) -> int64x1_t {
     transmute(a)
 }
@@ -25256,6 +26713,7 @@ pub unsafe fn vreinterpret_s64_u8(a: uint8x8_t) -> int64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u64_p8(a: poly8x8_t) -> uint64x1_t {
     transmute(a)
 }
@@ -25269,6 +26727,7 @@ pub unsafe fn vreinterpret_u64_p8(a: poly8x8_t) -> uint64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u64_s8(a: int8x8_t) -> uint64x1_t {
     transmute(a)
 }
@@ -25282,6 +26741,7 @@ pub unsafe fn vreinterpret_u64_s8(a: int8x8_t) -> uint64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u64_u8(a: uint8x8_t) -> uint64x1_t {
     transmute(a)
 }
@@ -25295,6 +26755,7 @@ pub unsafe fn vreinterpret_u64_u8(a: uint8x8_t) -> uint64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s64_p8(a: poly8x16_t) -> int64x2_t {
     transmute(a)
 }
@@ -25308,6 +26769,7 @@ pub unsafe fn vreinterpretq_s64_p8(a: poly8x16_t) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s64_s8(a: int8x16_t) -> int64x2_t {
     transmute(a)
 }
@@ -25321,6 +26783,7 @@ pub unsafe fn vreinterpretq_s64_s8(a: int8x16_t) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s64_u8(a: uint8x16_t) -> int64x2_t {
     transmute(a)
 }
@@ -25334,6 +26797,7 @@ pub unsafe fn vreinterpretq_s64_u8(a: uint8x16_t) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u64_p8(a: poly8x16_t) -> uint64x2_t {
     transmute(a)
 }
@@ -25347,6 +26811,7 @@ pub unsafe fn vreinterpretq_u64_p8(a: poly8x16_t) -> uint64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u64_s8(a: int8x16_t) -> uint64x2_t {
     transmute(a)
 }
@@ -25360,6 +26825,7 @@ pub unsafe fn vreinterpretq_u64_s8(a: int8x16_t) -> uint64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u64_u8(a: uint8x16_t) -> uint64x2_t {
     transmute(a)
 }
@@ -25373,6 +26839,7 @@ pub unsafe fn vreinterpretq_u64_u8(a: uint8x16_t) -> uint64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_p64_p8(a: poly8x8_t) -> poly64x1_t {
     transmute(a)
 }
@@ -25386,6 +26853,7 @@ pub unsafe fn vreinterpret_p64_p8(a: poly8x8_t) -> poly64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_p64_s8(a: int8x8_t) -> poly64x1_t {
     transmute(a)
 }
@@ -25399,6 +26867,7 @@ pub unsafe fn vreinterpret_p64_s8(a: int8x8_t) -> poly64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_p64_u8(a: uint8x8_t) -> poly64x1_t {
     transmute(a)
 }
@@ -25412,6 +26881,7 @@ pub unsafe fn vreinterpret_p64_u8(a: uint8x8_t) -> poly64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p64_p8(a: poly8x16_t) -> poly64x2_t {
     transmute(a)
 }
@@ -25425,6 +26895,7 @@ pub unsafe fn vreinterpretq_p64_p8(a: poly8x16_t) -> poly64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p64_s8(a: int8x16_t) -> poly64x2_t {
     transmute(a)
 }
@@ -25438,6 +26909,7 @@ pub unsafe fn vreinterpretq_p64_s8(a: int8x16_t) -> poly64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p64_u8(a: uint8x16_t) -> poly64x2_t {
     transmute(a)
 }
@@ -25451,6 +26923,7 @@ pub unsafe fn vreinterpretq_p64_u8(a: uint8x16_t) -> poly64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p128_s16(a: int16x8_t) -> p128 {
     transmute(a)
 }
@@ -25464,6 +26937,7 @@ pub unsafe fn vreinterpretq_p128_s16(a: int16x8_t) -> p128 {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p128_u16(a: uint16x8_t) -> p128 {
     transmute(a)
 }
@@ -25477,6 +26951,7 @@ pub unsafe fn vreinterpretq_p128_u16(a: uint16x8_t) -> p128 {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p128_p16(a: poly16x8_t) -> p128 {
     transmute(a)
 }
@@ -25490,6 +26965,7 @@ pub unsafe fn vreinterpretq_p128_p16(a: poly16x8_t) -> p128 {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p128_s8(a: int8x16_t) -> p128 {
     transmute(a)
 }
@@ -25503,6 +26979,7 @@ pub unsafe fn vreinterpretq_p128_s8(a: int8x16_t) -> p128 {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p128_u8(a: uint8x16_t) -> p128 {
     transmute(a)
 }
@@ -25516,6 +26993,7 @@ pub unsafe fn vreinterpretq_p128_u8(a: uint8x16_t) -> p128 {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p128_p8(a: poly8x16_t) -> p128 {
     transmute(a)
 }
@@ -25529,6 +27007,7 @@ pub unsafe fn vreinterpretq_p128_p8(a: poly8x16_t) -> p128 {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s8_p128(a: p128) -> int8x16_t {
     transmute(a)
 }
@@ -25542,6 +27021,7 @@ pub unsafe fn vreinterpretq_s8_p128(a: p128) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u8_p128(a: p128) -> uint8x16_t {
     transmute(a)
 }
@@ -25555,6 +27035,7 @@ pub unsafe fn vreinterpretq_u8_p128(a: p128) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p8_p128(a: p128) -> poly8x16_t {
     transmute(a)
 }
@@ -25568,6 +27049,7 @@ pub unsafe fn vreinterpretq_p8_p128(a: p128) -> poly8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s8_f32(a: float32x2_t) -> int8x8_t {
     transmute(a)
 }
@@ -25581,6 +27063,7 @@ pub unsafe fn vreinterpret_s8_f32(a: float32x2_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s16_f32(a: float32x2_t) -> int16x4_t {
     transmute(a)
 }
@@ -25594,6 +27077,7 @@ pub unsafe fn vreinterpret_s16_f32(a: float32x2_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s32_f32(a: float32x2_t) -> int32x2_t {
     transmute(a)
 }
@@ -25607,6 +27091,7 @@ pub unsafe fn vreinterpret_s32_f32(a: float32x2_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_s64_f32(a: float32x2_t) -> int64x1_t {
     transmute(a)
 }
@@ -25620,6 +27105,7 @@ pub unsafe fn vreinterpret_s64_f32(a: float32x2_t) -> int64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s8_f32(a: float32x4_t) -> int8x16_t {
     transmute(a)
 }
@@ -25633,6 +27119,7 @@ pub unsafe fn vreinterpretq_s8_f32(a: float32x4_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s16_f32(a: float32x4_t) -> int16x8_t {
     transmute(a)
 }
@@ -25646,6 +27133,7 @@ pub unsafe fn vreinterpretq_s16_f32(a: float32x4_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s32_f32(a: float32x4_t) -> int32x4_t {
     transmute(a)
 }
@@ -25659,6 +27147,7 @@ pub unsafe fn vreinterpretq_s32_f32(a: float32x4_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_s64_f32(a: float32x4_t) -> int64x2_t {
     transmute(a)
 }
@@ -25672,6 +27161,7 @@ pub unsafe fn vreinterpretq_s64_f32(a: float32x4_t) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u8_f32(a: float32x2_t) -> uint8x8_t {
     transmute(a)
 }
@@ -25685,6 +27175,7 @@ pub unsafe fn vreinterpret_u8_f32(a: float32x2_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u16_f32(a: float32x2_t) -> uint16x4_t {
     transmute(a)
 }
@@ -25698,6 +27189,7 @@ pub unsafe fn vreinterpret_u16_f32(a: float32x2_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u32_f32(a: float32x2_t) -> uint32x2_t {
     transmute(a)
 }
@@ -25711,6 +27203,7 @@ pub unsafe fn vreinterpret_u32_f32(a: float32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_u64_f32(a: float32x2_t) -> uint64x1_t {
     transmute(a)
 }
@@ -25724,6 +27217,7 @@ pub unsafe fn vreinterpret_u64_f32(a: float32x2_t) -> uint64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u8_f32(a: float32x4_t) -> uint8x16_t {
     transmute(a)
 }
@@ -25737,6 +27231,7 @@ pub unsafe fn vreinterpretq_u8_f32(a: float32x4_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u16_f32(a: float32x4_t) -> uint16x8_t {
     transmute(a)
 }
@@ -25750,6 +27245,7 @@ pub unsafe fn vreinterpretq_u16_f32(a: float32x4_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u32_f32(a: float32x4_t) -> uint32x4_t {
     transmute(a)
 }
@@ -25763,6 +27259,7 @@ pub unsafe fn vreinterpretq_u32_f32(a: float32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_u64_f32(a: float32x4_t) -> uint64x2_t {
     transmute(a)
 }
@@ -25776,6 +27273,7 @@ pub unsafe fn vreinterpretq_u64_f32(a: float32x4_t) -> uint64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_p8_f32(a: float32x2_t) -> poly8x8_t {
     transmute(a)
 }
@@ -25789,6 +27287,7 @@ pub unsafe fn vreinterpret_p8_f32(a: float32x2_t) -> poly8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_p16_f32(a: float32x2_t) -> poly16x4_t {
     transmute(a)
 }
@@ -25802,6 +27301,7 @@ pub unsafe fn vreinterpret_p16_f32(a: float32x2_t) -> poly16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p8_f32(a: float32x4_t) -> poly8x16_t {
     transmute(a)
 }
@@ -25815,6 +27315,7 @@ pub unsafe fn vreinterpretq_p8_f32(a: float32x4_t) -> poly8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p16_f32(a: float32x4_t) -> poly16x8_t {
     transmute(a)
 }
@@ -25828,6 +27329,7 @@ pub unsafe fn vreinterpretq_p16_f32(a: float32x4_t) -> poly16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_p128_f32(a: float32x4_t) -> p128 {
     transmute(a)
 }
@@ -25841,6 +27343,7 @@ pub unsafe fn vreinterpretq_p128_f32(a: float32x4_t) -> p128 {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_f32_s8(a: int8x8_t) -> float32x2_t {
     transmute(a)
 }
@@ -25854,6 +27357,7 @@ pub unsafe fn vreinterpret_f32_s8(a: int8x8_t) -> float32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_f32_s16(a: int16x4_t) -> float32x2_t {
     transmute(a)
 }
@@ -25867,6 +27371,7 @@ pub unsafe fn vreinterpret_f32_s16(a: int16x4_t) -> float32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_f32_s32(a: int32x2_t) -> float32x2_t {
     transmute(a)
 }
@@ -25880,6 +27385,7 @@ pub unsafe fn vreinterpret_f32_s32(a: int32x2_t) -> float32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_f32_s64(a: int64x1_t) -> float32x2_t {
     transmute(a)
 }
@@ -25893,6 +27399,7 @@ pub unsafe fn vreinterpret_f32_s64(a: int64x1_t) -> float32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_f32_s8(a: int8x16_t) -> float32x4_t {
     transmute(a)
 }
@@ -25906,6 +27413,7 @@ pub unsafe fn vreinterpretq_f32_s8(a: int8x16_t) -> float32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_f32_s16(a: int16x8_t) -> float32x4_t {
     transmute(a)
 }
@@ -25919,6 +27427,7 @@ pub unsafe fn vreinterpretq_f32_s16(a: int16x8_t) -> float32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_f32_s32(a: int32x4_t) -> float32x4_t {
     transmute(a)
 }
@@ -25932,6 +27441,7 @@ pub unsafe fn vreinterpretq_f32_s32(a: int32x4_t) -> float32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_f32_s64(a: int64x2_t) -> float32x4_t {
     transmute(a)
 }
@@ -25945,6 +27455,7 @@ pub unsafe fn vreinterpretq_f32_s64(a: int64x2_t) -> float32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_f32_u8(a: uint8x8_t) -> float32x2_t {
     transmute(a)
 }
@@ -25958,6 +27469,7 @@ pub unsafe fn vreinterpret_f32_u8(a: uint8x8_t) -> float32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_f32_u16(a: uint16x4_t) -> float32x2_t {
     transmute(a)
 }
@@ -25971,6 +27483,7 @@ pub unsafe fn vreinterpret_f32_u16(a: uint16x4_t) -> float32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_f32_u32(a: uint32x2_t) -> float32x2_t {
     transmute(a)
 }
@@ -25984,6 +27497,7 @@ pub unsafe fn vreinterpret_f32_u32(a: uint32x2_t) -> float32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_f32_u64(a: uint64x1_t) -> float32x2_t {
     transmute(a)
 }
@@ -25997,6 +27511,7 @@ pub unsafe fn vreinterpret_f32_u64(a: uint64x1_t) -> float32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_f32_u8(a: uint8x16_t) -> float32x4_t {
     transmute(a)
 }
@@ -26010,6 +27525,7 @@ pub unsafe fn vreinterpretq_f32_u8(a: uint8x16_t) -> float32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_f32_u16(a: uint16x8_t) -> float32x4_t {
     transmute(a)
 }
@@ -26023,6 +27539,7 @@ pub unsafe fn vreinterpretq_f32_u16(a: uint16x8_t) -> float32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_f32_u32(a: uint32x4_t) -> float32x4_t {
     transmute(a)
 }
@@ -26036,6 +27553,7 @@ pub unsafe fn vreinterpretq_f32_u32(a: uint32x4_t) -> float32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_f32_u64(a: uint64x2_t) -> float32x4_t {
     transmute(a)
 }
@@ -26049,6 +27567,7 @@ pub unsafe fn vreinterpretq_f32_u64(a: uint64x2_t) -> float32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_f32_p8(a: poly8x8_t) -> float32x2_t {
     transmute(a)
 }
@@ -26062,6 +27581,7 @@ pub unsafe fn vreinterpret_f32_p8(a: poly8x8_t) -> float32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpret_f32_p16(a: poly16x4_t) -> float32x2_t {
     transmute(a)
 }
@@ -26075,6 +27595,7 @@ pub unsafe fn vreinterpret_f32_p16(a: poly16x4_t) -> float32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_f32_p8(a: poly8x16_t) -> float32x4_t {
     transmute(a)
 }
@@ -26088,6 +27609,7 @@ pub unsafe fn vreinterpretq_f32_p8(a: poly8x16_t) -> float32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_f32_p16(a: poly16x8_t) -> float32x4_t {
     transmute(a)
 }
@@ -26101,6 +27623,7 @@ pub unsafe fn vreinterpretq_f32_p16(a: poly16x8_t) -> float32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vreinterpretq_f32_p128(a: p128) -> float32x4_t {
     transmute(a)
 }
@@ -26114,6 +27637,7 @@ pub unsafe fn vreinterpretq_f32_p128(a: p128) -> float32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshl_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -26133,6 +27657,7 @@ vrshl_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshlq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -26152,6 +27677,7 @@ vrshlq_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshl_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -26171,6 +27697,7 @@ vrshl_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshlq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -26190,6 +27717,7 @@ vrshlq_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshl_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -26209,6 +27737,7 @@ vrshl_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshlq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -26228,6 +27757,7 @@ vrshlq_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshl_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -26247,6 +27777,7 @@ vrshl_s64_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshlq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -26266,6 +27797,7 @@ vrshlq_s64_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshl_u8(a: uint8x8_t, b: int8x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -26285,6 +27817,7 @@ vrshl_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshlq_u8(a: uint8x16_t, b: int8x16_t) -> uint8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -26304,6 +27837,7 @@ vrshlq_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshl_u16(a: uint16x4_t, b: int16x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -26323,6 +27857,7 @@ vrshl_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshlq_u16(a: uint16x8_t, b: int16x8_t) -> uint16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -26342,6 +27877,7 @@ vrshlq_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshl_u32(a: uint32x2_t, b: int32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -26361,6 +27897,7 @@ vrshl_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshlq_u32(a: uint32x4_t, b: int32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -26380,6 +27917,7 @@ vrshlq_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshl_u64(a: uint64x1_t, b: int64x1_t) -> uint64x1_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -26399,6 +27937,7 @@ vrshl_u64_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshlq_u64(a: uint64x2_t, b: int64x2_t) -> uint64x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -26419,6 +27958,7 @@ vrshlq_u64_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srshr, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshr_n_s8<const N: i32>(a: int8x8_t) -> int8x8_t {
     static_assert!(N >= 1 && N <= 8);
     vrshl_s8(a, vdup_n_s8(-N as _))
@@ -26434,6 +27974,7 @@ pub unsafe fn vrshr_n_s8<const N: i32>(a: int8x8_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srshr, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshrq_n_s8<const N: i32>(a: int8x16_t) -> int8x16_t {
     static_assert!(N >= 1 && N <= 8);
     vrshlq_s8(a, vdupq_n_s8(-N as _))
@@ -26449,6 +27990,7 @@ pub unsafe fn vrshrq_n_s8<const N: i32>(a: int8x16_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srshr, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshr_n_s16<const N: i32>(a: int16x4_t) -> int16x4_t {
     static_assert!(N >= 1 && N <= 16);
     vrshl_s16(a, vdup_n_s16(-N as _))
@@ -26464,6 +28006,7 @@ pub unsafe fn vrshr_n_s16<const N: i32>(a: int16x4_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srshr, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshrq_n_s16<const N: i32>(a: int16x8_t) -> int16x8_t {
     static_assert!(N >= 1 && N <= 16);
     vrshlq_s16(a, vdupq_n_s16(-N as _))
@@ -26479,6 +28022,7 @@ pub unsafe fn vrshrq_n_s16<const N: i32>(a: int16x8_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srshr, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshr_n_s32<const N: i32>(a: int32x2_t) -> int32x2_t {
     static_assert!(N >= 1 && N <= 32);
     vrshl_s32(a, vdup_n_s32(-N as _))
@@ -26494,6 +28038,7 @@ pub unsafe fn vrshr_n_s32<const N: i32>(a: int32x2_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srshr, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshrq_n_s32<const N: i32>(a: int32x4_t) -> int32x4_t {
     static_assert!(N >= 1 && N <= 32);
     vrshlq_s32(a, vdupq_n_s32(-N as _))
@@ -26509,6 +28054,7 @@ pub unsafe fn vrshrq_n_s32<const N: i32>(a: int32x4_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srshr, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshr_n_s64<const N: i32>(a: int64x1_t) -> int64x1_t {
     static_assert!(N >= 1 && N <= 64);
     vrshl_s64(a, vdup_n_s64(-N as _))
@@ -26524,6 +28070,7 @@ pub unsafe fn vrshr_n_s64<const N: i32>(a: int64x1_t) -> int64x1_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srshr, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshrq_n_s64<const N: i32>(a: int64x2_t) -> int64x2_t {
     static_assert!(N >= 1 && N <= 64);
     vrshlq_s64(a, vdupq_n_s64(-N as _))
@@ -26539,6 +28086,7 @@ pub unsafe fn vrshrq_n_s64<const N: i32>(a: int64x2_t) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urshr, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshr_n_u8<const N: i32>(a: uint8x8_t) -> uint8x8_t {
     static_assert!(N >= 1 && N <= 8);
     vrshl_u8(a, vdup_n_s8(-N as _))
@@ -26554,6 +28102,7 @@ pub unsafe fn vrshr_n_u8<const N: i32>(a: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urshr, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshrq_n_u8<const N: i32>(a: uint8x16_t) -> uint8x16_t {
     static_assert!(N >= 1 && N <= 8);
     vrshlq_u8(a, vdupq_n_s8(-N as _))
@@ -26569,6 +28118,7 @@ pub unsafe fn vrshrq_n_u8<const N: i32>(a: uint8x16_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urshr, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshr_n_u16<const N: i32>(a: uint16x4_t) -> uint16x4_t {
     static_assert!(N >= 1 && N <= 16);
     vrshl_u16(a, vdup_n_s16(-N as _))
@@ -26584,6 +28134,7 @@ pub unsafe fn vrshr_n_u16<const N: i32>(a: uint16x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urshr, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshrq_n_u16<const N: i32>(a: uint16x8_t) -> uint16x8_t {
     static_assert!(N >= 1 && N <= 16);
     vrshlq_u16(a, vdupq_n_s16(-N as _))
@@ -26599,6 +28150,7 @@ pub unsafe fn vrshrq_n_u16<const N: i32>(a: uint16x8_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urshr, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshr_n_u32<const N: i32>(a: uint32x2_t) -> uint32x2_t {
     static_assert!(N >= 1 && N <= 32);
     vrshl_u32(a, vdup_n_s32(-N as _))
@@ -26614,6 +28166,7 @@ pub unsafe fn vrshr_n_u32<const N: i32>(a: uint32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urshr, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshrq_n_u32<const N: i32>(a: uint32x4_t) -> uint32x4_t {
     static_assert!(N >= 1 && N <= 32);
     vrshlq_u32(a, vdupq_n_s32(-N as _))
@@ -26629,6 +28182,7 @@ pub unsafe fn vrshrq_n_u32<const N: i32>(a: uint32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urshr, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshr_n_u64<const N: i32>(a: uint64x1_t) -> uint64x1_t {
     static_assert!(N >= 1 && N <= 64);
     vrshl_u64(a, vdup_n_s64(-N as _))
@@ -26644,6 +28198,7 @@ pub unsafe fn vrshr_n_u64<const N: i32>(a: uint64x1_t) -> uint64x1_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(urshr, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshrq_n_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
     static_assert!(N >= 1 && N <= 64);
     vrshlq_u64(a, vdupq_n_s64(-N as _))
@@ -26657,6 +28212,7 @@ pub unsafe fn vrshrq_n_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vrshrn, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vrshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
     static_assert!(N >= 1 && N <= 8);
     #[allow(improper_ctypes)]
@@ -26694,6 +28250,7 @@ vrshrn_n_s16_(a, N)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vrshrn, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vrshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
     static_assert!(N >= 1 && N <= 16);
     #[allow(improper_ctypes)]
@@ -26731,6 +28288,7 @@ vrshrn_n_s32_(a, N)
 #[target_feature(enable = "neon,v7")]
 #[cfg_attr(test, assert_instr(vrshrn, N = 2))]
 #[rustc_legacy_const_generics(1)]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vrshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
     static_assert!(N >= 1 && N <= 32);
     #[allow(improper_ctypes)]
@@ -26770,6 +28328,7 @@ vrshrn_n_s64_(a, N)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rshrn, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshrn_n_u16<const N: i32>(a: uint16x8_t) -> uint8x8_t {
     static_assert!(N >= 1 && N <= 8);
     transmute(vrshrn_n_s16::<N>(transmute(a)))
@@ -26785,6 +28344,7 @@ pub unsafe fn vrshrn_n_u16<const N: i32>(a: uint16x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rshrn, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshrn_n_u32<const N: i32>(a: uint32x4_t) -> uint16x4_t {
     static_assert!(N >= 1 && N <= 16);
     transmute(vrshrn_n_s32::<N>(transmute(a)))
@@ -26800,6 +28360,7 @@ pub unsafe fn vrshrn_n_u32<const N: i32>(a: uint32x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rshrn, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
     static_assert!(N >= 1 && N <= 32);
     transmute(vrshrn_n_s64::<N>(transmute(a)))
@@ -26815,6 +28376,7 @@ pub unsafe fn vrshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srsra, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrsra_n_s8<const N: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     static_assert!(N >= 1 && N <= 8);
     simd_add(a, vrshr_n_s8::<N>(b))
@@ -26830,6 +28392,7 @@ pub unsafe fn vrsra_n_s8<const N: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srsra, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrsraq_n_s8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     static_assert!(N >= 1 && N <= 8);
     simd_add(a, vrshrq_n_s8::<N>(b))
@@ -26845,6 +28408,7 @@ pub unsafe fn vrsraq_n_s8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srsra, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrsra_n_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     static_assert!(N >= 1 && N <= 16);
     simd_add(a, vrshr_n_s16::<N>(b))
@@ -26860,6 +28424,7 @@ pub unsafe fn vrsra_n_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srsra, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrsraq_n_s16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     static_assert!(N >= 1 && N <= 16);
     simd_add(a, vrshrq_n_s16::<N>(b))
@@ -26875,6 +28440,7 @@ pub unsafe fn vrsraq_n_s16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srsra, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrsra_n_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     static_assert!(N >= 1 && N <= 32);
     simd_add(a, vrshr_n_s32::<N>(b))
@@ -26890,6 +28456,7 @@ pub unsafe fn vrsra_n_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srsra, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrsraq_n_s32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     static_assert!(N >= 1 && N <= 32);
     simd_add(a, vrshrq_n_s32::<N>(b))
@@ -26905,6 +28472,7 @@ pub unsafe fn vrsraq_n_s32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srsra, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrsra_n_s64<const N: i32>(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     static_assert!(N >= 1 && N <= 64);
     simd_add(a, vrshr_n_s64::<N>(b))
@@ -26920,6 +28488,7 @@ pub unsafe fn vrsra_n_s64<const N: i32>(a: int64x1_t, b: int64x1_t) -> int64x1_t
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(srsra, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrsraq_n_s64<const N: i32>(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     static_assert!(N >= 1 && N <= 64);
     simd_add(a, vrshrq_n_s64::<N>(b))
@@ -26935,6 +28504,7 @@ pub unsafe fn vrsraq_n_s64<const N: i32>(a: int64x2_t, b: int64x2_t) -> int64x2_
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ursra, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrsra_n_u8<const N: i32>(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     static_assert!(N >= 1 && N <= 8);
     simd_add(a, vrshr_n_u8::<N>(b))
@@ -26950,6 +28520,7 @@ pub unsafe fn vrsra_n_u8<const N: i32>(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ursra, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrsraq_n_u8<const N: i32>(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     static_assert!(N >= 1 && N <= 8);
     simd_add(a, vrshrq_n_u8::<N>(b))
@@ -26965,6 +28536,7 @@ pub unsafe fn vrsraq_n_u8<const N: i32>(a: uint8x16_t, b: uint8x16_t) -> uint8x1
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ursra, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrsra_n_u16<const N: i32>(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     static_assert!(N >= 1 && N <= 16);
     simd_add(a, vrshr_n_u16::<N>(b))
@@ -26980,6 +28552,7 @@ pub unsafe fn vrsra_n_u16<const N: i32>(a: uint16x4_t, b: uint16x4_t) -> uint16x
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ursra, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrsraq_n_u16<const N: i32>(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     static_assert!(N >= 1 && N <= 16);
     simd_add(a, vrshrq_n_u16::<N>(b))
@@ -26995,6 +28568,7 @@ pub unsafe fn vrsraq_n_u16<const N: i32>(a: uint16x8_t, b: uint16x8_t) -> uint16
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ursra, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrsra_n_u32<const N: i32>(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     static_assert!(N >= 1 && N <= 32);
     simd_add(a, vrshr_n_u32::<N>(b))
@@ -27010,6 +28584,7 @@ pub unsafe fn vrsra_n_u32<const N: i32>(a: uint32x2_t, b: uint32x2_t) -> uint32x
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ursra, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrsraq_n_u32<const N: i32>(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     static_assert!(N >= 1 && N <= 32);
     simd_add(a, vrshrq_n_u32::<N>(b))
@@ -27025,6 +28600,7 @@ pub unsafe fn vrsraq_n_u32<const N: i32>(a: uint32x4_t, b: uint32x4_t) -> uint32
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ursra, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrsra_n_u64<const N: i32>(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
     static_assert!(N >= 1 && N <= 64);
     simd_add(a, vrshr_n_u64::<N>(b))
@@ -27040,6 +28616,7 @@ pub unsafe fn vrsra_n_u64<const N: i32>(a: uint64x1_t, b: uint64x1_t) -> uint64x
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ursra, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrsraq_n_u64<const N: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     static_assert!(N >= 1 && N <= 64);
     simd_add(a, vrshrq_n_u64::<N>(b))
@@ -27054,6 +28631,7 @@ pub unsafe fn vrsraq_n_u64<const N: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrsubhn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rsubhn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrsubhn_s16(a: int16x8_t, b: int16x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -27073,6 +28651,7 @@ vrsubhn_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrsubhn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rsubhn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrsubhn_s32(a: int32x4_t, b: int32x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -27092,6 +28671,7 @@ vrsubhn_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrsubhn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rsubhn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrsubhn_s64(a: int64x2_t, b: int64x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -27111,6 +28691,7 @@ vrsubhn_s64_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrsubhn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rsubhn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrsubhn_u16(a: uint16x8_t, b: uint16x8_t) -> uint8x8_t {
     transmute(vrsubhn_s16(transmute(a), transmute(b)))
 }
@@ -27124,6 +28705,7 @@ pub unsafe fn vrsubhn_u16(a: uint16x8_t, b: uint16x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrsubhn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rsubhn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrsubhn_u32(a: uint32x4_t, b: uint32x4_t) -> uint16x4_t {
     transmute(vrsubhn_s32(transmute(a), transmute(b)))
 }
@@ -27137,6 +28719,7 @@ pub unsafe fn vrsubhn_u32(a: uint32x4_t, b: uint32x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrsubhn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rsubhn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vrsubhn_u64(a: uint64x2_t, b: uint64x2_t) -> uint32x2_t {
     transmute(vrsubhn_s64(transmute(a), transmute(b)))
 }
@@ -27151,6 +28734,7 @@ pub unsafe fn vrsubhn_u64(a: uint64x2_t, b: uint64x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vset_lane_s8<const LANE: i32>(a: i8, b: int8x8_t) -> int8x8_t {
     static_assert_uimm_bits!(LANE, 3);
     simd_insert(b, LANE as u32, a)
@@ -27166,6 +28750,7 @@ pub unsafe fn vset_lane_s8<const LANE: i32>(a: i8, b: int8x8_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vset_lane_s16<const LANE: i32>(a: i16, b: int16x4_t) -> int16x4_t {
     static_assert_uimm_bits!(LANE, 2);
     simd_insert(b, LANE as u32, a)
@@ -27181,6 +28766,7 @@ pub unsafe fn vset_lane_s16<const LANE: i32>(a: i16, b: int16x4_t) -> int16x4_t 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vset_lane_s32<const LANE: i32>(a: i32, b: int32x2_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 1);
     simd_insert(b, LANE as u32, a)
@@ -27196,6 +28782,7 @@ pub unsafe fn vset_lane_s32<const LANE: i32>(a: i32, b: int32x2_t) -> int32x2_t 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vset_lane_s64<const LANE: i32>(a: i64, b: int64x1_t) -> int64x1_t {
     static_assert!(LANE == 0);
     simd_insert(b, LANE as u32, a)
@@ -27211,6 +28798,7 @@ pub unsafe fn vset_lane_s64<const LANE: i32>(a: i64, b: int64x1_t) -> int64x1_t 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vset_lane_u8<const LANE: i32>(a: u8, b: uint8x8_t) -> uint8x8_t {
     static_assert_uimm_bits!(LANE, 3);
     simd_insert(b, LANE as u32, a)
@@ -27226,6 +28814,7 @@ pub unsafe fn vset_lane_u8<const LANE: i32>(a: u8, b: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vset_lane_u16<const LANE: i32>(a: u16, b: uint16x4_t) -> uint16x4_t {
     static_assert_uimm_bits!(LANE, 2);
     simd_insert(b, LANE as u32, a)
@@ -27241,6 +28830,7 @@ pub unsafe fn vset_lane_u16<const LANE: i32>(a: u16, b: uint16x4_t) -> uint16x4_
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vset_lane_u32<const LANE: i32>(a: u32, b: uint32x2_t) -> uint32x2_t {
     static_assert_uimm_bits!(LANE, 1);
     simd_insert(b, LANE as u32, a)
@@ -27256,6 +28846,7 @@ pub unsafe fn vset_lane_u32<const LANE: i32>(a: u32, b: uint32x2_t) -> uint32x2_
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vset_lane_u64<const LANE: i32>(a: u64, b: uint64x1_t) -> uint64x1_t {
     static_assert!(LANE == 0);
     simd_insert(b, LANE as u32, a)
@@ -27271,6 +28862,7 @@ pub unsafe fn vset_lane_u64<const LANE: i32>(a: u64, b: uint64x1_t) -> uint64x1_
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vset_lane_p8<const LANE: i32>(a: p8, b: poly8x8_t) -> poly8x8_t {
     static_assert_uimm_bits!(LANE, 3);
     simd_insert(b, LANE as u32, a)
@@ -27286,6 +28878,7 @@ pub unsafe fn vset_lane_p8<const LANE: i32>(a: p8, b: poly8x8_t) -> poly8x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vset_lane_p16<const LANE: i32>(a: p16, b: poly16x4_t) -> poly16x4_t {
     static_assert_uimm_bits!(LANE, 2);
     simd_insert(b, LANE as u32, a)
@@ -27301,6 +28894,7 @@ pub unsafe fn vset_lane_p16<const LANE: i32>(a: p16, b: poly16x4_t) -> poly16x4_
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vset_lane_p64<const LANE: i32>(a: p64, b: poly64x1_t) -> poly64x1_t {
     static_assert!(LANE == 0);
     simd_insert(b, LANE as u32, a)
@@ -27316,6 +28910,7 @@ pub unsafe fn vset_lane_p64<const LANE: i32>(a: p64, b: poly64x1_t) -> poly64x1_
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsetq_lane_s8<const LANE: i32>(a: i8, b: int8x16_t) -> int8x16_t {
     static_assert_uimm_bits!(LANE, 4);
     simd_insert(b, LANE as u32, a)
@@ -27331,6 +28926,7 @@ pub unsafe fn vsetq_lane_s8<const LANE: i32>(a: i8, b: int8x16_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsetq_lane_s16<const LANE: i32>(a: i16, b: int16x8_t) -> int16x8_t {
     static_assert_uimm_bits!(LANE, 3);
     simd_insert(b, LANE as u32, a)
@@ -27346,6 +28942,7 @@ pub unsafe fn vsetq_lane_s16<const LANE: i32>(a: i16, b: int16x8_t) -> int16x8_t
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsetq_lane_s32<const LANE: i32>(a: i32, b: int32x4_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
     simd_insert(b, LANE as u32, a)
@@ -27361,6 +28958,7 @@ pub unsafe fn vsetq_lane_s32<const LANE: i32>(a: i32, b: int32x4_t) -> int32x4_t
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsetq_lane_s64<const LANE: i32>(a: i64, b: int64x2_t) -> int64x2_t {
     static_assert_uimm_bits!(LANE, 1);
     simd_insert(b, LANE as u32, a)
@@ -27376,6 +28974,7 @@ pub unsafe fn vsetq_lane_s64<const LANE: i32>(a: i64, b: int64x2_t) -> int64x2_t
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsetq_lane_u8<const LANE: i32>(a: u8, b: uint8x16_t) -> uint8x16_t {
     static_assert_uimm_bits!(LANE, 4);
     simd_insert(b, LANE as u32, a)
@@ -27391,6 +28990,7 @@ pub unsafe fn vsetq_lane_u8<const LANE: i32>(a: u8, b: uint8x16_t) -> uint8x16_t
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsetq_lane_u16<const LANE: i32>(a: u16, b: uint16x8_t) -> uint16x8_t {
     static_assert_uimm_bits!(LANE, 3);
     simd_insert(b, LANE as u32, a)
@@ -27406,6 +29006,7 @@ pub unsafe fn vsetq_lane_u16<const LANE: i32>(a: u16, b: uint16x8_t) -> uint16x8
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsetq_lane_u32<const LANE: i32>(a: u32, b: uint32x4_t) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 2);
     simd_insert(b, LANE as u32, a)
@@ -27421,6 +29022,7 @@ pub unsafe fn vsetq_lane_u32<const LANE: i32>(a: u32, b: uint32x4_t) -> uint32x4
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsetq_lane_u64<const LANE: i32>(a: u64, b: uint64x2_t) -> uint64x2_t {
     static_assert_uimm_bits!(LANE, 1);
     simd_insert(b, LANE as u32, a)
@@ -27436,6 +29038,7 @@ pub unsafe fn vsetq_lane_u64<const LANE: i32>(a: u64, b: uint64x2_t) -> uint64x2
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsetq_lane_p8<const LANE: i32>(a: p8, b: poly8x16_t) -> poly8x16_t {
     static_assert_uimm_bits!(LANE, 4);
     simd_insert(b, LANE as u32, a)
@@ -27451,6 +29054,7 @@ pub unsafe fn vsetq_lane_p8<const LANE: i32>(a: p8, b: poly8x16_t) -> poly8x16_t
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsetq_lane_p16<const LANE: i32>(a: p16, b: poly16x8_t) -> poly16x8_t {
     static_assert_uimm_bits!(LANE, 3);
     simd_insert(b, LANE as u32, a)
@@ -27466,6 +29070,7 @@ pub unsafe fn vsetq_lane_p16<const LANE: i32>(a: p16, b: poly16x8_t) -> poly16x8
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsetq_lane_p64<const LANE: i32>(a: p64, b: poly64x2_t) -> poly64x2_t {
     static_assert_uimm_bits!(LANE, 1);
     simd_insert(b, LANE as u32, a)
@@ -27481,6 +29086,7 @@ pub unsafe fn vsetq_lane_p64<const LANE: i32>(a: p64, b: poly64x2_t) -> poly64x2
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vset_lane_f32<const LANE: i32>(a: f32, b: float32x2_t) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 1);
     simd_insert(b, LANE as u32, a)
@@ -27496,6 +29102,7 @@ pub unsafe fn vset_lane_f32<const LANE: i32>(a: f32, b: float32x2_t) -> float32x
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsetq_lane_f32<const LANE: i32>(a: f32, b: float32x4_t) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 2);
     simd_insert(b, LANE as u32, a)
@@ -27510,6 +29117,7 @@ pub unsafe fn vsetq_lane_f32<const LANE: i32>(a: f32, b: float32x4_t) -> float32
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshl_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -27529,6 +29137,7 @@ vshl_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshlq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -27548,6 +29157,7 @@ vshlq_s8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshl_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -27567,6 +29177,7 @@ vshl_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshlq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -27586,6 +29197,7 @@ vshlq_s16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshl_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -27605,6 +29217,7 @@ vshl_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshlq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -27624,6 +29237,7 @@ vshlq_s32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshl_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -27643,6 +29257,7 @@ vshl_s64_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sshl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshlq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -27662,6 +29277,7 @@ vshlq_s64_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ushl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshl_u8(a: uint8x8_t, b: int8x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -27681,6 +29297,7 @@ vshl_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ushl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshlq_u8(a: uint8x16_t, b: int8x16_t) -> uint8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -27700,6 +29317,7 @@ vshlq_u8_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ushl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshl_u16(a: uint16x4_t, b: int16x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -27719,6 +29337,7 @@ vshl_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ushl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshlq_u16(a: uint16x8_t, b: int16x8_t) -> uint16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -27738,6 +29357,7 @@ vshlq_u16_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ushl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshl_u32(a: uint32x2_t, b: int32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -27757,6 +29377,7 @@ vshl_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ushl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshlq_u32(a: uint32x4_t, b: int32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -27776,6 +29397,7 @@ vshlq_u32_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ushl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshl_u64(a: uint64x1_t, b: int64x1_t) -> uint64x1_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -27795,6 +29417,7 @@ vshl_u64_(a, b)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vshl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ushl))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshlq_u64(a: uint64x2_t, b: int64x2_t) -> uint64x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -27815,6 +29438,7 @@ vshlq_u64_(a, b)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shl, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshl_n_s8<const N: i32>(a: int8x8_t) -> int8x8_t {
     static_assert_uimm_bits!(N, 3);
     simd_shl(a, vdup_n_s8(N as _))
@@ -27830,6 +29454,7 @@ pub unsafe fn vshl_n_s8<const N: i32>(a: int8x8_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shl, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshlq_n_s8<const N: i32>(a: int8x16_t) -> int8x16_t {
     static_assert_uimm_bits!(N, 3);
     simd_shl(a, vdupq_n_s8(N as _))
@@ -27845,6 +29470,7 @@ pub unsafe fn vshlq_n_s8<const N: i32>(a: int8x16_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shl, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshl_n_s16<const N: i32>(a: int16x4_t) -> int16x4_t {
     static_assert_uimm_bits!(N, 4);
     simd_shl(a, vdup_n_s16(N as _))
@@ -27860,6 +29486,7 @@ pub unsafe fn vshl_n_s16<const N: i32>(a: int16x4_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shl, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshlq_n_s16<const N: i32>(a: int16x8_t) -> int16x8_t {
     static_assert_uimm_bits!(N, 4);
     simd_shl(a, vdupq_n_s16(N as _))
@@ -27875,6 +29502,7 @@ pub unsafe fn vshlq_n_s16<const N: i32>(a: int16x8_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shl, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshl_n_s32<const N: i32>(a: int32x2_t) -> int32x2_t {
     static_assert_uimm_bits!(N, 5);
     simd_shl(a, vdup_n_s32(N as _))
@@ -27890,6 +29518,7 @@ pub unsafe fn vshl_n_s32<const N: i32>(a: int32x2_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shl, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshlq_n_s32<const N: i32>(a: int32x4_t) -> int32x4_t {
     static_assert_uimm_bits!(N, 5);
     simd_shl(a, vdupq_n_s32(N as _))
@@ -27905,6 +29534,7 @@ pub unsafe fn vshlq_n_s32<const N: i32>(a: int32x4_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shl, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshl_n_u8<const N: i32>(a: uint8x8_t) -> uint8x8_t {
     static_assert_uimm_bits!(N, 3);
     simd_shl(a, vdup_n_u8(N as _))
@@ -27920,6 +29550,7 @@ pub unsafe fn vshl_n_u8<const N: i32>(a: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shl, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshlq_n_u8<const N: i32>(a: uint8x16_t) -> uint8x16_t {
     static_assert_uimm_bits!(N, 3);
     simd_shl(a, vdupq_n_u8(N as _))
@@ -27935,6 +29566,7 @@ pub unsafe fn vshlq_n_u8<const N: i32>(a: uint8x16_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shl, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshl_n_u16<const N: i32>(a: uint16x4_t) -> uint16x4_t {
     static_assert_uimm_bits!(N, 4);
     simd_shl(a, vdup_n_u16(N as _))
@@ -27950,6 +29582,7 @@ pub unsafe fn vshl_n_u16<const N: i32>(a: uint16x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shl, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshlq_n_u16<const N: i32>(a: uint16x8_t) -> uint16x8_t {
     static_assert_uimm_bits!(N, 4);
     simd_shl(a, vdupq_n_u16(N as _))
@@ -27965,6 +29598,7 @@ pub unsafe fn vshlq_n_u16<const N: i32>(a: uint16x8_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shl, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshl_n_u32<const N: i32>(a: uint32x2_t) -> uint32x2_t {
     static_assert_uimm_bits!(N, 5);
     simd_shl(a, vdup_n_u32(N as _))
@@ -27980,6 +29614,7 @@ pub unsafe fn vshl_n_u32<const N: i32>(a: uint32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shl, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshlq_n_u32<const N: i32>(a: uint32x4_t) -> uint32x4_t {
     static_assert_uimm_bits!(N, 5);
     simd_shl(a, vdupq_n_u32(N as _))
@@ -27995,6 +29630,7 @@ pub unsafe fn vshlq_n_u32<const N: i32>(a: uint32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shl, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshl_n_s64<const N: i32>(a: int64x1_t) -> int64x1_t {
     static_assert_uimm_bits!(N, 6);
     simd_shl(a, vdup_n_s64(N as _))
@@ -28010,6 +29646,7 @@ pub unsafe fn vshl_n_s64<const N: i32>(a: int64x1_t) -> int64x1_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shl, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshlq_n_s64<const N: i32>(a: int64x2_t) -> int64x2_t {
     static_assert_uimm_bits!(N, 6);
     simd_shl(a, vdupq_n_s64(N as _))
@@ -28025,6 +29662,7 @@ pub unsafe fn vshlq_n_s64<const N: i32>(a: int64x2_t) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shl, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshl_n_u64<const N: i32>(a: uint64x1_t) -> uint64x1_t {
     static_assert_uimm_bits!(N, 6);
     simd_shl(a, vdup_n_u64(N as _))
@@ -28040,6 +29678,7 @@ pub unsafe fn vshl_n_u64<const N: i32>(a: uint64x1_t) -> uint64x1_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shl, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshlq_n_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
     static_assert_uimm_bits!(N, 6);
     simd_shl(a, vdupq_n_u64(N as _))
@@ -28055,6 +29694,7 @@ pub unsafe fn vshlq_n_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sshll, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshll_n_s8<const N: i32>(a: int8x8_t) -> int16x8_t {
     static_assert!(N >= 0 && N <= 8);
     simd_shl(simd_cast(a), vdupq_n_s16(N as _))
@@ -28070,6 +29710,7 @@ pub unsafe fn vshll_n_s8<const N: i32>(a: int8x8_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sshll, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshll_n_s16<const N: i32>(a: int16x4_t) -> int32x4_t {
     static_assert!(N >= 0 && N <= 16);
     simd_shl(simd_cast(a), vdupq_n_s32(N as _))
@@ -28085,6 +29726,7 @@ pub unsafe fn vshll_n_s16<const N: i32>(a: int16x4_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sshll, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshll_n_s32<const N: i32>(a: int32x2_t) -> int64x2_t {
     static_assert!(N >= 0 && N <= 32);
     simd_shl(simd_cast(a), vdupq_n_s64(N as _))
@@ -28100,6 +29742,7 @@ pub unsafe fn vshll_n_s32<const N: i32>(a: int32x2_t) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ushll, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshll_n_u8<const N: i32>(a: uint8x8_t) -> uint16x8_t {
     static_assert!(N >= 0 && N <= 8);
     simd_shl(simd_cast(a), vdupq_n_u16(N as _))
@@ -28115,6 +29758,7 @@ pub unsafe fn vshll_n_u8<const N: i32>(a: uint8x8_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ushll, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshll_n_u16<const N: i32>(a: uint16x4_t) -> uint32x4_t {
     static_assert!(N >= 0 && N <= 16);
     simd_shl(simd_cast(a), vdupq_n_u32(N as _))
@@ -28130,6 +29774,7 @@ pub unsafe fn vshll_n_u16<const N: i32>(a: uint16x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ushll, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshll_n_u32<const N: i32>(a: uint32x2_t) -> uint64x2_t {
     static_assert!(N >= 0 && N <= 32);
     simd_shl(simd_cast(a), vdupq_n_u64(N as _))
@@ -28145,6 +29790,7 @@ pub unsafe fn vshll_n_u32<const N: i32>(a: uint32x2_t) -> uint64x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sshr, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshr_n_s8<const N: i32>(a: int8x8_t) -> int8x8_t {
     static_assert!(N >= 1 && N <= 8);
     let n: i32 = if N == 8 { 7 } else { N };
@@ -28161,6 +29807,7 @@ pub unsafe fn vshr_n_s8<const N: i32>(a: int8x8_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sshr, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshrq_n_s8<const N: i32>(a: int8x16_t) -> int8x16_t {
     static_assert!(N >= 1 && N <= 8);
     let n: i32 = if N == 8 { 7 } else { N };
@@ -28177,6 +29824,7 @@ pub unsafe fn vshrq_n_s8<const N: i32>(a: int8x16_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sshr, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshr_n_s16<const N: i32>(a: int16x4_t) -> int16x4_t {
     static_assert!(N >= 1 && N <= 16);
     let n: i32 = if N == 16 { 15 } else { N };
@@ -28193,6 +29841,7 @@ pub unsafe fn vshr_n_s16<const N: i32>(a: int16x4_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sshr, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshrq_n_s16<const N: i32>(a: int16x8_t) -> int16x8_t {
     static_assert!(N >= 1 && N <= 16);
     let n: i32 = if N == 16 { 15 } else { N };
@@ -28209,6 +29858,7 @@ pub unsafe fn vshrq_n_s16<const N: i32>(a: int16x8_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sshr, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshr_n_s32<const N: i32>(a: int32x2_t) -> int32x2_t {
     static_assert!(N >= 1 && N <= 32);
     let n: i32 = if N == 32 { 31 } else { N };
@@ -28225,6 +29875,7 @@ pub unsafe fn vshr_n_s32<const N: i32>(a: int32x2_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sshr, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshrq_n_s32<const N: i32>(a: int32x4_t) -> int32x4_t {
     static_assert!(N >= 1 && N <= 32);
     let n: i32 = if N == 32 { 31 } else { N };
@@ -28241,6 +29892,7 @@ pub unsafe fn vshrq_n_s32<const N: i32>(a: int32x4_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sshr, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshr_n_s64<const N: i32>(a: int64x1_t) -> int64x1_t {
     static_assert!(N >= 1 && N <= 64);
     let n: i32 = if N == 64 { 63 } else { N };
@@ -28257,6 +29909,7 @@ pub unsafe fn vshr_n_s64<const N: i32>(a: int64x1_t) -> int64x1_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sshr, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshrq_n_s64<const N: i32>(a: int64x2_t) -> int64x2_t {
     static_assert!(N >= 1 && N <= 64);
     let n: i32 = if N == 64 { 63 } else { N };
@@ -28273,6 +29926,7 @@ pub unsafe fn vshrq_n_s64<const N: i32>(a: int64x2_t) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ushr, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshr_n_u8<const N: i32>(a: uint8x8_t) -> uint8x8_t {
     static_assert!(N >= 1 && N <= 8);
     let n: i32 = if N == 8 { return vdup_n_u8(0); } else { N };
@@ -28289,6 +29943,7 @@ pub unsafe fn vshr_n_u8<const N: i32>(a: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ushr, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshrq_n_u8<const N: i32>(a: uint8x16_t) -> uint8x16_t {
     static_assert!(N >= 1 && N <= 8);
     let n: i32 = if N == 8 { return vdupq_n_u8(0); } else { N };
@@ -28305,6 +29960,7 @@ pub unsafe fn vshrq_n_u8<const N: i32>(a: uint8x16_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ushr, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshr_n_u16<const N: i32>(a: uint16x4_t) -> uint16x4_t {
     static_assert!(N >= 1 && N <= 16);
     let n: i32 = if N == 16 { return vdup_n_u16(0); } else { N };
@@ -28321,6 +29977,7 @@ pub unsafe fn vshr_n_u16<const N: i32>(a: uint16x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ushr, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshrq_n_u16<const N: i32>(a: uint16x8_t) -> uint16x8_t {
     static_assert!(N >= 1 && N <= 16);
     let n: i32 = if N == 16 { return vdupq_n_u16(0); } else { N };
@@ -28337,6 +29994,7 @@ pub unsafe fn vshrq_n_u16<const N: i32>(a: uint16x8_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ushr, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshr_n_u32<const N: i32>(a: uint32x2_t) -> uint32x2_t {
     static_assert!(N >= 1 && N <= 32);
     let n: i32 = if N == 32 { return vdup_n_u32(0); } else { N };
@@ -28353,6 +30011,7 @@ pub unsafe fn vshr_n_u32<const N: i32>(a: uint32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ushr, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshrq_n_u32<const N: i32>(a: uint32x4_t) -> uint32x4_t {
     static_assert!(N >= 1 && N <= 32);
     let n: i32 = if N == 32 { return vdupq_n_u32(0); } else { N };
@@ -28369,6 +30028,7 @@ pub unsafe fn vshrq_n_u32<const N: i32>(a: uint32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ushr, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshr_n_u64<const N: i32>(a: uint64x1_t) -> uint64x1_t {
     static_assert!(N >= 1 && N <= 64);
     let n: i32 = if N == 64 { return vdup_n_u64(0); } else { N };
@@ -28385,6 +30045,7 @@ pub unsafe fn vshr_n_u64<const N: i32>(a: uint64x1_t) -> uint64x1_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ushr, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshrq_n_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
     static_assert!(N >= 1 && N <= 64);
     let n: i32 = if N == 64 { return vdupq_n_u64(0); } else { N };
@@ -28401,6 +30062,7 @@ pub unsafe fn vshrq_n_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shrn, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
     static_assert!(N >= 1 && N <= 8);
     simd_cast(simd_shr(a, vdupq_n_s16(N as _)))
@@ -28416,6 +30078,7 @@ pub unsafe fn vshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shrn, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
     static_assert!(N >= 1 && N <= 16);
     simd_cast(simd_shr(a, vdupq_n_s32(N as _)))
@@ -28431,6 +30094,7 @@ pub unsafe fn vshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shrn, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
     static_assert!(N >= 1 && N <= 32);
     simd_cast(simd_shr(a, vdupq_n_s64(N as _)))
@@ -28446,6 +30110,7 @@ pub unsafe fn vshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shrn, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshrn_n_u16<const N: i32>(a: uint16x8_t) -> uint8x8_t {
     static_assert!(N >= 1 && N <= 8);
     simd_cast(simd_shr(a, vdupq_n_u16(N as _)))
@@ -28461,6 +30126,7 @@ pub unsafe fn vshrn_n_u16<const N: i32>(a: uint16x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shrn, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshrn_n_u32<const N: i32>(a: uint32x4_t) -> uint16x4_t {
     static_assert!(N >= 1 && N <= 16);
     simd_cast(simd_shr(a, vdupq_n_u32(N as _)))
@@ -28476,6 +30142,7 @@ pub unsafe fn vshrn_n_u32<const N: i32>(a: uint32x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shrn, N = 2))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
     static_assert!(N >= 1 && N <= 32);
     simd_cast(simd_shr(a, vdupq_n_u64(N as _)))
@@ -28491,6 +30158,7 @@ pub unsafe fn vshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ssra, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsra_n_s8<const N: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     static_assert!(N >= 1 && N <= 8);
     simd_add(a, vshr_n_s8::<N>(b))
@@ -28506,6 +30174,7 @@ pub unsafe fn vsra_n_s8<const N: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ssra, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsraq_n_s8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     static_assert!(N >= 1 && N <= 8);
     simd_add(a, vshrq_n_s8::<N>(b))
@@ -28521,6 +30190,7 @@ pub unsafe fn vsraq_n_s8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ssra, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsra_n_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     static_assert!(N >= 1 && N <= 16);
     simd_add(a, vshr_n_s16::<N>(b))
@@ -28536,6 +30206,7 @@ pub unsafe fn vsra_n_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ssra, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsraq_n_s16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     static_assert!(N >= 1 && N <= 16);
     simd_add(a, vshrq_n_s16::<N>(b))
@@ -28551,6 +30222,7 @@ pub unsafe fn vsraq_n_s16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ssra, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsra_n_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     static_assert!(N >= 1 && N <= 32);
     simd_add(a, vshr_n_s32::<N>(b))
@@ -28566,6 +30238,7 @@ pub unsafe fn vsra_n_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ssra, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsraq_n_s32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     static_assert!(N >= 1 && N <= 32);
     simd_add(a, vshrq_n_s32::<N>(b))
@@ -28581,6 +30254,7 @@ pub unsafe fn vsraq_n_s32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ssra, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsra_n_s64<const N: i32>(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     static_assert!(N >= 1 && N <= 64);
     simd_add(a, vshr_n_s64::<N>(b))
@@ -28596,6 +30270,7 @@ pub unsafe fn vsra_n_s64<const N: i32>(a: int64x1_t, b: int64x1_t) -> int64x1_t 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ssra, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsraq_n_s64<const N: i32>(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     static_assert!(N >= 1 && N <= 64);
     simd_add(a, vshrq_n_s64::<N>(b))
@@ -28611,6 +30286,7 @@ pub unsafe fn vsraq_n_s64<const N: i32>(a: int64x2_t, b: int64x2_t) -> int64x2_t
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(usra, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsra_n_u8<const N: i32>(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     static_assert!(N >= 1 && N <= 8);
     simd_add(a, vshr_n_u8::<N>(b))
@@ -28626,6 +30302,7 @@ pub unsafe fn vsra_n_u8<const N: i32>(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(usra, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsraq_n_u8<const N: i32>(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     static_assert!(N >= 1 && N <= 8);
     simd_add(a, vshrq_n_u8::<N>(b))
@@ -28641,6 +30318,7 @@ pub unsafe fn vsraq_n_u8<const N: i32>(a: uint8x16_t, b: uint8x16_t) -> uint8x16
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(usra, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsra_n_u16<const N: i32>(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     static_assert!(N >= 1 && N <= 16);
     simd_add(a, vshr_n_u16::<N>(b))
@@ -28656,6 +30334,7 @@ pub unsafe fn vsra_n_u16<const N: i32>(a: uint16x4_t, b: uint16x4_t) -> uint16x4
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(usra, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsraq_n_u16<const N: i32>(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     static_assert!(N >= 1 && N <= 16);
     simd_add(a, vshrq_n_u16::<N>(b))
@@ -28671,6 +30350,7 @@ pub unsafe fn vsraq_n_u16<const N: i32>(a: uint16x8_t, b: uint16x8_t) -> uint16x
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(usra, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsra_n_u32<const N: i32>(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     static_assert!(N >= 1 && N <= 32);
     simd_add(a, vshr_n_u32::<N>(b))
@@ -28686,6 +30366,7 @@ pub unsafe fn vsra_n_u32<const N: i32>(a: uint32x2_t, b: uint32x2_t) -> uint32x2
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(usra, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsraq_n_u32<const N: i32>(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     static_assert!(N >= 1 && N <= 32);
     simd_add(a, vshrq_n_u32::<N>(b))
@@ -28701,6 +30382,7 @@ pub unsafe fn vsraq_n_u32<const N: i32>(a: uint32x4_t, b: uint32x4_t) -> uint32x
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(usra, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsra_n_u64<const N: i32>(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
     static_assert!(N >= 1 && N <= 64);
     simd_add(a, vshr_n_u64::<N>(b))
@@ -28716,6 +30398,7 @@ pub unsafe fn vsra_n_u64<const N: i32>(a: uint64x1_t, b: uint64x1_t) -> uint64x1
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(usra, N = 2))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsraq_n_u64<const N: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     static_assert!(N >= 1 && N <= 64);
     simd_add(a, vshrq_n_u64::<N>(b))
@@ -28730,6 +30413,7 @@ pub unsafe fn vsraq_n_u64<const N: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64x
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtrn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(trn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtrn_s8(a: int8x8_t, b: int8x8_t) -> int8x8x2_t {
     let a1: int8x8_t = simd_shuffle!(a, b, [0, 8, 2, 10, 4, 12, 6, 14]);
     let b1: int8x8_t = simd_shuffle!(a, b, [1, 9, 3, 11, 5, 13, 7, 15]);
@@ -28745,6 +30429,7 @@ pub unsafe fn vtrn_s8(a: int8x8_t, b: int8x8_t) -> int8x8x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtrn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(trn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtrn_s16(a: int16x4_t, b: int16x4_t) -> int16x4x2_t {
     let a1: int16x4_t = simd_shuffle!(a, b, [0, 4, 2, 6]);
     let b1: int16x4_t = simd_shuffle!(a, b, [1, 5, 3, 7]);
@@ -28760,6 +30445,7 @@ pub unsafe fn vtrn_s16(a: int16x4_t, b: int16x4_t) -> int16x4x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtrn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(trn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtrnq_s8(a: int8x16_t, b: int8x16_t) -> int8x16x2_t {
     let a1: int8x16_t = simd_shuffle!(a, b, [0, 16, 2, 18, 4, 20, 6, 22, 8, 24, 10, 26, 12, 28, 14, 30]);
     let b1: int8x16_t = simd_shuffle!(a, b, [1, 17, 3, 19, 5, 21, 7, 23, 9, 25, 11, 27, 13, 29, 15, 31]);
@@ -28775,6 +30461,7 @@ pub unsafe fn vtrnq_s8(a: int8x16_t, b: int8x16_t) -> int8x16x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtrn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(trn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtrnq_s16(a: int16x8_t, b: int16x8_t) -> int16x8x2_t {
     let a1: int16x8_t = simd_shuffle!(a, b, [0, 8, 2, 10, 4, 12, 6, 14]);
     let b1: int16x8_t = simd_shuffle!(a, b, [1, 9, 3, 11, 5, 13, 7, 15]);
@@ -28790,6 +30477,7 @@ pub unsafe fn vtrnq_s16(a: int16x8_t, b: int16x8_t) -> int16x8x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtrn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(trn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtrnq_s32(a: int32x4_t, b: int32x4_t) -> int32x4x2_t {
     let a1: int32x4_t = simd_shuffle!(a, b, [0, 4, 2, 6]);
     let b1: int32x4_t = simd_shuffle!(a, b, [1, 5, 3, 7]);
@@ -28805,6 +30493,7 @@ pub unsafe fn vtrnq_s32(a: int32x4_t, b: int32x4_t) -> int32x4x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtrn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(trn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtrn_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8x2_t {
     let a1: uint8x8_t = simd_shuffle!(a, b, [0, 8, 2, 10, 4, 12, 6, 14]);
     let b1: uint8x8_t = simd_shuffle!(a, b, [1, 9, 3, 11, 5, 13, 7, 15]);
@@ -28820,6 +30509,7 @@ pub unsafe fn vtrn_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtrn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(trn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtrn_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4x2_t {
     let a1: uint16x4_t = simd_shuffle!(a, b, [0, 4, 2, 6]);
     let b1: uint16x4_t = simd_shuffle!(a, b, [1, 5, 3, 7]);
@@ -28835,6 +30525,7 @@ pub unsafe fn vtrn_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtrn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(trn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtrnq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16x2_t {
     let a1: uint8x16_t = simd_shuffle!(a, b, [0, 16, 2, 18, 4, 20, 6, 22, 8, 24, 10, 26, 12, 28, 14, 30]);
     let b1: uint8x16_t = simd_shuffle!(a, b, [1, 17, 3, 19, 5, 21, 7, 23, 9, 25, 11, 27, 13, 29, 15, 31]);
@@ -28850,6 +30541,7 @@ pub unsafe fn vtrnq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtrn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(trn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtrnq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8x2_t {
     let a1: uint16x8_t = simd_shuffle!(a, b, [0, 8, 2, 10, 4, 12, 6, 14]);
     let b1: uint16x8_t = simd_shuffle!(a, b, [1, 9, 3, 11, 5, 13, 7, 15]);
@@ -28865,6 +30557,7 @@ pub unsafe fn vtrnq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtrn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(trn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtrnq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4x2_t {
     let a1: uint32x4_t = simd_shuffle!(a, b, [0, 4, 2, 6]);
     let b1: uint32x4_t = simd_shuffle!(a, b, [1, 5, 3, 7]);
@@ -28880,6 +30573,7 @@ pub unsafe fn vtrnq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtrn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(trn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtrn_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8x2_t {
     let a1: poly8x8_t = simd_shuffle!(a, b, [0, 8, 2, 10, 4, 12, 6, 14]);
     let b1: poly8x8_t = simd_shuffle!(a, b, [1, 9, 3, 11, 5, 13, 7, 15]);
@@ -28895,6 +30589,7 @@ pub unsafe fn vtrn_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtrn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(trn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtrn_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4x2_t {
     let a1: poly16x4_t = simd_shuffle!(a, b, [0, 4, 2, 6]);
     let b1: poly16x4_t = simd_shuffle!(a, b, [1, 5, 3, 7]);
@@ -28910,6 +30605,7 @@ pub unsafe fn vtrn_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtrn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(trn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtrnq_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16x2_t {
     let a1: poly8x16_t = simd_shuffle!(a, b, [0, 16, 2, 18, 4, 20, 6, 22, 8, 24, 10, 26, 12, 28, 14, 30]);
     let b1: poly8x16_t = simd_shuffle!(a, b, [1, 17, 3, 19, 5, 21, 7, 23, 9, 25, 11, 27, 13, 29, 15, 31]);
@@ -28925,6 +30621,7 @@ pub unsafe fn vtrnq_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtrn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(trn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtrnq_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8x2_t {
     let a1: poly16x8_t = simd_shuffle!(a, b, [0, 8, 2, 10, 4, 12, 6, 14]);
     let b1: poly16x8_t = simd_shuffle!(a, b, [1, 9, 3, 11, 5, 13, 7, 15]);
@@ -28940,6 +30637,7 @@ pub unsafe fn vtrnq_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtrn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtrn_s32(a: int32x2_t, b: int32x2_t) -> int32x2x2_t {
     let a1: int32x2_t = simd_shuffle!(a, b, [0, 2]);
     let b1: int32x2_t = simd_shuffle!(a, b, [1, 3]);
@@ -28955,6 +30653,7 @@ pub unsafe fn vtrn_s32(a: int32x2_t, b: int32x2_t) -> int32x2x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtrn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtrn_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2x2_t {
     let a1: uint32x2_t = simd_shuffle!(a, b, [0, 2]);
     let b1: uint32x2_t = simd_shuffle!(a, b, [1, 3]);
@@ -28970,6 +30669,7 @@ pub unsafe fn vtrn_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtrn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtrn_f32(a: float32x2_t, b: float32x2_t) -> float32x2x2_t {
     let a1: float32x2_t = simd_shuffle!(a, b, [0, 2]);
     let b1: float32x2_t = simd_shuffle!(a, b, [1, 3]);
@@ -28985,6 +30685,7 @@ pub unsafe fn vtrn_f32(a: float32x2_t, b: float32x2_t) -> float32x2x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtrn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(trn))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vtrnq_f32(a: float32x4_t, b: float32x4_t) -> float32x4x2_t {
     let a1: float32x4_t = simd_shuffle!(a, b, [0, 4, 2, 6]);
     let b1: float32x4_t = simd_shuffle!(a, b, [1, 5, 3, 7]);
@@ -29000,6 +30701,7 @@ pub unsafe fn vtrnq_f32(a: float32x4_t, b: float32x4_t) -> float32x4x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vzip))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vzip_s8(a: int8x8_t, b: int8x8_t) -> int8x8x2_t {
     let a0: int8x8_t = simd_shuffle!(a, b, [0, 8, 1, 9, 2, 10, 3, 11]);
     let b0: int8x8_t = simd_shuffle!(a, b, [4, 12, 5, 13, 6, 14, 7, 15]);
@@ -29015,6 +30717,7 @@ pub unsafe fn vzip_s8(a: int8x8_t, b: int8x8_t) -> int8x8x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vzip))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vzip_s16(a: int16x4_t, b: int16x4_t) -> int16x4x2_t {
     let a0: int16x4_t = simd_shuffle!(a, b, [0, 4, 1, 5]);
     let b0: int16x4_t = simd_shuffle!(a, b, [2, 6, 3, 7]);
@@ -29030,6 +30733,7 @@ pub unsafe fn vzip_s16(a: int16x4_t, b: int16x4_t) -> int16x4x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vzip))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vzip_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8x2_t {
     let a0: uint8x8_t = simd_shuffle!(a, b, [0, 8, 1, 9, 2, 10, 3, 11]);
     let b0: uint8x8_t = simd_shuffle!(a, b, [4, 12, 5, 13, 6, 14, 7, 15]);
@@ -29045,6 +30749,7 @@ pub unsafe fn vzip_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vzip))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vzip_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4x2_t {
     let a0: uint16x4_t = simd_shuffle!(a, b, [0, 4, 1, 5]);
     let b0: uint16x4_t = simd_shuffle!(a, b, [2, 6, 3, 7]);
@@ -29060,6 +30765,7 @@ pub unsafe fn vzip_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vzip))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vzip_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8x2_t {
     let a0: poly8x8_t = simd_shuffle!(a, b, [0, 8, 1, 9, 2, 10, 3, 11]);
     let b0: poly8x8_t = simd_shuffle!(a, b, [4, 12, 5, 13, 6, 14, 7, 15]);
@@ -29075,6 +30781,7 @@ pub unsafe fn vzip_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vzip))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vzip_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4x2_t {
     let a0: poly16x4_t = simd_shuffle!(a, b, [0, 4, 1, 5]);
     let b0: poly16x4_t = simd_shuffle!(a, b, [2, 6, 3, 7]);
@@ -29090,6 +30797,7 @@ pub unsafe fn vzip_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtrn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vzip_s32(a: int32x2_t, b: int32x2_t) -> int32x2x2_t {
     let a0: int32x2_t = simd_shuffle!(a, b, [0, 2]);
     let b0: int32x2_t = simd_shuffle!(a, b, [1, 3]);
@@ -29105,6 +30813,7 @@ pub unsafe fn vzip_s32(a: int32x2_t, b: int32x2_t) -> int32x2x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtrn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vzip_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2x2_t {
     let a0: uint32x2_t = simd_shuffle!(a, b, [0, 2]);
     let b0: uint32x2_t = simd_shuffle!(a, b, [1, 3]);
@@ -29120,6 +30829,7 @@ pub unsafe fn vzip_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vzipq_s8(a: int8x16_t, b: int8x16_t) -> int8x16x2_t {
     let a0: int8x16_t = simd_shuffle!(a, b, [0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23]);
     let b0: int8x16_t = simd_shuffle!(a, b, [8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31]);
@@ -29135,6 +30845,7 @@ pub unsafe fn vzipq_s8(a: int8x16_t, b: int8x16_t) -> int8x16x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vzipq_s16(a: int16x8_t, b: int16x8_t) -> int16x8x2_t {
     let a0: int16x8_t = simd_shuffle!(a, b, [0, 8, 1, 9, 2, 10, 3, 11]);
     let b0: int16x8_t = simd_shuffle!(a, b, [4, 12, 5, 13, 6, 14, 7, 15]);
@@ -29150,6 +30861,7 @@ pub unsafe fn vzipq_s16(a: int16x8_t, b: int16x8_t) -> int16x8x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vzipq_s32(a: int32x4_t, b: int32x4_t) -> int32x4x2_t {
     let a0: int32x4_t = simd_shuffle!(a, b, [0, 4, 1, 5]);
     let b0: int32x4_t = simd_shuffle!(a, b, [2, 6, 3, 7]);
@@ -29165,6 +30877,7 @@ pub unsafe fn vzipq_s32(a: int32x4_t, b: int32x4_t) -> int32x4x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vzipq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16x2_t {
     let a0: uint8x16_t = simd_shuffle!(a, b, [0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23]);
     let b0: uint8x16_t = simd_shuffle!(a, b, [8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31]);
@@ -29180,6 +30893,7 @@ pub unsafe fn vzipq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vzipq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8x2_t {
     let a0: uint16x8_t = simd_shuffle!(a, b, [0, 8, 1, 9, 2, 10, 3, 11]);
     let b0: uint16x8_t = simd_shuffle!(a, b, [4, 12, 5, 13, 6, 14, 7, 15]);
@@ -29195,6 +30909,7 @@ pub unsafe fn vzipq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vzipq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4x2_t {
     let a0: uint32x4_t = simd_shuffle!(a, b, [0, 4, 1, 5]);
     let b0: uint32x4_t = simd_shuffle!(a, b, [2, 6, 3, 7]);
@@ -29210,6 +30925,7 @@ pub unsafe fn vzipq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vzipq_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16x2_t {
     let a0: poly8x16_t = simd_shuffle!(a, b, [0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23]);
     let b0: poly8x16_t = simd_shuffle!(a, b, [8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31]);
@@ -29225,6 +30941,7 @@ pub unsafe fn vzipq_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vzipq_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8x2_t {
     let a0: poly16x8_t = simd_shuffle!(a, b, [0, 8, 1, 9, 2, 10, 3, 11]);
     let b0: poly16x8_t = simd_shuffle!(a, b, [4, 12, 5, 13, 6, 14, 7, 15]);
@@ -29240,6 +30957,7 @@ pub unsafe fn vzipq_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtrn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vzip_f32(a: float32x2_t, b: float32x2_t) -> float32x2x2_t {
     let a0: float32x2_t = simd_shuffle!(a, b, [0, 2]);
     let b0: float32x2_t = simd_shuffle!(a, b, [1, 3]);
@@ -29255,6 +30973,7 @@ pub unsafe fn vzip_f32(a: float32x2_t, b: float32x2_t) -> float32x2x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vzipq_f32(a: float32x4_t, b: float32x4_t) -> float32x4x2_t {
     let a0: float32x4_t = simd_shuffle!(a, b, [0, 4, 1, 5]);
     let b0: float32x4_t = simd_shuffle!(a, b, [2, 6, 3, 7]);
@@ -29270,6 +30989,7 @@ pub unsafe fn vzipq_f32(a: float32x4_t, b: float32x4_t) -> float32x4x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vuzp))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uzp))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vuzp_s8(a: int8x8_t, b: int8x8_t) -> int8x8x2_t {
     let a0: int8x8_t = simd_shuffle!(a, b, [0, 2, 4, 6, 8, 10, 12, 14]);
     let b0: int8x8_t = simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15]);
@@ -29285,6 +31005,7 @@ pub unsafe fn vuzp_s8(a: int8x8_t, b: int8x8_t) -> int8x8x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vuzp))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uzp))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vuzp_s16(a: int16x4_t, b: int16x4_t) -> int16x4x2_t {
     let a0: int16x4_t = simd_shuffle!(a, b, [0, 2, 4, 6]);
     let b0: int16x4_t = simd_shuffle!(a, b, [1, 3, 5, 7]);
@@ -29300,6 +31021,7 @@ pub unsafe fn vuzp_s16(a: int16x4_t, b: int16x4_t) -> int16x4x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vuzp))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uzp))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vuzpq_s8(a: int8x16_t, b: int8x16_t) -> int8x16x2_t {
     let a0: int8x16_t = simd_shuffle!(a, b, [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30]);
     let b0: int8x16_t = simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31]);
@@ -29315,6 +31037,7 @@ pub unsafe fn vuzpq_s8(a: int8x16_t, b: int8x16_t) -> int8x16x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vuzp))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uzp))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vuzpq_s16(a: int16x8_t, b: int16x8_t) -> int16x8x2_t {
     let a0: int16x8_t = simd_shuffle!(a, b, [0, 2, 4, 6, 8, 10, 12, 14]);
     let b0: int16x8_t = simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15]);
@@ -29330,6 +31053,7 @@ pub unsafe fn vuzpq_s16(a: int16x8_t, b: int16x8_t) -> int16x8x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vuzp))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uzp))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vuzpq_s32(a: int32x4_t, b: int32x4_t) -> int32x4x2_t {
     let a0: int32x4_t = simd_shuffle!(a, b, [0, 2, 4, 6]);
     let b0: int32x4_t = simd_shuffle!(a, b, [1, 3, 5, 7]);
@@ -29345,6 +31069,7 @@ pub unsafe fn vuzpq_s32(a: int32x4_t, b: int32x4_t) -> int32x4x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vuzp))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uzp))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vuzp_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8x2_t {
     let a0: uint8x8_t = simd_shuffle!(a, b, [0, 2, 4, 6, 8, 10, 12, 14]);
     let b0: uint8x8_t = simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15]);
@@ -29360,6 +31085,7 @@ pub unsafe fn vuzp_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vuzp))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uzp))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vuzp_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4x2_t {
     let a0: uint16x4_t = simd_shuffle!(a, b, [0, 2, 4, 6]);
     let b0: uint16x4_t = simd_shuffle!(a, b, [1, 3, 5, 7]);
@@ -29375,6 +31101,7 @@ pub unsafe fn vuzp_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vuzp))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uzp))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vuzpq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16x2_t {
     let a0: uint8x16_t = simd_shuffle!(a, b, [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30]);
     let b0: uint8x16_t = simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31]);
@@ -29390,6 +31117,7 @@ pub unsafe fn vuzpq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vuzp))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uzp))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vuzpq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8x2_t {
     let a0: uint16x8_t = simd_shuffle!(a, b, [0, 2, 4, 6, 8, 10, 12, 14]);
     let b0: uint16x8_t = simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15]);
@@ -29405,6 +31133,7 @@ pub unsafe fn vuzpq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vuzp))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uzp))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vuzpq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4x2_t {
     let a0: uint32x4_t = simd_shuffle!(a, b, [0, 2, 4, 6]);
     let b0: uint32x4_t = simd_shuffle!(a, b, [1, 3, 5, 7]);
@@ -29420,6 +31149,7 @@ pub unsafe fn vuzpq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vuzp))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uzp))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vuzp_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8x2_t {
     let a0: poly8x8_t = simd_shuffle!(a, b, [0, 2, 4, 6, 8, 10, 12, 14]);
     let b0: poly8x8_t = simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15]);
@@ -29435,6 +31165,7 @@ pub unsafe fn vuzp_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vuzp))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uzp))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vuzp_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4x2_t {
     let a0: poly16x4_t = simd_shuffle!(a, b, [0, 2, 4, 6]);
     let b0: poly16x4_t = simd_shuffle!(a, b, [1, 3, 5, 7]);
@@ -29450,6 +31181,7 @@ pub unsafe fn vuzp_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vuzp))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uzp))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vuzpq_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16x2_t {
     let a0: poly8x16_t = simd_shuffle!(a, b, [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30]);
     let b0: poly8x16_t = simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31]);
@@ -29465,6 +31197,7 @@ pub unsafe fn vuzpq_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vuzp))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uzp))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vuzpq_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8x2_t {
     let a0: poly16x8_t = simd_shuffle!(a, b, [0, 2, 4, 6, 8, 10, 12, 14]);
     let b0: poly16x8_t = simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15]);
@@ -29480,6 +31213,7 @@ pub unsafe fn vuzpq_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtrn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vuzp_s32(a: int32x2_t, b: int32x2_t) -> int32x2x2_t {
     let a0: int32x2_t = simd_shuffle!(a, b, [0, 2]);
     let b0: int32x2_t = simd_shuffle!(a, b, [1, 3]);
@@ -29495,6 +31229,7 @@ pub unsafe fn vuzp_s32(a: int32x2_t, b: int32x2_t) -> int32x2x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtrn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vuzp_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2x2_t {
     let a0: uint32x2_t = simd_shuffle!(a, b, [0, 2]);
     let b0: uint32x2_t = simd_shuffle!(a, b, [1, 3]);
@@ -29510,6 +31245,7 @@ pub unsafe fn vuzp_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vtrn))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(zip))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vuzp_f32(a: float32x2_t, b: float32x2_t) -> float32x2x2_t {
     let a0: float32x2_t = simd_shuffle!(a, b, [0, 2]);
     let b0: float32x2_t = simd_shuffle!(a, b, [1, 3]);
@@ -29525,6 +31261,7 @@ pub unsafe fn vuzp_f32(a: float32x2_t, b: float32x2_t) -> float32x2x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vuzp))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uzp))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vuzpq_f32(a: float32x4_t, b: float32x4_t) -> float32x4x2_t {
     let a0: float32x4_t = simd_shuffle!(a, b, [0, 2, 4, 6]);
     let b0: float32x4_t = simd_shuffle!(a, b, [1, 3, 5, 7]);
@@ -29540,6 +31277,7 @@ pub unsafe fn vuzpq_f32(a: float32x4_t, b: float32x4_t) -> float32x4x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabal.u8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uabal))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vabal_u8(a: uint16x8_t, b: uint8x8_t, c: uint8x8_t) -> uint16x8_t {
     let d: uint8x8_t = vabd_u8(b, c);
     simd_add(a, simd_cast(d))
@@ -29554,6 +31292,7 @@ pub unsafe fn vabal_u8(a: uint16x8_t, b: uint8x8_t, c: uint8x8_t) -> uint16x8_t 
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabal.u16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uabal))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vabal_u16(a: uint32x4_t, b: uint16x4_t, c: uint16x4_t) -> uint32x4_t {
     let d: uint16x4_t = vabd_u16(b, c);
     simd_add(a, simd_cast(d))
@@ -29568,6 +31307,7 @@ pub unsafe fn vabal_u16(a: uint32x4_t, b: uint16x4_t, c: uint16x4_t) -> uint32x4
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabal.u32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uabal))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vabal_u32(a: uint64x2_t, b: uint32x2_t, c: uint32x2_t) -> uint64x2_t {
     let d: uint32x2_t = vabd_u32(b, c);
     simd_add(a, simd_cast(d))
@@ -29582,6 +31322,7 @@ pub unsafe fn vabal_u32(a: uint64x2_t, b: uint32x2_t, c: uint32x2_t) -> uint64x2
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabal.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sabal))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vabal_s8(a: int16x8_t, b: int8x8_t, c: int8x8_t) -> int16x8_t {
     let d: int8x8_t = vabd_s8(b, c);
     let e: uint8x8_t = simd_cast(d);
@@ -29597,6 +31338,7 @@ pub unsafe fn vabal_s8(a: int16x8_t, b: int8x8_t, c: int8x8_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabal.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sabal))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vabal_s16(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t {
     let d: int16x4_t = vabd_s16(b, c);
     let e: uint16x4_t = simd_cast(d);
@@ -29612,6 +31354,7 @@ pub unsafe fn vabal_s16(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabal.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sabal))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vabal_s32(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t {
     let d: int32x2_t = vabd_s32(b, c);
     let e: uint32x2_t = simd_cast(d);
@@ -29627,6 +31370,7 @@ pub unsafe fn vabal_s32(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqabs.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqabs))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqabs_s8(a: int8x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -29646,6 +31390,7 @@ vqabs_s8_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqabs.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqabs))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqabsq_s8(a: int8x16_t) -> int8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -29665,6 +31410,7 @@ vqabsq_s8_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqabs.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqabs))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqabs_s16(a: int16x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -29684,6 +31430,7 @@ vqabs_s16_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqabs.s16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqabs))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqabsq_s16(a: int16x8_t) -> int16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -29703,6 +31450,7 @@ vqabsq_s16_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqabs.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqabs))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqabs_s32(a: int32x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -29722,6 +31470,7 @@ vqabs_s32_(a)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqabs.s32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqabs))]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqabsq_s32(a: int32x4_t) -> int32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {

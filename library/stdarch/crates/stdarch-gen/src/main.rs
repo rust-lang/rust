@@ -2517,13 +2517,18 @@ fn gen_arm(
             RDM => String::from("\n#[stable(feature = \"rdm_intrinsics\", since = \"1.62.0\")]"),
             _ => String::new(),
         };
+        let stable_arm = match target {
+            _ => String::from(
+                "\n#[unstable(feature = \"stdarch_arm_neon_intrinsics\", issue = \"111800\")]",
+            ),
+        };
         let function_doc = create_doc_string(current_comment, &name);
         format!(
             r#"
 {function_doc}
 #[inline]
 #[cfg(target_arch = "arm")]{target_feature_arm}
-#[cfg_attr(test, assert_instr({assert_arm}{const_assert}))]{const_legacy}
+#[cfg_attr(test, assert_instr({assert_arm}{const_assert}))]{const_legacy}{stable_arm}
 {call_arm}
 
 {function_doc}
@@ -2575,12 +2580,17 @@ fn gen_arm(
             RDM => String::from("\n#[cfg_attr(not(target_arch = \"arm\"), stable(feature = \"rdm_intrinsics\", since = \"1.62.0\"))]"),
             _ => String::new(),
         };
+        let stable_arm = match target {
+            _ => {
+                String::from("\n#[cfg_attr(target_arch = \"arm\", unstable(feature = \"stdarch_arm_neon_intrinsics\", issue = \"111800\"))]")
+            }
+        };
         format!(
             r#"
 {function_doc}
 #[inline]{target_feature}
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr({assert_arm}{const_assert}))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr({assert_aarch64}{const_assert}))]{const_legacy}{stable_aarch64}
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr({assert_aarch64}{const_assert}))]{const_legacy}{stable_aarch64}{stable_arm}
 {call}
 "#,
             function_doc = create_doc_string(current_comment, &name),

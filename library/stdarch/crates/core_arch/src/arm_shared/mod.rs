@@ -79,6 +79,14 @@ pub use self::crypto::*;
 pub(crate) mod neon;
 #[cfg(target_endian = "little")]
 #[cfg(any(target_arch = "aarch64", target_feature = "v7", doc))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(feature = "neon_intrinsics", since = "1.59.0")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
 pub use self::neon::*;
 
 #[cfg(test)]
