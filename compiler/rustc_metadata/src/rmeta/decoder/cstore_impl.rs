@@ -287,8 +287,11 @@ provide! { tcx, def_id, other, cdata,
 
     dylib_dependency_formats => { cdata.get_dylib_dependency_formats(tcx) }
     is_private_dep => {
-        let r = *cdata.private_dep.lock();
-        r
+        // Parallel compiler needs to synchronize type checking and linting (which use this flag)
+        // so that they happen strictly crate loading. Otherwise, the full list of available
+        // impls aren't loaded yet.
+        use std::sync::atomic::Ordering;
+        cdata.private_dep.load(Ordering::Acquire)
     }
     is_panic_runtime => { cdata.root.panic_runtime }
     is_compiler_builtins => { cdata.root.compiler_builtins }

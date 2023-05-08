@@ -38,6 +38,7 @@ use proc_macro::bridge::client::ProcMacro;
 use std::iter::TrustedLen;
 use std::num::NonZeroUsize;
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::{io, iter, mem};
 
 pub(super) use cstore_impl::provide;
@@ -112,7 +113,7 @@ pub(crate) struct CrateMetadata {
     /// Whether or not this crate should be consider a private dependency.
     /// Used by the 'exported_private_dependencies' lint, and for determining
     /// whether to emit suggestions that reference this crate.
-    private_dep: Lock<bool>,
+    private_dep: AtomicBool,
     /// The hash for the host proc macro. Used to support `-Z dual-proc-macro`.
     host_hash: Option<Svh>,
 
@@ -1612,7 +1613,7 @@ impl CrateMetadata {
             dependencies,
             dep_kind: Lock::new(dep_kind),
             source: Lrc::new(source),
-            private_dep: Lock::new(private_dep),
+            private_dep: AtomicBool::new(private_dep),
             host_hash,
             extern_crate: Lock::new(None),
             hygiene_context: Default::default(),
@@ -1660,8 +1661,11 @@ impl CrateMetadata {
         self.dep_kind.with_lock(|dep_kind| *dep_kind = f(*dep_kind))
     }
 
-    pub(crate) fn update_private_dep(&self, f: impl FnOnce(bool) -> bool) {
-        self.private_dep.with_lock(|private_dep| *private_dep = f(*private_dep))
+    /// `f` must not perform any I/O or take any locks. It may be called more than once.
+    pub(crate) fn update_private_dep(&self, mut f: impl FnMut(bool) -> bool) {
+        self.private_dep
+            .fetch_update(Ordering::Release, Ordering::Acquire, |private_dep| Some(f(private_dep)))
+            .expect("fetch_update only returns Err if `f` returns None`, which it doesn't");
     }
 
     pub(crate) fn required_panic_strategy(&self) -> Option<PanicStrategy> {
