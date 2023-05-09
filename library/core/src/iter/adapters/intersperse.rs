@@ -72,7 +72,14 @@ where
         F: FnMut(B, Self::Item) -> B,
     {
         let separator = self.separator;
-        intersperse_fold(self.iter, init, f, move || separator.clone(), self.started,self.next_item)
+        intersperse_fold(
+            self.iter,
+            init,
+            f,
+            move || separator.clone(),
+            self.started,
+            self.next_item,
+        )
     }
 }
 
