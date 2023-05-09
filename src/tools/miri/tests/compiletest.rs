@@ -46,19 +46,9 @@ fn build_so_for_c_ffi_tests() -> PathBuf {
 }
 
 fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> Result<()> {
-    let mut config = Config {
-        target: Some(target.to_owned()),
-        stderr_filters: STDERR.clone(),
-        stdout_filters: STDOUT.clone(),
-        root_dir: PathBuf::from(path),
-        mode,
-        program: CommandBuilder::rustc(),
-        quiet: false,
-        edition: Some("2021".into()),
-        ..Config::default()
-    };
-
-    config.program.program = miri_path();
+    // Miri is rustc-like, so we create a default builder for rustc and modify it
+    let mut program = CommandBuilder::rustc();
+    program.program = miri_path();
 
     let in_rustc_test_suite = option_env!("RUSTC_STAGE").is_some();
 
@@ -66,22 +56,20 @@ fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> R
     if in_rustc_test_suite {
         // Less aggressive warnings to make the rustc toolstate management less painful.
         // (We often get warnings when e.g. a feature gets stabilized or some lint gets added/improved.)
-        config.program.args.push("-Astable-features".into());
-        config.program.args.push("-Aunused".into());
+        program.args.push("-Astable-features".into());
+        program.args.push("-Aunused".into());
     } else {
-        config.program.args.push("-Dwarnings".into());
-        config.program.args.push("-Dunused".into());
+        program.args.push("-Dwarnings".into());
+        program.args.push("-Dunused".into());
     }
     if let Ok(extra_flags) = env::var("MIRIFLAGS") {
         for flag in extra_flags.split_whitespace() {
-            config.program.args.push(flag.into());
+            program.args.push(flag.into());
         }
     }
-    config.program.args.push("-Zui-testing".into());
-    if let Some(target) = &config.target {
-        config.program.args.push("--target".into());
-        config.program.args.push(target.into());
-    }
+    program.args.push("-Zui-testing".into());
+    program.args.push("--target".into());
+    program.args.push(target.into());
 
     // If we're on linux, and we're testing the extern-so functionality,
     // then build the shared object file for testing external C function calls
@@ -90,16 +78,29 @@ fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> R
         let so_file_path = build_so_for_c_ffi_tests();
         let mut flag = std::ffi::OsString::from("-Zmiri-extern-so-file=");
         flag.push(so_file_path.into_os_string());
-        config.program.args.push(flag);
+        program.args.push(flag);
     }
 
     let skip_ui_checks = env::var_os("MIRI_SKIP_UI_CHECKS").is_some();
 
-    config.output_conflict_handling = match (env::var_os("MIRI_BLESS").is_some(), skip_ui_checks) {
+    let output_conflict_handling = match (env::var_os("MIRI_BLESS").is_some(), skip_ui_checks) {
         (false, false) => OutputConflictHandling::Error,
         (true, false) => OutputConflictHandling::Bless,
         (false, true) => OutputConflictHandling::Ignore,
         (true, true) => panic!("cannot use MIRI_BLESS and MIRI_SKIP_UI_CHECKS at the same time"),
+    };
+
+    let mut config = Config {
+        target: Some(target.to_owned()),
+        stderr_filters: STDERR.clone(),
+        stdout_filters: STDOUT.clone(),
+        root_dir: PathBuf::from(path),
+        mode,
+        program,
+        output_conflict_handling,
+        quiet: false,
+        edition: Some("2021".into()),
+        ..Config::default()
     };
 
     // Handle command-line arguments.
