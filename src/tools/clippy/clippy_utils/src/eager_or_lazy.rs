@@ -152,6 +152,10 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                     self.eagerness |= NoChange;
                     return;
                 },
+                ExprKind::Become(..) => {
+                    self.eagerness = ForceNoChange;
+                    return;
+                }
                 ExprKind::Path(ref path) => {
                     if res_has_significant_drop(self.cx.qpath_res(path, e.hir_id), self.cx, e) {
                         self.eagerness = ForceNoChange;

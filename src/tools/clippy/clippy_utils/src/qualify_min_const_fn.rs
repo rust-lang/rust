@@ -314,15 +314,8 @@ fn check_terminator<'tcx>(
             Err((span, "const fn generators are unstable".into()))
         },
 
-        TerminatorKind::Call {
-            func,
-            args,
-            from_hir_call: _,
-            destination: _,
-            target: _,
-            unwind: _,
-            fn_span: _,
-        } => {
+        TerminatorKind::Call { func, args, .. }
+        | TerminatorKind::TailCall { func, args, .. } => {
             let fn_ty = func.ty(body, tcx);
             if let ty::FnDef(fn_def_id, _) = *fn_ty.kind() {
                 if !is_const_fn(tcx, fn_def_id, msrv) {
