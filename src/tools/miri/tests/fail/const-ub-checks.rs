@@ -1,4 +1,3 @@
-#![feature(const_ptr_read)]
 
 const UNALIGNED_READ: () = unsafe {
     let x = &[0u8; 4];

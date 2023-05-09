@@ -1305,7 +1305,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::read`]: crate::ptr::read()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[rustc_const_unstable(feature = "const_ptr_read", issue = "80377")]
+    #[rustc_const_stable(feature = "const_ptr_read", since = "CURRENT_RUSTC_VERSION")]
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn read(self) -> T
@@ -1346,7 +1346,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::read_unaligned`]: crate::ptr::read_unaligned()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[rustc_const_unstable(feature = "const_ptr_read", issue = "80377")]
+    #[rustc_const_stable(feature = "const_ptr_read", since = "CURRENT_RUSTC_VERSION")]
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn read_unaligned(self) -> T
