@@ -585,6 +585,17 @@ pub enum ThreadLocalMode {
     LocalExec,
 }
 
+/// LLVMRustTailCallKind
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub enum TailCallKind {
+    None,
+    Tail,
+    MustTail,
+    NoTail,
+    Last,
+}
+
 /// LLVMRustChecksumKind
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -1195,6 +1206,7 @@ extern "C" {
         NameLen: size_t,
     ) -> Option<&Value>;
     pub fn LLVMSetTailCall(CallInst: &Value, IsTailCall: Bool);
+    pub fn LLVMRustSetTailCallKind(CallInst: &Value, TKC: TailCallKind);
 
     // Operations on attributes
     pub fn LLVMRustCreateAttrNoValue(C: &Context, attr: AttributeKind) -> &Attribute;
