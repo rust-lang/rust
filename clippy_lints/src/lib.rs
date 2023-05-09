@@ -483,10 +483,10 @@ pub fn explain(name: &str) {
                 .find_all(|cconf| cconf.lints.contains(&info.lint.name_lower()[8..].to_owned()))
             {
                 // If it has, print it
-                println!("### Configuration for {}:", info.lint.name_lower());
+                println!("### Configuration for {}:\n", info.lint.name_lower());
                 for position in config_vec_positions {
                     let conf = &mdconf[position];
-                    println!("    - {}: {} (default: {})", conf.name, conf.doc, conf.default);
+                    println!("  - {}: {} (default: {})", conf.name, conf.doc, conf.default);
                 }
             }
         },
