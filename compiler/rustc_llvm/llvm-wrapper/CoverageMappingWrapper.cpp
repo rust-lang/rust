@@ -121,7 +121,7 @@ extern "C" void LLVMRustCoverageWriteMappingToBuffer(
     unsigned NumVirtualFileMappingIDs,
     const LLVMRustCounterExpression *RustExpressions,
     unsigned NumExpressions,
-    LLVMRustCounterMappingRegion *RustMappingRegions,
+    const LLVMRustCounterMappingRegion *RustMappingRegions,
     unsigned NumMappingRegions,
     RustStringRef BufferOut) {
   // Convert from FFI representation to LLVM representation.
