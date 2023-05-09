@@ -1033,6 +1033,7 @@ symbols! {
         non_exhaustive_omitted_patterns_lint,
         non_lifetime_binders,
         non_modrs_mods,
+        none,
         nontemporal_store,
         noop_method_borrow,
         noop_method_clone,

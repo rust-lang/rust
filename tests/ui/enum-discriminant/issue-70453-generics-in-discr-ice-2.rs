@@ -7,7 +7,7 @@ use core::intrinsics::discriminant_value;
 enum MyWeirdOption<T> {
     None = 0,
     Some(T) = std::mem::size_of::<T>(),
-    //~^ ERROR generic parameters may not be used in const operations
+    //~^ ERROR generic parameters may not be used in enum discriminant values
 }
 
 fn main() {

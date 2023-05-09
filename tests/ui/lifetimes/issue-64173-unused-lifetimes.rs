@@ -13,7 +13,7 @@ const fn foo<T>() -> usize {
 }
 
 struct Bar<'a> { //~ ERROR: parameter `'a` is never used
-    beta: [(); foo::<&'a ()>()], //~ ERROR: a non-static lifetime is not allowed in a `const`
+    beta: [(); foo::<&'a ()>()], //~ ERROR: generic parameters may not be used in const operations
 }
 
 fn main() {}
