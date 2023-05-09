@@ -232,6 +232,7 @@ pub(crate) fn format_expr(
         ast::ExprKind::Ret(Some(ref expr)) => {
             rewrite_unary_prefix(context, "return ", &**expr, shape)
         }
+        ast::ExprKind::Become(ref expr) => rewrite_unary_prefix(context, "become ", &**expr, shape),
         ast::ExprKind::Yeet(None) => Some("do yeet".to_owned()),
         ast::ExprKind::Yeet(Some(ref expr)) => {
             rewrite_unary_prefix(context, "do yeet ", &**expr, shape)
