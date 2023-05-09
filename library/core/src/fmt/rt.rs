@@ -152,6 +152,21 @@ impl<'a> Argument<'a> {
             None
         }
     }
+
+    /// Used by `format_args` when all arguments are gone after inlining,
+    /// when using `&[]` would incorrectly allow for a bigger lifetime.
+    ///
+    /// This fails without format argument inlining, and that shouldn't be different
+    /// when the argument is inlined:
+    ///
+    /// ```compile_fail,E0716
+    /// let f = format_args!("{}", "a");
+    /// println!("{f}");
+    /// ```
+    #[inline(always)]
+    pub fn none() -> [Self; 0] {
+        []
+    }
 }
 
 /// This struct represents the unsafety of constructing an `Arguments`.
