@@ -1,4 +1,5 @@
-use super::Peekable;
+use core::fmt;
+use core::iter::{Fuse, FusedIterator};
 
 /// An iterator adapter that places a separator between all elements.
 ///
@@ -11,8 +12,16 @@ where
     I::Item: Clone,
 {
     separator: I::Item,
-    iter: Peekable<I>,
-    needs_sep: bool,
+    next_item: Option<I::Item>,
+    iter: Fuse<I>,
+}
+
+#[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
+impl<I> FusedIterator for Intersperse<I>
+where
+    I: FusedIterator,
+    I::Item: Clone,
+{
 }
 
 impl<I: Iterator> Intersperse<I>
@@ -20,7 +29,8 @@ where
     I::Item: Clone,
 {
     pub(in crate::iter) fn new(iter: I, separator: I::Item) -> Self {
-        Self { iter: iter.peekable(), separator, needs_sep: false }
+        let mut iter = iter.fuse();
+        Self { separator, next_item: iter.next(), iter }
     }
 }
 
@@ -33,14 +43,22 @@ where
     type Item = I::Item;
 
     #[inline]
-    fn next(&mut self) -> Option<I::Item> {
-        if self.needs_sep && self.iter.peek().is_some() {
-            self.needs_sep = false;
-            Some(self.separator.clone())
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(v) = self.next_item.take() {
+            Some(v)
         } else {
-            self.needs_sep = true;
-            self.iter.next()
+            let next_item = self.iter.next();
+            if next_item.is_some() {
+                self.next_item = next_item;
+                Some(self.separator.clone())
+            } else {
+                None
+            }
         }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        intersperse_size_hint(&self.iter, self.next_item.is_some())
     }
 
     fn fold<B, F>(self, init: B, f: F) -> B
@@ -49,11 +67,7 @@ where
         F: FnMut(B, Self::Item) -> B,
     {
         let separator = self.separator;
-        intersperse_fold(self.iter, init, f, move || separator.clone(), self.needs_sep)
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        intersperse_size_hint(&self.iter, self.needs_sep)
+        intersperse_fold(self.iter, init, f, move || separator.clone(), self.next_item)
     }
 }
 
@@ -67,38 +81,46 @@ where
     I: Iterator,
 {
     separator: G,
-    iter: Peekable<I>,
-    needs_sep: bool,
+    next_item: Option<I::Item>,
+    iter: Fuse<I>,
 }
 
 #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
-impl<I, G> crate::fmt::Debug for IntersperseWith<I, G>
+impl<I, G> FusedIterator for IntersperseWith<I, G>
 where
-    I: Iterator + crate::fmt::Debug,
-    I::Item: crate::fmt::Debug,
-    G: crate::fmt::Debug,
+    I: FusedIterator,
+    G: FnMut() -> I::Item,
 {
-    fn fmt(&self, f: &mut crate::fmt::Formatter<'_>) -> crate::fmt::Result {
+}
+
+#[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
+impl<I, G> fmt::Debug for IntersperseWith<I, G>
+where
+    I: Iterator + fmt::Debug,
+    I::Item: fmt::Debug,
+    G: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("IntersperseWith")
             .field("separator", &self.separator)
             .field("iter", &self.iter)
-            .field("needs_sep", &self.needs_sep)
+            .field("next_item", &self.next_item)
             .finish()
     }
 }
 
 #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
-impl<I, G> crate::clone::Clone for IntersperseWith<I, G>
+impl<I, G> Clone for IntersperseWith<I, G>
 where
-    I: Iterator + crate::clone::Clone,
-    I::Item: crate::clone::Clone,
+    I: Iterator + Clone,
+    I::Item: Clone,
     G: Clone,
 {
     fn clone(&self) -> Self {
-        IntersperseWith {
+        Self {
             separator: self.separator.clone(),
             iter: self.iter.clone(),
-            needs_sep: self.needs_sep.clone(),
+            next_item: self.next_item.clone(),
         }
     }
 }
@@ -109,7 +131,8 @@ where
     G: FnMut() -> I::Item,
 {
     pub(in crate::iter) fn new(iter: I, separator: G) -> Self {
-        Self { iter: iter.peekable(), separator, needs_sep: false }
+        let mut iter = iter.fuse();
+        Self { separator, next_item: iter.next(), iter }
     }
 }
 
@@ -122,14 +145,22 @@ where
     type Item = I::Item;
 
     #[inline]
-    fn next(&mut self) -> Option<I::Item> {
-        if self.needs_sep && self.iter.peek().is_some() {
-            self.needs_sep = false;
-            Some((self.separator)())
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(v) = self.next_item.take() {
+            Some(v)
         } else {
-            self.needs_sep = true;
-            self.iter.next()
+            let next_item = self.iter.next();
+            if next_item.is_some() {
+                self.next_item = next_item;
+                Some((self.separator)())
+            } else {
+                None
+            }
         }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        intersperse_size_hint(&self.iter, self.next_item.is_some())
     }
 
     fn fold<B, F>(self, init: B, f: F) -> B
@@ -137,32 +168,27 @@ where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        intersperse_fold(self.iter, init, f, self.separator, self.needs_sep)
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        intersperse_size_hint(&self.iter, self.needs_sep)
+        intersperse_fold(self.iter, init, f, self.separator, self.next_item)
     }
 }
 
-fn intersperse_size_hint<I>(iter: &I, needs_sep: bool) -> (usize, Option<usize>)
+fn intersperse_size_hint<I>(iter: &I, next_is_elem: bool) -> (usize, Option<usize>)
 where
     I: Iterator,
 {
     let (lo, hi) = iter.size_hint();
-    let next_is_elem = !needs_sep;
     (
-        lo.saturating_sub(next_is_elem as usize).saturating_add(lo),
-        hi.and_then(|hi| hi.saturating_sub(next_is_elem as usize).checked_add(hi)),
+        lo.saturating_add(next_is_elem as usize).saturating_add(lo),
+        hi.map(|hi| hi.saturating_add(next_is_elem as usize).saturating_add(hi)),
     )
 }
 
 fn intersperse_fold<I, B, F, G>(
-    mut iter: I,
+    iter: I,
     init: B,
     mut f: F,
     mut separator: G,
-    needs_sep: bool,
+    mut next_item: Option<I::Item>,
 ) -> B
 where
     I: Iterator,
@@ -171,12 +197,8 @@ where
 {
     let mut accum = init;
 
-    if !needs_sep {
-        if let Some(x) = iter.next() {
-            accum = f(accum, x);
-        } else {
-            return accum;
-        }
+    if let Some(x) = next_item.take() {
+        accum = f(accum, x);
     }
 
     iter.fold(accum, |mut accum, x| {
