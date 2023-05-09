@@ -33,9 +33,8 @@ impl<'tcx> MirPass<'tcx> for CopyProp {
 }
 
 fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
     let borrowed_locals = borrowed_locals(body);
-    let ssa = SsaLocals::new(tcx, param_env, body, &borrowed_locals);
+    let ssa = SsaLocals::new(body);
 
     let fully_moved = fully_moved_locals(&ssa, body);
     debug!(?fully_moved);
@@ -76,7 +75,7 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 fn fully_moved_locals(ssa: &SsaLocals, body: &Body<'_>) -> BitSet<Local> {
     let mut fully_moved = BitSet::new_filled(body.local_decls.len());
 
-    for (_, rvalue) in ssa.assignments(body) {
+    for (_, rvalue, _) in ssa.assignments(body) {
         let (Rvalue::Use(Operand::Copy(place) | Operand::Move(place)) | Rvalue::CopyForDeref(place))
             = rvalue
         else { continue };

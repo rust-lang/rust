@@ -74,6 +74,73 @@ impl<'tcx, 'a> crate::GenKillAnalysis<'tcx> for MaybeStorageLive<'a> {
     }
 }
 
+#[derive(Clone)]
+pub struct MaybeStorageDead {
+    always_live_locals: BitSet<Local>,
+}
+
+impl MaybeStorageDead {
+    pub fn new(always_live_locals: BitSet<Local>) -> Self {
+        MaybeStorageDead { always_live_locals }
+    }
+}
+
+impl<'tcx> crate::AnalysisDomain<'tcx> for MaybeStorageDead {
+    type Domain = BitSet<Local>;
+
+    const NAME: &'static str = "maybe_storage_dead";
+
+    fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
+        // bottom = live
+        BitSet::new_empty(body.local_decls.len())
+    }
+
+    fn initialize_start_block(&self, body: &mir::Body<'tcx>, on_entry: &mut Self::Domain) {
+        assert_eq!(body.local_decls.len(), self.always_live_locals.domain_size());
+        // Do not iterate on return place and args, as they are trivially always live.
+        for local in body.vars_and_temps_iter() {
+            if !self.always_live_locals.contains(local) {
+                on_entry.insert(local);
+            }
+        }
+    }
+}
+
+impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeStorageDead {
+    type Idx = Local;
+
+    fn statement_effect(
+        &self,
+        trans: &mut impl GenKill<Self::Idx>,
+        stmt: &mir::Statement<'tcx>,
+        _: Location,
+    ) {
+        match stmt.kind {
+            StatementKind::StorageLive(l) => trans.kill(l),
+            StatementKind::StorageDead(l) => trans.gen(l),
+            _ => (),
+        }
+    }
+
+    fn terminator_effect(
+        &self,
+        _trans: &mut impl GenKill<Self::Idx>,
+        _: &mir::Terminator<'tcx>,
+        _: Location,
+    ) {
+        // Terminators have no effect
+    }
+
+    fn call_return_effect(
+        &self,
+        _trans: &mut impl GenKill<Self::Idx>,
+        _block: BasicBlock,
+        _return_places: CallReturnPlaces<'_, 'tcx>,
+    ) {
+        // Nothing to do when a call returns successfully
+    }
+}
+
 type BorrowedLocalsResults<'a, 'tcx> = ResultsRefCursor<'a, 'a, 'tcx, MaybeBorrowedLocals>;
 
 /// Dataflow analysis that determines whether each local requires storage at a
