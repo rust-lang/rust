@@ -221,13 +221,16 @@ pub(super) const fn run_utf8_validation(buf: &[u8]) -> Result<(), Utf8Error> {
             } else {
                 // byte is < 128 (ASCII), but pointer is not word-aligned, skip
                 // until the loop reaches the next word-aligned block)
-                for _ in 0..offset {
+                let mut i = 0;
+                while i < offset {
                     // no need to check alignment again for every byte, so skip
                     // up to `offset` valid ASCII bytes if possible
                     curr += 1;
                     if !(curr < end && buf[curr] < 128) {
                         break;
                     }
+
+                    i += 1;
                 }
             }
         } else {
