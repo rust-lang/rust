@@ -1,4 +1,3 @@
-use super::debug::term_type;
 use super::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph, START_BCB};
 
 use itertools::Itertools;
@@ -40,7 +39,7 @@ impl CoverageStatement {
                     "{}: @{}.{}: {:?}",
                     source_range_no_file(tcx, span),
                     bb.index(),
-                    term_type(&term.kind),
+                    term.kind.name(),
                     term.kind
                 )
             }
