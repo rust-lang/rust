@@ -16,7 +16,7 @@
           _3 = (*_2);                      // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
           _0 = opaque::<i32>(_3) -> bb1;   // scope 0 at $DIR/reference_prop.rs:+14:13: +14:43
                                            // mir::Constant
-                                           // + span: $DIR/reference_prop.rs:356:33: 356:39
+                                           // + span: $DIR/reference_prop.rs:357:33: 357:39
                                            // + literal: Const { ty: fn(i32) {opaque::<i32>}, val: Value(<ZST>) }
       }
   

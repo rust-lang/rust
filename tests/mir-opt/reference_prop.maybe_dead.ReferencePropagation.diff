@@ -29,7 +29,7 @@
           StorageDead(_3);                 // scope 0 at $DIR/reference_prop.rs:+21:13: +21:27
           _0 = opaque::<i32>(_6) -> bb2;   // scope 0 at $DIR/reference_prop.rs:+22:13: +22:38
                                            // mir::Constant
-                                           // + span: $DIR/reference_prop.rs:416:28: 416:34
+                                           // + span: $DIR/reference_prop.rs:417:28: 417:34
                                            // + literal: Const { ty: fn(i32) {opaque::<i32>}, val: Value(<ZST>) }
       }
   
@@ -37,7 +37,7 @@
           _7 = (*_4);                      // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
           _0 = opaque::<i32>(_7) -> bb3;   // scope 0 at $DIR/reference_prop.rs:+27:13: +27:38
                                            // mir::Constant
-                                           // + span: $DIR/reference_prop.rs:421:28: 421:34
+                                           // + span: $DIR/reference_prop.rs:422:28: 422:34
                                            // + literal: Const { ty: fn(i32) {opaque::<i32>}, val: Value(<ZST>) }
       }
   
@@ -45,7 +45,7 @@
           _8 = (*_5);                      // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
           _0 = opaque::<i32>(_8) -> bb4;   // scope 0 at $DIR/reference_prop.rs:+33:13: +33:43
                                            // mir::Constant
-                                           // + span: $DIR/reference_prop.rs:427:33: 427:39
+                                           // + span: $DIR/reference_prop.rs:428:33: 428:39
                                            // + literal: Const { ty: fn(i32) {opaque::<i32>}, val: Value(<ZST>) }
       }
   

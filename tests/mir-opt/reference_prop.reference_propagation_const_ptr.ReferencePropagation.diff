@@ -194,7 +194,7 @@
           _8 = ();                         // scope 4 at $DIR/reference_prop.rs:+6:16: +6:18
           _7 = opaque::<()>(move _8) -> bb1; // scope 4 at $DIR/reference_prop.rs:+6:9: +6:19
                                            // mir::Constant
-                                           // + span: $DIR/reference_prop.rs:165:9: 165:15
+                                           // + span: $DIR/reference_prop.rs:166:9: 166:15
                                            // + literal: Const { ty: fn(()) {opaque::<()>}, val: Value(<ZST>) }
       }
   
@@ -224,7 +224,7 @@
           _16 = ();                        // scope 9 at $DIR/reference_prop.rs:+17:16: +17:18
           _15 = opaque::<()>(move _16) -> bb2; // scope 9 at $DIR/reference_prop.rs:+17:9: +17:19
                                            // mir::Constant
-                                           // + span: $DIR/reference_prop.rs:176:9: 176:15
+                                           // + span: $DIR/reference_prop.rs:177:9: 177:15
                                            // + literal: Const { ty: fn(()) {opaque::<()>}, val: Value(<ZST>) }
       }
   
@@ -251,7 +251,7 @@
           _23 = ();                        // scope 14 at $DIR/reference_prop.rs:+26:16: +26:18
           _22 = opaque::<()>(move _23) -> bb3; // scope 14 at $DIR/reference_prop.rs:+26:9: +26:19
                                            // mir::Constant
-                                           // + span: $DIR/reference_prop.rs:185:9: 185:15
+                                           // + span: $DIR/reference_prop.rs:186:9: 186:15
                                            // + literal: Const { ty: fn(()) {opaque::<()>}, val: Value(<ZST>) }
       }
   
@@ -278,7 +278,7 @@
           _30 = ();                        // scope 19 at $DIR/reference_prop.rs:+35:16: +35:18
           _29 = opaque::<()>(move _30) -> bb4; // scope 19 at $DIR/reference_prop.rs:+35:9: +35:19
                                            // mir::Constant
-                                           // + span: $DIR/reference_prop.rs:194:9: 194:15
+                                           // + span: $DIR/reference_prop.rs:195:9: 195:15
                                            // + literal: Const { ty: fn(()) {opaque::<()>}, val: Value(<ZST>) }
       }
   
@@ -304,7 +304,7 @@
           _36 = _33;                       // scope 23 at $DIR/reference_prop.rs:+43:16: +43:17
           _35 = opaque::<*const usize>(move _36) -> bb5; // scope 23 at $DIR/reference_prop.rs:+43:9: +43:18
                                            // mir::Constant
-                                           // + span: $DIR/reference_prop.rs:202:9: 202:15
+                                           // + span: $DIR/reference_prop.rs:203:9: 203:15
                                            // + literal: Const { ty: fn(*const usize) {opaque::<*const usize>}, val: Value(<ZST>) }
       }
   
@@ -336,7 +336,7 @@
           _45 = _43;                       // scope 30 at $DIR/reference_prop.rs:+56:16: +56:18
           _44 = opaque::<*const usize>(move _45) -> bb6; // scope 30 at $DIR/reference_prop.rs:+56:9: +56:19
                                            // mir::Constant
-                                           // + span: $DIR/reference_prop.rs:215:9: 215:15
+                                           // + span: $DIR/reference_prop.rs:216:9: 216:15
                                            // + literal: Const { ty: fn(*const usize) {opaque::<*const usize>}, val: Value(<ZST>) }
       }
   
@@ -362,7 +362,7 @@
           _50 = ();                        // scope 33 at $DIR/reference_prop.rs:+63:16: +63:18
           _49 = opaque::<()>(move _50) -> bb7; // scope 33 at $DIR/reference_prop.rs:+63:9: +63:19
                                            // mir::Constant
-                                           // + span: $DIR/reference_prop.rs:222:9: 222:15
+                                           // + span: $DIR/reference_prop.rs:223:9: 223:15
                                            // + literal: Const { ty: fn(()) {opaque::<()>}, val: Value(<ZST>) }
       }
   
@@ -387,7 +387,7 @@
           _56 = ();                        // scope 36 at $DIR/reference_prop.rs:+71:16: +71:18
           _55 = opaque::<()>(move _56) -> bb8; // scope 36 at $DIR/reference_prop.rs:+71:9: +71:19
                                            // mir::Constant
-                                           // + span: $DIR/reference_prop.rs:230:9: 230:15
+                                           // + span: $DIR/reference_prop.rs:231:9: 231:15
                                            // + literal: Const { ty: fn(()) {opaque::<()>}, val: Value(<ZST>) }
       }
   
@@ -413,7 +413,7 @@
           _62 = ();                        // scope 41 at $DIR/reference_prop.rs:+80:16: +80:18
           _61 = opaque::<()>(move _62) -> bb9; // scope 41 at $DIR/reference_prop.rs:+80:9: +80:19
                                            // mir::Constant
-                                           // + span: $DIR/reference_prop.rs:239:9: 239:15
+                                           // + span: $DIR/reference_prop.rs:240:9: 240:15
                                            // + literal: Const { ty: fn(()) {opaque::<()>}, val: Value(<ZST>) }
       }
   

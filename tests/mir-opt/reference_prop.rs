@@ -1,4 +1,5 @@
 // unit-test: ReferencePropagation
+// needs-unwind
 
 #![feature(raw_ref_op)]
 #![feature(core_intrinsics, custom_mir)]
