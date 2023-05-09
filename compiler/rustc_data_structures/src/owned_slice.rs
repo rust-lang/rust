@@ -109,9 +109,11 @@ impl Borrow<[u8]> for OwnedSlice {
 }
 
 // Safety: `OwnedSlice` is conceptually `(&'self.1 [u8], Box<dyn Send + Sync>)`, which is `Send`
+#[cfg(parallel_compiler)]
 unsafe impl Send for OwnedSlice {}
 
 // Safety: `OwnedSlice` is conceptually `(&'self.1 [u8], Box<dyn Send + Sync>)`, which is `Sync`
+#[cfg(parallel_compiler)]
 unsafe impl Sync for OwnedSlice {}
 
 #[cfg(test)]
