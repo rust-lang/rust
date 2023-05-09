@@ -106,19 +106,10 @@ cfg_if! {
                 self.0.set(val);
                 result
             }
-            pub fn fetch_update(
-                &self,
-                _order_set: Ordering,
-                _order_get: Ordering,
-                mut f: impl FnMut(bool) -> Option<bool>,
-            ) -> Result<bool, bool> {
-                let prev = self.0.get();
-                if let Some(next) = f(prev) {
-                    self.0.set(next);
-                    Ok(prev)
-                } else {
-                    Err(prev)
-                }
+            pub fn fetch_and(&self, val: bool, _: Ordering) -> bool {
+                let result = self.0.get() & val;
+                self.0.set(val);
+                result
             }
         }
 

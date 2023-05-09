@@ -566,7 +566,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                 }
                 data.update_dep_kind(|data_dep_kind| cmp::max(data_dep_kind, dep_kind));
                 if let Some(private_dep) = private_dep {
-                    data.update_private_dep(|p_d| p_d && private_dep);
+                    data.update_and_private_dep(private_dep);
                 }
                 Ok(cnum)
             }

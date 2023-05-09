@@ -1661,11 +1661,8 @@ impl CrateMetadata {
         self.dep_kind.with_lock(|dep_kind| *dep_kind = f(*dep_kind))
     }
 
-    /// `f` must not perform any I/O or take any locks. It may be called more than once.
-    pub(crate) fn update_private_dep(&self, mut f: impl FnMut(bool) -> bool) {
-        self.private_dep
-            .fetch_update(Ordering::Release, Ordering::Acquire, |private_dep| Some(f(private_dep)))
-            .expect("fetch_update only returns Err if `f` returns None`, which it doesn't");
+    pub(crate) fn update_and_private_dep(&self, private_dep: bool) {
+        self.private_dep.fetch_and(private_dep, Ordering::SeqCst);
     }
 
     pub(crate) fn required_panic_strategy(&self) -> Option<PanicStrategy> {
