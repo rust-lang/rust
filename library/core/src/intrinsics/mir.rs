@@ -263,6 +263,7 @@ pub struct BasicBlock;
 macro_rules! define {
     ($name:literal, $( #[ $meta:meta ] )* fn $($sig:tt)*) => {
         #[rustc_diagnostic_item = $name]
+        #[inline]
         $( #[ $meta ] )*
         pub fn $($sig)* { panic!() }
     }

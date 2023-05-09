@@ -2267,6 +2267,7 @@ fmt_refs! { Debug, Display, Octal, Binary, LowerHex, UpperHex, LowerExp, UpperEx
 
 #[unstable(feature = "never_type", issue = "35121")]
 impl Debug for ! {
+    #[inline]
     fn fmt(&self, _: &mut Formatter<'_>) -> Result {
         *self
     }
@@ -2274,6 +2275,7 @@ impl Debug for ! {
 
 #[unstable(feature = "never_type", issue = "35121")]
 impl Display for ! {
+    #[inline]
     fn fmt(&self, _: &mut Formatter<'_>) -> Result {
         *self
     }
