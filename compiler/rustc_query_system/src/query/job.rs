@@ -612,7 +612,7 @@ pub(crate) fn report_cycle<'a, D: DepKind>(
     cycle_diag.into_diagnostic(&sess.parse_sess.span_diagnostic)
 }
 
-pub fn print_query_stack<Qcx: QueryContext>(
+pub fn print_query_stack<Qcx: QueryContext + rustc_data_structures::sync::Send>(
     qcx: Qcx,
     mut current_query: Option<QueryJobId>,
     handler: &Handler,
@@ -622,7 +622,35 @@ pub fn print_query_stack<Qcx: QueryContext>(
     // a panic hook, which means that the global `Handler` may be in a weird
     // state if it was responsible for triggering the panic.
     let mut i = 0;
+
+    #[cfg(not(parallel_compiler))]
     let query_map = qcx.try_collect_active_jobs();
+
+    // `try_collect_active_jobs` may deadlock when reporting ICE.
+    // So we add a timeout detector to escape the deadlock in time.
+    #[cfg(parallel_compiler)]
+    let query_map = {
+        use std::sync::mpsc::channel;
+        use std::time::Duration;
+
+        let timeout = Duration::from_secs(5); // Set the timeout to 5 seconds
+
+        let (tx, rx) = channel();
+        let (query_map, _) = rayon_core::join(
+            move || {
+                // Panic here since the second work may stuck into deadlocks
+                match rx.recv_timeout(timeout) {
+                    Ok(result) => result,
+                    Err(_) => panic!("print query stack failed: time out"),
+                }
+            },
+            move || {
+                let query_map = qcx.try_collect_active_jobs();
+                tx.send(query_map).unwrap();
+            },
+        );
+        query_map
+    };
 
     while let Some(query) = current_query {
         if Some(i) == num_frames {
