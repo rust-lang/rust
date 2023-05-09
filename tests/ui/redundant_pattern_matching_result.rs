@@ -134,17 +134,22 @@ fn issue10726() {
     };
 
     match Ok::<i32, i32>(42) {
-        Ok(_) => false,
-        _ => true,
-    };
-
-    match Err::<i32, i32>(42) {
-        Ok(_) => false,
-        _ => true,
+        Err(_) => true,
+        _ => false,
     };
 
     match Err::<i32, i32>(42) {
         Ok(_) => true,
+        _ => false,
+    };
+
+    match Err::<i32, i32>(42) {
+        Err(_) => true,
+        _ => false,
+    };
+
+    match Ok::<i32, i32>(42) {
+        Ok(21) => true,
         _ => false,
     };
 }

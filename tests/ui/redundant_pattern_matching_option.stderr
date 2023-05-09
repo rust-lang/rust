@@ -161,64 +161,28 @@ error: redundant pattern matching, consider using `is_none()`
   --> $DIR/redundant_pattern_matching_option.rs:114:5
    |
 LL | /     match Some(42) {
-LL | |         Some(_) => false,
-LL | |         _ => true,
+LL | |         None => true,
+LL | |         _ => false,
 LL | |     };
    | |_____^ help: try this: `Some(42).is_none()`
 
-error: redundant pattern matching, consider using `is_none()`
+error: redundant pattern matching, consider using `is_some()`
   --> $DIR/redundant_pattern_matching_option.rs:119:5
    |
-LL | /     match Some(42) {
-LL | |         None => true,
+LL | /     match None::<()> {
+LL | |         Some(_) => true,
 LL | |         _ => false,
-LL | |     };
-   | |_____^ help: try this: `Some(42).is_none()`
-
-error: redundant pattern matching, consider using `is_some()`
-  --> $DIR/redundant_pattern_matching_option.rs:124:5
-   |
-LL | /     match Some(42) {
-LL | |         None => false,
-LL | |         _ => true,
-LL | |     };
-   | |_____^ help: try this: `Some(42).is_some()`
-
-error: redundant pattern matching, consider using `is_none()`
-  --> $DIR/redundant_pattern_matching_option.rs:129:5
-   |
-LL | /     match None::<()> {
-LL | |         Some(_) => false,
-LL | |         _ => true,
-LL | |     };
-   | |_____^ help: try this: `None::<()>.is_none()`
-
-error: redundant pattern matching, consider using `is_none()`
-  --> $DIR/redundant_pattern_matching_option.rs:134:5
-   |
-LL | /     match None::<()> {
-LL | |         Some(_) => false,
-LL | |         _ => true,
-LL | |     };
-   | |_____^ help: try this: `None::<()>.is_none()`
-
-error: redundant pattern matching, consider using `is_none()`
-  --> $DIR/redundant_pattern_matching_option.rs:139:5
-   |
-LL | /     match None::<()> {
-LL | |         None => true,
-LL | |         _ => false,
-LL | |     };
-   | |_____^ help: try this: `None::<()>.is_none()`
-
-error: redundant pattern matching, consider using `is_some()`
-  --> $DIR/redundant_pattern_matching_option.rs:144:5
-   |
-LL | /     match None::<()> {
-LL | |         None => false,
-LL | |         _ => true,
 LL | |     };
    | |_____^ help: try this: `None::<()>.is_some()`
 
-error: aborting due to 30 previous errors
+error: redundant pattern matching, consider using `is_none()`
+  --> $DIR/redundant_pattern_matching_option.rs:124:5
+   |
+LL | /     match None::<()> {
+LL | |         None => true,
+LL | |         _ => false,
+LL | |     };
+   | |_____^ help: try this: `None::<()>.is_none()`
+
+error: aborting due to 26 previous errors
 

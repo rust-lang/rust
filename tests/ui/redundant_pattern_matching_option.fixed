@@ -95,15 +95,12 @@ fn issue10726() {
 
     Some(42).is_none();
 
-    Some(42).is_none();
-
-    Some(42).is_some();
-
-    None::<()>.is_none();
-
-    None::<()>.is_none();
-
-    None::<()>.is_none();
-
     None::<()>.is_some();
+
+    None::<()>.is_none();
+
+    match Some(42) {
+        Some(21) => true,
+        _ => false,
+    };
 }

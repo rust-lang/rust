@@ -163,28 +163,28 @@ error: redundant pattern matching, consider using `is_err()`
   --> $DIR/redundant_pattern_matching_result.rs:136:5
    |
 LL | /     match Ok::<i32, i32>(42) {
-LL | |         Ok(_) => false,
-LL | |         _ => true,
+LL | |         Err(_) => true,
+LL | |         _ => false,
 LL | |     };
    | |_____^ help: try this: `Ok::<i32, i32>(42).is_err()`
 
-error: redundant pattern matching, consider using `is_err()`
-  --> $DIR/redundant_pattern_matching_result.rs:141:5
-   |
-LL | /     match Err::<i32, i32>(42) {
-LL | |         Ok(_) => false,
-LL | |         _ => true,
-LL | |     };
-   | |_____^ help: try this: `Err::<i32, i32>(42).is_err()`
-
 error: redundant pattern matching, consider using `is_ok()`
-  --> $DIR/redundant_pattern_matching_result.rs:146:5
+  --> $DIR/redundant_pattern_matching_result.rs:141:5
    |
 LL | /     match Err::<i32, i32>(42) {
 LL | |         Ok(_) => true,
 LL | |         _ => false,
 LL | |     };
    | |_____^ help: try this: `Err::<i32, i32>(42).is_ok()`
+
+error: redundant pattern matching, consider using `is_err()`
+  --> $DIR/redundant_pattern_matching_result.rs:146:5
+   |
+LL | /     match Err::<i32, i32>(42) {
+LL | |         Err(_) => true,
+LL | |         _ => false,
+LL | |     };
+   | |_____^ help: try this: `Err::<i32, i32>(42).is_err()`
 
 error: aborting due to 26 previous errors
 

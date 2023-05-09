@@ -188,9 +188,8 @@ fn find_sugg_for_if_let<'tcx>(
 pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op: &Expr<'_>, arms: &[Arm<'_>]) {
     if arms.len() == 2 {
         let node_pair = (&arms[0].pat.kind, &arms[1].pat.kind);
-        let found_good_method = found_good_method(cx, arms, node_pair);
 
-        if let Some(good_method) = found_good_method {
+        if let Some(good_method) = found_good_method(cx, arms, node_pair) {
             let span = expr.span.to(op.span);
             let result_expr = match &op.kind {
                 ExprKind::AddrOf(_, _, borrowed) => borrowed,
@@ -309,6 +308,9 @@ fn get_good_method<'a>(cx: &LateContext<'_>, arms: &[Arm<'_>], path_left: &QPath
         return match name.as_str() {
             "Ok" => {
                 find_good_method_for_matches_macro(cx, arms, path_left, Item::Lang(ResultOk), "is_ok()", "is_err()")
+            },
+            "Err" => {
+                find_good_method_for_matches_macro(cx, arms, path_left, Item::Lang(ResultErr), "is_err()", "is_ok()")
             },
             "Some" => find_good_method_for_matches_macro(
                 cx,

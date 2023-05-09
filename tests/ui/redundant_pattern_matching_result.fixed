@@ -114,7 +114,12 @@ fn issue10726() {
 
     Ok::<i32, i32>(42).is_err();
 
+    Err::<i32, i32>(42).is_ok();
+
     Err::<i32, i32>(42).is_err();
 
-    Err::<i32, i32>(42).is_ok();
+    match Ok::<i32, i32>(42) {
+        Ok(21) => true,
+        _ => false,
+    };
 }

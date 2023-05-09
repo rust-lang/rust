@@ -112,28 +112,13 @@ fn issue10726() {
     };
 
     match Some(42) {
-        Some(_) => false,
-        _ => true,
-    };
-
-    match Some(42) {
         None => true,
         _ => false,
     };
 
-    match Some(42) {
-        None => false,
-        _ => true,
-    };
-
     match None::<()> {
-        Some(_) => false,
-        _ => true,
-    };
-
-    match None::<()> {
-        Some(_) => false,
-        _ => true,
+        Some(_) => true,
+        _ => false,
     };
 
     match None::<()> {
@@ -141,8 +126,8 @@ fn issue10726() {
         _ => false,
     };
 
-    match None::<()> {
-        None => false,
-        _ => true,
+    match Some(42) {
+        Some(21) => true,
+        _ => false,
     };
 }
