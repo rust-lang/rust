@@ -18,7 +18,7 @@ LL |     &mut x.y
 help: consider changing this to be a mutable reference
    |
 LL | fn deref_extend_mut_field1(x: &mut Own<Point>) -> &mut isize {
-   |                               ~~~~~~~~~~~~~~~
+   |                                +++
 
 error[E0499]: cannot borrow `*x` as mutable more than once at a time
   --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:78:19
@@ -50,7 +50,7 @@ LL |     x.y = 3;
 help: consider changing this to be a mutable reference
    |
 LL | fn assign_field2<'a>(x: &'a mut Own<Point>) {
-   |                         ~~~~~~~~~~~~~~~~~~
+   |                             +++
 
 error[E0499]: cannot borrow `*x` as mutable more than once at a time
   --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:101:5
@@ -82,7 +82,7 @@ LL |     x.y_mut()
 help: consider changing this to be a mutable reference
    |
 LL | fn deref_extend_mut_method1(x: &mut Own<Point>) -> &mut isize {
-   |                                ~~~~~~~~~~~~~~~
+   |                                 +++
 
 error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
   --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:129:6
@@ -104,7 +104,7 @@ LL |     *x.y_mut() = 3;
 help: consider changing this to be a mutable reference
    |
 LL | fn assign_method2<'a>(x: &'a mut Own<Point>) {
-   |                          ~~~~~~~~~~~~~~~~~~
+   |                              +++
 
 error: aborting due to 10 previous errors
 
