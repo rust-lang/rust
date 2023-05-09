@@ -142,7 +142,9 @@ fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> R
     }
     ui_test::run_tests_generic(
         config,
+        // The files we're actually interested in (all `.rs` files).
         |path| path.extension().is_some_and(|ext| ext == "rs"),
+        // This could be used to overwrite the `Config` on a per-test basis.
         |_, _| None,
         TextAndGha,
     )
