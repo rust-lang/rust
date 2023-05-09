@@ -907,6 +907,18 @@ pub(crate) struct SuggRemoveComma {
 }
 
 #[derive(Subdiagnostic)]
+#[suggestion(
+    parse_sugg_add_let_for_stmt,
+    style = "verbose",
+    applicability = "maybe-incorrect",
+    code = "let "
+)]
+pub(crate) struct SuggAddMissingLetStmt {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Subdiagnostic)]
 pub(crate) enum ExpectedIdentifierFound {
     #[label(parse_expected_identifier_found_reserved_identifier)]
     ReservedIdentifier(#[primary_span] Span),
