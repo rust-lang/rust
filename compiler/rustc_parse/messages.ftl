@@ -339,6 +339,7 @@ parse_expected_identifier = expected identifier
 parse_sugg_escape_identifier = escape `{$ident_name}` to use it as an identifier
 
 parse_sugg_remove_comma = remove this comma
+parse_sugg_add_let_for_stmt = you might have meant to introduce a new binding
 
 parse_expected_semi_found_reserved_identifier_str = expected `;`, found reserved identifier `{$token}`
 parse_expected_semi_found_keyword_str = expected `;`, found keyword `{$token}`
