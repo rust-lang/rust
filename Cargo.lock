@@ -1444,6 +1444,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "generate-windows-sys"
+version = "0.1.0"
+dependencies = [
+ "windows-bindgen",
+]
+
+[[package]]
 name = "generic-array"
 version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5510,6 +5517,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "windows-bindgen"
+version = "0.49.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b6935fb09b84ee57929ae92518b475f5dfdfbeb87c5334756acc28ee8e202b60"
+dependencies = [
+ "windows-metadata",
+ "windows-tokens",
+]
+
+[[package]]
+name = "windows-metadata"
+version = "0.49.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2f5bca94a32bf1e6a376522b6601275a3b611ee885ec0f1b6a05f17e8cfd3385"
+
+[[package]]
 name = "windows-sys"
 version = "0.42.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5571,6 +5594,12 @@ dependencies = [
  "windows_x86_64_gnullvm 0.48.0",
  "windows_x86_64_msvc 0.48.0",
 ]
+
+[[package]]
+name = "windows-tokens"
+version = "0.48.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b34c9a3b28cb41db7385546f7f9a8179348dffc89923dde66857b1ba5312f6b4"
 
 [[package]]
 name = "windows_aarch64_gnullvm"

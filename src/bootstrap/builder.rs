@@ -838,6 +838,7 @@ impl<'a> Builder<'a> {
                 run::Miri,
                 run::CollectLicenseMetadata,
                 run::GenerateCopyright,
+                run::GenerateWindowsSys,
             ),
             Kind::Setup => describe!(setup::Profile, setup::Hook, setup::Link, setup::Vscode),
             Kind::Clean => describe!(clean::CleanAll, clean::Rustc, clean::Std),
