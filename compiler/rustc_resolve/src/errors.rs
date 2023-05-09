@@ -326,6 +326,18 @@ pub(crate) struct ParamInTyOfConstParam {
     #[label]
     pub(crate) span: Span,
     pub(crate) name: Symbol,
+    #[subdiagnostic]
+    pub(crate) param_kind: Option<ParamKindInTyOfConstParam>,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum ParamKindInTyOfConstParam {
+    #[note(resolve_type_param_in_ty_of_const_param)]
+    Type,
+    #[note(resolve_const_param_in_ty_of_const_param)]
+    Const,
+    #[note(resolve_lifetime_param_in_ty_of_const_param)]
+    Lifetime,
 }
 
 #[derive(Diagnostic)]
@@ -344,7 +356,7 @@ pub(crate) struct ParamInNonTrivialAnonConst {
     pub(crate) span: Span,
     pub(crate) name: Symbol,
     #[subdiagnostic]
-    pub(crate) sub_is_type: ParamInNonTrivialAnonConstIsType,
+    pub(crate) param_kind: ParamKindInNonTrivialAnonConst,
     #[subdiagnostic]
     pub(crate) help: Option<ParamInNonTrivialAnonConstHelp>,
 }
@@ -354,11 +366,13 @@ pub(crate) struct ParamInNonTrivialAnonConst {
 pub(crate) struct ParamInNonTrivialAnonConstHelp;
 
 #[derive(Subdiagnostic)]
-pub(crate) enum ParamInNonTrivialAnonConstIsType {
-    #[note(resolve_param_in_non_trivial_anon_const_sub_type)]
-    AType,
-    #[help(resolve_param_in_non_trivial_anon_const_sub_non_type)]
-    NotAType { name: Symbol },
+pub(crate) enum ParamKindInNonTrivialAnonConst {
+    #[note(resolve_type_param_in_non_trivial_anon_const)]
+    Type,
+    #[help(resolve_const_param_in_non_trivial_anon_const)]
+    Const { name: Symbol },
+    #[note(resolve_lifetime_param_in_non_trivial_anon_const)]
+    Lifetime,
 }
 
 #[derive(Diagnostic)]
@@ -538,4 +552,25 @@ pub(crate) struct MacroUseExternCrateSelf {
 pub(crate) struct CfgAccessibleUnsure {
     #[primary_span]
     pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_param_in_enum_discriminant)]
+pub(crate) struct ParamInEnumDiscriminant {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+    pub(crate) name: Symbol,
+    #[subdiagnostic]
+    pub(crate) param_kind: ParamKindInEnumDiscriminant,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum ParamKindInEnumDiscriminant {
+    #[note(resolve_type_param_in_enum_discriminant)]
+    Type,
+    #[note(resolve_const_param_in_enum_discriminant)]
+    Const,
+    #[note(resolve_lifetime_param_in_enum_discriminant)]
+    Lifetime,
 }
