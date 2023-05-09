@@ -275,13 +275,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
     ) -> bool {
         let expr = expr.peel_blocks();
-        if let Some((sp, msg, suggestion, applicability, verbose, annotation)) =
-            self.check_ref(expr, found, expected)
+        if let Some((suggestion, msg, applicability, verbose, annotation)) =
+            self.suggest_deref_or_ref(expr, found, expected)
         {
             if verbose {
-                err.span_suggestion_verbose(sp, msg, suggestion, applicability);
+                err.multipart_suggestion_verbose(msg, suggestion, applicability);
             } else {
-                err.span_suggestion(sp, msg, suggestion, applicability);
+                err.multipart_suggestion(msg, suggestion, applicability);
             }
             if annotation {
                 let suggest_annotation = match expr.peel_drop_temps().kind {
@@ -343,7 +343,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.span_label(sp, format!("{descr} `{name}` defined here"));
             }
             return true;
-        } else if self.check_for_cast(err, expr, found, expected, expected_ty_expr) {
+        } else if self.suggest_cast(err, expr, found, expected, expected_ty_expr) {
             return true;
         } else {
             let methods = self.get_conversion_methods(expr.span, expected, found, expr.hir_id);

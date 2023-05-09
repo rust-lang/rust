@@ -16,7 +16,7 @@ LL | fn foo(a: &A, d: D, e: &E, g: G) {}
 help: consider borrowing here
    |
 LL |     foo(&&A, B, C, D, &E, F, G);
-   |                       ~~
+   |                       +
 help: remove the extra arguments
    |
 LL -     foo(&&A, B, C, D, E, F, G);

@@ -42,13 +42,14 @@ error[E0308]: mismatched types
 LL | fn index<'a, K, V>(map: &'a HashMap<K, V>, k: K) -> &'a V {
    |              - this type parameter
 LL |     map[k]
-   |         ^
-   |         |
-   |         expected `&K`, found type parameter `K`
-   |         help: consider borrowing here: `&k`
+   |         ^ expected `&K`, found type parameter `K`
    |
    = note:   expected reference `&K`
            found type parameter `K`
+help: consider borrowing here
+   |
+LL |     map[&k]
+   |         +
 
 error[E0308]: mismatched types
   --> $DIR/bad-index-due-to-nested.rs:20:5
@@ -56,13 +57,14 @@ error[E0308]: mismatched types
 LL | fn index<'a, K, V>(map: &'a HashMap<K, V>, k: K) -> &'a V {
    |                 - this type parameter               ----- expected `&'a V` because of return type
 LL |     map[k]
-   |     ^^^^^^
-   |     |
-   |     expected `&V`, found type parameter `V`
-   |     help: consider borrowing here: `&map[k]`
+   |     ^^^^^^ expected `&V`, found type parameter `V`
    |
    = note:   expected reference `&'a V`
            found type parameter `V`
+help: consider borrowing here
+   |
+LL |     &map[k]
+   |     +
 
 error: aborting due to 4 previous errors
 
