@@ -818,15 +818,15 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn is_user_visible_dep(self, key: CrateNum) -> bool {
         // | Private | Direct | Visible |                    |
         // |---------|--------|---------|--------------------|
-        // | Yes     | Yes    | Yes     | !(true && !true)   |
-        // | No      | Yes    | Yes     | !(false && !true)  |
-        // | Yes     | No     | No      | !(true && !false)  |
-        // | No      | No     | Yes     | !(false && !false) |
-        !(self.is_private_dep(key)
+        // | Yes     | Yes    | Yes     | !true || true   |
+        // | No      | Yes    | Yes     | !false || true  |
+        // | Yes     | No     | No      | !true || false  |
+        // | No      | No     | Yes     | !false || false |
+        !self.is_private_dep(key)
             // If `extern_crate` is `None`, then the crate was injected (e.g., by the allocator).
             // Treat that kind of crate as "indirect", since it's an implementation detail of
             // the language.
-            && !self.extern_crate(key.as_def_id()).map_or(false, |e| e.is_direct()))
+            || self.extern_crate(key.as_def_id()).map_or(false, |e| e.is_direct())
     }
 }
 
