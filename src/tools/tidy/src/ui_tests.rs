@@ -4,13 +4,38 @@
 
 use ignore::Walk;
 use std::collections::HashMap;
+use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 
 const ENTRY_LIMIT: usize = 900;
 // FIXME: The following limits should be reduced eventually.
 const ISSUES_ENTRY_LIMIT: usize = 1920;
-const ROOT_ENTRY_LIMIT: usize = 895;
+const ROOT_ENTRY_LIMIT: usize = 896;
+
+const EXPECTED_TEST_FILE_EXTENSIONS: &[&str] = &[
+    "rs",     // test source files
+    "stderr", // expected stderr file, corresponds to a rs file
+    "stdout", // expected stdout file, corresponds to a rs file
+    "fixed",  // expected source file after applying fixes
+    "md",     // test directory descriptions
+    "ftl",    // translation tests
+];
+
+const EXTENSION_EXCEPTION_PATHS: &[&str] = &[
+    "tests/ui/asm/named-asm-labels.s", // loading an external asm file to test named labels lint
+    "tests/ui/check-cfg/my-awesome-platform.json", // testing custom targets with cfgs
+    "tests/ui/commandline-argfile-badutf8.args", // passing args via a file
+    "tests/ui/commandline-argfile.args", // passing args via a file
+    "tests/ui/crate-loading/auxiliary/libfoo.rlib", // testing loading a manually created rlib
+    "tests/ui/include-macros/data.bin", // testing including data with the include macros
+    "tests/ui/include-macros/file.txt", // testing including data with the include macros
+    "tests/ui/macros/macro-expanded-include/file.txt", // testing including data with the include macros
+    "tests/ui/macros/not-utf8.bin", // testing including data with the include macros
+    "tests/ui/macros/syntax-extension-source-utils-files/includeme.fragment", // more include
+    "tests/ui/unused-crate-deps/test.mk", // why would you use make
+    "tests/ui/proc-macro/auxiliary/included-file.txt", // more include
+];
 
 fn check_entries(tests_path: &Path, bad: &mut bool) {
     let mut directories: HashMap<PathBuf, usize> = HashMap::new();
@@ -66,7 +91,14 @@ pub fn check(path: &Path, bad: &mut bool) {
     let paths = [ui.as_path(), ui_fulldeps.as_path()];
     crate::walk::walk_no_read(&paths, |_, _| false, &mut |entry| {
         let file_path = entry.path();
-        if let Some(ext) = file_path.extension() {
+        if let Some(ext) = file_path.extension().and_then(OsStr::to_str) {
+            // files that are neither an expected extension or an exception should not exist
+            // they're probably typos or not meant to exist
+            if !(EXPECTED_TEST_FILE_EXTENSIONS.contains(&ext)
+                || EXTENSION_EXCEPTION_PATHS.iter().any(|path| file_path.ends_with(path)))
+            {
+                tidy_error!(bad, "file {} has unexpected extension {}", file_path.display(), ext);
+            }
             if ext == "stderr" || ext == "stdout" {
                 // Test output filenames have one of the formats:
                 // ```
