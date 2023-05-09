@@ -3,6 +3,9 @@ name = "compiletest"
 version = "0.0.0"
 edition = "2021"
 
+[lib]
+doctest = false
+
 [dependencies]
 colored = "2"
 diff = "0.1.10"
