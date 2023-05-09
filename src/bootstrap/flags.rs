@@ -3,9 +3,9 @@
 //! This module implements the command-line parsing of the build system which
 //! has various flags to configure how it's run.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use clap::{Parser, ValueEnum};
+use clap::{CommandFactory, Parser, ValueEnum};
 
 use crate::builder::{Builder, Kind};
 use crate::config::{target_selection_list, Config, TargetSelectionList};
@@ -54,15 +54,15 @@ pub struct Flags {
     /// Build directory, overrides `build.build-dir` in `config.toml`
     pub build_dir: Option<PathBuf>,
 
-    #[arg(global(true), long, value_name = "BUILD")]
+    #[arg(global(true), long, value_hint = clap::ValueHint::Other, value_name = "BUILD")]
     /// build target of the stage0 compiler
     pub build: Option<String>,
 
-    #[arg(global(true), long, value_name = "HOST", value_parser = target_selection_list)]
+    #[arg(global(true), long, value_hint = clap::ValueHint::Other, value_name = "HOST", value_parser = target_selection_list)]
     /// host targets to build
     pub host: Option<TargetSelectionList>,
 
-    #[arg(global(true), long, value_name = "TARGET", value_parser = target_selection_list)]
+    #[arg(global(true), long, value_hint = clap::ValueHint::Other, value_name = "TARGET", value_parser = target_selection_list)]
     /// target targets to build
     pub target: Option<TargetSelectionList>,
 
@@ -73,7 +73,7 @@ pub struct Flags {
     /// include default paths in addition to the provided ones
     pub include_default_paths: bool,
 
-    #[arg(global(true), long)]
+    #[arg(global(true), value_hint = clap::ValueHint::Other, long)]
     pub rustc_error_format: Option<String>,
 
     #[arg(global(true), long, value_hint = clap::ValueHint::CommandString, value_name = "CMD")]
@@ -82,16 +82,16 @@ pub struct Flags {
     #[arg(global(true), long)]
     /// dry run; don't build anything
     pub dry_run: bool,
-    #[arg(global(true), long, value_name = "N")]
+    #[arg(global(true), value_hint = clap::ValueHint::Other, long, value_name = "N")]
     /// stage to build (indicates compiler to use/test, e.g., stage 0 uses the
     /// bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)
     pub stage: Option<u32>,
 
-    #[arg(global(true), long, value_name = "N")]
+    #[arg(global(true), value_hint = clap::ValueHint::Other, long, value_name = "N")]
     /// stage(s) to keep without recompiling
     /// (pass multiple times to keep e.g., both stages 0 and 1)
     pub keep_stage: Vec<u32>,
-    #[arg(global(true), long, value_name = "N")]
+    #[arg(global(true), value_hint = clap::ValueHint::Other, long, value_name = "N")]
     /// stage(s) of the standard library to keep without recompiling
     /// (pass multiple times to keep e.g., both stages 0 and 1)
     pub keep_stage_std: Vec<u32>,
@@ -103,6 +103,7 @@ pub struct Flags {
         global(true),
         short,
         long,
+        value_hint = clap::ValueHint::Other,
         default_value_t = std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get),
         value_name = "JOBS"
     )]
@@ -117,7 +118,7 @@ pub struct Flags {
     /// otherwise, use the default configured behaviour
     pub warnings: Warnings,
 
-    #[arg(global(true), long, value_name = "FORMAT")]
+    #[arg(global(true), value_hint = clap::ValueHint::Other, long, value_name = "FORMAT")]
     /// rustc error format
     pub error_format: Option<String>,
     #[arg(global(true), long)]
@@ -133,13 +134,13 @@ pub struct Flags {
     #[arg(global(true), long, value_name = "VALUE")]
     pub llvm_skip_rebuild: Option<bool>,
     /// generate PGO profile with rustc build
-    #[arg(global(true), long, value_name = "PROFILE")]
+    #[arg(global(true), value_hint = clap::ValueHint::FilePath, long, value_name = "PROFILE")]
     pub rust_profile_generate: Option<String>,
     /// use PGO profile for rustc build
-    #[arg(global(true), long, value_name = "PROFILE")]
+    #[arg(global(true), value_hint = clap::ValueHint::FilePath, long, value_name = "PROFILE")]
     pub rust_profile_use: Option<String>,
     /// use PGO profile for LLVM build
-    #[arg(global(true), long, value_name = "PROFILE")]
+    #[arg(global(true), value_hint = clap::ValueHint::FilePath, long, value_name = "PROFILE")]
     pub llvm_profile_use: Option<String>,
     // LLVM doesn't support a custom location for generating profile
     // information.
@@ -152,7 +153,7 @@ pub struct Flags {
     #[arg(global(true), long)]
     pub llvm_bolt_profile_generate: bool,
     /// use BOLT profile for LLVM build
-    #[arg(global(true), long, value_name = "PROFILE")]
+    #[arg(global(true), value_hint = clap::ValueHint::FilePath, long, value_name = "PROFILE")]
     pub llvm_bolt_profile_use: Option<String>,
     #[arg(global(true))]
     /// paths for the subcommand
@@ -523,4 +524,24 @@ impl Subcommand {
             _ => false,
         }
     }
+}
+
+/// Returns the shell completion for a given shell, if the result differs from the current
+/// content of `path`. If `path` does not exist, always returns `Some`.
+pub fn get_completion<G: clap_complete::Generator>(shell: G, path: &Path) -> Option<String> {
+    let mut cmd = Flags::command();
+    let current = if !path.exists() {
+        String::new()
+    } else {
+        std::fs::read_to_string(path).unwrap_or_else(|_| {
+            eprintln!("couldn't read {}", path.display());
+            crate::detail_exit(1)
+        })
+    };
+    let mut buf = Vec::new();
+    clap_complete::generate(shell, &mut cmd, "x.py", &mut buf);
+    if buf == current.as_bytes() {
+        return None;
+    }
+    Some(String::from_utf8(buf).expect("completion script should be UTF-8"))
 }

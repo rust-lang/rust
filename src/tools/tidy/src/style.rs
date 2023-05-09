@@ -296,6 +296,12 @@ pub fn check(path: &Path, bad: &mut bool) {
         if filename.contains("ignore-tidy") {
             return;
         }
+        // Shell completions are automatically generated
+        if let Some(p) = file.parent() {
+            if p.ends_with(Path::new("src/etc/completions")) {
+                return;
+            }
+        }
         // apfloat shouldn't be changed because of license problems
         if is_in(file, "compiler", "rustc_apfloat") {
             return;
