@@ -20,7 +20,7 @@ fn let_wild_gets_moved_expr() {
 fn match_moved_expr_to_wild() {
     let m = M;
     drop(m);
-    match m { _ => { } } // #53114: should eventually be accepted too
+    match m { _ => { } } // #53114: accepted too
 
     let mm = (M, M); // variation on above with `_` in substructure
     match mm { (_x, _) => { } }
@@ -31,7 +31,7 @@ fn match_moved_expr_to_wild() {
 fn if_let_moved_expr_to_wild() {
     let m = M;
     drop(m);
-    if let _ = m { } // #53114: should eventually be accepted too
+    if let _ = m { } // #53114: accepted too
 
     let mm = (M, M); // variation on above with `_` in substructure
     if let (_x, _) = mm { }
