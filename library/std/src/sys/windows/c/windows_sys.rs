@@ -39,6 +39,7 @@ extern "system" {
     pub fn AcquireSRWLockShared(srwlock: *mut RTL_SRWLOCK) -> ();
 }
 #[link(name = "kernel32")]
+#[cfg(target_arch = "x86")]
 extern "system" {
     pub fn AddVectoredExceptionHandler(
         first: u32,
@@ -710,6 +711,7 @@ extern "system" {
         dwflags: u32,
     ) -> SOCKET;
 }
+#[cfg(any(target_arch = "aarch64", target_arch = "x86"))]
 #[link(name = "ws2_32")]
 extern "system" {
     pub fn WSAStartup(wversionrequested: u16, lpwsadata: *mut WSADATA) -> i32;
@@ -3029,11 +3031,14 @@ pub const ERROR_XML_PARSE_ERROR: WIN32_ERROR = 1465u32;
 pub type EXCEPTION_DISPOSITION = i32;
 pub const EXCEPTION_MAXIMUM_PARAMETERS: u32 = 15u32;
 #[repr(C)]
+#[cfg(target_arch = "x86")]
 pub struct EXCEPTION_POINTERS {
     pub ExceptionRecord: *mut EXCEPTION_RECORD,
     pub ContextRecord: *mut CONTEXT,
 }
+#[cfg(target_arch = "x86")]
 impl ::core::marker::Copy for EXCEPTION_POINTERS {}
+#[cfg(target_arch = "x86")]
 impl ::core::clone::Clone for EXCEPTION_POINTERS {
     fn clone(&self) -> Self {
         *self
@@ -3748,6 +3753,7 @@ pub const PROFILE_SERVER: PROCESS_CREATION_FLAGS = 1073741824u32;
 pub const PROFILE_USER: PROCESS_CREATION_FLAGS = 268435456u32;
 pub const PROGRESS_CONTINUE: u32 = 0u32;
 pub type PSTR = *mut u8;
+#[cfg(target_arch = "x86")]
 pub type PVECTORED_EXCEPTION_HANDLER = ::core::option::Option<
     unsafe extern "system" fn(exceptioninfo: *mut EXCEPTION_POINTERS) -> i32,
 >;
