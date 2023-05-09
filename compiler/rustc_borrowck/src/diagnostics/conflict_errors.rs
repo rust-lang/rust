@@ -972,7 +972,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     &msg_borrow,
                     None,
                 );
-                self.suggest_split_at_mut_if_applicable(
+                self.suggest_slice_method_if_applicable(
                     &mut err,
                     place,
                     issued_borrow.borrowed_place,
@@ -1252,7 +1252,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         );
     }
 
-    fn suggest_split_at_mut_if_applicable(
+    fn suggest_slice_method_if_applicable(
         &self,
         err: &mut Diagnostic,
         place: Place<'tcx>,
@@ -1264,7 +1264,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             err.help(
                 "consider using `.split_at_mut(position)` or similar method to obtain \
                      two mutable non-overlapping sub-slices",
-            );
+            )
+            .help("consider using `.swap(index_1, index_2)` to swap elements at the specified indices");
         }
     }
 
