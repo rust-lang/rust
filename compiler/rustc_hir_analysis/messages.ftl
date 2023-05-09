@@ -279,6 +279,9 @@ hir_analysis_specialization_trait = implementing `rustc_specialization_trait` tr
 hir_analysis_closure_implicit_hrtb = implicit types in closure signatures are forbidden when `for<...>` is present
     .label = `for<...>` is here
 
+hir_analysis_empty_specialization = specialization impl does not specialize any associated items
+    .note = impl is a specialization of this impl
+
 hir_analysis_const_specialize = cannot specialize on const impl with non-const impl
 
 hir_analysis_static_specialize = cannot specialize on `'static` lifetime

@@ -2728,8 +2728,6 @@ pub struct UserTypeProjection {
     pub projs: Vec<ProjectionKind>,
 }
 
-impl Copy for ProjectionKind {}
-
 impl UserTypeProjection {
     pub(crate) fn index(mut self) -> Self {
         self.projs.push(ProjectionElem::Index(()));

@@ -2,10 +2,8 @@ error[E0308]: mismatched types
   --> $DIR/method-self-arg-1.rs:11:14
    |
 LL |     Foo::bar(x);
-   |     -------- ^
-   |     |        |
-   |     |        expected `&Foo`, found `Foo`
-   |     |        help: consider borrowing here: `&x`
+   |     -------- ^ expected `&Foo`, found `Foo`
+   |     |
    |     arguments to this function are incorrect
    |
 note: method defined here
@@ -13,6 +11,10 @@ note: method defined here
    |
 LL |     fn bar(&self) {}
    |        ^^^ -----
+help: consider borrowing here
+   |
+LL |     Foo::bar(&x);
+   |              +
 
 error[E0308]: mismatched types
   --> $DIR/method-self-arg-1.rs:13:14

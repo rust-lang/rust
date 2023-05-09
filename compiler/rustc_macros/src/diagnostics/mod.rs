@@ -140,7 +140,7 @@ pub fn lint_diagnostic_derive(s: Structure<'_>) -> TokenStream {
 /// ```fluent
 /// parser_expected_identifier = expected identifier
 ///
-/// parser_expected_identifier-found = expected identifier, found {$found}
+/// parser_expected_identifier_found = expected identifier, found {$found}
 ///
 /// parser_raw_identifier = escape `{$ident}` to use it as an identifier
 /// ```
