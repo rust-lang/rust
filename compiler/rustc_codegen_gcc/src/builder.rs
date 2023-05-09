@@ -1378,6 +1378,18 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         call
     }
 
+    fn tail_call(
+        &mut self,
+        _typ: Type<'gcc>,
+        _fn_attrs: Option<&CodegenFnAttrs>,
+        _fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        _func: RValue<'gcc>,
+        _: &[RValue<'gcc>],
+        _: Option<&Funclet>
+    ) { 
+        bug!("tail calls are not yet supported in `rustc_codegen_gcc` backend")
+    }
+
     fn zext(&mut self, value: RValue<'gcc>, dest_typ: Type<'gcc>) -> RValue<'gcc> {
         // FIXME(antoyo): this does not zero-extend.
         if value.get_type().is_bool() && dest_typ.is_i8(&self.cx) {
