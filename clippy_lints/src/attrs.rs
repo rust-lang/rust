@@ -338,6 +338,30 @@ declare_clippy_lint! {
     "ensures that all `allow` and `expect` attributes have a reason"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `any` and `all` combinators in `cfg` with only one condition.
+    ///
+    /// ### Why is this bad?
+    /// If there is only one condition, no need to wrap it into `any` or `all` combinators.
+    ///
+    /// ### Example
+    /// ```rust
+    /// #[cfg(any(unix))]
+    /// pub struct Bar;
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// #[cfg(unix)]
+    /// pub struct Bar;
+    /// ```
+    #[clippy::version = "1.71.0"]
+    pub NON_MINIMAL_CFG,
+    style,
+    "ensure that all `cfg(any())` and `cfg(all())` have more than one condition"
+}
+
 declare_lint_pass!(Attributes => [
     ALLOW_ATTRIBUTES_WITHOUT_REASON,
     INLINE_ALWAYS,
@@ -651,6 +675,7 @@ impl_lint_pass!(EarlyAttributes => [
     MISMATCHED_TARGET_OS,
     EMPTY_LINE_AFTER_OUTER_ATTR,
     EMPTY_LINE_AFTER_DOC_COMMENTS,
+    NON_MINIMAL_CFG,
 ]);
 
 impl EarlyLintPass for EarlyAttributes {
@@ -661,6 +686,7 @@ impl EarlyLintPass for EarlyAttributes {
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &Attribute) {
         check_deprecated_cfg_attr(cx, attr, &self.msrv);
         check_mismatched_target_os(cx, attr);
+        check_minimal_cfg_condition(cx, attr);
     }
 
     extract_msrv_attr!(EarlyContext);
@@ -747,6 +773,40 @@ fn check_deprecated_cfg_attr(cx: &EarlyContext<'_>, attr: &Attribute, msrv: &Msr
                 Applicability::MachineApplicable,
             );
         }
+    }
+}
+
+fn check_nested_cfg(cx: &EarlyContext<'_>, items: &[NestedMetaItem]) {
+    for item in items.iter() {
+        if let NestedMetaItem::MetaItem(meta) = item {
+            if !meta.has_name(sym::any) && !meta.has_name(sym::all) {
+                continue;
+            }
+            if let MetaItemKind::List(list) = &meta.kind {
+                check_nested_cfg(cx, list);
+                if list.len() == 1 {
+                    span_lint_and_then(
+                        cx,
+                        NON_MINIMAL_CFG,
+                        meta.span,
+                        "unneeded sub `cfg` when there is only one condition",
+                        |diag| {
+                            if let Some(snippet) = snippet_opt(cx, list[0].span()) {
+                                diag.span_suggestion(meta.span, "try", snippet, Applicability::MaybeIncorrect);
+                            }
+                        },
+                    );
+                }
+            }
+        }
+    }
+}
+
+fn check_minimal_cfg_condition(cx: &EarlyContext<'_>, attr: &Attribute) {
+    if attr.has_name(sym::cfg) &&
+        let Some(items) = attr.meta_item_list()
+    {
+        check_nested_cfg(cx, &items);
     }
 }
 
