@@ -150,10 +150,6 @@ builtin_macros_format_pos_mismatch = {$n} positional {$n ->
     *[more] arguments
     } in format string, but {$desc}
 
-builtin_macros_offset_of_expected_field = expected field
-
-builtin_macros_offset_of_expected_two_args = expected 2 arguments
-
 builtin_macros_test_case_non_item = `#[test_case]` attribute is only allowed on items
 
 builtin_macros_test_bad_fn = {$kind} functions cannot be used for tests

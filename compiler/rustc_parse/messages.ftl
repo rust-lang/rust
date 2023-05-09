@@ -257,6 +257,10 @@ parse_invalid_literal_suffix_on_tuple_index = suffixes on a tuple index are inva
     .tuple_exception_line_2 = on proc macros, you'll want to use `syn::Index::from` or `proc_macro::Literal::*_unsuffixed` for code that will desugar to tuple field access
     .tuple_exception_line_3 = see issue #60210 <https://github.com/rust-lang/rust/issues/60210> for more information
 
+parse_expected_builtin_ident = expected identifier after `builtin #`
+
+parse_unknown_builtin_construct = unknown `builtin #` construct `{$name}`
+
 parse_non_string_abi_literal = non-string ABI literal
     .suggestion = specify the ABI with a string literal
 
