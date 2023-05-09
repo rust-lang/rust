@@ -1,5 +1,5 @@
 //@compile-flags: -Zmiri-strict-provenance
-//@error-pattern: /retag .* tag does not exist in the borrow stack/
+//@error-in-other-file: /retag .* tag does not exist in the borrow stack/
 
 fn main() {
     unsafe {

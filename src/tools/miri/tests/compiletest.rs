@@ -2,6 +2,8 @@ use colored::*;
 use regex::bytes::Regex;
 use std::path::{Path, PathBuf};
 use std::{env, process::Command};
+use ui_test::status_emitter::StatusEmitter;
+use ui_test::CommandBuilder;
 use ui_test::{color_eyre::Result, Config, Match, Mode, OutputConflictHandling};
 
 fn miri_path() -> PathBuf {
@@ -44,17 +46,9 @@ fn build_so_for_c_ffi_tests() -> PathBuf {
 }
 
 fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> Result<()> {
-    let mut config = Config {
-        target: Some(target.to_owned()),
-        stderr_filters: STDERR.clone(),
-        stdout_filters: STDOUT.clone(),
-        root_dir: PathBuf::from(path),
-        mode,
-        program: miri_path(),
-        quiet: false,
-        edition: Some("2021".into()),
-        ..Config::default()
-    };
+    // Miri is rustc-like, so we create a default builder for rustc and modify it
+    let mut program = CommandBuilder::rustc();
+    program.program = miri_path();
 
     let in_rustc_test_suite = option_env!("RUSTC_STAGE").is_some();
 
@@ -62,22 +56,20 @@ fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> R
     if in_rustc_test_suite {
         // Less aggressive warnings to make the rustc toolstate management less painful.
         // (We often get warnings when e.g. a feature gets stabilized or some lint gets added/improved.)
-        config.args.push("-Astable-features".into());
-        config.args.push("-Aunused".into());
+        program.args.push("-Astable-features".into());
+        program.args.push("-Aunused".into());
     } else {
-        config.args.push("-Dwarnings".into());
-        config.args.push("-Dunused".into());
+        program.args.push("-Dwarnings".into());
+        program.args.push("-Dunused".into());
     }
     if let Ok(extra_flags) = env::var("MIRIFLAGS") {
         for flag in extra_flags.split_whitespace() {
-            config.args.push(flag.into());
+            program.args.push(flag.into());
         }
     }
-    config.args.push("-Zui-testing".into());
-    if let Some(target) = &config.target {
-        config.args.push("--target".into());
-        config.args.push(target.into());
-    }
+    program.args.push("-Zui-testing".into());
+    program.args.push("--target".into());
+    program.args.push(target.into());
 
     // If we're on linux, and we're testing the extern-so functionality,
     // then build the shared object file for testing external C function calls
@@ -86,16 +78,29 @@ fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> R
         let so_file_path = build_so_for_c_ffi_tests();
         let mut flag = std::ffi::OsString::from("-Zmiri-extern-so-file=");
         flag.push(so_file_path.into_os_string());
-        config.args.push(flag);
+        program.args.push(flag);
     }
 
     let skip_ui_checks = env::var_os("MIRI_SKIP_UI_CHECKS").is_some();
 
-    config.output_conflict_handling = match (env::var_os("MIRI_BLESS").is_some(), skip_ui_checks) {
+    let output_conflict_handling = match (env::var_os("MIRI_BLESS").is_some(), skip_ui_checks) {
         (false, false) => OutputConflictHandling::Error,
         (true, false) => OutputConflictHandling::Bless,
         (false, true) => OutputConflictHandling::Ignore,
         (true, true) => panic!("cannot use MIRI_BLESS and MIRI_SKIP_UI_CHECKS at the same time"),
+    };
+
+    let mut config = Config {
+        target: Some(target.to_owned()),
+        stderr_filters: STDERR.clone(),
+        stdout_filters: STDOUT.clone(),
+        root_dir: PathBuf::from(path),
+        mode,
+        program,
+        output_conflict_handling,
+        quiet: false,
+        edition: Some("2021".into()),
+        ..Config::default()
     };
 
     // Handle command-line arguments.
@@ -135,7 +140,14 @@ fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> R
             "run".into(), // There is no `cargo miri build` so we just use `cargo miri run`.
         ];
     }
-    ui_test::run_tests(config)
+    ui_test::run_tests_generic(
+        config,
+        // The files we're actually interested in (all `.rs` files).
+        |path| path.extension().is_some_and(|ext| ext == "rs"),
+        // This could be used to overwrite the `Config` on a per-test basis.
+        |_, _| None,
+        TextAndGha,
+    )
 }
 
 macro_rules! regexes {
@@ -234,4 +246,46 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+/// This is a custom renderer for `ui_test` output that does not emit github actions
+/// `group`s, while still producing regular github actions messages on test failures.
+struct TextAndGha;
+impl StatusEmitter for TextAndGha {
+    fn failed_test<'a>(
+        &'a self,
+        revision: &'a str,
+        path: &'a Path,
+        cmd: &'a Command,
+        stderr: &'a [u8],
+    ) -> Box<dyn std::fmt::Debug + 'a> {
+        Box::new((
+            ui_test::status_emitter::Gha::<false>.failed_test(revision, path, cmd, stderr),
+            ui_test::status_emitter::Text.failed_test(revision, path, cmd, stderr),
+        ))
+    }
+
+    fn run_tests(&self, _config: &Config) -> Box<dyn ui_test::status_emitter::DuringTestRun> {
+        Box::new(TextAndGha)
+    }
+
+    fn finalize(
+        &self,
+        failures: usize,
+        succeeded: usize,
+        ignored: usize,
+        filtered: usize,
+    ) -> Box<dyn ui_test::status_emitter::Summary> {
+        Box::new((
+            ui_test::status_emitter::Gha::<false>.finalize(failures, succeeded, ignored, filtered),
+            ui_test::status_emitter::Text.finalize(failures, succeeded, ignored, filtered),
+        ))
+    }
+}
+
+impl ui_test::status_emitter::DuringTestRun for TextAndGha {
+    fn test_result(&mut self, path: &Path, revision: &str, result: &ui_test::TestResult) {
+        ui_test::status_emitter::Text.test_result(path, revision, result);
+        ui_test::status_emitter::Gha::<false>.test_result(path, revision, result);
+    }
 }

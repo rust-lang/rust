@@ -1,4 +1,4 @@
-//@error-pattern: memory leaked
+//@error-in-other-file: memory leaked
 //@stderr-per-bitwidth
 //@normalize-stderr-test: ".*│.*" -> "$$stripped$$"
 

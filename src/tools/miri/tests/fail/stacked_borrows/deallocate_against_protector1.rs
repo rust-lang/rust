@@ -1,4 +1,4 @@
-//@error-pattern: /deallocating while item \[Unique for .*\] is strongly protected/
+//@error-in-other-file: /deallocating while item \[Unique for .*\] is strongly protected/
 
 fn inner(x: &mut i32, f: fn(&mut i32)) {
     // `f` may mutate, but it may not deallocate!

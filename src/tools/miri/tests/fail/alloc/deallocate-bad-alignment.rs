@@ -1,6 +1,6 @@
 use std::alloc::{alloc, dealloc, Layout};
 
-//@error-pattern: has size 1 and alignment 1, but gave size 1 and alignment 2
+//@error-in-other-file: has size 1 and alignment 1, but gave size 1 and alignment 2
 
 fn main() {
     unsafe {

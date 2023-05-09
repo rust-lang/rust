@@ -1,5 +1,5 @@
 //@compile-flags: -Zmiri-tree-borrows
-//@error-pattern: /deallocation through .* is forbidden/
+//@error-in-other-file: /deallocation through .* is forbidden/
 
 fn inner(x: &mut i32, f: fn(&mut i32)) {
     // `f` may mutate, but it may not deallocate!
