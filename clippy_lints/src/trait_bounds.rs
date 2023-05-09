@@ -37,12 +37,12 @@ declare_clippy_lint! {
     #[clippy::version = "1.38.0"]
     pub TYPE_REPETITION_IN_BOUNDS,
     nursery,
-    "types are repeated unnecessary in trait bounds use `+` instead of using `T: _, T: _`"
+    "types are repeated unnecessarily in trait bounds, use `+` instead of using `T: _, T: _`"
 }
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for cases where generics are being used and multiple
+    /// Checks for cases where generics or trait objects are being used and multiple
     /// syntax specifications for trait bounds are used simultaneously.
     ///
     /// ### Why is this bad?
@@ -163,6 +163,61 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
                                 }
                             }
                         });
+                }
+            }
+        }
+    }
+
+    fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx Ty<'tcx>) {
+        if_chain! {
+            if let TyKind::Ref(.., mut_ty) = &ty.kind;
+            if let TyKind::TraitObject(bounds, ..) = mut_ty.ty.kind;
+            if bounds.len() > 2;
+            then {
+
+                // Build up a hash of every trait we've seen
+                // When we see a trait for the first time, add it to unique_traits
+                // so we can later use it to build a string of all traits exactly once, without duplicates
+
+                let mut seen_def_ids = FxHashSet::default();
+                let mut unique_traits = Vec::new();
+
+                // Iterate the bounds and add them to our seen hash
+                // If we haven't yet seen it, add it to the fixed traits
+                for bound in bounds.iter() {
+                    let Some(def_id) = bound.trait_ref.trait_def_id() else { continue; };
+
+                    let new_trait = seen_def_ids.insert(def_id);
+
+                    if new_trait {
+                        unique_traits.push(bound);
+                    }
+                }
+
+                // If the number of unique traits isn't the same as the number of traits in the bounds,
+                // there must be 1 or more duplicates
+                if bounds.len() != unique_traits.len() {
+                    let mut bounds_span = bounds[0].span;
+
+                    for bound in bounds.iter().skip(1) {
+                        bounds_span = bounds_span.to(bound.span);
+                    }
+
+                    let fixed_trait_snippet = unique_traits
+                        .iter()
+                        .filter_map(|b| snippet_opt(cx, b.span))
+                        .collect::<Vec<_>>()
+                        .join(" + ");
+
+                    span_lint_and_sugg(
+                        cx,
+                        TRAIT_DUPLICATION_IN_BOUNDS,
+                        bounds_span,
+                        "this trait bound is already specified in trait declaration",
+                        "try",
+                        fixed_trait_snippet,
+                        Applicability::MaybeIncorrect,
+                    );
                 }
             }
         }
