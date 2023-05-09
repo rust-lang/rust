@@ -174,8 +174,13 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
             if let TyKind::TraitObject(bounds, ..) = mut_ty.ty.kind;
             if bounds.len() > 2;
             then {
+
+                // Build up a hash of every trait we've seen
+                // When we see a trait for the first time, add it to unique_traits
+                // so we can later use it to build a string of all traits exactly once, without duplicates
+
                 let mut seen_def_ids = FxHashSet::default();
-                let mut fixed_traits = Vec::new();
+                let mut unique_traits = Vec::new();
 
                 // Iterate the bounds and add them to our seen hash
                 // If we haven't yet seen it, add it to the fixed traits
@@ -185,20 +190,20 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
                     let new_trait = seen_def_ids.insert(def_id);
 
                     if new_trait {
-                        fixed_traits.push(bound);
+                        unique_traits.push(bound);
                     }
                 }
 
-                // If the number added to fixed (which are not duplicates) isn't the same as the number found,
+                // If the number of unique traits isn't the same as the number of traits in the bounds,
                 // there must be 1 or more duplicates
-                if bounds.len() != fixed_traits.len() {
+                if bounds.len() != unique_traits.len() {
                     let mut bounds_span = bounds[0].span;
 
                     for bound in bounds.iter().skip(1) {
                         bounds_span = bounds_span.to(bound.span);
                     }
 
-                    let fixed_trait_snippet = fixed_traits
+                    let fixed_trait_snippet = unique_traits
                         .iter()
                         .filter_map(|b| snippet_opt(cx, b.span))
                         .collect::<Vec<_>>()
