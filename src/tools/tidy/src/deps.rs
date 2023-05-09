@@ -6,47 +6,53 @@ use std::path::Path;
 
 /// These are licenses that are allowed for all crates, including the runtime,
 /// rustc, tools, etc.
+#[rustfmt::skip]
 const LICENSES: &[&str] = &[
-    "MIT/Apache-2.0",
-    "MIT / Apache-2.0",
-    "Apache-2.0/MIT",
+    // tidy-alphabetical-start
+    "(MIT OR Apache-2.0) AND Unicode-DFS-2016",            // unicode_ident
+    "0BSD OR MIT OR Apache-2.0",                           // adler license
+    "0BSD",
     "Apache-2.0 / MIT",
-    "MIT OR Apache-2.0",
     "Apache-2.0 OR MIT",
     "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT", // wasi license
-    "MIT",
+    "Apache-2.0/MIT",
     "ISC",
-    "Unlicense/MIT",
+    "MIT / Apache-2.0",
+    "MIT OR Apache-2.0 OR Zlib",                           // tinyvec_macros
+    "MIT OR Apache-2.0",
+    "MIT OR Zlib OR Apache-2.0",                           // miniz_oxide
+    "MIT",
+    "MIT/Apache-2.0",
+    "Unicode-DFS-2016",                                    // tinystr and icu4x
     "Unlicense OR MIT",
-    "0BSD",
-    "0BSD OR MIT OR Apache-2.0",                // adler license
-    "Zlib OR Apache-2.0 OR MIT",                // tinyvec
-    "MIT OR Apache-2.0 OR Zlib",                // tinyvec_macros
-    "MIT OR Zlib OR Apache-2.0",                // miniz_oxide
-    "(MIT OR Apache-2.0) AND Unicode-DFS-2016", // unicode_ident
-    "Unicode-DFS-2016",                         // tinystr and icu4x
+    "Unlicense/MIT",
+    "Zlib OR Apache-2.0 OR MIT",                           // tinyvec
+    // tidy-alphabetical-end
 ];
 
 /// These are exceptions to Rust's permissive licensing policy, and
 /// should be considered bugs. Exceptions are only allowed in Rust
 /// tooling. It is _crucial_ that no exception crates be dependencies
 /// of the Rust runtime (std/test).
+#[rustfmt::skip]
 const EXCEPTIONS: &[(&str, &str)] = &[
+    // tidy-alphabetical-start
     ("ar_archive_writer", "Apache-2.0 WITH LLVM-exception"), // rustc
-    ("mdbook", "MPL-2.0"),                                   // mdbook
+    ("codespan-reporting", "Apache-2.0"),                    // cxx via iana-time-zone-haiku via time, only on haiku
     ("colored", "MPL-2.0"),                                  // rustfmt
+    ("dissimilar", "Apache-2.0"),                            // rustdoc, rustc_lexer (few tests) via expect-test, (dev deps)
+    ("fluent-langneg", "Apache-2.0"),                        // rustc (fluent translations)
+    ("fortanix-sgx-abi", "MPL-2.0"),                         // libstd but only for `sgx` target. FIXME: this dependency violates the documentation comment above.
+    ("instant", "BSD-3-Clause"),                             // rustc_driver/tracing-subscriber/parking_lot
+    ("mdbook", "MPL-2.0"),                                   // mdbook
     ("ryu", "Apache-2.0 OR BSL-1.0"),                        // cargo/... (because of serde)
-    ("codespan-reporting", "Apache-2.0"), // cxx via iana-time-zone-haiku via time, only on haiku
-    ("instant", "BSD-3-Clause"),          // rustc_driver/tracing-subscriber/parking_lot
-    ("snap", "BSD-3-Clause"),             // rustc
-    ("fluent-langneg", "Apache-2.0"),     // rustc (fluent translations)
-    ("self_cell", "Apache-2.0"),          // rustc (fluent translations)
-    // FIXME: this dependency violates the documentation comment above:
-    ("fortanix-sgx-abi", "MPL-2.0"), // libstd but only for `sgx` target
-    ("dissimilar", "Apache-2.0"),    // rustdoc, rustc_lexer (few tests) via expect-test, (dev deps)
+    ("self_cell", "Apache-2.0"),                             // rustc (fluent translations)
+    ("snap", "BSD-3-Clause"),                                // rustc
+    // tidy-alphabetical-end
 ];
 
 const EXCEPTIONS_CARGO: &[(&str, &str)] = &[
+    // tidy-alphabetical-start
     ("bitmaps", "MPL-2.0+"),
     ("bytesize", "Apache-2.0"),
     ("dunce", "CC0-1.0 OR MIT-0"),
@@ -62,9 +68,11 @@ const EXCEPTIONS_CARGO: &[(&str, &str)] = &[
     ("sized-chunks", "MPL-2.0+"),
     ("subtle", "BSD-3-Clause"),
     ("unicode-bom", "Apache-2.0"),
+    // tidy-alphabetical-end
 ];
 
 const EXCEPTIONS_CRANELIFT: &[(&str, &str)] = &[
+    // tidy-alphabetical-start
     ("cranelift-bforest", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-codegen", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-codegen-meta", "Apache-2.0 WITH LLVM-exception"),
@@ -80,6 +88,7 @@ const EXCEPTIONS_CRANELIFT: &[(&str, &str)] = &[
     ("regalloc2", "Apache-2.0 WITH LLVM-exception"),
     ("target-lexicon", "Apache-2.0 WITH LLVM-exception"),
     ("wasmtime-jit-icache-coherence", "Apache-2.0 WITH LLVM-exception"),
+    // tidy-alphabetical-end
 ];
 
 const EXCEPTIONS_BOOTSTRAP: &[(&str, &str)] = &[
@@ -95,6 +104,7 @@ const RUNTIME_CRATES: &[&str] = &["std", "core", "alloc", "test", "panic_abort",
 /// This list is here to provide a speed-bump to adding a new dependency to
 /// rustc. Please check with the compiler team before adding an entry.
 const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
+    // tidy-alphabetical-start
     "addr2line",
     "adler",
     "ahash",
@@ -113,8 +123,8 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "chalk-engine",
     "chalk-ir",
     "chalk-solve",
-    "convert_case", // dependency of derive_more
     "compiler_builtins",
+    "convert_case", // dependency of derive_more
     "cpufeatures",
     "crc32fast",
     "crossbeam-channel",
@@ -187,8 +197,8 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "ppv-lite86",
     "proc-macro-hack",
     "proc-macro2",
-    "pulldown-cmark",
     "psm",
+    "pulldown-cmark",
     "punycode",
     "quote",
     "rand",
@@ -227,6 +237,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "tempfile",
     "termcolor",
     "termize",
+    "thin-vec",
     "thiserror",
     "thiserror-impl",
     "thorin-dwp",
@@ -234,7 +245,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "tinystr",
     "tinyvec",
     "tinyvec_macros",
-    "thin-vec",
     "tracing",
     "tracing-attributes",
     "tracing-core",
@@ -263,37 +273,37 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "valuable",
     "version_check",
     "wasi",
-    "windows",
     "winapi",
     "winapi-i686-pc-windows-gnu",
     "winapi-util",
     "winapi-x86_64-pc-windows-gnu",
+    "windows",
     "windows-targets",
-    "windows_aarch64_msvc",
     "windows_aarch64_gnullvm",
-    "windows_x86_64_gnullvm",
-    "windows_i686_msvc",
+    "windows_aarch64_msvc",
     "windows_i686_gnu",
-    "windows_x86_64_msvc",
+    "windows_i686_msvc",
     "windows_x86_64_gnu",
+    "windows_x86_64_gnullvm",
+    "windows_x86_64_msvc",
     "writeable",
-    // this is a false-positive: it's only used by rustfmt, but because it's enabled through a
-    // feature, tidy thinks it's used by rustc as well.
-    "yansi-term",
+    "yansi-term", // this is a false-positive: it's only used by rustfmt, but because it's enabled through a feature, tidy thinks it's used by rustc as well.
     "yoke",
     "yoke-derive",
     "zerofrom",
     "zerofrom-derive",
     "zerovec",
     "zerovec-derive",
+    // tidy-alphabetical-end
 ];
 
 const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
+    // tidy-alphabetical-start
     "ahash",
     "anyhow",
     "autocfg",
-    "bumpalo",
     "bitflags",
+    "bumpalo",
     "byteorder",
     "cfg-if",
     "cranelift-bforest",
@@ -332,6 +342,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "winapi-i686-pc-windows-gnu",
     "winapi-x86_64-pc-windows-gnu",
     "windows-sys",
+    // tidy-alphabetical-end
 ];
 
 /// Dependency checks.
