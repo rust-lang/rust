@@ -812,7 +812,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn confirm_poly_trait_refs(
         &mut self,
         obligation: &TraitObligation<'tcx>,
-        expected_trait_ref: ty::PolyTraitRef<'tcx>,
+        self_ty_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         let obligation_trait_ref = obligation.predicate.to_poly_trait_ref();
         // Normalize the obligation and expected trait refs together, because why not
@@ -823,7 +823,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation.param_env,
                     obligation.cause.clone(),
                     obligation.recursion_depth + 1,
-                    (obligation_trait_ref, expected_trait_ref),
+                    (obligation_trait_ref, self_ty_trait_ref),
                 )
             });
 
