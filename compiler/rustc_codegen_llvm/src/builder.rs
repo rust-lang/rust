@@ -14,6 +14,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::MemFlags;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
+use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers, TyAndLayout,
@@ -1215,6 +1216,29 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             fn_abi.apply_attrs_callsite(self, call);
         }
         call
+    }
+
+    fn tail_call(
+        &mut self,
+        llty: Self::Type,
+        fn_attrs: Option<&CodegenFnAttrs>,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        llfn: Self::Value,
+        args: &[Self::Value],
+        funclet: Option<&Self::Funclet>,
+    ) {
+        let call = self.call(llty, fn_attrs, Some(fn_abi), llfn, args, funclet);
+
+        // Depending on the pass mode we neet to generate different return instructions for llvm
+        match &fn_abi.ret.mode {
+            abi::call::PassMode::Ignore | abi::call::PassMode::Indirect { .. } => self.ret_void(),
+            abi::call::PassMode::Direct(_) | abi::call::PassMode::Pair { .. } => self.ret(call),
+            mode @ abi::call::PassMode::Cast(..) => {
+                bug!("Encountered `PassMode::{mode:?}` during codegen")
+            }
+        }
+
+        unsafe { llvm::LLVMRustSetTailCallKind(call, llvm::TailCallKind::MustTail) };
     }
 
     fn zext(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {

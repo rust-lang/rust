@@ -239,6 +239,31 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         }
     }
 
+    /// **Tail** call `fn_ptr` of `fn_abi` with the arguments `llargs`.
+    fn do_tail_call<Bx: BuilderMethods<'a, 'tcx>>(
+        &self,
+        fx: &mut FunctionCx<'a, 'tcx, Bx>,
+        bx: &mut Bx,
+        fn_abi: &'tcx FnAbi<'tcx, Ty<'tcx>>,
+        fn_ptr: Bx::Value,
+        llargs: &[Bx::Value],
+        copied_constant_arguments: &[PlaceRef<'tcx, <Bx as BackendTypes>::Value>],
+    ) {
+        let fn_ty = bx.fn_decl_backend_type(&fn_abi);
+
+        let fn_attrs = if bx.tcx().def_kind(fx.instance.def_id()).has_codegen_attrs() {
+            Some(bx.tcx().codegen_fn_attrs(fx.instance.def_id()))
+        } else {
+            None
+        };
+
+        bx.tail_call(fn_ty, fn_attrs, fn_abi, fn_ptr, &llargs, self.funclet(fx));
+
+        for tmp in copied_constant_arguments {
+            bx.lifetime_end(tmp.llval, tmp.layout.size);
+        }
+    }
+
     /// Generates inline assembly with optional `destination` and `unwind`.
     fn do_inlineasm<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
@@ -1077,6 +1102,242 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         )
     }
 
+    fn codegen_tail_call_terminator(
+        &mut self,
+        helper: TerminatorCodegenHelper<'tcx>,
+        bx: &mut Bx,
+        terminator: &mir::Terminator<'tcx>,
+        func: &mir::Operand<'tcx>,
+        args: &[mir::Operand<'tcx>],
+        fn_span: Span,
+    ) {
+        let source_info = terminator.source_info;
+        let span = source_info.span;
+
+        // Create the callee. This is a fn ptr or zero-sized and hence a kind of scalar.
+        let callee = self.codegen_operand(bx, func);
+
+        let (instance, mut llfn) = match *callee.layout.ty.kind() {
+            ty::FnDef(def_id, substs) => (
+                Some(
+                    ty::Instance::expect_resolve(
+                        bx.tcx(),
+                        ty::ParamEnv::reveal_all(),
+                        def_id,
+                        substs,
+                    )
+                    .polymorphize(bx.tcx()),
+                ),
+                None,
+            ),
+            ty::FnPtr(_) => (None, Some(callee.immediate())),
+            _ => bug!("{} is not callable", callee.layout.ty),
+        };
+        let def = instance.map(|i| i.def);
+
+        if let Some(ty::InstanceDef::DropGlue(..)) = def {
+            bug!("tail-calling drop glue should not be possible");
+        }
+
+        // FIXME(eddyb) avoid computing this if possible, when `instance` is
+        // available - right now `sig` is only needed for getting the `abi`
+        // and figuring out how many extra args were passed to a C-variadic `fn`.
+        let sig = callee.layout.ty.fn_sig(bx.tcx());
+        let abi = sig.abi();
+
+        if let Some(ty::InstanceDef::Intrinsic(def_id)) = def {
+            span_bug!(
+                fn_span,
+                "Attempting to tail-call `{}` intrinsic",
+                bx.tcx().item_name(def_id)
+            );
+        };
+
+        let extra_args = &args[sig.inputs().skip_binder().len()..];
+        let extra_args = bx.tcx().mk_type_list_from_iter(extra_args.iter().map(|op_arg| {
+            let op_ty = op_arg.ty(self.mir, bx.tcx());
+            self.monomorphize(op_ty)
+        }));
+
+        let fn_abi = match instance {
+            Some(instance) => bx.fn_abi_of_instance(instance, extra_args),
+            None => bx.fn_abi_of_fn_ptr(sig, extra_args),
+        };
+
+        // The arguments we'll be passing. Plus one to account for outptr, if used.
+        let arg_count = fn_abi.args.len() + fn_abi.ret.is_indirect() as usize;
+        let mut llargs = Vec::with_capacity(arg_count);
+
+        if fn_abi.ret.is_indirect() {
+            let LocalRef::Place(place) = self.locals[mir::RETURN_PLACE]
+                else { bug!() };
+
+            llargs.push(place.llval);
+        }
+
+        // Split the rust-call tupled arguments off.
+        let (first_args, untuple) = if abi == Abi::RustCall && !args.is_empty() {
+            let (tup, args) = args.split_last().unwrap();
+            (args, Some(tup))
+        } else {
+            (args, None)
+        };
+
+        // FIXME(explicit_tail_calls): refactor this into a separate function, deduplicate with `Call`
+        let mut copied_constant_arguments = vec![];
+        'make_args: for (i, arg) in first_args.iter().enumerate() {
+            let mut op = self.codegen_operand(bx, arg);
+
+            if let (0, Some(ty::InstanceDef::Virtual(_, idx))) = (i, def) {
+                match op.val {
+                    Pair(data_ptr, meta) => {
+                        // In the case of Rc<Self>, we need to explicitly pass a
+                        // *mut RcBox<Self> with a Scalar (not ScalarPair) ABI. This is a hack
+                        // that is understood elsewhere in the compiler as a method on
+                        // `dyn Trait`.
+                        // To get a `*mut RcBox<Self>`, we just keep unwrapping newtypes until
+                        // we get a value of a built-in pointer type.
+                        //
+                        // This is also relevant for `Pin<&mut Self>`, where we need to peel the `Pin`.
+                        'descend_newtypes: while !op.layout.ty.is_unsafe_ptr()
+                            && !op.layout.ty.is_ref()
+                        {
+                            for i in 0..op.layout.fields.count() {
+                                let field = op.extract_field(bx, i);
+                                if !field.layout.is_zst() {
+                                    // we found the one non-zero-sized field that is allowed
+                                    // now find *its* non-zero-sized field, or stop if it's a
+                                    // pointer
+                                    op = field;
+                                    continue 'descend_newtypes;
+                                }
+                            }
+
+                            span_bug!(span, "receiver has no non-zero-sized fields {:?}", op);
+                        }
+
+                        // now that we have `*dyn Trait` or `&dyn Trait`, split it up into its
+                        // data pointer and vtable. Look up the method in the vtable, and pass
+                        // the data pointer as the first argument
+                        llfn = Some(meth::VirtualIndex::from_index(idx).get_fn(
+                            bx,
+                            meta,
+                            op.layout.ty,
+                            &fn_abi,
+                        ));
+                        llargs.push(data_ptr);
+                        continue 'make_args;
+                    }
+                    Ref(data_ptr, Some(meta), _) => {
+                        // by-value dynamic dispatch
+                        llfn = Some(meth::VirtualIndex::from_index(idx).get_fn(
+                            bx,
+                            meta,
+                            op.layout.ty,
+                            &fn_abi,
+                        ));
+                        llargs.push(data_ptr);
+                        continue;
+                    }
+                    Immediate(_) => {
+                        // See comment above explaining why we peel these newtypes
+                        'descend_newtypes: while !op.layout.ty.is_unsafe_ptr()
+                            && !op.layout.ty.is_ref()
+                        {
+                            for i in 0..op.layout.fields.count() {
+                                let field = op.extract_field(bx, i);
+                                if !field.layout.is_zst() {
+                                    // we found the one non-zero-sized field that is allowed
+                                    // now find *its* non-zero-sized field, or stop if it's a
+                                    // pointer
+                                    op = field;
+                                    continue 'descend_newtypes;
+                                }
+                            }
+
+                            span_bug!(span, "receiver has no non-zero-sized fields {:?}", op);
+                        }
+
+                        // Make sure that we've actually unwrapped the rcvr down
+                        // to a pointer or ref to `dyn* Trait`.
+                        if !op.layout.ty.builtin_deref(true).unwrap().ty.is_dyn_star() {
+                            span_bug!(span, "can't codegen a virtual call on {:#?}", op);
+                        }
+                        let place = op.deref(bx.cx());
+                        let data_ptr = place.project_field(bx, 0);
+                        let meta_ptr = place.project_field(bx, 1);
+                        let meta = bx.load_operand(meta_ptr);
+                        llfn = Some(meth::VirtualIndex::from_index(idx).get_fn(
+                            bx,
+                            meta.immediate(),
+                            op.layout.ty,
+                            &fn_abi,
+                        ));
+                        llargs.push(data_ptr.llval);
+                        continue;
+                    }
+                    _ => {
+                        span_bug!(span, "can't codegen a virtual call on {:#?}", op);
+                    }
+                }
+            }
+
+            // The callee needs to own the argument memory if we pass it
+            // by-ref, so make a local copy of non-immediate constants.
+            match (arg, op.val) {
+                (&mir::Operand::Copy(_), Ref(_, None, _))
+                | (&mir::Operand::Constant(_), Ref(_, None, _)) => {
+                    let tmp = PlaceRef::alloca(bx, op.layout);
+                    bx.lifetime_start(tmp.llval, tmp.layout.size);
+                    op.val.store(bx, tmp);
+                    op.val = Ref(tmp.llval, None, tmp.align);
+                    copied_constant_arguments.push(tmp);
+                }
+                _ => {}
+            }
+
+            self.codegen_argument(bx, op, &mut llargs, &fn_abi.args[i]);
+        }
+        let num_untupled = untuple.map(|tup| {
+            self.codegen_arguments_untupled(bx, tup, &mut llargs, &fn_abi.args[first_args.len()..])
+        });
+
+        let needs_location =
+            instance.map_or(false, |i| i.def.requires_caller_location(self.cx.tcx()));
+        if needs_location {
+            let mir_args = if let Some(num_untupled) = num_untupled {
+                first_args.len() + num_untupled
+            } else {
+                args.len()
+            };
+            assert_eq!(
+                fn_abi.args.len(),
+                mir_args + 1,
+                "#[track_caller] fn's must have 1 more argument in their ABI than in their MIR: {:?} {:?} {:?}",
+                instance,
+                fn_span,
+                fn_abi,
+            );
+            let location =
+                self.get_caller_location(bx, mir::SourceInfo { span: fn_span, ..source_info });
+            debug!(
+                "codegen_tail_call_terminator({:?}): location={:?} (fn_span {:?})",
+                terminator, location, fn_span
+            );
+
+            let last_arg = fn_abi.args.last().unwrap();
+            self.codegen_argument(bx, location, &mut llargs, last_arg);
+        }
+
+        let fn_ptr = match (instance, llfn) {
+            (Some(instance), None) => bx.get_fn_addr(instance),
+            (_, Some(llfn)) => llfn,
+            _ => span_bug!(span, "no instance or llfn for tail-call"),
+        };
+
+        helper.do_tail_call(self, bx, fn_abi, fn_ptr, &llargs, &copied_constant_arguments);
+    }
+
     fn codegen_asm_terminator(
         &mut self,
         helper: TerminatorCodegenHelper<'tcx>,
@@ -1295,12 +1556,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 mergeable_succ(),
             ),
 
-            mir::TerminatorKind::TailCall { .. } => {
-                // FIXME(explicit_tail_calls): implement tail calls in ssa backend
-                span_bug!(
-                    terminator.source_info.span,
-                    "`TailCall` terminator is not yet supported by `rustc_codegen_ssa`"
-                )
+            mir::TerminatorKind::TailCall { ref func, ref args, fn_span } => {
+                self.codegen_tail_call_terminator(helper, bx, terminator, func, args, fn_span);
+                MergingSucc::False
             }
 
             mir::TerminatorKind::GeneratorDrop | mir::TerminatorKind::Yield { .. } => {

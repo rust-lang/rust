@@ -330,6 +330,17 @@ pub trait BuilderMethods<'a, 'tcx>:
         args: &[Self::Value],
         funclet: Option<&Self::Funclet>,
     ) -> Self::Value;
+
+    fn tail_call(
+        &mut self,
+        llty: Self::Type,
+        fn_attrs: Option<&CodegenFnAttrs>,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        llfn: Self::Value,
+        args: &[Self::Value],
+        funclet: Option<&Self::Funclet>,
+    );
+
     fn zext(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
 
     fn do_not_inline(&mut self, llret: Self::Value);
