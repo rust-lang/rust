@@ -57,7 +57,7 @@ rustc_mir_transform = { path = "../rustc_mir_transform" }
 libc = "0.2"
 
 [target.'cfg(windows)'.dependencies.windows]
-version = "0.46.0"
+version = "0.48.0"
 features = [
     "Win32_System_Diagnostics_Debug",
 ]

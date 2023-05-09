@@ -135,13 +135,13 @@ fn current_dll_path() -> Result<PathBuf, String> {
 
     use windows::{
         core::PCWSTR,
-        Win32::Foundation::HINSTANCE,
+        Win32::Foundation::HMODULE,
         Win32::System::LibraryLoader::{
             GetModuleFileNameW, GetModuleHandleExW, GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
         },
     };
 
-    let mut module = HINSTANCE::default();
+    let mut module = HMODULE::default();
     unsafe {
         GetModuleHandleExW(
             GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,

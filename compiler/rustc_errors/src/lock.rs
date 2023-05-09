@@ -19,8 +19,7 @@ pub fn acquire_global_lock(name: &str) -> Box<dyn Any> {
     use windows::{
         core::PCSTR,
         Win32::Foundation::{CloseHandle, HANDLE, WAIT_ABANDONED, WAIT_OBJECT_0},
-        Win32::System::Threading::{CreateMutexA, ReleaseMutex, WaitForSingleObject},
-        Win32::System::WindowsProgramming::INFINITE,
+        Win32::System::Threading::{CreateMutexA, ReleaseMutex, WaitForSingleObject, INFINITE},
     };
 
     struct Handle(HANDLE);
