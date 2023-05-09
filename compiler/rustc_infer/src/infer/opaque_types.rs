@@ -2,7 +2,7 @@ use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use super::{DefineOpaqueTypes, InferResult};
 use crate::errors::OpaqueHiddenTypeDiag;
 use crate::infer::{DefiningAnchor, InferCtxt, InferOk};
-use crate::traits;
+use crate::traits::{self, PredicateObligation};
 use hir::def_id::{DefId, LocalDefId};
 use hir::OpaqueTyOrigin;
 use rustc_data_structures::fx::FxIndexMap;
@@ -48,9 +48,15 @@ impl<'tcx> InferCtxt<'tcx> {
         span: Span,
         param_env: ty::ParamEnv<'tcx>,
     ) -> InferOk<'tcx, T> {
+        // We handle opaque types differently in the new solver.
+        if self.tcx.trait_solver_next() {
+            return InferOk { value, obligations: vec![] };
+        }
+
         if !value.has_opaque_types() {
             return InferOk { value, obligations: vec![] };
         }
+
         let mut obligations = vec![];
         let replace_opaque_type = |def_id: DefId| {
             def_id.as_local().is_some_and(|def_id| self.opaque_type_origin(def_id).is_some())
@@ -521,9 +527,6 @@ impl<'tcx> InferCtxt<'tcx> {
         origin: hir::OpaqueTyOrigin,
         a_is_expected: bool,
     ) -> InferResult<'tcx, ()> {
-        let tcx = self.tcx;
-        let OpaqueTypeKey { def_id, substs } = opaque_type_key;
-
         // Ideally, we'd get the span where *this specific `ty` came
         // from*, but right now we just use the span from the overall
         // value being folded. In simple cases like `-> impl Foo`,
@@ -531,7 +534,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // Foo, impl Bar)`.
         let span = cause.span;
         let prev = self.inner.borrow_mut().opaque_types().register(
-            OpaqueTypeKey { def_id, substs },
+            opaque_type_key,
             OpaqueHiddenType { ty: hidden_ty, span },
             origin,
         );
@@ -543,6 +546,26 @@ impl<'tcx> InferCtxt<'tcx> {
             Vec::new()
         };
 
+        self.add_item_bounds_for_hidden_type(
+            opaque_type_key,
+            cause,
+            param_env,
+            hidden_ty,
+            &mut obligations,
+        );
+
+        Ok(InferOk { value: (), obligations })
+    }
+
+    pub fn add_item_bounds_for_hidden_type(
+        &self,
+        OpaqueTypeKey { def_id, substs }: OpaqueTypeKey<'tcx>,
+        cause: ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        hidden_ty: Ty<'tcx>,
+        obligations: &mut Vec<PredicateObligation<'tcx>>,
+    ) {
+        let tcx = self.tcx;
         let item_bounds = tcx.explicit_item_bounds(def_id);
 
         for (predicate, _) in item_bounds.subst_iter_copied(tcx, substs) {
@@ -555,14 +578,15 @@ impl<'tcx> InferCtxt<'tcx> {
                     // FIXME(inherent_associated_types): Extend this to support `ty::Inherent`, too.
                     ty::Alias(ty::Projection, projection_ty)
                         if !projection_ty.has_escaping_bound_vars()
-                            && !tcx.is_impl_trait_in_trait(projection_ty.def_id) =>
+                            && !tcx.is_impl_trait_in_trait(projection_ty.def_id)
+                            && !tcx.trait_solver_next() =>
                     {
                         self.infer_projection(
                             param_env,
                             projection_ty,
                             cause.clone(),
                             0,
-                            &mut obligations,
+                            obligations,
                         )
                     }
                     // Replace all other mentions of the same opaque type with the hidden type,
@@ -588,10 +612,10 @@ impl<'tcx> InferCtxt<'tcx> {
                 predicate.kind().skip_binder()
             {
                 if projection.term.references_error() {
-                    // No point on adding these obligations since there's a type error involved.
-                    return Ok(InferOk { value: (), obligations: vec![] });
+                    // No point on adding any obligations since there's a type error involved.
+                    obligations.clear();
+                    return;
                 }
-                trace!("{:#?}", projection.term);
             }
             // Require that the predicate holds for the concrete type.
             debug!(?predicate);
@@ -602,7 +626,6 @@ impl<'tcx> InferCtxt<'tcx> {
                 predicate,
             ));
         }
-        Ok(InferOk { value: (), obligations })
     }
 }
 

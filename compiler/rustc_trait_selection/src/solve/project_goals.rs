@@ -30,8 +30,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         // `U` and equate it with `u32`. This means that we don't need a separate
         // projection cache in the solver.
         if self.term_is_fully_unconstrained(goal) {
-            let candidates = self.assemble_and_evaluate_candidates(goal);
-            self.merge_candidates(candidates)
+            match goal.predicate.projection_ty.kind(self.tcx()) {
+                ty::AliasKind::Projection => {
+                    let candidates = self.assemble_and_evaluate_candidates(goal);
+                    self.merge_candidates(candidates)
+                }
+                ty::AliasKind::Opaque => self.normalize_opaque_type(goal),
+            }
         } else {
             self.set_normalizes_to_hack_goal(goal);
             self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
