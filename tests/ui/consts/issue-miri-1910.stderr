@@ -10,7 +10,7 @@ note: inside `std::ptr::read::<u8>`
 note: inside `ptr::const_ptr::<impl *const u8>::read`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `C`
-  --> $DIR/issue-miri-1910.rs:8:5
+  --> $DIR/issue-miri-1910.rs:7:5
    |
 LL |     (&foo as *const _ as *const u8).add(one_and_a_half_pointers).read();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
