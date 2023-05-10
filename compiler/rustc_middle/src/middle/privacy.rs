@@ -64,13 +64,25 @@ impl EffectiveVisibility {
         self.at_level(level).is_public()
     }
 
-    pub fn from_vis(vis: Visibility) -> EffectiveVisibility {
+    pub const fn from_vis(vis: Visibility) -> EffectiveVisibility {
         EffectiveVisibility {
             direct: vis,
             reexported: vis,
             reachable: vis,
             reachable_through_impl_trait: vis,
         }
+    }
+
+    #[must_use]
+    pub fn min(mut self, lhs: EffectiveVisibility, tcx: TyCtxt<'_>) -> Self {
+        for l in Level::all_levels() {
+            let rhs_vis = self.at_level_mut(l);
+            let lhs_vis = *lhs.at_level(l);
+            if rhs_vis.is_at_least(lhs_vis, tcx) {
+                *rhs_vis = lhs_vis;
+            };
+        }
+        self
     }
 }
 
@@ -137,24 +149,6 @@ impl EffectiveVisibilities {
         };
     }
 
-    pub fn set_public_at_level(
-        &mut self,
-        id: LocalDefId,
-        lazy_private_vis: impl FnOnce() -> Visibility,
-        level: Level,
-    ) {
-        let mut effective_vis = self
-            .effective_vis(id)
-            .copied()
-            .unwrap_or_else(|| EffectiveVisibility::from_vis(lazy_private_vis()));
-        for l in Level::all_levels() {
-            if l <= level {
-                *effective_vis.at_level_mut(l) = Visibility::Public;
-            }
-        }
-        self.map.insert(id, effective_vis);
-    }
-
     pub fn check_invariants(&self, tcx: TyCtxt<'_>, early: bool) {
         if !cfg!(debug_assertions) {
             return;
@@ -219,7 +213,7 @@ impl<Id: Eq + Hash> EffectiveVisibilities<Id> {
     pub fn update(
         &mut self,
         id: Id,
-        nominal_vis: Visibility,
+        nominal_vis: Option<Visibility>,
         lazy_private_vis: impl FnOnce() -> Visibility,
         inherited_effective_vis: EffectiveVisibility,
         level: Level,
@@ -243,12 +237,11 @@ impl<Id: Eq + Hash> EffectiveVisibilities<Id> {
                 if !(inherited_effective_vis_at_prev_level == inherited_effective_vis_at_level
                     && level != l)
                 {
-                    calculated_effective_vis =
-                        if nominal_vis.is_at_least(inherited_effective_vis_at_level, tcx) {
-                            inherited_effective_vis_at_level
-                        } else {
-                            nominal_vis
-                        };
+                    calculated_effective_vis = if let Some(nominal_vis) = nominal_vis && !nominal_vis.is_at_least(inherited_effective_vis_at_level, tcx) {
+                        nominal_vis
+                    } else {
+                        inherited_effective_vis_at_level
+                    }
                 }
                 // effective visibility can't be decreased at next update call for the
                 // same id
