@@ -42,17 +42,17 @@ use self::imp::Group;
 
 // Branch prediction hint. This is currently only available on nightly but it
 // consistently improves performance by 10-15%.
-#[cfg(feature = "nightly")]
+#[cfg(feature = "nightly-base")]
 use core::intrinsics::{likely, unlikely};
 
 // On stable we can use #[cold] to get a equivalent effect: this attributes
 // suggests that the function is unlikely to be called
-#[cfg(not(feature = "nightly"))]
+#[cfg(not(feature = "nightly-base"))]
 #[inline]
 #[cold]
 fn cold() {}
 
-#[cfg(not(feature = "nightly"))]
+#[cfg(not(feature = "nightly-base"))]
 #[inline]
 fn likely(b: bool) -> bool {
     if !b {
@@ -60,7 +60,7 @@ fn likely(b: bool) -> bool {
     }
     b
 }
-#[cfg(not(feature = "nightly"))]
+#[cfg(not(feature = "nightly-base"))]
 #[inline]
 fn unlikely(b: bool) -> bool {
     if b {
@@ -70,10 +70,10 @@ fn unlikely(b: bool) -> bool {
 }
 
 // Use strict provenance functions if available.
-#[cfg(feature = "nightly")]
+#[cfg(feature = "nightly-base")]
 use core::ptr::invalid_mut;
 // Implement it with a cast otherwise.
-#[cfg(not(feature = "nightly"))]
+#[cfg(not(feature = "nightly-base"))]
 #[inline(always)]
 fn invalid_mut<T>(addr: usize) -> *mut T {
     addr as *mut T
@@ -936,7 +936,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
 
     /// Returns pointer to start of data table.
     #[inline]
-    #[cfg(any(feature = "raw", feature = "nightly"))]
+    #[cfg(any(feature = "raw", feature = "nightly-base"))]
     pub unsafe fn data_start(&self) -> NonNull<T> {
         NonNull::new_unchecked(self.data_end().as_ptr().wrapping_sub(self.buckets()))
     }
@@ -2562,7 +2562,7 @@ impl<T: Clone, A: Allocator + Clone> RawTableClone for RawTable<T, A> {
         }
     }
 }
-#[cfg(feature = "nightly")]
+#[cfg(feature = "nightly-base")]
 impl<T: Copy, A: Allocator + Clone> RawTableClone for RawTable<T, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     unsafe fn clone_from_spec(&mut self, source: &Self) {
@@ -2674,7 +2674,7 @@ impl<T, A: Allocator + Clone + Default> Default for RawTable<T, A> {
     }
 }
 
-#[cfg(feature = "nightly")]
+#[cfg(feature = "nightly-base")]
 unsafe impl<#[may_dangle] T, A: Allocator + Clone> Drop for RawTable<T, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn drop(&mut self) {
@@ -2686,7 +2686,7 @@ unsafe impl<#[may_dangle] T, A: Allocator + Clone> Drop for RawTable<T, A> {
         }
     }
 }
-#[cfg(not(feature = "nightly"))]
+#[cfg(not(feature = "nightly-base"))]
 impl<T, A: Allocator + Clone> Drop for RawTable<T, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn drop(&mut self) {
@@ -3081,7 +3081,7 @@ where
 {
 }
 
-#[cfg(feature = "nightly")]
+#[cfg(feature = "nightly-base")]
 unsafe impl<#[may_dangle] T, A: Allocator + Clone> Drop for RawIntoIter<T, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn drop(&mut self) {
@@ -3096,7 +3096,7 @@ unsafe impl<#[may_dangle] T, A: Allocator + Clone> Drop for RawIntoIter<T, A> {
         }
     }
 }
-#[cfg(not(feature = "nightly"))]
+#[cfg(not(feature = "nightly-base"))]
 impl<T, A: Allocator + Clone> Drop for RawIntoIter<T, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn drop(&mut self) {

@@ -11,7 +11,7 @@
 
 #![no_std]
 #![cfg_attr(
-    feature = "nightly",
+    feature = "nightly-base",
     feature(
         test,
         core_intrinsics,
@@ -37,7 +37,7 @@
 )]
 #![warn(missing_docs)]
 #![warn(rust_2018_idioms)]
-#![cfg_attr(feature = "nightly", warn(fuzzy_provenance_casts))]
+#![cfg_attr(feature = "nightly-base", warn(fuzzy_provenance_casts))]
 
 #[cfg(test)]
 #[macro_use]
@@ -46,7 +46,7 @@ extern crate std;
 #[cfg_attr(test, macro_use)]
 extern crate alloc;
 
-#[cfg(feature = "nightly")]
+#[cfg(feature = "nightly-base")]
 #[cfg(doctest)]
 doc_comment::doctest!("../README.md");
 

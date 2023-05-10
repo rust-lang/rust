@@ -1354,13 +1354,13 @@ where
     }
 
     #[inline]
-    #[cfg(feature = "nightly")]
+    #[cfg(feature = "nightly-base")]
     fn extend_one(&mut self, k: T) {
         self.map.insert(k, ());
     }
 
     #[inline]
-    #[cfg(feature = "nightly")]
+    #[cfg(feature = "nightly-base")]
     fn extend_reserve(&mut self, additional: usize) {
         Extend::<(T, ())>::extend_reserve(&mut self.map, additional);
     }
@@ -1378,13 +1378,13 @@ where
     }
 
     #[inline]
-    #[cfg(feature = "nightly")]
+    #[cfg(feature = "nightly-base")]
     fn extend_one(&mut self, k: &'a T) {
         self.map.insert(*k, ());
     }
 
     #[inline]
-    #[cfg(feature = "nightly")]
+    #[cfg(feature = "nightly-base")]
     fn extend_reserve(&mut self, additional: usize) {
         Extend::<(T, ())>::extend_reserve(&mut self.map, additional);
     }

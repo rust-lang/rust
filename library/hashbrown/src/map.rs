@@ -237,7 +237,7 @@ where
     move |x| k.equivalent(x)
 }
 
-#[cfg(not(feature = "nightly"))]
+#[cfg(not(feature = "nightly-base"))]
 #[cfg_attr(feature = "inline-more", inline)]
 pub(crate) fn make_hash<Q, S>(hash_builder: &S, val: &Q) -> u64
 where
@@ -250,7 +250,7 @@ where
     state.finish()
 }
 
-#[cfg(feature = "nightly")]
+#[cfg(feature = "nightly-base")]
 #[cfg_attr(feature = "inline-more", inline)]
 pub(crate) fn make_hash<Q, S>(hash_builder: &S, val: &Q) -> u64
 where
@@ -260,7 +260,7 @@ where
     hash_builder.hash_one(val)
 }
 
-#[cfg(not(feature = "nightly"))]
+#[cfg(not(feature = "nightly-base"))]
 #[cfg_attr(feature = "inline-more", inline)]
 pub(crate) fn make_insert_hash<K, S>(hash_builder: &S, val: &K) -> u64
 where
@@ -273,7 +273,7 @@ where
     state.finish()
 }
 
-#[cfg(feature = "nightly")]
+#[cfg(feature = "nightly-base")]
 #[cfg_attr(feature = "inline-more", inline)]
 pub(crate) fn make_insert_hash<K, S>(hash_builder: &S, val: &K) -> u64
 where
@@ -6498,13 +6498,13 @@ where
     }
 
     #[inline]
-    #[cfg(feature = "nightly")]
+    #[cfg(feature = "nightly-base")]
     fn extend_one(&mut self, (k, v): (K, V)) {
         self.insert(k, v);
     }
 
     #[inline]
-    #[cfg(feature = "nightly")]
+    #[cfg(feature = "nightly-base")]
     fn extend_reserve(&mut self, additional: usize) {
         // Keys may be already present or show multiple times in the iterator.
         // Reserve the entire hint lower bound if the map is empty.
@@ -6572,13 +6572,13 @@ where
     }
 
     #[inline]
-    #[cfg(feature = "nightly")]
+    #[cfg(feature = "nightly-base")]
     fn extend_one(&mut self, (k, v): (&'a K, &'a V)) {
         self.insert(*k, *v);
     }
 
     #[inline]
-    #[cfg(feature = "nightly")]
+    #[cfg(feature = "nightly-base")]
     fn extend_reserve(&mut self, additional: usize) {
         Extend::<(K, V)>::extend_reserve(self, additional);
     }
@@ -6632,13 +6632,13 @@ where
     }
 
     #[inline]
-    #[cfg(feature = "nightly")]
+    #[cfg(feature = "nightly-base")]
     fn extend_one(&mut self, &(k, v): &'a (K, V)) {
         self.insert(k, v);
     }
 
     #[inline]
-    #[cfg(feature = "nightly")]
+    #[cfg(feature = "nightly-base")]
     fn extend_reserve(&mut self, additional: usize) {
         Extend::<(K, V)>::extend_reserve(self, additional);
     }

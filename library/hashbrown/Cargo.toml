@@ -39,10 +39,13 @@ doc-comment = "0.3.1"
 [features]
 default = ["ahash", "inline-more", "allocator-api2"]
 
-nightly = []
+nightly-base = [] # non-public feature to use nightly features without depending on `allocator-api2`
+
+nightly = ["allocator-api2/nightly", "nightly-base"]
+
 rustc-internal-api = []
 rustc-dep-of-std = [
-    "nightly",
+    "nightly-base",
     "core",
     "compiler_builtins",
     "alloc",
