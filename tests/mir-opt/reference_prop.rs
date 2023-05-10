@@ -456,6 +456,26 @@ fn unique_with_copies() {
     unsafe { opaque(*y) };
 }
 
+fn debuginfo() {
+    struct T(u8);
+
+    let ref_mut_u8 = &mut 5_u8;
+    let field = &T(0).0;
+
+    // Verify that we don't emit `&*` in debuginfo.
+    let reborrow = &*ref_mut_u8;
+
+    match Some(0) {
+        None => {}
+        Some(ref variant_field) => {}
+    }
+
+    // `constant_index_from_end` and `subslice` should not be promoted, as their value depends
+    // on the slice length.
+    if let [_, ref constant_index, subslice @ .., ref constant_index_from_end] = &[6; 10][..] {
+    }
+}
+
 fn main() {
     let mut x = 5_usize;
     let mut y = 7_usize;
@@ -469,6 +489,7 @@ fn main() {
     maybe_dead(true);
     mut_raw_then_mut_shr();
     unique_with_copies();
+    debuginfo();
 }
 
 // EMIT_MIR reference_prop.reference_propagation.ReferencePropagation.diff
@@ -481,3 +502,4 @@ fn main() {
 // EMIT_MIR reference_prop.maybe_dead.ReferencePropagation.diff
 // EMIT_MIR reference_prop.mut_raw_then_mut_shr.ReferencePropagation.diff
 // EMIT_MIR reference_prop.unique_with_copies.ReferencePropagation.diff
+// EMIT_MIR reference_prop.debuginfo.ReferencePropagation.diff
