@@ -339,3 +339,13 @@ pkgs.mkShell {
   RUST_BOOTSTRAP_CONFIG = config;
 }
 ```
+
+## Shell Completions
+
+If you use Bash, Fish or PowerShell, you can find automatically-generated shell completion scripts for `x.py` in [`src/etc/completions`](https://github.com/rust-lang/rust/tree/master/src/etc/completions).
+Zsh support will also be included once issues with [`clap_complete`](https://crates.io/crates/clap_complete) have been resolved.
+
+You can use `source ./src/etc/completions/x.py.<extension>`
+to load completions for your shell of choice,
+or `source .\src\etc\completions\x.py.ps1` for PowerShell.
+Adding this to your shell's startup script (e.g. `.bashrc`) will automatically load this completion.
