@@ -9,7 +9,6 @@ use crate::marker::PhantomData;
 use crate::mem;
 use crate::mem::forget;
 use crate::sys;
-use crate::sys::c;
 #[cfg(not(target_vendor = "uwp"))]
 use crate::sys::cvt;
 
@@ -76,7 +75,7 @@ impl BorrowedSocket<'_> {
     #[rustc_const_stable(feature = "io_safety", since = "1.63.0")]
     #[stable(feature = "io_safety", since = "1.63.0")]
     pub const unsafe fn borrow_raw(socket: RawSocket) -> Self {
-        assert!(socket != c::INVALID_SOCKET as RawSocket);
+        assert!(socket != sys::c::INVALID_SOCKET as RawSocket);
         Self { socket, _phantom: PhantomData }
     }
 }
@@ -94,7 +93,11 @@ impl OwnedSocket {
     #[cfg(not(target_vendor = "uwp"))]
     pub(crate) fn set_no_inherit(&self) -> io::Result<()> {
         cvt(unsafe {
-            c::SetHandleInformation(self.as_raw_socket() as c::HANDLE, c::HANDLE_FLAG_INHERIT, 0)
+            sys::c::SetHandleInformation(
+                self.as_raw_socket() as sys::c::HANDLE,
+                sys::c::HANDLE_FLAG_INHERIT,
+                0,
+            )
         })
         .map(drop)
     }
@@ -110,43 +113,47 @@ impl BorrowedSocket<'_> {
     /// object as the existing `BorrowedSocket` instance.
     #[stable(feature = "io_safety", since = "1.63.0")]
     pub fn try_clone_to_owned(&self) -> io::Result<OwnedSocket> {
-        let mut info = unsafe { mem::zeroed::<c::WSAPROTOCOL_INFOW>() };
+        let mut info = unsafe { mem::zeroed::<sys::c::WSAPROTOCOL_INFOW>() };
         let result = unsafe {
-            c::WSADuplicateSocketW(self.as_raw_socket(), c::GetCurrentProcessId(), &mut info)
+            sys::c::WSADuplicateSocketW(
+                self.as_raw_socket(),
+                sys::c::GetCurrentProcessId(),
+                &mut info,
+            )
         };
         sys::net::cvt(result)?;
         let socket = unsafe {
-            c::WSASocketW(
+            sys::c::WSASocketW(
                 info.iAddressFamily,
                 info.iSocketType,
                 info.iProtocol,
                 &mut info,
                 0,
-                c::WSA_FLAG_OVERLAPPED | c::WSA_FLAG_NO_HANDLE_INHERIT,
+                sys::c::WSA_FLAG_OVERLAPPED | sys::c::WSA_FLAG_NO_HANDLE_INHERIT,
             )
         };
 
-        if socket != c::INVALID_SOCKET {
+        if socket != sys::c::INVALID_SOCKET {
             unsafe { Ok(OwnedSocket::from_raw_socket(socket)) }
         } else {
-            let error = unsafe { c::WSAGetLastError() };
+            let error = unsafe { sys::c::WSAGetLastError() };
 
-            if error != c::WSAEPROTOTYPE && error != c::WSAEINVAL {
+            if error != sys::c::WSAEPROTOTYPE && error != sys::c::WSAEINVAL {
                 return Err(io::Error::from_raw_os_error(error));
             }
 
             let socket = unsafe {
-                c::WSASocketW(
+                sys::c::WSASocketW(
                     info.iAddressFamily,
                     info.iSocketType,
                     info.iProtocol,
                     &mut info,
                     0,
-                    c::WSA_FLAG_OVERLAPPED,
+                    sys::c::WSA_FLAG_OVERLAPPED,
                 )
             };
 
-            if socket == c::INVALID_SOCKET {
+            if socket == sys::c::INVALID_SOCKET {
                 return Err(last_error());
             }
 
@@ -161,7 +168,7 @@ impl BorrowedSocket<'_> {
 
 /// Returns the last error from the Windows socket interface.
 fn last_error() -> io::Error {
-    io::Error::from_raw_os_error(unsafe { c::WSAGetLastError() })
+    io::Error::from_raw_os_error(unsafe { sys::c::WSAGetLastError() })
 }
 
 #[stable(feature = "io_safety", since = "1.63.0")]
@@ -194,7 +201,7 @@ impl IntoRawSocket for OwnedSocket {
 impl FromRawSocket for OwnedSocket {
     #[inline]
     unsafe fn from_raw_socket(socket: RawSocket) -> Self {
-        debug_assert_ne!(socket, c::INVALID_SOCKET as RawSocket);
+        debug_assert_ne!(socket, sys::c::INVALID_SOCKET as RawSocket);
         Self { socket }
     }
 }
@@ -204,7 +211,7 @@ impl Drop for OwnedSocket {
     #[inline]
     fn drop(&mut self) {
         unsafe {
-            let _ = c::closesocket(self.socket);
+            let _ = sys::c::closesocket(self.socket);
         }
     }
 }
