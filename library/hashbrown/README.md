@@ -105,8 +105,8 @@ This crate has the following Cargo features:
 - `raw`: Enables access to the experimental and unsafe `RawTable` API.
 - `inline-more`: Adds inline hints to most functions, improving run-time performance at the cost
   of compilation time. (enabled by default)
-- `bumpalo`: Provides a `BumpWrapper` type which allows `bumpalo` to be used for memory allocation.
 - `ahash`: Compiles with ahash as default hasher. (enabled by default)
+- `allocator-api2`: Enables support for allocators that support `allocator-api2`. (enabled by default)
 
 ## License
 
