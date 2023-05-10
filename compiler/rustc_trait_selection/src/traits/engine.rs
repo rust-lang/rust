@@ -20,31 +20,80 @@ use rustc_infer::traits::{
 };
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::ty::error::TypeError;
+use rustc_middle::ty::Predicate;
 use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::config::TraitSolver;
 use rustc_span::Span;
 
-pub trait TraitEngineExt<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>) -> Box<Self>;
-    fn new_in_snapshot(tcx: TyCtxt<'tcx>) -> Box<Self>;
+pub enum TraitEngineKind<'tcx> {
+    Classic(FulfillmentContext<'tcx>),
+    Chalk(ChalkFulfillmentContext<'tcx>),
+    Next(NextFulfillmentCtxt<'tcx>),
 }
 
-impl<'tcx> TraitEngineExt<'tcx> for dyn TraitEngine<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>) -> Box<Self> {
+impl<'tcx> TraitEngine<'tcx> for TraitEngineKind<'tcx> {
+    fn register_predicate_obligation(
+        &mut self,
+        infcx: &InferCtxt<'tcx>,
+        obligation: Obligation<'tcx, Predicate<'tcx>>,
+    ) {
+        match self {
+            Self::Classic(e) => e.register_predicate_obligation(infcx, obligation),
+            Self::Chalk(e) => e.register_predicate_obligation(infcx, obligation),
+            Self::Next(e) => e.register_predicate_obligation(infcx, obligation),
+        }
+    }
+    fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
+        match self {
+            Self::Classic(e) => e.select_where_possible(infcx),
+            Self::Chalk(e) => e.select_where_possible(infcx),
+            Self::Next(e) => e.select_where_possible(infcx),
+        }
+    }
+    fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
+        match self {
+            Self::Classic(e) => e.collect_remaining_errors(infcx),
+            Self::Chalk(e) => e.collect_remaining_errors(infcx),
+            Self::Next(e) => e.collect_remaining_errors(infcx),
+        }
+    }
+    fn pending_obligations(&self) -> Vec<Obligation<'tcx, Predicate<'tcx>>> {
+        match self {
+            Self::Classic(e) => e.pending_obligations(),
+            Self::Chalk(e) => e.pending_obligations(),
+            Self::Next(e) => e.pending_obligations(),
+        }
+    }
+    fn drain_unstalled_obligations(
+        &mut self,
+        infcx: &InferCtxt<'tcx>,
+    ) -> Vec<Obligation<'tcx, Predicate<'tcx>>> {
+        match self {
+            Self::Classic(e) => e.drain_unstalled_obligations(infcx),
+            Self::Chalk(e) => e.drain_unstalled_obligations(infcx),
+            Self::Next(e) => e.drain_unstalled_obligations(infcx),
+        }
+    }
+}
+
+impl<'tcx> TraitEngineKind<'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>) -> TraitEngineKind<'tcx> {
         match tcx.sess.opts.unstable_opts.trait_solver {
-            TraitSolver::Classic => Box::new(FulfillmentContext::new()),
-            TraitSolver::Chalk => Box::new(ChalkFulfillmentContext::new()),
-            TraitSolver::Next => Box::new(NextFulfillmentCtxt::new()),
+            TraitSolver::Classic => TraitEngineKind::Classic(FulfillmentContext::new()),
+            TraitSolver::Chalk => TraitEngineKind::Chalk(ChalkFulfillmentContext::new()),
+            TraitSolver::Next => TraitEngineKind::Next(NextFulfillmentCtxt::new()),
         }
     }
 
-    fn new_in_snapshot(tcx: TyCtxt<'tcx>) -> Box<Self> {
+    pub fn new_in_snapshot(tcx: TyCtxt<'tcx>) -> TraitEngineKind<'tcx> {
         match tcx.sess.opts.unstable_opts.trait_solver {
-            TraitSolver::Classic => Box::new(FulfillmentContext::new_in_snapshot()),
-            TraitSolver::Chalk => Box::new(ChalkFulfillmentContext::new_in_snapshot()),
-            TraitSolver::Next => Box::new(NextFulfillmentCtxt::new()),
+            TraitSolver::Classic => TraitEngineKind::Classic(FulfillmentContext::new_in_snapshot()),
+            TraitSolver::Chalk => {
+                TraitEngineKind::Chalk(ChalkFulfillmentContext::new_in_snapshot())
+            }
+            TraitSolver::Next => TraitEngineKind::Next(NextFulfillmentCtxt::new()),
         }
     }
 }
@@ -53,16 +102,16 @@ impl<'tcx> TraitEngineExt<'tcx> for dyn TraitEngine<'tcx> {
 /// with obligations outside of hir or mir typeck.
 pub struct ObligationCtxt<'a, 'tcx> {
     pub infcx: &'a InferCtxt<'tcx>,
-    engine: RefCell<Box<dyn TraitEngine<'tcx>>>,
+    engine: RefCell<TraitEngineKind<'tcx>>,
 }
 
 impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
     pub fn new(infcx: &'a InferCtxt<'tcx>) -> Self {
-        Self { infcx, engine: RefCell::new(<dyn TraitEngine<'_>>::new(infcx.tcx)) }
+        Self { infcx, engine: RefCell::new(TraitEngineKind::new(infcx.tcx)) }
     }
 
     pub fn new_in_snapshot(infcx: &'a InferCtxt<'tcx>) -> Self {
-        Self { infcx, engine: RefCell::new(<dyn TraitEngine<'_>>::new_in_snapshot(infcx.tcx)) }
+        Self { infcx, engine: RefCell::new(TraitEngineKind::new_in_snapshot(infcx.tcx)) }
     }
 
     pub fn register_obligation(&self, obligation: PredicateObligation<'tcx>) {
@@ -243,7 +292,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         self.infcx.make_canonicalized_query_response(
             inference_vars,
             answer,
-            &mut **self.engine.borrow_mut(),
+            &mut *self.engine.borrow_mut(),
         )
     }
 }

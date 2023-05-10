@@ -4,6 +4,7 @@ use rustc_data_structures::{
     graph::WithSuccessors,
     graph::{iterate::DepthFirstSearch, vec_graph::VecGraph},
 };
+use rustc_infer::traits::TraitEngine;
 use rustc_middle::ty::{self, Ty};
 
 impl<'tcx> FnCtxt<'_, 'tcx> {

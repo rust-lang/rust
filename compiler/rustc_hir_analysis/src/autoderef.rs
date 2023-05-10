@@ -1,7 +1,7 @@
 use crate::errors::AutoDerefReachedRecursionLimit;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::NormalizeExt;
-use crate::traits::{self, TraitEngine, TraitEngineExt};
+use crate::traits::{self, TraitEngine, TraitEngineKind};
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -142,9 +142,9 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             .infcx
             .at(&cause, self.param_env)
             .normalize(tcx.mk_projection(tcx.lang_items().deref_target()?, trait_ref.substs));
-        let mut fulfillcx = <dyn TraitEngine<'tcx>>::new_in_snapshot(tcx);
+        let mut fulfillcx = TraitEngineKind::new_in_snapshot(tcx);
         let normalized_ty =
-            normalized_ty.into_value_registering_obligations(self.infcx, &mut *fulfillcx);
+            normalized_ty.into_value_registering_obligations(self.infcx, &mut fulfillcx);
         let errors = fulfillcx.select_where_possible(&self.infcx);
         if !errors.is_empty() {
             // This shouldn't happen, except for evaluate/fulfill mismatches,

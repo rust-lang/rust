@@ -9,7 +9,7 @@ use rustc_middle::traits::CodegenObligationError;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::{
-    ImplSource, Obligation, ObligationCause, SelectionContext, TraitEngine, TraitEngineExt,
+    ImplSource, Obligation, ObligationCause, SelectionContext, TraitEngine, TraitEngineKind,
     Unimplemented,
 };
 
@@ -55,7 +55,7 @@ pub fn codegen_select_candidate<'tcx>(
     // Currently, we use a fulfillment context to completely resolve
     // all nested obligations. This is because they can inform the
     // inference of the impl's type parameters.
-    let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(tcx);
+    let mut fulfill_cx = TraitEngineKind::new(tcx);
     let impl_source = selection.map(|predicate| {
         fulfill_cx.register_predicate_obligation(&infcx, predicate);
     });

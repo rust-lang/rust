@@ -10,7 +10,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefIdMap;
 use rustc_span::{self, Span};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
-use rustc_trait_selection::traits::{self, PredicateObligation, TraitEngine, TraitEngineExt as _};
+use rustc_trait_selection::traits::{self, PredicateObligation, TraitEngine, TraitEngineKind};
 
 use std::cell::RefCell;
 use std::ops::Deref;
@@ -31,7 +31,7 @@ pub struct Inherited<'tcx> {
 
     pub(super) locals: RefCell<HirIdMap<super::LocalTy<'tcx>>>,
 
-    pub(super) fulfillment_cx: RefCell<Box<dyn TraitEngine<'tcx>>>,
+    pub(super) fulfillment_cx: RefCell<TraitEngineKind<'tcx>>,
 
     /// Some additional `Sized` obligations badly affect type inference.
     /// These obligations are added in a later stage of typeck.
@@ -86,7 +86,7 @@ impl<'tcx> Inherited<'tcx> {
         Inherited {
             typeck_results,
             infcx,
-            fulfillment_cx: RefCell::new(<dyn TraitEngine<'_>>::new(tcx)),
+            fulfillment_cx: RefCell::new(TraitEngineKind::new(tcx)),
             locals: RefCell::new(Default::default()),
             deferred_sized_obligations: RefCell::new(Vec::new()),
             deferred_call_resolutions: RefCell::new(Default::default()),
