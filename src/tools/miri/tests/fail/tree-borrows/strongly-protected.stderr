@@ -17,12 +17,6 @@ help: the strongly protected tag <TAG> was created here, in the initial state Re
    |
 LL | fn inner(x: &mut i32, f: fn(&mut i32)) {
    |          ^
-help: the strongly protected tag <TAG> then transitioned from Reserved to Active due to a child write access at offsets [0x0..0x4]
-  --> $DIR/strongly-protected.rs:LL:CC
-   |
-LL |         drop(unsafe { Box::from_raw(raw) });
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: this corresponds to an activation
    = note: BACKTRACE (of the first span):
    = note: inside `std::alloc::dealloc` at RUSTLIB/alloc/src/alloc.rs:LL:CC
    = note: inside `<std::alloc::Global as std::alloc::Allocator>::deallocate` at RUSTLIB/alloc/src/alloc.rs:LL:CC

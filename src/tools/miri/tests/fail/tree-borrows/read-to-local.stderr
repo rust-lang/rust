@@ -11,13 +11,13 @@ help: the accessed tag <TAG> was created here, in the initial state Reserved
    |
 LL |         let mref = &mut root;
    |                    ^^^^^^^^^
-help: the accessed tag <TAG> then transitioned from Reserved to Active due to a child write access at offsets [0x0..0x1]
+help: the accessed tag <TAG> later transitioned to Active due to a child write access at offsets [0x0..0x1]
   --> $DIR/read-to-local.rs:LL:CC
    |
 LL |         *ptr = 0; // Write
    |         ^^^^^^^^
-   = help: this corresponds to an activation
-help: the accessed tag <TAG> then transitioned from Active to Frozen due to a foreign read access at offsets [0x0..0x1]
+   = help: this corresponds to the first write to a 2-phase borrowed mutable reference
+help: the accessed tag <TAG> later transitioned to Frozen due to a foreign read access at offsets [0x0..0x1]
   --> $DIR/read-to-local.rs:LL:CC
    |
 LL |         assert_eq!(root, 0); // Parent Read
