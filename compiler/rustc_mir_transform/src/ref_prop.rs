@@ -223,10 +223,10 @@ fn compute_replacement<'tcx>(
                 let mut place = *place;
                 // Try to see through `place` in order to collapse reborrow chains.
                 if place.projection.first() == Some(&PlaceElem::Deref)
-                    && let Value::Pointer(target, needs_unique) = targets[place.local]
+                    && let Value::Pointer(target, inner_needs_unique) = targets[place.local]
                     // Only see through immutable reference and pointers, as we do not know yet if
                     // mutable references are fully replaced.
-                    && !needs_unique
+                    && !inner_needs_unique
                     // Only collapse chain if the pointee is definitely live.
                     && can_perform_opt(target, location)
                 {
