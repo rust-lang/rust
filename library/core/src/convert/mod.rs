@@ -915,6 +915,7 @@ impl Ord for Infallible {
 
 #[stable(feature = "convert_infallible", since = "1.34.0")]
 impl From<!> for Infallible {
+    #[inline]
     fn from(x: !) -> Self {
         x
     }

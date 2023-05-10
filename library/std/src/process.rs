@@ -1842,7 +1842,7 @@ impl ExitCode {
     /// # use std::fmt;
     /// # enum UhOhError { GenericProblem, Specific, WithCode { exit_code: ExitCode, _x: () } }
     /// # impl fmt::Display for UhOhError {
-    /// #     fn fmt(&self, _: &mut fmt::Formatter) -> fmt::Result { unimplemented!() }
+    /// #     fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result { unimplemented!() }
     /// # }
     /// // there's no way to gracefully recover from an UhOhError, so we just
     /// // print a message and exit

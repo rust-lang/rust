@@ -15,11 +15,11 @@ cfg-if = { version = "1.0", features = ['rustc-dep-of-std'] }
 panic_unwind = { path = "../panic_unwind", optional = true }
 panic_abort = { path = "../panic_abort" }
 core = { path = "../core" }
-libc = { version = "0.2.142", default-features = false, features = ['rustc-dep-of-std'] }
+libc = { version = "0.2.143", default-features = false, features = ['rustc-dep-of-std'] }
 compiler_builtins = { version = "0.1.91" }
 profiler_builtins = { path = "../profiler_builtins", optional = true }
 unwind = { path = "../unwind" }
-hashbrown = { version = "0.12", default-features = false, features = ['rustc-dep-of-std'] }
+hashbrown = { version = "0.13", default-features = false, features = ['rustc-dep-of-std'] }
 std_detect = { path = "../stdarch/crates/std_detect", default-features = false, features = ['rustc-dep-of-std'] }
 
 # Dependencies of the `backtrace` crate

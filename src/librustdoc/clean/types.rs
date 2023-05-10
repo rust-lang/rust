@@ -1660,7 +1660,7 @@ impl Type {
 
     pub(crate) fn projection(&self) -> Option<(&Type, DefId, PathSegment)> {
         if let QPath(box QPathData { self_type, trait_, assoc, .. }) = self {
-            Some((self_type, trait_.def_id(), assoc.clone()))
+            Some((self_type, trait_.as_ref()?.def_id(), assoc.clone()))
         } else {
             None
         }
@@ -1704,7 +1704,7 @@ pub(crate) struct QPathData {
     pub self_type: Type,
     /// FIXME: compute this field on demand.
     pub should_show_cast: bool,
-    pub trait_: Path,
+    pub trait_: Option<Path>,
 }
 
 /// A primitive (aka, builtin) type.

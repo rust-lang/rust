@@ -34,7 +34,8 @@ pub struct RenameReturnPlace;
 
 impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() > 0
+        // #111005
+        sess.mir_opt_level() > 0 && sess.opts.unstable_opts.unsound_mir_opts
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut mir::Body<'tcx>) {

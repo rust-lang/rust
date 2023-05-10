@@ -1524,6 +1524,19 @@ impl<V, T> ProjectionElem<V, T> {
         }
     }
 
+    /// Returns `true` if the target of this projection always refers to the same memory region
+    /// whatever the state of the program.
+    pub fn is_stable_offset(&self) -> bool {
+        match self {
+            Self::Deref | Self::Index(_) => false,
+            Self::Field(_, _)
+            | Self::OpaqueCast(_)
+            | Self::ConstantIndex { .. }
+            | Self::Subslice { .. }
+            | Self::Downcast(_, _) => true,
+        }
+    }
+
     /// Returns `true` if this is a `Downcast` projection with the given `VariantIdx`.
     pub fn is_downcast_to(&self, v: VariantIdx) -> bool {
         matches!(*self, Self::Downcast(_, x) if x == v)
@@ -2727,8 +2740,6 @@ pub struct UserTypeProjection {
     pub base: UserTypeAnnotationIndex,
     pub projs: Vec<ProjectionKind>,
 }
-
-impl Copy for ProjectionKind {}
 
 impl UserTypeProjection {
     pub(crate) fn index(mut self) -> Self {

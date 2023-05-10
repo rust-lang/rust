@@ -446,7 +446,30 @@ fn expand_format_args<'hir>(
         && argmap.iter().enumerate().all(|(i, (&(j, _), _))| i == j)
         && arguments.iter().skip(1).all(|arg| !may_contain_yield_point(&arg.expr));
 
-    let args = if use_simple_array {
+    let args = if arguments.is_empty() {
+        // Generate:
+        //    &<core::fmt::Argument>::none()
+        //
+        // Note:
+        //     `none()` just returns `[]`. We use `none()` rather than `[]` to limit the lifetime.
+        //
+        //     This makes sure that this still fails to compile, even when the argument is inlined:
+        //
+        //     ```
+        //     let f = format_args!("{}", "a");
+        //     println!("{f}"); // error E0716
+        //     ```
+        //
+        //     Cases where keeping the object around is allowed, such as `format_args!("a")`,
+        //     are handled above by the `allow_const` case.
+        let none_fn = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
+            macsp,
+            hir::LangItem::FormatArgument,
+            sym::none,
+        ));
+        let none = ctx.expr_call(macsp, none_fn, &[]);
+        ctx.expr(macsp, hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, none))
+    } else if use_simple_array {
         // Generate:
         //     &[
         //         <core::fmt::Argument>::new_display(&arg0),

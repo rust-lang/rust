@@ -13,9 +13,11 @@ use crate::infer::region_constraints::VerifyIfEq;
 
 /// Given a "verify-if-eq" type test like:
 ///
-///     exists<'a...> {
-///         verify_if_eq(some_type, bound_region)
-///     }
+/// ```rust,ignore (pseudo-Rust)
+/// exists<'a...> {
+///     verify_if_eq(some_type, bound_region)
+/// }
+/// ```
 ///
 /// and the type `test_ty` that the type test is being tested against,
 /// returns:

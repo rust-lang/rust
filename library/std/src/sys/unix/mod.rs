@@ -92,6 +92,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
             target_os = "redox",
             target_os = "l4re",
             target_os = "horizon",
+            target_os = "vita",
         )))]
         'poll: {
             use crate::sys::os::errno;
@@ -140,6 +141,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
             target_os = "vxworks",
             target_os = "l4re",
             target_os = "horizon",
+            target_os = "vita",
         )))]
         {
             use crate::sys::os::errno;
@@ -162,7 +164,12 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     }
 
     unsafe fn reset_sigpipe(#[allow(unused_variables)] sigpipe: u8) {
-        #[cfg(not(any(target_os = "emscripten", target_os = "fuchsia", target_os = "horizon")))]
+        #[cfg(not(any(
+            target_os = "emscripten",
+            target_os = "fuchsia",
+            target_os = "horizon",
+            target_os = "vita"
+        )))]
         {
             // We don't want to add this as a public type to std, nor do we
             // want to `include!` a file from the compiler (which would break
@@ -199,7 +206,8 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     target_os = "espidf",
     target_os = "emscripten",
     target_os = "fuchsia",
-    target_os = "horizon"
+    target_os = "horizon",
+    target_os = "vita"
 )))]
 static UNIX_SIGPIPE_ATTR_SPECIFIED: crate::sync::atomic::AtomicBool =
     crate::sync::atomic::AtomicBool::new(false);
@@ -208,7 +216,8 @@ static UNIX_SIGPIPE_ATTR_SPECIFIED: crate::sync::atomic::AtomicBool =
     target_os = "espidf",
     target_os = "emscripten",
     target_os = "fuchsia",
-    target_os = "horizon"
+    target_os = "horizon",
+    target_os = "vita",
 )))]
 pub(crate) fn unix_sigpipe_attr_specified() -> bool {
     UNIX_SIGPIPE_ATTR_SPECIFIED.load(crate::sync::atomic::Ordering::Relaxed)
@@ -402,7 +411,7 @@ cfg_if::cfg_if! {
     }
 }
 
-#[cfg(any(target_os = "espidf", target_os = "horizon"))]
+#[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "vita"))]
 mod unsupported {
     use crate::io;
 

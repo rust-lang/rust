@@ -22,13 +22,13 @@
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/offset_of.rs:+1:9: +1:11
-          _1 = OffsetOf(Gamma<T>, [0]);    // scope 0 at $DIR/offset_of.rs:+1:14: +1:37
+          _1 = OffsetOf(Gamma<T>, [0]);    // scope 0 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
           StorageLive(_2);                 // scope 1 at $DIR/offset_of.rs:+2:9: +2:11
-          _2 = OffsetOf(Gamma<T>, [1]);    // scope 1 at $DIR/offset_of.rs:+2:14: +2:37
+          _2 = OffsetOf(Gamma<T>, [1]);    // scope 1 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
           StorageLive(_3);                 // scope 2 at $DIR/offset_of.rs:+3:9: +3:11
-          _3 = OffsetOf(Delta<T>, [1]);    // scope 2 at $DIR/offset_of.rs:+3:14: +3:37
+          _3 = OffsetOf(Delta<T>, [1]);    // scope 2 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
           StorageLive(_4);                 // scope 3 at $DIR/offset_of.rs:+4:9: +4:11
-          _4 = OffsetOf(Delta<T>, [2]);    // scope 3 at $DIR/offset_of.rs:+4:14: +4:37
+          _4 = OffsetOf(Delta<T>, [2]);    // scope 3 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
           _0 = const ();                   // scope 0 at $DIR/offset_of.rs:+0:17: +5:2
           StorageDead(_4);                 // scope 3 at $DIR/offset_of.rs:+5:1: +5:2
           StorageDead(_3);                 // scope 2 at $DIR/offset_of.rs:+5:1: +5:2

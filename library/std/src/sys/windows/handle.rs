@@ -144,7 +144,7 @@ impl Handle {
         let len = cmp::min(buf.len(), <c::DWORD>::MAX as usize) as c::DWORD;
         let mut amt = 0;
         let res = cvt(c::ReadFile(
-            self.as_handle(),
+            self.as_raw_handle(),
             buf.as_ptr() as c::LPVOID,
             len,
             &mut amt,
@@ -235,7 +235,7 @@ impl Handle {
         len: usize,
         offset: Option<u64>,
     ) -> io::Result<usize> {
-        let mut io_status = c::IO_STATUS_BLOCK::default();
+        let mut io_status = c::IO_STATUS_BLOCK::PENDING;
 
         // The length is clamped at u32::MAX.
         let len = cmp::min(len, c::DWORD::MAX as usize) as c::DWORD;
@@ -283,7 +283,7 @@ impl Handle {
     ///
     /// If `offset` is `None` then the current file position is used.
     fn synchronous_write(&self, buf: &[u8], offset: Option<u64>) -> io::Result<usize> {
-        let mut io_status = c::IO_STATUS_BLOCK::default();
+        let mut io_status = c::IO_STATUS_BLOCK::PENDING;
 
         // The length is clamped at u32::MAX.
         let len = cmp::min(buf.len(), c::DWORD::MAX as usize) as c::DWORD;

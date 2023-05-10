@@ -188,6 +188,9 @@ pub trait Visitor<'ast>: Sized {
     fn visit_variant(&mut self, v: &'ast Variant) {
         walk_variant(self, v)
     }
+    fn visit_variant_discr(&mut self, discr: &'ast AnonConst) {
+        self.visit_anon_const(discr);
+    }
     fn visit_label(&mut self, label: &'ast Label) {
         walk_label(self, label)
     }
@@ -380,7 +383,7 @@ where
     visitor.visit_ident(variant.ident);
     visitor.visit_vis(&variant.vis);
     visitor.visit_variant_data(&variant.data);
-    walk_list!(visitor, visit_anon_const, &variant.disr_expr);
+    walk_list!(visitor, visit_variant_discr, &variant.disr_expr);
     walk_list!(visitor, visit_attribute, &variant.attrs);
 }
 

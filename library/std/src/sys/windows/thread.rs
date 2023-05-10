@@ -2,6 +2,7 @@ use crate::ffi::CStr;
 use crate::io;
 use crate::num::NonZeroUsize;
 use crate::os::windows::io::AsRawHandle;
+use crate::os::windows::io::HandleOrNull;
 use crate::ptr;
 use crate::sys::c;
 use crate::sys::handle::Handle;
@@ -32,12 +33,12 @@ impl Thread {
         let ret = c::CreateThread(
             ptr::null_mut(),
             stack,
-            thread_start,
+            Some(thread_start),
             p as *mut _,
             c::STACK_SIZE_PARAM_IS_A_RESERVATION,
             ptr::null_mut(),
         );
-
+        let ret = HandleOrNull::from_raw_handle(ret);
         return if let Ok(handle) = ret.try_into() {
             Ok(Thread { handle: Handle::from_inner(handle) })
         } else {

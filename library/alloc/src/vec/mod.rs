@@ -3142,8 +3142,8 @@ where
     ///
     /// ```
     /// # use std::borrow::Cow;
-    /// let o: Cow<[i32]> = Cow::Owned(vec![1, 2, 3]);
-    /// let b: Cow<[i32]> = Cow::Borrowed(&[1, 2, 3]);
+    /// let o: Cow<'_, [i32]> = Cow::Owned(vec![1, 2, 3]);
+    /// let b: Cow<'_, [i32]> = Cow::Borrowed(&[1, 2, 3]);
     /// assert_eq!(Vec::from(o), Vec::from(b));
     /// ```
     fn from(s: Cow<'a, [T]>) -> Vec<T> {

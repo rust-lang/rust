@@ -115,7 +115,7 @@
 //!     let shared_map: Rc<RefCell<_>> = Rc::new(RefCell::new(HashMap::new()));
 //!     // Create a new block to limit the scope of the dynamic borrow
 //!     {
-//!         let mut map: RefMut<_> = shared_map.borrow_mut();
+//!         let mut map: RefMut<'_, _> = shared_map.borrow_mut();
 //!         map.insert("africa", 92388);
 //!         map.insert("kyoto", 11837);
 //!         map.insert("piccadilly", 11826);
@@ -1435,8 +1435,8 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// use std::cell::{RefCell, Ref};
     ///
     /// let c = RefCell::new((5, 'b'));
-    /// let b1: Ref<(u32, char)> = c.borrow();
-    /// let b2: Ref<u32> = Ref::map(b1, |t| &t.0);
+    /// let b1: Ref<'_, (u32, char)> = c.borrow();
+    /// let b2: Ref<'_, u32> = Ref::map(b1, |t| &t.0);
     /// assert_eq!(*b2, 5)
     /// ```
     #[stable(feature = "cell_map", since = "1.8.0")]
@@ -1464,8 +1464,8 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// use std::cell::{RefCell, Ref};
     ///
     /// let c = RefCell::new(vec![1, 2, 3]);
-    /// let b1: Ref<Vec<u32>> = c.borrow();
-    /// let b2: Result<Ref<u32>, _> = Ref::filter_map(b1, |v| v.get(1));
+    /// let b1: Ref<'_, Vec<u32>> = c.borrow();
+    /// let b2: Result<Ref<'_, u32>, _> = Ref::filter_map(b1, |v| v.get(1));
     /// assert_eq!(*b2.unwrap(), 2);
     /// ```
     #[stable(feature = "cell_filter_map", since = "1.63.0")]
@@ -1577,8 +1577,8 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     ///
     /// let c = RefCell::new((5, 'b'));
     /// {
-    ///     let b1: RefMut<(u32, char)> = c.borrow_mut();
-    ///     let mut b2: RefMut<u32> = RefMut::map(b1, |t| &mut t.0);
+    ///     let b1: RefMut<'_, (u32, char)> = c.borrow_mut();
+    ///     let mut b2: RefMut<'_, u32> = RefMut::map(b1, |t| &mut t.0);
     ///     assert_eq!(*b2, 5);
     ///     *b2 = 42;
     /// }
@@ -1612,8 +1612,8 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// let c = RefCell::new(vec![1, 2, 3]);
     ///
     /// {
-    ///     let b1: RefMut<Vec<u32>> = c.borrow_mut();
-    ///     let mut b2: Result<RefMut<u32>, _> = RefMut::filter_map(b1, |v| v.get_mut(1));
+    ///     let b1: RefMut<'_, Vec<u32>> = c.borrow_mut();
+    ///     let mut b2: Result<RefMut<'_, u32>, _> = RefMut::filter_map(b1, |v| v.get_mut(1));
     ///
     ///     if let Ok(mut b2) = b2 {
     ///         *b2 += 2;

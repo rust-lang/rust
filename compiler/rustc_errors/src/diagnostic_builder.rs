@@ -571,6 +571,14 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         Some((diagnostic, handler))
     }
 
+    /// Retrieves the [`Handler`] if available
+    pub fn handler(&self) -> Option<&Handler> {
+        match self.inner.state {
+            DiagnosticBuilderState::Emittable(handler) => Some(handler),
+            DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => None,
+        }
+    }
+
     /// Buffers the diagnostic for later emission,
     /// unless handler has disabled such buffering.
     pub fn buffer(self, buffered_diagnostics: &mut Vec<Diagnostic>) {

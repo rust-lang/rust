@@ -447,7 +447,12 @@ impl FileAttr {
 
 #[cfg(not(any(target_os = "netbsd", target_os = "nto")))]
 impl FileAttr {
-    #[cfg(not(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon")))]
+    #[cfg(not(any(
+        target_os = "vxworks",
+        target_os = "espidf",
+        target_os = "horizon",
+        target_os = "vita"
+    )))]
     pub fn modified(&self) -> io::Result<SystemTime> {
         #[cfg(target_pointer_width = "32")]
         cfg_has_statx! {
@@ -459,7 +464,7 @@ impl FileAttr {
         Ok(SystemTime::new(self.stat.st_mtime as i64, self.stat.st_mtime_nsec as i64))
     }
 
-    #[cfg(any(target_os = "vxworks", target_os = "espidf"))]
+    #[cfg(any(target_os = "vxworks", target_os = "espidf", target_os = "vita"))]
     pub fn modified(&self) -> io::Result<SystemTime> {
         Ok(SystemTime::new(self.stat.st_mtime as i64, 0))
     }
@@ -469,7 +474,12 @@ impl FileAttr {
         Ok(SystemTime::from(self.stat.st_mtim))
     }
 
-    #[cfg(not(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon")))]
+    #[cfg(not(any(
+        target_os = "vxworks",
+        target_os = "espidf",
+        target_os = "horizon",
+        target_os = "vita"
+    )))]
     pub fn accessed(&self) -> io::Result<SystemTime> {
         #[cfg(target_pointer_width = "32")]
         cfg_has_statx! {
@@ -481,7 +491,7 @@ impl FileAttr {
         Ok(SystemTime::new(self.stat.st_atime as i64, self.stat.st_atime_nsec as i64))
     }
 
-    #[cfg(any(target_os = "vxworks", target_os = "espidf"))]
+    #[cfg(any(target_os = "vxworks", target_os = "espidf", target_os = "vita"))]
     pub fn accessed(&self) -> io::Result<SystemTime> {
         Ok(SystemTime::new(self.stat.st_atime as i64, 0))
     }
@@ -866,6 +876,7 @@ impl DirEntry {
         target_os = "vxworks",
         target_os = "espidf",
         target_os = "horizon",
+        target_os = "vita",
         target_os = "nto",
     ))]
     pub fn ino(&self) -> u64 {

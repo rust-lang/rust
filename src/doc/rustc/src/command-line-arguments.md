@@ -248,8 +248,14 @@ The valid types of print values are:
   exact format of this debugging output is not a stable guarantee, other than
   that it will include the linker executable and the text of each command-line
   argument passed to the linker.
+- `deployment-target` - The currently selected [deployment target] (or minimum OS version)
+  for the selected Apple platform target. This value can be used or passed along to other
+  components alongside a Rust build that need this information, such as C compilers.
+  This returns rustc's minimum supported deployment target if no `*_DEPLOYMENT_TARGET` variable
+  is present in the environment, or otherwise returns the variable's parsed value.
 
 [conditional compilation]: ../reference/conditional-compilation.html
+[deployment target]: https://developer.apple.com/library/archive/documentation/DeveloperTools/Conceptual/cross_development/Configuring/configuring.html
 
 <a id="option-g-debug"></a>
 ## `-g`: include debug information

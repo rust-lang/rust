@@ -1,0 +1,17 @@
+error: expected one of `(`, `,`, `=`, `{`, or `}`, found `:`
+  --> $DIR/issue-103869.rs:5:8
+   |
+LL | enum VecOrMap {
+   |      -------- while parsing this enum
+LL |
+LL |     vec: Vec<usize>,
+   |        ^ expected one of `(`, `,`, `=`, `{`, or `}`
+   |
+   = help: enum variants can be `Variant`, `Variant = <integer>`, `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`
+help: perhaps you meant to use `struct` here
+   |
+LL | struct VecOrMap {
+   | ~~~~~~
+
+error: aborting due to previous error
+

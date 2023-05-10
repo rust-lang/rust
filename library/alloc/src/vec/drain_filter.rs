@@ -16,7 +16,7 @@ use super::Vec;
 /// #![feature(drain_filter)]
 ///
 /// let mut v = vec![0, 1, 2];
-/// let iter: std::vec::DrainFilter<_, _> = v.drain_filter(|x| *x % 2 == 0);
+/// let iter: std::vec::DrainFilter<'_, _, _> = v.drain_filter(|x| *x % 2 == 0);
 /// ```
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
 #[derive(Debug)]

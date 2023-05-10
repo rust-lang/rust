@@ -37,6 +37,7 @@ pub enum DynKind {
 #[derive(Encodable, Decodable, HashStable_Generic)]
 pub enum AliasKind {
     Projection,
+    Inherent,
     Opaque,
 }
 

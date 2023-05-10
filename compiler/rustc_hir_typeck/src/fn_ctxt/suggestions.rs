@@ -1,6 +1,6 @@
 use super::FnCtxt;
 
-use crate::errors::{AddReturnTypeSuggestion, ExpectedReturnTypeLabel};
+use crate::errors::{AddReturnTypeSuggestion, ExpectedReturnTypeLabel, SuggestBoxing};
 use crate::fluent_generated as fluent;
 use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
 use rustc_ast::util::parser::{ExprPrecedence, PREC_POSTFIX};
@@ -9,7 +9,8 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
-    Expr, ExprKind, GenericBound, Node, Path, QPath, Stmt, StmtKind, TyKind, WherePredicate,
+    AsyncGeneratorKind, Expr, ExprKind, GeneratorKind, GenericBound, HirId, Node, Path, QPath,
+    Stmt, StmtKind, TyKind, WherePredicate,
 };
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::traits::{self, StatementAsExpression};
@@ -274,13 +275,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
     ) -> bool {
         let expr = expr.peel_blocks();
-        if let Some((sp, msg, suggestion, applicability, verbose, annotation)) =
-            self.check_ref(expr, found, expected)
+        if let Some((suggestion, msg, applicability, verbose, annotation)) =
+            self.suggest_deref_or_ref(expr, found, expected)
         {
             if verbose {
-                err.span_suggestion_verbose(sp, msg, suggestion, applicability);
+                err.multipart_suggestion_verbose(msg, suggestion, applicability);
             } else {
-                err.span_suggestion(sp, msg, suggestion, applicability);
+                err.multipart_suggestion(msg, suggestion, applicability);
             }
             if annotation {
                 let suggest_annotation = match expr.peel_drop_temps().kind {
@@ -342,7 +343,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.span_label(sp, format!("{descr} `{name}` defined here"));
             }
             return true;
-        } else if self.check_for_cast(err, expr, found, expected, expected_ty_expr) {
+        } else if self.suggest_cast(err, expr, found, expected, expected_ty_expr) {
             return true;
         } else {
             let methods = self.get_conversion_methods(expr.span, expected, found, expr.hir_id);
@@ -438,33 +439,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn suggest_boxing_when_appropriate(
         &self,
         err: &mut Diagnostic,
-        expr: &hir::Expr<'_>,
+        span: Span,
+        hir_id: HirId,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) -> bool {
-        if self.tcx.hir().is_inside_const_context(expr.hir_id) {
-            // Do not suggest `Box::new` in const context.
+        // Do not suggest `Box::new` in const context.
+        if self.tcx.hir().is_inside_const_context(hir_id) || !expected.is_box() || found.is_box() {
             return false;
         }
-        if !expected.is_box() || found.is_box() {
-            return false;
-        }
-        let boxed_found = self.tcx.mk_box(found);
-        if self.can_coerce(boxed_found, expected) {
-            err.multipart_suggestion(
-                "store this in the heap by calling `Box::new`",
-                vec![
-                    (expr.span.shrink_to_lo(), "Box::new(".to_string()),
-                    (expr.span.shrink_to_hi(), ")".to_string()),
-                ],
-                Applicability::MachineApplicable,
-            );
-            err.note(
-                "for more on the distinction between the stack and the heap, read \
-                 https://doc.rust-lang.org/book/ch15-01-box.html, \
-                 https://doc.rust-lang.org/rust-by-example/std/box.html, and \
-                 https://doc.rust-lang.org/std/boxed/index.html",
-            );
+        if self.can_coerce(self.tcx.mk_box(found), expected) {
+            let suggest_boxing = match found.kind() {
+                ty::Tuple(tuple) if tuple.is_empty() => {
+                    SuggestBoxing::Unit { start: span.shrink_to_lo(), end: span }
+                }
+                ty::Generator(def_id, ..)
+                    if matches!(
+                        self.tcx.generator_kind(def_id),
+                        Some(GeneratorKind::Async(AsyncGeneratorKind::Closure))
+                    ) =>
+                {
+                    SuggestBoxing::AsyncBody
+                }
+                _ => SuggestBoxing::Other { start: span.shrink_to_lo(), end: span.shrink_to_hi() },
+            };
+            err.subdiagnostic(suggest_boxing);
+
             true
         } else {
             false

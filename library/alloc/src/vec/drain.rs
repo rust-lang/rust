@@ -16,7 +16,7 @@ use super::Vec;
 ///
 /// ```
 /// let mut v = vec![0, 1, 2];
-/// let iter: std::vec::Drain<_> = v.drain(..);
+/// let iter: std::vec::Drain<'_, _> = v.drain(..);
 /// ```
 #[stable(feature = "drain", since = "1.6.0")]
 pub struct Drain<

@@ -556,8 +556,7 @@ impl<'a> State<'a> {
                 self.pclose();
             }
             ast::ExprKind::OffsetOf(container, fields) => {
-                // FIXME: This should have its own syntax, distinct from a macro invocation.
-                self.word("offset_of!");
+                self.word("builtin # offset_of");
                 self.popen();
                 self.rbox(0, Inconsistent);
                 self.print_type(container);

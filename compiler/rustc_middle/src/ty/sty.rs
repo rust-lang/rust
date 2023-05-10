@@ -1190,9 +1190,9 @@ where
 
 /// Represents the projection of an associated type.
 ///
-/// For a projection, this would be `<Ty as Trait<...>>::N`.
-///
-/// For an opaque type, there is no explicit syntax.
+/// * For a projection, this would be `<Ty as Trait<...>>::N<...>`.
+/// * For an inherent projection, this would be `Ty::N<...>`.
+/// * For an opaque type, there is no explicit syntax.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct AliasTy<'tcx> {
@@ -1201,12 +1201,16 @@ pub struct AliasTy<'tcx> {
     /// For a projection, these are the substitutions for the trait and the
     /// GAT substitutions, if there are any.
     ///
+    /// For an inherent projection, they consist of the self type and the GAT substitutions,
+    /// if there are any.
+    ///
     /// For RPIT the substitutions are for the generics of the function,
     /// while for TAIT it is used for the generic parameters of the alias.
     pub substs: SubstsRef<'tcx>,
 
-    /// The `DefId` of the `TraitItem` for the associated type `N` if this is a projection,
-    /// or the `OpaqueType` item if this is an opaque.
+    /// The `DefId` of the `TraitItem` or `ImplItem` for the associated type `N` depending on whether
+    /// this is a projection or an inherent projection or the `DefId` of the `OpaqueType` item if
+    /// this is an opaque.
     ///
     /// During codegen, `tcx.type_of(def_id)` can be used to get the type of the
     /// underlying type if the type is an opaque.
@@ -1224,6 +1228,7 @@ pub struct AliasTy<'tcx> {
 impl<'tcx> AliasTy<'tcx> {
     pub fn kind(self, tcx: TyCtxt<'tcx>) -> ty::AliasKind {
         match tcx.def_kind(self.def_id) {
+            DefKind::AssocTy if let DefKind::Impl { of_trait: false } = tcx.def_kind(tcx.parent(self.def_id)) => ty::Inherent,
             DefKind::AssocTy | DefKind::ImplTraitPlaceholder => ty::Projection,
             DefKind::OpaqueTy => ty::Opaque,
             kind => bug!("unexpected DefKind in AliasTy: {kind:?}"),
@@ -1236,6 +1241,17 @@ impl<'tcx> AliasTy<'tcx> {
 }
 
 /// The following methods work only with associated type projections.
+impl<'tcx> AliasTy<'tcx> {
+    pub fn self_ty(self) -> Ty<'tcx> {
+        self.substs.type_at(0)
+    }
+
+    pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
+        tcx.mk_alias_ty(self.def_id, [self_ty.into()].into_iter().chain(self.substs.iter().skip(1)))
+    }
+}
+
+/// The following methods work only with trait associated type projections.
 impl<'tcx> AliasTy<'tcx> {
     pub fn trait_def_id(self, tcx: TyCtxt<'tcx>) -> DefId {
         match tcx.def_kind(self.def_id) {
@@ -1274,13 +1290,28 @@ impl<'tcx> AliasTy<'tcx> {
         let def_id = self.trait_def_id(tcx);
         ty::TraitRef::new(tcx, def_id, self.substs.truncate_to(tcx, tcx.generics_of(def_id)))
     }
+}
 
-    pub fn self_ty(self) -> Ty<'tcx> {
-        self.substs.type_at(0)
-    }
+/// The following methods work only with inherent associated type projections.
+impl<'tcx> AliasTy<'tcx> {
+    /// Transform the substitutions to have the given `impl` substs as the base and the GAT substs on top of that.
+    ///
+    /// Does the following transformation:
+    ///
+    /// ```text
+    /// [Self, P_0...P_m] -> [I_0...I_n, P_0...P_m]
+    ///
+    ///     I_i impl subst
+    ///     P_j GAT subst
+    /// ```
+    pub fn rebase_substs_onto_impl(
+        self,
+        impl_substs: ty::SubstsRef<'tcx>,
+        tcx: TyCtxt<'tcx>,
+    ) -> ty::SubstsRef<'tcx> {
+        debug_assert_eq!(self.kind(tcx), ty::Inherent);
 
-    pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
-        tcx.mk_alias_ty(self.def_id, [self_ty.into()].into_iter().chain(self.substs.iter().skip(1)))
+        tcx.mk_substs_from_iter(impl_substs.into_iter().chain(self.substs.into_iter().skip(1)))
     }
 }
 

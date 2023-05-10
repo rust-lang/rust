@@ -1300,6 +1300,8 @@ impl<'a> Parser<'a> {
             })
         } else if self.check(&token::OpenDelim(Delimiter::Bracket)) {
             self.parse_expr_array_or_repeat(Delimiter::Bracket)
+        } else if self.is_builtin() {
+            self.parse_expr_builtin()
         } else if self.check_path() {
             self.parse_expr_path_start()
         } else if self.check_keyword(kw::Move)
@@ -1764,6 +1766,61 @@ impl<'a> Parser<'a> {
         self.sess.gated_spans.gate(sym::generators, span);
         let expr = self.mk_expr(span, kind);
         self.maybe_recover_from_bad_qpath(expr)
+    }
+
+    /// Parse `builtin # ident(args,*)`.
+    fn parse_expr_builtin(&mut self) -> PResult<'a, P<Expr>> {
+        self.parse_builtin(|this, lo, ident| {
+            if ident.name == sym::offset_of {
+                return Ok(Some(this.parse_expr_offset_of(lo)?));
+            }
+
+            Ok(None)
+        })
+    }
+
+    pub(crate) fn parse_builtin<T>(
+        &mut self,
+        parse: impl FnOnce(&mut Parser<'a>, Span, Ident) -> PResult<'a, Option<T>>,
+    ) -> PResult<'a, T> {
+        let lo = self.token.span;
+
+        self.bump(); // `builtin`
+        self.bump(); // `#`
+
+        let Some((ident, false)) = self.token.ident() else {
+            let err = errors::ExpectedBuiltinIdent { span: self.token.span }
+                .into_diagnostic(&self.sess.span_diagnostic);
+            return Err(err);
+        };
+        self.sess.gated_spans.gate(sym::builtin_syntax, ident.span);
+        self.bump();
+
+        self.expect(&TokenKind::OpenDelim(Delimiter::Parenthesis))?;
+        let ret = if let Some(res) = parse(self, lo, ident)? {
+            Ok(res)
+        } else {
+            let err = errors::UnknownBuiltinConstruct { span: lo.to(ident.span), name: ident.name }
+                .into_diagnostic(&self.sess.span_diagnostic);
+            return Err(err);
+        };
+        self.expect(&TokenKind::CloseDelim(Delimiter::Parenthesis))?;
+
+        ret
+    }
+
+    pub(crate) fn parse_expr_offset_of(&mut self, lo: Span) -> PResult<'a, P<Expr>> {
+        let container = self.parse_ty()?;
+        self.expect(&TokenKind::Comma)?;
+
+        let seq_sep = SeqSep { sep: Some(token::Dot), trailing_sep_allowed: false };
+        let (fields, _trailing, _recovered) = self.parse_seq_to_before_end(
+            &TokenKind::CloseDelim(Delimiter::Parenthesis),
+            seq_sep,
+            Parser::parse_field_name,
+        )?;
+        let span = lo.to(self.token.span);
+        Ok(self.mk_expr(span, ExprKind::OffsetOf(container, fields.to_vec().into())))
     }
 
     /// Returns a string literal if the next token is a string literal.
@@ -2833,6 +2890,10 @@ impl<'a> Parser<'a> {
                 TrailingToken::None,
             ))
         })
+    }
+
+    pub(crate) fn is_builtin(&self) -> bool {
+        self.token.is_keyword(kw::Builtin) && self.look_ahead(1, |t| *t == token::Pound)
     }
 
     /// Parses a `try {...}` expression (`try` token already eaten).

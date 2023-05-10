@@ -7,7 +7,6 @@ use rustc_index::IndexVec;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_mir_dataflow::impls::borrowed_locals;
 
 pub struct NormalizeArrayLen;
 
@@ -24,9 +23,7 @@ impl<'tcx> MirPass<'tcx> for NormalizeArrayLen {
 }
 
 fn normalize_array_len_calls<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
-    let borrowed_locals = borrowed_locals(body);
-    let ssa = SsaLocals::new(tcx, param_env, body, &borrowed_locals);
+    let ssa = SsaLocals::new(body);
 
     let slice_lengths = compute_slice_length(tcx, &ssa, body);
     debug!(?slice_lengths);
@@ -41,7 +38,7 @@ fn compute_slice_length<'tcx>(
 ) -> IndexVec<Local, Option<ty::Const<'tcx>>> {
     let mut slice_lengths = IndexVec::from_elem(None, &body.local_decls);
 
-    for (local, rvalue) in ssa.assignments(body) {
+    for (local, rvalue, _) in ssa.assignments(body) {
         match rvalue {
             Rvalue::Cast(
                 CastKind::Pointer(ty::adjustment::PointerCast::Unsize),

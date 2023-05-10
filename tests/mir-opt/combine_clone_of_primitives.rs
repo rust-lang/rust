@@ -1,7 +1,7 @@
-// unit-test: InstCombine
+// unit-test: InstSimplify
 // ignore-wasm32 compiled with panic=abort by default
 
-// EMIT_MIR combine_clone_of_primitives.{impl#0}-clone.InstCombine.diff
+// EMIT_MIR combine_clone_of_primitives.{impl#0}-clone.InstSimplify.diff
 
 #[derive(Clone)]
 struct MyThing<T> {

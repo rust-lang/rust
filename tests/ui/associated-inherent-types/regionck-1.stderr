@@ -1,0 +1,29 @@
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/regionck-1.rs:9:30
+   |
+LL |     type NoTyOutliv<'a, T> = &'a T;
+   |                              ^^^^^- help: consider adding a where clause: `where T: 'a`
+   |                              |
+   |                              ...so that the reference type `&'a T` does not outlive the data it points at
+
+error[E0491]: in type `&'a &'b ()`, reference has a longer lifetime than the data it references
+  --> $DIR/regionck-1.rs:10:31
+   |
+LL |     type NoReOutliv<'a, 'b> = &'a &'b ();
+   |                               ^^^^^^^^^^
+   |
+note: the pointer is valid for the lifetime `'a` as defined here
+  --> $DIR/regionck-1.rs:10:21
+   |
+LL |     type NoReOutliv<'a, 'b> = &'a &'b ();
+   |                     ^^
+note: but the referenced data is only valid for the lifetime `'b` as defined here
+  --> $DIR/regionck-1.rs:10:25
+   |
+LL |     type NoReOutliv<'a, 'b> = &'a &'b ();
+   |                         ^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0309, E0491.
+For more information about an error, try `rustc --explain E0309`.

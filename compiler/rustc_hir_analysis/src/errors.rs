@@ -815,6 +815,15 @@ pub(crate) struct ClosureImplicitHrtb {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_empty_specialization)]
+pub(crate) struct EmptySpecialization {
+    #[primary_span]
+    pub span: Span,
+    #[note]
+    pub base_impl_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_analysis_const_specialize)]
 pub(crate) struct ConstSpecialize {
     #[primary_span]

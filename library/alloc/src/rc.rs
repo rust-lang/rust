@@ -2039,7 +2039,7 @@ where
     /// ```rust
     /// # use std::rc::Rc;
     /// # use std::borrow::Cow;
-    /// let cow: Cow<str> = Cow::Borrowed("eggplant");
+    /// let cow: Cow<'_, str> = Cow::Borrowed("eggplant");
     /// let shared: Rc<str> = Rc::from(cow);
     /// assert_eq!("eggplant", &shared[..]);
     /// ```

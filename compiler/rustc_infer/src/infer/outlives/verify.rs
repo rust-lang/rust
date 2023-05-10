@@ -277,7 +277,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     ///
     /// It will not, however, work for higher-ranked bounds like:
     ///
-    /// ```compile_fail,E0311
+    /// ```ignore(this does compile today, previously was marked as `compile_fail,E0311`)
     /// trait Foo<'a, 'b>
     /// where for<'x> <Self as Foo<'x, 'b>>::Bar: 'x
     /// {

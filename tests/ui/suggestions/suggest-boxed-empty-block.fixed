@@ -1,0 +1,12 @@
+#![feature(async_closure)]
+
+// edition:2021
+// run-rustfix
+
+fn foo<T>(_: Box<T>) {}
+fn bar<T>(_: impl Fn() -> Box<T>) {}
+
+fn main() {
+    foo(Box::new(())); //~ ERROR mismatched types
+    bar(|| Box::new(())); //~ ERROR mismatched types
+}

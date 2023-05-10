@@ -265,7 +265,7 @@ mod imp {
     }
 }
 
-#[cfg(target_os = "espidf")]
+#[cfg(any(target_os = "espidf", target_os = "vita"))]
 mod imp {
     use super::Args;
 

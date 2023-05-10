@@ -556,7 +556,10 @@ where
                 WherePredicate::EqPredicate { lhs, rhs, bound_params } => {
                     match *lhs {
                         Type::QPath(box QPathData {
-                            ref assoc, ref self_type, ref trait_, ..
+                            ref assoc,
+                            ref self_type,
+                            trait_: Some(ref trait_),
+                            ..
                         }) => {
                             let ty = &*self_type;
                             let mut new_trait = trait_.clone();

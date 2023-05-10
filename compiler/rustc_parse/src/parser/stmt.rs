@@ -90,7 +90,11 @@ impl<'a> Parser<'a> {
                 attrs,
                 errors::InvalidVariableDeclarationSub::UseLetNotVar,
             )?
-        } else if self.check_path() && !self.token.is_qpath_start() && !self.is_path_start_item() {
+        } else if self.check_path()
+            && !self.token.is_qpath_start()
+            && !self.is_path_start_item()
+            && !self.is_builtin()
+        {
             // We have avoided contextual keywords like `union`, items with `crate` visibility,
             // or `auto trait` items. We aim to parse an arbitrary path `a::b` but not something
             // that starts like a path (1 token), but it fact not a path.
@@ -99,7 +103,13 @@ impl<'a> Parser<'a> {
                 ForceCollect::Yes => {
                     self.collect_tokens_no_attrs(|this| this.parse_stmt_path_start(lo, attrs))?
                 }
-                ForceCollect::No => self.parse_stmt_path_start(lo, attrs)?,
+                ForceCollect::No => match self.parse_stmt_path_start(lo, attrs) {
+                    Ok(stmt) => stmt,
+                    Err(mut err) => {
+                        self.suggest_add_missing_let_for_stmt(&mut err);
+                        return Err(err);
+                    }
+                },
             }
         } else if let Some(item) = self.parse_item_common(
             attrs.clone(),
@@ -555,21 +565,12 @@ impl<'a> Parser<'a> {
                     if self.token == token::Colon {
                         // if next token is following a colon, it's likely a path
                         // and we can suggest a path separator
-                        let ident_span = self.prev_token.span;
                         self.bump();
                         if self.token.span.lo() == self.prev_token.span.hi() {
                             err.span_suggestion_verbose(
                                 self.prev_token.span,
                                 "maybe write a path separator here",
                                 "::",
-                                Applicability::MaybeIncorrect,
-                            );
-                        }
-                        if self.look_ahead(1, |token| token == &token::Eq) {
-                            err.span_suggestion_verbose(
-                                ident_span.shrink_to_lo(),
-                                "you might have meant to introduce a new binding",
-                                "let ",
                                 Applicability::MaybeIncorrect,
                             );
                         }

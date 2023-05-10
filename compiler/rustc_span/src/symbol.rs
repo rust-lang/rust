@@ -95,6 +95,7 @@ symbols! {
 
         // Weak keywords, have special meaning only in specific contexts.
         Auto:               "auto",
+        Builtin:            "builtin",
         Catch:              "catch",
         Default:            "default",
         MacroRules:         "macro_rules",
@@ -440,6 +441,7 @@ symbols! {
         breakpoint,
         bridge,
         bswap,
+        builtin_syntax,
         c_str,
         c_str_literals,
         c_unwind,
@@ -1031,6 +1033,7 @@ symbols! {
         non_exhaustive_omitted_patterns_lint,
         non_lifetime_binders,
         non_modrs_mods,
+        none,
         nontemporal_store,
         noop_method_borrow,
         noop_method_clone,

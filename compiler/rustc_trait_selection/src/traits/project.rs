@@ -16,6 +16,7 @@ use super::{
 };
 use super::{Normalized, NormalizedTy, ProjectionCacheEntry, ProjectionCacheKey};
 
+use crate::errors::InherentProjectionNormalizationOverflow;
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use crate::traits::error_reporting::TypeErrCtxtExt as _;
@@ -370,10 +371,14 @@ pub(crate) fn needs_normalization<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
     reveal: Reveal,
 ) -> bool {
     match reveal {
-        Reveal::UserFacing => value
-            .has_type_flags(ty::TypeFlags::HAS_TY_PROJECTION | ty::TypeFlags::HAS_CT_PROJECTION),
+        Reveal::UserFacing => value.has_type_flags(
+            ty::TypeFlags::HAS_TY_PROJECTION
+                | ty::TypeFlags::HAS_TY_INHERENT
+                | ty::TypeFlags::HAS_CT_PROJECTION,
+        ),
         Reveal::All => value.has_type_flags(
             ty::TypeFlags::HAS_TY_PROJECTION
+                | ty::TypeFlags::HAS_TY_INHERENT
                 | ty::TypeFlags::HAS_TY_OPAQUE
                 | ty::TypeFlags::HAS_CT_PROJECTION,
         ),
@@ -615,6 +620,51 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                     "AssocTypeNormalizer: normalized type"
                 );
                 normalized_ty
+            }
+
+            ty::Inherent if !data.has_escaping_bound_vars() => {
+                // This branch is *mostly* just an optimization: when we don't
+                // have escaping bound vars, we don't need to replace them with
+                // placeholders (see branch below). *Also*, we know that we can
+                // register an obligation to *later* project, since we know
+                // there won't be bound vars there.
+
+                let data = data.fold_with(self);
+
+                // FIXME(inherent_associated_types): Do we need to honor `self.eager_inference_replacement`
+                // here like `ty::Projection`?
+                normalize_inherent_projection(
+                    self.selcx,
+                    self.param_env,
+                    data,
+                    self.cause.clone(),
+                    self.depth,
+                    &mut self.obligations,
+                )
+            }
+
+            ty::Inherent => {
+                let infcx = self.selcx.infcx;
+                let (data, mapped_regions, mapped_types, mapped_consts) =
+                    BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, data);
+                let data = data.fold_with(self);
+                let ty = normalize_inherent_projection(
+                    self.selcx,
+                    self.param_env,
+                    data,
+                    self.cause.clone(),
+                    self.depth,
+                    &mut self.obligations,
+                );
+
+                PlaceholderReplacer::replace_placeholders(
+                    infcx,
+                    mapped_regions,
+                    mapped_types,
+                    mapped_consts,
+                    &self.universes,
+                    ty,
+                )
             }
         }
     }
@@ -1202,6 +1252,115 @@ fn normalize_to_error<'a, 'tcx>(
         span: tcx.def_span(projection_ty.def_id),
     });
     Normalized { value: new_value, obligations: vec![trait_obligation] }
+}
+
+/// Confirm and normalize the given inherent projection.
+#[instrument(level = "debug", skip(selcx, param_env, cause, obligations))]
+pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
+    selcx: &'a mut SelectionContext<'b, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    alias_ty: ty::AliasTy<'tcx>,
+    cause: ObligationCause<'tcx>,
+    depth: usize,
+    obligations: &mut Vec<PredicateObligation<'tcx>>,
+) -> Ty<'tcx> {
+    let tcx = selcx.tcx();
+
+    if !tcx.recursion_limit().value_within_limit(depth) {
+        // Halt compilation because it is important that overflows never be masked.
+        tcx.sess.emit_fatal(InherentProjectionNormalizationOverflow {
+            span: cause.span,
+            ty: alias_ty.to_string(),
+        });
+    }
+
+    let substs = compute_inherent_assoc_ty_substs(
+        selcx,
+        param_env,
+        alias_ty,
+        cause.clone(),
+        depth,
+        obligations,
+    );
+
+    // Register the obligations arising from the impl and from the associated type itself.
+    let predicates = tcx.predicates_of(alias_ty.def_id).instantiate(tcx, substs);
+    for (predicate, span) in predicates {
+        let predicate = normalize_with_depth_to(
+            selcx,
+            param_env,
+            cause.clone(),
+            depth + 1,
+            predicate,
+            obligations,
+        );
+
+        let nested_cause = ObligationCause::new(
+            cause.span,
+            cause.body_id,
+            // FIXME(inherent_associated_types): Since we can't pass along the self type to the
+            // cause code, inherent projections will be printed with identity substitutions in
+            // diagnostics which is not ideal.
+            // Consider creating separate cause codes for this specific situation.
+            if span.is_dummy() {
+                super::ItemObligation(alias_ty.def_id)
+            } else {
+                super::BindingObligation(alias_ty.def_id, span)
+            },
+        );
+
+        obligations.push(Obligation::with_depth(
+            tcx,
+            nested_cause,
+            depth + 1,
+            param_env,
+            predicate,
+        ));
+    }
+
+    let ty = tcx.type_of(alias_ty.def_id).subst(tcx, substs);
+
+    let mut ty = selcx.infcx.resolve_vars_if_possible(ty);
+    if ty.has_projections() {
+        ty = normalize_with_depth_to(selcx, param_env, cause.clone(), depth + 1, ty, obligations);
+    }
+
+    ty
+}
+
+pub fn compute_inherent_assoc_ty_substs<'a, 'b, 'tcx>(
+    selcx: &'a mut SelectionContext<'b, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    alias_ty: ty::AliasTy<'tcx>,
+    cause: ObligationCause<'tcx>,
+    depth: usize,
+    obligations: &mut Vec<PredicateObligation<'tcx>>,
+) -> ty::SubstsRef<'tcx> {
+    let tcx = selcx.tcx();
+
+    let impl_def_id = tcx.parent(alias_ty.def_id);
+    let impl_substs = selcx.infcx.fresh_substs_for_item(cause.span, impl_def_id);
+
+    let impl_ty = tcx.type_of(impl_def_id).subst(tcx, impl_substs);
+    let impl_ty =
+        normalize_with_depth_to(selcx, param_env, cause.clone(), depth + 1, impl_ty, obligations);
+
+    // Infer the generic parameters of the impl by unifying the
+    // impl type with the self type of the projection.
+    let self_ty = alias_ty.self_ty();
+    match selcx.infcx.at(&cause, param_env).eq(DefineOpaqueTypes::No, impl_ty, self_ty) {
+        Ok(mut ok) => obligations.append(&mut ok.obligations),
+        Err(_) => {
+            tcx.sess.delay_span_bug(
+                cause.span,
+                format!(
+                    "{self_ty:?} was a subtype of {impl_ty:?} during selection but now it is not"
+                ),
+            );
+        }
+    }
+
+    alias_ty.rebase_substs_onto_impl(impl_substs, tcx)
 }
 
 enum Projected<'tcx> {

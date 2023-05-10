@@ -19,7 +19,7 @@ include!("../dylib_util.rs");
 
 use std::env;
 use std::path::PathBuf;
-use std::process::{Child, Command};
+use std::process::{exit, Child, Command};
 use std::str::FromStr;
 use std::time::Instant;
 
@@ -47,7 +47,12 @@ fn main() {
     } else {
         ("RUSTC_REAL", "RUSTC_LIBDIR")
     };
-    let stage = env::var("RUSTC_STAGE").expect("RUSTC_STAGE was not set");
+    let stage = env::var("RUSTC_STAGE").unwrap_or_else(|_| {
+        // Don't panic here; it's reasonable to try and run these shims directly. Give a helpful error instead.
+        eprintln!("rustc shim: fatal: RUSTC_STAGE was not set");
+        eprintln!("rustc shim: note: use `x.py build -vvv` to see all environment variables set by bootstrap");
+        exit(101);
+    });
     let sysroot = env::var_os("RUSTC_SYSROOT").expect("RUSTC_SYSROOT was not set");
     let on_fail = env::var_os("RUSTC_ON_FAIL").map(Command::new);
 

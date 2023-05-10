@@ -322,7 +322,9 @@ fn negative_impl(tcx: TyCtxt<'_>, impl1_def_id: DefId, impl2_def_id: DefId) -> b
     let selcx = &mut SelectionContext::new(&infcx);
     let impl2_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl2_def_id);
     let (subject2, obligations) =
-        impl_subject_and_oblig(selcx, impl_env, impl2_def_id, impl2_substs);
+        impl_subject_and_oblig(selcx, impl_env, impl2_def_id, impl2_substs, |_, _| {
+            ObligationCause::dummy()
+        });
 
     !equate(&infcx, impl_env, subject1, subject2, obligations, impl1_def_id)
 }
@@ -673,7 +675,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OrphanChecker<'tcx> {
             | ty::RawPtr(..)
             | ty::Never
             | ty::Tuple(..)
-            | ty::Alias(ty::Projection, ..) => self.found_non_local_ty(ty),
+            | ty::Alias(ty::Projection | ty::Inherent, ..) => self.found_non_local_ty(ty),
 
             ty::Param(..) => self.found_param_ty(ty),
 

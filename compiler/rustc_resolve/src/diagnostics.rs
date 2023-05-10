@@ -864,18 +864,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ResolutionError::ForwardDeclaredGenericParam => {
                 self.tcx.sess.create_err(errs::ForwardDeclaredGenericParam { span })
             }
-            ResolutionError::ParamInTyOfConstParam(name) => {
-                self.tcx.sess.create_err(errs::ParamInTyOfConstParam { span, name })
-            }
-            ResolutionError::ParamInNonTrivialAnonConst { name, is_type } => {
+            ResolutionError::ParamInTyOfConstParam { name, param_kind: is_type } => self
+                .tcx
+                .sess
+                .create_err(errs::ParamInTyOfConstParam { span, name, param_kind: is_type }),
+            ResolutionError::ParamInNonTrivialAnonConst { name, param_kind: is_type } => {
                 self.tcx.sess.create_err(errs::ParamInNonTrivialAnonConst {
                     span,
                     name,
-                    sub_is_type: if is_type {
-                        errs::ParamInNonTrivialAnonConstIsType::AType
-                    } else {
-                        errs::ParamInNonTrivialAnonConstIsType::NotAType { name }
-                    },
+                    param_kind: is_type,
                     help: self
                         .tcx
                         .sess
@@ -883,6 +880,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         .then_some(errs::ParamInNonTrivialAnonConstHelp),
                 })
             }
+            ResolutionError::ParamInEnumDiscriminant { name, param_kind: is_type } => self
+                .tcx
+                .sess
+                .create_err(errs::ParamInEnumDiscriminant { span, name, param_kind: is_type }),
             ResolutionError::SelfInGenericParamDefault => {
                 self.tcx.sess.create_err(errs::SelfInGenericParamDefault { span })
             }

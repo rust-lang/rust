@@ -412,6 +412,8 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
         format!("-Zcrate-attr=doc(html_root_url=\"{}/\")", builder.doc_rust_lang_org_channel(),);
     cargo.rustflag(&html_root);
     cargo.rustdocflag(&html_root);
+
+    cargo.rustdocflag("-Zcrate-attr=warn(rust_2018_idioms)");
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -810,6 +812,9 @@ pub fn rustc_cargo(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelec
         .arg(builder.rustc_features(builder.kind))
         .arg("--manifest-path")
         .arg(builder.src.join("compiler/rustc/Cargo.toml"));
+
+    cargo.rustdocflag("-Zcrate-attr=warn(rust_2018_idioms)");
+
     rustc_cargo_env(builder, cargo, target, stage);
 }
 

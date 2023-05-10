@@ -263,7 +263,7 @@ impl Socket {
                 &mut nread,
                 &mut flags,
                 ptr::null_mut(),
-                ptr::null_mut(),
+                None,
             )
         };
 
@@ -347,7 +347,7 @@ impl Socket {
                 &mut nwritten,
                 0,
                 ptr::null_mut(),
-                ptr::null_mut(),
+                None,
             )
         };
         cvt(result).map(|_| nwritten as usize)

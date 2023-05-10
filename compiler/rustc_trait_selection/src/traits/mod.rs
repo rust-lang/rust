@@ -49,12 +49,15 @@ pub use self::object_safety::astconv_object_safety_violations;
 pub use self::object_safety::is_vtable_safe_method;
 pub use self::object_safety::MethodViolationCode;
 pub use self::object_safety::ObjectSafetyViolation;
-pub use self::project::{normalize_projection_type, NormalizeExt};
+pub use self::project::NormalizeExt;
+pub use self::project::{normalize_inherent_projection, normalize_projection_type};
 pub use self::select::{EvaluationCache, SelectionCache, SelectionContext};
 pub use self::select::{EvaluationResult, IntercrateAmbiguityCause, OverflowError};
 pub use self::specialize::specialization_graph::FutureCompatOverlapError;
 pub use self::specialize::specialization_graph::FutureCompatOverlapErrorKind;
-pub use self::specialize::{specialization_graph, translate_substs, OverlapError};
+pub use self::specialize::{
+    specialization_graph, translate_substs, translate_substs_with_cause, OverlapError,
+};
 pub use self::structural_match::{
     search_for_adt_const_param_violation, search_for_structural_match_violation,
 };

@@ -2260,7 +2260,7 @@ extern "rust-intrinsic" {
     /// This intrinsic can *only* be called where the pointer is a local without
     /// projections (`read_via_copy(ptr)`, not `read_via_copy(*ptr)`) so that it
     /// trivially obeys runtime-MIR rules about derefs in operands.
-    #[rustc_const_unstable(feature = "const_ptr_read", issue = "80377")]
+    #[rustc_const_stable(feature = "const_ptr_read", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_nounwind]
     pub fn read_via_copy<T>(ptr: *const T) -> T;
 
@@ -2523,6 +2523,7 @@ macro_rules! assert_unsafe_precondition {
                 }
             }
             #[allow(non_snake_case)]
+            #[inline]
             const fn comptime$(<$($tt)*>)?($(_:$ty),*) {}
 
             ::core::intrinsics::const_eval_select(($($i,)*), comptime, runtime);

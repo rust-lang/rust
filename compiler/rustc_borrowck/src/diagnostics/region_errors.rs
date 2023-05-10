@@ -845,7 +845,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 return;
             }
 
-            let Some((alias_tys, alias_span)) = self
+            let Some((alias_tys, alias_span, lt_addition_span)) = self
                 .infcx
                 .tcx
                 .return_type_impl_or_dyn_traits_with_type_alias(suitable_region.def_id) else { return; };
@@ -858,10 +858,20 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     ()
                 }
                 if let TyKind::TraitObject(_, lt, _) = alias_ty.kind {
-                    spans_suggs.push((lt.ident.span.shrink_to_hi(), " + 'a".to_string()));
+                    if lt.ident.name == kw::Empty {
+                        spans_suggs.push((lt.ident.span.shrink_to_hi(), " + 'a".to_string()));
+                    } else {
+                        spans_suggs.push((lt.ident.span, "'a".to_string()));
+                    }
                 }
             }
-            spans_suggs.push((alias_span.shrink_to_hi(), "<'a>".to_string()));
+
+            if let Some(lt_addition_span) = lt_addition_span {
+                spans_suggs.push((lt_addition_span, "'a, ".to_string()));
+            } else {
+                spans_suggs.push((alias_span.shrink_to_hi(), "<'a>".to_string()));
+            }
+
             diag.multipart_suggestion_verbose(
                 format!(
                     "to declare that the trait object {captures}, you can add a lifetime parameter `'a` in the type alias"

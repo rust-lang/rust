@@ -1519,7 +1519,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // case we can ignore the tail expression (e.g., `'a: {
         // break 'a 22; }` would not force the type of the block
         // to be `()`).
-        let tail_expr = blk.expr.as_ref();
         let coerce_to_ty = expected.coercion_target_type(self, blk.span);
         let coerce = if blk.targeted_by_break {
             CoerceMany::new(coerce_to_ty)
@@ -1537,13 +1536,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // check the tail expression **without** holding the
             // `enclosing_breakables` lock below.
-            let tail_expr_ty = tail_expr.map(|t| self.check_expr_with_expectation(t, expected));
+            let tail_expr_ty =
+                blk.expr.map(|expr| (expr, self.check_expr_with_expectation(expr, expected)));
 
             let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
             let ctxt = enclosing_breakables.find_breakable(blk.hir_id);
             let coerce = ctxt.coerce.as_mut().unwrap();
-            if let Some(tail_expr_ty) = tail_expr_ty {
-                let tail_expr = tail_expr.unwrap();
+            if let Some((tail_expr, tail_expr_ty)) = tail_expr_ty {
                 let span = self.get_expr_coercion_span(tail_expr);
                 let cause = self.cause(span, ObligationCauseCode::BlockTailExpression(blk.hir_id));
                 let ty_for_diagnostic = coerce.merged_ty();
@@ -1596,6 +1595,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         &self.misc(sp),
                         &mut |err| {
                             if let Some(expected_ty) = expected.only_has_type(self) {
+                                if blk.stmts.is_empty() && blk.expr.is_none() {
+                                    self.suggest_boxing_when_appropriate(
+                                        err,
+                                        blk.span,
+                                        blk.hir_id,
+                                        expected_ty,
+                                        self.tcx.mk_unit(),
+                                    );
+                                }
                                 if !self.consider_removing_semicolon(blk, expected_ty, err) {
                                     self.err_ctxt().consider_returning_binding(
                                         blk,
@@ -1608,7 +1616,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     // silence this redundant error, as we already emit E0070.
 
                                     // Our block must be a `assign desugar local; assignment`
-                                    if let Some(hir::Node::Block(hir::Block {
+                                    if let hir::Block {
                                         stmts:
                                             [
                                                 hir::Stmt {
@@ -1630,7 +1638,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                                 },
                                             ],
                                         ..
-                                    })) = self.tcx.hir().find(blk.hir_id)
+                                    } = blk
                                     {
                                         self.comes_from_while_condition(blk.hir_id, |_| {
                                             err.downgrade_to_delayed_bug();

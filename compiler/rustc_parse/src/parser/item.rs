@@ -265,6 +265,9 @@ impl<'a> Parser<'a> {
             // UNION ITEM
             self.bump(); // `union`
             self.parse_item_union()?
+        } else if self.is_builtin() {
+            // BUILTIN# ITEM
+            return self.parse_item_builtin();
         } else if self.eat_keyword(kw::Macro) {
             // MACROS 2.0 ITEM
             self.parse_item_decl_macro(lo)?
@@ -432,6 +435,11 @@ impl<'a> Parser<'a> {
         } else {
             Ok(())
         }
+    }
+
+    fn parse_item_builtin(&mut self) -> PResult<'a, Option<ItemInfo>> {
+        // To be expanded
+        return Ok(None);
     }
 
     /// Parses an item macro, e.g., `item!();`.
@@ -1262,6 +1270,7 @@ impl<'a> Parser<'a> {
             }
         }
 
+        let prev_span = self.prev_token.span;
         let id = self.parse_ident()?;
         let mut generics = self.parse_generics()?;
         generics.where_clause = self.parse_where_clause()?;
@@ -1273,10 +1282,28 @@ impl<'a> Parser<'a> {
             (thin_vec![], false)
         } else {
             self.parse_delim_comma_seq(Delimiter::Brace, |p| p.parse_enum_variant()).map_err(
-                |mut e| {
-                    e.span_label(id.span, "while parsing this enum");
+                |mut err| {
+                    err.span_label(id.span, "while parsing this enum");
+                    if self.token == token::Colon {
+                        let snapshot = self.create_snapshot_for_diagnostic();
+                        self.bump();
+                        match self.parse_ty() {
+                            Ok(_) => {
+                                err.span_suggestion_verbose(
+                                    prev_span,
+                                    "perhaps you meant to use `struct` here",
+                                    "struct".to_string(),
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
+                            Err(e) => {
+                                e.cancel();
+                            }
+                        }
+                        self.restore_snapshot(snapshot);
+                    }
                     self.recover_stmt();
-                    e
+                    err
                 },
             )?
         };

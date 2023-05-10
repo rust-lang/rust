@@ -372,6 +372,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                     substitution: substs.lower_into(interner),
                 }))
             }
+            ty::Alias(ty::Inherent, _) => unimplemented!(),
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
                 chalk_ir::TyKind::Alias(chalk_ir::AliasTy::Opaque(chalk_ir::OpaqueTy {
                     opaque_ty_id: chalk_ir::OpaqueTyId(def_id),
