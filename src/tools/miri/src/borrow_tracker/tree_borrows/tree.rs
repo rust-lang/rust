@@ -488,7 +488,13 @@ impl<'tcx> Tree {
 /// Integration with the BorTag garbage collector
 impl Tree {
     pub fn remove_unreachable_tags(&mut self, live_tags: &FxHashSet<BorTag>) {
-        assert!(self.keep_only_needed(self.root, live_tags)); // root can't be removed
+        let root_is_needed = self.keep_only_needed(self.root, live_tags); // root can't be removed
+        assert!(root_is_needed);
+        // Right after the GC runs is a good moment to check if we can
+        // merge some adjacent ranges that were made equal by the removal of some
+        // tags (this does not necessarily mean that they have identical internal representations,
+        // see the `PartialEq` impl for `UniValMap`)
+        self.rperms.merge_adjacent_thorough();
     }
 
     /// Traverses the entire tree looking for useless tags.

@@ -36,11 +36,40 @@ pub struct UniKeyMap<K> {
 }
 
 /// From UniIndex to V
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Eq)]
 pub struct UniValMap<V> {
     /// The mapping data. Thanks to Vec we get both fast accesses, and
     /// a memory-optimal representation if there are few deletions.
     data: Vec<Option<V>>,
+}
+
+impl<V: PartialEq> UniValMap<V> {
+    /// Exact equality of two maps.
+    /// Less accurate but faster than `equivalent`, mostly because
+    /// of the fast path when the lengths are different.
+    pub fn identical(&self, other: &Self) -> bool {
+        self.data == other.data
+    }
+
+    /// Equality up to trailing `None`s of two maps, i.e.
+    /// do they represent the same mapping ?
+    pub fn equivalent(&self, other: &Self) -> bool {
+        let min_len = self.data.len().min(other.data.len());
+        self.data[min_len..].iter().all(Option::is_none)
+            && other.data[min_len..].iter().all(Option::is_none)
+            && (self.data[..min_len] == other.data[..min_len])
+    }
+}
+
+impl<V: PartialEq> PartialEq for UniValMap<V> {
+    /// 2023-05: We found that using `equivalent` rather than `identical`
+    /// in the equality testing of the `RangeMap` is neutral for most
+    /// benchmarks, while being quite beneficial for `zip-equal`
+    /// and to a lesser extent for `unicode`, `slice-get-unchecked` and
+    /// `backtraces` as well.
+    fn eq(&self, other: &Self) -> bool {
+        self.equivalent(other)
+    }
 }
 
 impl<V> Default for UniValMap<V> {
