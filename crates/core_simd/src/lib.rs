@@ -1,6 +1,5 @@
 #![no_std]
 #![feature(
-    const_ptr_read,
     const_refs_to_cell,
     const_maybe_uninit_as_mut_ptr,
     const_mut_refs,
