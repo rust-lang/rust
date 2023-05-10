@@ -43,8 +43,9 @@ where
                 32 => transize(x86::_mm256_permutexvar_epi8, self, idxs),
                 // Notable absence: avx512bw shuffle
                 // If avx512bw is available, odds of avx512vbmi are good
-                #[cfg(target_feature = "avx512vbmi")]
-                64 => transize(x86::_mm512_permutexvar_epi8, self, idxs),
+                // FIXME: initial AVX512VBMI variant didn't actually pass muster
+                // #[cfg(target_feature = "avx512vbmi")]
+                // 64 => transize(x86::_mm512_permutexvar_epi8, self, idxs),
                 _ => {
                     let mut array = [0; N];
                     for (i, k) in idxs.to_array().into_iter().enumerate() {
@@ -67,6 +68,7 @@ where
 #[target_feature(enable = "avx2")]
 #[allow(unused)]
 #[inline]
+#[allow(clippy::let_and_return)]
 unsafe fn avx2_pshufb(bytes: Simd<u8, 32>, idxs: Simd<u8, 32>) -> Simd<u8, 32> {
     use crate::simd::SimdPartialOrd;
     #[cfg(target_arch = "x86")]
