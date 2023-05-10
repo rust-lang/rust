@@ -508,6 +508,10 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                 .clone()
                 .unwrap_or_else(|| "unknown-crate".to_string());
             let pid = process::id();
+            // We adopt the same naming scheme for the profiler output that rustc uses. In rustc,
+            // the PID is padded so that the nondeterministic value of the PID does not spread
+            // nondeterminisim to the allocator. In Miri we are not aiming for such performance
+            // control, we just pad for consistency with rustc.
             let filename = format!("{crate_name}-{pid:07}");
             let path = Path::new(out).join(filename);
             measureme::Profiler::new(path).expect("Couldn't create `measureme` profiler")
