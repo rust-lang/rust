@@ -35,14 +35,14 @@ rayon = "1.0"
 fnv = "1.0.7"
 serde_test = "1.0"
 doc-comment = "0.3.1"
-blink-alloc = "0.3.0"
+bumpalo = "3.6.0"
 
 [features]
 default = ["ahash", "inline-more", "allocator-api2"]
 
 nightly-base = [] # non-public feature to use nightly features without depending on `allocator-api2`
 
-nightly = ["allocator-api2/nightly", "nightly-base", "blink-alloc/nightly"]
+nightly = ["allocator-api2/nightly", "nightly-base", "bumpalo/allocator_api"]
 
 rustc-internal-api = []
 rustc-dep-of-std = [
