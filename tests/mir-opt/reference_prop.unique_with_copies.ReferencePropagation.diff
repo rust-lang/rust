@@ -28,12 +28,11 @@
           StorageLive(_1);                 // scope 0 at $DIR/reference_prop.rs:+1:9: +1:10
           StorageLive(_2);                 // scope 0 at $DIR/reference_prop.rs:+2:13: +2:18
           _2 = const 0_i32;                // scope 0 at $DIR/reference_prop.rs:+2:21: +2:22
-          StorageLive(_3);                 // scope 2 at $DIR/reference_prop.rs:+3:13: +3:14
+-         StorageLive(_3);                 // scope 2 at $DIR/reference_prop.rs:+3:13: +3:14
           _3 = &raw mut _2;                // scope 2 at $DIR/reference_prop.rs:+3:17: +3:27
           StorageLive(_4);                 // scope 3 at $DIR/reference_prop.rs:+5:9: +5:30
           StorageLive(_5);                 // scope 4 at $DIR/reference_prop.rs:+5:25: +5:27
--         _5 = (*_3);                      // scope 4 at $DIR/reference_prop.rs:+5:25: +5:27
-+         _5 = _2;                         // scope 4 at $DIR/reference_prop.rs:+5:25: +5:27
+          _5 = (*_3);                      // scope 4 at $DIR/reference_prop.rs:+5:25: +5:27
           _4 = opaque::<i32>(move _5) -> bb1; // scope 4 at $DIR/reference_prop.rs:+5:18: +5:28
                                            // mir::Constant
                                            // + span: $DIR/reference_prop.rs:452:18: 452:24
@@ -44,11 +43,12 @@
           StorageDead(_5);                 // scope 4 at $DIR/reference_prop.rs:+5:27: +5:28
           StorageDead(_4);                 // scope 3 at $DIR/reference_prop.rs:+5:30: +5:31
           _1 = _3;                         // scope 3 at $DIR/reference_prop.rs:+6:9: +6:10
-          StorageDead(_3);                 // scope 2 at $DIR/reference_prop.rs:+7:5: +7:6
+-         StorageDead(_3);                 // scope 2 at $DIR/reference_prop.rs:+7:5: +7:6
           StorageDead(_2);                 // scope 0 at $DIR/reference_prop.rs:+7:5: +7:6
           StorageLive(_6);                 // scope 1 at $DIR/reference_prop.rs:+9:5: +9:26
           StorageLive(_7);                 // scope 5 at $DIR/reference_prop.rs:+9:21: +9:23
-          _7 = (*_1);                      // scope 5 at $DIR/reference_prop.rs:+9:21: +9:23
+-         _7 = (*_1);                      // scope 5 at $DIR/reference_prop.rs:+9:21: +9:23
++         _7 = (*_3);                      // scope 5 at $DIR/reference_prop.rs:+9:21: +9:23
           _6 = opaque::<i32>(move _7) -> bb2; // scope 5 at $DIR/reference_prop.rs:+9:14: +9:24
                                            // mir::Constant
                                            // + span: $DIR/reference_prop.rs:456:14: 456:20

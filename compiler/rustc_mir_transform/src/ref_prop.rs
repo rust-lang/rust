@@ -208,13 +208,14 @@ fn compute_replacement<'tcx>(
             // have been visited before.
             Rvalue::Use(Operand::Copy(place) | Operand::Move(place))
             | Rvalue::CopyForDeref(place) => {
-                if let Some(rhs) = place.as_local() {
+                if let Some(rhs) = place.as_local() && ssa.is_ssa(rhs) {
                     let target = targets[rhs];
-                    if matches!(target, Value::Pointer(..)) {
+                    // Only see through immutable reference and pointers, as we do not know yet if
+                    // mutable references are fully replaced.
+                    if !needs_unique && matches!(target, Value::Pointer(..)) {
                         targets[local] = target;
-                    } else if ssa.is_ssa(rhs) {
-                        let refmut = body.local_decls[rhs].ty.is_mutable_ptr();
-                        targets[local] = Value::Pointer(tcx.mk_place_deref(rhs.into()), refmut);
+                    } else {
+                        targets[local] = Value::Pointer(tcx.mk_place_deref(rhs.into()), needs_unique);
                     }
                 }
             }
