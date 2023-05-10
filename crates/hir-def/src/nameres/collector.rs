@@ -547,33 +547,21 @@ impl DefCollector<'_> {
             Edition::Edition2015 => PathKind::Plain,
             _ => PathKind::Abs,
         };
-        let path =
-            ModPath::from_segments(path_kind, [krate.clone(), name![prelude], edition].into_iter());
-        // Fall back to the older `std::prelude::v1` for compatibility with Rust <1.52.0
-        // FIXME remove this fallback
-        let fallback_path =
-            ModPath::from_segments(path_kind, [krate, name![prelude], name![v1]].into_iter());
+        let path = ModPath::from_segments(path_kind, [krate, name![prelude], edition]);
 
-        for path in &[path, fallback_path] {
-            let (per_ns, _) = self.def_map.resolve_path(
-                self.db,
-                self.def_map.root,
-                path,
-                BuiltinShadowMode::Other,
-            );
+        let (per_ns, _) =
+            self.def_map.resolve_path(self.db, self.def_map.root, &path, BuiltinShadowMode::Other);
 
-            match per_ns.types {
-                Some((ModuleDefId::ModuleId(m), _)) => {
-                    self.def_map.prelude = Some(m);
-                    break;
-                }
-                types => {
-                    tracing::debug!(
-                        "could not resolve prelude path `{}` to module (resolved to {:?})",
-                        path,
-                        types
-                    );
-                }
+        match per_ns.types {
+            Some((ModuleDefId::ModuleId(m), _)) => {
+                self.def_map.prelude = Some(m);
+            }
+            types => {
+                tracing::debug!(
+                    "could not resolve prelude path `{}` to module (resolved to {:?})",
+                    path,
+                    types
+                );
             }
         }
     }
