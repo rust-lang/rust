@@ -109,6 +109,7 @@
 #![feature(utf8_chunks)]
 #![feature(is_ascii_octdigit)]
 #![feature(get_many_mut)]
+#![feature(iter_map_windows)]
 #![cfg_attr(not(bootstrap), feature(offset_of))]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(fuzzy_provenance_casts)]
