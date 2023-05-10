@@ -1346,8 +1346,8 @@ struct SomeStruct {
 }
 impl PartialEq for SomeStruct {
     $0fn ne(&self, other: &Self) -> bool {
-            !self.eq(other)
-        }
+        !self.eq(other)
+    }
 }
 "#,
         );
@@ -1520,48 +1520,47 @@ fn main() {
     }
 
     #[test]
-    fn test_add_missing_impl_members_indentation() {
-        // few trait members, no braces
+    fn test_add_missing_preserves_indentation() {
+        // in different modules
         check_assist(
             add_missing_impl_members,
             r#"
 mod m {
-    trait Foo { fn foo(&self); }
-    struct S;
-    impl Foo for S$0
-}"#,
+    pub trait Foo {
+        const CONST_MULTILINE: (
+            i32,
+            i32
+        );
+
+        fn foo(&self);
+    }
+}
+struct S;
+impl m::Foo for S { $0 }"#,
             r#"
 mod m {
-    trait Foo { fn foo(&self); }
-    struct S;
-    impl Foo for S {
-        fn foo(&self) {
-            ${0:todo!()}
-        }
+    pub trait Foo {
+        const CONST_MULTILINE: (
+            i32,
+            i32
+        );
+
+        fn foo(&self);
+    }
+}
+struct S;
+impl m::Foo for S {
+    $0const CONST_MULTILINE: (
+        i32,
+        i32
+    );
+
+    fn foo(&self) {
+        todo!()
     }
 }"#,
         );
-        // few trait members, empty impl def.
-        check_assist(
-            add_missing_impl_members,
-            r#"
-mod m {
-    trait Foo { fn foo(&self); }
-    struct S;
-    impl Foo for S { $0 }
-}"#,
-            r#"
-mod m {
-    trait Foo { fn foo(&self); }
-    struct S;
-    impl Foo for S {
-        fn foo(&self) {
-            ${0:todo!()}
-        }
-    }
-}"#,
-        );
-        // todo - in mod and outside
+        // in the same module
         check_assist(
             add_missing_impl_members,
             r#"
@@ -1571,6 +1570,10 @@ mod m {
 
         const CONST: usize = 42;
         const CONST_2: i32;
+        const CONST_MULTILINE: (
+            i32,
+            i32
+        );
 
         fn foo(&self);
         fn bar(&self);
@@ -1591,6 +1594,10 @@ mod m {
 
         const CONST: usize = 42;
         const CONST_2: i32;
+        const CONST_MULTILINE: (
+            i32,
+            i32
+        );
 
         fn foo(&self);
         fn bar(&self);
@@ -1606,6 +1613,11 @@ mod m {
 
         const CONST_2: i32;
 
+        const CONST_MULTILINE: (
+            i32,
+            i32
+        );
+
         fn foo(&self) {
             todo!()
         }
@@ -1617,5 +1629,57 @@ mod m {
     }
 }"#,
         );
+    }
+
+    #[test]
+    fn test_add_default_preserves_indentation() {
+        check_assist(
+            add_missing_default_members,
+            r#"
+mod m {
+    pub trait Foo {
+        type Output;
+
+        const CONST: usize = 42;
+        const CONST_2: i32;
+        const CONST_MULTILINE: = (
+            i32,
+            i32,
+        ) = (3, 14);
+
+        fn valid(some: u32) -> bool { false }
+        fn foo(some: u32) -> bool;
+    }
+}
+struct S;
+impl m::Foo for S { $0 }"#,
+            r#"
+mod m {
+    pub trait Foo {
+        type Output;
+
+        const CONST: usize = 42;
+        const CONST_2: i32;
+        const CONST_MULTILINE: = (
+            i32,
+            i32,
+        ) = (3, 14);
+
+        fn valid(some: u32) -> bool { false }
+        fn foo(some: u32) -> bool;
+    }
+}
+struct S;
+impl m::Foo for S {
+    $0const CONST: usize = 42;
+
+    const CONST_MULTILINE: = (
+        i32,
+        i32,
+    ) = (3, 14);
+
+    fn valid(some: u32) -> bool { false }
+}"#,
+        )
     }
 }
