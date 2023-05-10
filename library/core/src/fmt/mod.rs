@@ -381,7 +381,7 @@ impl<'a> Arguments<'a> {
     ///
     /// fn write_str(_: &str) { /* ... */ }
     ///
-    /// fn write_fmt(args: &Arguments) {
+    /// fn write_fmt(args: &Arguments<'_>) {
     ///     if let Some(s) = args.as_str() {
     ///         write_str(s)
     ///     } else {
@@ -1228,7 +1228,7 @@ impl<'a> Formatter<'a> {
     /// }
     ///
     /// impl fmt::Display for Foo {
-    ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    ///     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         // We need to remove "-" from the number output.
     ///         let tmp = self.nb.abs().to_string();
     ///
@@ -1328,7 +1328,7 @@ impl<'a> Formatter<'a> {
     /// struct Foo;
     ///
     /// impl fmt::Display for Foo {
-    ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    ///     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         formatter.pad("Foo")
     ///     }
     /// }
@@ -1510,7 +1510,7 @@ impl<'a> Formatter<'a> {
     /// struct Foo;
     ///
     /// impl fmt::Display for Foo {
-    ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    ///     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         formatter.write_str("Foo")
     ///         // This is equivalent to:
     ///         // write!(formatter, "Foo")
@@ -1535,7 +1535,7 @@ impl<'a> Formatter<'a> {
     /// struct Foo(i32);
     ///
     /// impl fmt::Display for Foo {
-    ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    ///     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         formatter.write_fmt(format_args!("Foo {}", self.0))
     ///     }
     /// }
@@ -1570,7 +1570,7 @@ impl<'a> Formatter<'a> {
     /// struct Foo;
     ///
     /// impl fmt::Display for Foo {
-    ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    ///     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         let c = formatter.fill();
     ///         if let Some(width) = formatter.width() {
     ///             for _ in 0..width {
@@ -1598,14 +1598,12 @@ impl<'a> Formatter<'a> {
     /// # Examples
     ///
     /// ```
-    /// extern crate core;
-    ///
     /// use std::fmt::{self, Alignment};
     ///
     /// struct Foo;
     ///
     /// impl fmt::Display for Foo {
-    ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    ///     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         let s = if let Some(s) = formatter.align() {
     ///             match s {
     ///                 Alignment::Left    => "left",
@@ -1645,7 +1643,7 @@ impl<'a> Formatter<'a> {
     /// struct Foo(i32);
     ///
     /// impl fmt::Display for Foo {
-    ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    ///     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         if let Some(width) = formatter.width() {
     ///             // If we received a width, we use it
     ///             write!(formatter, "{:width$}", format!("Foo({})", self.0), width = width)
@@ -1676,7 +1674,7 @@ impl<'a> Formatter<'a> {
     /// struct Foo(f32);
     ///
     /// impl fmt::Display for Foo {
-    ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    ///     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         if let Some(precision) = formatter.precision() {
     ///             // If we received a precision, we use it.
     ///             write!(formatter, "Foo({1:.*})", precision, self.0)
@@ -1706,7 +1704,7 @@ impl<'a> Formatter<'a> {
     /// struct Foo(i32);
     ///
     /// impl fmt::Display for Foo {
-    ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    ///     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         if formatter.sign_plus() {
     ///             write!(formatter,
     ///                    "Foo({}{})",
@@ -1738,7 +1736,7 @@ impl<'a> Formatter<'a> {
     /// struct Foo(i32);
     ///
     /// impl fmt::Display for Foo {
-    ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    ///     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         if formatter.sign_minus() {
     ///             // You want a minus sign? Have one!
     ///             write!(formatter, "-Foo({})", self.0)
@@ -1767,7 +1765,7 @@ impl<'a> Formatter<'a> {
     /// struct Foo(i32);
     ///
     /// impl fmt::Display for Foo {
-    ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    ///     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         if formatter.alternate() {
     ///             write!(formatter, "Foo({})", self.0)
     ///         } else {
@@ -1795,7 +1793,7 @@ impl<'a> Formatter<'a> {
     /// struct Foo(i32);
     ///
     /// impl fmt::Display for Foo {
-    ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    ///     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         assert!(formatter.sign_aware_zero_pad());
     ///         assert_eq!(formatter.width(), Some(4));
     ///         // We ignore the formatter's options.
@@ -1839,7 +1837,7 @@ impl<'a> Formatter<'a> {
     /// }
     ///
     /// impl fmt::Debug for Foo {
-    ///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         fmt.debug_struct("Foo")
     ///             .field("bar", &self.bar)
     ///             .field("baz", &self.baz)
@@ -1997,7 +1995,7 @@ impl<'a> Formatter<'a> {
     /// struct Foo<T>(i32, String, PhantomData<T>);
     ///
     /// impl<T> fmt::Debug for Foo<T> {
-    ///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         fmt.debug_tuple("Foo")
     ///             .field(&self.0)
     ///             .field(&self.1)
@@ -2129,7 +2127,7 @@ impl<'a> Formatter<'a> {
     /// struct Foo(Vec<i32>);
     ///
     /// impl fmt::Debug for Foo {
-    ///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         fmt.debug_list().entries(self.0.iter()).finish()
     ///     }
     /// }
@@ -2152,7 +2150,7 @@ impl<'a> Formatter<'a> {
     /// struct Foo(Vec<i32>);
     ///
     /// impl fmt::Debug for Foo {
-    ///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         fmt.debug_set().entries(self.0.iter()).finish()
     ///     }
     /// }
@@ -2168,14 +2166,14 @@ impl<'a> Formatter<'a> {
     /// ```rust
     /// use std::fmt;
     ///
-    /// struct Arm<'a, L: 'a, R: 'a>(&'a (L, R));
-    /// struct Table<'a, K: 'a, V: 'a>(&'a [(K, V)], V);
+    /// struct Arm<'a, L, R>(&'a (L, R));
+    /// struct Table<'a, K, V>(&'a [(K, V)], V);
     ///
     /// impl<'a, L, R> fmt::Debug for Arm<'a, L, R>
     /// where
     ///     L: 'a + fmt::Debug, R: 'a + fmt::Debug
     /// {
-    ///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         L::fmt(&(self.0).0, fmt)?;
     ///         fmt.write_str(" => ")?;
     ///         R::fmt(&(self.0).1, fmt)
@@ -2186,7 +2184,7 @@ impl<'a> Formatter<'a> {
     /// where
     ///     K: 'a + fmt::Debug, V: 'a + fmt::Debug
     /// {
-    ///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         fmt.debug_set()
     ///         .entries(self.0.iter().map(Arm))
     ///         .entry(&Arm(&(format_args!("_"), &self.1)))
@@ -2210,7 +2208,7 @@ impl<'a> Formatter<'a> {
     /// struct Foo(Vec<(String, i32)>);
     ///
     /// impl fmt::Debug for Foo {
-    ///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         fmt.debug_map().entries(self.0.iter().map(|&(ref k, ref v)| (k, v))).finish()
     ///     }
     /// }
@@ -2269,6 +2267,7 @@ fmt_refs! { Debug, Display, Octal, Binary, LowerHex, UpperHex, LowerExp, UpperEx
 
 #[unstable(feature = "never_type", issue = "35121")]
 impl Debug for ! {
+    #[inline]
     fn fmt(&self, _: &mut Formatter<'_>) -> Result {
         *self
     }
@@ -2276,6 +2275,7 @@ impl Debug for ! {
 
 #[unstable(feature = "never_type", issue = "35121")]
 impl Display for ! {
+    #[inline]
     fn fmt(&self, _: &mut Formatter<'_>) -> Result {
         *self
     }

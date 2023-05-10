@@ -498,7 +498,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // this trait and type.
                 }
                 ty::Param(..)
-                | ty::Alias(ty::Projection, ..)
+                | ty::Alias(ty::Projection | ty::Inherent, ..)
                 | ty::Placeholder(..)
                 | ty::Bound(..) => {
                     // In these cases, we don't know what the actual

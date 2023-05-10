@@ -7,7 +7,7 @@ LL |     *x = (1,);
 help: consider changing this to be a mutable reference
    |
 LL | fn named_ref(x: &mut (i32,)) {
-   |                 ~~~~~~~~~~~
+   |                  +++
 
 error[E0594]: cannot assign to `x.0`, which is behind a `&` reference
   --> $DIR/mutability-errors.rs:10:5
@@ -18,7 +18,7 @@ LL |     x.0 = 1;
 help: consider changing this to be a mutable reference
    |
 LL | fn named_ref(x: &mut (i32,)) {
-   |                 ~~~~~~~~~~~
+   |                  +++
 
 error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
   --> $DIR/mutability-errors.rs:11:5
@@ -29,7 +29,7 @@ LL |     &mut *x;
 help: consider changing this to be a mutable reference
    |
 LL | fn named_ref(x: &mut (i32,)) {
-   |                 ~~~~~~~~~~~
+   |                  +++
 
 error[E0596]: cannot borrow `x.0` as mutable, as it is behind a `&` reference
   --> $DIR/mutability-errors.rs:12:5
@@ -40,7 +40,7 @@ LL |     &mut x.0;
 help: consider changing this to be a mutable reference
    |
 LL | fn named_ref(x: &mut (i32,)) {
-   |                 ~~~~~~~~~~~
+   |                  +++
 
 error[E0594]: cannot assign to data in a `&` reference
   --> $DIR/mutability-errors.rs:16:5
@@ -74,8 +74,8 @@ LL |     *x = (1,);
    |
 help: consider changing this to be a mutable pointer
    |
-LL | unsafe fn named_ptr(x: *mut (i32,)) {
-   |                        ~~~~~~~~~~~
+LL | unsafe fn named_ptr(x: *mut const (i32,)) {
+   |                         +++
 
 error[E0594]: cannot assign to `x.0`, which is behind a `*const` pointer
   --> $DIR/mutability-errors.rs:24:5
@@ -85,8 +85,8 @@ LL |     (*x).0 = 1;
    |
 help: consider changing this to be a mutable pointer
    |
-LL | unsafe fn named_ptr(x: *mut (i32,)) {
-   |                        ~~~~~~~~~~~
+LL | unsafe fn named_ptr(x: *mut const (i32,)) {
+   |                         +++
 
 error[E0596]: cannot borrow `*x` as mutable, as it is behind a `*const` pointer
   --> $DIR/mutability-errors.rs:25:5
@@ -96,8 +96,8 @@ LL |     &mut *x;
    |
 help: consider changing this to be a mutable pointer
    |
-LL | unsafe fn named_ptr(x: *mut (i32,)) {
-   |                        ~~~~~~~~~~~
+LL | unsafe fn named_ptr(x: *mut const (i32,)) {
+   |                         +++
 
 error[E0596]: cannot borrow `x.0` as mutable, as it is behind a `*const` pointer
   --> $DIR/mutability-errors.rs:26:5
@@ -107,8 +107,8 @@ LL |     &mut (*x).0;
    |
 help: consider changing this to be a mutable pointer
    |
-LL | unsafe fn named_ptr(x: *mut (i32,)) {
-   |                        ~~~~~~~~~~~
+LL | unsafe fn named_ptr(x: *mut const (i32,)) {
+   |                         +++
 
 error[E0594]: cannot assign to data in a `*const` pointer
   --> $DIR/mutability-errors.rs:30:5

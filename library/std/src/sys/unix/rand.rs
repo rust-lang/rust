@@ -21,7 +21,8 @@ pub fn hashmap_random_keys() -> (u64, u64) {
     not(target_os = "fuchsia"),
     not(target_os = "redox"),
     not(target_os = "vxworks"),
-    not(target_os = "emscripten")
+    not(target_os = "emscripten"),
+    not(target_os = "vita"),
 ))]
 mod imp {
     use crate::fs::File;
@@ -175,7 +176,7 @@ mod imp {
     }
 }
 
-#[cfg(any(target_os = "openbsd", target_os = "emscripten"))]
+#[cfg(any(target_os = "openbsd", target_os = "emscripten", target_os = "vita"))]
 mod imp {
     use crate::sys::os::errno;
 

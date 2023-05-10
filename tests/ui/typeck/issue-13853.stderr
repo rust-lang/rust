@@ -20,10 +20,8 @@ error[E0308]: mismatched types
   --> $DIR/issue-13853.rs:37:13
    |
 LL |     iterate(graph);
-   |     ------- ^^^^^
-   |     |       |
-   |     |       expected `&_`, found `Vec<Stuff>`
-   |     |       help: consider borrowing here: `&graph`
+   |     ------- ^^^^^ expected `&_`, found `Vec<Stuff>`
+   |     |
    |     arguments to this function are incorrect
    |
    = note: expected reference `&_`
@@ -33,6 +31,10 @@ note: function defined here
    |
 LL | fn iterate<N: Node, G: Graph<N>>(graph: &G) {
    |    ^^^^^^^                       ---------
+help: consider borrowing here
+   |
+LL |     iterate(&graph);
+   |             +
 
 error: aborting due to 3 previous errors
 

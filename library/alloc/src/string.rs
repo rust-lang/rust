@@ -2741,7 +2741,7 @@ impl<'a> From<Cow<'a, str>> for String {
     /// ```
     /// # use std::borrow::Cow;
     /// // If the string is not owned...
-    /// let cow: Cow<str> = Cow::Borrowed("eggplant");
+    /// let cow: Cow<'_, str> = Cow::Borrowed("eggplant");
     /// // It will allocate on the heap and copy the string.
     /// let owned: String = String::from(cow);
     /// assert_eq!(&owned[..], "eggplant");

@@ -114,17 +114,20 @@ impl Module {
     /// (e.g. kernel32 and ntdll).
     pub unsafe fn new(name: &CStr) -> Option<Self> {
         // SAFETY: A CStr is always null terminated.
-        let module = c::GetModuleHandleA(name.as_ptr());
+        let module = c::GetModuleHandleA(name.as_ptr().cast::<u8>());
         NonNull::new(module).map(Self)
     }
 
     // Try to get the address of a function.
     pub fn proc_address(self, name: &CStr) -> Option<NonNull<c_void>> {
-        // SAFETY:
-        // `self.0` will always be a valid module.
-        // A CStr is always null terminated.
-        let proc = unsafe { c::GetProcAddress(self.0.as_ptr(), name.as_ptr()) };
-        NonNull::new(proc)
+        unsafe {
+            // SAFETY:
+            // `self.0` will always be a valid module.
+            // A CStr is always null terminated.
+            let proc = c::GetProcAddress(self.0.as_ptr(), name.as_ptr().cast::<u8>());
+            // SAFETY: `GetProcAddress` returns None on null.
+            proc.map(|p| NonNull::new_unchecked(p as *mut c_void))
+        }
     }
 }
 
@@ -199,6 +202,7 @@ macro_rules! compat_fn_optional {
     )+) => (
         $(
             pub mod $symbol {
+                #[allow(unused_imports)]
                 use super::*;
                 use crate::ffi::c_void;
                 use crate::mem;

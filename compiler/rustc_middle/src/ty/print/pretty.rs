@@ -729,7 +729,7 @@ pub trait PrettyPrinter<'tcx>:
             ty::Foreign(def_id) => {
                 p!(print_def_path(def_id, &[]));
             }
-            ty::Alias(ty::Projection, ref data) => {
+            ty::Alias(ty::Projection | ty::Inherent, ref data) => {
                 if !(self.should_print_verbose() || NO_QUERIES.with(|q| q.get()))
                     && self.tcx().is_impl_trait_in_trait(data.def_id)
                 {

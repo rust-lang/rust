@@ -99,6 +99,7 @@ pub static DEFAULT_LOCALE_RESOURCES: &[&str] = &[
     rustc_middle::DEFAULT_LOCALE_RESOURCE,
     rustc_mir_build::DEFAULT_LOCALE_RESOURCE,
     rustc_mir_dataflow::DEFAULT_LOCALE_RESOURCE,
+    rustc_mir_transform::DEFAULT_LOCALE_RESOURCE,
     rustc_monomorphize::DEFAULT_LOCALE_RESOURCE,
     rustc_parse::DEFAULT_LOCALE_RESOURCE,
     rustc_passes::DEFAULT_LOCALE_RESOURCE,
@@ -743,6 +744,22 @@ fn print_crate_info(
                     if stable || unstable_ok {
                         safe_println!("{split}");
                     }
+                }
+            }
+            DeploymentTarget => {
+                use rustc_target::spec::current_apple_deployment_target;
+
+                if sess.target.is_like_osx {
+                    safe_println!(
+                        "deployment_target={}",
+                        current_apple_deployment_target(&sess.target)
+                            .expect("unknown Apple target OS")
+                    )
+                } else {
+                    early_error(
+                        ErrorOutputType::default(),
+                        "only Apple targets currently support deployment version info",
+                    )
                 }
             }
         }

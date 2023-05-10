@@ -127,7 +127,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
             // the def_id that this query was called with. We filter to only type and const args here
             // as a precaution for if it's ever allowed to elide lifetimes in GAT's. It currently isn't
             // but it can't hurt to be safe ^^
-            if let ty::Alias(ty::Projection, projection) = ty.kind() {
+            if let ty::Alias(ty::Projection | ty::Inherent, projection) = ty.kind() {
                 let generics = tcx.generics_of(projection.def_id);
 
                 let arg_index = segment

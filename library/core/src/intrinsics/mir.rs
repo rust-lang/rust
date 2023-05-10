@@ -15,7 +15,6 @@
 //! ```rust
 //! #![feature(core_intrinsics, custom_mir)]
 //!
-//! extern crate core;
 //! use core::intrinsics::mir::*;
 //!
 //! #[custom_mir(dialect = "built")]
@@ -65,7 +64,6 @@
 //! ```rust
 //! #![feature(core_intrinsics, custom_mir)]
 //!
-//! extern crate core;
 //! use core::intrinsics::mir::*;
 //!
 //! #[custom_mir(dialect = "built")]
@@ -265,6 +263,7 @@ pub struct BasicBlock;
 macro_rules! define {
     ($name:literal, $( #[ $meta:meta ] )* fn $($sig:tt)*) => {
         #[rustc_diagnostic_item = $name]
+        #[inline]
         $( #[ $meta ] )*
         pub fn $($sig)* { panic!() }
     }
@@ -317,7 +316,6 @@ define!(
     /// ```rust
     /// #![feature(custom_mir, core_intrinsics)]
     ///
-    /// extern crate core;
     /// use core::intrinsics::mir::*;
     ///
     /// #[custom_mir(dialect = "built")]

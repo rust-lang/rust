@@ -2287,7 +2287,7 @@ mod use_keyword {}
 /// # #![allow(dead_code)]
 /// pub enum Cow<'a, B>
 /// where
-///     B: 'a + ToOwned + ?Sized,
+///     B: ToOwned + ?Sized,
 /// {
 ///     Borrowed(&'a B),
 ///     Owned(<B as ToOwned>::Owned),

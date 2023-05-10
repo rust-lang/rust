@@ -1,0 +1,18 @@
+- // MIR for `wrong` before RenameReturnPlace
++ // MIR for `wrong` after RenameReturnPlace
+  
+  fn wrong(_1: char) -> char {
+-     let mut _0: char;                    // return place in scope 0 at $DIR/nrvo_miscompile_111005.rs:+0:28: +0:32
++     let mut _0: char;                    // return place in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+      let mut _2: char;                    // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+  
+      bb0: {
+-         _2 = _1;                         // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+-         _0 = _2;                         // scope 0 at $DIR/nrvo_miscompile_111005.rs:+3:9: +3:19
+-         _2 = const 'b';                  // scope 0 at $DIR/nrvo_miscompile_111005.rs:+4:9: +4:19
++         _0 = _1;                         // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
++         _0 = const 'b';                  // scope 0 at $DIR/nrvo_miscompile_111005.rs:+4:9: +4:19
+          return;                          // scope 0 at $DIR/nrvo_miscompile_111005.rs:+5:9: +5:17
+      }
+  }
+  

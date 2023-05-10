@@ -1,11 +1,11 @@
-error[E0771]: use of non-static lifetime `'a` in const generic
+error: generic parameters may not be used in const operations
   --> $DIR/outer-lifetime-in-const-generic-default.rs:4:17
    |
 LL |         let x: &'a ();
-   |                 ^^
+   |                 ^^ cannot perform const operation using `'a`
    |
-   = note: for more information, see issue #74052 <https://github.com/rust-lang/rust/issues/74052>
+   = note: lifetime parameters may not be used in const expressions
+   = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0771`.

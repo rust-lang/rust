@@ -7,17 +7,21 @@ fn d(_1: &Box<T>) -> &T {
     let mut _3: &std::boxed::Box<T>;     // in scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
     scope 1 (inlined <Box<T> as AsRef<T>>::as_ref) { // at $DIR/issue_58867_inline_as_ref_as_mut.rs:18:7: 18:15
         debug self => _3;                // in scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
-        let mut _4: std::boxed::Box<T>;  // in scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
-        let mut _5: *const T;            // in scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+        let _4: &T;                      // in scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+        let mut _5: std::boxed::Box<T>;  // in scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+        let mut _6: *const T;            // in scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
     }
 
     bb0: {
         StorageLive(_2);                 // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
         StorageLive(_3);                 // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
         _3 = &(*_1);                     // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
-        _4 = deref_copy (*_3);           // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
-        _5 = (((_4.0: std::ptr::Unique<T>).0: std::ptr::NonNull<T>).0: *const T); // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
-        _2 = &(*_5);                     // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+        StorageLive(_4);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+        _5 = deref_copy (*_3);           // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+        _6 = (((_5.0: std::ptr::Unique<T>).0: std::ptr::NonNull<T>).0: *const T); // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+        _4 = &(*_6);                     // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+        _2 = _4;                         // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+        StorageDead(_4);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
         _0 = &(*_2);                     // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
         StorageDead(_3);                 // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:14: +1:15
         StorageDead(_2);                 // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+2:1: +2:2

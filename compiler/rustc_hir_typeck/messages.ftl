@@ -75,3 +75,7 @@ hir_typeck_union_pat_dotdot = `..` cannot be used in union patterns
 
 hir_typeck_arg_mismatch_indeterminate = argument type mismatch was detected, but rustc had trouble determining where
     .note = we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new
+
+hir_typeck_suggest_boxing_note = for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
+
+hir_typeck_suggest_boxing_when_appropriate = store this in the heap by calling `Box::new`

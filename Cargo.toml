@@ -39,6 +39,7 @@ members = [
   "src/tools/collect-license-metadata",
   "src/tools/generate-copyright",
   "src/tools/suggest-tests",
+  "src/tools/generate-windows-sys",
 ]
 
 exclude = [

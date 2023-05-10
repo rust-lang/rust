@@ -1923,7 +1923,7 @@ fn is_late_bound_map(
     /// handles cycle detection as we go through the query system.
     ///
     /// This is necessary in the first place for the following case:
-    /// ```
+    /// ```rust,ignore (pseudo-Rust)
     /// type Alias<'a, T> = <T as Trait<'a>>::Assoc;
     /// fn foo<'a>(_: Alias<'a, ()>) -> Alias<'a, ()> { ... }
     /// ```
@@ -1948,7 +1948,7 @@ fn is_late_bound_map(
                 ty::Param(param_ty) => {
                     self.arg_is_constrained[param_ty.index as usize] = true;
                 }
-                ty::Alias(ty::Projection, _) => return ControlFlow::Continue(()),
+                ty::Alias(ty::Projection | ty::Inherent, _) => return ControlFlow::Continue(()),
                 _ => (),
             }
             t.super_visit_with(self)

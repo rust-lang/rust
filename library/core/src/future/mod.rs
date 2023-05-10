@@ -66,10 +66,3 @@ pub unsafe fn get_context<'a, 'b>(cx: ResumeTy) -> &'a mut Context<'b> {
     // that fulfills all the requirements for a mutable reference.
     unsafe { &mut *cx.0.as_ptr().cast() }
 }
-
-#[doc(hidden)]
-#[unstable(feature = "gen_future", issue = "50547")]
-#[inline]
-pub const fn identity_future<O, Fut: Future<Output = O>>(f: Fut) -> Fut {
-    f
-}

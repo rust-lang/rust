@@ -113,6 +113,12 @@ impl<'tcx> Ty<'tcx> {
             }
             Never => InhabitedPredicate::False,
             Param(_) | Alias(ty::Projection, _) => InhabitedPredicate::GenericType(self),
+            // FIXME(inherent_associated_types): Most likely we can just map to `GenericType` like above.
+            // However it's unclear if the substs passed to `InhabitedPredicate::subst` are of the correct
+            // format, i.e. don't contain parent substs. If you hit this case, please verify this beforehand.
+            Alias(ty::Inherent, _) => {
+                bug!("unimplemented: inhabitedness checking for inherent projections")
+            }
             Tuple(tys) if tys.is_empty() => InhabitedPredicate::True,
             // use a query for more complex cases
             Adt(..) | Array(..) | Tuple(_) => tcx.inhabited_predicate_type(self),

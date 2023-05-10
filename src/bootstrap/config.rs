@@ -467,6 +467,7 @@ pub struct Target {
     pub ndk: Option<PathBuf>,
     pub sanitizers: Option<bool>,
     pub profiler: Option<bool>,
+    pub rpath: Option<bool>,
     pub crt_static: Option<bool>,
     pub musl_root: Option<PathBuf>,
     pub musl_libdir: Option<PathBuf>,
@@ -812,6 +813,7 @@ define_config! {
         android_ndk: Option<String> = "android-ndk",
         sanitizers: Option<bool> = "sanitizers",
         profiler: Option<bool> = "profiler",
+        rpath: Option<bool> = "rpath",
         crt_static: Option<bool> = "crt-static",
         musl_root: Option<String> = "musl-root",
         musl_libdir: Option<String> = "musl-libdir",
@@ -1318,6 +1320,7 @@ impl Config {
                 target.qemu_rootfs = cfg.qemu_rootfs.map(PathBuf::from);
                 target.sanitizers = cfg.sanitizers;
                 target.profiler = cfg.profiler;
+                target.rpath = cfg.rpath;
 
                 config.target_config.insert(TargetSelection::from_user(&triple), target);
             }
@@ -1647,6 +1650,10 @@ impl Config {
 
     pub fn any_profiler_enabled(&self) -> bool {
         self.target_config.values().any(|t| t.profiler == Some(true)) || self.profiler
+    }
+
+    pub fn rpath_enabled(&self, target: TargetSelection) -> bool {
+        self.target_config.get(&target).map(|t| t.rpath).flatten().unwrap_or(self.rust_rpath)
     }
 
     pub fn llvm_enabled(&self) -> bool {

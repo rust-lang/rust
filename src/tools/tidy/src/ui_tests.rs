@@ -9,8 +9,8 @@ use std::path::{Path, PathBuf};
 
 const ENTRY_LIMIT: usize = 900;
 // FIXME: The following limits should be reduced eventually.
-const ISSUES_ENTRY_LIMIT: usize = 1953;
-const ROOT_ENTRY_LIMIT: usize = 894;
+const ISSUES_ENTRY_LIMIT: usize = 1920;
+const ROOT_ENTRY_LIMIT: usize = 895;
 
 fn check_entries(tests_path: &Path, bad: &mut bool) {
     let mut directories: HashMap<PathBuf, usize> = HashMap::new();

@@ -66,6 +66,15 @@ enum IsRepeatExpr {
     Yes,
 }
 
+/// Describes whether an `AnonConst` is a type level const arg or
+/// some other form of anon const (i.e. inline consts or enum discriminants)
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum AnonConstKind {
+    EnumDiscriminant,
+    InlineConst,
+    ConstArg(IsRepeatExpr),
+}
+
 impl PatternSource {
     fn descr(self) -> &'static str {
         match self {
@@ -105,13 +114,34 @@ pub(crate) enum HasGenericParams {
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(crate) enum ConstantHasGenerics {
     Yes,
-    No,
+    No(NoConstantGenericsReason),
 }
 
 impl ConstantHasGenerics {
     fn force_yes_if(self, b: bool) -> Self {
         if b { Self::Yes } else { self }
     }
+}
+
+/// Reason for why an anon const is not allowed to reference generic parameters
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub(crate) enum NoConstantGenericsReason {
+    /// Const arguments are only allowed to use generic parameters when:
+    /// - `feature(generic_const_exprs)` is enabled
+    /// or
+    /// - the const argument is a sole const generic paramater, i.e. `foo::<{ N }>()`
+    ///
+    /// If neither of the above are true then this is used as the cause.
+    NonTrivialConstArg,
+    /// Enum discriminants are not allowed to reference generic parameters ever, this
+    /// is used when an anon const is in the following position:
+    ///
+    /// ```rust,compile_fail
+    /// enum Foo<const N: isize> {
+    ///     Variant = { N }, // this anon const is not allowed to use generics
+    /// }
+    /// ```
+    IsEnumDiscriminant,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -273,15 +303,18 @@ enum LifetimeRibKind {
     /// Signal we cannot find which should be the anonymous lifetime.
     ElisionFailure,
 
-    /// FIXME(const_generics): This patches over an ICE caused by non-'static lifetimes in const
-    /// generics. We are disallowing this until we can decide on how we want to handle non-'static
-    /// lifetimes in const generics. See issue #74052 for discussion.
-    ConstGeneric,
+    /// This rib forbids usage of generic parameters inside of const parameter types.
+    ///
+    /// While this is desirable to support eventually, it is difficult to do and so is
+    /// currently forbidden. See rust-lang/project-const-generics#28 for more info.
+    ConstParamTy,
 
-    /// Non-static lifetimes are prohibited in anonymous constants under `min_const_generics`.
-    /// This function will emit an error if `generic_const_exprs` is not enabled, the body
-    /// identified by `body_id` is an anonymous constant and `lifetime_ref` is non-static.
-    AnonConst,
+    /// Usage of generic parameters is forbidden in various positions for anon consts:
+    /// - const arguments when `generic_const_exprs` is not enabled
+    /// - enum discriminant values
+    ///
+    /// This rib emits an error when a lifetime would resolve to a lifetime parameter.
+    ConcreteAnonConst(NoConstantGenericsReason),
 
     /// This rib acts as a barrier to forbid reference to lifetimes of a parent item.
     Item,
@@ -648,13 +681,8 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
         self.resolve_block(block);
         self.parent_scope.macro_rules = old_macro_rules;
     }
-    fn visit_anon_const(&mut self, constant: &'ast AnonConst) {
-        // We deal with repeat expressions explicitly in `resolve_expr`.
-        self.with_lifetime_rib(LifetimeRibKind::AnonConst, |this| {
-            this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
-                this.resolve_anon_const(constant, IsRepeatExpr::No);
-            })
-        })
+    fn visit_anon_const(&mut self, _constant: &'ast AnonConst) {
+        bug!("encountered anon const without a manual call to `resolve_anon_const`");
     }
     fn visit_expr(&mut self, expr: &'ast Expr) {
         self.resolve_expr(expr, None);
@@ -676,7 +704,7 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
     fn visit_ty(&mut self, ty: &'ast Ty) {
         let prev = self.diagnostic_metadata.current_trait_object;
         let prev_ty = self.diagnostic_metadata.current_type_path;
-        match ty.kind {
+        match &ty.kind {
             TyKind::Ref(None, _) => {
                 // Elided lifetime in reference: we resolve as if there was some lifetime `'_` with
                 // NodeId `ty.id`.
@@ -685,7 +713,7 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                 self.resolve_elided_lifetime(ty.id, span);
                 visit::walk_ty(self, ty);
             }
-            TyKind::Path(ref qself, ref path) => {
+            TyKind::Path(qself, path) => {
                 self.diagnostic_metadata.current_type_path = Some(ty);
                 self.smart_resolve_path(ty.id, &qself, path, PathSource::Type);
 
@@ -730,11 +758,11 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                 visit::walk_ty(self, ty);
                 self.lifetime_elision_candidates = candidates;
             }
-            TyKind::TraitObject(ref bounds, ..) => {
+            TyKind::TraitObject(bounds, ..) => {
                 self.diagnostic_metadata.current_trait_object = Some(&bounds[..]);
                 visit::walk_ty(self, ty)
             }
-            TyKind::BareFn(ref bare_fn) => {
+            TyKind::BareFn(bare_fn) => {
                 let span = ty.span.shrink_to_lo().to(bare_fn.decl_span.shrink_to_lo());
                 self.with_generic_param_rib(
                     &bare_fn.generic_params,
@@ -768,6 +796,13 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                         );
                     },
                 )
+            }
+            TyKind::Array(element_ty, length) => {
+                self.visit_ty(element_ty);
+                self.resolve_anon_const(length, AnonConstKind::ConstArg(IsRepeatExpr::No));
+            }
+            TyKind::Typeof(ct) => {
+                self.resolve_anon_const(ct, AnonConstKind::ConstArg(IsRepeatExpr::No))
             }
             _ => visit::walk_ty(self, ty),
         }
@@ -994,36 +1029,25 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                 // namespace first, and if that fails we try again in the value namespace. If
                 // resolution in the value namespace succeeds, we have an generic const argument on
                 // our hands.
-                if let TyKind::Path(ref qself, ref path) = ty.kind {
+                if let TyKind::Path(None, ref path) = ty.kind {
                     // We cannot disambiguate multi-segment paths right now as that requires type
                     // checking.
-                    if path.segments.len() == 1 && path.segments[0].args.is_none() {
+                    if path.is_potential_trivial_const_arg() {
                         let mut check_ns = |ns| {
                             self.maybe_resolve_ident_in_lexical_scope(path.segments[0].ident, ns)
                                 .is_some()
                         };
                         if !check_ns(TypeNS) && check_ns(ValueNS) {
-                            // This must be equivalent to `visit_anon_const`, but we cannot call it
-                            // directly due to visitor lifetimes so we have to copy-paste some code.
-                            //
-                            // Note that we might not be inside of an repeat expression here,
-                            // but considering that `IsRepeatExpr` is only relevant for
-                            // non-trivial constants this is doesn't matter.
-                            self.with_constant_rib(
-                                IsRepeatExpr::No,
-                                ConstantHasGenerics::Yes,
-                                None,
+                            self.resolve_anon_const_manual(
+                                true,
+                                AnonConstKind::ConstArg(IsRepeatExpr::No),
                                 |this| {
                                     this.smart_resolve_path(
                                         ty.id,
-                                        qself,
+                                        &None,
                                         path,
                                         PathSource::Expr(None),
                                     );
-
-                                    if let Some(ref qself) = *qself {
-                                        this.visit_ty(&qself.ty);
-                                    }
                                     this.visit_path(path, ty.id);
                                 },
                             );
@@ -1037,7 +1061,9 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                 self.visit_ty(ty);
             }
             GenericArg::Lifetime(lt) => self.visit_lifetime(lt, visit::LifetimeCtxt::GenericArg),
-            GenericArg::Const(ct) => self.visit_anon_const(ct),
+            GenericArg::Const(ct) => {
+                self.resolve_anon_const(ct, AnonConstKind::ConstArg(IsRepeatExpr::No))
+            }
         }
         self.diagnostic_metadata.currently_processing_generics = prev;
     }
@@ -1053,7 +1079,9 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
         match constraint.kind {
             AssocConstraintKind::Equality { ref term } => match term {
                 Term::Ty(ty) => self.visit_ty(ty),
-                Term::Const(c) => self.visit_anon_const(c),
+                Term::Const(c) => {
+                    self.resolve_anon_const(c, AnonConstKind::ConstArg(IsRepeatExpr::No))
+                }
             },
             AssocConstraintKind::Bound { ref bounds } => {
                 walk_list!(self, visit_param_bound, bounds, BoundKind::Bound);
@@ -1102,8 +1130,8 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                             | LifetimeRibKind::AnonymousReportError
                             | LifetimeRibKind::Elided(_)
                             | LifetimeRibKind::ElisionFailure
-                            | LifetimeRibKind::AnonConst
-                            | LifetimeRibKind::ConstGeneric => {}
+                            | LifetimeRibKind::ConcreteAnonConst(_)
+                            | LifetimeRibKind::ConstParamTy => {}
                         }
                     }
                 }
@@ -1164,7 +1192,7 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                 InlineAsmOperand::Const { anon_const, .. } => {
                     // Although this is `DefKind::AnonConst`, it is allowed to reference outer
                     // generic parameters like an inline const.
-                    self.resolve_inline_const(anon_const);
+                    self.resolve_anon_const(anon_const, AnonConstKind::InlineConst);
                 }
                 InlineAsmOperand::Sym { sym } => self.visit_inline_asm_sym(sym),
             }
@@ -1186,6 +1214,10 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
     fn visit_variant(&mut self, v: &'ast Variant) {
         self.resolve_doc_links(&v.attrs, MaybeExported::Ok(v.id));
         visit::walk_variant(self, v)
+    }
+
+    fn visit_variant_discr(&mut self, discr: &'ast AnonConst) {
+        self.resolve_anon_const(discr, AnonConstKind::EnumDiscriminant);
     }
 
     fn visit_field_def(&mut self, f: &'ast FieldDef) {
@@ -1386,7 +1418,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
                         this.ribs[TypeNS].push(Rib::new(RibKind::ConstParamTy));
                         this.ribs[ValueNS].push(Rib::new(RibKind::ConstParamTy));
-                        this.with_lifetime_rib(LifetimeRibKind::ConstGeneric, |this| {
+                        this.with_lifetime_rib(LifetimeRibKind::ConstParamTy, |this| {
                             this.visit_ty(ty)
                         });
                         this.ribs[TypeNS].pop().unwrap();
@@ -1395,9 +1427,10 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                         if let Some(ref expr) = default {
                             this.ribs[TypeNS].push(forward_ty_ban_rib);
                             this.ribs[ValueNS].push(forward_const_ban_rib);
-                            this.with_lifetime_rib(LifetimeRibKind::ConstGeneric, |this| {
-                                this.resolve_anon_const(expr, IsRepeatExpr::No)
-                            });
+                            this.resolve_anon_const(
+                                expr,
+                                AnonConstKind::ConstArg(IsRepeatExpr::No),
+                            );
                             forward_const_ban_rib = this.ribs[ValueNS].pop().unwrap();
                             forward_ty_ban_rib = this.ribs[TypeNS].pop().unwrap();
                         }
@@ -1475,8 +1508,8 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                                         LifetimeUseSet::Many
                                     }),
                                     LifetimeRibKind::Generics { .. }
-                                    | LifetimeRibKind::ConstGeneric => None,
-                                    LifetimeRibKind::AnonConst => {
+                                    | LifetimeRibKind::ConstParamTy => None,
+                                    LifetimeRibKind::ConcreteAnonConst(_) => {
                                         span_bug!(ident.span, "unexpected rib kind: {:?}", rib.kind)
                                     }
                                 })
@@ -1495,8 +1528,8 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
             match rib.kind {
                 LifetimeRibKind::Item => break,
-                LifetimeRibKind::ConstGeneric => {
-                    self.emit_non_static_lt_in_const_generic_error(lifetime);
+                LifetimeRibKind::ConstParamTy => {
+                    self.emit_non_static_lt_in_const_param_ty_error(lifetime);
                     self.record_lifetime_res(
                         lifetime.id,
                         LifetimeRes::Error,
@@ -1504,8 +1537,8 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     );
                     return;
                 }
-                LifetimeRibKind::AnonConst => {
-                    self.maybe_emit_forbidden_non_static_lifetime_error(lifetime);
+                LifetimeRibKind::ConcreteAnonConst(cause) => {
+                    self.emit_forbidden_non_static_lifetime_error(cause, lifetime);
                     self.record_lifetime_res(
                         lifetime.id,
                         LifetimeRes::Error,
@@ -1604,9 +1637,9 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     return;
                 }
                 LifetimeRibKind::Item => break,
-                LifetimeRibKind::Generics { .. } | LifetimeRibKind::ConstGeneric => {}
-                LifetimeRibKind::AnonConst => {
-                    // There is always an `Elided(LifetimeRes::Static)` inside an `AnonConst`.
+                LifetimeRibKind::Generics { .. } | LifetimeRibKind::ConstParamTy => {}
+                LifetimeRibKind::ConcreteAnonConst(_) => {
+                    // There is always an `Elided(LifetimeRes::Infer)` inside an `AnonConst`.
                     span_bug!(lifetime.ident.span, "unexpected rib kind: {:?}", rib.kind)
                 }
             }
@@ -1826,9 +1859,9 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                         self.report_missing_lifetime_specifiers(vec![missing_lifetime], None);
                         break;
                     }
-                    LifetimeRibKind::Generics { .. } | LifetimeRibKind::ConstGeneric => {}
-                    LifetimeRibKind::AnonConst => {
-                        // There is always an `Elided(LifetimeRes::Static)` inside an `AnonConst`.
+                    LifetimeRibKind::Generics { .. } | LifetimeRibKind::ConstParamTy => {}
+                    LifetimeRibKind::ConcreteAnonConst(_) => {
+                        // There is always an `Elided(LifetimeRes::Infer)` inside an `AnonConst`.
                         span_bug!(elided_lifetime_span, "unexpected rib kind: {:?}", rib.kind)
                     }
                 }
@@ -2560,7 +2593,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         self.with_rib(ValueNS, kind, |this| this.with_rib(TypeNS, kind, f))
     }
 
-    // HACK(min_const_generics,const_evaluatable_unchecked): We
+    // HACK(min_const_generics, generic_const_exprs): We
     // want to keep allowing `[0; std::mem::size_of::<*mut T>()]`
     // with a future compat lint for now. We do this by adding an
     // additional special case for repeat expressions.
@@ -2576,18 +2609,26 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         item: Option<(Ident, ConstantItemKind)>,
         f: impl FnOnce(&mut Self),
     ) {
-        self.with_rib(ValueNS, RibKind::ConstantItem(may_use_generics, item), |this| {
-            this.with_rib(
-                TypeNS,
-                RibKind::ConstantItem(
-                    may_use_generics.force_yes_if(is_repeat == IsRepeatExpr::Yes),
-                    item,
-                ),
-                |this| {
-                    this.with_label_rib(RibKind::ConstantItem(may_use_generics, item), f);
-                },
-            )
-        });
+        let f = |this: &mut Self| {
+            this.with_rib(ValueNS, RibKind::ConstantItem(may_use_generics, item), |this| {
+                this.with_rib(
+                    TypeNS,
+                    RibKind::ConstantItem(
+                        may_use_generics.force_yes_if(is_repeat == IsRepeatExpr::Yes),
+                        item,
+                    ),
+                    |this| {
+                        this.with_label_rib(RibKind::ConstantItem(may_use_generics, item), f);
+                    },
+                )
+            })
+        };
+
+        if let ConstantHasGenerics::No(cause) = may_use_generics {
+            self.with_lifetime_rib(LifetimeRibKind::ConcreteAnonConst(cause), f)
+        } else {
+            f(self)
+        }
     }
 
     fn with_current_self_type<T>(&mut self, self_type: &Ty, f: impl FnOnce(&mut Self) -> T) -> T {
@@ -3924,24 +3965,54 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         debug!("(resolving block) leaving block");
     }
 
-    fn resolve_anon_const(&mut self, constant: &'ast AnonConst, is_repeat: IsRepeatExpr) {
-        debug!("resolve_anon_const {:?} is_repeat: {:?}", constant, is_repeat);
-        self.with_constant_rib(
-            is_repeat,
-            if constant.value.is_potential_trivial_const_param() {
-                ConstantHasGenerics::Yes
-            } else {
-                ConstantHasGenerics::No
-            },
-            None,
-            |this| visit::walk_anon_const(this, constant),
+    fn resolve_anon_const(&mut self, constant: &'ast AnonConst, anon_const_kind: AnonConstKind) {
+        debug!(
+            "resolve_anon_const(constant: {:?}, anon_const_kind: {:?})",
+            constant, anon_const_kind
         );
+
+        self.resolve_anon_const_manual(
+            constant.value.is_potential_trivial_const_arg(),
+            anon_const_kind,
+            |this| this.resolve_expr(&constant.value, None),
+        )
     }
 
-    fn resolve_inline_const(&mut self, constant: &'ast AnonConst) {
-        debug!("resolve_anon_const {constant:?}");
-        self.with_constant_rib(IsRepeatExpr::No, ConstantHasGenerics::Yes, None, |this| {
-            visit::walk_anon_const(this, constant)
+    /// There are a few places that we need to resolve an anon const but we did not parse an
+    /// anon const so cannot provide an `&'ast AnonConst`. Right now this is just unbraced
+    /// const arguments that were parsed as type arguments, and `legact_const_generics` which
+    /// parse as normal function argument expressions. To avoid duplicating the code for resolving
+    /// an anon const we have this function which lets the caller manually call `resolve_expr` or
+    /// `smart_resolve_path`.
+    fn resolve_anon_const_manual(
+        &mut self,
+        is_trivial_const_arg: bool,
+        anon_const_kind: AnonConstKind,
+        resolve_expr: impl FnOnce(&mut Self),
+    ) {
+        let is_repeat_expr = match anon_const_kind {
+            AnonConstKind::ConstArg(is_repeat_expr) => is_repeat_expr,
+            _ => IsRepeatExpr::No,
+        };
+
+        let may_use_generics = match anon_const_kind {
+            AnonConstKind::EnumDiscriminant => {
+                ConstantHasGenerics::No(NoConstantGenericsReason::IsEnumDiscriminant)
+            }
+            AnonConstKind::InlineConst => ConstantHasGenerics::Yes,
+            AnonConstKind::ConstArg(_) => {
+                if self.r.tcx.features().generic_const_exprs || is_trivial_const_arg {
+                    ConstantHasGenerics::Yes
+                } else {
+                    ConstantHasGenerics::No(NoConstantGenericsReason::NonTrivialConstArg)
+                }
+            }
+        };
+
+        self.with_constant_rib(is_repeat_expr, may_use_generics, None, |this| {
+            this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
+                resolve_expr(this);
+            });
         });
     }
 
@@ -4046,17 +4117,10 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     // Constant arguments need to be treated as AnonConst since
                     // that is how they will be later lowered to HIR.
                     if const_args.contains(&idx) {
-                        self.with_constant_rib(
-                            IsRepeatExpr::No,
-                            if argument.is_potential_trivial_const_param() {
-                                ConstantHasGenerics::Yes
-                            } else {
-                                ConstantHasGenerics::No
-                            },
-                            None,
-                            |this| {
-                                this.resolve_expr(argument, None);
-                            },
+                        self.resolve_anon_const_manual(
+                            argument.is_potential_trivial_const_arg(),
+                            AnonConstKind::ConstArg(IsRepeatExpr::No),
+                            |this| this.resolve_expr(argument, None),
                         );
                     } else {
                         self.resolve_expr(argument, None);
@@ -4115,14 +4179,10 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             }
             ExprKind::Repeat(ref elem, ref ct) => {
                 self.visit_expr(elem);
-                self.with_lifetime_rib(LifetimeRibKind::AnonConst, |this| {
-                    this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
-                        this.resolve_anon_const(ct, IsRepeatExpr::Yes)
-                    })
-                });
+                self.resolve_anon_const(ct, AnonConstKind::ConstArg(IsRepeatExpr::Yes));
             }
             ExprKind::ConstBlock(ref ct) => {
-                self.resolve_inline_const(ct);
+                self.resolve_anon_const(ct, AnonConstKind::InlineConst);
             }
             ExprKind::Index(ref elem, ref idx) => {
                 self.resolve_expr(elem, Some(expr));

@@ -7,8 +7,9 @@ fn unwrap_unchecked(_1: Option<T>) -> T {
         debug self => _1;                // in scope 1 at $SRC_DIR/core/src/option.rs:LL:COL
         let mut _2: &std::option::Option<T>; // in scope 1 at $SRC_DIR/core/src/option.rs:LL:COL
         let mut _3: isize;               // in scope 1 at $SRC_DIR/core/src/option.rs:LL:COL
+        let _4: T;                       // in scope 1 at $SRC_DIR/core/src/option.rs:LL:COL
         scope 2 {
-            debug val => _0;             // in scope 2 at $SRC_DIR/core/src/option.rs:LL:COL
+            debug val => _4;             // in scope 2 at $SRC_DIR/core/src/option.rs:LL:COL
         }
         scope 3 {
             scope 5 (inlined unreachable_unchecked) { // at $SRC_DIR/core/src/option.rs:LL:COL
@@ -34,7 +35,10 @@ fn unwrap_unchecked(_1: Option<T>) -> T {
     }
 
     bb2: {
-        _0 = move ((_1 as Some).0: T);   // scope 1 at $SRC_DIR/core/src/option.rs:LL:COL
+        StorageLive(_4);                 // scope 1 at $SRC_DIR/core/src/option.rs:LL:COL
+        _4 = move ((_1 as Some).0: T);   // scope 1 at $SRC_DIR/core/src/option.rs:LL:COL
+        _0 = move _4;                    // scope 2 at $SRC_DIR/core/src/option.rs:LL:COL
+        StorageDead(_4);                 // scope 1 at $SRC_DIR/core/src/option.rs:LL:COL
         StorageDead(_2);                 // scope 0 at $DIR/unwrap_unchecked.rs:+1:9: +1:27
         return;                          // scope 0 at $DIR/unwrap_unchecked.rs:+2:2: +2:2
     }

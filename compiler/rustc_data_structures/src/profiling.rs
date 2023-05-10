@@ -101,7 +101,7 @@ use parking_lot::RwLock;
 use smallvec::SmallVec;
 
 bitflags::bitflags! {
-    struct EventFilter: u32 {
+    struct EventFilter: u16 {
         const GENERIC_ACTIVITIES  = 1 << 0;
         const QUERY_PROVIDERS     = 1 << 1;
         const QUERY_CACHE_HITS    = 1 << 2;

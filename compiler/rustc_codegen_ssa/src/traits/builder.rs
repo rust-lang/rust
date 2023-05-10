@@ -274,6 +274,7 @@ pub trait BuilderMethods<'a, 'tcx>:
 
     // These are used by everyone except msvc
     fn cleanup_landing_pad(&mut self, pers_fn: Self::Value) -> (Self::Value, Self::Value);
+    fn filter_landing_pad(&mut self, pers_fn: Self::Value) -> (Self::Value, Self::Value);
     fn resume(&mut self, exn0: Self::Value, exn1: Self::Value);
 
     // These are used only by msvc

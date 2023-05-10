@@ -529,7 +529,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     let impl_self_ty = cx.tcx.subst_and_normalize_erasing_regions(
                         instance.substs,
                         ty::ParamEnv::reveal_all(),
-                        cx.tcx.type_of(impl_def_id).skip_binder(),
+                        cx.tcx.type_of(impl_def_id),
                     );
 
                     // Only "class" methods are generally understood by LLVM,

@@ -688,7 +688,7 @@ impl<T: ?Sized> !Sync for *mut T {}
 /// use std::marker::PhantomData;
 ///
 /// # #[allow(dead_code)]
-/// struct Slice<'a, T: 'a> {
+/// struct Slice<'a, T> {
 ///     start: *const T,
 ///     end: *const T,
 ///     phantom: PhantomData<&'a T>,
@@ -704,7 +704,7 @@ impl<T: ?Sized> !Sync for *mut T {}
 /// ```
 /// # #![allow(dead_code)]
 /// # use std::marker::PhantomData;
-/// # struct Slice<'a, T: 'a> {
+/// # struct Slice<'a, T> {
 /// #     start: *const T,
 /// #     end: *const T,
 /// #     phantom: PhantomData<&'a T>,

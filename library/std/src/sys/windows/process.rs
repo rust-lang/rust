@@ -308,7 +308,7 @@ impl Command {
         let stderr = stderr.to_handle(c::STD_ERROR_HANDLE, &mut pipes.stderr)?;
 
         let mut si = zeroed_startupinfo();
-        si.cb = mem::size_of::<c::STARTUPINFO>() as c::DWORD;
+        si.cb = mem::size_of::<c::STARTUPINFOW>() as c::DWORD;
 
         // If at least one of stdin, stdout or stderr are set (i.e. are non null)
         // then set the `hStd` fields in `STARTUPINFO`.
@@ -332,7 +332,7 @@ impl Command {
                 flags,
                 envp,
                 dirp,
-                &mut si,
+                &si,
                 &mut pi,
             ))
         }?;
@@ -720,8 +720,8 @@ impl From<u32> for ExitCode {
     }
 }
 
-fn zeroed_startupinfo() -> c::STARTUPINFO {
-    c::STARTUPINFO {
+fn zeroed_startupinfo() -> c::STARTUPINFOW {
+    c::STARTUPINFOW {
         cb: 0,
         lpReserved: ptr::null_mut(),
         lpDesktop: ptr::null_mut(),
@@ -731,7 +731,7 @@ fn zeroed_startupinfo() -> c::STARTUPINFO {
         dwXSize: 0,
         dwYSize: 0,
         dwXCountChars: 0,
-        dwYCountCharts: 0,
+        dwYCountChars: 0,
         dwFillAttribute: 0,
         dwFlags: 0,
         wShowWindow: 0,

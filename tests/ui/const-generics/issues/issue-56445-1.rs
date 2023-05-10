@@ -7,7 +7,7 @@
 use std::marker::PhantomData;
 
 struct Bug<'a, const S: &'a str>(PhantomData<&'a ()>);
-//~^ ERROR: use of non-static lifetime `'a` in const generic
+//~^ ERROR: the type of const parameters must not depend on other generic parameters
 //[min]~| ERROR: `&str` is forbidden as the type of a const generic parameter
 
 impl Bug<'_, ""> {}

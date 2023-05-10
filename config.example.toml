@@ -750,6 +750,10 @@ changelog-seen = 2
 # This option will override the same option under [build] section.
 #profiler = build.profiler (bool)
 
+# This option supports enable `rpath` in each target independently, 
+# and will override the same option under [rust] section. It only works on Unix platforms
+#rpath = rust.rpath (bool)
+
 # Force static or dynamic linkage of the standard library for this target. If
 # this target is a host for rustc, this will also affect the linkage of the
 # compiler itself. This is useful for building rustc on targets that normally

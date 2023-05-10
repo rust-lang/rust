@@ -1,4 +1,6 @@
 #![allow(rustc::potential_query_instability)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 #![feature(box_patterns)]
 #![feature(drain_filter)]
 #![feature(let_chains)]
@@ -69,11 +71,12 @@ pub mod dump_mir;
 mod early_otherwise_branch;
 mod elaborate_box_derefs;
 mod elaborate_drops;
+mod errors;
 mod ffi_unwind_calls;
 mod function_item_references;
 mod generator;
 mod inline;
-mod instcombine;
+mod instsimplify;
 mod large_enums;
 mod lower_intrinsics;
 mod lower_slice_len;
@@ -81,6 +84,7 @@ mod match_branches;
 mod multiple_return_terminators;
 mod normalize_array_len;
 mod nrvo;
+mod ref_prop;
 mod remove_noop_landing_pads;
 mod remove_storage_markers;
 mod remove_uninit_drops;
@@ -104,6 +108,11 @@ use rustc_const_eval::transform::check_consts::{self, ConstCx};
 use rustc_const_eval::transform::promote_consts;
 use rustc_const_eval::transform::validate;
 use rustc_mir_dataflow::rustc_peek;
+
+use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
+use rustc_fluent_macro::fluent_messages;
+
+fluent_messages! { "../messages.ftl" }
 
 pub fn provide(providers: &mut Providers) {
     check_unsafety::provide(providers);
@@ -547,10 +556,11 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &match_branches::MatchBranchSimplification,
             // inst combine is after MatchBranchSimplification to clean up Ne(_1, false)
             &multiple_return_terminators::MultipleReturnTerminators,
-            &instcombine::InstCombine,
+            &instsimplify::InstSimplify,
             &separate_const_switch::SeparateConstSwitch,
             &simplify::SimplifyLocals::BeforeConstProp,
             &copy_prop::CopyProp,
+            &ref_prop::ReferencePropagation,
             &const_prop::ConstProp,
             &dataflow_const_prop::DataflowConstProp,
             //

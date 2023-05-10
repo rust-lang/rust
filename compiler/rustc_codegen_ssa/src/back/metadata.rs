@@ -12,6 +12,7 @@ use object::{
 
 use snap::write::FrameEncoder;
 
+use object::elf::NT_GNU_PROPERTY_TYPE_0;
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::owned_slice::try_slice_owned;
 use rustc_data_structures::sync::MetadataRef;
@@ -91,6 +92,54 @@ pub(super) fn search_for_section<'a>(
         .ok_or_else(|| format!("no `{}` section in '{}'", section, path.display()))?
         .data()
         .map_err(|e| format!("failed to read {} section in '{}': {}", section, path.display(), e))
+}
+
+fn add_gnu_property_note(
+    file: &mut write::Object<'static>,
+    architecture: Architecture,
+    binary_format: BinaryFormat,
+    endianness: Endianness,
+) {
+    // check bti protection
+    if binary_format != BinaryFormat::Elf
+        || !matches!(architecture, Architecture::X86_64 | Architecture::Aarch64)
+    {
+        return;
+    }
+
+    let section = file.add_section(
+        file.segment_name(StandardSegment::Data).to_vec(),
+        b".note.gnu.property".to_vec(),
+        SectionKind::Note,
+    );
+    let mut data: Vec<u8> = Vec::new();
+    let n_namsz: u32 = 4; // Size of the n_name field
+    let n_descsz: u32 = 16; // Size of the n_desc field
+    let n_type: u32 = NT_GNU_PROPERTY_TYPE_0; // Type of note descriptor
+    let header_values = [n_namsz, n_descsz, n_type];
+    header_values.iter().for_each(|v| {
+        data.extend_from_slice(&match endianness {
+            Endianness::Little => v.to_le_bytes(),
+            Endianness::Big => v.to_be_bytes(),
+        })
+    });
+    data.extend_from_slice(b"GNU\0"); // Owner of the program property note
+    let pr_type: u32 = match architecture {
+        Architecture::X86_64 => 0xc0000002,
+        Architecture::Aarch64 => 0xc0000000,
+        _ => unreachable!(),
+    };
+    let pr_datasz: u32 = 4; //size of the pr_data field
+    let pr_data: u32 = 3; //program property descriptor
+    let pr_padding: u32 = 0;
+    let property_values = [pr_type, pr_datasz, pr_data, pr_padding];
+    property_values.iter().for_each(|v| {
+        data.extend_from_slice(&match endianness {
+            Endianness::Little => v.to_le_bytes(),
+            Endianness::Big => v.to_be_bytes(),
+        })
+    });
+    file.append_section_data(section, &data, 8);
 }
 
 pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static>> {
@@ -205,6 +254,7 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         _ => elf::ELFOSABI_NONE,
     };
     let abi_version = 0;
+    add_gnu_property_note(&mut file, architecture, binary_format, endianness);
     file.flags = FileFlags::Elf { os_abi, abi_version, e_flags };
     Some(file)
 }

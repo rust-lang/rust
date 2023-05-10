@@ -300,7 +300,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         match ty.kind() {
             ty::Adt(adt_def, _) => Some(*adt_def),
             // FIXME(#104767): Should we handle bound regions here?
-            ty::Alias(ty::Projection, _) if !ty.has_escaping_bound_vars() => {
+            ty::Alias(ty::Projection | ty::Inherent, _) if !ty.has_escaping_bound_vars() => {
                 self.normalize(span, ty).ty_adt_def()
             }
             _ => None,

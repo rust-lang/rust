@@ -1,20 +1,59 @@
-error: expected one of `!`, `(`, `+`, `,`, `::`, or `<`, found `<eof>`
-  --> $DIR/offset-of-arg-count.rs:6:16
+error: unexpected end of macro invocation
+  --> $DIR/offset-of-arg-count.rs:6:34
    |
 LL |     offset_of!(NotEnoughArguments);
-   |                ^^^^^^^^^^^^^^^^^^ expected one of `!`, `(`, `+`, `,`, `::`, or `<`
+   |                                  ^ missing tokens in macro arguments
+   |
+note: while trying to match `,`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 
-error: expected 2 arguments
-  --> $DIR/offset-of-arg-count.rs:7:5
+error: unexpected end of macro invocation
+  --> $DIR/offset-of-arg-count.rs:7:45
    |
 LL |     offset_of!(NotEnoughArgumentsWithAComma, );
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                             ^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$fields:tt`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 
-error: expected 2 arguments
-  --> $DIR/offset-of-arg-count.rs:8:5
+error: no rules expected the token `too`
+  --> $DIR/offset-of-arg-count.rs:8:34
    |
 LL |     offset_of!(Container, field, too many arguments);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                  ^^^ no rules expected this token in macro call
+   |
+   = note: while trying to match sequence end
 
-error: aborting due to 3 previous errors
+error: unexpected end of macro invocation
+  --> $DIR/offset-of-arg-count.rs:11:21
+   |
+LL |     offset_of!(S, f.);
+   |                     ^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$fields:tt`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+
+error: expected identifier, found `,`
+  --> $DIR/offset-of-arg-count.rs:12:21
+   |
+LL |     offset_of!(S, f.,);
+   |                     ^ expected identifier
+
+error: no rules expected the token `..`
+  --> $DIR/offset-of-arg-count.rs:13:20
+   |
+LL |     offset_of!(S, f..);
+   |                    ^^ no rules expected this token in macro call
+   |
+   = note: while trying to match sequence start
+
+error: no rules expected the token `..`
+  --> $DIR/offset-of-arg-count.rs:14:20
+   |
+LL |     offset_of!(S, f..,);
+   |                    ^^ no rules expected this token in macro call
+   |
+   = note: while trying to match sequence start
+
+error: aborting due to 7 previous errors
 

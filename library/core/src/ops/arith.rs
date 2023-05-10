@@ -517,7 +517,7 @@ div_impl_float! { f32 f64 }
 /// use std::ops::Rem;
 ///
 /// #[derive(PartialEq, Debug)]
-/// struct SplitSlice<'a, T: 'a> {
+/// struct SplitSlice<'a, T> {
 ///     slice: &'a [T],
 /// }
 ///

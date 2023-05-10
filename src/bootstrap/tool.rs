@@ -301,6 +301,7 @@ bootstrap_tool!(
     CollectLicenseMetadata, "src/tools/collect-license-metadata", "collect-license-metadata";
     GenerateCopyright, "src/tools/generate-copyright", "generate-copyright";
     SuggestTests, "src/tools/suggest-tests", "suggest-tests";
+    GenerateWindowsSys, "src/tools/generate-windows-sys", "generate-windows-sys";
 );
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
