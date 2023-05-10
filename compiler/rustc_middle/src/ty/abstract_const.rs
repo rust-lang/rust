@@ -4,7 +4,6 @@ use crate::ty::{
     TypeVisitableExt,
 };
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::def_id::DefId;
 
 #[derive(Hash, Debug, Clone, Copy, Ord, PartialOrd, PartialEq, Eq)]
 #[derive(TyDecodable, TyEncodable, HashStable, TypeVisitable, TypeFoldable)]
@@ -35,12 +34,6 @@ TrivialTypeTraversalAndLiftImpls! {
 pub type BoundAbstractConst<'tcx> = Result<Option<EarlyBinder<ty::Const<'tcx>>>, ErrorGuaranteed>;
 
 impl<'tcx> TyCtxt<'tcx> {
-    /// Returns a const without substs applied
-    pub fn bound_abstract_const(self, uv: DefId) -> BoundAbstractConst<'tcx> {
-        let ac = self.thir_abstract_const(uv);
-        Ok(ac?.map(|ac| EarlyBinder(ac)))
-    }
-
     pub fn expand_abstract_consts<T: TypeFoldable<TyCtxt<'tcx>>>(self, ac: T) -> T {
         struct Expander<'tcx> {
             tcx: TyCtxt<'tcx>,
@@ -59,7 +52,7 @@ impl<'tcx> TyCtxt<'tcx> {
             }
             fn fold_const(&mut self, c: Const<'tcx>) -> Const<'tcx> {
                 let ct = match c.kind() {
-                    ty::ConstKind::Unevaluated(uv) => match self.tcx.bound_abstract_const(uv.def) {
+                    ty::ConstKind::Unevaluated(uv) => match self.tcx.thir_abstract_const(uv.def) {
                         Err(e) => self.tcx.const_error_with_guaranteed(c.ty(), e),
                         Ok(Some(bac)) => {
                             let substs = self.tcx.erase_regions(uv.substs);
