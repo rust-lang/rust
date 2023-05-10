@@ -27,6 +27,8 @@ pub(crate) struct Module<'hir> {
     pub(crate) where_inner: Span,
     pub(crate) mods: Vec<Module<'hir>>,
     pub(crate) def_id: LocalDefId,
+    pub(crate) renamed: Option<Symbol>,
+    pub(crate) import_id: Option<LocalDefId>,
     /// The key is the item `ItemId` and the value is: (item, renamed, import_id).
     /// We use `FxIndexMap` to keep the insert order.
     pub(crate) items: FxIndexMap<
@@ -37,11 +39,19 @@ pub(crate) struct Module<'hir> {
 }
 
 impl Module<'_> {
-    pub(crate) fn new(name: Symbol, def_id: LocalDefId, where_inner: Span) -> Self {
+    pub(crate) fn new(
+        name: Symbol,
+        def_id: LocalDefId,
+        where_inner: Span,
+        renamed: Option<Symbol>,
+        import_id: Option<LocalDefId>,
+    ) -> Self {
         Module {
             name,
             def_id,
             where_inner,
+            renamed,
+            import_id,
             mods: Vec::new(),
             items: FxIndexMap::default(),
             foreigns: Vec::new(),
@@ -60,9 +70,16 @@ fn def_id_to_path(tcx: TyCtxt<'_>, did: DefId) -> Vec<Symbol> {
     std::iter::once(crate_name).chain(relative).collect()
 }
 
-pub(crate) fn inherits_doc_hidden(tcx: TyCtxt<'_>, mut def_id: LocalDefId) -> bool {
+pub(crate) fn inherits_doc_hidden(
+    tcx: TyCtxt<'_>,
+    mut def_id: LocalDefId,
+    stop_at: Option<LocalDefId>,
+) -> bool {
     let hir = tcx.hir();
     while let Some(id) = tcx.opt_local_parent(def_id) {
+        if let Some(stop_at) = stop_at && id == stop_at {
+            return false;
+        }
         def_id = id;
         if tcx.is_doc_hidden(def_id.to_def_id()) {
             return true;
@@ -100,6 +117,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             cx.tcx.crate_name(LOCAL_CRATE),
             CRATE_DEF_ID,
             cx.tcx.hir().root_module().spans.inner_span,
+            None,
+            None,
         );
 
         RustdocVisitor {
@@ -261,7 +280,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
         let is_private =
             !self.cx.cache.effective_visibilities.is_directly_public(self.cx.tcx, ori_res_did);
-        let is_hidden = inherits_doc_hidden(self.cx.tcx, res_did);
+        let is_hidden = inherits_doc_hidden(self.cx.tcx, res_did, None);
 
         // Only inline if requested or if the item would otherwise be stripped.
         if (!please_inline && !is_private && !is_hidden) || is_no_inline {
@@ -278,7 +297,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 .cache
                 .effective_visibilities
                 .is_directly_public(self.cx.tcx, item_def_id.to_def_id()) &&
-            !inherits_doc_hidden(self.cx.tcx, item_def_id)
+            !inherits_doc_hidden(self.cx.tcx, item_def_id, None)
         {
             // The imported item is public and not `doc(hidden)` so no need to inline it.
             return false;
@@ -427,7 +446,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 }
             }
             hir::ItemKind::Mod(ref m) => {
-                self.enter_mod(item.owner_id.def_id, m, name);
+                self.enter_mod(item.owner_id.def_id, m, name, renamed, import_id);
             }
             hir::ItemKind::Fn(..)
             | hir::ItemKind::ExternCrate(..)
@@ -480,8 +499,15 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     /// This method will create a new module and push it onto the "modules stack" then call
     /// `visit_mod_contents`. Once done, it'll remove it from the "modules stack" and instead
     /// add into the list of modules of the current module.
-    fn enter_mod(&mut self, id: LocalDefId, m: &'tcx hir::Mod<'tcx>, name: Symbol) {
-        self.modules.push(Module::new(name, id, m.spans.inner_span));
+    fn enter_mod(
+        &mut self,
+        id: LocalDefId,
+        m: &'tcx hir::Mod<'tcx>,
+        name: Symbol,
+        renamed: Option<Symbol>,
+        import_id: Option<LocalDefId>,
+    ) {
+        self.modules.push(Module::new(name, id, m.spans.inner_span, renamed, import_id));
 
         self.visit_mod_contents(id, m);
 
@@ -501,19 +527,14 @@ impl<'a, 'tcx> Visitor<'tcx> for RustdocVisitor<'a, 'tcx> {
 
     fn visit_item(&mut self, i: &'tcx hir::Item<'tcx>) {
         self.visit_item_inner(i, None, None);
-        let new_value = if self.is_importable_from_parent {
-            matches!(
+        let new_value = self.is_importable_from_parent
+            && matches!(
                 i.kind,
                 hir::ItemKind::Mod(..)
                     | hir::ItemKind::ForeignMod { .. }
                     | hir::ItemKind::Impl(..)
                     | hir::ItemKind::Trait(..)
-            )
-        } else {
-            // Whatever the context, if it's an impl block, the items inside it can be used so they
-            // should be visible.
-            matches!(i.kind, hir::ItemKind::Impl(..))
-        };
+            );
         let prev = mem::replace(&mut self.is_importable_from_parent, new_value);
         walk_item(self, i);
         self.is_importable_from_parent = prev;

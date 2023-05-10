@@ -1,5 +1,6 @@
 //! Strip all doc(hidden) items from the output.
 
+use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::sym;
 use std::mem;
@@ -29,6 +30,7 @@ pub(crate) fn strip_hidden(krate: clean::Crate, cx: &mut DocContext<'_>) -> clea
             update_retained: true,
             tcx: cx.tcx,
             is_in_hidden_item: false,
+            last_reexport: None,
         };
         stripper.fold_crate(krate)
     };
@@ -49,13 +51,24 @@ struct Stripper<'a, 'tcx> {
     update_retained: bool,
     tcx: TyCtxt<'tcx>,
     is_in_hidden_item: bool,
+    last_reexport: Option<LocalDefId>,
 }
 
 impl<'a, 'tcx> Stripper<'a, 'tcx> {
+    fn set_last_reexport_then_fold_item(&mut self, i: Item) -> Item {
+        let prev_from_reexport = self.last_reexport;
+        if i.inline_stmt_id.is_some() {
+            self.last_reexport = i.item_id.as_def_id().and_then(|def_id| def_id.as_local());
+        }
+        let ret = self.fold_item_recur(i);
+        self.last_reexport = prev_from_reexport;
+        ret
+    }
+
     fn set_is_in_hidden_item_and_fold(&mut self, is_in_hidden_item: bool, i: Item) -> Item {
         let prev = self.is_in_hidden_item;
         self.is_in_hidden_item |= is_in_hidden_item;
-        let ret = self.fold_item_recur(i);
+        let ret = self.set_last_reexport_then_fold_item(i);
         self.is_in_hidden_item = prev;
         ret
     }
@@ -64,7 +77,7 @@ impl<'a, 'tcx> Stripper<'a, 'tcx> {
     /// of `is_in_hidden_item` to `true` because the impl children inherit its visibility.
     fn recurse_in_impl_or_exported_macro(&mut self, i: Item) -> Item {
         let prev = mem::replace(&mut self.is_in_hidden_item, false);
-        let ret = self.fold_item_recur(i);
+        let ret = self.set_last_reexport_then_fold_item(i);
         self.is_in_hidden_item = prev;
         ret
     }
@@ -86,13 +99,20 @@ impl<'a, 'tcx> DocFolder for Stripper<'a, 'tcx> {
         if !is_impl_or_exported_macro {
             is_hidden = self.is_in_hidden_item || has_doc_hidden;
             if !is_hidden && i.inline_stmt_id.is_none() {
-                // We don't need to check if it's coming from a reexport since the reexport itself was
-                // already checked.
+                // `i.inline_stmt_id` is `Some` if the item is directly reexported. If it is, we
+                // don't need to check it, because the reexport itself was already checked.
+                //
+                // If this item is the child of a reexported module, `self.last_reexport` will be
+                // `Some` even though `i.inline_stmt_id` is `None`. Hiddenness inheritance needs to
+                // account for the possibility that an item's true parent module is hidden, but it's
+                // inlined into a visible module true. This code shouldn't be reachable if the
+                // module's reexport is itself hidden, for the same reason it doesn't need to be
+                // checked if `i.inline_stmt_id` is Some: hidden reexports are never inlined.
                 is_hidden = i
                     .item_id
                     .as_def_id()
                     .and_then(|def_id| def_id.as_local())
-                    .map(|def_id| inherits_doc_hidden(self.tcx, def_id))
+                    .map(|def_id| inherits_doc_hidden(self.tcx, def_id, self.last_reexport))
                     .unwrap_or(false);
             }
         }

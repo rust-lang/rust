@@ -82,9 +82,10 @@ impl EraseType for Result<Option<ty::Instance<'_>>, rustc_errors::ErrorGuarantee
         [u8; size_of::<Result<Option<ty::Instance<'static>>, rustc_errors::ErrorGuaranteed>>()];
 }
 
-impl EraseType for Result<Option<ty::Const<'_>>, rustc_errors::ErrorGuaranteed> {
-    type Result =
-        [u8; size_of::<Result<Option<ty::Const<'static>>, rustc_errors::ErrorGuaranteed>>()];
+impl EraseType for Result<Option<ty::EarlyBinder<ty::Const<'_>>>, rustc_errors::ErrorGuaranteed> {
+    type Result = [u8; size_of::<
+        Result<Option<ty::EarlyBinder<ty::Const<'static>>>, rustc_errors::ErrorGuaranteed>,
+    >()];
 }
 
 impl EraseType for Result<ty::GenericArg<'_>, traits::query::NoSolution> {
