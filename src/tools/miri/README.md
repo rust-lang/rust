@@ -389,7 +389,7 @@ to Miri failing to detect cases of undefined behavior in a program.
   Follow [the discussion on supporting other types](https://github.com/rust-lang/miri/issues/2365).
 * `-Zmiri-measureme=<name>` enables `measureme` profiling for the interpreted program.
    This can be used to find which parts of your program are executing slowly under Miri.
-   The profile is written out to a file with the prefix `<name>`, and can be processed
+   The profile is written out to a file inside a directory called `<name>`, and can be processed
    using the tools in the repository https://github.com/rust-lang/measureme.
 * `-Zmiri-mute-stdout-stderr` silently ignores all writes to stdout and stderr,
   but reports to the program that it did actually write. This is useful when you
