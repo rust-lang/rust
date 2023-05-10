@@ -110,6 +110,7 @@
 #![feature(is_ascii_octdigit)]
 #![feature(get_many_mut)]
 #![feature(offset_of)]
+#![feature(iter_map_windows)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(fuzzy_provenance_casts)]
 
