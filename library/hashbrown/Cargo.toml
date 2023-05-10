@@ -42,7 +42,7 @@ default = ["ahash", "inline-more", "allocator-api2"]
 
 nightly-base = [] # non-public feature to use nightly features without depending on `allocator-api2`
 
-nightly = ["allocator-api2/nightly", "nightly-base"]
+nightly = ["allocator-api2/nightly", "nightly-base", "blink-alloc/nightly"]
 
 rustc-internal-api = []
 rustc-dep-of-std = [
