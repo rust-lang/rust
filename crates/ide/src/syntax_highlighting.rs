@@ -469,25 +469,8 @@ fn traverse(
             }
 
             // apply config filtering
-            match &mut highlight.tag {
-                HlTag::StringLiteral if !config.strings => continue,
-                // If punctuation is disabled, make the macro bang part of the macro call again.
-                tag @ HlTag::Punctuation(HlPunct::MacroBang) => {
-                    if !config.macro_bang {
-                        *tag = HlTag::Symbol(SymbolKind::Macro);
-                    } else if !config.specialize_punctuation {
-                        *tag = HlTag::Punctuation(HlPunct::Other);
-                    }
-                }
-                HlTag::Punctuation(_) if !config.punctuation => continue,
-                tag @ HlTag::Punctuation(_) if !config.specialize_punctuation => {
-                    *tag = HlTag::Punctuation(HlPunct::Other);
-                }
-                HlTag::Operator(_) if !config.operator && highlight.mods.is_empty() => continue,
-                tag @ HlTag::Operator(_) if !config.specialize_operator => {
-                    *tag = HlTag::Operator(HlOperator::Other);
-                }
-                _ => (),
+            if !filter_by_config(&mut highlight, config) {
+                continue;
             }
 
             if inside_attribute {
@@ -497,4 +480,28 @@ fn traverse(
             hl.add(HlRange { range, highlight, binding_hash });
         }
     }
+}
+
+fn filter_by_config(highlight: &mut Highlight, config: HighlightConfig) -> bool {
+    match &mut highlight.tag {
+        HlTag::StringLiteral if !config.strings => return false,
+        // If punctuation is disabled, make the macro bang part of the macro call again.
+        tag @ HlTag::Punctuation(HlPunct::MacroBang) => {
+            if !config.macro_bang {
+                *tag = HlTag::Symbol(SymbolKind::Macro);
+            } else if !config.specialize_punctuation {
+                *tag = HlTag::Punctuation(HlPunct::Other);
+            }
+        }
+        HlTag::Punctuation(_) if !config.punctuation => return false,
+        tag @ HlTag::Punctuation(_) if !config.specialize_punctuation => {
+            *tag = HlTag::Punctuation(HlPunct::Other);
+        }
+        HlTag::Operator(_) if !config.operator && highlight.mods.is_empty() => return false,
+        tag @ HlTag::Operator(_) if !config.specialize_operator => {
+            *tag = HlTag::Operator(HlOperator::Other);
+        }
+        _ => (),
+    }
+    true
 }

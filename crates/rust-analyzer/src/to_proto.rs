@@ -586,6 +586,7 @@ pub(crate) fn semantic_tokens(
     text: &str,
     line_index: &LineIndex,
     highlights: Vec<HlRange>,
+    semantics_tokens_augments_syntax_tokens: bool,
 ) -> lsp_types::SemanticTokens {
     let id = TOKEN_RESULT_COUNTER.fetch_add(1, Ordering::SeqCst).to_string();
     let mut builder = semantic_tokens::SemanticTokensBuilder::new(id);
@@ -593,6 +594,26 @@ pub(crate) fn semantic_tokens(
     for highlight_range in highlights {
         if highlight_range.highlight.is_empty() {
             continue;
+        }
+
+        if semantics_tokens_augments_syntax_tokens {
+            match highlight_range.highlight.tag {
+                HlTag::BoolLiteral
+                | HlTag::ByteLiteral
+                | HlTag::CharLiteral
+                | HlTag::Comment
+                | HlTag::Keyword
+                | HlTag::NumericLiteral
+                | HlTag::Operator(_)
+                | HlTag::Punctuation(_)
+                | HlTag::StringLiteral
+                | HlTag::None
+                    if highlight_range.highlight.mods.is_empty() =>
+                {
+                    continue
+                }
+                _ => (),
+            }
         }
 
         let (ty, mods) = semantic_token_type_and_modifiers(highlight_range.highlight);
