@@ -145,7 +145,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 Ok(a)
             }
 
-            _ => ty::relate::super_relate_tys(relation, a, b),
+            _ => ty::relate::structurally_relate_tys(relation, a, b),
         }
     }
 
@@ -245,7 +245,7 @@ impl<'tcx> InferCtxt<'tcx> {
             _ => {}
         }
 
-        ty::relate::super_relate_consts(relation, a, b)
+        ty::relate::structurally_relate_consts(relation, a, b)
     }
 
     /// Unifies the const variable `target_vid` with the given constant.

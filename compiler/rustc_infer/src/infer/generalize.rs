@@ -306,7 +306,7 @@ where
                 }
             }
 
-            _ => relate::super_relate_tys(self, t, t),
+            _ => relate::structurally_relate_tys(self, t, t),
         }?;
 
         self.cache.insert(t, g);
@@ -422,7 +422,7 @@ where
                     Err(TypeError::Mismatch)
                 }
             }
-            _ => relate::super_relate_consts(self, c, c),
+            _ => relate::structurally_relate_consts(self, c, c),
         }
     }
 

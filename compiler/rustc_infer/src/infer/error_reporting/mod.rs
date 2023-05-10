@@ -2723,7 +2723,7 @@ impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
             | (ty::Infer(ty::InferTy::TyVar(_)), _)
             | (_, ty::Infer(ty::InferTy::TyVar(_))) => Ok(a),
             (ty::Infer(_), _) | (_, ty::Infer(_)) => Err(TypeError::Mismatch),
-            _ => relate::super_relate_tys(self, a, b),
+            _ => relate::structurally_relate_tys(self, a, b),
         }
     }
 
