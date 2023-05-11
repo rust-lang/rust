@@ -32,8 +32,8 @@ set-text: (
 )
 
 // Then we compare again to confirm the height didn't change.
-assert-css: ("#crate-search", {"width": "527px"})
-assert-css: (".search-results-title", {"height": "50px", "width": "640px"})
+assert-size: ("#crate-search", {"width": 527})
+assert-size: (".search-results-title", {"height": 50, "width": 640})
 // And we check that the `<select>` isn't bigger than its container (".search-results-title").
 assert-css: ("#search", {"width": "640px"})
 
