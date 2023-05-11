@@ -1477,6 +1477,7 @@ pub(crate) fn handle_semantic_tokens_full(
         &line_index,
         highlights,
         snap.config.semantics_tokens_augments_syntax_tokens(),
+        snap.config.highlighting_non_standard_tokens(),
     );
 
     // Unconditionally cache the tokens
@@ -1506,6 +1507,7 @@ pub(crate) fn handle_semantic_tokens_full_delta(
         &line_index,
         highlights,
         snap.config.semantics_tokens_augments_syntax_tokens(),
+        snap.config.highlighting_non_standard_tokens(),
     );
 
     let mut cache = snap.semantic_tokens_cache.lock();
@@ -1545,6 +1547,7 @@ pub(crate) fn handle_semantic_tokens_range(
         &line_index,
         highlights,
         snap.config.semantics_tokens_augments_syntax_tokens(),
+        snap.config.highlighting_non_standard_tokens(),
     );
     Ok(Some(semantic_tokens.into()))
 }
