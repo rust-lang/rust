@@ -12,8 +12,7 @@ LL | trait Bar {
 LL |     fn bar(&self, x: &Self);
    |                      ^^^^^ ...because method `bar` references the `Self` type in this parameter
    = help: consider moving `bar` to another trait
-   = note: required for `&T` to implement `CoerceUnsized<&dyn Bar>`
-   = note: required by cast to type `&dyn Bar`
+   = note: required for the cast from `&T` to `&dyn Bar`
 
 error[E0038]: the trait `Baz` cannot be made into an object
   --> $DIR/object-safety-mentions-Self.rs:30:5
@@ -29,8 +28,7 @@ LL | trait Baz {
 LL |     fn baz(&self) -> Self;
    |                      ^^^^ ...because method `baz` references the `Self` type in its return type
    = help: consider moving `baz` to another trait
-   = note: required for `&T` to implement `CoerceUnsized<&dyn Baz>`
-   = note: required by cast to type `&dyn Baz`
+   = note: required for the cast from `&T` to `&dyn Baz`
 
 error: aborting due to 2 previous errors
 
