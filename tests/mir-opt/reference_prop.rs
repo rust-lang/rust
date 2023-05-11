@@ -433,6 +433,29 @@ fn maybe_dead(m: bool) {
     )
 }
 
+fn mut_raw_then_mut_shr() -> (i32, i32) {
+    let mut x = 2;
+    let xref = &mut x;
+    let xraw = &mut *xref as *mut _;
+    let xshr = &*xref;
+    // Verify that we completely replace with `x` in both cases.
+    let a = *xshr;
+    unsafe { *xraw = 4; }
+    (a, x)
+}
+
+fn unique_with_copies() {
+    let y = {
+        let mut a = 0;
+        let x = &raw mut a;
+        // `*y` is not replacable below, so we must not replace `*x`.
+        unsafe { opaque(*x) };
+        x
+    };
+    // But rewriting as `*x` is ok.
+    unsafe { opaque(*y) };
+}
+
 fn main() {
     let mut x = 5_usize;
     let mut y = 7_usize;
@@ -444,6 +467,8 @@ fn main() {
     multiple_storage();
     dominate_storage();
     maybe_dead(true);
+    mut_raw_then_mut_shr();
+    unique_with_copies();
 }
 
 // EMIT_MIR reference_prop.reference_propagation.ReferencePropagation.diff
@@ -454,3 +479,5 @@ fn main() {
 // EMIT_MIR reference_prop.multiple_storage.ReferencePropagation.diff
 // EMIT_MIR reference_prop.dominate_storage.ReferencePropagation.diff
 // EMIT_MIR reference_prop.maybe_dead.ReferencePropagation.diff
+// EMIT_MIR reference_prop.mut_raw_then_mut_shr.ReferencePropagation.diff
+// EMIT_MIR reference_prop.unique_with_copies.ReferencePropagation.diff
