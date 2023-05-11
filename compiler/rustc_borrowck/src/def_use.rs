@@ -55,7 +55,7 @@ pub fn categorize(context: PlaceContext) -> Option<DefUse> {
         // `PlaceMention` and `AscribeUserType` both evaluate the place, which must not
         // contain dangling references.
         PlaceContext::NonMutatingUse(NonMutatingUseContext::PlaceMention) |
-        PlaceContext::NonUse(NonUseContext::AscribeUserTy) |
+        PlaceContext::NonUse(NonUseContext::AscribeUserTy(_)) |
 
         PlaceContext::MutatingUse(MutatingUseContext::AddressOf) |
         PlaceContext::NonMutatingUse(NonMutatingUseContext::AddressOf) |

@@ -64,7 +64,7 @@
 
 use crate::mir::*;
 use crate::ty::subst::SubstsRef;
-use crate::ty::{CanonicalUserTypeAnnotation, Ty};
+use crate::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc_span::Span;
 
 macro_rules! make_mir_visitor {
@@ -782,12 +782,12 @@ macro_rules! make_mir_visitor {
 
             fn super_ascribe_user_ty(&mut self,
                                      place: & $($mutability)? Place<'tcx>,
-                                     _variance: $(& $mutability)? ty::Variance,
+                                     variance: $(& $mutability)? ty::Variance,
                                      user_ty: & $($mutability)? UserTypeProjection,
                                      location: Location) {
                 self.visit_place(
                     place,
-                    PlaceContext::NonUse(NonUseContext::AscribeUserTy),
+                    PlaceContext::NonUse(NonUseContext::AscribeUserTy($(* &$mutability *)? variance)),
                     location
                 );
                 self.visit_user_type_projection(user_ty);
@@ -1320,7 +1320,7 @@ pub enum NonUseContext {
     /// Ending a storage live range.
     StorageDead,
     /// User type annotation assertions for NLL.
-    AscribeUserTy,
+    AscribeUserTy(ty::Variance),
     /// The data of a user variable, for debug info.
     VarDebugInfo,
 }

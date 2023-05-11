@@ -777,7 +777,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 Inspect | Copy | Move | PlaceMention | SharedBorrow | ShallowBorrow | UniqueBorrow
                 | AddressOf | Projection,
             ) => ty::Covariant,
-            PlaceContext::NonUse(AscribeUserTy) => ty::Covariant,
+            PlaceContext::NonUse(AscribeUserTy(variance)) => variance,
         }
     }
 
