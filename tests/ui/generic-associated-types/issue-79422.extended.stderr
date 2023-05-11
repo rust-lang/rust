@@ -27,7 +27,7 @@ LL |     type VRefCont<'a> = &'a V where Self: 'a;
    |                         ^^^^^
    = note: expected trait object `(dyn RefCont<'_, u8> + 'static)`
                  found reference `&u8`
-   = note: required for the cast from `BTreeMap<u8, u8>` to the object type `dyn MapLike<u8, u8, VRefCont = (dyn RefCont<'_, u8> + 'static)>`
+   = note: required for the cast from `Box<BTreeMap<u8, u8>>` to `Box<dyn MapLike<u8, u8, VRefCont = (dyn RefCont<'_, u8> + 'static)>>`
 
 error: aborting due to 2 previous errors
 
