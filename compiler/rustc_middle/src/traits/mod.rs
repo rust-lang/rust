@@ -281,9 +281,6 @@ pub enum ObligationCauseCode<'tcx> {
     /// A type like `Box<Foo<'a> + 'b>` is WF only if `'b: 'a`.
     ObjectTypeBound(Ty<'tcx>, ty::Region<'tcx>),
 
-    /// Obligation incurred due to an object cast.
-    ObjectCastObligation(/* Concrete type */ Ty<'tcx>, /* Object type */ Ty<'tcx>),
-
     /// Obligation incurred due to a coercion.
     Coercion {
         source: Ty<'tcx>,
