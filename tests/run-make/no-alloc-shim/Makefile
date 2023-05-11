@@ -1,5 +1,8 @@
 include ../tools.mk
 
+# ignore-cross-compile
+# ignore-msvc FIXME(bjorn3) can't figure out how to link with the MSVC toolchain
+
 TARGET_LIBDIR = $$($(RUSTC) --print target-libdir)
 
 all:
