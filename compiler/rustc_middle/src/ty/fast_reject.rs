@@ -212,7 +212,9 @@ impl DeepRejectCtxt {
         match impl_ty.kind() {
             // Start by checking whether the type in the impl may unify with
             // pretty much everything. Just return `true` in that case.
-            ty::Param(_) | ty::Error(_) | ty::Alias(..) | ty::Bound(..) => return true,
+            ty::Param(_) | ty::Error(_) | ty::Alias(..) | ty::Bound(..) | ty::Infer(_) => {
+                return true;
+            }
             // These types only unify with inference variables or their own
             // variant.
             ty::Bool
@@ -230,14 +232,13 @@ impl DeepRejectCtxt {
             | ty::Never
             | ty::Tuple(..)
             | ty::FnPtr(..)
-            | ty::Foreign(..) => {}
-            ty::FnDef(..)
+            | ty::Foreign(..)
+            | ty::FnDef(..)
             | ty::Closure(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
             | ty::GeneratorWitnessMIR(..)
-            | ty::Placeholder(..)
-            | ty::Infer(_) => bug!("unexpected impl_ty: {impl_ty}"),
+            | ty::Placeholder(..) => {}
         }
 
         let k = impl_ty.kind();
@@ -309,10 +310,23 @@ impl DeepRejectCtxt {
             },
 
             // Impls cannot contain these types as these cannot be named directly.
-            ty::FnDef(..) | ty::Closure(..) | ty::Generator(..) => false,
+            ty::FnDef(obl_def, obl_substs) => match k {
+                &ty::FnDef(impl_def, impl_substs) => {
+                    obl_def == impl_def && self.substs_refs_may_unify(obl_substs, impl_substs)
+                }
+                _ => false,
+            },
+
+            // Just treat these as unifying always, only param-env candidates will encounter them.
+            ty::Closure(..)
+            | ty::Generator(..)
+            | ty::GeneratorWitness(..)
+            | ty::GeneratorWitnessMIR(..) => true,
+
+            ty::Placeholder(p) => matches!(k, ty::Placeholder(p2) if &p == p2),
 
             // Placeholder types don't unify with anything on their own
-            ty::Placeholder(..) | ty::Bound(..) => false,
+            ty::Bound(..) => false,
 
             // Depending on the value of `treat_obligation_params`, we either
             // treat generic parameters like placeholders or like inference variables.
@@ -335,10 +349,6 @@ impl DeepRejectCtxt {
             ty::Alias(..) => true,
 
             ty::Error(_) => true,
-
-            ty::GeneratorWitness(..) | ty::GeneratorWitnessMIR(..) => {
-                bug!("unexpected obligation type: {:?}", obligation_ty)
-            }
         }
     }
 
