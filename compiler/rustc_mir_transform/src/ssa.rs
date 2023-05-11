@@ -209,13 +209,6 @@ impl<'tcx> Visitor<'tcx> for SsaVisitor {
         match ctxt {
             PlaceContext::MutatingUse(MutatingUseContext::Projection)
             | PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection) => bug!(),
-            PlaceContext::MutatingUse(MutatingUseContext::Store) => {
-                self.assignments[local].insert(LocationExtended::Plain(loc));
-                if let Set1::One(_) = self.assignments[local] {
-                    // Only record if SSA-like, to avoid growing the vector needlessly.
-                    self.assignment_order.push(local);
-                }
-            }
             // Anything can happen with raw pointers, so remove them.
             // We do not verify that all uses of the borrow dominate the assignment to `local`,
             // so we have to remove them too.
@@ -251,6 +244,19 @@ impl<'tcx> Visitor<'tcx> for SsaVisitor {
             self.visit_projection(place.as_ref(), ctxt, loc);
             self.visit_local(place.local, ctxt, loc);
         }
+    }
+
+    fn visit_assign(&mut self, place: &Place<'tcx>, rvalue: &Rvalue<'tcx>, loc: Location) {
+        if let Some(local) = place.as_local() {
+            self.assignments[local].insert(LocationExtended::Plain(loc));
+            if let Set1::One(_) = self.assignments[local] {
+                // Only record if SSA-like, to avoid growing the vector needlessly.
+                self.assignment_order.push(local);
+            }
+        } else {
+            self.visit_place(place, PlaceContext::MutatingUse(MutatingUseContext::Store), loc);
+        }
+        self.visit_rvalue(rvalue, loc);
     }
 }
 
