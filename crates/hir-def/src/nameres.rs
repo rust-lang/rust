@@ -105,6 +105,9 @@ pub struct DefMap {
     prelude: Option<ModuleId>,
     /// The extern prelude is only populated for non-block DefMaps
     extern_prelude: FxHashMap<Name, ModuleId>,
+    /// `macro_use` prelude that contains macros from `#[macro_use]`'d external crates. Note that
+    /// this contains all kinds of macro, not just `macro_rules!` macro.
+    macro_use_prelude: FxHashMap<Name, MacroId>,
 
     /// Side table for resolving derive helpers.
     exported_derives: FxHashMap<MacroDefId, Box<[Name]>>,
@@ -277,6 +280,7 @@ impl DefMap {
             edition,
             recursion_limit: None,
             extern_prelude: FxHashMap::default(),
+            macro_use_prelude: FxHashMap::default(),
             exported_derives: FxHashMap::default(),
             fn_proc_macro_mapping: FxHashMap::default(),
             proc_macro_loading_error: None,
@@ -489,6 +493,7 @@ impl DefMap {
             _c: _,
             exported_derives,
             extern_prelude,
+            macro_use_prelude,
             diagnostics,
             modules,
             registered_attrs,
@@ -507,6 +512,7 @@ impl DefMap {
         } = self;
 
         extern_prelude.shrink_to_fit();
+        macro_use_prelude.shrink_to_fit();
         exported_derives.shrink_to_fit();
         diagnostics.shrink_to_fit();
         modules.shrink_to_fit();

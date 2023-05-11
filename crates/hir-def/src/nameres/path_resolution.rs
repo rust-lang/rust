@@ -385,7 +385,7 @@ impl DefMap {
         // Resolve in:
         //  - legacy scope of macro
         //  - current module / scope
-        //  - extern prelude
+        //  - extern prelude / macro_use prelude
         //  - std prelude
         let from_legacy_macro = self[module]
             .scope
@@ -414,9 +414,18 @@ impl DefMap {
                 .get(name)
                 .map_or(PerNs::none(), |&it| PerNs::types(it.into(), Visibility::Public))
         };
+        let macro_use_prelude = || {
+            self.macro_use_prelude
+                .get(name)
+                .map_or(PerNs::none(), |&it| PerNs::macros(it.into(), Visibility::Public))
+        };
         let prelude = || self.resolve_in_prelude(db, name);
 
-        from_legacy_macro.or(from_scope_or_builtin).or_else(extern_prelude).or_else(prelude)
+        from_legacy_macro
+            .or(from_scope_or_builtin)
+            .or_else(extern_prelude)
+            .or_else(macro_use_prelude)
+            .or_else(prelude)
     }
 
     fn resolve_name_in_crate_root_or_extern_prelude(

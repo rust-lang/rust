@@ -707,6 +707,7 @@ impl DefCollector<'_> {
     }
 
     /// Import macros from `#[macro_use] extern crate`.
+    // FIXME: Support `#[macro_rules(macro_name, ...)]`.
     fn import_macros_from_extern_crate(
         &mut self,
         current_module_id: LocalModuleId,
@@ -725,7 +726,7 @@ impl DefCollector<'_> {
             }
 
             cov_mark::hit!(macro_rules_from_other_crates_are_visible_with_macro_use);
-            self.import_all_macros_exported(current_module_id, m.krate);
+            self.import_all_macros_exported(m.krate);
         }
     }
 
@@ -734,11 +735,12 @@ impl DefCollector<'_> {
     /// Exported macros are just all macros in the root module scope.
     /// Note that it contains not only all `#[macro_export]` macros, but also all aliases
     /// created by `use` in the root module, ignoring the visibility of `use`.
-    fn import_all_macros_exported(&mut self, current_module_id: LocalModuleId, krate: CrateId) {
+    fn import_all_macros_exported(&mut self, krate: CrateId) {
         let def_map = self.db.crate_def_map(krate);
         for (name, def) in def_map[def_map.root].scope.macros() {
-            // `#[macro_use]` brings macros into legacy scope. Yes, even non-`macro_rules!` macros.
-            self.define_legacy_macro(current_module_id, name.clone(), def);
+            // `#[macro_use]` brings macros into macro_use prelude. Yes, even non-`macro_rules!`
+            // macros.
+            self.def_map.macro_use_prelude.insert(name.clone(), def);
         }
     }
 
@@ -1509,6 +1511,7 @@ impl ModCollector<'_, '_> {
 
     fn collect(&mut self, items: &[ModItem], container: ItemContainerId) {
         let krate = self.def_collector.def_map.krate;
+        let is_crate_root = self.module_id == self.def_collector.def_map.root;
 
         // Note: don't assert that inserted value is fresh: it's simply not true
         // for macros.
@@ -1516,19 +1519,24 @@ impl ModCollector<'_, '_> {
 
         // Prelude module is always considered to be `#[macro_use]`.
         if let Some(prelude_module) = self.def_collector.def_map.prelude {
-            if prelude_module.krate != krate {
+            if prelude_module.krate != krate && is_crate_root {
                 cov_mark::hit!(prelude_is_macro_use);
-                self.def_collector.import_all_macros_exported(self.module_id, prelude_module.krate);
+                self.def_collector.import_all_macros_exported(prelude_module.krate);
             }
         }
 
         // This should be processed eagerly instead of deferred to resolving.
         // `#[macro_use] extern crate` is hoisted to imports macros before collecting
         // any other items.
-        for &item in items {
-            let attrs = self.item_tree.attrs(self.def_collector.db, krate, item.into());
-            if attrs.cfg().map_or(true, |cfg| self.is_cfg_enabled(&cfg)) {
-                if let ModItem::ExternCrate(id) = item {
+        //
+        // If we're not at the crate root, `macro_use`d extern crates are an error so let's just
+        // ignore them.
+        // FIXME: Support `#[macro_rules(macro_name, ...)]`.
+        if is_crate_root {
+            for &item in items {
+                let ModItem::ExternCrate(id) = item else { continue; };
+                let attrs = self.item_tree.attrs(self.def_collector.db, krate, item.into());
+                if attrs.cfg().map_or(true, |cfg| self.is_cfg_enabled(&cfg)) {
                     let import = &self.item_tree[id];
                     let attrs = self.item_tree.attrs(
                         self.def_collector.db,

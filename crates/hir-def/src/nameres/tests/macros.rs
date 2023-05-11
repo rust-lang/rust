@@ -1216,17 +1216,58 @@ fn proc_attr(a: TokenStream, b: TokenStream) -> TokenStream { a }
     "#,
     );
 
-    let root = &def_map[def_map.root()].scope;
-    let actual = root
-        .legacy_macros()
-        .sorted_by(|a, b| std::cmp::Ord::cmp(&a.0, &b.0))
-        .map(|(name, _)| format!("{name}\n"))
-        .collect::<String>();
+    let root_module = &def_map[def_map.root()].scope;
+    assert!(
+        root_module.legacy_macros().count() == 0,
+        "`#[macro_use]` shouldn't bring macros into textual macro scope",
+    );
+
+    let actual = def_map.macro_use_prelude.iter().map(|(name, _)| name).sorted().join("\n");
 
     expect![[r#"
         legacy
         macro20
-        proc_attr
-    "#]]
+        proc_attr"#]]
     .assert_eq(&actual);
+}
+
+#[test]
+fn non_prelude_macros_take_precedence_over_macro_use_prelude() {
+    check(
+        r#"
+//- /lib.rs edition:2021 crate:lib deps:dep,core
+#[macro_use]
+extern crate dep;
+
+macro foo() { struct Ok; }
+macro bar() { fn ok() {} }
+
+foo!();
+bar!();
+
+//- /dep.rs crate:dep
+#[macro_export]
+macro_rules! foo {
+    () => { struct NotOk; }
+}
+
+//- /core.rs crate:core
+pub mod prelude {
+    pub mod rust_2021 {
+        #[macro_export]
+        macro_rules! bar {
+            () => { fn not_ok() {} }
+        }
+    }
+}
+        "#,
+        expect![[r#"
+            crate
+            Ok: t v
+            bar: m
+            dep: t
+            foo: m
+            ok: v
+        "#]],
+    );
 }
