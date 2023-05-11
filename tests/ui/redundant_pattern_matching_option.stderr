@@ -149,40 +149,40 @@ LL |     if let None = *&None::<()> {}
    |     -------^^^^--------------- help: try this: `if (&None::<()>).is_none()`
 
 error: redundant pattern matching, consider using `is_some()`
-  --> $DIR/redundant_pattern_matching_option.rs:109:5
+  --> $DIR/redundant_pattern_matching_option.rs:112:5
    |
-LL | /     match Some(42) {
+LL | /     match x {
 LL | |         Some(_) => true,
 LL | |         _ => false,
 LL | |     };
-   | |_____^ help: try this: `Some(42).is_some()`
+   | |_____^ help: try this: `x.is_some()`
 
 error: redundant pattern matching, consider using `is_none()`
-  --> $DIR/redundant_pattern_matching_option.rs:114:5
+  --> $DIR/redundant_pattern_matching_option.rs:117:5
    |
-LL | /     match Some(42) {
+LL | /     match x {
 LL | |         None => true,
 LL | |         _ => false,
 LL | |     };
-   | |_____^ help: try this: `Some(42).is_none()`
+   | |_____^ help: try this: `x.is_none()`
 
 error: redundant pattern matching, consider using `is_some()`
-  --> $DIR/redundant_pattern_matching_option.rs:119:5
+  --> $DIR/redundant_pattern_matching_option.rs:122:5
    |
-LL | /     match None::<()> {
+LL | /     match y {
 LL | |         Some(_) => true,
 LL | |         _ => false,
 LL | |     };
-   | |_____^ help: try this: `None::<()>.is_some()`
+   | |_____^ help: try this: `y.is_some()`
 
 error: redundant pattern matching, consider using `is_none()`
-  --> $DIR/redundant_pattern_matching_option.rs:124:5
+  --> $DIR/redundant_pattern_matching_option.rs:127:5
    |
-LL | /     match None::<()> {
+LL | /     match y {
 LL | |         None => true,
 LL | |         _ => false,
 LL | |     };
-   | |_____^ help: try this: `None::<()>.is_none()`
+   | |_____^ help: try this: `y.is_none()`
 
 error: aborting due to 26 previous errors
 

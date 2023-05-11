@@ -91,15 +91,19 @@ fn issue7921() {
 }
 
 fn issue10726() {
-    Some(42).is_some();
+    let x = Some(42);
+    let y = None::<()>;
 
-    Some(42).is_none();
+    x.is_some();
 
-    None::<()>.is_some();
+    x.is_none();
 
-    None::<()>.is_none();
+    y.is_some();
 
-    match Some(42) {
+    y.is_none();
+
+    // Don't lint
+    match x {
         Some(21) => true,
         _ => false,
     };
