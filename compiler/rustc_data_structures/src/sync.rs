@@ -53,14 +53,13 @@ mod worker_local;
 
 pub use std::sync::atomic::Ordering;
 pub use std::sync::atomic::Ordering::SeqCst;
-use std::sync::{Mutex, MutexGuard};
 
 pub use vec::{AppendOnlyIndexVec, AppendOnlyVec};
 
 mod vec;
 use parking_lot::lock_api::RawMutex as _;
 use parking_lot::lock_api::RawRwLock as _;
-use parking_lot::{RawMutex, RawRwLock};
+use parking_lot::{Mutex, MutexGuard, RawMutex, RawRwLock};
 
 mod mode {
     use super::Ordering;
@@ -644,7 +643,7 @@ impl<T> Lock<T> {
         }
     }
 
-    #[inline(never)]
+    #[inline]
     fn lock_raw(&self) {
         if likely(self.single_thread) {
             assert!(!self.borrow.replace(true));
@@ -660,7 +659,7 @@ impl<T> Lock<T> {
         LockGuard { lock: &self, marker: PhantomData }
     }
 
-    #[inline(never)]
+    #[inline]
     pub(crate) fn with_mt_lock<F: FnOnce(&mut T) -> R, R>(&self, f: F) -> R {
         unsafe {
             self.mutex.lock();
@@ -683,7 +682,7 @@ impl<T> Lock<T> {
         }
     }
 
-    #[inline(never)]
+    #[inline]
     fn with_mt_borrow<F: FnOnce(&T) -> R, R>(&self, f: F) -> R {
         unsafe {
             self.mutex.lock();
@@ -751,7 +750,7 @@ impl<T> DerefMut for LockGuard<'_, T> {
     }
 }
 
-#[inline(never)]
+#[inline]
 fn unlock_mt<T>(guard: &mut LockGuard<'_, T>) {
     unsafe { guard.lock.mutex.unlock() }
 }
@@ -842,26 +841,23 @@ impl<T> LockLike<T> for Mutex<T> {
 
     #[inline]
     fn into_inner(self) -> T {
-        self.into_inner().unwrap()
+        self.into_inner()
     }
 
     #[inline]
     fn get_mut(&mut self) -> &mut T {
-        self.get_mut().unwrap()
+        self.get_mut()
     }
 
     #[inline]
     fn try_lock(&self) -> Option<MutexGuard<'_, T>> {
-        self.try_lock().ok()
+        self.try_lock()
     }
 
     #[inline(always)]
     #[track_caller]
     fn lock(&self) -> MutexGuard<'_, T> {
-        self.lock().unwrap_or_else(|e| {
-            self.clear_poison();
-            e.into_inner()
-        })
+        self.lock()
     }
 }
 
@@ -1095,7 +1091,7 @@ impl<T> RwLock<T> {
         self.data.get_mut()
     }
 
-    #[inline(never)]
+    #[inline]
     fn mt_read(&self) -> ReadGuard<'_, T> {
         self.raw.raw.lock_shared();
         ReadGuard { rwlock: self, marker: PhantomData }
@@ -1113,7 +1109,7 @@ impl<T> RwLock<T> {
         }
     }
 
-    #[inline(never)]
+    #[inline]
     fn with_mt_read_lock<F: FnOnce(&T) -> R, R>(&self, f: F) -> R {
         self.raw.raw.lock_shared();
         let r = unsafe { f(&*self.data.get()) };
@@ -1157,7 +1153,7 @@ impl<T> RwLock<T> {
         }
     }
 
-    #[inline(never)]
+    #[inline]
     fn mt_write(&self) -> WriteGuard<'_, T> {
         self.raw.raw.lock_exclusive();
         WriteGuard { rwlock: self, marker: PhantomData }
@@ -1173,7 +1169,7 @@ impl<T> RwLock<T> {
         }
     }
 
-    #[inline(never)]
+    #[inline]
     pub fn with_mt_write_lock<F: FnOnce(&mut T) -> R, R>(&self, f: F) -> R {
         self.raw.raw.lock_exclusive();
         unsafe {

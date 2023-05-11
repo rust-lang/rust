@@ -61,8 +61,18 @@ impl Compiler {
 }
 
 #[allow(rustc::bad_opt_access)]
-pub fn set_parallel_mode(sopts: &config::UnstableOptions) {
-    rustc_data_structures::sync::set(sopts.threads > 1);
+pub fn set_parallel_mode(sopts1: &config::UnstableOptions, sopts2: &config::CodegenOptions) {
+    let parallel = if sopts1.threads <= 1 {
+        false
+    } else {
+        if let Some(path) = &sopts2.incremental {
+            if matches!(std::fs::try_exists(PathBuf::from(path)), Ok(false)) { true } else { false }
+        } else {
+            true
+        }
+    };
+
+    rustc_data_structures::sync::set(parallel);
 }
 
 /// Converts strings provided as `--cfg [cfgspec]` into a `crate_cfg`.

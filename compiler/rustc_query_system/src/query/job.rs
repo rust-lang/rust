@@ -612,7 +612,7 @@ pub(crate) fn report_cycle<'a, D: DepKind>(
 }
 
 pub fn print_query_stack<Qcx: QueryContext>(
-    qcx: Qcx,
+    _qcx: Qcx,
     mut current_query: Option<QueryJobId>,
     handler: &Handler,
     num_frames: Option<usize>,
@@ -621,7 +621,12 @@ pub fn print_query_stack<Qcx: QueryContext>(
     // a panic hook, which means that the global `Handler` may be in a weird
     // state if it was responsible for triggering the panic.
     let mut i = 0;
-    let query_map = qcx.try_collect_active_jobs();
+
+    #[cfg(not(parallel_compiler))]
+    let query_map = _qcx.try_collect_active_jobs();
+
+    #[cfg(parallel_compiler)]
+    let query_map: Option<QueryMap<Qcx::DepKind>> = None;
 
     while let Some(query) = current_query {
         if Some(i) == num_frames {

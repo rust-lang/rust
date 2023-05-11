@@ -2233,7 +2233,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path) {
     join(
         || encode_metadata_impl(tcx, path),
         || {
-            if tcx.sess.threads() == 1 {
+            if !rustc_data_structures::sync::active() {
                 return;
             }
             // Prefetch some queries used by metadata encoding.

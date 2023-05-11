@@ -738,7 +738,7 @@ fn main_args(at_args: &[String]) -> MainResult {
     };
 
     // Set parallel mode before error handler creation, which will create `Lock`s.
-    interface::set_parallel_mode(&options.unstable_opts);
+    interface::set_parallel_mode(&options.unstable_opts, &options.codegen_options);
 
     let diag = core::new_handler(
         options.error_format,

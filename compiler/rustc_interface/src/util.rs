@@ -134,7 +134,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     f: F,
 ) -> R {
     #[cfg(parallel_compiler)]
-    if _threads > 1 {
+    if rustc_data_structures::sync::active() {
         return run_in_threads_pool_with_globals(edition, _threads, f);
     }
     // The "thread pool" is a single spawned thread in the non-parallel
