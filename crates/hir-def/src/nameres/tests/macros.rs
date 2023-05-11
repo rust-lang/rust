@@ -1271,3 +1271,57 @@ pub mod prelude {
         "#]],
     );
 }
+
+#[test]
+fn macro_sub_namespace() {
+    let map = compute_crate_def_map(
+        r#"
+//- minicore: derive, clone
+macro_rules! Clone { () => {} }
+macro_rules! derive { () => {} }
+
+#[derive(Clone)]
+struct S;
+    "#,
+    );
+    assert_eq!(map.modules[map.root].scope.impls().len(), 1);
+}
+
+#[test]
+fn macro_sub_namespace2() {
+    check(
+        r#"
+//- /main.rs edition:2021 crate:main deps:proc,core
+use proc::{foo, bar};
+
+foo!();
+bar!();
+
+//- /proc.rs crate:proc
+#![crate_type="proc-macro"]
+#[proc_macro_derive(foo)]
+pub fn foo() {}
+#[proc_macro_attribute]
+pub fn bar() {}
+
+//- /core.rs crate:core
+pub mod prelude {
+    pub mod rust_2021 {
+        pub macro foo() {
+            struct Ok;
+        }
+        pub macro bar() {
+            fn ok() {}
+        }
+    }
+}
+    "#,
+        expect![[r#"
+            crate
+            Ok: t v
+            bar: m
+            foo: m
+            ok: v
+        "#]],
+    );
+}

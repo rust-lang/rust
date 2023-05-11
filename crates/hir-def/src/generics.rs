@@ -22,7 +22,7 @@ use crate::{
     dyn_map::{keys, DynMap},
     expander::Expander,
     lower::LowerCtx,
-    nameres::DefMap,
+    nameres::{DefMap, MacroSubNs},
     src::{HasChildSource, HasSource},
     type_ref::{LifetimeRef, TypeBound, TypeRef},
     AdtId, ConstParamId, GenericDefId, HasModule, LifetimeParamId, LocalLifetimeParamId,
@@ -361,6 +361,7 @@ impl GenericParams {
                             module,
                             &path,
                             crate::item_scope::BuiltinShadowMode::Other,
+                            Some(MacroSubNs::Bang),
                         )
                         .0
                         .take_macros()

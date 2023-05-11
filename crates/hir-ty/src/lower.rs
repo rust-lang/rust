@@ -24,6 +24,7 @@ use hir_def::{
         TypeOrConstParamData, TypeParamProvenance, WherePredicate, WherePredicateTypeTarget,
     },
     lang_item::{lang_attr, LangItem},
+    nameres::MacroSubNs,
     path::{GenericArg, GenericArgs, ModPath, Path, PathKind, PathSegment, PathSegments},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{ConstRefOrPath, TraitBoundModifier, TraitRef as HirTraitRef, TypeBound, TypeRef},
@@ -378,9 +379,15 @@ impl<'a> TyLoweringContext<'a> {
                 };
                 let ty = {
                     let macro_call = macro_call.to_node(self.db.upcast());
-                    match expander.enter_expand::<ast::Type>(self.db.upcast(), macro_call, |path| {
-                        self.resolver.resolve_path_as_macro(self.db.upcast(), &path)
-                    }) {
+                    let resolver = |path| {
+                        self.resolver.resolve_path_as_macro(
+                            self.db.upcast(),
+                            &path,
+                            Some(MacroSubNs::Bang),
+                        )
+                    };
+                    match expander.enter_expand::<ast::Type>(self.db.upcast(), macro_call, resolver)
+                    {
                         Ok(ExpandResult { value: Some((mark, expanded)), .. }) => {
                             let ctx = expander.ctx(self.db.upcast());
                             // FIXME: Report syntax errors in expansion here

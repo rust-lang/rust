@@ -14,7 +14,7 @@ use crate::{
     AstIdWithPath, LocalModuleId, UnresolvedMacro,
 };
 
-use super::DefMap;
+use super::{DefMap, MacroSubNs};
 
 pub enum ResolvedAttr {
     /// Attribute resolved to an attribute macro.
@@ -43,9 +43,12 @@ impl DefMap {
             original_module,
             &ast_id.path,
             BuiltinShadowMode::Module,
+            Some(MacroSubNs::Attr),
         );
         let def = match resolved_res.resolved_def.take_macros() {
             Some(def) => {
+                // `MacroSubNs` is just a hint, so the path may still resolve to a custom derive
+                // macro, or even function-like macro when the path is qualified.
                 if def.is_attribute(db) {
                     def
                 } else {

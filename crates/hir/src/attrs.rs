@@ -120,6 +120,7 @@ impl HasAttrs for AssocItem {
     }
 }
 
+/// Resolves the item `link` points to in the scope of `def`.
 fn resolve_doc_path(
     db: &dyn HirDatabase,
     def: AttrDefId,

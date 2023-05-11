@@ -44,7 +44,7 @@ use crate::{
         mod_resolution::ModDir,
         path_resolution::ReachedFixedPoint,
         proc_macro::{parse_macro_name_and_helper_attrs, ProcMacroDef, ProcMacroKind},
-        BuiltinShadowMode, DefMap, ModuleData, ModuleOrigin, ResolveMode,
+        BuiltinShadowMode, DefMap, MacroSubNs, ModuleData, ModuleOrigin, ResolveMode,
     },
     path::{ImportAlias, ModPath, PathKind},
     per_ns::PerNs,
@@ -549,8 +549,13 @@ impl DefCollector<'_> {
         };
         let path = ModPath::from_segments(path_kind, [krate, name![prelude], edition]);
 
-        let (per_ns, _) =
-            self.def_map.resolve_path(self.db, self.def_map.root, &path, BuiltinShadowMode::Other);
+        let (per_ns, _) = self.def_map.resolve_path(
+            self.db,
+            self.def_map.root,
+            &path,
+            BuiltinShadowMode::Other,
+            None,
+        );
 
         match per_ns.types {
             Some((ModuleDefId::ModuleId(m), _)) => {
@@ -796,6 +801,7 @@ impl DefCollector<'_> {
                 module_id,
                 &import.path,
                 BuiltinShadowMode::Module,
+                None, // An import may resolve to any kind of macro.
             );
 
             let def = res.resolved_def;
@@ -1093,7 +1099,14 @@ impl DefCollector<'_> {
             resolved.push((directive.module_id, directive.depth, directive.container, call_id));
         };
         let mut res = ReachedFixedPoint::Yes;
+        // Retain unresolved macros after this round of resolution.
         macros.retain(|directive| {
+            let subns = match &directive.kind {
+                MacroDirectiveKind::FnLike { .. } => MacroSubNs::Bang,
+                MacroDirectiveKind::Attr { .. } | MacroDirectiveKind::Derive { .. } => {
+                    MacroSubNs::Attr
+                }
+            };
             let resolver = |path| {
                 let resolved_res = self.def_map.resolve_path_fp_with_macro(
                     self.db,
@@ -1101,6 +1114,7 @@ impl DefCollector<'_> {
                     directive.module_id,
                     &path,
                     BuiltinShadowMode::Module,
+                    Some(subns),
                 );
                 resolved_res
                     .resolved_def
@@ -1419,6 +1433,7 @@ impl DefCollector<'_> {
                                 directive.module_id,
                                 &path,
                                 BuiltinShadowMode::Module,
+                                Some(MacroSubNs::Bang),
                             );
                             resolved_res
                                 .resolved_def

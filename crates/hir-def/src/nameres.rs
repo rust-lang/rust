@@ -59,7 +59,7 @@ mod tests;
 
 use std::{cmp::Ord, ops::Deref};
 
-use base_db::{CrateId, Edition, FileId};
+use base_db::{CrateId, Edition, FileId, ProcMacroKind};
 use hir_expand::{name::Name, InFile, MacroCallId, MacroDefId};
 use itertools::Itertools;
 use la_arena::Arena;
@@ -77,7 +77,8 @@ use crate::{
     path::ModPath,
     per_ns::PerNs,
     visibility::Visibility,
-    AstId, BlockId, BlockLoc, FunctionId, LocalModuleId, MacroId, ModuleId, ProcMacroId,
+    AstId, BlockId, BlockLoc, FunctionId, LocalModuleId, Lookup, MacroExpander, MacroId, ModuleId,
+    ProcMacroId,
 };
 
 /// Contains the results of (early) name resolution.
@@ -380,9 +381,16 @@ impl DefMap {
         original_module: LocalModuleId,
         path: &ModPath,
         shadow: BuiltinShadowMode,
+        expected_macro_subns: Option<MacroSubNs>,
     ) -> (PerNs, Option<usize>) {
-        let res =
-            self.resolve_path_fp_with_macro(db, ResolveMode::Other, original_module, path, shadow);
+        let res = self.resolve_path_fp_with_macro(
+            db,
+            ResolveMode::Other,
+            original_module,
+            path,
+            shadow,
+            expected_macro_subns,
+        );
         (res.resolved_def, res.segment_index)
     }
 
@@ -399,6 +407,7 @@ impl DefMap {
             original_module,
             path,
             shadow,
+            None, // Currently this function isn't used for macro resolution.
         );
         (res.resolved_def, res.segment_index)
     }
@@ -567,4 +576,49 @@ pub enum ModuleSource {
     SourceFile(ast::SourceFile),
     Module(ast::Module),
     BlockExpr(ast::BlockExpr),
+}
+
+/// See `sub_namespace_match()`.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum MacroSubNs {
+    /// Function-like macros, suffixed with `!`.
+    Bang,
+    /// Macros inside attributes, i.e. attribute macros and derive macros.
+    Attr,
+}
+
+impl MacroSubNs {
+    fn from_id(db: &dyn DefDatabase, macro_id: MacroId) -> Self {
+        let expander = match macro_id {
+            MacroId::Macro2Id(it) => it.lookup(db).expander,
+            MacroId::MacroRulesId(it) => it.lookup(db).expander,
+            MacroId::ProcMacroId(it) => {
+                return match it.lookup(db).kind {
+                    ProcMacroKind::CustomDerive | ProcMacroKind::Attr => Self::Attr,
+                    ProcMacroKind::FuncLike => Self::Bang,
+                };
+            }
+        };
+
+        // Eager macros aren't *guaranteed* to be bang macros, but they *are* all bang macros currently.
+        match expander {
+            MacroExpander::Declarative
+            | MacroExpander::BuiltIn(_)
+            | MacroExpander::BuiltInEager(_) => Self::Bang,
+            MacroExpander::BuiltInAttr(_) | MacroExpander::BuiltInDerive(_) => Self::Attr,
+        }
+    }
+}
+
+/// Quoted from [rustc]:
+/// Macro namespace is separated into two sub-namespaces, one for bang macros and
+/// one for attribute-like macros (attributes, derives).
+/// We ignore resolutions from one sub-namespace when searching names in scope for another.
+///
+/// [rustc]: https://github.com/rust-lang/rust/blob/1.69.0/compiler/rustc_resolve/src/macros.rs#L75
+fn sub_namespace_match(candidate: Option<MacroSubNs>, expected: Option<MacroSubNs>) -> bool {
+    match (candidate, expected) {
+        (Some(candidate), Some(expected)) => candidate == expected,
+        _ => true,
+    }
 }
