@@ -131,6 +131,6 @@ needed for correctness), then fuel should not be used. An example of this is `Pr
 perform optimizations. In these situations, we should allow for the initial gathering pass
 and then check fuel as close to the mutation as possible. This allows for the best
 debugging experience, because we can determine where in the list of candidates an optimization
-may have been misapplied. Examples of this are `InstCombine` and `ConstantPropagation`.
+may have been misapplied. Examples of this are `InstSimplify` and `ConstantPropagation`.
 
 [consideroptimizing]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.consider_optimizing
