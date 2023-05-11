@@ -289,80 +289,84 @@ impl DefCollector<'_> {
         let module_id = self.def_map.root;
 
         let attrs = item_tree.top_level_attrs(self.db, self.def_map.krate);
-        if attrs.cfg().map_or(true, |cfg| self.cfg_options.check(&cfg) != Some(false)) {
-            self.inject_prelude(&attrs);
-
-            // Process other crate-level attributes.
-            for attr in &*attrs {
-                let attr_name = match attr.path.as_ident() {
-                    Some(name) => name,
-                    None => continue,
-                };
-
-                if *attr_name == hir_expand::name![recursion_limit] {
-                    if let Some(limit) = attr.string_value() {
-                        if let Ok(limit) = limit.parse() {
-                            self.def_map.recursion_limit = Some(limit);
-                        }
-                    }
-                    continue;
-                }
-
-                if *attr_name == hir_expand::name![crate_type] {
-                    if let Some("proc-macro") = attr.string_value().map(SmolStr::as_str) {
-                        self.is_proc_macro = true;
-                    }
-                    continue;
-                }
-
-                if attr_name.as_text().as_deref() == Some("rustc_coherence_is_core") {
-                    self.def_map.rustc_coherence_is_core = true;
-                    continue;
-                }
-
-                if *attr_name == hir_expand::name![feature] {
-                    let hygiene = &Hygiene::new_unhygienic();
-                    let features = attr
-                        .parse_path_comma_token_tree(self.db.upcast(), hygiene)
-                        .into_iter()
-                        .flatten()
-                        .filter_map(|feat| match feat.segments() {
-                            [name] => Some(name.to_smol_str()),
-                            _ => None,
-                        });
-                    self.def_map.unstable_features.extend(features);
-                }
-
-                let attr_is_register_like = *attr_name == hir_expand::name![register_attr]
-                    || *attr_name == hir_expand::name![register_tool];
-                if !attr_is_register_like {
-                    continue;
-                }
-
-                let registered_name = match attr.single_ident_value() {
-                    Some(ident) => ident.as_name(),
-                    _ => continue,
-                };
-
-                if *attr_name == hir_expand::name![register_attr] {
-                    self.def_map.registered_attrs.push(registered_name.to_smol_str());
-                    cov_mark::hit!(register_attr);
-                } else {
-                    self.def_map.registered_tools.push(registered_name.to_smol_str());
-                    cov_mark::hit!(register_tool);
-                }
+        if let Some(cfg) = attrs.cfg() {
+            if self.cfg_options.check(&cfg) == Some(false) {
+                return;
             }
-
-            ModCollector {
-                def_collector: self,
-                macro_depth: 0,
-                module_id,
-                tree_id: TreeId::new(file_id.into(), None),
-                item_tree: &item_tree,
-                mod_dir: ModDir::root(),
-            }
-            .collect_in_top_module(item_tree.top_level_items());
         }
+
+        self.inject_prelude(&attrs);
+
+        // Process other crate-level attributes.
+        for attr in &*attrs {
+            let attr_name = match attr.path.as_ident() {
+                Some(name) => name,
+                None => continue,
+            };
+
+            if *attr_name == hir_expand::name![recursion_limit] {
+                if let Some(limit) = attr.string_value() {
+                    if let Ok(limit) = limit.parse() {
+                        self.def_map.recursion_limit = Some(limit);
+                    }
+                }
+                continue;
+            }
+
+            if *attr_name == hir_expand::name![crate_type] {
+                if let Some("proc-macro") = attr.string_value().map(SmolStr::as_str) {
+                    self.is_proc_macro = true;
+                }
+                continue;
+            }
+
+            if attr_name.as_text().as_deref() == Some("rustc_coherence_is_core") {
+                self.def_map.rustc_coherence_is_core = true;
+                continue;
+            }
+
+            if *attr_name == hir_expand::name![feature] {
+                let hygiene = &Hygiene::new_unhygienic();
+                let features = attr
+                    .parse_path_comma_token_tree(self.db.upcast(), hygiene)
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|feat| match feat.segments() {
+                        [name] => Some(name.to_smol_str()),
+                        _ => None,
+                    });
+                self.def_map.unstable_features.extend(features);
+            }
+
+            let attr_is_register_like = *attr_name == hir_expand::name![register_attr]
+                || *attr_name == hir_expand::name![register_tool];
+            if !attr_is_register_like {
+                continue;
+            }
+
+            let registered_name = match attr.single_ident_value() {
+                Some(ident) => ident.as_name(),
+                _ => continue,
+            };
+
+            if *attr_name == hir_expand::name![register_attr] {
+                self.def_map.registered_attrs.push(registered_name.to_smol_str());
+                cov_mark::hit!(register_attr);
+            } else {
+                self.def_map.registered_tools.push(registered_name.to_smol_str());
+                cov_mark::hit!(register_tool);
+            }
+        }
+
+        ModCollector {
+            def_collector: self,
+            macro_depth: 0,
+            module_id,
+            tree_id: TreeId::new(file_id.into(), None),
+            item_tree: &item_tree,
+            mod_dir: ModDir::root(),
+        }
+        .collect_in_top_module(item_tree.top_level_items());
     }
 
     fn seed_with_inner(&mut self, tree_id: TreeId) {
