@@ -4,7 +4,7 @@ error[E0271]: expected `IntoIter<u32>` to be an iterator that yields `i32`, but 
 LL |     let _: &dyn I32Iterator<Item = u32> = &vec![42].into_iter();
    |                                           ^^^^^^^^^^^^^^^^^^^^^ expected `i32`, found `u32`
    |
-   = note: required for the cast from `std::vec::IntoIter<u32>` to the object type `dyn Iterator<Item = u32, Item = i32>`
+   = note: required for the cast from `&std::vec::IntoIter<u32>` to `&dyn Iterator<Item = u32, Item = i32>`
 
 error: aborting due to previous error
 

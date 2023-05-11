@@ -36,7 +36,7 @@ LL |     impl<T: Debug + Trait> Debug for Inner<T> {
    |                     unsatisfied trait bound introduced here
    = note: 1 redundant requirement hidden
    = note: required for `&c::Inner<T>` to implement `Debug`
-   = note: required for the cast from `&c::Inner<T>` to the object type `dyn Debug`
+   = note: required for the cast from `&&c::Inner<T>` to `&dyn Debug`
    = note: this error originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider restricting type parameter `T`
    |
@@ -58,7 +58,7 @@ LL |     impl<T> Debug for Inner<T> where T: Debug, T: Trait {
    |             ^^^^^     ^^^^^^^^                    ----- unsatisfied trait bound introduced here
    = note: 1 redundant requirement hidden
    = note: required for `&d::Inner<T>` to implement `Debug`
-   = note: required for the cast from `&d::Inner<T>` to the object type `dyn Debug`
+   = note: required for the cast from `&&d::Inner<T>` to `&dyn Debug`
    = note: this error originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider restricting type parameter `T`
    |
@@ -80,7 +80,7 @@ LL |     impl<T> Debug for Inner<T> where T: Debug + Trait {
    |             ^^^^^     ^^^^^^^^                  ----- unsatisfied trait bound introduced here
    = note: 1 redundant requirement hidden
    = note: required for `&e::Inner<T>` to implement `Debug`
-   = note: required for the cast from `&e::Inner<T>` to the object type `dyn Debug`
+   = note: required for the cast from `&&e::Inner<T>` to `&dyn Debug`
    = note: this error originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider restricting type parameter `T`
    |
@@ -102,7 +102,7 @@ LL |     impl<T: Debug> Debug for Inner<T> where T: Trait {
    |                    ^^^^^     ^^^^^^^^          ----- unsatisfied trait bound introduced here
    = note: 1 redundant requirement hidden
    = note: required for `&f::Inner<T>` to implement `Debug`
-   = note: required for the cast from `&f::Inner<T>` to the object type `dyn Debug`
+   = note: required for the cast from `&&f::Inner<T>` to `&dyn Debug`
    = note: this error originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider restricting type parameter `T`
    |

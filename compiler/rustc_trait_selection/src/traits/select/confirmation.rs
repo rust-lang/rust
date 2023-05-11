@@ -29,9 +29,9 @@ use crate::traits::{
     ImplSourceAutoImplData, ImplSourceBuiltinData, ImplSourceClosureData,
     ImplSourceConstDestructData, ImplSourceFnPointerData, ImplSourceFutureData,
     ImplSourceGeneratorData, ImplSourceObjectData, ImplSourceTraitAliasData,
-    ImplSourceTraitUpcastingData, ImplSourceUserDefinedData, Normalized, ObjectCastObligation,
-    Obligation, ObligationCause, OutputTypeParameterMismatch, PredicateObligation, Selection,
-    SelectionError, TraitNotObjectSafe, TraitObligation, Unimplemented,
+    ImplSourceTraitUpcastingData, ImplSourceUserDefinedData, Normalized, Obligation,
+    ObligationCause, OutputTypeParameterMismatch, PredicateObligation, Selection, SelectionError,
+    TraitNotObjectSafe, TraitObligation, Unimplemented,
 };
 
 use super::BuiltinImplConditions;
@@ -905,16 +905,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     .map_err(|_| Unimplemented)?;
                 nested.extend(obligations);
 
-                // Register one obligation for 'a: 'b.
-                let cause = ObligationCause::new(
-                    obligation.cause.span,
-                    obligation.cause.body_id,
-                    ObjectCastObligation(source, target),
-                );
                 let outlives = ty::OutlivesPredicate(r_a, r_b);
                 nested.push(Obligation::with_depth(
                     tcx,
-                    cause,
+                    obligation.cause.clone(),
                     obligation.recursion_depth + 1,
                     obligation.param_env,
                     obligation.predicate.rebind(outlives),
@@ -1005,15 +999,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 nested.extend(obligations);
 
                 // Register one obligation for 'a: 'b.
-                let cause = ObligationCause::new(
-                    obligation.cause.span,
-                    obligation.cause.body_id,
-                    ObjectCastObligation(source, target),
-                );
                 let outlives = ty::OutlivesPredicate(r_a, r_b);
                 nested.push(Obligation::with_depth(
                     tcx,
-                    cause,
+                    obligation.cause.clone(),
                     obligation.recursion_depth + 1,
                     obligation.param_env,
                     obligation.predicate.rebind(outlives),
@@ -1027,16 +1016,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     return Err(TraitNotObjectSafe(did));
                 }
 
-                let cause = ObligationCause::new(
-                    obligation.cause.span,
-                    obligation.cause.body_id,
-                    ObjectCastObligation(source, target),
-                );
-
                 let predicate_to_obligation = |predicate| {
                     Obligation::with_depth(
                         tcx,
-                        cause.clone(),
+                        obligation.cause.clone(),
                         obligation.recursion_depth + 1,
                         obligation.param_env,
                         predicate,
@@ -1056,7 +1039,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 );
 
                 // We can only make objects from sized types.
-                let tr = ty::TraitRef::from_lang_item(tcx, LangItem::Sized, cause.span, [source]);
+                let tr = ty::TraitRef::from_lang_item(
+                    tcx,
+                    LangItem::Sized,
+                    obligation.cause.span,
+                    [source],
+                );
                 nested.push(predicate_to_obligation(tr.without_const().to_predicate(tcx)));
 
                 // If the type is `Foo + 'a`, ensure that the type

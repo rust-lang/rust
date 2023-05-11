@@ -27,8 +27,7 @@ LL | trait Array: Sized + Copy {}
    |       |      |
    |       |      ...because it requires `Self: Sized`
    |       this trait cannot be made into an object...
-   = note: required for `&T` to implement `CoerceUnsized<&dyn Array>`
-   = note: required by cast to type `&dyn Array`
+   = note: required for the cast from `&T` to `&dyn Array`
 
 error: aborting due to 2 previous errors
 

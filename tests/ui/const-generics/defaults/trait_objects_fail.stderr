@@ -5,7 +5,7 @@ LL |     foo(&10_u32);
    |         ^^^^^^^ the trait `Trait` is not implemented for `u32`
    |
    = help: the trait `Trait<2>` is implemented for `u32`
-   = note: required for the cast from `u32` to the object type `dyn Trait`
+   = note: required for the cast from `&u32` to `&dyn Trait`
 
 error[E0277]: the trait bound `bool: Traitor<_>` is not satisfied
   --> $DIR/trait_objects_fail.rs:28:9
@@ -14,7 +14,7 @@ LL |     bar(&true);
    |         ^^^^^ the trait `Traitor<_>` is not implemented for `bool`
    |
    = help: the trait `Traitor<2, 3>` is implemented for `bool`
-   = note: required for the cast from `bool` to the object type `dyn Traitor<_>`
+   = note: required for the cast from `&bool` to `&dyn Traitor<_>`
 
 error: aborting due to 2 previous errors
 
