@@ -948,6 +948,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ResolutionError::InvalidAsmSym => {
                 self.tcx.sess.create_err(errs::InvalidAsmSym { span })
             }
+            ResolutionError::LowercaseSelf => {
+                self.tcx.sess.create_err(errs::LowercaseSelf { span })
+            }
         }
     }
 
