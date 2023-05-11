@@ -111,11 +111,28 @@ pub use self::public_mod::Public;
 With this code, even though `public_mod::Public` is public and present in the documentation, the
 `Public` type will be present both at the crate root and in the `public_mod` module.
 
+## Preventing inlining with `#[doc(no_inline)]`
+
+On the opposite of the `#[doc(inline)]` attribute, if you want to prevent an item from being
+inlined, you can use `#[doc(no_inline)]`:
+
+```rust,ignore (inline)
+pub mod public_mod {
+    pub struct Public;
+}
+
+#[doc(no_inline)]
+pub use self::public_mod::Public;
+```
+
+In the generated documentation, you will see a re-export at the crate root and not the type
+directly.
+
 ## Attributes
 
 When an item is inlined, its doc comments and most of its attributes will be inlined along with it:
 
-| Attribute | Inlined? | Notes
+| Attribute | Is it inlined alongside its item? | Notes
 |--|--|--
 | `#[doc=""]` | Yes | Intra-doc links are resolved relative to where the doc comment is defined (`///` is syntax sugar for doc string attributes).
 | `#[doc(cfg(..))]` | Yes |
@@ -123,6 +140,6 @@ When an item is inlined, its doc comments and most of its attributes will be inl
 | `#[doc(alias="")]` | No |
 | `#[doc(inline)]` | No |
 | `#[doc(no_inline)]` | No |
-| `#[doc(hidden)]` | Glob imports | For name-based imports (such as `use module::Item as ModuleItem`), hiding an item acts the same as making it private. Glob-based imports (such as `use module::*`), hidden items are not inlined.
+| `#[doc(hidden)]` | Glob imports | For name-based imports (such as `use module::Item as ModuleItem`), hiding an item acts the same as making it private. For glob-based imports (such as `use module::*`), hidden items are not inlined.
 
 All other attributes are inherited when inlined, so that the documentation matches the behavior if the inlined item was directly defined at the spot where it's shown.
