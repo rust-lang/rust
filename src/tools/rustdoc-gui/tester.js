@@ -143,7 +143,7 @@ async function runTests(opts, framework_options, files, results, status_bar, sho
     const tests_queue = [];
 
     for (const testPath of files) {
-        const callback = runTest(testPath, framework_options)
+        const callback = runTest(testPath, {"options": framework_options})
             .then(out => {
                 const [output, nb_failures] = out;
                 results[nb_failures === 0 ? "successful" : "failed"].push({
@@ -323,6 +323,7 @@ async function main(argv) {
     if (results.failed.length > 0 || results.errored.length > 0) {
         process.exit(1);
     }
+    process.exit(0);
 }
 
 main(process.argv);
