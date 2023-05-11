@@ -128,28 +128,38 @@ const fn issue6067() {
 }
 
 fn issue10726() {
-    match Ok::<i32, i32>(42) {
+    // This is optional, but it makes the examples easier
+    let x: Result<i32, i32> = Ok(42);
+
+    match x {
         Ok(_) => true,
         _ => false,
     };
 
-    match Ok::<i32, i32>(42) {
+    match x {
+        Ok(_) => false,
+        _ => true,
+    };
+
+    match x {
         Err(_) => true,
         _ => false,
     };
 
-    match Err::<i32, i32>(42) {
-        Ok(_) => true,
-        _ => false,
+    match x {
+        Err(_) => false,
+        _ => true,
     };
 
-    match Err::<i32, i32>(42) {
-        Err(_) => true,
-        _ => false,
+    // Don't lint
+    match x {
+        Err(16) => false,
+        _ => true,
     };
 
-    match Ok::<i32, i32>(42) {
-        Ok(21) => true,
-        _ => false,
+    // Don't lint
+    match x {
+        Ok(16) => false,
+        _ => true,
     };
 }
