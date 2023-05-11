@@ -28,6 +28,7 @@ use rustc_hir::{GenericParam, Item, Node};
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::{InferOk, TypeTrace};
 use rustc_middle::traits::select::OverflowError;
+use rustc_middle::traits::SelectionOutputTypeParameterMismatch;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
@@ -1087,17 +1088,21 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
             }
 
-            OutputTypeParameterMismatch(
+            OutputTypeParameterMismatch(box SelectionOutputTypeParameterMismatch {
                 found_trait_ref,
                 expected_trait_ref,
-                terr @ TypeError::CyclicTy(_),
-            ) => self.report_type_parameter_mismatch_cyclic_type_error(
+                terr: terr @ TypeError::CyclicTy(_),
+            }) => self.report_type_parameter_mismatch_cyclic_type_error(
                 &obligation,
                 found_trait_ref,
                 expected_trait_ref,
                 terr,
             ),
-            OutputTypeParameterMismatch(found_trait_ref, expected_trait_ref, _) => {
+            OutputTypeParameterMismatch(box SelectionOutputTypeParameterMismatch {
+                found_trait_ref,
+                expected_trait_ref,
+                terr: _,
+            }) => {
                 match self.report_type_parameter_mismatch_error(
                     &obligation,
                     span,
