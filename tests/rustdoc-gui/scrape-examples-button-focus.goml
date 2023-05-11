@@ -3,7 +3,7 @@
 go-to: "file://" + |DOC_PATH| + "/scrape_examples/fn.test.html"
 
 // The next/prev buttons vertically scroll the code viewport between examples
-store-property: (initialScrollTop, ".scraped-example-list > .scraped-example pre", "scrollTop")
+store-property: (".scraped-example-list > .scraped-example pre", {"scrollTop": initialScrollTop})
 focus: ".scraped-example-list > .scraped-example .next"
 press-key: "Enter"
 assert-property-false: (".scraped-example-list > .scraped-example pre", {
@@ -16,7 +16,7 @@ assert-property: (".scraped-example-list > .scraped-example pre", {
 }, NEAR)
 
 // The expand button increases the scrollHeight of the minimized code viewport
-store-property: (smallOffsetHeight, ".scraped-example-list > .scraped-example pre", "offsetHeight")
+store-property: (".scraped-example-list > .scraped-example pre", {"offsetHeight": smallOffsetHeight})
 assert-property-false: (".scraped-example-list > .scraped-example pre", {
     "scrollHeight": |smallOffsetHeight|
 }, NEAR)
@@ -25,7 +25,7 @@ press-key: "Enter"
 assert-property-false: (".scraped-example-list > .scraped-example pre", {
     "offsetHeight": |smallOffsetHeight|
 }, NEAR)
-store-property: (fullOffsetHeight, ".scraped-example-list > .scraped-example pre", "offsetHeight")
+store-property: (".scraped-example-list > .scraped-example pre", {"offsetHeight": fullOffsetHeight})
 assert-property: (".scraped-example-list > .scraped-example pre", {
     "scrollHeight": |fullOffsetHeight|
 }, NEAR)
