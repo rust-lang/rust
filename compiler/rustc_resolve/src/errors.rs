@@ -443,6 +443,14 @@ pub(crate) struct InvalidAsmSym {
 }
 
 #[derive(Diagnostic)]
+#[diag(resolve_lowercase_self)]
+pub(crate) struct LowercaseSelf {
+    #[primary_span]
+    #[suggestion(code = "Self", applicability = "maybe-incorrect", style = "short")]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(resolve_trait_impl_duplicate, code = "E0201")]
 pub(crate) struct TraitImplDuplicate {
     #[primary_span]
