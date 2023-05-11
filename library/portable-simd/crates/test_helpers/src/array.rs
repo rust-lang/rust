@@ -41,6 +41,7 @@ where
 
     fn new_tree(&self, runner: &mut TestRunner) -> NewTree<Self> {
         let tree: [S::Tree; LANES] = unsafe {
+            #[allow(clippy::uninit_assumed_init)]
             let mut tree: [MaybeUninit<S::Tree>; LANES] = MaybeUninit::uninit().assume_init();
             for t in tree.iter_mut() {
                 *t = MaybeUninit::new(self.strategy.new_tree(runner)?)
@@ -60,6 +61,7 @@ impl<T: ValueTree, const LANES: usize> ValueTree for ArrayValueTree<[T; LANES]> 
 
     fn current(&self) -> Self::Value {
         unsafe {
+            #[allow(clippy::uninit_assumed_init)]
             let mut value: [MaybeUninit<T::Value>; LANES] = MaybeUninit::uninit().assume_init();
             for (tree_elem, value_elem) in self.tree.iter().zip(value.iter_mut()) {
                 *value_elem = MaybeUninit::new(tree_elem.current());
