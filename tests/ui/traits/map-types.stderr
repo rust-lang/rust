@@ -5,7 +5,7 @@ LL |     let y: Box<dyn Map<usize, isize>> = Box::new(x);
    |                                         ^^^^^^^^^^^ the trait `Map<usize, isize>` is not implemented for `Box<dyn Map<isize, isize>>`
    |
    = help: the trait `Map<K, V>` is implemented for `HashMap<K, V>`
-   = note: required for the cast from `Box<dyn Map<isize, isize>>` to the object type `dyn Map<usize, isize>`
+   = note: required for the cast from `Box<Box<dyn Map<isize, isize>>>` to `Box<dyn Map<usize, isize>>`
 
 error: aborting due to previous error
 
