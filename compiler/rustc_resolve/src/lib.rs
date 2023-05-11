@@ -85,6 +85,7 @@ pub mod rustdoc;
 
 fluent_messages! { "../messages.ftl" }
 
+#[derive(Debug)]
 enum Weak {
     Yes,
     No,

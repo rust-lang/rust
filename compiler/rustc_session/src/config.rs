@@ -421,7 +421,7 @@ pub enum TrimmedDefPaths {
     GoodPath,
 }
 
-#[derive(Clone, Hash)]
+#[derive(Clone, Hash, Debug)]
 pub enum ResolveDocLinks {
     /// Do not resolve doc links.
     None,
