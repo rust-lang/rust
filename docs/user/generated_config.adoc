@@ -753,6 +753,11 @@ Inject additional highlighting into doc comments.
 When enabled, rust-analyzer will highlight rust source in doc comments as well as intra
 doc links.
 --
+[[rust-analyzer.semanticHighlighting.nonStandardTokens]]rust-analyzer.semanticHighlighting.nonStandardTokens (default: `true`)::
++
+--
+Whether the server is allowed to emit non-standard tokens and modifiers.
+--
 [[rust-analyzer.semanticHighlighting.operator.enable]]rust-analyzer.semanticHighlighting.operator.enable (default: `true`)::
 +
 --

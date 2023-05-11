@@ -483,6 +483,8 @@ config_data! {
         /// When enabled, rust-analyzer will highlight rust source in doc comments as well as intra
         /// doc links.
         semanticHighlighting_doc_comment_inject_enable: bool = "true",
+        /// Whether the server is allowed to emit non-standard tokens and modifiers.
+        semanticHighlighting_nonStandardTokens: bool = "true",
         /// Use semantic tokens for operators.
         ///
         /// When disabled, rust-analyzer will emit semantic tokens only for operator tokens when
@@ -1028,6 +1030,11 @@ impl Config {
         .is_some()
     }
 
+    pub fn semantics_tokens_augments_syntax_tokens(&self) -> bool {
+        try_!(self.caps.text_document.as_ref()?.semantic_tokens.as_ref()?.augments_syntax_tokens?)
+            .unwrap_or(false)
+    }
+
     pub fn position_encoding(&self) -> PositionEncoding {
         negotiated_encoding(&self.caps)
     }
@@ -1457,6 +1464,10 @@ impl Config {
             debug: enable && self.data.hover_actions_debug_enable,
             goto_type_def: enable && self.data.hover_actions_gotoTypeDef_enable,
         }
+    }
+
+    pub fn highlighting_non_standard_tokens(&self) -> bool {
+        self.data.semanticHighlighting_nonStandardTokens
     }
 
     pub fn highlighting_config(&self) -> HighlightConfig {

@@ -1472,7 +1472,13 @@ pub(crate) fn handle_semantic_tokens_full(
         snap.workspaces.is_empty() || !snap.proc_macros_loaded;
 
     let highlights = snap.analysis.highlight(highlight_config, file_id)?;
-    let semantic_tokens = to_proto::semantic_tokens(&text, &line_index, highlights);
+    let semantic_tokens = to_proto::semantic_tokens(
+        &text,
+        &line_index,
+        highlights,
+        snap.config.semantics_tokens_augments_syntax_tokens(),
+        snap.config.highlighting_non_standard_tokens(),
+    );
 
     // Unconditionally cache the tokens
     snap.semantic_tokens_cache.lock().insert(params.text_document.uri, semantic_tokens.clone());
@@ -1496,7 +1502,13 @@ pub(crate) fn handle_semantic_tokens_full_delta(
         snap.workspaces.is_empty() || !snap.proc_macros_loaded;
 
     let highlights = snap.analysis.highlight(highlight_config, file_id)?;
-    let semantic_tokens = to_proto::semantic_tokens(&text, &line_index, highlights);
+    let semantic_tokens = to_proto::semantic_tokens(
+        &text,
+        &line_index,
+        highlights,
+        snap.config.semantics_tokens_augments_syntax_tokens(),
+        snap.config.highlighting_non_standard_tokens(),
+    );
 
     let mut cache = snap.semantic_tokens_cache.lock();
     let cached_tokens = cache.entry(params.text_document.uri).or_default();
@@ -1530,7 +1542,13 @@ pub(crate) fn handle_semantic_tokens_range(
         snap.workspaces.is_empty() || !snap.proc_macros_loaded;
 
     let highlights = snap.analysis.highlight_range(highlight_config, frange)?;
-    let semantic_tokens = to_proto::semantic_tokens(&text, &line_index, highlights);
+    let semantic_tokens = to_proto::semantic_tokens(
+        &text,
+        &line_index,
+        highlights,
+        snap.config.semantics_tokens_augments_syntax_tokens(),
+        snap.config.highlighting_non_standard_tokens(),
+    );
     Ok(Some(semantic_tokens.into()))
 }
 

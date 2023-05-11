@@ -24,7 +24,7 @@ use crate::{
     line_index::{LineEndings, LineIndex, PositionEncoding},
     lsp_ext,
     lsp_utils::invalid_params_error,
-    semantic_tokens,
+    semantic_tokens::{self, standard_fallback_type},
 };
 
 pub(crate) fn position(line_index: &LineIndex, offset: TextSize) -> lsp_types::Position {
@@ -586,6 +586,8 @@ pub(crate) fn semantic_tokens(
     text: &str,
     line_index: &LineIndex,
     highlights: Vec<HlRange>,
+    semantics_tokens_augments_syntax_tokens: bool,
+    non_standard_tokens: bool,
 ) -> lsp_types::SemanticTokens {
     let id = TOKEN_RESULT_COUNTER.fetch_add(1, Ordering::SeqCst).to_string();
     let mut builder = semantic_tokens::SemanticTokensBuilder::new(id);
@@ -595,7 +597,35 @@ pub(crate) fn semantic_tokens(
             continue;
         }
 
-        let (ty, mods) = semantic_token_type_and_modifiers(highlight_range.highlight);
+        if semantics_tokens_augments_syntax_tokens {
+            match highlight_range.highlight.tag {
+                HlTag::BoolLiteral
+                | HlTag::ByteLiteral
+                | HlTag::CharLiteral
+                | HlTag::Comment
+                | HlTag::Keyword
+                | HlTag::NumericLiteral
+                | HlTag::Operator(_)
+                | HlTag::Punctuation(_)
+                | HlTag::StringLiteral
+                | HlTag::None
+                    if highlight_range.highlight.mods.is_empty() =>
+                {
+                    continue
+                }
+                _ => (),
+            }
+        }
+
+        let (mut ty, mut mods) = semantic_token_type_and_modifiers(highlight_range.highlight);
+
+        if !non_standard_tokens {
+            ty = match standard_fallback_type(ty) {
+                Some(ty) => ty,
+                None => continue,
+            };
+            mods.standard_fallback();
+        }
         let token_index = semantic_tokens::type_index(ty);
         let modifier_bitset = mods.0;
 

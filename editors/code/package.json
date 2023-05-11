@@ -1395,6 +1395,11 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.semanticHighlighting.nonStandardTokens": {
+                    "markdownDescription": "Whether the server is allowed to emit non-standard tokens and modifiers.",
+                    "default": true,
+                    "type": "boolean"
+                },
                 "rust-analyzer.semanticHighlighting.operator.enable": {
                     "markdownDescription": "Use semantic tokens for operators.\n\nWhen disabled, rust-analyzer will emit semantic tokens only for operator tokens when\nthey are tagged with modifiers.",
                     "default": true,
