@@ -31,6 +31,7 @@ use rustc_target::abi::FieldIdx;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::error_reporting::on_unimplemented::OnUnimplementedDirective;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
+use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::{self, ObligationCtxt, TraitEngine, TraitEngineExt as _};
 
 use std::ops::ControlFlow;
@@ -222,7 +223,7 @@ fn check_opaque(tcx: TyCtxt<'_>, id: hir::ItemId) {
     if check_opaque_for_cycles(tcx, item.owner_id.def_id, substs, span, &origin).is_err() {
         return;
     }
-    check_opaque_meets_bounds(tcx, item.owner_id.def_id, substs, span, &origin);
+    check_opaque_meets_bounds(tcx, item.owner_id.def_id, span, &origin);
 }
 
 /// Checks that an opaque type does not use `Self` or `T::Foo` projections that would result
@@ -391,7 +392,6 @@ pub(super) fn check_opaque_for_cycles<'tcx>(
 fn check_opaque_meets_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-    substs: SubstsRef<'tcx>,
     span: Span,
     origin: &hir::OpaqueTyOrigin,
 ) {
@@ -406,6 +406,8 @@ fn check_opaque_meets_bounds<'tcx>(
         .with_opaque_type_inference(DefiningAnchor::Bind(defining_use_anchor))
         .build();
     let ocx = ObligationCtxt::new(&infcx);
+
+    let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
     let opaque_ty = tcx.mk_opaque(def_id.to_def_id(), substs);
 
     // `ReErased` regions appear in the "parent_substs" of closures/generators.
@@ -448,9 +450,18 @@ fn check_opaque_meets_bounds<'tcx>(
     match origin {
         // Checked when type checking the function containing them.
         hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) => {}
+        // Nested opaque types occur only in associated types:
+        // ` type Opaque<T> = impl Trait<&'static T, AssocTy = impl Nested>; `
+        // They can only be referenced as `<Opaque<T> as Trait<&'static T>>::AssocTy`.
+        // We don't have to check them here because their well-formedness follows from the WF of
+        // the projection input types in the defining- and use-sites.
+        hir::OpaqueTyOrigin::TyAlias
+            if tcx.def_kind(tcx.parent(def_id.to_def_id())) == DefKind::OpaqueTy => {}
         // Can have different predicates to their defining use
         hir::OpaqueTyOrigin::TyAlias => {
-            let outlives_env = OutlivesEnvironment::new(param_env);
+            let wf_tys = ocx.assumed_wf_types(param_env, span, def_id);
+            let implied_bounds = infcx.implied_bounds_tys(param_env, def_id, wf_tys);
+            let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
             let _ = ocx.resolve_regions_and_report_errors(defining_use_anchor, &outlives_env);
         }
     }
