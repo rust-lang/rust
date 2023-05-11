@@ -202,12 +202,18 @@ impl WaitQueue {
     pub fn notify_one<T>(
         mut guard: SpinMutexGuard<'_, WaitVariable<T>>,
     ) -> Result<WaitGuard<'_, T>, SpinMutexGuard<'_, WaitVariable<T>>> {
+        // SAFETY: lifetime of the pop() return value is limited to the map
+        // closure (The closure return value is 'static). The underlying
+        // stack frame won't be freed until after the WaitGuard created below
+        // is dropped.
         unsafe {
-            if let Some(entry) = guard.queue.inner.pop() {
+            let tcs = guard.queue.inner.pop().map(|entry| -> Tcs {
                 let mut entry_guard = entry.lock();
-                let tcs = entry_guard.tcs;
                 entry_guard.wake = true;
-                drop(entry_guard);
+                entry_guard.tcs
+            });
+
+            if let Some(tcs) = tcs {
                 Ok(WaitGuard { mutex_guard: Some(guard), notified_tcs: NotifiedTcs::Single(tcs) })
             } else {
                 Err(guard)
@@ -223,6 +229,9 @@ impl WaitQueue {
     pub fn notify_all<T>(
         mut guard: SpinMutexGuard<'_, WaitVariable<T>>,
     ) -> Result<WaitGuard<'_, T>, SpinMutexGuard<'_, WaitVariable<T>>> {
+        // SAFETY: lifetime of the pop() return values are limited to the
+        // while loop body. The underlying stack frames won't be freed until
+        // after the WaitGuard created below is dropped.
         unsafe {
             let mut count = 0;
             while let Some(entry) = guard.queue.inner.pop() {
@@ -230,6 +239,7 @@ impl WaitQueue {
                 let mut entry_guard = entry.lock();
                 entry_guard.wake = true;
             }
+
             if let Some(count) = NonZeroUsize::new(count) {
                 Ok(WaitGuard { mutex_guard: Some(guard), notified_tcs: NotifiedTcs::All { count } })
             } else {
