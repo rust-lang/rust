@@ -2414,14 +2414,15 @@ fn clean_impl<'tcx>(
     }
 
     let for_ = clean_ty(impl_.self_ty, cx);
-    let type_alias = for_.def_id(&cx.cache).and_then(|did| match tcx.def_kind(did) {
-        DefKind::TyAlias => Some(clean_middle_ty(
-            ty::Binder::dummy(tcx.type_of(did).subst_identity()),
-            cx,
-            Some(did),
-        )),
-        _ => None,
-    });
+    let type_alias =
+        for_.def_id(&cx.cache).and_then(|alias_def_id: DefId| match tcx.def_kind(alias_def_id) {
+            DefKind::TyAlias => Some(clean_middle_ty(
+                ty::Binder::dummy(tcx.type_of(def_id).subst_identity()),
+                cx,
+                Some(def_id.to_def_id()),
+            )),
+            _ => None,
+        });
     let mut make_item = |trait_: Option<Path>, for_: Type, items: Vec<Item>| {
         let kind = ImplItem(Box::new(Impl {
             unsafety: impl_.unsafety,
