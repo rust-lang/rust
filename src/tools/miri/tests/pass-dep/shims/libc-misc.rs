@@ -101,7 +101,6 @@ fn test_posix_realpath_errors() {
 
 #[cfg(target_os = "linux")]
 fn test_posix_fadvise() {
-    use std::convert::TryInto;
     use std::io::Write;
 
     let path = tmp().join("miri_test_libc_posix_fadvise.txt");

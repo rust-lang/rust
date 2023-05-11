@@ -45,7 +45,8 @@ function run_tests {
     # them. Also error locations change so we don't run the failing tests.
     # We explicitly enable debug-assertions here, they are disabled by -O but we have tests
     # which exist to check that we panic on debug assertion failures.
-    MIRIFLAGS="${MIRIFLAGS:-} -O -Zmir-opt-level=4 -Cdebug-assertions=yes" MIRI_SKIP_UI_CHECKS=1 ./miri test -- tests/{pass,panic}
+    #FIXME: Disabled due to <https://github.com/rust-lang/rust/issues/111422>.
+    #MIRIFLAGS="${MIRIFLAGS:-} -O -Zmir-opt-level=4 -Cdebug-assertions=yes" MIRI_SKIP_UI_CHECKS=1 ./miri test -- tests/{pass,panic}
 
     # Also run some many-seeds tests. 64 seeds means this takes around a minute per test.
     for FILE in tests/many-seeds/*.rs; do

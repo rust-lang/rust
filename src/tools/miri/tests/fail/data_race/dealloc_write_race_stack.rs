@@ -26,6 +26,7 @@ pub fn main() {
     //  3. stack-deallocate
     unsafe {
         let j1 = spawn(move || {
+            let ptr = ptr; // avoid field capturing
             let pointer = &*ptr.0;
             {
                 let mut stack_var = 0usize;
@@ -39,6 +40,7 @@ pub fn main() {
         });
 
         let j2 = spawn(move || {
+            let ptr = ptr; // avoid field capturing
             let pointer = &*ptr.0;
             *pointer.load(Ordering::Acquire) = 3;
         });

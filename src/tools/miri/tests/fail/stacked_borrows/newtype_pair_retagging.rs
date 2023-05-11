@@ -1,4 +1,4 @@
-//@error-pattern: which is strongly protected
+//@error-in-other-file: which is strongly protected
 struct Newtype<'a>(&'a mut i32, i32);
 
 fn dealloc_while_running(_n: Newtype<'_>, dealloc: impl FnOnce()) {

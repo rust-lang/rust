@@ -28,6 +28,7 @@ pub fn main() {
     //  5. write-value
     unsafe {
         let j1 = spawn(move || {
+            let ptr = ptr; // avoid field capturing
             // Concurrent allocate the memory.
             // Uses relaxed semantics to not generate
             // a release sequence.
@@ -46,6 +47,7 @@ pub fn main() {
         });
 
         let j2 = spawn(move || {
+            let ptr = ptr; // avoid field capturing
             let pointer = &*ptr.0;
             *pointer.load(Ordering::Acquire) = 3;
         });

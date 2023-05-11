@@ -1,4 +1,4 @@
-//@error-pattern: a cycle occurred during layout computation
+//@error-in-other-file: a cycle occurred during layout computation
 //~^ ERROR: cycle detected when computing layout of
 
 use std::mem;
