@@ -212,7 +212,7 @@ impl DeepRejectCtxt {
         match impl_ty.kind() {
             // Start by checking whether the type in the impl may unify with
             // pretty much everything. Just return `true` in that case.
-            ty::Param(_) | ty::Error(_) | ty::Alias(..) => return true,
+            ty::Param(_) | ty::Error(_) | ty::Alias(..) | ty::Bound(..) => return true,
             // These types only unify with inference variables or their own
             // variant.
             ty::Bool
@@ -237,7 +237,6 @@ impl DeepRejectCtxt {
             | ty::GeneratorWitness(..)
             | ty::GeneratorWitnessMIR(..)
             | ty::Placeholder(..)
-            | ty::Bound(..)
             | ty::Infer(_) => bug!("unexpected impl_ty: {impl_ty}"),
         }
 
@@ -347,12 +346,13 @@ impl DeepRejectCtxt {
         match impl_ct.kind() {
             ty::ConstKind::Expr(_)
             | ty::ConstKind::Param(_)
+            | ty::ConstKind::Bound(..)
             | ty::ConstKind::Unevaluated(_)
             | ty::ConstKind::Error(_) => {
                 return true;
             }
             ty::ConstKind::Value(_) => {}
-            ty::ConstKind::Infer(_) | ty::ConstKind::Bound(..) | ty::ConstKind::Placeholder(_) => {
+            ty::ConstKind::Infer(_) | ty::ConstKind::Placeholder(_) => {
                 bug!("unexpected impl arg: {:?}", impl_ct)
             }
         }

@@ -182,13 +182,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .filter(|p| !p.references_error())
             .filter_map(|p| p.to_opt_poly_trait_pred());
 
-        // Micro-optimization: filter out predicates relating to different traits.
-        let matching_bounds =
-            all_bounds.filter(|p| p.def_id() == stack.obligation.predicate.def_id());
-
         // Keep only those bounds which may apply, and propagate overflow if it occurs.
-        for bound in matching_bounds {
-            if bound.skip_binder().polarity != stack.obligation.predicate.skip_binder().polarity {
+        for bound in all_bounds {
+            // Micro-optimization: filter out predicates relating to different traits and polarities.
+            if bound.def_id() != stack.obligation.predicate.def_id()
+                || bound.skip_binder().polarity != stack.obligation.predicate.skip_binder().polarity
+            {
+                continue;
+            }
+
+            let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::ForLookup };
+            if !drcx.substs_refs_may_unify(
+                stack.obligation.predicate.skip_binder().trait_ref.substs,
+                bound.skip_binder().trait_ref.substs,
+            ) {
                 continue;
             }
 
