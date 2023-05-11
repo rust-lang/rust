@@ -330,7 +330,7 @@ run|run-dep)
     # Then run the actual command.
     
     if [ "$COMMAND" = "run-dep" ]; then
-        exec $CARGO test --test compiletest -- miri-run-dep-mode $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml -- $MIRIFLAGS "$@"
+        exec $CARGO test --test compiletest $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml -- --miri-run-dep-mode $MIRIFLAGS "$@"
     else
         exec $CARGO run $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml -- $MIRIFLAGS "$@"
     fi

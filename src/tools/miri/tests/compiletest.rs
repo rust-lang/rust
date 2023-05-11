@@ -242,7 +242,7 @@ fn main() -> Result<()> {
     let target = get_target();
 
     if let Some(first) = std::env::args().nth(1) {
-        if first == "miri-run-dep-mode" {
+        if first == "--miri-run-dep-mode" {
             return run_dep_mode(target);
         }
     }
@@ -270,7 +270,7 @@ fn main() -> Result<()> {
 }
 
 fn run_dep_mode(target: String) -> Result<()> {
-    let files = std::env::args().skip_while(|arg| arg != "--").skip(1);
+    let files = std::env::args().skip(2);
     for path in files {
         let mut config = run_test_config(std::iter::empty(), &target, &path, Mode::Yolo, true);
         config.program.args.remove(0); // remove the `--error-format=json` argument
