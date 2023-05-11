@@ -1162,7 +1162,7 @@ impl Expr {
     /// `min_const_generics` as more complex expressions are not supported.
     ///
     /// Does not ensure that the path resolves to a const param, the caller should check this.
-    pub fn is_potential_trivial_const_arg(&self) -> bool {
+    pub fn is_potential_trivial_const_arg(&self) -> Option<(NodeId, &Path)> {
         let this = if let ExprKind::Block(block, None) = &self.kind
             && block.stmts.len() == 1
             && let StmtKind::Expr(expr) = &block.stmts[0].kind
@@ -1175,9 +1175,9 @@ impl Expr {
         if let ExprKind::Path(None, path) = &this.kind
             && path.is_potential_trivial_const_arg()
         {
-            true
+            Some((this.id, path))
         } else {
-            false
+            None
         }
     }
 

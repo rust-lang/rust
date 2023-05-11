@@ -42,7 +42,6 @@ extern crate tracing;
 
 use crate::errors::{AssocTyParentheses, AssocTyParenthesesSub, MisplacedImplTrait, TraitFnAsync};
 
-use hir::ConstArgKind;
 use rustc_ast::ptr::P;
 use rustc_ast::visit;
 use rustc_ast::{self as ast, *};
@@ -1205,38 +1204,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                     ty,
                                 );
 
-                                // Construct an AnonConst where the expr is the "ty"'s path.
-
-                                let parent_def_id = self.current_hir_id_owner;
-                                let node_id = self.next_node_id();
-                                let span = self.lower_span(ty.span);
-
-                                // Add a definition for the in-band const def.
-                                let def_id = self.create_def(
-                                    parent_def_id.def_id,
-                                    node_id,
-                                    DefPathData::AnonConst,
-                                    span,
-                                );
-
-                                let path_expr = Expr {
-                                    id: ty.id,
-                                    kind: ExprKind::Path(None, path.clone()),
-                                    span,
-                                    attrs: AttrVec::new(),
-                                    tokens: None,
-                                };
-
-                                let ct = self.with_new_scopes(|this| hir::AnonConst {
-                                    def_id,
-                                    hir_id: this.lower_node_id(node_id),
-                                    body: this.lower_const_body(path_expr.span, Some(&path_expr)),
-                                });
-                                // FIXME(const_arg_kind)
                                 return GenericArg::Const(
-                                    self.arena.alloc(ConstArg {
-                                        kind: ConstArgKind::AnonConst(span, ct),
-                                    }),
+                                    self.lower_const_arg_param(ty.id, path, itctx),
                                 );
                             }
                         }
@@ -1245,14 +1214,39 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }
                 GenericArg::Type(self.lower_ty(&ty, itctx))
             }
-            ast::GenericArg::Const(ct) => GenericArg::Const(self.arena.alloc(ConstArg {
-                // FIXME(const_arg_kind)
-                kind: ConstArgKind::AnonConst(
-                    self.lower_span(ct.value.span),
-                    self.lower_anon_const(&ct),
-                ),
-            })),
+            ast::GenericArg::Const(ct) => GenericArg::Const(self.lower_const_arg(ct, itctx)),
         }
+    }
+
+    #[instrument(level = "debug", skip(self), ret)]
+    fn lower_const_arg(
+        &mut self,
+        c: &AnonConst,
+        itctx: &ImplTraitContext,
+    ) -> &'hir hir::ConstArg<'hir> {
+        match c.value.is_potential_trivial_const_arg() {
+            Some((path_id, param_path)) => self.lower_const_arg_param(path_id, param_path, itctx),
+            None => self.arena.alloc(ConstArg {
+                kind: hir::ConstArgKind::AnonConst(
+                    self.lower_span(c.value.span),
+                    self.lower_anon_const(c),
+                ),
+            }),
+        }
+    }
+
+    fn lower_const_arg_param(
+        &mut self,
+        path_id: NodeId,
+        param_path: &Path,
+        itctx: &ImplTraitContext,
+    ) -> &'hir hir::ConstArg<'hir> {
+        self.arena.alloc(ConstArg {
+            kind: hir::ConstArgKind::Param(
+                self.lower_node_id(path_id),
+                self.lower_qpath(path_id, &None, param_path, ParamMode::ExplicitNamed, itctx),
+            ),
+        })
     }
 
     #[instrument(level = "debug", skip(self))]

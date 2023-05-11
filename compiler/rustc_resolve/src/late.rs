@@ -3972,7 +3972,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         );
 
         self.resolve_anon_const_manual(
-            constant.value.is_potential_trivial_const_arg(),
+            constant.value.is_potential_trivial_const_arg().is_some(),
             anon_const_kind,
             |this| this.resolve_expr(&constant.value, None),
         )
@@ -4118,7 +4118,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     // that is how they will be later lowered to HIR.
                     if const_args.contains(&idx) {
                         self.resolve_anon_const_manual(
-                            argument.is_potential_trivial_const_arg(),
+                            argument.is_potential_trivial_const_arg().is_some(),
                             AnonConstKind::ConstArg(IsRepeatExpr::No),
                             |this| this.resolve_expr(argument, None),
                         );
