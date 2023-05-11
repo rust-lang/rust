@@ -9,15 +9,14 @@
       let mut _5: *mut usize;              // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
   
       bb0: {
-          _2 = &mut (*_1);                 // scope 0 at $DIR/reference_prop.rs:+10:13: +10:25
+-         _2 = &mut (*_1);                 // scope 0 at $DIR/reference_prop.rs:+10:13: +10:25
 -         _3 = &mut (*_2);                 // scope 0 at $DIR/reference_prop.rs:+11:13: +11:26
 -         _4 = &raw mut (*_2);             // scope 0 at $DIR/reference_prop.rs:+12:13: +12:30
 -         _5 = &raw mut (*_3);             // scope 0 at $DIR/reference_prop.rs:+13:13: +13:30
 -         _0 = (*_4);                      // scope 0 at $DIR/reference_prop.rs:+15:13: +15:22
 -         _0 = (*_5);                      // scope 0 at $DIR/reference_prop.rs:+16:13: +16:22
-+         _3 = &mut (*_1);                 // scope 0 at $DIR/reference_prop.rs:+11:13: +11:26
-+         _0 = (*_2);                      // scope 0 at $DIR/reference_prop.rs:+15:13: +15:22
-+         _0 = (*_3);                      // scope 0 at $DIR/reference_prop.rs:+16:13: +16:22
++         _0 = (*_1);                      // scope 0 at $DIR/reference_prop.rs:+15:13: +15:22
++         _0 = (*_1);                      // scope 0 at $DIR/reference_prop.rs:+16:13: +16:22
           return;                          // scope 0 at $DIR/reference_prop.rs:+17:13: +17:21
       }
   }
