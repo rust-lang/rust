@@ -42,7 +42,9 @@ fn mir_build(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
     // Ensure unsafeck and abstract const building is ran before we steal the THIR.
     tcx.ensure_with_value().thir_check_unsafety(def);
     tcx.ensure_with_value().thir_abstract_const(def);
-    tcx.ensure_with_value().check_match(def);
+    if let Err(e) = tcx.check_match(def) {
+        return construct_error(tcx, def, e);
+    }
 
     let body = match tcx.thir_body(def) {
         Err(error_reported) => construct_error(tcx, def, error_reported),

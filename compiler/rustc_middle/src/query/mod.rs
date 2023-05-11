@@ -1016,7 +1016,7 @@ rustc_queries! {
         desc { "converting literal to mir constant" }
     }
 
-    query check_match(key: LocalDefId) {
+    query check_match(key: LocalDefId) -> Result<(), rustc_errors::ErrorGuaranteed> {
         desc { |tcx| "match-checking `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { true }
     }
