@@ -916,6 +916,12 @@ rustc_queries! {
         cache_on_disk_if { true }
     }
 
+    /// Checks well-formedness of tail calls (`become f()`).
+    query check_tail_calls(key: LocalDefId) -> Result<(), rustc_errors::ErrorGuaranteed> {
+        desc { |tcx| "tail-call-checking `{}`", tcx.def_path_str(key) }
+        cache_on_disk_if { true }
+    }
+
     /// Returns the types assumed to be well formed while "inside" of the given item.
     ///
     /// Note that we've liberated the late bound regions of function signatures, so

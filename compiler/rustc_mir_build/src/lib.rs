@@ -12,6 +12,7 @@
 // tidy-alphabetical-end
 
 mod build;
+mod check_tail_calls;
 mod check_unsafety;
 mod errors;
 pub mod lints;
@@ -28,6 +29,7 @@ pub fn provide(providers: &mut Providers) {
     providers.closure_saved_names_of_captured_variables =
         build::closure_saved_names_of_captured_variables;
     providers.check_unsafety = check_unsafety::check_unsafety;
+    providers.check_tail_calls = check_tail_calls::check_tail_calls;
     providers.thir_body = thir::cx::thir_body;
     providers.hooks.thir_tree = thir::print::thir_tree;
     providers.hooks.thir_flat = thir::print::thir_flat;

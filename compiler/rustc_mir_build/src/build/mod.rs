@@ -50,6 +50,10 @@ pub(crate) fn mir_build<'tcx>(tcx: TyCtxtAt<'tcx>, def: LocalDefId) -> Body<'tcx
         return construct_error(tcx, def, e);
     }
 
+    if let Err(err) = tcx.check_tail_calls(def) {
+        return construct_error(tcx, def, err);
+    }
+
     let body = match tcx.thir_body(def) {
         Err(error_reported) => construct_error(tcx, def, error_reported),
         Ok((thir, expr)) => {
