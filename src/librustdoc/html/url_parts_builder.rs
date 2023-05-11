@@ -8,14 +8,14 @@ use rustc_span::Symbol;
 /// This type is a wrapper around the final `String` buffer,
 /// but its API is like that of a `Vec` of URL components.
 #[derive(Debug)]
-crate struct UrlPartsBuilder {
+pub(crate) struct UrlPartsBuilder {
     buf: String,
 }
 
 impl UrlPartsBuilder {
     /// Create an empty buffer.
     #[allow(dead_code)]
-    crate fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self { buf: String::new() }
     }
 
@@ -43,7 +43,7 @@ impl UrlPartsBuilder {
     /// builder.push_front("nightly");
     /// assert_eq!(builder.finish(), "nightly/core/str");
     /// ```
-    crate fn singleton(part: &str) -> Self {
+    pub(crate) fn singleton(part: &str) -> Self {
         Self { buf: part.to_owned() }
     }
 
@@ -60,7 +60,7 @@ impl UrlPartsBuilder {
     /// builder.push("struct.Bytes.html");
     /// assert_eq!(builder.finish(), "core/str/struct.Bytes.html");
     /// ```
-    crate fn push(&mut self, part: &str) {
+    pub(crate) fn push(&mut self, part: &str) {
         if !self.buf.is_empty() {
             self.buf.push('/');
         }
@@ -80,7 +80,7 @@ impl UrlPartsBuilder {
     /// builder.push_fmt(format_args!("{}.{}.html", "struct", "Bytes"));
     /// assert_eq!(builder.finish(), "core/str/struct.Bytes.html");
     /// ```
-    crate fn push_fmt(&mut self, args: fmt::Arguments<'_>) {
+    pub(crate) fn push_fmt(&mut self, args: fmt::Arguments<'_>) {
         if !self.buf.is_empty() {
             self.buf.push('/');
         }
@@ -101,7 +101,7 @@ impl UrlPartsBuilder {
     /// builder.push("struct.Bytes.html");
     /// assert_eq!(builder.finish(), "nightly/core/str/struct.Bytes.html");
     /// ```
-    crate fn push_front(&mut self, part: &str) {
+    pub(crate) fn push_front(&mut self, part: &str) {
         let is_empty = self.buf.is_empty();
         self.buf.reserve(part.len() + if !is_empty { 1 } else { 0 });
         self.buf.insert_str(0, part);
@@ -111,7 +111,7 @@ impl UrlPartsBuilder {
     }
 
     /// Get the final `String` buffer.
-    crate fn finish(self) -> String {
+    pub(crate) fn finish(self) -> String {
         self.buf
     }
 }
@@ -134,7 +134,7 @@ const AVG_PART_LENGTH: usize = 8;
 ///
 /// **Note:** This is only to be used with, e.g., [`String::with_capacity()`];
 /// the return value is just a rough estimate.
-crate const fn estimate_item_path_byte_length(segment_count: usize) -> usize {
+pub(crate) const fn estimate_item_path_byte_length(segment_count: usize) -> usize {
     AVG_PART_LENGTH * segment_count
 }
 

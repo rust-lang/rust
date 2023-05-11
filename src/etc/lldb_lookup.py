@@ -55,6 +55,9 @@ def summary_lookup(valobj, dict):
     if rust_type == RustType.STD_REF_CELL:
         return StdRefSummaryProvider(valobj, dict)
 
+    if rust_type == RustType.STD_NONZERO_NUMBER:
+        return StdNonZeroNumberSummaryProvider(valobj, dict)
+
     return ""
 
 
@@ -112,4 +115,4 @@ def synthetic_lookup(valobj, dict):
     if rust_type == RustType.STD_REF_CELL:
         return StdRefSyntheticProvider(valobj, dict, is_cell=True)
 
-    return DefaultSynthteticProvider(valobj, dict)
+    return DefaultSyntheticProvider(valobj, dict)

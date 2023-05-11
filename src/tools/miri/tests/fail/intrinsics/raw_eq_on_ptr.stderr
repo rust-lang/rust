@@ -1,0 +1,15 @@
+error: Undefined Behavior: `raw_eq` on bytes with provenance
+  --> $DIR/raw_eq_on_ptr.rs:LL:CC
+   |
+LL |     unsafe { raw_eq(&x, &x) };
+   |              ^^^^^^^^^^^^^^ `raw_eq` on bytes with provenance
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `main` at $DIR/raw_eq_on_ptr.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

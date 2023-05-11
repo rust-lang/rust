@@ -4,11 +4,11 @@ use rustc_attr::InlineAttr;
 use rustc_data_structures::base_n;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::ItemId;
-use rustc_index::vec::Idx;
-use rustc_query_system::ich::{NodeIdHashingMode, StableHashingContext};
+use rustc_index::Idx;
+use rustc_query_system::ich::StableHashingContext;
 use rustc_session::config::OptLevel;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
@@ -40,7 +40,7 @@ pub enum InstantiationMode {
     LocalCopy,
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash, HashStable)]
 pub enum MonoItem<'tcx> {
     Fn(Instance<'tcx>),
     Static(DefId),
@@ -81,7 +81,7 @@ impl<'tcx> MonoItem<'tcx> {
             MonoItem::Fn(instance) => tcx.symbol_name(instance),
             MonoItem::Static(def_id) => tcx.symbol_name(Instance::mono(tcx, def_id)),
             MonoItem::GlobalAsm(item_id) => {
-                SymbolName::new(tcx, &format!("global_asm_{:?}", item_id.def_id))
+                SymbolName::new(tcx, &format!("global_asm_{:?}", item_id.owner_id))
             }
         }
     }
@@ -90,7 +90,7 @@ impl<'tcx> MonoItem<'tcx> {
         let generate_cgu_internal_copies = tcx
             .sess
             .opts
-            .debugging_opts
+            .unstable_opts
             .inline_in_all_cgus
             .unwrap_or_else(|| tcx.sess.opts.optimize != OptLevel::No)
             && !tcx.sess.link_dead_code();
@@ -182,7 +182,7 @@ impl<'tcx> MonoItem<'tcx> {
         match *self {
             MonoItem::Fn(Instance { def, .. }) => def.def_id().as_local(),
             MonoItem::Static(def_id) => def_id.as_local(),
-            MonoItem::GlobalAsm(item_id) => Some(item_id.def_id),
+            MonoItem::GlobalAsm(item_id) => Some(item_id.owner_id.def_id),
         }
         .map(|def_id| tcx.def_span(def_id))
     }
@@ -202,31 +202,11 @@ impl<'tcx> MonoItem<'tcx> {
     }
 
     /// Returns the item's `DefId`
-    pub fn def_id(&self) -> Option<DefId> {
+    pub fn def_id(&self) -> DefId {
         match *self {
-            MonoItem::Fn(Instance { def, .. }) => Some(def.def_id()),
-            MonoItem::Static(def_id) => Some(def_id),
-            MonoItem::GlobalAsm(_) => None,
-        }
-    }
-}
-
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for MonoItem<'tcx> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        ::std::mem::discriminant(self).hash_stable(hcx, hasher);
-
-        match *self {
-            MonoItem::Fn(ref instance) => {
-                instance.hash_stable(hcx, hasher);
-            }
-            MonoItem::Static(def_id) => {
-                def_id.hash_stable(hcx, hasher);
-            }
-            MonoItem::GlobalAsm(item_id) => {
-                hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-                    item_id.hash_stable(hcx, hasher);
-                })
-            }
+            MonoItem::Fn(Instance { def, .. }) => def.def_id(),
+            MonoItem::Static(def_id) => def_id,
+            MonoItem::GlobalAsm(item_id) => item_id.owner_id.to_def_id(),
         }
     }
 }
@@ -333,21 +313,24 @@ impl<'tcx> CodegenUnit<'tcx> {
         // avoid collisions and is still reasonably short for filenames.
         let mut hasher = StableHasher::new();
         human_readable_name.hash(&mut hasher);
-        let hash: u128 = hasher.finish();
-        let hash = hash & ((1u128 << 80) - 1);
+        let hash: Hash128 = hasher.finish();
+        let hash = hash.as_u128() & ((1u128 << 80) - 1);
         base_n::encode(hash, base_n::CASE_INSENSITIVE)
     }
 
-    pub fn estimate_size(&mut self, tcx: TyCtxt<'tcx>) {
+    pub fn create_size_estimate(&mut self, tcx: TyCtxt<'tcx>) {
         // Estimate the size of a codegen unit as (approximately) the number of MIR
         // statements it corresponds to.
         self.size_estimate = Some(self.items.keys().map(|mi| mi.size_estimate(tcx)).sum());
     }
 
     #[inline]
+    /// Should only be called if [`create_size_estimate`] has previously been called.
+    ///
+    /// [`create_size_estimate`]: Self::create_size_estimate
     pub fn size_estimate(&self) -> usize {
-        // Should only be called if `estimate_size` has previously been called.
-        self.size_estimate.expect("estimate_size must be called before getting a size_estimate")
+        self.size_estimate
+            .expect("create_size_estimate must be called before getting a size_estimate")
     }
 
     pub fn modify_size_estimate(&mut self, delta: usize) {
@@ -365,7 +348,7 @@ impl<'tcx> CodegenUnit<'tcx> {
         WorkProductId::from_cgu_name(self.name().as_str())
     }
 
-    pub fn work_product(&self, tcx: TyCtxt<'_>) -> WorkProduct {
+    pub fn previous_work_product(&self, tcx: TyCtxt<'_>) -> WorkProduct {
         let work_product_id = self.work_product_id();
         tcx.dep_graph
             .previous_work_product(&work_product_id)
@@ -390,19 +373,21 @@ impl<'tcx> CodegenUnit<'tcx> {
                             // instances into account. The others don't matter for
                             // the codegen tests and can even make item order
                             // unstable.
-                            InstanceDef::Item(def) => def.did.as_local().map(Idx::index),
-                            InstanceDef::VtableShim(..)
+                            InstanceDef::Item(def) => def.as_local().map(Idx::index),
+                            InstanceDef::VTableShim(..)
                             | InstanceDef::ReifyShim(..)
                             | InstanceDef::Intrinsic(..)
                             | InstanceDef::FnPtrShim(..)
                             | InstanceDef::Virtual(..)
                             | InstanceDef::ClosureOnceShim { .. }
                             | InstanceDef::DropGlue(..)
-                            | InstanceDef::CloneShim(..) => None,
+                            | InstanceDef::CloneShim(..)
+                            | InstanceDef::ThreadLocalShim(..)
+                            | InstanceDef::FnPtrAddrShim(..) => None,
                         }
                     }
                     MonoItem::Static(def_id) => def_id.as_local().map(Idx::index),
-                    MonoItem::GlobalAsm(item_id) => Some(item_id.def_id.index()),
+                    MonoItem::GlobalAsm(item_id) => Some(item_id.owner_id.def_id.index()),
                 },
                 item.symbol_name(tcx),
             )
@@ -467,7 +452,7 @@ impl<'tcx> CodegenUnitNameBuilder<'tcx> {
     ///
     /// This function will build CGU names of the form:
     ///
-    /// ```
+    /// ```text
     /// <crate-name>.<crate-disambiguator>[-in-<local-crate-id>](-<component>)*[.<special-suffix>]
     /// <local-crate-id> = <local-crate-name>.<local-crate-disambiguator>
     /// ```
@@ -488,7 +473,7 @@ impl<'tcx> CodegenUnitNameBuilder<'tcx> {
     {
         let cgu_name = self.build_cgu_name_no_mangle(cnum, components, special_suffix);
 
-        if self.tcx.sess.opts.debugging_opts.human_readable_cgu_names {
+        if self.tcx.sess.opts.unstable_opts.human_readable_cgu_names {
             cgu_name
         } else {
             Symbol::intern(&CodegenUnit::mangle_name(cgu_name.as_str()))
@@ -520,22 +505,13 @@ impl<'tcx> CodegenUnitNameBuilder<'tcx> {
             // instantiating stuff for upstream crates.
             let local_crate_id = if cnum != LOCAL_CRATE {
                 let local_stable_crate_id = tcx.sess.local_stable_crate_id();
-                format!(
-                    "-in-{}.{:08x}",
-                    tcx.crate_name(LOCAL_CRATE),
-                    local_stable_crate_id.to_u64() as u32,
-                )
+                format!("-in-{}.{:08x}", tcx.crate_name(LOCAL_CRATE), local_stable_crate_id)
             } else {
                 String::new()
             };
 
             let stable_crate_id = tcx.sess.local_stable_crate_id();
-            format!(
-                "{}.{:08x}{}",
-                tcx.crate_name(cnum),
-                stable_crate_id.to_u64() as u32,
-                local_crate_id,
-            )
+            format!("{}.{:08x}{}", tcx.crate_name(cnum), stable_crate_id, local_crate_id)
         });
 
         write!(cgu_name, "{}", crate_prefix).unwrap();

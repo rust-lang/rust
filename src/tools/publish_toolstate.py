@@ -30,22 +30,16 @@ except ImportError:
 # These should be collaborators of the rust-lang/rust repository (with at least
 # read privileges on it). CI will fail otherwise.
 MAINTAINERS = {
-    'miri': {'oli-obk', 'RalfJung', 'eddyb'},
-    'rls': {'Xanewok'},
-    'rustfmt': {'topecongiro', 'calebcartwright'},
-    'book': {'carols10cents', 'steveklabnik'},
+    'book': {'carols10cents'},
     'nomicon': {'frewsxcv', 'Gankra', 'JohnTitor'},
-    'reference': {'steveklabnik', 'Havvy', 'matthewjasper', 'ehuss'},
-    'rust-by-example': {'steveklabnik', 'marioidival'},
+    'reference': {'Havvy', 'matthewjasper', 'ehuss'},
+    'rust-by-example': {'marioidival'},
     'embedded-book': {'adamgreig', 'andre-richter', 'jamesmunns', 'therealprof'},
-    'edition-guide': {'ehuss', 'steveklabnik'},
+    'edition-guide': {'ehuss'},
     'rustc-dev-guide': {'spastorino', 'amanjeev', 'JohnTitor'},
 }
 
 LABELS = {
-    'miri': ['A-miri', 'C-bug'],
-    'rls': ['A-rls', 'C-bug'],
-    'rustfmt': ['A-rustfmt', 'C-bug'],
     'book': ['C-bug'],
     'nomicon': ['C-bug'],
     'reference': ['C-bug'],
@@ -56,9 +50,6 @@ LABELS = {
 }
 
 REPOS = {
-    'miri': 'https://github.com/rust-lang/miri',
-    'rls': 'https://github.com/rust-lang/rls',
-    'rustfmt': 'https://github.com/rust-lang/rustfmt',
     'book': 'https://github.com/rust-lang/book',
     'nomicon': 'https://github.com/rust-lang/nomicon',
     'reference': 'https://github.com/rust-lang/reference',
@@ -76,52 +67,6 @@ def load_json_from_response(resp):
     else:
         print("Refusing to decode " + str(type(content)) + " to str")
     return json.loads(content_str)
-
-def validate_maintainers(repo, github_token):
-    # type: (str, str) -> None
-    '''Ensure all maintainers are assignable on a GitHub repo'''
-    next_link_re = re.compile(r'<([^>]+)>; rel="next"')
-
-    # Load the list of assignable people in the GitHub repo
-    assignable = [] # type: typing.List[str]
-    url = 'https://api.github.com/repos/' \
-        + '%s/collaborators?per_page=100' % repo # type: typing.Optional[str]
-    while url is not None:
-        response = urllib2.urlopen(urllib2.Request(url, headers={
-            'Authorization': 'token ' + github_token,
-            # Properly load nested teams.
-            'Accept': 'application/vnd.github.hellcat-preview+json',
-        }))
-        assignable.extend(user['login'] for user in load_json_from_response(response))
-        # Load the next page if available
-        url = None
-        link_header = response.headers.get('Link')
-        if link_header:
-            matches = next_link_re.match(link_header)
-            if matches is not None:
-                url = matches.group(1)
-
-    errors = False
-    for tool, maintainers in MAINTAINERS.items():
-        for maintainer in maintainers:
-            if maintainer not in assignable:
-                errors = True
-                print(
-                    "error: %s maintainer @%s is not assignable in the %s repo"
-                    % (tool, maintainer, repo),
-                )
-
-    if errors:
-        print()
-        print("  To be assignable, a person needs to be explicitly listed as a")
-        print("  collaborator in the repository settings. The simple way to")
-        print("  fix this is to ask someone with 'admin' privileges on the repo")
-        print("  to add the person or whole team as a collaborator with 'read'")
-        print("  privileges. Those privileges don't grant any extra permissions")
-        print("  so it's safe to apply them.")
-        print()
-        print("The build will fail due to this.")
-        exit(1)
 
 
 def read_current_status(current_commit, path):
@@ -141,7 +86,7 @@ def gh_url():
     return os.environ['TOOLSTATE_ISSUES_API_URL']
 
 
-def maybe_delink(message):
+def maybe_remove_mention(message):
     # type: (str) -> str
     if os.environ.get('TOOLSTATE_SKIP_MENTIONS') is not None:
         return message.replace("@", "")
@@ -164,7 +109,7 @@ def issue(
     else:
         status_description = 'no longer builds'
     request = json.dumps({
-        'body': maybe_delink(textwrap.dedent('''\
+        'body': maybe_remove_mention(textwrap.dedent('''\
         Hello, this is your friendly neighborhood mergebot.
         After merging PR {}, I observed that the tool {} {}.
         A follow-up PR to the repository {} is needed to fix the fallout.
@@ -245,16 +190,10 @@ def update_latest(
                     message += '{} (cc {}).\n' \
                         .format(title, maintainers)
                     # See if we need to create an issue.
-                    if tool == 'miri':
-                        # Create issue if tests used to pass before. Don't open a *second*
-                        # issue when we regress from "test-fail" to "build-fail".
-                        if old == 'test-pass':
-                            create_issue_for_status = new
-                    else:
-                        # Create issue if things no longer build.
-                        # (No issue for mere test failures to avoid spurious issues.)
-                        if new == 'build-fail':
-                            create_issue_for_status = new
+                    # Create issue if things no longer build.
+                    # (No issue for mere test failures to avoid spurious issues.)
+                    if new == 'build-fail':
+                        create_issue_for_status = new
 
             if create_issue_for_status is not None:
                 try:
@@ -294,21 +233,6 @@ def update_latest(
 # which ones precisely but at least this is true for `github_token`.
 try:
     if __name__ != '__main__':
-        exit(0)
-    repo = os.environ.get('TOOLSTATE_VALIDATE_MAINTAINERS_REPO')
-    if repo:
-        github_token = os.environ.get('TOOLSTATE_REPO_ACCESS_TOKEN')
-        if github_token:
-            # FIXME: This is currently broken. Starting on 2021-09-15, GitHub
-            # seems to have changed it so that to list the collaborators
-            # requires admin permissions. I think this will probably just need
-            # to be removed since we are probably not going to use an admin
-            # token, and I don't see another way to do this.
-            print('maintainer validation disabled')
-            # validate_maintainers(repo, github_token)
-        else:
-            print('skipping toolstate maintainers validation since no GitHub token is present')
-        # When validating maintainers don't run the full script.
         exit(0)
 
     cur_commit = sys.argv[1]
@@ -361,7 +285,7 @@ try:
     issue_url = gh_url() + '/{}/comments'.format(number)
     response = urllib2.urlopen(urllib2.Request(
         issue_url,
-        json.dumps({'body': maybe_delink(message)}).encode(),
+        json.dumps({'body': maybe_remove_mention(message)}).encode(),
         {
             'Authorization': 'token ' + github_token,
             'Content-Type': 'application/json',

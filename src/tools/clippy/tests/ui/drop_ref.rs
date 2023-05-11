@@ -72,3 +72,26 @@ fn test_owl_result_2() -> Result<u8, ()> {
     produce_half_owl_ok().map(drop)?;
     Ok(1)
 }
+
+#[allow(unused)]
+#[allow(clippy::unit_cmp)]
+fn issue10122(x: u8) {
+    // This is a function which returns a reference and has a side-effect, which means
+    // that calling drop() on the function is considered an idiomatic way of achieving the side-effect
+    // in a match arm.
+    fn println_and<T>(t: &T) -> &T {
+        println!("foo");
+        t
+    }
+
+    match x {
+        0 => drop(println_and(&12)), // Don't lint (copy type), we only care about side-effects
+        1 => drop(println_and(&String::new())), // Don't lint (no copy type), we only care about side-effects
+        2 => {
+            drop(println_and(&13)); // Lint, even if we only care about the side-effect, it's already in a block
+        },
+        3 if drop(println_and(&14)) == () => (), // Lint, idiomatic use is only in body of `Arm`
+        4 => drop(&2),                           // Lint, not a fn/method call
+        _ => (),
+    }
+}

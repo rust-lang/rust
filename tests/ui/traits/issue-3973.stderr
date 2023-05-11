@@ -1,0 +1,22 @@
+error[E0407]: method `new` is not a member of trait `ToString_`
+  --> $DIR/issue-3973.rs:11:5
+   |
+LL | /     fn new(x: f64, y: f64) -> Point {
+LL | |
+LL | |         Point { x: x, y: y }
+LL | |     }
+   | |_____^ not a member of trait `ToString_`
+
+error[E0599]: no function or associated item named `new` found for struct `Point` in the current scope
+  --> $DIR/issue-3973.rs:22:20
+   |
+LL | struct Point {
+   | ------------ function or associated item `new` not found for this struct
+...
+LL |     let p = Point::new(0.0, 0.0);
+   |                    ^^^ function or associated item not found in `Point`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0407, E0599.
+For more information about an error, try `rustc --explain E0407`.

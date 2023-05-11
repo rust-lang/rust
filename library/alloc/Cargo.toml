@@ -13,8 +13,8 @@ core = { path = "../core" }
 compiler_builtins = { version = "0.1.40", features = ['rustc-dep-of-std'] }
 
 [dev-dependencies]
-rand = "0.7"
-rand_xorshift = "0.2"
+rand = { version = "0.8.5", default-features = false, features = ["alloc"] }
+rand_xorshift = "0.3.0"
 
 [[test]]
 name = "collectionstests"

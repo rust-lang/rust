@@ -1,5 +1,6 @@
-use core::array;
+use core::{array, assert_eq};
 use core::convert::TryFrom;
+use core::num::NonZeroUsize;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 #[test]
@@ -388,7 +389,7 @@ fn array_try_from_fn() {
     let array = core::array::try_from_fn(|i| Ok::<_, SomeError>(i));
     assert_eq!(array, Ok([0, 1, 2, 3, 4]));
 
-    let another_array = core::array::try_from_fn::<_, Result<(), _>, 2>(|_| Err(SomeError::Foo));
+    let another_array = core::array::try_from_fn::<Result<(), _>, 2, _>(|_| Err(SomeError::Foo));
     assert_eq!(another_array, Err(SomeError::Foo));
 }
 
@@ -557,7 +558,7 @@ fn array_intoiter_advance_by() {
     assert_eq!(counter.get(), 13);
 
     let r = it.advance_by(123456);
-    assert_eq!(r, Err(87));
+    assert_eq!(r, Err(NonZeroUsize::new(123456 - 87).unwrap()));
     assert_eq!(it.len(), 0);
     assert_eq!(counter.get(), 100);
 
@@ -567,7 +568,7 @@ fn array_intoiter_advance_by() {
     assert_eq!(counter.get(), 100);
 
     let r = it.advance_by(10);
-    assert_eq!(r, Err(0));
+    assert_eq!(r, Err(NonZeroUsize::new(10).unwrap()));
     assert_eq!(it.len(), 0);
     assert_eq!(counter.get(), 100);
 }
@@ -610,7 +611,7 @@ fn array_intoiter_advance_back_by() {
     assert_eq!(counter.get(), 13);
 
     let r = it.advance_back_by(123456);
-    assert_eq!(r, Err(87));
+    assert_eq!(r, Err(NonZeroUsize::new(123456 - 87).unwrap()));
     assert_eq!(it.len(), 0);
     assert_eq!(counter.get(), 100);
 
@@ -620,7 +621,7 @@ fn array_intoiter_advance_back_by() {
     assert_eq!(counter.get(), 100);
 
     let r = it.advance_back_by(10);
-    assert_eq!(r, Err(0));
+    assert_eq!(r, Err(NonZeroUsize::new(10).unwrap()));
     assert_eq!(it.len(), 0);
     assert_eq!(counter.get(), 100);
 }
@@ -667,4 +668,61 @@ fn array_mixed_equality_nans() {
     assert!(array3 != mut3);
     assert!(!(mut3 == array3));
     assert!(mut3 != array3);
+}
+
+#[test]
+fn array_into_iter_fold() {
+    // Strings to help MIRI catch if we double-free or something
+    let a = ["Aa".to_string(), "Bb".to_string(), "Cc".to_string()];
+    let mut s = "s".to_string();
+    a.into_iter().for_each(|b| s += &b);
+    assert_eq!(s, "sAaBbCc");
+
+    let a = [1, 2, 3, 4, 5, 6];
+    let mut it = a.into_iter();
+    assert_eq!(it.advance_by(1), Ok(()));
+    assert_eq!(it.advance_back_by(2), Ok(()));
+    let s = it.fold(10, |a, b| 10 * a + b);
+    assert_eq!(s, 10234);
+}
+
+#[test]
+fn array_into_iter_rfold() {
+    // Strings to help MIRI catch if we double-free or something
+    let a = ["Aa".to_string(), "Bb".to_string(), "Cc".to_string()];
+    let mut s = "s".to_string();
+    a.into_iter().rev().for_each(|b| s += &b);
+    assert_eq!(s, "sCcBbAa");
+
+    let a = [1, 2, 3, 4, 5, 6];
+    let mut it = a.into_iter();
+    assert_eq!(it.advance_by(1), Ok(()));
+    assert_eq!(it.advance_back_by(2), Ok(()));
+    let s = it.rfold(10, |a, b| 10 * a + b);
+    assert_eq!(s, 10432);
+}
+
+#[cfg(not(panic = "abort"))]
+#[test]
+fn array_map_drops_unmapped_elements_on_panic() {
+    struct DropCounter<'a>(usize, &'a AtomicUsize);
+    impl Drop for DropCounter<'_> {
+        fn drop(&mut self) {
+            self.1.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+
+    const MAX: usize = 11;
+    for panic_after in 0..MAX {
+        let counter = AtomicUsize::new(0);
+        let a = array::from_fn::<_, 11, _>(|i| DropCounter(i, &counter));
+        let success = std::panic::catch_unwind(|| {
+            let _ = a.map(|x| {
+                assert!(x.0 < panic_after);
+                assert_eq!(counter.load(Ordering::SeqCst), x.0);
+            });
+        });
+        assert!(success.is_err());
+        assert_eq!(counter.load(Ordering::SeqCst), MAX);
+    }
 }

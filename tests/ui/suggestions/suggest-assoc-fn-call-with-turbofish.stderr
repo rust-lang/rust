@@ -1,0 +1,98 @@
+error[E0599]: no method named `self_ty_ref_hello` found for struct `GenericAssocMethod<{integer}>` in the current scope
+  --> $DIR/suggest-assoc-fn-call-with-turbofish.rs:14:7
+   |
+LL | struct GenericAssocMethod<T>(T);
+   | ---------------------------- method `self_ty_ref_hello` not found for this struct
+...
+LL |     x.self_ty_ref_hello();
+   |     --^^^^^^^^^^^^^^^^^--
+   |     | |
+   |     | this is an associated function, not a method
+   |     help: use associated function syntax instead: `GenericAssocMethod::<_>::self_ty_ref_hello(&x)`
+   |
+   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
+note: the candidate is defined in an impl for the type `GenericAssocMethod<T>`
+  --> $DIR/suggest-assoc-fn-call-with-turbofish.rs:8:5
+   |
+LL |     fn self_ty_ref_hello(_: &Self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `self_ty_hello` found for struct `GenericAssocMethod<{integer}>` in the current scope
+  --> $DIR/suggest-assoc-fn-call-with-turbofish.rs:16:7
+   |
+LL | struct GenericAssocMethod<T>(T);
+   | ---------------------------- method `self_ty_hello` not found for this struct
+...
+LL |     x.self_ty_hello();
+   |     --^^^^^^^^^^^^^--
+   |     | |
+   |     | this is an associated function, not a method
+   |     help: use associated function syntax instead: `GenericAssocMethod::<_>::self_ty_hello(x)`
+   |
+   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
+note: the candidate is defined in an impl for the type `GenericAssocMethod<T>`
+  --> $DIR/suggest-assoc-fn-call-with-turbofish.rs:7:5
+   |
+LL |     fn self_ty_hello(_: Self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `default_hello` found for struct `GenericAssocMethod<i32>` in the current scope
+  --> $DIR/suggest-assoc-fn-call-with-turbofish.rs:20:7
+   |
+LL | struct GenericAssocMethod<T>(T);
+   | ---------------------------- method `default_hello` not found for this struct
+...
+LL |     y.default_hello();
+   |     --^^^^^^^^^^^^^--
+   |     | |
+   |     | this is an associated function, not a method
+   |     help: use associated function syntax instead: `GenericAssocMethod::<i32>::default_hello()`
+   |
+   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
+note: the candidate is defined in an impl for the type `GenericAssocMethod<T>`
+  --> $DIR/suggest-assoc-fn-call-with-turbofish.rs:6:5
+   |
+LL |     fn default_hello() {}
+   |     ^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `self_ty_ref_hello` found for struct `GenericAssocMethod<i32>` in the current scope
+  --> $DIR/suggest-assoc-fn-call-with-turbofish.rs:22:7
+   |
+LL | struct GenericAssocMethod<T>(T);
+   | ---------------------------- method `self_ty_ref_hello` not found for this struct
+...
+LL |     y.self_ty_ref_hello();
+   |     --^^^^^^^^^^^^^^^^^--
+   |     | |
+   |     | this is an associated function, not a method
+   |     help: use associated function syntax instead: `GenericAssocMethod::<i32>::self_ty_ref_hello(&y)`
+   |
+   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
+note: the candidate is defined in an impl for the type `GenericAssocMethod<T>`
+  --> $DIR/suggest-assoc-fn-call-with-turbofish.rs:8:5
+   |
+LL |     fn self_ty_ref_hello(_: &Self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `self_ty_hello` found for struct `GenericAssocMethod<i32>` in the current scope
+  --> $DIR/suggest-assoc-fn-call-with-turbofish.rs:24:7
+   |
+LL | struct GenericAssocMethod<T>(T);
+   | ---------------------------- method `self_ty_hello` not found for this struct
+...
+LL |     y.self_ty_hello();
+   |     --^^^^^^^^^^^^^--
+   |     | |
+   |     | this is an associated function, not a method
+   |     help: use associated function syntax instead: `GenericAssocMethod::<i32>::self_ty_hello(y)`
+   |
+   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
+note: the candidate is defined in an impl for the type `GenericAssocMethod<T>`
+  --> $DIR/suggest-assoc-fn-call-with-turbofish.rs:7:5
+   |
+LL |     fn self_ty_hello(_: Self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

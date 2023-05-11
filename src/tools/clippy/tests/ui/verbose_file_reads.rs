@@ -18,7 +18,7 @@ fn main() -> std::io::Result<()> {
     s.read_to_end();
     s.read_to_string();
     // Should catch this
-    let mut f = File::open(&path)?;
+    let mut f = File::open(path)?;
     let mut buffer = Vec::new();
     f.read_to_end(&mut buffer)?;
     // ...and this

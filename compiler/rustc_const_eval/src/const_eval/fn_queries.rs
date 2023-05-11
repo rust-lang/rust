@@ -1,31 +1,38 @@
+use rustc_attr as attr;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{DefIdTree, TyCtxt};
+use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::Symbol;
-use rustc_target::spec::abi::Abi;
 
-/// Whether the `def_id` is an unstable const fn and what feature gate is necessary to enable it
-pub fn is_unstable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Symbol> {
+/// Whether the `def_id` is an unstable const fn and what feature gate(s) are necessary to enable
+/// it.
+pub fn is_unstable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<(Symbol, Option<Symbol>)> {
     if tcx.is_const_fn_raw(def_id) {
         let const_stab = tcx.lookup_const_stability(def_id)?;
-        if const_stab.level.is_unstable() { Some(const_stab.feature) } else { None }
+        match const_stab.level {
+            attr::StabilityLevel::Unstable { implied_by, .. } => {
+                Some((const_stab.feature, implied_by))
+            }
+            attr::StabilityLevel::Stable { .. } => None,
+        }
     } else {
         None
     }
 }
 
 pub fn is_parent_const_impl_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-    let parent_id = tcx.local_parent(def_id).unwrap();
-    tcx.def_kind(parent_id) == DefKind::Impl
-        && tcx.impl_constness(parent_id) == hir::Constness::Const
+    let parent_id = tcx.local_parent(def_id);
+    matches!(tcx.def_kind(parent_id), DefKind::Impl { .. })
+        && tcx.constness(parent_id) == hir::Constness::Const
 }
 
-/// Checks whether the function has a `const` modifier or, in case it is an intrinsic, whether
-/// said intrinsic has a `rustc_const_{un,}stable` attribute.
-fn impl_constness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Constness {
-    let def_id = def_id.expect_local();
+/// Checks whether an item is considered to be `const`. If it is a constructor, it is const. If
+/// it is a trait impl/function, return if it has a `const` modifier. If it is an intrinsic,
+/// report whether said intrinsic has a `rustc_const_{un,}stable` attribute. Otherwise, return
+/// `Constness::NotConst`.
+fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Constness {
     let node = tcx.hir().get_by_def_id(def_id);
 
     match node {
@@ -34,16 +41,14 @@ fn impl_constness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Constness {
         hir::Node::ForeignItem(hir::ForeignItem { kind: hir::ForeignItemKind::Fn(..), .. }) => {
             // Intrinsics use `rustc_const_{un,}stable` attributes to indicate constness. All other
             // foreign items cannot be evaluated at compile-time.
-            let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-            let is_const = if let Abi::RustIntrinsic | Abi::PlatformIntrinsic =
-                tcx.hir().get_foreign_abi(hir_id)
-            {
+            let is_const = if tcx.is_intrinsic(def_id) {
                 tcx.lookup_const_stability(def_id).is_some()
             } else {
                 false
             };
             if is_const { hir::Constness::Const } else { hir::Constness::NotConst }
         }
+        hir::Node::Expr(e) if let hir::ExprKind::Closure(c) = e.kind => c.constness,
         _ => {
             if let Some(fn_kind) = node.fn_kind() {
                 if fn_kind.constness() == hir::Constness::Const {
@@ -68,7 +73,7 @@ fn is_promotable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
                 if cfg!(debug_assertions) && stab.promotable {
                     let sig = tcx.fn_sig(def_id);
                     assert_eq!(
-                        sig.unsafety(),
+                        sig.skip_binder().unsafety(),
                         hir::Unsafety::Normal,
                         "don't mark const unsafe fns as promotable",
                         // https://github.com/rust-lang/rust/pull/53851#issuecomment-418760682
@@ -81,5 +86,5 @@ fn is_promotable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { impl_constness, is_promotable_const_fn, ..*providers };
+    *providers = Providers { constness, is_promotable_const_fn, ..*providers };
 }

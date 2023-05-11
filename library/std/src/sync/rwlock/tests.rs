@@ -1,8 +1,8 @@
 use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sync::mpsc::channel;
-use crate::sync::{Arc, RwLock, TryLockError};
+use crate::sync::{Arc, RwLock, RwLockReadGuard, TryLockError};
 use crate::thread;
-use rand::{self, Rng};
+use rand::Rng;
 
 #[derive(Eq, PartialEq, Debug)]
 struct NonCopy(i32);
@@ -19,7 +19,7 @@ fn smoke() {
 #[test]
 fn frob() {
     const N: u32 = 10;
-    const M: usize = 1000;
+    const M: usize = if cfg!(miri) { 100 } else { 1000 };
 
     let r = Arc::new(RwLock::new(()));
 
@@ -28,7 +28,7 @@ fn frob() {
         let tx = tx.clone();
         let r = r.clone();
         thread::spawn(move || {
-            let mut rng = rand::thread_rng();
+            let mut rng = crate::test_helpers::test_rng();
             for _ in 0..M {
                 if rng.gen_bool(1.0 / (N as f64)) {
                     drop(r.write().unwrap());
@@ -244,4 +244,16 @@ fn test_get_mut_poison() {
         Err(e) => assert_eq!(*e.into_inner(), NonCopy(10)),
         Ok(x) => panic!("get_mut of poisoned RwLock is Ok: {x:?}"),
     }
+}
+
+#[test]
+fn test_read_guard_covariance() {
+    fn do_stuff<'a>(_: RwLockReadGuard<'_, &'a i32>, _: &'a i32) {}
+    let j: i32 = 5;
+    let lock = RwLock::new(&j);
+    {
+        let i = 6;
+        do_stuff(lock.read().unwrap(), &i);
+    }
+    drop(lock);
 }

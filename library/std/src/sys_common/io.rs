@@ -39,9 +39,10 @@ pub mod test {
         }
     }
 
+    #[track_caller] // for `test_rng`
     pub fn tmpdir() -> TempDir {
         let p = env::temp_dir();
-        let mut r = rand::thread_rng();
+        let mut r = crate::test_helpers::test_rng();
         let ret = p.join(&format!("rust-{}", r.next_u32()));
         fs::create_dir(&ret).unwrap();
         TempDir(ret)

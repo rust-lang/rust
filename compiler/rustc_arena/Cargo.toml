@@ -4,4 +4,4 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
+smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }

@@ -1,6 +1,6 @@
-// run-rustfix
+//@run-rustfix
 #![feature(never_type)]
-#![allow(unused_mut, clippy::redundant_allocation)]
+#![allow(unused_mut, unused_tuple_struct_fields, clippy::redundant_allocation)]
 #![warn(clippy::must_use_candidate)]
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -84,7 +84,7 @@ pub unsafe fn mutates_static() -> usize {
 }
 
 #[no_mangle]
-pub fn unmangled(i: bool) -> bool {
+pub extern "C" fn unmangled(i: bool) -> bool {
     !i
 }
 

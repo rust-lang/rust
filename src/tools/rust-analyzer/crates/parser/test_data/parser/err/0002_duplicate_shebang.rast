@@ -1,0 +1,45 @@
+SOURCE_FILE
+  SHEBANG "#!/use/bin/env rusti"
+  WHITESPACE "\n"
+  ATTR
+    POUND "#"
+    BANG "!"
+  ERROR
+    SLASH "/"
+  USE
+    USE_KW "use"
+    ERROR
+      SLASH "/"
+  MACRO_CALL
+    PATH
+      PATH_SEGMENT
+        NAME_REF
+          IDENT "bin"
+  ERROR
+    SLASH "/"
+  MACRO_CALL
+    PATH
+      PATH_SEGMENT
+        NAME_REF
+          IDENT "env"
+  WHITESPACE " "
+  MACRO_CALL
+    PATH
+      PATH_SEGMENT
+        NAME_REF
+          IDENT "rusti"
+  WHITESPACE "\n"
+error 23: expected `[`
+error 23: expected an item
+error 27: expected one of `*`, `::`, `{`, `self`, `super` or an identifier
+error 28: expected SEMICOLON
+error 31: expected BANG
+error 31: expected `{`, `[`, `(`
+error 31: expected SEMICOLON
+error 31: expected an item
+error 35: expected BANG
+error 35: expected `{`, `[`, `(`
+error 35: expected SEMICOLON
+error 41: expected BANG
+error 41: expected `{`, `[`, `(`
+error 41: expected SEMICOLON

@@ -437,7 +437,8 @@ impl<Idx> RangeInclusive<Idx> {
     /// ```
     #[stable(feature = "inclusive_range_methods", since = "1.27.0")]
     #[inline]
-    pub fn into_inner(self) -> (Idx, Idx) {
+    #[rustc_const_unstable(feature = "const_range_bounds", issue = "108082")]
+    pub const fn into_inner(self) -> (Idx, Idx) {
         (self.start, self.end)
     }
 }
@@ -677,7 +678,7 @@ pub enum Bound<T> {
 impl<T> Bound<T> {
     /// Converts from `&Bound<T>` to `Bound<&T>`.
     #[inline]
-    #[unstable(feature = "bound_as_ref", issue = "80996")]
+    #[stable(feature = "bound_as_ref_shared", since = "1.65.0")]
     pub fn as_ref(&self) -> Bound<&T> {
         match *self {
             Included(ref x) => Included(x),

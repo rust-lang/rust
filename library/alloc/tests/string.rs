@@ -693,12 +693,6 @@ fn test_try_reserve() {
     const MAX_CAP: usize = isize::MAX as usize;
     const MAX_USIZE: usize = usize::MAX;
 
-    // On 16/32-bit, we check that allocations don't exceed isize::MAX,
-    // on 64-bit, we assume the OS will give an OOM for such a ridiculous size.
-    // Any platform that succeeds for these requests is technically broken with
-    // ptr::offset because LLVM is the worst.
-    let guards_against_isize = usize::BITS < 64;
-
     {
         // Note: basic stuff is checked by test_reserve
         let mut empty_string: String = String::new();
@@ -712,35 +706,19 @@ fn test_try_reserve() {
             panic!("isize::MAX shouldn't trigger an overflow!");
         }
 
-        if guards_against_isize {
-            // Check isize::MAX + 1 does count as overflow
-            assert_matches!(
-                empty_string.try_reserve(MAX_CAP + 1).map_err(|e| e.kind()),
-                Err(CapacityOverflow),
-                "isize::MAX + 1 should trigger an overflow!"
-            );
+        // Check isize::MAX + 1 does count as overflow
+        assert_matches!(
+            empty_string.try_reserve(MAX_CAP + 1).map_err(|e| e.kind()),
+            Err(CapacityOverflow),
+            "isize::MAX + 1 should trigger an overflow!"
+        );
 
-            // Check usize::MAX does count as overflow
-            assert_matches!(
-                empty_string.try_reserve(MAX_USIZE).map_err(|e| e.kind()),
-                Err(CapacityOverflow),
-                "usize::MAX should trigger an overflow!"
-            );
-        } else {
-            // Check isize::MAX + 1 is an OOM
-            assert_matches!(
-                empty_string.try_reserve(MAX_CAP + 1).map_err(|e| e.kind()),
-                Err(AllocError { .. }),
-                "isize::MAX + 1 should trigger an OOM!"
-            );
-
-            // Check usize::MAX is an OOM
-            assert_matches!(
-                empty_string.try_reserve(MAX_USIZE).map_err(|e| e.kind()),
-                Err(AllocError { .. }),
-                "usize::MAX should trigger an OOM!"
-            );
-        }
+        // Check usize::MAX does count as overflow
+        assert_matches!(
+            empty_string.try_reserve(MAX_USIZE).map_err(|e| e.kind()),
+            Err(CapacityOverflow),
+            "usize::MAX should trigger an overflow!"
+        );
     }
 
     {
@@ -753,19 +731,13 @@ fn test_try_reserve() {
         if let Err(CapacityOverflow) = ten_bytes.try_reserve(MAX_CAP - 10).map_err(|e| e.kind()) {
             panic!("isize::MAX shouldn't trigger an overflow!");
         }
-        if guards_against_isize {
-            assert_matches!(
-                ten_bytes.try_reserve(MAX_CAP - 9).map_err(|e| e.kind()),
-                Err(CapacityOverflow),
-                "isize::MAX + 1 should trigger an overflow!"
-            );
-        } else {
-            assert_matches!(
-                ten_bytes.try_reserve(MAX_CAP - 9).map_err(|e| e.kind()),
-                Err(AllocError { .. }),
-                "isize::MAX + 1 should trigger an OOM!"
-            );
-        }
+
+        assert_matches!(
+            ten_bytes.try_reserve(MAX_CAP - 9).map_err(|e| e.kind()),
+            Err(CapacityOverflow),
+            "isize::MAX + 1 should trigger an overflow!"
+        );
+
         // Should always overflow in the add-to-len
         assert_matches!(
             ten_bytes.try_reserve(MAX_USIZE).map_err(|e| e.kind()),
@@ -785,8 +757,6 @@ fn test_try_reserve_exact() {
     const MAX_CAP: usize = isize::MAX as usize;
     const MAX_USIZE: usize = usize::MAX;
 
-    let guards_against_isize = usize::BITS < 64;
-
     {
         let mut empty_string: String = String::new();
 
@@ -799,31 +769,17 @@ fn test_try_reserve_exact() {
             panic!("isize::MAX shouldn't trigger an overflow!");
         }
 
-        if guards_against_isize {
-            assert_matches!(
-                empty_string.try_reserve_exact(MAX_CAP + 1).map_err(|e| e.kind()),
-                Err(CapacityOverflow),
-                "isize::MAX + 1 should trigger an overflow!"
-            );
+        assert_matches!(
+            empty_string.try_reserve_exact(MAX_CAP + 1).map_err(|e| e.kind()),
+            Err(CapacityOverflow),
+            "isize::MAX + 1 should trigger an overflow!"
+        );
 
-            assert_matches!(
-                empty_string.try_reserve_exact(MAX_USIZE).map_err(|e| e.kind()),
-                Err(CapacityOverflow),
-                "usize::MAX should trigger an overflow!"
-            );
-        } else {
-            assert_matches!(
-                empty_string.try_reserve_exact(MAX_CAP + 1).map_err(|e| e.kind()),
-                Err(AllocError { .. }),
-                "isize::MAX + 1 should trigger an OOM!"
-            );
-
-            assert_matches!(
-                empty_string.try_reserve_exact(MAX_USIZE).map_err(|e| e.kind()),
-                Err(AllocError { .. }),
-                "usize::MAX should trigger an OOM!"
-            );
-        }
+        assert_matches!(
+            empty_string.try_reserve_exact(MAX_USIZE).map_err(|e| e.kind()),
+            Err(CapacityOverflow),
+            "usize::MAX should trigger an overflow!"
+        );
     }
 
     {
@@ -839,19 +795,13 @@ fn test_try_reserve_exact() {
         {
             panic!("isize::MAX shouldn't trigger an overflow!");
         }
-        if guards_against_isize {
-            assert_matches!(
-                ten_bytes.try_reserve_exact(MAX_CAP - 9).map_err(|e| e.kind()),
-                Err(CapacityOverflow),
-                "isize::MAX + 1 should trigger an overflow!"
-            );
-        } else {
-            assert_matches!(
-                ten_bytes.try_reserve_exact(MAX_CAP - 9).map_err(|e| e.kind()),
-                Err(AllocError { .. }),
-                "isize::MAX + 1 should trigger an OOM!"
-            );
-        }
+
+        assert_matches!(
+            ten_bytes.try_reserve_exact(MAX_CAP - 9).map_err(|e| e.kind()),
+            Err(CapacityOverflow),
+            "isize::MAX + 1 should trigger an overflow!"
+        );
+
         assert_matches!(
             ten_bytes.try_reserve_exact(MAX_USIZE).map_err(|e| e.kind()),
             Err(CapacityOverflow),

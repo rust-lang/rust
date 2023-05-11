@@ -1,0 +1,8 @@
+error: encountered dangling pointer in final constant
+  --> $DIR/dangling_raw_ptr.rs:1:1
+   |
+LL | const FOO: *const u32 = {
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

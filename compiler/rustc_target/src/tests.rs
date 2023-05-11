@@ -1,10 +1,8 @@
 use crate::spec::Target;
-use rustc_serialize::json::Json;
-use std::str::FromStr;
 
 #[test]
 fn report_unused_fields() {
-    let json = Json::from_str(
+    let json = serde_json::from_str(
         r#"
     {
         "arch": "powerpc64",
@@ -23,7 +21,7 @@ fn report_unused_fields() {
 
 #[test]
 fn report_incorrect_json_type() {
-    let json = Json::from_str(
+    let json = serde_json::from_str(
         r#"
     {
         "arch": "powerpc64",
@@ -42,7 +40,7 @@ fn report_incorrect_json_type() {
 
 #[test]
 fn no_warnings_for_valid_target() {
-    let json = Json::from_str(
+    let json = serde_json::from_str(
         r#"
     {
         "arch": "powerpc64",

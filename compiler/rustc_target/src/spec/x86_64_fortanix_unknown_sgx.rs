@@ -1,41 +1,42 @@
-use std::{borrow::Cow, iter};
+use std::borrow::Cow;
 
-use crate::spec::cvs;
-
-use super::{LinkerFlavor, LldFlavor, Target, TargetOptions};
+use super::{cvs, Cc, LinkerFlavor, Lld, Target, TargetOptions};
 
 pub fn target() -> Target {
-    const PRE_LINK_ARGS: &[&str] = &[
-        "-e",
-        "elf_entry",
-        "-Bstatic",
-        "--gc-sections",
-        "-z",
-        "text",
-        "-z",
-        "norelro",
-        "--no-undefined",
-        "--error-unresolved-symbols",
-        "--no-undefined-version",
-        "-Bsymbolic",
-        "--export-dynamic",
-        // The following symbols are needed by libunwind, which is linked after
-        // libstd. Make sure they're included in the link.
-        "-u",
-        "__rust_abort",
-        "-u",
-        "__rust_c_alloc",
-        "-u",
-        "__rust_c_dealloc",
-        "-u",
-        "__rust_print_err",
-        "-u",
-        "__rust_rwlock_rdlock",
-        "-u",
-        "__rust_rwlock_unlock",
-        "-u",
-        "__rust_rwlock_wrlock",
-    ];
+    let pre_link_args = TargetOptions::link_args(
+        LinkerFlavor::Gnu(Cc::No, Lld::No),
+        &[
+            "-e",
+            "elf_entry",
+            "-Bstatic",
+            "--gc-sections",
+            "-z",
+            "text",
+            "-z",
+            "norelro",
+            "--no-undefined",
+            "--error-unresolved-symbols",
+            "--no-undefined-version",
+            "-Bsymbolic",
+            "--export-dynamic",
+            // The following symbols are needed by libunwind, which is linked after
+            // libstd. Make sure they're included in the link.
+            "-u",
+            "__rust_abort",
+            "-u",
+            "__rust_c_alloc",
+            "-u",
+            "__rust_c_dealloc",
+            "-u",
+            "__rust_print_err",
+            "-u",
+            "__rust_rwlock_rdlock",
+            "-u",
+            "__rust_rwlock_unlock",
+            "-u",
+            "__rust_rwlock_wrlock",
+        ],
+    );
 
     const EXPORT_SYMBOLS: &[&str] = &[
         "sgx_entry",
@@ -58,19 +59,14 @@ pub fn target() -> Target {
         env: "sgx".into(),
         vendor: "fortanix".into(),
         abi: "fortanix".into(),
-        linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
-        executables: true,
+        linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
         linker: Some("rust-lld".into()),
         max_atomic_width: Some(64),
         cpu: "x86-64".into(),
         features: "+rdrnd,+rdseed,+lvi-cfi,+lvi-load-hardening".into(),
         llvm_args: cvs!["--x86-experimental-lvi-inline-asm-hardening"],
         position_independent_executables: true,
-        pre_link_args: iter::once((
-            LinkerFlavor::Lld(LldFlavor::Ld),
-            PRE_LINK_ARGS.iter().cloned().map(Cow::from).collect(),
-        ))
-        .collect(),
+        pre_link_args,
         override_export_symbols: Some(EXPORT_SYMBOLS.iter().cloned().map(Cow::from).collect()),
         relax_elf_relocations: true,
         ..Default::default()

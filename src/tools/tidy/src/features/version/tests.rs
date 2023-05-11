@@ -12,8 +12,8 @@ fn test_try_from_invalid_version() {
 
 #[test]
 fn test_try_from_single() {
-    assert_eq!("1.32.0".parse(), Ok(Version { parts: [1, 32, 0] }));
-    assert_eq!("1.0.0".parse(), Ok(Version { parts: [1, 0, 0] }));
+    assert_eq!("1.32.0".parse(), Ok(Version::Explicit { parts: [1, 32, 0] }));
+    assert_eq!("1.0.0".parse(), Ok(Version::Explicit { parts: [1, 0, 0] }));
 }
 
 #[test]

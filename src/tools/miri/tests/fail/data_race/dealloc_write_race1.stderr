@@ -1,0 +1,25 @@
+error: Undefined Behavior: Data race detected between (1) Write on thread `<unnamed>` and (2) Deallocate on thread `<unnamed>` at ALLOC. (2) just happened here
+  --> $DIR/dealloc_write_race1.rs:LL:CC
+   |
+LL | /             __rust_dealloc(
+LL | |
+LL | |                 ptr.0 as *mut _,
+LL | |                 std::mem::size_of::<usize>(),
+LL | |                 std::mem::align_of::<usize>(),
+LL | |             );
+   | |_____________^ Data race detected between (1) Write on thread `<unnamed>` and (2) Deallocate on thread `<unnamed>` at ALLOC. (2) just happened here
+   |
+help: and (1) occurred earlier here
+  --> $DIR/dealloc_write_race1.rs:LL:CC
+   |
+LL |             *ptr.0 = 2;
+   |             ^^^^^^^^^^
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE (of the first span):
+   = note: inside closure at $DIR/dealloc_write_race1.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

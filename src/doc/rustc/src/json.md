@@ -61,7 +61,7 @@ Diagnostics have the following format:
             /* The file where the span is located.
                Note that this path may not exist. For example, if the path
                points to the standard library, and the rust src is not
-               available in the sysroot, then it may point to a non-existent
+               available in the sysroot, then it may point to a nonexistent
                file. Beware that this may also point to the source of an
                external crate.
             */
@@ -223,9 +223,34 @@ flag][option-emit] documentation.
        - "link": The generated crate as specified by the crate-type.
        - "dep-info": The `.d` file with dependency information in a Makefile-like syntax.
        - "metadata": The Rust `.rmeta` file containing metadata about the crate.
-       - "save-analysis": A JSON file emitted by the `-Zsave-analysis` feature.
     */
     "emit": "link"
+}
+```
+
+## Future-incompatible reports
+
+If the [`--json=future-incompat`][option-json] flag is used, then a separate
+JSON structure will be emitted if the crate may stop compiling in the future.
+This contains diagnostic information about the particular warnings that may be
+turned into a hard error in the future. This will include the diagnostic
+information, even if the diagnostics have been suppressed (such as with an
+`#[allow]` attribute or the `--cap-lints` option).
+
+```javascript
+{
+    /* An array of objects describing a warning that will become a hard error
+       in the future.
+    */
+    "future_incompat_report":
+    [
+        {
+            /* A diagnostic structure as defined in
+               https://doc.rust-lang.org/rustc/json.html#diagnostics
+            */
+            "diagnostic": {...},
+        }
+    ]
 }
 ```
 

@@ -1,7 +1,7 @@
 // Adapted from https://github.com/sunfishcode/mir2cranelift/blob/master/rust-examples/nocore-hello-world.rs
 
 #![feature(
-    no_core, unboxed_closures, start, lang_items, box_syntax, never_type, linkage,
+    no_core, unboxed_closures, start, lang_items, never_type, linkage,
     extern_types, thread_local
 )]
 #![no_core]
@@ -47,6 +47,11 @@ struct NoisyDrop {
     inner: NoisyDropInner,
 }
 
+struct NoisyDropUnsized {
+    inner: NoisyDropInner,
+    text: str,
+}
+
 struct NoisyDropInner;
 
 impl Drop for NoisyDrop {
@@ -80,6 +85,7 @@ fn start<T: Termination + 'static>(
     main: fn() -> T,
     argc: isize,
     argv: *const *const u8,
+    _sigpipe: u8,
 ) -> isize {
     if argc == 3 {
         unsafe { puts(*argv); }
@@ -157,7 +163,7 @@ fn main() {
         let ptr: *const u8 = hello as *const [u8] as *const u8;
         puts(ptr);
 
-        let world: Box<&str> = box "World!\0";
+        let world: Box<&str> = Box::new("World!\0");
         puts(*world as *const str as *const u8);
         world as Box<dyn SomeTrait>;
 
@@ -184,7 +190,9 @@ fn main() {
         assert_eq!(intrinsics::min_align_of_val(&a) as u8, intrinsics::min_align_of::<&str>() as u8);
 
         assert!(!intrinsics::needs_drop::<u8>());
+        assert!(!intrinsics::needs_drop::<[u8]>());
         assert!(intrinsics::needs_drop::<NoisyDrop>());
+        assert!(intrinsics::needs_drop::<NoisyDropUnsized>());
 
         Unique {
             pointer: 0 as *const &str,
@@ -215,12 +223,13 @@ fn main() {
         }
     }
 
-    let _ = box NoisyDrop {
+    let _ = Box::new(NoisyDrop {
         text: "Boxed outer got dropped!\0",
         inner: NoisyDropInner,
-    } as Box<dyn SomeTrait>;
+    }) as Box<dyn SomeTrait>;
 
     const FUNC_REF: Option<fn()> = Some(main);
+    #[allow(unreachable_code)]
     match FUNC_REF {
         Some(_) => {},
         None => assert!(false),

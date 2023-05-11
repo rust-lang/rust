@@ -4,7 +4,7 @@
 //!
 //! ## Meta-variables must not be bound twice
 //!
-//! ```
+//! ```compile_fail
 //! macro_rules! foo { ($x:tt $x:tt) => { $x }; }
 //! ```
 //!
@@ -104,9 +104,10 @@
 //! Kleene operators under which a meta-variable is repeating is the concatenation of the stacks
 //! stored when entering a macro definition starting from the state in which the meta-variable is
 //! bound.
+use crate::errors;
 use crate::mbe::{KleeneToken, TokenTree};
 
-use rustc_ast::token::{DelimToken, Token, TokenKind};
+use rustc_ast::token::{Delimiter, Token, TokenKind};
 use rustc_ast::{NodeId, DUMMY_NODE_ID};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::MultiSpan;
@@ -151,9 +152,9 @@ impl<'a, T> Iterator for &'a Stack<'a, T> {
 
     // Iterates from top to bottom of the stack.
     fn next(&mut self) -> Option<&'a T> {
-        match *self {
+        match self {
             Stack::Empty => None,
-            Stack::Push { ref top, ref prev } => {
+            Stack::Push { top, prev } => {
                 *self = prev;
                 Some(top)
             }
@@ -270,7 +271,7 @@ fn check_binders(
                     MISSING_FRAGMENT_SPECIFIER,
                     span,
                     node_id,
-                    &format!("missing fragment specifier"),
+                    "missing fragment specifier",
                 );
             }
             if !macros.is_empty() {
@@ -281,10 +282,7 @@ fn check_binders(
                 // Duplicate binders at the top-level macro definition are errors. The lint is only
                 // for nested macro definitions.
                 sess.span_diagnostic
-                    .struct_span_err(span, "duplicate matcher binding")
-                    .span_label(span, "duplicate binding")
-                    .span_label(prev_info.span, "previous binding")
-                    .emit();
+                    .emit_err(errors::DuplicateMatcherBinding { span, prev: prev_info.span });
                 *valid = false;
             } else {
                 binders.insert(name, BinderInfo { span, ops: ops.into() });
@@ -437,9 +435,9 @@ fn check_nested_occurrences(
                 // We check that the meta-variable is correctly used.
                 check_occurrences(sess, node_id, tt, macros, binders, ops, valid);
             }
-            (NestedMacroState::MacroRulesNotName, &TokenTree::Delimited(_, ref del))
-            | (NestedMacroState::MacroName, &TokenTree::Delimited(_, ref del))
-                if del.delim == DelimToken::Brace =>
+            (NestedMacroState::MacroRulesNotName, TokenTree::Delimited(_, del))
+            | (NestedMacroState::MacroName, TokenTree::Delimited(_, del))
+                if del.delim == Delimiter::Brace =>
             {
                 let macro_rules = state == NestedMacroState::MacroRulesNotName;
                 state = NestedMacroState::Empty;
@@ -468,8 +466,8 @@ fn check_nested_occurrences(
                 // We check that the meta-variable is correctly used.
                 check_occurrences(sess, node_id, tt, macros, binders, ops, valid);
             }
-            (NestedMacroState::MacroName, &TokenTree::Delimited(_, ref del))
-                if del.delim == DelimToken::Paren =>
+            (NestedMacroState::MacroName, TokenTree::Delimited(_, del))
+                if del.delim == Delimiter::Parenthesis =>
             {
                 state = NestedMacroState::MacroNameParen;
                 nested_binders = Binders::default();
@@ -483,8 +481,8 @@ fn check_nested_occurrences(
                     valid,
                 );
             }
-            (NestedMacroState::MacroNameParen, &TokenTree::Delimited(_, ref del))
-                if del.delim == DelimToken::Brace =>
+            (NestedMacroState::MacroNameParen, TokenTree::Delimited(_, del))
+                if del.delim == Delimiter::Brace =>
             {
                 state = NestedMacroState::Empty;
                 check_occurrences(
@@ -497,7 +495,7 @@ fn check_nested_occurrences(
                     valid,
                 );
             }
-            (_, ref tt) => {
+            (_, tt) => {
                 state = NestedMacroState::Empty;
                 check_occurrences(sess, node_id, tt, macros, binders, ops, valid);
             }
@@ -604,9 +602,9 @@ fn check_ops_is_prefix(
 /// Kleene operators of its binder as a prefix.
 ///
 /// Consider $i in the following example:
-///
-///     ( $( $i:ident = $($j:ident),+ );* ) => { $($( $i += $j; )+)* }
-///
+/// ```ignore (illustrative)
+/// ( $( $i:ident = $($j:ident),+ );* ) => { $($( $i += $j; )+)* }
+/// ```
 /// It occurs under the Kleene stack ["*", "+"] and is bound under ["*"] only.
 ///
 /// Arguments:

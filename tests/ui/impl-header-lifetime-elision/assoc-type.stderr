@@ -1,0 +1,15 @@
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/assoc-type.rs:11:19
+   |
+LL |     type Output = &i32;
+   |                   ^ explicit lifetime name needed here
+
+error[E0637]: `'_` cannot be used here
+  --> $DIR/assoc-type.rs:16:20
+   |
+LL |     type Output = &'_ i32;
+   |                    ^^ `'_` is a reserved lifetime name
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0637`.

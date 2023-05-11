@@ -4,7 +4,7 @@ use crate::ffi::{CStr, OsStr, OsString};
 use crate::fmt;
 use crate::io;
 use crate::marker::PhantomData;
-use crate::os::unix::ffi::OsStringExt;
+use crate::os::hermit::ffi::OsStringExt;
 use crate::path::{self, PathBuf};
 use crate::str;
 use crate::sync::Mutex;

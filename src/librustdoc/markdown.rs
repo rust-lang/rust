@@ -5,7 +5,6 @@ use std::path::Path;
 
 use rustc_span::edition::Edition;
 use rustc_span::source_map::DUMMY_SP;
-use rustc_span::Symbol;
 
 use crate::config::{Options, RenderOptions};
 use crate::doctest::{Collector, GlobalTestOptions};
@@ -36,7 +35,9 @@ fn extract_leading_metadata(s: &str) -> (Vec<&str>, &str) {
 
 /// Render `input` (e.g., "foo.md") into an HTML file in `output`
 /// (e.g., output = "bar" => "bar/foo.html").
-crate fn render<P: AsRef<Path>>(
+///
+/// Requires session globals to be available, for symbol interning.
+pub(crate) fn render<P: AsRef<Path>>(
     input: P,
     options: RenderOptions,
     edition: Edition,
@@ -52,7 +53,7 @@ crate fn render<P: AsRef<Path>>(
 
     let mut css = String::new();
     for name in &options.markdown_css {
-        write!(css, r#"<link rel="stylesheet" type="text/css" href="{name}">"#)
+        write!(css, r#"<link rel="stylesheet" href="{name}">"#)
             .expect("Writing to a String can't fail");
     }
 
@@ -71,7 +72,14 @@ crate fn render<P: AsRef<Path>>(
     let mut ids = IdMap::new();
     let error_codes = ErrorCodes::from(options.unstable_features.is_nightly_build());
     let text = if !options.markdown_no_toc {
-        MarkdownWithToc(text, &mut ids, error_codes, edition, &playground).into_string()
+        MarkdownWithToc {
+            content: text,
+            ids: &mut ids,
+            error_codes,
+            edition,
+            playground: &playground,
+        }
+        .into_string()
     } else {
         Markdown {
             content: text,
@@ -127,13 +135,13 @@ crate fn render<P: AsRef<Path>>(
 }
 
 /// Runs any tests/code examples in the markdown file `input`.
-crate fn test(options: Options) -> Result<(), String> {
+pub(crate) fn test(options: Options) -> Result<(), String> {
     let input_str = read_to_string(&options.input)
         .map_err(|err| format!("{}: {}", options.input.display(), err))?;
     let mut opts = GlobalTestOptions::default();
     opts.no_crate_inject = true;
     let mut collector = Collector::new(
-        Symbol::intern(&options.input.display().to_string()),
+        options.input.display().to_string(),
         options.clone(),
         true,
         opts,
@@ -142,7 +150,7 @@ crate fn test(options: Options) -> Result<(), String> {
         options.enable_per_target_ignores,
     );
     collector.set_position(DUMMY_SP);
-    let codes = ErrorCodes::from(options.render_options.unstable_features.is_nightly_build());
+    let codes = ErrorCodes::from(options.unstable_features.is_nightly_build());
 
     find_testable_code(&input_str, &mut collector, codes, options.enable_per_target_ignores, None);
 

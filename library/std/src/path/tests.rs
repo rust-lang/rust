@@ -7,6 +7,7 @@ use crate::rc::Rc;
 use crate::sync::Arc;
 use core::hint::black_box;
 
+#[allow(unknown_lints, unused_macro_rules)]
 macro_rules! t (
     ($path:expr, iter: $iter:expr) => (
         {
@@ -971,15 +972,15 @@ pub fn test_decompositions_windows() {
     file_prefix: None
     );
 
-    t!("\\\\?\\C:/foo",
-    iter: ["\\\\?\\C:/foo"],
+    t!("\\\\?\\C:/foo/bar",
+    iter: ["\\\\?\\C:", "\\", "foo/bar"],
     has_root: true,
     is_absolute: true,
-    parent: None,
-    file_name: None,
-    file_stem: None,
+    parent: Some("\\\\?\\C:/"),
+    file_name: Some("foo/bar"),
+    file_stem: Some("foo/bar"),
     extension: None,
-    file_prefix: None
+    file_prefix: Some("foo/bar")
     );
 
     t!("\\\\.\\foo\\bar",
@@ -1767,6 +1768,7 @@ fn test_windows_absolute() {
 }
 
 #[bench]
+#[cfg_attr(miri, ignore)] // Miri isn't fast...
 fn bench_path_cmp_fast_path_buf_sort(b: &mut test::Bencher) {
     let prefix = "my/home";
     let mut paths: Vec<_> =
@@ -1780,6 +1782,7 @@ fn bench_path_cmp_fast_path_buf_sort(b: &mut test::Bencher) {
 }
 
 #[bench]
+#[cfg_attr(miri, ignore)] // Miri isn't fast...
 fn bench_path_cmp_fast_path_long(b: &mut test::Bencher) {
     let prefix = "/my/home/is/my/castle/and/my/castle/has/a/rusty/workbench/";
     let paths: Vec<_> =
@@ -1798,6 +1801,7 @@ fn bench_path_cmp_fast_path_long(b: &mut test::Bencher) {
 }
 
 #[bench]
+#[cfg_attr(miri, ignore)] // Miri isn't fast...
 fn bench_path_cmp_fast_path_short(b: &mut test::Bencher) {
     let prefix = "my/home";
     let paths: Vec<_> =
@@ -1816,6 +1820,7 @@ fn bench_path_cmp_fast_path_short(b: &mut test::Bencher) {
 }
 
 #[bench]
+#[cfg_attr(miri, ignore)] // Miri isn't fast...
 fn bench_path_hashset(b: &mut test::Bencher) {
     let prefix = "/my/home/is/my/castle/and/my/castle/has/a/rusty/workbench/";
     let paths: Vec<_> =
@@ -1834,6 +1839,7 @@ fn bench_path_hashset(b: &mut test::Bencher) {
 }
 
 #[bench]
+#[cfg_attr(miri, ignore)] // Miri isn't fast...
 fn bench_path_hashset_miss(b: &mut test::Bencher) {
     let prefix = "/my/home/is/my/castle/and/my/castle/has/a/rusty/workbench/";
     let paths: Vec<_> =

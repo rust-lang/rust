@@ -1,8 +1,8 @@
-//! The libcore prelude
+//! The core prelude
 //!
-//! This module is intended for users of libcore which do not link to libstd as
-//! well. This module is imported by default when `#![no_std]` is used in the
-//! same manner as the standard library's prelude.
+//! This module is intended for users of core which do not link to std as well.
+//! This module is imported by default when `#![no_std]` is used in the same
+//! manner as the standard library's prelude.
 
 #![stable(feature = "core_prelude", since = "1.4.0")]
 
@@ -44,4 +44,14 @@ pub mod rust_2021 {
     #[stable(feature = "prelude_2021", since = "1.55.0")]
     #[doc(no_inline)]
     pub use crate::convert::{TryFrom, TryInto};
+}
+
+/// The 2024 edition of the core prelude.
+///
+/// See the [module-level documentation](self) for more.
+#[unstable(feature = "prelude_2024", issue = "none")]
+pub mod rust_2024 {
+    #[unstable(feature = "prelude_2024", issue = "none")]
+    #[doc(no_inline)]
+    pub use super::rust_2021::*;
 }

@@ -15,7 +15,7 @@
 //! that contains allocations whose mutability we cannot identify.)
 
 use super::validity::RefTracking;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_middle::mir::interpret::InterpResult;
@@ -30,15 +30,15 @@ use super::{
 use crate::const_eval;
 
 pub trait CompileTimeMachine<'mir, 'tcx, T> = Machine<
-    'mir,
-    'tcx,
-    MemoryKind = T,
-    PointerTag = AllocId,
-    ExtraFnVal = !,
-    FrameExtra = (),
-    AllocExtra = (),
-    MemoryMap = FxHashMap<AllocId, (MemoryKind<T>, Allocation)>,
->;
+        'mir,
+        'tcx,
+        MemoryKind = T,
+        Provenance = AllocId,
+        ExtraFnVal = !,
+        FrameExtra = (),
+        AllocExtra = (),
+        MemoryMap = FxIndexMap<AllocId, (MemoryKind<T>, Allocation)>,
+    >;
 
 struct InternVisitor<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx, const_eval::MemoryKind>> {
     /// The ectx from which we intern.
@@ -47,7 +47,7 @@ struct InternVisitor<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx, const_ev
     ref_tracking: &'rt mut RefTracking<(MPlaceTy<'tcx>, InternMode)>,
     /// A list of all encountered allocations. After type-based interning, we traverse this list to
     /// also intern allocations that are only referenced by a raw pointer or inside a union.
-    leftover_allocations: &'rt mut FxHashSet<AllocId>,
+    leftover_allocations: &'rt mut FxIndexSet<AllocId>,
     /// The root kind of the value that we're looking at. This field is never mutated for a
     /// particular allocation. It is primarily used to make as many allocations as possible
     /// read-only so LLVM can place them in const memory.
@@ -59,7 +59,7 @@ struct InternVisitor<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx, const_ev
 
 #[derive(Copy, Clone, Debug, PartialEq, Hash, Eq)]
 enum InternMode {
-    /// A static and its current mutability.  Below shared references inside a `static mut`,
+    /// A static and its current mutability. Below shared references inside a `static mut`,
     /// this is *immutable*, and below mutable references inside an `UnsafeCell`, this
     /// is *mutable*.
     Static(hir::Mutability),
@@ -79,7 +79,7 @@ struct IsStaticOrFn;
 /// to account for (e.g. for vtables).
 fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx, const_eval::MemoryKind>>(
     ecx: &'rt mut InterpCx<'mir, 'tcx, M>,
-    leftover_allocations: &'rt mut FxHashSet<AllocId>,
+    leftover_allocations: &'rt mut FxIndexSet<AllocId>,
     alloc_id: AllocId,
     mode: InternMode,
     ty: Option<Ty<'tcx>>,
@@ -94,7 +94,7 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx, const_eval:
         // to validation to error -- it has the much better error messages, pointing out where
         // in the value the dangling reference lies.
         // The `delay_span_bug` ensures that we don't forget such a check in validation.
-        if tcx.get_global_alloc(alloc_id).is_none() {
+        if tcx.try_get_global_alloc(alloc_id).is_none() {
             tcx.sess.delay_span_bug(ecx.tcx.span, "tried to intern dangling pointer");
         }
         // treat dangling pointers like other statics
@@ -114,7 +114,7 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx, const_eval:
     if let InternMode::Static(mutability) = mode {
         // For this, we need to take into account `UnsafeCell`. When `ty` is `None`, we assume
         // no interior mutability.
-        let frozen = ty.map_or(true, |ty| ty.is_freeze(ecx.tcx, ecx.param_env));
+        let frozen = ty.map_or(true, |ty| ty.is_freeze(*ecx.tcx, ecx.param_env));
         // For statics, allocation mutability is the combination of place mutability and
         // type mutability.
         // The entire allocation needs to be mutable if it contains an `UnsafeCell` anywhere.
@@ -134,8 +134,8 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx, const_eval:
         alloc.mutability = Mutability::Not;
     };
     // link the alloc id to the actual allocation
-    leftover_allocations.extend(alloc.relocations().iter().map(|&(_, alloc_id)| alloc_id));
-    let alloc = tcx.intern_const_alloc(alloc);
+    leftover_allocations.extend(alloc.provenance().ptrs().iter().map(|&(_, alloc_id)| alloc_id));
+    let alloc = tcx.mk_const_alloc(alloc);
     tcx.set_alloc_id_memory(alloc_id, alloc);
     None
 }
@@ -168,13 +168,56 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
         mplace: &MPlaceTy<'tcx>,
         fields: impl Iterator<Item = InterpResult<'tcx, Self::V>>,
     ) -> InterpResult<'tcx> {
-        // ZSTs cannot contain pointers, so we can skip them.
-        if mplace.layout.is_zst() {
+        // We want to walk the aggregate to look for references to intern. While doing that we
+        // also need to take special care of interior mutability.
+        //
+        // As an optimization, however, if the allocation does not contain any references: we don't
+        // need to do the walk. It can be costly for big arrays for example (e.g. issue #93215).
+        let is_walk_needed = |mplace: &MPlaceTy<'tcx>| -> InterpResult<'tcx, bool> {
+            // ZSTs cannot contain pointers, we can avoid the interning walk.
+            if mplace.layout.is_zst() {
+                return Ok(false);
+            }
+
+            // Now, check whether this allocation could contain references.
+            //
+            // Note, this check may sometimes not be cheap, so we only do it when the walk we'd like
+            // to avoid could be expensive: on the potentially larger types, arrays and slices,
+            // rather than on all aggregates unconditionally.
+            if matches!(mplace.layout.ty.kind(), ty::Array(..) | ty::Slice(..)) {
+                let Some((size, align)) = self.ecx.size_and_align_of_mplace(&mplace)? else {
+                    // We do the walk if we can't determine the size of the mplace: we may be
+                    // dealing with extern types here in the future.
+                    return Ok(true);
+                };
+
+                // If there is no provenance in this allocation, it does not contain references
+                // that point to another allocation, and we can avoid the interning walk.
+                if let Some(alloc) = self.ecx.get_ptr_alloc(mplace.ptr, size, align)? {
+                    if !alloc.has_provenance() {
+                        return Ok(false);
+                    }
+                } else {
+                    // We're encountering a ZST here, and can avoid the walk as well.
+                    return Ok(false);
+                }
+            }
+
+            // In the general case, we do the walk.
+            Ok(true)
+        };
+
+        // If this allocation contains no references to intern, we avoid the potentially costly
+        // walk.
+        //
+        // We can do this before the checks for interior mutability below, because only references
+        // are relevant in that situation, and we're checking if there are any here.
+        if !is_walk_needed(mplace)? {
             return Ok(());
         }
 
         if let Some(def) = mplace.layout.ty.ty_adt_def() {
-            if Some(def.did()) == self.ecx.tcx.lang_items().unsafe_cell_type() {
+            if def.is_unsafe_cell() {
                 // We are crossing over an `UnsafeCell`, we can mutate again. This means that
                 // References we encounter inside here are interned as pointing to mutable
                 // allocations.
@@ -190,19 +233,19 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
     }
 
     fn visit_value(&mut self, mplace: &MPlaceTy<'tcx>) -> InterpResult<'tcx> {
-        // Handle Reference types, as these are the only relocations supported by const eval.
-        // Raw pointers (and boxes) are handled by the `leftover_relocations` logic.
+        // Handle Reference types, as these are the only types with provenance supported by const eval.
+        // Raw pointers (and boxes) are handled by the `leftover_allocations` logic.
         let tcx = self.ecx.tcx;
         let ty = mplace.layout.ty;
         if let ty::Ref(_, referenced_ty, ref_mutability) = *ty.kind() {
-            let value = self.ecx.read_immediate(&(*mplace).into())?;
+            let value = self.ecx.read_immediate(&mplace.into())?;
             let mplace = self.ecx.ref_to_mplace(&value)?;
             assert_eq!(mplace.layout.ty, referenced_ty);
             // Handle trait object vtables.
-            if let ty::Dynamic(..) =
+            if let ty::Dynamic(_, _, ty::Dyn) =
                 tcx.struct_tail_erasing_lifetimes(referenced_ty, self.ecx.param_env).kind()
             {
-                let ptr = self.ecx.scalar_to_ptr(mplace.meta.unwrap_meta())?;
+                let ptr = mplace.meta.unwrap_meta().to_pointer(&tcx)?;
                 if let Some(alloc_id) = ptr.provenance {
                     // Explicitly choose const mode here, since vtables are immutable, even
                     // if the reference of the fat pointer is mutable.
@@ -253,7 +296,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
                         }
                     }
                     InternMode::Const => {
-                        // Ignore `UnsafeCell`, everything is immutable.  Validity does some sanity
+                        // Ignore `UnsafeCell`, everything is immutable. Validity does some sanity
                         // checking for mutable references that we encounter -- they must all be
                         // ZST.
                         InternMode::Const
@@ -287,11 +330,9 @@ pub enum InternKind {
 
 /// Intern `ret` and everything it references.
 ///
-/// This *cannot raise an interpreter error*.  Doing so is left to validation, which
+/// This *cannot raise an interpreter error*. Doing so is left to validation, which
 /// tracks where in the value we are and thus can show much better error messages.
-/// Any errors here would anyway be turned into `const_err` lints, whereas validation failures
-/// are hard errors.
-#[tracing::instrument(level = "debug", skip(ecx))]
+#[instrument(level = "debug", skip(ecx))]
 pub fn intern_const_alloc_recursive<
     'mir,
     'tcx: 'mir,
@@ -314,7 +355,7 @@ pub fn intern_const_alloc_recursive<
     // `leftover_allocations` collects *all* allocations we see, because some might not
     // be available in a typed way. They get interned at the end.
     let mut ref_tracking = RefTracking::empty();
-    let leftover_allocations = &mut FxHashSet::default();
+    let leftover_allocations = &mut FxIndexSet::default();
 
     // start with the outermost allocation
     intern_shallow(
@@ -338,7 +379,7 @@ pub fn intern_const_alloc_recursive<
             inside_unsafe_cell: false,
         }
         .visit_value(&mplace);
-        // We deliberately *ignore* interpreter errors here.  When there is a problem, the remaining
+        // We deliberately *ignore* interpreter errors here. When there is a problem, the remaining
         // references are "leftover"-interned, and later validation will show a proper error
         // and point at the right part of the value causing the problem.
         match res {
@@ -346,7 +387,7 @@ pub fn intern_const_alloc_recursive<
             Err(error) => {
                 ecx.tcx.sess.delay_span_bug(
                     ecx.tcx.span,
-                    &format!(
+                    format!(
                         "error during interning should later cause validation failure: {}",
                         error
                     ),
@@ -367,7 +408,7 @@ pub fn intern_const_alloc_recursive<
             // references and a `leftover_allocations` set (where we only have a todo-list here).
             // So we hand-roll the interning logic here again.
             match intern_kind {
-                // Statics may contain mutable allocations even behind relocations.
+                // Statics may point to mutable allocations.
                 // Even for immutable statics it would be ok to have mutable allocations behind
                 // raw pointers, e.g. for `static FOO: *const AtomicUsize = &AtomicUsize::new(42)`.
                 InternKind::Static(_) => {}
@@ -396,9 +437,9 @@ pub fn intern_const_alloc_recursive<
                     alloc.mutability = Mutability::Not;
                 }
             }
-            let alloc = tcx.intern_const_alloc(alloc);
+            let alloc = tcx.mk_const_alloc(alloc);
             tcx.set_alloc_id_memory(alloc_id, alloc);
-            for &(_, alloc_id) in alloc.inner().relocations().iter() {
+            for &(_, alloc_id) in alloc.inner().provenance().ptrs().iter() {
                 if leftover_allocations.insert(alloc_id) {
                     todo.push(alloc_id);
                 }
@@ -411,9 +452,9 @@ pub fn intern_const_alloc_recursive<
                 .sess
                 .span_err(ecx.tcx.span, "encountered dangling pointer in final constant");
             return Err(reported);
-        } else if ecx.tcx.get_global_alloc(alloc_id).is_none() {
+        } else if ecx.tcx.try_get_global_alloc(alloc_id).is_none() {
             // We have hit an `AllocId` that is neither in local or global memory and isn't
-            // marked as dangling by local memory.  That should be impossible.
+            // marked as dangling by local memory. That should be impossible.
             span_bug!(ecx.tcx.span, "encountered unknown alloc id {:?}", alloc_id);
         }
     }
@@ -431,13 +472,13 @@ impl<'mir, 'tcx: 'mir, M: super::intern::CompileTimeMachine<'mir, 'tcx, !>>
         layout: TyAndLayout<'tcx>,
         f: impl FnOnce(
             &mut InterpCx<'mir, 'tcx, M>,
-            &PlaceTy<'tcx, M::PointerTag>,
+            &PlaceTy<'tcx, M::Provenance>,
         ) -> InterpResult<'tcx, ()>,
     ) -> InterpResult<'tcx, ConstAllocation<'tcx>> {
         let dest = self.allocate(layout, MemoryKind::Stack)?;
         f(self, &dest.into())?;
         let mut alloc = self.memory.alloc_map.remove(&dest.ptr.provenance.unwrap()).unwrap().1;
         alloc.mutability = Mutability::Not;
-        Ok(self.tcx.intern_const_alloc(alloc))
+        Ok(self.tcx.mk_const_alloc(alloc))
     }
 }

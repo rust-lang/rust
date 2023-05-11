@@ -1,0 +1,11 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/issue-76064.rs:1:17
+   |
+LL | struct Bug([u8; panic!("panic")]);
+   |                 ^^^^^^^^^^^^^^^ the evaluated program panicked at 'panic', $DIR/issue-76064.rs:1:17
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0080`.

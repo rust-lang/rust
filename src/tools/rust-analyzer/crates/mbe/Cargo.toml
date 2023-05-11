@@ -1,0 +1,27 @@
+[package]
+name = "mbe"
+version = "0.0.0"
+description = "TBD"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+cov-mark = "2.0.0-pre.1"
+rustc-hash = "1.1.0"
+smallvec.workspace = true
+tracing = "0.1.35"
+
+# local deps
+syntax.workspace = true
+parser.workspace = true
+tt.workspace = true
+stdx.workspace = true
+
+[dev-dependencies]
+test-utils.workspace = true

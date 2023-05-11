@@ -1,0 +1,9 @@
+error[E0277]: the trait bound `Result<(), _>: Future` is not satisfied
+  --> $DIR/lifetime-elision-return-type-trait.rs:8:13
+   |
+LL | fn foo() -> impl Future<Item=(), Error=Box<dyn Error>> {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Future` is not implemented for `Result<(), _>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

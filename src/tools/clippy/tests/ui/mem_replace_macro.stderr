@@ -1,14 +1,11 @@
 error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
-  --> $DIR/mem_replace_macro.rs:9:9
+  --> $DIR/mem_replace_macro.rs:10:13
    |
-LL |         std::mem::replace($s, Default::default())
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-...
-LL |     take!(s);
-   |     -------- in this macro invocation
+LL |     inline!(std::mem::replace($s, Default::default()));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::mem-replace-with-default` implied by `-D warnings`
-   = note: this error originates in the macro `take` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

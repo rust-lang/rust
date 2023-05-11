@@ -1,0 +1,16 @@
+error[E0445]: private trait `Private<<Self as Public>::P, <Self as Public>::R>` in public interface
+  --> $DIR/issue-18389.rs:7:1
+   |
+LL |   trait Private<P, R> {
+   |   ------------------- `Private<<Self as Public>::P, <Self as Public>::R>` declared as private
+...
+LL | / pub trait Public: Private<
+LL | |
+LL | |     <Self as Public>::P,
+LL | |     <Self as Public>::R
+LL | | > {
+   | |_^ can't leak private trait
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0445`.

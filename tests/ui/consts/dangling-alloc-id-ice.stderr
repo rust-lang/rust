@@ -1,0 +1,8 @@
+error: encountered dangling pointer in final constant
+  --> $DIR/dangling-alloc-id-ice.rs:8:1
+   |
+LL | const FOO: &() = {
+   | ^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

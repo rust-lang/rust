@@ -1,0 +1,11 @@
+error[E0369]: cannot add `u32` to `u32`
+  --> $DIR/bad-add-impl.rs:16:10
+   |
+LL |     1u32 + 1u32;
+   |     ---- ^ ---- u32
+   |     |
+   |     u32
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0369`.

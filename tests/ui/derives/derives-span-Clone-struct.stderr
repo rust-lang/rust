@@ -1,0 +1,19 @@
+error[E0277]: the trait bound `Error: Clone` is not satisfied
+  --> $DIR/derives-span-Clone-struct.rs:8:5
+   |
+LL | #[derive(Clone)]
+   |          ----- in this derive macro expansion
+LL | struct Struct {
+LL |     x: Error
+   |     ^^^^^^^^ the trait `Clone` is not implemented for `Error`
+   |
+   = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider annotating `Error` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct Error;
+   |
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

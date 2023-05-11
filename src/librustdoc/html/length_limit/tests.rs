@@ -83,7 +83,7 @@ fn past_the_limit() {
         buf.push("word#")?;
         buf.push(&n.to_string())?;
         buf.close_tag();
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     });
     buf.close_tag();
     assert_eq!(

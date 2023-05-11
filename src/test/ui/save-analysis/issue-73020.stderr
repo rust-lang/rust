@@ -1,9 +1,0 @@
-error[E0431]: `self` import can only appear in an import list with a non-empty prefix
-  --> $DIR/issue-73020.rs:2:6
-   |
-LL | use {self};
-   |      ^^^^ can only appear in an import list with a non-empty prefix
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0431`.

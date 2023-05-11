@@ -58,17 +58,16 @@ pub struct NewWithoutDefault {
 impl_lint_pass!(NewWithoutDefault => [NEW_WITHOUT_DEFAULT]);
 
 impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
-    #[allow(clippy::too_many_lines)]
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         if let hir::ItemKind::Impl(hir::Impl {
             of_trait: None,
-            ref generics,
+            generics,
             self_ty: impl_self_ty,
             items,
             ..
         }) = item.kind
         {
-            for assoc_item in items {
+            for assoc_item in *items {
                 if assoc_item.kind == (hir::AssocItemKind::Fn { has_self: false }) {
                     let impl_item = cx.tcx.hir().impl_item(assoc_item.id);
                     if in_external_macro(cx.sess(), impl_item.span) {
@@ -76,7 +75,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                     }
                     if let hir::ImplItemKind::Fn(ref sig, _) = impl_item.kind {
                         let name = impl_item.ident.name;
-                        let id = impl_item.hir_id();
+                        let id = impl_item.owner_id;
                         if sig.header.constness == hir::Constness::Const {
                             // can't be implemented by default
                             return;
@@ -85,34 +84,29 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                             // can't be implemented for unsafe new
                             return;
                         }
-                        if clippy_utils::is_doc_hidden(cx.tcx.hir().attrs(id)) {
+                        if cx.tcx.is_doc_hidden(impl_item.owner_id.def_id) {
                             // shouldn't be implemented when it is hidden in docs
                             return;
                         }
-                        if impl_item
-                            .generics
-                            .params
-                            .iter()
-                            .any(|gen| matches!(gen.kind, hir::GenericParamKind::Type { .. }))
-                        {
-                            // when the result of `new()` depends on a type parameter we should not require
-                            // an
-                            // impl of `Default`
+                        if !impl_item.generics.params.is_empty() {
+                            // when the result of `new()` depends on a parameter we should not require
+                            // an impl of `Default`
                             return;
                         }
                         if_chain! {
                             if sig.decl.inputs.is_empty();
                             if name == sym::new;
-                            if cx.access_levels.is_reachable(impl_item.def_id);
-                            let self_def_id = cx.tcx.hir().get_parent_item(id);
-                            let self_ty = cx.tcx.type_of(self_def_id);
+                            if cx.effective_visibilities.is_reachable(impl_item.owner_id.def_id);
+                            let self_def_id = cx.tcx.hir().get_parent_item(id.into());
+                            let self_ty = cx.tcx.type_of(self_def_id).subst_identity();
                             if self_ty == return_ty(cx, id);
                             if let Some(default_trait_id) = cx.tcx.get_diagnostic_item(sym::Default);
                             then {
                                 if self.impling_types.is_none() {
                                     let mut impls = HirIdSet::default();
                                     cx.tcx.for_each_impl(default_trait_id, |d| {
-                                        if let Some(ty_def) = cx.tcx.type_of(d).ty_adt_def() {
+                                        let ty = cx.tcx.type_of(d).subst_identity();
+                                        if let Some(ty_def) = ty.ty_adt_def() {
                                             if let Some(local_def_id) = ty_def.did().as_local() {
                                                 impls.insert(cx.tcx.hir().local_def_id_to_hir_id(local_def_id));
                                             }
@@ -125,7 +119,8 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                                 // generics
                                 if_chain! {
                                     if let Some(ref impling_types) = self.impling_types;
-                                    if let Some(self_def) = cx.tcx.type_of(self_def_id).ty_adt_def();
+                                    let self_def = cx.tcx.type_of(self_def_id).subst_identity();
+                                    if let Some(self_def) = self_def.ty_adt_def();
                                     if let Some(self_local_did) = self_def.did().as_local();
                                     let self_id = cx.tcx.hir().local_def_id_to_hir_id(self_local_did);
                                     if impling_types.contains(&self_id);
@@ -140,11 +135,10 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                                 span_lint_hir_and_then(
                                     cx,
                                     NEW_WITHOUT_DEFAULT,
-                                    id,
+                                    id.into(),
                                     impl_item.span,
                                     &format!(
-                                        "you should consider adding a `Default` implementation for `{}`",
-                                        self_type_snip
+                                        "you should consider adding a `Default` implementation for `{self_type_snip}`"
                                     ),
                                     |diag| {
                                         diag.suggest_prepend_item(
@@ -168,9 +162,9 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
 fn create_new_without_default_suggest_msg(self_type_snip: &str, generics_sugg: &str) -> String {
     #[rustfmt::skip]
     format!(
-"impl{} Default for {} {{
+"impl{generics_sugg} Default for {self_type_snip} {{
     fn default() -> Self {{
         Self::new()
     }}
-}}", generics_sugg, self_type_snip)
+}}")
 }

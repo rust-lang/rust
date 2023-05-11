@@ -15,6 +15,10 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for names that are very similar and thus confusing.
     ///
+    /// Note: this lint looks for similar names throughout each
+    /// scope. To allow it, you need to allow it on the scope
+    /// level, not on the name that is reported.
+    ///
     /// ### Why is this bad?
     /// It's hard to distinguish between names that differ only
     /// by a single character.
@@ -108,10 +112,7 @@ impl<'a, 'tcx> SimilarNamesLocalVisitor<'a, 'tcx> {
                 self.cx,
                 MANY_SINGLE_CHAR_NAMES,
                 span,
-                &format!(
-                    "{} bindings with single-character names in scope",
-                    num_single_char_names
-                ),
+                &format!("{num_single_char_names} bindings with single-character names in scope"),
             );
         }
     }
@@ -159,12 +160,10 @@ impl<'a, 'tcx, 'b> Visitor<'tcx> for SimilarNamesNameVisitor<'a, 'tcx, 'b> {
 
 #[must_use]
 fn get_exemptions(interned_name: &str) -> Option<&'static [&'static str]> {
-    for &list in ALLOWED_TO_BE_SIMILAR {
-        if allowed_to_be_similar(interned_name, list) {
-            return Some(list);
-        }
-    }
-    None
+    ALLOWED_TO_BE_SIMILAR
+        .iter()
+        .find(|&&list| allowed_to_be_similar(interned_name, list))
+        .copied()
 }
 
 #[must_use]
@@ -191,13 +190,13 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
         }
     }
 
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     fn check_ident(&mut self, ident: Ident) {
         let interned_name = ident.name.as_str();
         if interned_name.chars().any(char::is_uppercase) {
             return;
         }
-        if interned_name.chars().all(|c| c.is_digit(10) || c == '_') {
+        if interned_name.chars().all(|c| c.is_ascii_digit() || c == '_') {
             span_lint(
                 self.0.cx,
                 JUST_UNDERSCORES_AND_DIGITS,
@@ -328,7 +327,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SimilarNamesLocalVisitor<'a, 'tcx> {
         // add the pattern after the expression because the bindings aren't available
         // yet in the init
         // expression
-        SimilarNamesNameVisitor(self).visit_pat(&*local.pat);
+        SimilarNamesNameVisitor(self).visit_pat(&local.pat);
     }
     fn visit_block(&mut self, blk: &'tcx Block) {
         self.single_char_names.push(vec![]);

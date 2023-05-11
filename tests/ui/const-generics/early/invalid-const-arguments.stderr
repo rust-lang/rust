@@ -1,0 +1,70 @@
+error[E0412]: cannot find type `N` in this scope
+  --> $DIR/invalid-const-arguments.rs:5:16
+   |
+LL | struct A<const N: u8>;
+   | ---------------------- similarly named struct `A` defined here
+LL | trait Foo {}
+LL | impl Foo for A<N> {}
+   |                ^
+   |
+help: a struct with a similar name exists
+   |
+LL | impl Foo for A<A> {}
+   |                ~
+help: you might be missing a type parameter
+   |
+LL | impl<N> Foo for A<N> {}
+   |     +++
+
+error[E0412]: cannot find type `T` in this scope
+  --> $DIR/invalid-const-arguments.rs:14:32
+   |
+LL | struct A<const N: u8>;
+   | ---------------------- similarly named struct `A` defined here
+...
+LL | impl<const N: u8> Foo for C<N, T> {}
+   |                                ^
+   |
+help: a struct with a similar name exists
+   |
+LL | impl<const N: u8> Foo for C<N, A> {}
+   |                                ~
+help: you might be missing a type parameter
+   |
+LL | impl<const N: u8, T> Foo for C<N, T> {}
+   |                 +++
+
+error[E0747]: unresolved item provided when a constant was expected
+  --> $DIR/invalid-const-arguments.rs:5:16
+   |
+LL | impl Foo for A<N> {}
+   |                ^
+   |
+help: if this generic argument was intended as a const parameter, surround it with braces
+   |
+LL | impl Foo for A<{ N }> {}
+   |                +   +
+
+error[E0747]: type provided when a constant was expected
+  --> $DIR/invalid-const-arguments.rs:10:19
+   |
+LL | impl<N> Foo for B<N> {}
+   |      -            ^
+   |      |
+   |      help: consider changing this type parameter to a const parameter: `const N: u8`
+
+error[E0747]: unresolved item provided when a constant was expected
+  --> $DIR/invalid-const-arguments.rs:14:32
+   |
+LL | impl<const N: u8> Foo for C<N, T> {}
+   |                                ^
+   |
+help: if this generic argument was intended as a const parameter, surround it with braces
+   |
+LL | impl<const N: u8> Foo for C<N, { T }> {}
+   |                                +   +
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0412, E0747.
+For more information about an error, try `rustc --explain E0412`.

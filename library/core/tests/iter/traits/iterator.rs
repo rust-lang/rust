@@ -1,3 +1,5 @@
+use core::num::NonZeroUsize;
+
 /// A wrapper struct that implements `Eq` and `Ord` based on the wrapped
 /// integer modulo 3. Used to test that `Iterator::max` and `Iterator::min`
 /// return the correct element if some of them are equal.
@@ -150,11 +152,11 @@ fn test_iterator_advance_by() {
         let mut iter = v.iter();
         assert_eq!(iter.advance_by(i), Ok(()));
         assert_eq!(iter.next().unwrap(), &v[i]);
-        assert_eq!(iter.advance_by(100), Err(v.len() - 1 - i));
+        assert_eq!(iter.advance_by(100), Err(NonZeroUsize::new(100 - (v.len() - 1 - i)).unwrap()));
     }
 
     assert_eq!(v.iter().advance_by(v.len()), Ok(()));
-    assert_eq!(v.iter().advance_by(100), Err(v.len()));
+    assert_eq!(v.iter().advance_by(100), Err(NonZeroUsize::new(100 - v.len()).unwrap()));
 }
 
 #[test]
@@ -165,11 +167,11 @@ fn test_iterator_advance_back_by() {
         let mut iter = v.iter();
         assert_eq!(iter.advance_back_by(i), Ok(()));
         assert_eq!(iter.next_back().unwrap(), &v[v.len() - 1 - i]);
-        assert_eq!(iter.advance_back_by(100), Err(v.len() - 1 - i));
+        assert_eq!(iter.advance_back_by(100), Err(NonZeroUsize::new(100 - (v.len() - 1 - i)).unwrap()));
     }
 
     assert_eq!(v.iter().advance_back_by(v.len()), Ok(()));
-    assert_eq!(v.iter().advance_back_by(100), Err(v.len()));
+    assert_eq!(v.iter().advance_back_by(100), Err(NonZeroUsize::new(100 - v.len()).unwrap()));
 }
 
 #[test]
@@ -180,11 +182,11 @@ fn test_iterator_rev_advance_back_by() {
         let mut iter = v.iter().rev();
         assert_eq!(iter.advance_back_by(i), Ok(()));
         assert_eq!(iter.next_back().unwrap(), &v[i]);
-        assert_eq!(iter.advance_back_by(100), Err(v.len() - 1 - i));
+        assert_eq!(iter.advance_back_by(100), Err(NonZeroUsize::new(100 - (v.len() - 1 - i)).unwrap()));
     }
 
     assert_eq!(v.iter().rev().advance_back_by(v.len()), Ok(()));
-    assert_eq!(v.iter().rev().advance_back_by(100), Err(v.len()));
+    assert_eq!(v.iter().rev().advance_back_by(100), Err(NonZeroUsize::new(100 - v.len()).unwrap()));
 }
 
 #[test]
@@ -424,11 +426,11 @@ fn test_iterator_rev_advance_by() {
         let mut iter = v.iter().rev();
         assert_eq!(iter.advance_by(i), Ok(()));
         assert_eq!(iter.next().unwrap(), &v[v.len() - 1 - i]);
-        assert_eq!(iter.advance_by(100), Err(v.len() - 1 - i));
+        assert_eq!(iter.advance_by(100), Err(NonZeroUsize::new(100 - (v.len() - 1 - i)).unwrap()));
     }
 
     assert_eq!(v.iter().rev().advance_by(v.len()), Ok(()));
-    assert_eq!(v.iter().rev().advance_by(100), Err(v.len()));
+    assert_eq!(v.iter().rev().advance_by(100), Err(NonZeroUsize::new(100 - v.len()).unwrap()));
 }
 
 #[test]
@@ -573,6 +575,18 @@ fn iter_try_collect_uses_try_fold_not_next() {
     let it = (0..10).map(Some);
     let _ = PanicOnNext(it).try_collect::<Vec<_>>();
     // validation is just that it didn't panic.
+}
+
+#[test]
+fn test_next_chunk() {
+    let mut it = 0..12;
+    assert_eq!(it.next_chunk().unwrap(), [0, 1, 2, 3]);
+    assert_eq!(it.next_chunk().unwrap(), []);
+    assert_eq!(it.next_chunk().unwrap(), [4, 5, 6, 7, 8, 9]);
+    assert_eq!(it.next_chunk::<4>().unwrap_err().as_slice(), &[10, 11]);
+
+    let mut it = std::iter::repeat_with(|| panic!());
+    assert_eq!(it.next_chunk::<0>().unwrap(), []);
 }
 
 // just tests by whether or not this compiles

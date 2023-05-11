@@ -1,4 +1,4 @@
-// aux-build:helper.rs
+//@aux-build:helper.rs
 
 #![warn(clippy::borrow_interior_mutable_const)]
 #![allow(clippy::declare_interior_mutable_const)]

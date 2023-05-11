@@ -1,0 +1,39 @@
+error: variable declared with type underscore
+  --> $DIR/let_with_type_underscore.rs:11:5
+   |
+LL |     let x: _ = 1;
+   |     ^^^^^^^^^^^^^
+   |
+help: remove the explicit type `_` declaration
+  --> $DIR/let_with_type_underscore.rs:11:10
+   |
+LL |     let x: _ = 1;
+   |          ^^^
+   = note: `-D clippy::let-with-type-underscore` implied by `-D warnings`
+
+error: variable declared with type underscore
+  --> $DIR/let_with_type_underscore.rs:12:5
+   |
+LL |     let _: _ = 2;
+   |     ^^^^^^^^^^^^^
+   |
+help: remove the explicit type `_` declaration
+  --> $DIR/let_with_type_underscore.rs:12:10
+   |
+LL |     let _: _ = 2;
+   |          ^^^
+
+error: variable declared with type underscore
+  --> $DIR/let_with_type_underscore.rs:13:5
+   |
+LL |     let x: _ = func();
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+help: remove the explicit type `_` declaration
+  --> $DIR/let_with_type_underscore.rs:13:10
+   |
+LL |     let x: _ = func();
+   |          ^^^
+
+error: aborting due to 3 previous errors
+

@@ -49,6 +49,9 @@ use crate::sys::os as os_imp;
 ///     Ok(())
 /// }
 /// ```
+#[doc(alias = "pwd")]
+#[doc(alias = "getcwd")]
+#[doc(alias = "GetCurrentDirectory")]
 #[stable(feature = "env", since = "1.0.0")]
 pub fn current_dir() -> io::Result<PathBuf> {
     os_imp::getcwd()
@@ -233,21 +236,14 @@ fn _var(key: &OsStr) -> Result<String, VarError> {
 }
 
 /// Fetches the environment variable `key` from the current process, returning
-/// [`None`] if the variable isn't set or there's another error.
+/// [`None`] if the variable isn't set or if there is another error.
 ///
-/// Note that the method will not check if the environment variable
-/// is valid Unicode. If you want to have an error on invalid UTF-8,
-/// use the [`var`] function instead.
-///
-/// # Errors
-///
-/// This function returns an error if the environment variable isn't set.
-///
-/// This function may return an error if the environment variable's name contains
+/// It may return `None` if the environment variable's name contains
 /// the equal sign character (`=`) or the NUL character.
 ///
-/// This function may return an error if the environment variable's value contains
-/// the NUL character.
+/// Note that this function will not check if the environment variable
+/// is valid Unicode. If you want to have an error on invalid UTF-8,
+/// use the [`var`] function instead.
 ///
 /// # Examples
 ///
@@ -567,6 +563,13 @@ impl Error for JoinPathsError {
 ///
 /// [msdn]: https://docs.microsoft.com/en-us/windows/win32/api/userenv/nf-userenv-getuserprofiledirectorya
 ///
+/// # Deprecation
+///
+/// This function is deprecated because the behaviour on Windows is not correct.
+/// The 'HOME' environment variable is not standard on Windows, and may not produce
+/// desired results; for instance, under Cygwin or Mingw it will return `/home/you`
+/// when it should return `C:\Users\you`.
+///
 /// # Examples
 ///
 /// ```
@@ -577,10 +580,10 @@ impl Error for JoinPathsError {
 ///     None => println!("Impossible to get your home dir!"),
 /// }
 /// ```
-#[rustc_deprecated(
+#[deprecated(
     since = "1.29.0",
-    reason = "This function's behavior is unexpected and probably not what you want. \
-              Consider using a crate from crates.io instead."
+    note = "This function's behavior may be unexpected on Windows. \
+            Consider using a crate from crates.io instead."
 )]
 #[must_use]
 #[stable(feature = "env", since = "1.0.0")]
@@ -600,7 +603,7 @@ pub fn home_dir() -> Option<PathBuf> {
 /// # Platform-specific behavior
 ///
 /// On Unix, returns the value of the `TMPDIR` environment variable if it is
-/// set, otherwise for non-Android it returns `/tmp`. If Android, since there
+/// set, otherwise for non-Android it returns `/tmp`. On Android, since there
 /// is no global temporary folder (it is usually allocated per-app), it returns
 /// `/data/local/tmp`.
 /// On Windows, the behavior is equivalent to that of [`GetTempPath2`][GetTempPath2] /
@@ -644,36 +647,23 @@ pub fn temp_dir() -> PathBuf {
 ///
 /// # Security
 ///
-/// The output of this function should not be used in anything that might have
-/// security implications. For example:
+/// The output of this function should not be trusted for anything
+/// that might have security implications. Basically, if users can run
+/// the executable, they can change the output arbitrarily.
 ///
-/// ```
-/// fn main() {
-///     println!("{:?}", std::env::current_exe());
-/// }
-/// ```
+/// As an example, you can easily introduce a race condition. It goes
+/// like this:
 ///
-/// On Linux systems, if this is compiled as `foo`:
+/// 1. You get the path to the current executable using `current_exe()`, and
+///    store it in a variable.
+/// 2. Time passes. A malicious actor removes the current executable, and
+///    replaces it with a malicious one.
+/// 3. You then use the stored path to re-execute the current
+///    executable.
 ///
-/// ```bash
-/// $ rustc foo.rs
-/// $ ./foo
-/// Ok("/home/alex/foo")
-/// ```
-///
-/// And you make a hard link of the program:
-///
-/// ```bash
-/// $ ln foo bar
-/// ```
-///
-/// When you run it, you won’t get the path of the original executable, you’ll
-/// get the path of the hard link:
-///
-/// ```bash
-/// $ ./bar
-/// Ok("/home/alex/bar")
-/// ```
+/// You expected to safely execute the current executable, but you're
+/// instead executing something completely different. The code you
+/// just executed run with your privileges.
 ///
 /// This sort of behavior has been known to [lead to privilege escalation] when
 /// used incorrectly.
@@ -898,6 +888,7 @@ pub mod consts {
     /// - x86_64
     /// - arm
     /// - aarch64
+    /// - loongarch64
     /// - m68k
     /// - mips
     /// - mips64

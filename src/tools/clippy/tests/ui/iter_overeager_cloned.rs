@@ -1,6 +1,6 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::iter_overeager_cloned, clippy::redundant_clone, clippy::filter_next)]
-#![allow(dead_code)]
+#![allow(dead_code, clippy::let_unit_value)]
 
 fn main() {
     let vec = vec!["1".to_string(), "2".to_string(), "3".to_string()];
@@ -45,6 +45,9 @@ fn main() {
 
     // Should probably stay as it is.
     let _ = [0, 1, 2, 3, 4].iter().cloned().take(10);
+
+    // `&Range<_>` doesn't implement `IntoIterator`
+    let _ = [0..1, 2..5].iter().cloned().flatten();
 }
 
 // #8527

@@ -1,8 +1,7 @@
 // Targets the Cortex-R4F/R5F processor (ARMv7-R)
 
 use crate::abi::Endian;
-use crate::spec::{LinkerFlavor, LldFlavor, PanicStrategy, RelocModel};
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -13,16 +12,15 @@ pub fn target() -> Target {
         options: TargetOptions {
             abi: "eabihf".into(),
             endian: Endian::Big,
-            linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
-            executables: true,
+            linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
             linker: Some("rust-lld".into()),
             relocation_model: RelocModel::Static,
             panic_strategy: PanicStrategy::Abort,
             features: "+vfp3,-d32,-fp16".into(),
-            max_atomic_width: Some(32),
+            max_atomic_width: Some(64),
             emit_debug_gdb_scripts: false,
             // GCC and Clang default to 8 for arm-none here
-            c_enum_min_bits: 8,
+            c_enum_min_bits: Some(8),
             ..Default::default()
         },
     }

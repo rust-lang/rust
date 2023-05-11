@@ -1,9 +1,9 @@
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_index::bit_set::HybridBitSet;
 use rustc_index::interval::IntervalSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_middle::mir::{BasicBlock, Body, ConstraintCategory, Local, Location};
-use rustc_middle::ty::{Ty, TypeFoldable};
+use rustc_middle::ty::{Ty, TyCtxt, TypeVisitable, TypeVisitableExt};
 use rustc_trait_selection::traits::query::dropck_outlives::DropckOutlivesResult;
 use rustc_trait_selection::traits::query::type_op::outlives::DropckOutlives;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
@@ -41,12 +41,13 @@ pub(super) fn trace<'mir, 'tcx>(
     elements: &Rc<RegionValueElements>,
     flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'mir, 'tcx>>,
     move_data: &MoveData<'tcx>,
-    live_locals: Vec<Local>,
+    relevant_live_locals: Vec<Local>,
+    boring_locals: Vec<Local>,
     polonius_drop_used: Option<Vec<(Local, Location)>>,
 ) {
     debug!("trace()");
 
-    let local_use_map = &LocalUseMap::build(&live_locals, elements, body);
+    let local_use_map = &LocalUseMap::build(&relevant_live_locals, elements, body);
 
     let cx = LivenessContext {
         typeck,
@@ -55,16 +56,18 @@ pub(super) fn trace<'mir, 'tcx>(
         elements,
         local_use_map,
         move_data,
-        drop_data: FxHashMap::default(),
+        drop_data: FxIndexMap::default(),
     };
 
     let mut results = LivenessResults::new(cx);
 
     if let Some(drop_used) = polonius_drop_used {
-        results.add_extra_drop_facts(drop_used, live_locals.iter().copied().collect())
+        results.add_extra_drop_facts(drop_used, relevant_live_locals.iter().copied().collect())
     }
 
-    results.compute_for_all_locals(live_locals);
+    results.compute_for_all_locals(relevant_live_locals);
+
+    results.dropck_boring_locals(boring_locals);
 }
 
 /// Contextual state for the type-liveness generator.
@@ -82,7 +85,7 @@ struct LivenessContext<'me, 'typeck, 'flow, 'tcx> {
     move_data: &'me MoveData<'tcx>,
 
     /// Cache for the results of `dropck_outlives` query.
-    drop_data: FxHashMap<Ty<'tcx>, DropData<'tcx>>,
+    drop_data: FxIndexMap<Ty<'tcx>, DropData<'tcx>>,
 
     /// Results of dataflow tracking which variables (and paths) have been
     /// initialized.
@@ -95,7 +98,7 @@ struct LivenessContext<'me, 'typeck, 'flow, 'tcx> {
 
 struct DropData<'tcx> {
     dropck_result: DropckOutlivesResult<'tcx>,
-    region_constraint_data: Option<Rc<QueryRegionConstraints<'tcx>>>,
+    region_constraint_data: Option<&'tcx QueryRegionConstraints<'tcx>>,
 }
 
 struct LivenessResults<'me, 'typeck, 'flow, 'tcx> {
@@ -133,8 +136,8 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
         }
     }
 
-    fn compute_for_all_locals(&mut self, live_locals: Vec<Local>) {
-        for local in live_locals {
+    fn compute_for_all_locals(&mut self, relevant_live_locals: Vec<Local>) {
+        for local in relevant_live_locals {
             self.reset_local_state();
             self.add_defs_for(local);
             self.compute_use_live_points_for(local);
@@ -157,6 +160,24 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
         }
     }
 
+    // Runs dropck for locals whose liveness isn't relevant. This is
+    // necessary to eagerly detect unbound recursion during drop glue computation.
+    fn dropck_boring_locals(&mut self, boring_locals: Vec<Local>) {
+        for local in boring_locals {
+            let local_ty = self.cx.body.local_decls[local].ty;
+            let drop_data = self.cx.drop_data.entry(local_ty).or_insert_with({
+                let typeck = &mut self.cx.typeck;
+                move || LivenessContext::compute_drop_data(typeck, local_ty)
+            });
+
+            drop_data.dropck_result.report_overflows(
+                self.cx.typeck.infcx.tcx,
+                self.cx.body.local_decls[local].source_info.span,
+                local_ty,
+            );
+        }
+    }
+
     /// Add extra drop facts needed for Polonius.
     ///
     /// Add facts for all locals with free regions, since regions may outlive
@@ -164,12 +185,12 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
     fn add_extra_drop_facts(
         &mut self,
         drop_used: Vec<(Local, Location)>,
-        live_locals: FxHashSet<Local>,
+        relevant_live_locals: FxIndexSet<Local>,
     ) {
         let locations = IntervalSet::new(self.cx.elements.num_points());
 
         for (local, location) in drop_used {
-            if !live_locals.contains(&local) {
+            if !relevant_live_locals.contains(&local) {
                 let local_ty = self.cx.body.local_decls[local].ty;
                 if local_ty.has_free_regions() {
                     self.cx.add_drop_live_facts_for(local, local_ty, &[location], &locations);
@@ -237,7 +258,7 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
 
                 let block = self.cx.elements.to_location(block_start).block;
                 self.stack.extend(
-                    self.cx.body.predecessors()[block]
+                    self.cx.body.basic_blocks.predecessors()[block]
                         .iter()
                         .map(|&pred_bb| self.cx.body.terminator_loc(pred_bb))
                         .map(|pred_loc| self.cx.elements.point_from_location(pred_loc)),
@@ -307,7 +328,7 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
         debug_assert!(self.drop_live_at.contains(term_point));
 
         // Otherwise, scan backwards through the statements in the
-        // block.  One of them may be either a definition or use
+        // block. One of them may be either a definition or use
         // live point.
         let term_location = self.cx.elements.to_location(term_point);
         debug_assert_eq!(self.cx.body.terminator_loc(term_location.block), term_location,);
@@ -333,7 +354,7 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
         }
 
         let body = self.cx.body;
-        for &pred_block in body.predecessors()[block].iter() {
+        for &pred_block in body.basic_blocks.predecessors()[block].iter() {
             debug!("compute_drop_live_points_for_block: pred_block = {:?}", pred_block,);
 
             // Check whether the variable is (at least partially)
@@ -414,8 +435,7 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
         //
         // What we *actually* generate is a store to a temporary
         // for the call (`TMP = call()...`) and then a
-        // `DropAndReplace` to swap that with `X`
-        // (`DropAndReplace` has very particular semantics).
+        // `Drop(X)` followed by `X = TMP`  to swap that with `X`.
     }
 }
 
@@ -456,7 +476,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
     /// points `live_at`.
     fn add_use_live_facts_for(
         &mut self,
-        value: impl TypeFoldable<'tcx>,
+        value: impl TypeVisitable<TyCtxt<'tcx>>,
         live_at: &IntervalSet<PointIndex>,
     ) {
         debug!("add_use_live_facts_for(value={:?})", value);
@@ -521,7 +541,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
     fn make_all_regions_live(
         elements: &RegionValueElements,
         typeck: &mut TypeChecker<'_, 'tcx>,
-        value: impl TypeFoldable<'tcx>,
+        value: impl TypeVisitable<TyCtxt<'tcx>>,
         live_at: &IntervalSet<PointIndex>,
     ) {
         debug!("make_all_regions_live(value={:?})", value);

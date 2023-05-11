@@ -169,6 +169,7 @@ if [ "$SCCACHE_BUCKET" != "" ]; then
     args="$args --env SCCACHE_REGION"
     args="$args --env AWS_ACCESS_KEY_ID"
     args="$args --env AWS_SECRET_ACCESS_KEY"
+    args="$args --env AWS_REGION"
 else
     mkdir -p $HOME/.cache/sccache
     args="$args --env SCCACHE_DIR=/sccache --volume $HOME/.cache/sccache:/sccache"
@@ -213,7 +214,16 @@ else
   args="$args --volume $HOME/.cargo:/cargo"
   args="$args --volume $HOME/rustsrc:$HOME/rustsrc"
   args="$args --volume /tmp/toolstate:/tmp/toolstate"
-  args="$args --env LOCAL_USER_ID=`id -u`"
+
+  id=$(id -u)
+  if [[ "$id" != 0 && "$(docker -v)" =~ ^podman ]]; then
+    # Rootless podman creates a separate user namespace, where an inner
+    # LOCAL_USER_ID will map to a different subuid range on the host.
+    # The "keep-id" mode maps the current UID directly into the container.
+    args="$args --env NO_CHANGE_USER=1 --userns=keep-id"
+  else
+    args="$args --env LOCAL_USER_ID=$id"
+  fi
 fi
 
 if [ "$dev" = "1" ]

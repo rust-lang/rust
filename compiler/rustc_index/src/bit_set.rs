@@ -1,5 +1,3 @@
-use crate::vec::{Idx, IndexVec};
-use arrayvec::ArrayVec;
 use std::fmt;
 use std::iter;
 use std::marker::PhantomData;
@@ -8,7 +6,12 @@ use std::ops::{BitAnd, BitAndAssign, BitOrAssign, Bound, Not, Range, RangeBounds
 use std::rc::Rc;
 use std::slice;
 
+use arrayvec::ArrayVec;
+use smallvec::{smallvec, SmallVec};
+
 use rustc_macros::{Decodable, Encodable};
+
+use crate::{Idx, IndexVec};
 
 use Chunk::*;
 
@@ -111,7 +114,7 @@ macro_rules! bit_relations_inherent_impls {
 #[derive(Eq, PartialEq, Hash, Decodable, Encodable)]
 pub struct BitSet<T> {
     domain_size: usize,
-    words: Vec<Word>,
+    words: SmallVec<[Word; 2]>,
     marker: PhantomData<T>,
 }
 
@@ -127,14 +130,15 @@ impl<T: Idx> BitSet<T> {
     #[inline]
     pub fn new_empty(domain_size: usize) -> BitSet<T> {
         let num_words = num_words(domain_size);
-        BitSet { domain_size, words: vec![0; num_words], marker: PhantomData }
+        BitSet { domain_size, words: smallvec![0; num_words], marker: PhantomData }
     }
 
     /// Creates a new, filled bitset with a given `domain_size`.
     #[inline]
     pub fn new_filled(domain_size: usize) -> BitSet<T> {
         let num_words = num_words(domain_size);
-        let mut result = BitSet { domain_size, words: vec![!0; num_words], marker: PhantomData };
+        let mut result =
+            BitSet { domain_size, words: smallvec![!0; num_words], marker: PhantomData };
         result.clear_excess_bits();
         result
     }
@@ -209,7 +213,7 @@ impl<T: Idx> BitSet<T> {
             self.words[start_word_index] |= !(start_mask - 1);
             // And all trailing bits (i.e. from 0..=end) in the end word,
             // including the end.
-            self.words[end_word_index] |= end_mask | end_mask - 1;
+            self.words[end_word_index] |= end_mask | (end_mask - 1);
         } else {
             self.words[start_word_index] |= end_mask | (end_mask - start_mask);
         }
@@ -337,6 +341,12 @@ impl<T: Idx> BitRelations<BitSet<T>> for BitSet<T> {
     fn intersect(&mut self, other: &BitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
         bitwise(&mut self.words, &other.words, |a, b| a & b)
+    }
+}
+
+impl<T: Idx> From<GrowableBitSet<T>> for BitSet<T> {
+    fn from(bit_set: GrowableBitSet<T>) -> Self {
+        bit_set.bit_set
     }
 }
 
@@ -477,6 +487,11 @@ impl<T: Idx> ChunkedBitSet<T> {
                 (words[word_index] & mask) != 0
             }
         }
+    }
+
+    #[inline]
+    pub fn iter(&self) -> ChunkedBitIter<'_, T> {
+        ChunkedBitIter::new(self)
     }
 
     /// Insert `elem`. Returns whether the set has changed.
@@ -676,6 +691,48 @@ impl<T: Idx> BitRelations<HybridBitSet<T>> for ChunkedBitSet<T> {
     }
 }
 
+impl<T: Idx> BitRelations<ChunkedBitSet<T>> for BitSet<T> {
+    fn union(&mut self, other: &ChunkedBitSet<T>) -> bool {
+        sequential_update(|elem| self.insert(elem), other.iter())
+    }
+
+    fn subtract(&mut self, _other: &ChunkedBitSet<T>) -> bool {
+        unimplemented!("implement if/when necessary");
+    }
+
+    fn intersect(&mut self, other: &ChunkedBitSet<T>) -> bool {
+        assert_eq!(self.domain_size(), other.domain_size);
+        let mut changed = false;
+        for (i, chunk) in other.chunks.iter().enumerate() {
+            let mut words = &mut self.words[i * CHUNK_WORDS..];
+            if words.len() > CHUNK_WORDS {
+                words = &mut words[..CHUNK_WORDS];
+            }
+            match chunk {
+                Chunk::Zeros(..) => {
+                    for word in words {
+                        if *word != 0 {
+                            changed = true;
+                            *word = 0;
+                        }
+                    }
+                }
+                Chunk::Ones(..) => (),
+                Chunk::Mixed(_, _, data) => {
+                    for (i, word) in words.iter_mut().enumerate() {
+                        let new_val = *word & data[i];
+                        if new_val != *word {
+                            changed = true;
+                            *word = new_val;
+                        }
+                    }
+                }
+            }
+        }
+        changed
+    }
+}
+
 impl<T> Clone for ChunkedBitSet<T> {
     fn clone(&self) -> Self {
         ChunkedBitSet {
@@ -694,6 +751,84 @@ impl<T> Clone for ChunkedBitSet<T> {
         debug_assert_eq!(self.chunks.len(), from.chunks.len());
 
         self.chunks.clone_from(&from.chunks)
+    }
+}
+
+pub struct ChunkedBitIter<'a, T: Idx> {
+    index: usize,
+    bitset: &'a ChunkedBitSet<T>,
+}
+
+impl<'a, T: Idx> ChunkedBitIter<'a, T> {
+    #[inline]
+    fn new(bitset: &'a ChunkedBitSet<T>) -> ChunkedBitIter<'a, T> {
+        ChunkedBitIter { index: 0, bitset }
+    }
+}
+
+impl<'a, T: Idx> Iterator for ChunkedBitIter<'a, T> {
+    type Item = T;
+    fn next(&mut self) -> Option<T> {
+        while self.index < self.bitset.domain_size() {
+            let elem = T::new(self.index);
+            let chunk = &self.bitset.chunks[chunk_index(elem)];
+            match &chunk {
+                Zeros(chunk_domain_size) => {
+                    self.index += *chunk_domain_size as usize;
+                }
+                Ones(_chunk_domain_size) => {
+                    self.index += 1;
+                    return Some(elem);
+                }
+                Mixed(_chunk_domain_size, _, words) => loop {
+                    let elem = T::new(self.index);
+                    self.index += 1;
+                    let (word_index, mask) = chunk_word_index_and_mask(elem);
+                    if (words[word_index] & mask) != 0 {
+                        return Some(elem);
+                    }
+                    if self.index % CHUNK_BITS == 0 {
+                        break;
+                    }
+                },
+            }
+        }
+        None
+    }
+
+    fn fold<B, F>(mut self, mut init: B, mut f: F) -> B
+    where
+        F: FnMut(B, Self::Item) -> B,
+    {
+        // If `next` has already been called, we may not be at the start of a chunk, so we first
+        // advance the iterator to the start of the next chunk, before proceeding in chunk sized
+        // steps.
+        while self.index % CHUNK_BITS != 0 {
+            let Some(item) = self.next() else {
+                return init
+            };
+            init = f(init, item);
+        }
+        let start_chunk = self.index / CHUNK_BITS;
+        let chunks = &self.bitset.chunks[start_chunk..];
+        for (i, chunk) in chunks.iter().enumerate() {
+            let base = (start_chunk + i) * CHUNK_BITS;
+            match chunk {
+                Chunk::Zeros(_) => (),
+                Chunk::Ones(limit) => {
+                    for j in 0..(*limit as usize) {
+                        init = f(init, T::new(base + j));
+                    }
+                }
+                Chunk::Mixed(_, _, words) => {
+                    init = BitIter::new(&**words).fold(init, |val, mut item: T| {
+                        item.increment_by(base);
+                        f(val, item)
+                    });
+                }
+            }
+        }
+        init
     }
 }
 
@@ -751,11 +886,7 @@ fn sequential_update<T: Idx>(
     mut self_update: impl FnMut(T) -> bool,
     it: impl Iterator<Item = T>,
 ) -> bool {
-    let mut changed = false;
-    for elem in it {
-        changed |= self_update(elem);
-    }
-    changed
+    it.fold(false, |changed, elem| self_update(elem) | changed)
 }
 
 // Optimization of intersection for SparseBitSet that's generic
@@ -934,12 +1065,8 @@ impl<T> Clone for BitSet<T> {
     }
 
     fn clone_from(&mut self, from: &Self) {
-        if self.domain_size != from.domain_size {
-            self.words.resize(from.domain_size, 0);
-            self.domain_size = from.domain_size;
-        }
-
-        self.words.copy_from_slice(&from.words);
+        self.domain_size = from.domain_size;
+        self.words.clone_from(&from.words);
     }
 }
 
@@ -968,7 +1095,7 @@ impl<T: Idx> ToString for BitSet<T> {
                 assert!(mask <= 0xFF);
                 let byte = word & mask;
 
-                result.push_str(&format!("{}{:02x}", sep, byte));
+                result.push_str(&format!("{sep}{byte:02x}"));
 
                 if remain <= 8 {
                     break;
@@ -1419,6 +1546,22 @@ impl<T: Idx> GrowableBitSet<T> {
         let (word_index, mask) = word_index_and_mask(elem);
         self.bit_set.words.get(word_index).map_or(false, |word| (word & mask) != 0)
     }
+
+    #[inline]
+    pub fn iter(&self) -> BitIter<'_, T> {
+        self.bit_set.iter()
+    }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.bit_set.count()
+    }
+}
+
+impl<T: Idx> From<BitSet<T>> for GrowableBitSet<T> {
+    fn from(bit_set: BitSet<T>) -> Self {
+        Self { bit_set }
+    }
 }
 
 /// A fixed-size 2D bit matrix type with a dense representation.
@@ -1432,7 +1575,7 @@ impl<T: Idx> GrowableBitSet<T> {
 pub struct BitMatrix<R: Idx, C: Idx> {
     num_rows: usize,
     num_columns: usize,
-    words: Vec<Word>,
+    words: SmallVec<[Word; 2]>,
     marker: PhantomData<(R, C)>,
 }
 
@@ -1445,7 +1588,7 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
         BitMatrix {
             num_rows,
             num_columns,
-            words: vec![0; num_rows * words_per_row],
+            words: smallvec![0; num_rows * words_per_row],
             marker: PhantomData,
         }
     }
@@ -1709,12 +1852,12 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
 
     /// Iterates through all the columns set to true in a given row of
     /// the matrix.
-    pub fn iter<'a>(&'a self, row: R) -> impl Iterator<Item = C> + 'a {
+    pub fn iter(&self, row: R) -> impl Iterator<Item = C> + '_ {
         self.row(row).into_iter().flat_map(|r| r.iter())
     }
 
     pub fn row(&self, row: R) -> Option<&HybridBitSet<C>> {
-        if let Some(Some(row)) = self.rows.get(row) { Some(row) } else { None }
+        self.rows.get(row)?.as_ref()
     }
 
     /// Intersects `row` with `set`. `set` can be either `BitSet` or
@@ -1731,7 +1874,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
         }
     }
 
-    /// Subtracts `set from `row`. `set` can be either `BitSet` or
+    /// Subtracts `set` from `row`. `set` can be either `BitSet` or
     /// `HybridBitSet`. Has no effect if `row` does not exist.
     ///
     /// Returns true if the row was changed.

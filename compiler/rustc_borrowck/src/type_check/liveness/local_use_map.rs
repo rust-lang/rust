@@ -1,5 +1,5 @@
 use rustc_data_structures::vec_linked_list as vll;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{Body, Local, Location};
 
@@ -18,7 +18,7 @@ use crate::region_infer::values::{PointIndex, RegionValueElements};
 /// (and code simplicity) was favored. The rationale is that we only keep
 /// a small number of `IndexVec`s throughout the entire analysis while, in
 /// contrast, we're accessing each `Local` *many* times.
-crate struct LocalUseMap {
+pub(crate) struct LocalUseMap {
     /// Head of a linked list of **definitions** of each variable --
     /// definition in this context means assignment, e.g., `x` is
     /// defined in `x = y` but not `y`; that first def is the head of
@@ -46,7 +46,7 @@ struct Appearance {
 }
 
 rustc_index::newtype_index! {
-    pub struct AppearanceIndex { .. }
+    pub struct AppearanceIndex {}
 }
 
 impl vll::LinkElem for Appearance {
@@ -58,8 +58,12 @@ impl vll::LinkElem for Appearance {
 }
 
 impl LocalUseMap {
-    crate fn build(live_locals: &[Local], elements: &RegionValueElements, body: &Body<'_>) -> Self {
-        let nones = IndexVec::from_elem_n(None, body.local_decls.len());
+    pub(crate) fn build(
+        live_locals: &[Local],
+        elements: &RegionValueElements,
+        body: &Body<'_>,
+    ) -> Self {
+        let nones = IndexVec::from_elem(None, &body.local_decls);
         let mut local_use_map = LocalUseMap {
             first_def_at: nones.clone(),
             first_use_at: nones.clone(),
@@ -72,7 +76,7 @@ impl LocalUseMap {
         }
 
         let mut locals_with_use_data: IndexVec<Local, bool> =
-            IndexVec::from_elem_n(false, body.local_decls.len());
+            IndexVec::from_elem(false, &body.local_decls);
         live_locals.iter().for_each(|&local| locals_with_use_data[local] = true);
 
         LocalUseMapBuild { local_use_map: &mut local_use_map, elements, locals_with_use_data }
@@ -81,17 +85,17 @@ impl LocalUseMap {
         local_use_map
     }
 
-    crate fn defs(&self, local: Local) -> impl Iterator<Item = PointIndex> + '_ {
+    pub(crate) fn defs(&self, local: Local) -> impl Iterator<Item = PointIndex> + '_ {
         vll::iter(self.first_def_at[local], &self.appearances)
             .map(move |aa| self.appearances[aa].point_index)
     }
 
-    crate fn uses(&self, local: Local) -> impl Iterator<Item = PointIndex> + '_ {
+    pub(crate) fn uses(&self, local: Local) -> impl Iterator<Item = PointIndex> + '_ {
         vll::iter(self.first_use_at[local], &self.appearances)
             .map(move |aa| self.appearances[aa].point_index)
     }
 
-    crate fn drops(&self, local: Local) -> impl Iterator<Item = PointIndex> + '_ {
+    pub(crate) fn drops(&self, local: Local) -> impl Iterator<Item = PointIndex> + '_ {
         vll::iter(self.first_drop_at[local], &self.appearances)
             .map(move |aa| self.appearances[aa].point_index)
     }
@@ -153,7 +157,7 @@ impl LocalUseMapBuild<'_> {
 }
 
 impl Visitor<'_> for LocalUseMapBuild<'_> {
-    fn visit_local(&mut self, &local: &Local, context: PlaceContext, location: Location) {
+    fn visit_local(&mut self, local: Local, context: PlaceContext, location: Location) {
         if self.locals_with_use_data[local] {
             match def_use::categorize(context) {
                 Some(DefUse::Def) => self.insert_def(local, location),

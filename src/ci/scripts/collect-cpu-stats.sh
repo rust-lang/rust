@@ -6,4 +6,5 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-python3 src/ci/cpu-usage-over-time.py &> cpu-usage.csv &
+mkdir -p build
+python3 src/ci/cpu-usage-over-time.py &> build/cpu-usage.csv &

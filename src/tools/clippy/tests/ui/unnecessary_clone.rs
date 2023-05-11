@@ -1,7 +1,7 @@
 // does not test any rustfixable lints
-
 #![warn(clippy::clone_on_ref_ptr)]
-#![allow(unused, clippy::redundant_clone, clippy::unnecessary_wraps)]
+#![allow(unused)]
+#![allow(clippy::redundant_clone, clippy::uninlined_format_args, clippy::unnecessary_wraps)]
 
 use std::cell::RefCell;
 use std::rc::{self, Rc};
@@ -42,14 +42,6 @@ fn clone_on_copy_generic<T: Copy>(t: T) {
     Some(t).clone();
 }
 
-fn clone_on_double_ref() {
-    let x = vec![1];
-    let y = &&x;
-    let z: &Vec<_> = y.clone();
-
-    println!("{:p} {:p}", *y, z);
-}
-
 mod many_derefs {
     struct A;
     struct B;
@@ -83,11 +75,6 @@ mod many_derefs {
         let a = A;
         let _: E = a.clone();
         let _: E = *****a;
-    }
-
-    fn check(mut encoded: &[u8]) {
-        let _ = &mut encoded.clone();
-        let _ = &encoded.clone();
     }
 }
 

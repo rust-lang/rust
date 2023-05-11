@@ -1,7 +1,8 @@
 // FIXME: run-rustfix waiting on multi-span suggestions
 
+#![feature(lint_reasons)]
 #![warn(clippy::ref_binding_to_reference)]
-#![allow(clippy::needless_borrowed_reference)]
+#![allow(clippy::needless_borrowed_reference, clippy::explicit_auto_deref)]
 
 fn f1(_: &str) {}
 macro_rules! m2 {
@@ -72,4 +73,13 @@ impl T1 for S {
     fn f(&ref x: &&String) {
         let _: &&String = x;
     }
+}
+
+fn check_expect_suppression() {
+    let x = String::new();
+    #[expect(clippy::ref_binding_to_reference)]
+    let _: &&String = match Some(&x) {
+        Some(ref x) => x,
+        None => return,
+    };
 }

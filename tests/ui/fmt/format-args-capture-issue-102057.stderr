@@ -1,0 +1,45 @@
+error[E0425]: cannot find value `a` in this scope
+  --> $DIR/format-args-capture-issue-102057.rs:2:18
+   |
+LL |     format!("\x7Ba}");
+   |                  ^ not found in this scope
+
+error[E0425]: cannot find value `a` in this scope
+  --> $DIR/format-args-capture-issue-102057.rs:4:18
+   |
+LL |     format!("\x7Ba\x7D");
+   |                  ^ not found in this scope
+
+error[E0425]: cannot find value `b` in this scope
+  --> $DIR/format-args-capture-issue-102057.rs:9:22
+   |
+LL |     format!("\x7Ba} {b}");
+   |                      ^ help: a local variable with a similar name exists: `a`
+
+error[E0425]: cannot find value `b` in this scope
+  --> $DIR/format-args-capture-issue-102057.rs:11:25
+   |
+LL |     format!("\x7Ba\x7D {b}");
+   |                         ^ help: a local variable with a similar name exists: `a`
+
+error[E0425]: cannot find value `b` in this scope
+  --> $DIR/format-args-capture-issue-102057.rs:13:25
+   |
+LL |     format!("\x7Ba} \x7Bb}");
+   |                         ^ help: a local variable with a similar name exists: `a`
+
+error[E0425]: cannot find value `b` in this scope
+  --> $DIR/format-args-capture-issue-102057.rs:15:28
+   |
+LL |     format!("\x7Ba\x7D \x7Bb}");
+   |                            ^ help: a local variable with a similar name exists: `a`
+
+error[E0425]: cannot find value `b` in this scope
+  --> $DIR/format-args-capture-issue-102057.rs:17:28
+   |
+LL |     format!("\x7Ba\x7D \x7Bb\x7D");
+   |                            ^ help: a local variable with a similar name exists: `a`
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

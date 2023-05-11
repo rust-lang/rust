@@ -64,3 +64,23 @@ fn main() {
     let a5 = a1.clone();
     forget(a5);
 }
+
+#[allow(unused)]
+#[allow(clippy::unit_cmp)]
+fn issue9482(x: u8) {
+    fn println_and<T>(t: T) -> T {
+        println!("foo");
+        t
+    }
+
+    match x {
+        0 => drop(println_and(12)), // Don't lint (copy type), we only care about side-effects
+        1 => drop(println_and(String::new())), // Don't lint (no copy type), we only care about side-effects
+        2 => {
+            drop(println_and(13)); // Lint, even if we only care about the side-effect, it's already in a block
+        },
+        3 if drop(println_and(14)) == () => (), // Lint, idiomatic use is only in body of `Arm`
+        4 => drop(2),                           // Lint, not a fn/method call
+        _ => (),
+    }
+}

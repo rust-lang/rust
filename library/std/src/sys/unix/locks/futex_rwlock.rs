@@ -1,10 +1,8 @@
 use crate::sync::atomic::{
-    AtomicI32,
+    AtomicU32,
     Ordering::{Acquire, Relaxed, Release},
 };
 use crate::sys::futex::{futex_wait, futex_wake, futex_wake_all};
-
-pub type MovableRwLock = RwLock;
 
 pub struct RwLock {
     // The state consists of a 30-bit reader counter, a 'readers waiting' flag, and a 'writers waiting' flag.
@@ -14,67 +12,70 @@ pub struct RwLock {
     //   0x3FFF_FFFF: Write locked
     // Bit 30: Readers are waiting on this futex.
     // Bit 31: Writers are waiting on the writer_notify futex.
-    state: AtomicI32,
+    state: AtomicU32,
     // The 'condition variable' to notify writers through.
     // Incremented on every signal.
-    writer_notify: AtomicI32,
+    writer_notify: AtomicU32,
 }
 
-const READ_LOCKED: i32 = 1;
-const MASK: i32 = (1 << 30) - 1;
-const WRITE_LOCKED: i32 = MASK;
-const MAX_READERS: i32 = MASK - 1;
-const READERS_WAITING: i32 = 1 << 30;
-const WRITERS_WAITING: i32 = 1 << 31;
+const READ_LOCKED: u32 = 1;
+const MASK: u32 = (1 << 30) - 1;
+const WRITE_LOCKED: u32 = MASK;
+const MAX_READERS: u32 = MASK - 1;
+const READERS_WAITING: u32 = 1 << 30;
+const WRITERS_WAITING: u32 = 1 << 31;
 
-fn is_unlocked(state: i32) -> bool {
+#[inline]
+fn is_unlocked(state: u32) -> bool {
     state & MASK == 0
 }
 
-fn is_write_locked(state: i32) -> bool {
+#[inline]
+fn is_write_locked(state: u32) -> bool {
     state & MASK == WRITE_LOCKED
 }
 
-fn has_readers_waiting(state: i32) -> bool {
+#[inline]
+fn has_readers_waiting(state: u32) -> bool {
     state & READERS_WAITING != 0
 }
 
-fn has_writers_waiting(state: i32) -> bool {
+#[inline]
+fn has_writers_waiting(state: u32) -> bool {
     state & WRITERS_WAITING != 0
 }
 
-fn is_read_lockable(state: i32) -> bool {
+#[inline]
+fn is_read_lockable(state: u32) -> bool {
     // This also returns false if the counter could overflow if we tried to read lock it.
     //
     // We don't allow read-locking if there's readers waiting, even if the lock is unlocked
     // and there's no writers waiting. The only situation when this happens is after unlocking,
     // at which point the unlocking thread might be waking up writers, which have priority over readers.
-    // The unlocking thread will clear the readers waiting bit and wake up readers, if necssary.
+    // The unlocking thread will clear the readers waiting bit and wake up readers, if necessary.
     state & MASK < MAX_READERS && !has_readers_waiting(state) && !has_writers_waiting(state)
 }
 
-fn has_reached_max_readers(state: i32) -> bool {
+#[inline]
+fn has_reached_max_readers(state: u32) -> bool {
     state & MASK == MAX_READERS
 }
 
 impl RwLock {
     #[inline]
     pub const fn new() -> Self {
-        Self { state: AtomicI32::new(0), writer_notify: AtomicI32::new(0) }
+        Self { state: AtomicU32::new(0), writer_notify: AtomicU32::new(0) }
     }
 
     #[inline]
-    pub unsafe fn destroy(&self) {}
-
-    #[inline]
-    pub unsafe fn try_read(&self) -> bool {
+    pub fn try_read(&self) -> bool {
         self.state
             .fetch_update(Acquire, Relaxed, |s| is_read_lockable(s).then(|| s + READ_LOCKED))
             .is_ok()
     }
 
     #[inline]
-    pub unsafe fn read(&self) {
+    pub fn read(&self) {
         let state = self.state.load(Relaxed);
         if !is_read_lockable(state)
             || self
@@ -141,14 +142,14 @@ impl RwLock {
     }
 
     #[inline]
-    pub unsafe fn try_write(&self) -> bool {
+    pub fn try_write(&self) -> bool {
         self.state
             .fetch_update(Acquire, Relaxed, |s| is_unlocked(s).then(|| s + WRITE_LOCKED))
             .is_ok()
     }
 
     #[inline]
-    pub unsafe fn write(&self) {
+    pub fn write(&self) {
         if self.state.compare_exchange_weak(0, WRITE_LOCKED, Acquire, Relaxed).is_err() {
             self.write_contended();
         }
@@ -208,9 +209,8 @@ impl RwLock {
 
             // Don't go to sleep if the lock has become available,
             // or if the writers waiting bit is no longer set.
-            let s = self.state.load(Relaxed);
-            if is_unlocked(state) || !has_writers_waiting(s) {
-                state = s;
+            state = self.state.load(Relaxed);
+            if is_unlocked(state) || !has_writers_waiting(state) {
                 continue;
             }
 
@@ -227,7 +227,7 @@ impl RwLock {
     /// If both are waiting, this will wake up only one writer, but will fall
     /// back to waking up readers if there was no writer to wake up.
     #[cold]
-    fn wake_writer_or_readers(&self, mut state: i32) {
+    fn wake_writer_or_readers(&self, mut state: u32) {
         assert!(is_unlocked(state));
 
         // The readers waiting bit might be turned on at any point now,
@@ -284,10 +284,15 @@ impl RwLock {
     fn wake_writer(&self) -> bool {
         self.writer_notify.fetch_add(1, Release);
         futex_wake(&self.writer_notify)
+        // Note that FreeBSD and DragonFlyBSD don't tell us whether they woke
+        // up any threads or not, and always return `false` here. That still
+        // results in correct behaviour: it just means readers get woken up as
+        // well in case both readers and writers were waiting.
     }
 
     /// Spin for a while, but stop directly at the given condition.
-    fn spin_until(&self, f: impl Fn(i32) -> bool) -> i32 {
+    #[inline]
+    fn spin_until(&self, f: impl Fn(u32) -> bool) -> u32 {
         let mut spin = 100; // Chosen by fair dice roll.
         loop {
             let state = self.state.load(Relaxed);
@@ -299,12 +304,14 @@ impl RwLock {
         }
     }
 
-    fn spin_write(&self) -> i32 {
+    #[inline]
+    fn spin_write(&self) -> u32 {
         // Stop spinning when it's unlocked or when there's waiting writers, to keep things somewhat fair.
         self.spin_until(|state| is_unlocked(state) || has_writers_waiting(state))
     }
 
-    fn spin_read(&self) -> i32 {
+    #[inline]
+    fn spin_read(&self) -> u32 {
         // Stop spinning when it's unlocked or read locked, or when there's waiting threads.
         self.spin_until(|state| {
             !is_write_locked(state) || has_readers_waiting(state) || has_writers_waiting(state)

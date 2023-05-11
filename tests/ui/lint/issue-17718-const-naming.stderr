@@ -1,0 +1,23 @@
+error: constant `foo` is never used
+  --> $DIR/issue-17718-const-naming.rs:4:7
+   |
+LL | const foo: isize = 3;
+   |       ^^^
+   |
+note: the lint level is defined here
+  --> $DIR/issue-17718-const-naming.rs:2:9
+   |
+LL | #![deny(warnings)]
+   |         ^^^^^^^^
+   = note: `#[deny(dead_code)]` implied by `#[deny(warnings)]`
+
+error: constant `foo` should have an upper case name
+  --> $DIR/issue-17718-const-naming.rs:4:7
+   |
+LL | const foo: isize = 3;
+   |       ^^^ help: convert the identifier to upper case (notice the capitalization): `FOO`
+   |
+   = note: `#[deny(non_upper_case_globals)]` implied by `#[deny(warnings)]`
+
+error: aborting due to 2 previous errors
+

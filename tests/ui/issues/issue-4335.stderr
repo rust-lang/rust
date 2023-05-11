@@ -1,0 +1,13 @@
+error[E0507]: cannot move out of `*v`, as `v` is a captured variable in an `FnMut` closure
+  --> $DIR/issue-4335.rs:6:20
+   |
+LL | fn f<'r, T>(v: &'r T) -> Box<dyn FnMut() -> T + 'r> {
+   |             - captured outer variable
+LL |     id(Box::new(|| *v))
+   |                 -- ^^ move occurs because `*v` has type `T`, which does not implement the `Copy` trait
+   |                 |
+   |                 captured by this `FnMut` closure
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0507`.

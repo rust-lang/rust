@@ -3,12 +3,12 @@
 use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::pathvec_std;
-
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, Expr, MetaItem, Mutability};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
+use thin_vec::{thin_vec, ThinVec};
 
 pub fn expand_deriving_rustc_decodable(
     cx: &mut ExtCtxt<'_>,
@@ -16,53 +16,47 @@ pub fn expand_deriving_rustc_decodable(
     mitem: &MetaItem,
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
+    is_const: bool,
 ) {
     let krate = sym::rustc_serialize;
     let typaram = sym::__D;
 
     let trait_def = TraitDef {
         span,
-        attributes: Vec::new(),
-        path: Path::new_(vec![krate, sym::Decodable], None, vec![], PathKind::Global),
+        path: Path::new_(vec![krate, sym::Decodable], vec![], PathKind::Global),
+        skip_path_as_bound: false,
+        needs_copy_as_bound_if_packed: true,
         additional_bounds: Vec::new(),
-        generics: Bounds::empty(),
-        is_unsafe: false,
         supports_unions: false,
         methods: vec![MethodDef {
             name: sym::decode,
             generics: Bounds {
                 bounds: vec![(
                     typaram,
-                    vec![Path::new_(vec![krate, sym::Decoder], None, vec![], PathKind::Global)],
+                    vec![Path::new_(vec![krate, sym::Decoder], vec![], PathKind::Global)],
                 )],
             },
-            explicit_self: None,
-            args: vec![(
-                Ptr(Box::new(Literal(Path::new_local(typaram))), Borrowed(None, Mutability::Mut)),
+            explicit_self: false,
+            nonself_args: vec![(
+                Ref(Box::new(Path(Path::new_local(typaram))), Mutability::Mut),
                 sym::d,
             )],
-            ret_ty: Literal(Path::new_(
+            ret_ty: Path(Path::new_(
                 pathvec_std!(result::Result),
-                None,
                 vec![
                     Box::new(Self_),
-                    Box::new(Literal(Path::new_(
-                        vec![typaram, sym::Error],
-                        None,
-                        vec![],
-                        PathKind::Local,
-                    ))),
+                    Box::new(Path(Path::new_(vec![typaram, sym::Error], vec![], PathKind::Local))),
                 ],
                 PathKind::Std,
             )),
-            attributes: Vec::new(),
-            is_unsafe: false,
-            unify_fieldless_variants: false,
+            attributes: ast::AttrVec::new(),
+            fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
             combine_substructure: combine_substructure(Box::new(|a, b, c| {
                 decodable_substructure(a, b, c, krate)
             })),
         }],
         associated_types: Vec::new(),
+        is_const,
     };
 
     trait_def.expand(cx, mitem, item, push)
@@ -73,8 +67,8 @@ fn decodable_substructure(
     trait_span: Span,
     substr: &Substructure<'_>,
     krate: Symbol,
-) -> P<Expr> {
-    let decoder = substr.nonself_args[0].clone();
+) -> BlockOrExpr {
+    let decoder = substr.nonselflike_args[0].clone();
     let recurse = vec![
         Ident::new(krate, trait_span),
         Ident::new(sym::Decodable, trait_span),
@@ -85,11 +79,11 @@ fn decodable_substructure(
     let blkarg = Ident::new(sym::_d, trait_span);
     let blkdecoder = cx.expr_ident(trait_span, blkarg);
 
-    match *substr.fields {
-        StaticStruct(_, ref summary) => {
-            let nfields = match *summary {
-                Unnamed(ref fields, _) => fields.len(),
-                Named(ref fields) => fields.len(),
+    let expr = match substr.fields {
+        StaticStruct(_, summary) => {
+            let nfields = match summary {
+                Unnamed(fields, _) => fields.len(),
+                Named(fields) => fields.len(),
             };
             let fn_read_struct_field_path: Vec<_> =
                 cx.def_site_path(&[sym::rustc_serialize, sym::Decoder, sym::read_struct_field]);
@@ -102,7 +96,7 @@ fn decodable_substructure(
                         cx.expr_call_global(
                             span,
                             fn_read_struct_field_path.clone(),
-                            vec![
+                            thin_vec![
                                 blkdecoder.clone(),
                                 cx.expr_str(span, name),
                                 cx.expr_usize(span, field),
@@ -118,7 +112,7 @@ fn decodable_substructure(
             cx.expr_call_global(
                 trait_span,
                 fn_read_struct_path,
-                vec![
+                thin_vec![
                     decoder,
                     cx.expr_str(trait_span, substr.type_ident.name),
                     cx.expr_usize(trait_span, nfields),
@@ -126,11 +120,11 @@ fn decodable_substructure(
                 ],
             )
         }
-        StaticEnum(_, ref fields) => {
+        StaticEnum(_, fields) => {
             let variant = Ident::new(sym::i, trait_span);
 
-            let mut arms = Vec::with_capacity(fields.len() + 1);
-            let mut variants = Vec::with_capacity(fields.len());
+            let mut arms = ThinVec::with_capacity(fields.len() + 1);
+            let mut variants = ThinVec::with_capacity(fields.len());
 
             let fn_read_enum_variant_arg_path: Vec<_> =
                 cx.def_site_path(&[sym::rustc_serialize, sym::Decoder, sym::read_enum_variant_arg]);
@@ -147,7 +141,7 @@ fn decodable_substructure(
                             cx.expr_call_global(
                                 span,
                                 fn_read_enum_variant_arg_path.clone(),
-                                vec![blkdecoder.clone(), idx, exprdecode.clone()],
+                                thin_vec![blkdecoder.clone(), idx, exprdecode.clone()],
                             ),
                         )
                     });
@@ -162,14 +156,13 @@ fn decodable_substructure(
                 cx.expr_match(trait_span, cx.expr_ident(trait_span, variant), arms),
             );
             let lambda = cx.lambda(trait_span, vec![blkarg, variant], result);
-            let variant_vec = cx.expr_vec(trait_span, variants);
-            let variant_vec = cx.expr_addr_of(trait_span, variant_vec);
+            let variant_array_ref = cx.expr_array_ref(trait_span, variants);
             let fn_read_enum_variant_path: Vec<_> =
                 cx.def_site_path(&[sym::rustc_serialize, sym::Decoder, sym::read_enum_variant]);
             let result = cx.expr_call_global(
                 trait_span,
                 fn_read_enum_variant_path,
-                vec![blkdecoder, variant_vec, lambda],
+                thin_vec![blkdecoder, variant_array_ref, lambda],
             );
             let fn_read_enum_path: Vec<_> =
                 cx.def_site_path(&[sym::rustc_serialize, sym::Decoder, sym::read_enum]);
@@ -177,7 +170,7 @@ fn decodable_substructure(
             cx.expr_call_global(
                 trait_span,
                 fn_read_enum_path,
-                vec![
+                thin_vec![
                     decoder,
                     cx.expr_str(trait_span, substr.type_ident.name),
                     cx.lambda1(trait_span, result, blkarg),
@@ -185,7 +178,8 @@ fn decodable_substructure(
             )
         }
         _ => cx.bug("expected StaticEnum or StaticStruct in derive(Decodable)"),
-    }
+    };
+    BlockOrExpr::new_expr(expr)
 }
 
 /// Creates a decoder for a single enum variant/struct:
@@ -201,10 +195,10 @@ fn decode_static_fields<F>(
 where
     F: FnMut(&mut ExtCtxt<'_>, Span, Symbol, usize) -> P<Expr>,
 {
-    match *fields {
-        Unnamed(ref fields, is_tuple) => {
+    match fields {
+        Unnamed(fields, is_tuple) => {
             let path_expr = cx.expr_path(outer_pat_path);
-            if !is_tuple {
+            if !*is_tuple {
                 path_expr
             } else {
                 let fields = fields
@@ -216,7 +210,7 @@ where
                 cx.expr_call(trait_span, path_expr, fields)
             }
         }
-        Named(ref fields) => {
+        Named(fields) => {
             // use the field's span to get nicer error messages.
             let fields = fields
                 .iter()

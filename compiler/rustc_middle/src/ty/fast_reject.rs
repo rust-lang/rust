@@ -1,34 +1,23 @@
 use crate::mir::Mutability;
-use crate::ty::{self, Ty, TyCtxt};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use crate::ty::subst::GenericArgKind;
+use crate::ty::{self, SubstsRef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_hir::def_id::DefId;
-use rustc_query_system::ich::StableHashingContext;
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::mem;
+use std::iter;
 
-use self::SimplifiedTypeGen::*;
+use self::SimplifiedType::*;
 
-pub type SimplifiedType = SimplifiedTypeGen<DefId>;
-
-/// See `simplify_type`
-///
-/// Note that we keep this type generic over the type of identifier it uses
-/// because we sometimes need to use SimplifiedTypeGen values as stable sorting
-/// keys (in which case we use a DefPathHash as id-type) but in the general case
-/// the non-stable but fast to construct DefId-version is the better choice.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-pub enum SimplifiedTypeGen<D>
-where
-    D: Copy + Debug + Eq,
-{
+/// See `simplify_type`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable)]
+pub enum SimplifiedType {
     BoolSimplifiedType,
     CharSimplifiedType,
     IntSimplifiedType(ty::IntTy),
     UintSimplifiedType(ty::UintTy),
     FloatSimplifiedType(ty::FloatTy),
-    AdtSimplifiedType(D),
-    ForeignSimplifiedType(D),
+    AdtSimplifiedType(DefId),
+    ForeignSimplifiedType(DefId),
     StrSimplifiedType,
     ArraySimplifiedType,
     SliceSimplifiedType,
@@ -39,40 +28,80 @@ where
     /// A trait object, all of whose components are markers
     /// (e.g., `dyn Send + Sync`).
     MarkerTraitObjectSimplifiedType,
-    TraitSimplifiedType(D),
-    ClosureSimplifiedType(D),
-    GeneratorSimplifiedType(D),
+    TraitSimplifiedType(DefId),
+    ClosureSimplifiedType(DefId),
+    GeneratorSimplifiedType(DefId),
     GeneratorWitnessSimplifiedType(usize),
-    OpaqueSimplifiedType(D),
+    GeneratorWitnessMIRSimplifiedType(DefId),
     FunctionSimplifiedType(usize),
-    ParameterSimplifiedType,
+    PlaceholderSimplifiedType,
 }
 
+/// Generic parameters are pretty much just bound variables, e.g.
+/// the type of `fn foo<'a, T>(x: &'a T) -> u32 { ... }` can be thought of as
+/// `for<'a, T> fn(&'a T) -> u32`.
+///
+/// Typecheck of `foo` has to succeed for all possible generic arguments, so
+/// during typeck, we have to treat its generic parameters as if they
+/// were placeholders.
+///
+/// But when calling `foo` we only have to provide a specific generic argument.
+/// In that case the generic parameters are instantiated with inference variables.
+/// As we use `simplify_type` before that instantiation happens, we just treat
+/// generic parameters as if they were inference variables in that case.
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum TreatParams {
-    /// Treat parameters as bound types in the given environment.
+    /// Treat parameters as infer vars. This is the correct mode for caching
+    /// an impl's type for lookup.
+    AsCandidateKey,
+    /// Treat parameters as placeholders in the given environment. This is the
+    /// correct mode for *lookup*, as during candidate selection.
     ///
-    /// For this to be correct the input has to be fully normalized
-    /// in its param env as it may otherwise cause us to ignore
-    /// potentially applying impls.
-    AsBoundTypes,
-    AsPlaceholders,
+    /// This also treats projections with inference variables as infer vars
+    /// since they could be further normalized.
+    ForLookup,
+    /// Treat parameters as placeholders in the given environment. This is the
+    /// correct mode for *lookup*, as during candidate selection.
+    ///
+    /// N.B. during deep rejection, this acts identically to `ForLookup`.
+    NextSolverLookup,
+}
+
+/// During fast-rejection, we have the choice of treating projection types
+/// as either simplifiable or not, depending on whether we expect the projection
+/// to be normalized/rigid.
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
+pub enum TreatProjections {
+    /// In the old solver we don't try to normalize projections
+    /// when looking up impls and only access them by using the
+    /// current self type. This means that if the self type is
+    /// a projection which could later be normalized, we must not
+    /// treat it as rigid.
+    ForLookup,
+    /// We can treat projections in the self type as opaque as
+    /// we separately look up impls for the normalized self type.
+    NextSolverLookup,
 }
 
 /// Tries to simplify a type by only returning the outermost injective¹ layer, if one exists.
 ///
+/// **This function should only be used if you need to store or retrieve the type from some
+/// hashmap. If you want to quickly decide whether two types may unify, use the [DeepRejectCtxt]
+/// instead.**
+///
 /// The idea is to get something simple that we can use to quickly decide if two types could unify,
-/// for example during method lookup.
+/// for example during method lookup. If this function returns `Some(x)` it can only unify with
+/// types for which this method returns either `Some(x)` as well or `None`.
 ///
 /// A special case here are parameters and projections, which are only injective
-/// if they are treated as bound types.
+/// if they are treated as placeholders.
 ///
 /// For example when storing impls based on their simplified self type, we treat
-/// generic parameters as placeholders. We must not simplify them here,
+/// generic parameters as if they were inference variables. We must not simplify them here,
 /// as they can unify with any other type.
 ///
-/// With projections we have to be even more careful, as even when treating them as bound types
-/// this is still only correct if they are fully normalized.
+/// With projections we have to be even more careful, as treating them as placeholders
+/// is only correct if they are fully normalized.
 ///
 /// ¹ meaning that if the outermost layers are different, then the whole types are also different.
 pub fn simplify_type<'tcx>(
@@ -101,101 +130,258 @@ pub fn simplify_type<'tcx>(
         ty::FnDef(def_id, _) | ty::Closure(def_id, _) => Some(ClosureSimplifiedType(def_id)),
         ty::Generator(def_id, _, _) => Some(GeneratorSimplifiedType(def_id)),
         ty::GeneratorWitness(tys) => Some(GeneratorWitnessSimplifiedType(tys.skip_binder().len())),
+        ty::GeneratorWitnessMIR(def_id, _) => Some(GeneratorWitnessMIRSimplifiedType(def_id)),
         ty::Never => Some(NeverSimplifiedType),
         ty::Tuple(tys) => Some(TupleSimplifiedType(tys.len())),
         ty::FnPtr(f) => Some(FunctionSimplifiedType(f.skip_binder().inputs().len())),
-        ty::Param(_) | ty::Projection(_) => match treat_params {
-            // When treated as bound types, projections don't unify with
-            // anything as long as they are fully normalized.
+        ty::Placeholder(..) => Some(PlaceholderSimplifiedType),
+        ty::Param(_) => match treat_params {
+            TreatParams::ForLookup | TreatParams::NextSolverLookup => {
+                Some(PlaceholderSimplifiedType)
+            }
+            TreatParams::AsCandidateKey => None,
+        },
+        ty::Alias(..) => match treat_params {
+            // When treating `ty::Param` as a placeholder, projections also
+            // don't unify with anything else as long as they are fully normalized.
             //
             // We will have to be careful with lazy normalization here.
-            TreatParams::AsBoundTypes => {
-                debug!("treating `{}` as a bound type", ty);
-                Some(ParameterSimplifiedType)
-            }
-            TreatParams::AsPlaceholders => None,
+            // FIXME(lazy_normalization): This is probably not right...
+            TreatParams::ForLookup if !ty.has_non_region_infer() => Some(PlaceholderSimplifiedType),
+            TreatParams::NextSolverLookup => Some(PlaceholderSimplifiedType),
+            TreatParams::ForLookup | TreatParams::AsCandidateKey => None,
         },
-        ty::Opaque(def_id, _) => Some(OpaqueSimplifiedType(def_id)),
         ty::Foreign(def_id) => Some(ForeignSimplifiedType(def_id)),
-        ty::Placeholder(..) | ty::Bound(..) | ty::Infer(_) | ty::Error(_) => None,
+        ty::Bound(..) | ty::Infer(_) | ty::Error(_) => None,
     }
 }
 
-impl<D: Copy + Debug + Eq> SimplifiedTypeGen<D> {
-    pub fn def(self) -> Option<D> {
+impl SimplifiedType {
+    pub fn def(self) -> Option<DefId> {
         match self {
             AdtSimplifiedType(d)
             | ForeignSimplifiedType(d)
             | TraitSimplifiedType(d)
             | ClosureSimplifiedType(d)
             | GeneratorSimplifiedType(d)
-            | OpaqueSimplifiedType(d) => Some(d),
+            | GeneratorWitnessMIRSimplifiedType(d) => Some(d),
             _ => None,
-        }
-    }
-
-    pub fn map_def<U, F>(self, map: F) -> SimplifiedTypeGen<U>
-    where
-        F: Fn(D) -> U,
-        U: Copy + Debug + Eq,
-    {
-        match self {
-            BoolSimplifiedType => BoolSimplifiedType,
-            CharSimplifiedType => CharSimplifiedType,
-            IntSimplifiedType(t) => IntSimplifiedType(t),
-            UintSimplifiedType(t) => UintSimplifiedType(t),
-            FloatSimplifiedType(t) => FloatSimplifiedType(t),
-            AdtSimplifiedType(d) => AdtSimplifiedType(map(d)),
-            ForeignSimplifiedType(d) => ForeignSimplifiedType(map(d)),
-            StrSimplifiedType => StrSimplifiedType,
-            ArraySimplifiedType => ArraySimplifiedType,
-            SliceSimplifiedType => SliceSimplifiedType,
-            RefSimplifiedType(m) => RefSimplifiedType(m),
-            PtrSimplifiedType(m) => PtrSimplifiedType(m),
-            NeverSimplifiedType => NeverSimplifiedType,
-            MarkerTraitObjectSimplifiedType => MarkerTraitObjectSimplifiedType,
-            TupleSimplifiedType(n) => TupleSimplifiedType(n),
-            TraitSimplifiedType(d) => TraitSimplifiedType(map(d)),
-            ClosureSimplifiedType(d) => ClosureSimplifiedType(map(d)),
-            GeneratorSimplifiedType(d) => GeneratorSimplifiedType(map(d)),
-            GeneratorWitnessSimplifiedType(n) => GeneratorWitnessSimplifiedType(n),
-            OpaqueSimplifiedType(d) => OpaqueSimplifiedType(map(d)),
-            FunctionSimplifiedType(n) => FunctionSimplifiedType(n),
-            ParameterSimplifiedType => ParameterSimplifiedType,
         }
     }
 }
 
-impl<'a, D> HashStable<StableHashingContext<'a>> for SimplifiedTypeGen<D>
-where
-    D: Copy + Debug + Eq + HashStable<StableHashingContext<'a>>,
-{
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        mem::discriminant(self).hash_stable(hcx, hasher);
-        match *self {
-            BoolSimplifiedType
-            | CharSimplifiedType
-            | StrSimplifiedType
-            | ArraySimplifiedType
-            | SliceSimplifiedType
-            | NeverSimplifiedType
-            | ParameterSimplifiedType
-            | MarkerTraitObjectSimplifiedType => {
-                // nothing to do
+/// Given generic arguments from an obligation and an impl,
+/// could these two be unified after replacing parameters in the
+/// the impl with inference variables.
+///
+/// For obligations, parameters won't be replaced by inference
+/// variables and only unify with themselves. We treat them
+/// the same way we treat placeholders.
+///
+/// We also use this function during coherence. For coherence the
+/// impls only have to overlap for some value, so we treat parameters
+/// on both sides like inference variables. This behavior is toggled
+/// using the `treat_obligation_params` field.
+#[derive(Debug, Clone, Copy)]
+pub struct DeepRejectCtxt {
+    pub treat_obligation_params: TreatParams,
+}
+
+impl DeepRejectCtxt {
+    pub fn substs_refs_may_unify<'tcx>(
+        self,
+        obligation_substs: SubstsRef<'tcx>,
+        impl_substs: SubstsRef<'tcx>,
+    ) -> bool {
+        iter::zip(obligation_substs, impl_substs).all(|(obl, imp)| {
+            match (obl.unpack(), imp.unpack()) {
+                // We don't fast reject based on regions for now.
+                (GenericArgKind::Lifetime(_), GenericArgKind::Lifetime(_)) => true,
+                (GenericArgKind::Type(obl), GenericArgKind::Type(imp)) => {
+                    self.types_may_unify(obl, imp)
+                }
+                (GenericArgKind::Const(obl), GenericArgKind::Const(imp)) => {
+                    self.consts_may_unify(obl, imp)
+                }
+                _ => bug!("kind mismatch: {obl} {imp}"),
             }
-            RefSimplifiedType(m) | PtrSimplifiedType(m) => m.hash_stable(hcx, hasher),
-            IntSimplifiedType(t) => t.hash_stable(hcx, hasher),
-            UintSimplifiedType(t) => t.hash_stable(hcx, hasher),
-            FloatSimplifiedType(t) => t.hash_stable(hcx, hasher),
-            AdtSimplifiedType(d) => d.hash_stable(hcx, hasher),
-            TupleSimplifiedType(n) => n.hash_stable(hcx, hasher),
-            TraitSimplifiedType(d) => d.hash_stable(hcx, hasher),
-            ClosureSimplifiedType(d) => d.hash_stable(hcx, hasher),
-            GeneratorSimplifiedType(d) => d.hash_stable(hcx, hasher),
-            GeneratorWitnessSimplifiedType(n) => n.hash_stable(hcx, hasher),
-            OpaqueSimplifiedType(d) => d.hash_stable(hcx, hasher),
-            FunctionSimplifiedType(n) => n.hash_stable(hcx, hasher),
-            ForeignSimplifiedType(d) => d.hash_stable(hcx, hasher),
+        })
+    }
+
+    pub fn types_may_unify<'tcx>(self, obligation_ty: Ty<'tcx>, impl_ty: Ty<'tcx>) -> bool {
+        match impl_ty.kind() {
+            // Start by checking whether the type in the impl may unify with
+            // pretty much everything. Just return `true` in that case.
+            ty::Param(_) | ty::Error(_) | ty::Alias(..) => return true,
+            // These types only unify with inference variables or their own
+            // variant.
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Adt(..)
+            | ty::Str
+            | ty::Array(..)
+            | ty::Slice(..)
+            | ty::RawPtr(..)
+            | ty::Dynamic(..)
+            | ty::Ref(..)
+            | ty::Never
+            | ty::Tuple(..)
+            | ty::FnPtr(..)
+            | ty::Foreign(..) => {}
+            ty::FnDef(..)
+            | ty::Closure(..)
+            | ty::Generator(..)
+            | ty::GeneratorWitness(..)
+            | ty::GeneratorWitnessMIR(..)
+            | ty::Placeholder(..)
+            | ty::Bound(..)
+            | ty::Infer(_) => bug!("unexpected impl_ty: {impl_ty}"),
+        }
+
+        let k = impl_ty.kind();
+        match *obligation_ty.kind() {
+            // Purely rigid types, use structural equivalence.
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Str
+            | ty::Never
+            | ty::Foreign(_) => obligation_ty == impl_ty,
+            ty::Ref(_, obl_ty, obl_mutbl) => match k {
+                &ty::Ref(_, impl_ty, impl_mutbl) => {
+                    obl_mutbl == impl_mutbl && self.types_may_unify(obl_ty, impl_ty)
+                }
+                _ => false,
+            },
+            ty::Adt(obl_def, obl_substs) => match k {
+                &ty::Adt(impl_def, impl_substs) => {
+                    obl_def == impl_def && self.substs_refs_may_unify(obl_substs, impl_substs)
+                }
+                _ => false,
+            },
+            ty::Slice(obl_ty) => {
+                matches!(k, &ty::Slice(impl_ty) if self.types_may_unify(obl_ty, impl_ty))
+            }
+            ty::Array(obl_ty, obl_len) => match k {
+                &ty::Array(impl_ty, impl_len) => {
+                    self.types_may_unify(obl_ty, impl_ty)
+                        && self.consts_may_unify(obl_len, impl_len)
+                }
+                _ => false,
+            },
+            ty::Tuple(obl) => match k {
+                &ty::Tuple(imp) => {
+                    obl.len() == imp.len()
+                        && iter::zip(obl, imp).all(|(obl, imp)| self.types_may_unify(obl, imp))
+                }
+                _ => false,
+            },
+            ty::RawPtr(obl) => match k {
+                ty::RawPtr(imp) => obl.mutbl == imp.mutbl && self.types_may_unify(obl.ty, imp.ty),
+                _ => false,
+            },
+            ty::Dynamic(obl_preds, ..) => {
+                // Ideally we would walk the existential predicates here or at least
+                // compare their length. But considering that the relevant `Relate` impl
+                // actually sorts and deduplicates these, that doesn't work.
+                matches!(k, ty::Dynamic(impl_preds, ..) if
+                    obl_preds.principal_def_id() == impl_preds.principal_def_id()
+                )
+            }
+            ty::FnPtr(obl_sig) => match k {
+                ty::FnPtr(impl_sig) => {
+                    let ty::FnSig { inputs_and_output, c_variadic, unsafety, abi } =
+                        obl_sig.skip_binder();
+                    let impl_sig = impl_sig.skip_binder();
+
+                    abi == impl_sig.abi
+                        && c_variadic == impl_sig.c_variadic
+                        && unsafety == impl_sig.unsafety
+                        && inputs_and_output.len() == impl_sig.inputs_and_output.len()
+                        && iter::zip(inputs_and_output, impl_sig.inputs_and_output)
+                            .all(|(obl, imp)| self.types_may_unify(obl, imp))
+                }
+                _ => false,
+            },
+
+            // Impls cannot contain these types as these cannot be named directly.
+            ty::FnDef(..) | ty::Closure(..) | ty::Generator(..) => false,
+
+            // Placeholder types don't unify with anything on their own
+            ty::Placeholder(..) | ty::Bound(..) => false,
+
+            // Depending on the value of `treat_obligation_params`, we either
+            // treat generic parameters like placeholders or like inference variables.
+            ty::Param(_) => match self.treat_obligation_params {
+                TreatParams::ForLookup | TreatParams::NextSolverLookup => false,
+                TreatParams::AsCandidateKey => true,
+            },
+
+            ty::Infer(ty::IntVar(_)) => impl_ty.is_integral(),
+
+            ty::Infer(ty::FloatVar(_)) => impl_ty.is_floating_point(),
+
+            ty::Infer(_) => true,
+
+            // As we're walking the whole type, it may encounter projections
+            // inside of binders and what not, so we're just going to assume that
+            // projections can unify with other stuff.
+            //
+            // Looking forward to lazy normalization this is the safer strategy anyways.
+            ty::Alias(..) => true,
+
+            ty::Error(_) => true,
+
+            ty::GeneratorWitness(..) | ty::GeneratorWitnessMIR(..) => {
+                bug!("unexpected obligation type: {:?}", obligation_ty)
+            }
+        }
+    }
+
+    pub fn consts_may_unify(self, obligation_ct: ty::Const<'_>, impl_ct: ty::Const<'_>) -> bool {
+        match impl_ct.kind() {
+            ty::ConstKind::Expr(_)
+            | ty::ConstKind::Param(_)
+            | ty::ConstKind::Unevaluated(_)
+            | ty::ConstKind::Error(_) => {
+                return true;
+            }
+            ty::ConstKind::Value(_) => {}
+            ty::ConstKind::Infer(_) | ty::ConstKind::Bound(..) | ty::ConstKind::Placeholder(_) => {
+                bug!("unexpected impl arg: {:?}", impl_ct)
+            }
+        }
+
+        let k = impl_ct.kind();
+        match obligation_ct.kind() {
+            ty::ConstKind::Param(_) => match self.treat_obligation_params {
+                TreatParams::ForLookup | TreatParams::NextSolverLookup => false,
+                TreatParams::AsCandidateKey => true,
+            },
+
+            // Placeholder consts don't unify with anything on their own
+            ty::ConstKind::Placeholder(_) => false,
+
+            // As we don't necessarily eagerly evaluate constants,
+            // they might unify with any value.
+            ty::ConstKind::Expr(_) | ty::ConstKind::Unevaluated(_) | ty::ConstKind::Error(_) => {
+                true
+            }
+            ty::ConstKind::Value(obl) => match k {
+                ty::ConstKind::Value(imp) => obl == imp,
+                _ => true,
+            },
+
+            ty::ConstKind::Infer(_) => true,
+
+            ty::ConstKind::Bound(..) => {
+                bug!("unexpected obl const: {:?}", obligation_ct)
+            }
         }
     }
 }

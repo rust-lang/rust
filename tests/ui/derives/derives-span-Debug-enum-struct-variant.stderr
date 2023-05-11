@@ -1,0 +1,21 @@
+error[E0277]: `Error` doesn't implement `Debug`
+  --> $DIR/derives-span-Debug-enum-struct-variant.rs:9:6
+   |
+LL | #[derive(Debug)]
+   |          ----- in this derive macro expansion
+...
+LL |      x: Error
+   |      ^^^^^^^^ `Error` cannot be formatted using `{:?}`
+   |
+   = help: the trait `Debug` is not implemented for `Error`
+   = note: add `#[derive(Debug)]` to `Error` or manually `impl Debug for Error`
+   = note: this error originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider annotating `Error` with `#[derive(Debug)]`
+   |
+LL + #[derive(Debug)]
+LL | struct Error;
+   |
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

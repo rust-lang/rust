@@ -7,48 +7,51 @@
 //! test compile
 //! target x86_64
 //!
-//! function u0:0(i64, i64, i64) system_v {
-//! ; symbol _ZN119_$LT$example..IsNotEmpty$u20$as$u20$mini_core..FnOnce$LT$$LP$$RF$$u27$a$u20$$RF$$u27$b$u20$$u5b$u16$u5d$$C$$RP$$GT$$GT$9call_once17he85059d5e6a760a0E
-//! ; instance Instance { def: Item(DefId(0/0:29 ~ example[8787]::{{impl}}[0]::call_once[0])), substs: [ReErased, ReErased] }
-//! ; sig ([IsNotEmpty, (&&[u16],)]; c_variadic: false)->(u8, u8)
+//! function u0:22(i64) -> i8, i8 system_v {
+//! ; symbol _ZN97_$LT$example..IsNotEmpty$u20$as$u20$mini_core..FnOnce$LT$$LP$$RF$$RF$$u5b$u16$u5d$$C$$RP$$GT$$GT$9call_once17hd517c453d67c0915E
+//! ; instance Instance { def: Item(WithOptConstParam { did: DefId(0:42 ~ example[4e51]::{impl#0}::call_once), const_param_did: None }), substs: [ReErased, ReErased] }
+//! ; abi FnAbi { args: [ArgAbi { layout: TyAndLayout { ty: IsNotEmpty, layout: Layout { size: Size(0 bytes), align: AbiAndPrefAlign { abi: Align(1 bytes), pref: Align(8 bytes) }, abi: Aggregate { sized: true }, fields: Arbitrary { offsets: [], memory_index: [] }, largest_niche: None, variants: Single { index: 0 } } }, mode: Ignore }, ArgAbi { layout: TyAndLayout { ty: &&[u16], layout: Layout { size: Size(8 bytes), align: AbiAndPrefAlign { abi: Align(8 bytes), pref: Align(8 bytes) }, abi: Scalar(Initialized { value: Pointer(AddressSpace(0)), valid_range: 1..=18446744073709551615 }), fields: Primitive, largest_niche: Some(Niche { offset: Size(0 bytes), value: Pointer(AddressSpace(0)), valid_range: 1..=18446744073709551615 }), variants: Single { index: 0 } } }, mode: Direct(ArgAttributes { regular: NonNull | NoUndef, arg_ext: None, pointee_size: Size(0 bytes), pointee_align: Some(Align(8 bytes)) }) }], ret: ArgAbi { layout: TyAndLayout { ty: (u8, u8), layout: Layout { size: Size(2 bytes), align: AbiAndPrefAlign { abi: Align(1 bytes), pref: Align(8 bytes) }, abi: ScalarPair(Initialized { value: Int(I8, false), valid_range: 0..=255 }, Initialized { value: Int(I8, false), valid_range: 0..=255 }), fields: Arbitrary { offsets: [Size(0 bytes), Size(1 bytes)], memory_index: [0, 1] }, largest_niche: None, variants: Single { index: 0 } } }, mode: Pair(ArgAttributes { regular: NoUndef, arg_ext: None, pointee_size: Size(0 bytes), pointee_align: None }, ArgAttributes { regular: NoUndef, arg_ext: None, pointee_size: Size(0 bytes), pointee_align: None }) }, c_variadic: false, fixed_count: 1, conv: Rust, can_unwind: false }
 //!
-//! ; ssa {_2: NOT_SSA, _4: NOT_SSA, _0: NOT_SSA, _3: (empty), _1: NOT_SSA}
-//! ; msg   loc.idx    param    pass mode            ssa flags  ty
-//! ; ret    _0      = v0       ByRef                NOT_SSA    (u8, u8)
-//! ; arg    _1      = v1       ByRef                NOT_SSA    IsNotEmpty
-//! ; arg    _2.0    = v2       ByVal(types::I64)    NOT_SSA    &&[u16]
+//! ; kind  loc.idx   param    pass mode                            ty
+//! ; ssa   _0    (u8, u8)                          2b 1, 8              var=(0, 1)
+//! ; ret   _0      -          Pair(ArgAttributes { regular: NoUndef, arg_ext: None, pointee_size: Size(0 bytes), pointee_align: None }, ArgAttributes { regular: NoUndef, arg_ext: None, pointee_size: Size(0 bytes), pointee_align: None }) (u8, u8)
+//! ; arg   _1      -          Ignore                               IsNotEmpty
+//! ; arg   _2.0    = v0       Direct(ArgAttributes { regular: NonNull | NoUndef, arg_ext: None, pointee_size: Size(0 bytes), pointee_align: Some(Align(8 bytes)) }) &&[u16]
 //!
-//!     ss0 = explicit_slot 0 ; _1: IsNotEmpty size=0 align=1,8
-//!     ss1 = explicit_slot 8 ; _2: (&&[u16],) size=8 align=8,8
-//!     ss2 = explicit_slot 8 ; _4: (&&[u16],) size=8 align=8,8
-//!     sig0 = (i64, i64, i64) system_v
-//!     sig1 = (i64, i64, i64) system_v
-//!     fn0 = colocated u0:6 sig1 ; Instance { def: Item(DefId(0/0:31 ~ example[8787]::{{impl}}[1]::call_mut[0])), substs: [ReErased, ReErased] }
+//! ; kind  local ty                              size align (abi,pref)
+//! ; zst   _1    IsNotEmpty                        0b 1, 8              align=8,offset=
+//! ; stack _2    (&&[u16],)                        8b 8, 8              storage=ss0
+//! ; ssa   _3    &mut IsNotEmpty                   8b 8, 8              var=2
 //!
-//! block0(v0: i64, v1: i64, v2: i64):
-//!     v3 = stack_addr.i64 ss0
-//!     v4 = stack_addr.i64 ss1
-//!     store v2, v4
-//!     v5 = stack_addr.i64 ss2
+//!     ss0 = explicit_slot 16
+//!     sig0 = (i64, i64) -> i8, i8 system_v
+//!     fn0 = colocated u0:23 sig0 ; Instance { def: Item(WithOptConstParam { did: DefId(0:46 ~ example[4e51]::{impl#1}::call_mut), const_param_did: None }), substs: [ReErased, ReErased] }
+//!
+//! block0(v0: i64):
+//!     nop
+//! ; write_cvalue: Addr(Pointer { base: Stack(ss0), offset: Offset32(0) }, None): &&[u16] <- ByVal(v0): &&[u16]
+//!     stack_store v0, ss0
 //!     jump block1
 //!
 //! block1:
 //!     nop
 //! ; _3 = &mut _1
-//! ; _4 = _2
-//!     v6 = load.i64 v4
-//!     store v6, v5
+//!     v1 = iconst.i64 8
+//! ; write_cvalue: Var(_3, var2): &mut IsNotEmpty <- ByVal(v1): &mut IsNotEmpty
 //! ;
-//! ; _0 = const mini_core::FnMut::call_mut(move _3, move _4)
-//!     v7 = load.i64 v5
-//!     call fn0(v0, v3, v7)
+//! ; _0 = <IsNotEmpty as mini_core::FnMut<(&&[u16],)>>::call_mut(move _3, _2)
+//!     v2 = stack_load.i64 ss0
+//!     v3, v4 = call fn0(v1, v2)  ; v1 = 8
+//!     v5 -> v3
+//!     v6 -> v4
+//! ; write_cvalue: VarPair(_0, var0, var1): (u8, u8) <- ByValPair(v3, v4): (u8, u8)
 //!     jump block2
 //!
 //! block2:
 //!     nop
 //! ;
 //! ; return
-//!     return
+//!     return v5, v6
 //! }
 //! ```
 
@@ -62,11 +65,11 @@ use cranelift_codegen::{
 };
 
 use rustc_middle::ty::layout::FnAbiOf;
-use rustc_session::config::OutputType;
+use rustc_session::config::{OutputFilenames, OutputType};
 
 use crate::prelude::*;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct CommentWriter {
     enabled: bool,
     global_comments: Vec<String>,
@@ -205,15 +208,11 @@ pub(crate) fn should_write_ir(tcx: TyCtxt<'_>) -> bool {
 }
 
 pub(crate) fn write_ir_file(
-    tcx: TyCtxt<'_>,
-    name: impl FnOnce() -> String,
+    output_filenames: &OutputFilenames,
+    name: &str,
     write: impl FnOnce(&mut dyn Write) -> std::io::Result<()>,
 ) {
-    if !should_write_ir(tcx) {
-        return;
-    }
-
-    let clif_output_dir = tcx.output_filenames(()).with_extension("clif");
+    let clif_output_dir = output_filenames.with_extension("clif");
 
     match std::fs::create_dir(&clif_output_dir) {
         Ok(()) => {}
@@ -221,43 +220,43 @@ pub(crate) fn write_ir_file(
         res @ Err(_) => res.unwrap(),
     }
 
-    let clif_file_name = clif_output_dir.join(name());
+    let clif_file_name = clif_output_dir.join(name);
 
     let res = std::fs::File::create(clif_file_name).and_then(|mut file| write(&mut file));
     if let Err(err) = res {
-        tcx.sess.warn(&format!("error writing ir file: {}", err));
+        // Using early_warn as no Session is available here
+        rustc_session::early_warn(
+            rustc_session::config::ErrorOutputType::default(),
+            &format!("error writing ir file: {}", err),
+        );
     }
 }
 
-pub(crate) fn write_clif_file<'tcx>(
-    tcx: TyCtxt<'tcx>,
+pub(crate) fn write_clif_file(
+    output_filenames: &OutputFilenames,
+    symbol_name: &str,
     postfix: &str,
     isa: &dyn cranelift_codegen::isa::TargetIsa,
-    instance: Instance<'tcx>,
     func: &cranelift_codegen::ir::Function,
     mut clif_comments: &CommentWriter,
 ) {
-    write_ir_file(
-        tcx,
-        || format!("{}.{}.clif", tcx.symbol_name(instance).name, postfix),
-        |file| {
-            let mut clif = String::new();
-            cranelift_codegen::write::decorate_function(&mut clif_comments, &mut clif, func)
-                .unwrap();
+    // FIXME work around filename too long errors
+    write_ir_file(output_filenames, &format!("{}.{}.clif", symbol_name, postfix), |file| {
+        let mut clif = String::new();
+        cranelift_codegen::write::decorate_function(&mut clif_comments, &mut clif, func).unwrap();
 
-            for flag in isa.flags().iter() {
-                writeln!(file, "set {}", flag)?;
-            }
-            write!(file, "target {}", isa.triple().architecture.to_string())?;
-            for isa_flag in isa.isa_flags().iter() {
-                write!(file, " {}", isa_flag)?;
-            }
-            writeln!(file, "\n")?;
-            writeln!(file)?;
-            file.write_all(clif.as_bytes())?;
-            Ok(())
-        },
-    );
+        for flag in isa.flags().iter() {
+            writeln!(file, "set {}", flag)?;
+        }
+        write!(file, "target {}", isa.triple().architecture)?;
+        for isa_flag in isa.isa_flags().iter() {
+            write!(file, " {}", isa_flag)?;
+        }
+        writeln!(file, "\n")?;
+        writeln!(file)?;
+        file.write_all(clif.as_bytes())?;
+        Ok(())
+    });
 }
 
 impl fmt::Debug for FunctionCx<'_, '_, '_> {

@@ -11,7 +11,7 @@ use rustc_target::spec::SplitDebuginfo;
 use crate::{GccCodegenBackend, GccContext};
 
 pub(crate) unsafe fn codegen(cgcx: &CodegenContext<GccCodegenBackend>, _diag_handler: &Handler, module: ModuleCodegen<GccContext>, config: &ModuleConfig) -> Result<CompiledModule, FatalError> {
-    let _timer = cgcx.prof.generic_activity_with_arg("LLVM_module_codegen", &module.name[..]);
+    let _timer = cgcx.prof.generic_activity_with_arg("LLVM_module_codegen", &*module.name);
     {
         let context = &module.module_llvm.context;
 
@@ -57,6 +57,7 @@ pub(crate) unsafe fn codegen(cgcx: &CodegenContext<GccCodegenBackend>, _diag_han
                 if env::var("CG_GCCJIT_DUMP_TO_FILE").as_deref() == Ok("1") {
                     let _ = fs::create_dir("/tmp/gccjit_dumps");
                     let path = &format!("/tmp/gccjit_dumps/{}.c", module.name);
+                    context.set_debug_info(true);
                     context.dump_to_file(path, true);
                 }
                 context.compile_to_file(OutputKind::ObjectFile, obj_out.to_str().expect("path to str"));

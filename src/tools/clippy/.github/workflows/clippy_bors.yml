@@ -10,6 +10,8 @@ env:
   RUST_BACKTRACE: 1
   CARGO_TARGET_DIR: '${{ github.workspace }}/target'
   NO_FMT_TEST: 1
+  CARGO_INCREMENTAL: 0
+  CARGO_UNSTABLE_SPARSE_REGISTRY: true
 
 defaults:
   run:
@@ -25,7 +27,7 @@ jobs:
         github_token: "${{ secrets.github_token }}"
 
     - name: Checkout
-      uses: actions/checkout@v2.3.3
+      uses: actions/checkout@v3.0.2
       with:
         ref: ${{ github.ref }}
 
@@ -80,15 +82,8 @@ jobs:
       with:
         github_token: "${{ secrets.github_token }}"
 
-    - name: Install dependencies (Linux-i686)
-      run: |
-        sudo dpkg --add-architecture i386
-        sudo apt-get update
-        sudo apt-get install gcc-multilib libssl-dev:i386 libgit2-dev:i386
-      if: matrix.host == 'i686-unknown-linux-gnu'
-
     - name: Checkout
-      uses: actions/checkout@v2.3.3
+      uses: actions/checkout@v3.0.2
 
     - name: Install toolchain
       run: rustup show active-toolchain
@@ -143,6 +138,30 @@ jobs:
       env:
         OS: ${{ runner.os }}
 
+  metadata_collection:
+    needs: changelog
+    runs-on: ubuntu-latest
+
+    steps:
+     # Setup
+    - uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
+      with:
+        github_token: "${{ secrets.github_token }}"
+
+    - name: Checkout
+      uses: actions/checkout@v3.0.2
+
+    - name: Install toolchain
+      run: rustup show active-toolchain
+
+    - name: Test metadata collection
+      run: cargo collect-metadata
+
+    - name: Test lint_configuration.md is up-to-date
+      run: |
+        echo "run \`cargo collect-metadata\` if this fails"
+        git update-index --refresh
+
   integration_build:
     needs: changelog
     runs-on: ubuntu-latest
@@ -154,13 +173,15 @@ jobs:
         github_token: "${{ secrets.github_token }}"
 
     - name: Checkout
-      uses: actions/checkout@v2.3.3
+      uses: actions/checkout@v3.0.2
 
     - name: Install toolchain
       run: rustup show active-toolchain
 
     # Run
     - name: Build Integration Test
+      env:
+        CARGO_PROFILE_DEV_SPLIT_DEBUGINFO: off
       run: cargo test --test integration --features integration --no-run
 
     # Upload
@@ -212,7 +233,7 @@ jobs:
         github_token: "${{ secrets.github_token }}"
 
     - name: Checkout
-      uses: actions/checkout@v2.3.3
+      uses: actions/checkout@v3.0.2
 
     - name: Install toolchain
       run: rustup show active-toolchain
@@ -245,7 +266,7 @@ jobs:
     name: bors test finished
     if: github.event.pusher.name == 'bors' && success()
     runs-on: ubuntu-latest
-    needs: [changelog, base, integration_build, integration]
+    needs: [changelog, base, metadata_collection, integration_build, integration]
 
     steps:
       - name: Mark the job as successful
@@ -255,7 +276,7 @@ jobs:
     name: bors test finished
     if: github.event.pusher.name == 'bors' && (failure() || cancelled())
     runs-on: ubuntu-latest
-    needs: [changelog, base, integration_build, integration]
+    needs: [changelog, base, metadata_collection, integration_build, integration]
 
     steps:
       - name: Mark the job as a failure

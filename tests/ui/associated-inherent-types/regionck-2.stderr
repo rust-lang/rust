@@ -1,0 +1,18 @@
+error[E0308]: mismatched types
+  --> $DIR/regionck-2.rs:12:12
+   |
+LL | fn test(_: Lexer::Cursor) {}
+   |            ^^^^^^^^^^^^^ lifetime mismatch
+   |
+   = note: expected struct `Lexer<'static>`
+              found struct `Lexer<'_>`
+note: the anonymous lifetime defined here...
+  --> $DIR/regionck-2.rs:12:12
+   |
+LL | fn test(_: Lexer::Cursor) {}
+   |            ^^^^^
+   = note: ...does not necessarily outlive the static lifetime
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

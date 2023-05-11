@@ -2,23 +2,30 @@ cfg_if::cfg_if! {
     if #[cfg(any(
         target_os = "linux",
         target_os = "android",
+        all(target_os = "emscripten", target_feature = "atomics"),
+        target_os = "freebsd",
+        target_os = "openbsd",
+        target_os = "dragonfly",
     ))] {
-        mod futex;
+        mod futex_mutex;
         mod futex_rwlock;
-        #[allow(dead_code)]
-        mod pthread_mutex; // Only used for PthreadMutexAttr, needed by pthread_remutex.
-        mod pthread_remutex; // FIXME: Implement this using a futex
-        pub use futex::{Mutex, MovableMutex, Condvar, MovableCondvar};
-        pub use pthread_remutex::ReentrantMutex;
-        pub use futex_rwlock::{RwLock, MovableRwLock};
+        mod futex_condvar;
+        pub(crate) use futex_mutex::Mutex;
+        pub(crate) use futex_rwlock::RwLock;
+        pub(crate) use futex_condvar::Condvar;
+    } else if #[cfg(target_os = "fuchsia")] {
+        mod fuchsia_mutex;
+        mod futex_rwlock;
+        mod futex_condvar;
+        pub(crate) use fuchsia_mutex::Mutex;
+        pub(crate) use futex_rwlock::RwLock;
+        pub(crate) use futex_condvar::Condvar;
     } else {
         mod pthread_mutex;
-        mod pthread_remutex;
         mod pthread_rwlock;
         mod pthread_condvar;
-        pub use pthread_mutex::{Mutex, MovableMutex};
-        pub use pthread_remutex::ReentrantMutex;
-        pub use pthread_rwlock::{RwLock, MovableRwLock};
-        pub use pthread_condvar::{Condvar, MovableCondvar};
+        pub(crate) use pthread_mutex::Mutex;
+        pub(crate) use pthread_rwlock::RwLock;
+        pub(crate) use pthread_condvar::Condvar;
     }
 }

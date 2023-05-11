@@ -7,3 +7,13 @@ test-stage = 2
 doc-stage = 2
 # When compiling from source, you usually want all tools.
 extended = true
+
+# Most users installing from source want to build all parts of the project from source.
+[llvm]
+download-ci-llvm = false
+[rust]
+download-rustc = false
+
+[dist]
+# Use better compression when preparing tarballs.
+compression-profile = "balanced"

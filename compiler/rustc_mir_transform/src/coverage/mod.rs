@@ -15,9 +15,8 @@ use spans::{CoverageSpan, CoverageSpans};
 use crate::MirPass;
 
 use rustc_data_structures::graph::WithNumNodes;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexVec;
 use rustc_middle::hir;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::*;
@@ -81,7 +80,7 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
             return;
         }
 
-        match mir_body.basic_blocks()[mir::START_BLOCK].terminator().kind {
+        match mir_body.basic_blocks[mir::START_BLOCK].terminator().kind {
             TerminatorKind::Unreachable => {
                 trace!("InstrumentCoverage skipped for unreachable `START_BLOCK`");
                 return;
@@ -121,7 +120,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
 
         let source_file = source_map.lookup_source_file(body_span.lo());
         let fn_sig_span = match some_fn_sig.filter(|fn_sig| {
-            fn_sig.span.ctxt() == body_span.ctxt()
+            fn_sig.span.eq_ctxt(body_span)
                 && Lrc::ptr_eq(&source_file, &source_map.lookup_source_file(fn_sig.span.lo()))
         }) {
             Some(fn_sig) => fn_sig.span.with_hi(body_span.lo()),
@@ -161,8 +160,8 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let mut debug_used_expressions = debug::UsedExpressions::new();
 
         let dump_mir = dump_enabled(tcx, self.pass_name, def_id);
-        let dump_graphviz = dump_mir && tcx.sess.opts.debugging_opts.dump_mir_graphviz;
-        let dump_spanview = dump_mir && tcx.sess.opts.debugging_opts.dump_mir_spanview.is_some();
+        let dump_graphviz = dump_mir && tcx.sess.opts.unstable_opts.dump_mir_graphviz;
+        let dump_spanview = dump_mir && tcx.sess.opts.unstable_opts.dump_mir_spanview.is_some();
 
         if dump_graphviz {
             graphviz_data.enable();
@@ -515,7 +514,7 @@ fn make_code_region(
         // Extend an empty span by one character so the region will be counted.
         let CharPos(char_pos) = start_col;
         if span.hi() == body_span.hi() {
-            start_col = CharPos(char_pos - 1);
+            start_col = CharPos(char_pos.saturating_sub(1));
         } else {
             end_col = CharPos(char_pos + 1);
         }
@@ -534,15 +533,16 @@ fn make_code_region(
     }
 }
 
-fn fn_sig_and_body<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn fn_sig_and_body(
+    tcx: TyCtxt<'_>,
     def_id: DefId,
-) -> (Option<&'tcx rustc_hir::FnSig<'tcx>>, &'tcx rustc_hir::Body<'tcx>) {
+) -> (Option<&rustc_hir::FnSig<'_>>, &rustc_hir::Body<'_>) {
     // FIXME(#79625): Consider improving MIR to provide the information needed, to avoid going back
     // to HIR for it.
     let hir_node = tcx.hir().get_if_local(def_id).expect("expected DefId is local");
-    let fn_body_id = hir::map::associated_body(hir_node).expect("HIR node is a function with body");
-    (hir::map::fn_sig(hir_node), tcx.hir().body(fn_body_id))
+    let (_, fn_body_id) =
+        hir::map::associated_body(hir_node).expect("HIR node is a function with body");
+    (hir_node.fn_sig(), tcx.hir().body(fn_body_id))
 }
 
 fn get_body_span<'tcx>(
@@ -576,12 +576,11 @@ fn get_body_span<'tcx>(
 
 fn hash_mir_source<'tcx>(tcx: TyCtxt<'tcx>, hir_body: &'tcx rustc_hir::Body<'tcx>) -> u64 {
     // FIXME(cjgillot) Stop hashing HIR manually here.
-    let mut hcx = tcx.create_no_span_stable_hashing_context();
-    let mut stable_hasher = StableHasher::new();
     let owner = hir_body.id().hir_id.owner;
-    let bodies = &tcx.hir_owner_nodes(owner).unwrap().bodies;
-    hcx.with_hir_bodies(false, owner, bodies, |hcx| {
-        hir_body.value.hash_stable(hcx, &mut stable_hasher)
-    });
-    stable_hasher.finish()
+    tcx.hir_owner_nodes(owner)
+        .unwrap()
+        .opt_hash_including_bodies
+        .unwrap()
+        .to_smaller_hash()
+        .as_u64()
 }

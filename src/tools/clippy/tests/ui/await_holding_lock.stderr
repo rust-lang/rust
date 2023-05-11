@@ -4,7 +4,6 @@ error: this `MutexGuard` is held across an `await` point
 LL |         let guard = x.lock().unwrap();
    |             ^^^^^
    |
-   = note: `-D clippy::await-holding-lock` implied by `-D warnings`
    = help: consider using an async-aware `Mutex` type or ensuring the `MutexGuard` is dropped before calling await
 note: these are all the `await` points this lock is held through
   --> $DIR/await_holding_lock.rs:9:9
@@ -13,6 +12,7 @@ LL | /         let guard = x.lock().unwrap();
 LL | |         baz().await
 LL | |     }
    | |_____^
+   = note: `-D clippy::await-holding-lock` implied by `-D warnings`
 
 error: this `MutexGuard` is held across an `await` point
   --> $DIR/await_holding_lock.rs:24:13

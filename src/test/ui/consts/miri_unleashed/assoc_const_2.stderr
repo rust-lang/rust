@@ -1,9 +1,0 @@
-error[E0080]: erroneous constant used
-  --> $DIR/assoc_const_2.rs:29:13
-   |
-LL |     let y = <String as Bar<String>>::F;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0080`.

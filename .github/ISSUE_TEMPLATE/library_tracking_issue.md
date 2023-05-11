@@ -12,7 +12,7 @@ Tracking issues are for tracking a feature from implementation to stabilization.
 Make sure to include the relevant RFC for the feature if it has one.
 
 If the new feature is small, it may be fine to skip the RFC process. In that
-case, you can use use `issue = "none"` in your initial implementation PR. The
+case, you can use `issue = "none"` in your initial implementation PR. The
 reviewer will ask you to open a tracking issue if they agree your feature can be
 added without an RFC.
 -->
@@ -50,7 +50,7 @@ If the feature is changed later, please add those PRs here as well.
 -->
 
 - [ ] Implementation: #...
-- [ ] Final comment period (FCP)
+- [ ] Final comment period (FCP)[^1]
 - [ ] Stabilization PR
 
 <!--
@@ -65,7 +65,7 @@ the rfcbot will ask all the team members to verify they agree with
 stabilization. Once enough members agree and there are no concerns, the final
 comment period begins: this issue will be marked as such and will be listed
 in the next This Week in Rust newsletter. If no blocking concerns are raised in
-that period of 10 days, a stabilzation PR can be opened by anyone.
+that period of 10 days, a stabilization PR can be opened by anyone.
 -->
 
 ### Unresolved Questions
@@ -81,3 +81,5 @@ Zulip, or the internals forum) here.
 -->
 
 - None yet.
+
+[^1]: https://std-dev-guide.rust-lang.org/feature-lifecycle/stabilization.html

@@ -1,7 +1,6 @@
-use crate::stable_hasher::{HashStable, StableHasher};
+use crate::stable_hasher::{HashStable, StableHasher, StableOrd};
 use std::borrow::Borrow;
-use std::cmp::Ordering;
-use std::iter::FromIterator;
+use std::fmt::Debug;
 use std::mem;
 use std::ops::{Bound, Index, IndexMut, RangeBounds};
 
@@ -10,14 +9,14 @@ mod index_map;
 pub use index_map::SortedIndexMultiMap;
 
 /// `SortedMap` is a data structure with similar characteristics as BTreeMap but
-/// slightly different trade-offs: lookup, insertion, and removal are *O*(log(*n*))
-/// and elements can be iterated in order cheaply.
+/// slightly different trade-offs: lookup is *O*(log(*n*)), insertion and removal
+/// are *O*(*n*) but elements can be iterated in order cheaply.
 ///
 /// `SortedMap` can be faster than a `BTreeMap` for small sizes (<50) since it
 /// stores data in a more compact way. It also supports accessing contiguous
 /// ranges of elements as a slice, and slices of already sorted elements can be
 /// inserted efficiently.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Encodable, Decodable)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
 pub struct SortedMap<K, V> {
     data: Vec<(K, V)>,
 }
@@ -96,6 +95,23 @@ impl<K: Ord, V> SortedMap<K, V> {
         }
     }
 
+    /// Gets a mutable reference to the value in the entry, or insert a new one.
+    #[inline]
+    pub fn get_mut_or_insert_default(&mut self, key: K) -> &mut V
+    where
+        K: Eq,
+        V: Default,
+    {
+        let index = match self.lookup_index_for(&key) {
+            Ok(index) => index,
+            Err(index) => {
+                self.data.insert(index, (key, V::default()));
+                index
+            }
+        };
+        unsafe { &mut self.data.get_unchecked_mut(index).1 }
+    }
+
     #[inline]
     pub fn clear(&mut self) {
         self.data.clear();
@@ -110,13 +126,13 @@ impl<K: Ord, V> SortedMap<K, V> {
     /// Iterate over the keys, sorted
     #[inline]
     pub fn keys(&self) -> impl Iterator<Item = &K> + ExactSizeIterator + DoubleEndedIterator {
-        self.data.iter().map(|&(ref k, _)| k)
+        self.data.iter().map(|(k, _)| k)
     }
 
     /// Iterate over values, sorted by key
     #[inline]
     pub fn values(&self) -> impl Iterator<Item = &V> + ExactSizeIterator + DoubleEndedIterator {
-        self.data.iter().map(|&(_, ref v)| v)
+        self.data.iter().map(|(_, v)| v)
     }
 
     #[inline]
@@ -154,7 +170,7 @@ impl<K: Ord, V> SortedMap<K, V> {
     where
         F: Fn(&mut K),
     {
-        self.data.iter_mut().map(|&mut (ref mut k, _)| k).for_each(f);
+        self.data.iter_mut().map(|(k, _)| k).for_each(f);
     }
 
     /// Inserts a presorted range of elements into the map. If the range can be
@@ -164,7 +180,7 @@ impl<K: Ord, V> SortedMap<K, V> {
     /// It is up to the caller to make sure that the elements are sorted by key
     /// and that there are no duplicates.
     #[inline]
-    pub fn insert_presorted(&mut self, mut elements: Vec<(K, V)>) {
+    pub fn insert_presorted(&mut self, elements: Vec<(K, V)>) {
         if elements.is_empty() {
             return;
         }
@@ -173,28 +189,28 @@ impl<K: Ord, V> SortedMap<K, V> {
 
         let start_index = self.lookup_index_for(&elements[0].0);
 
-        let drain = match start_index {
+        let elements = match start_index {
             Ok(index) => {
-                let mut drain = elements.drain(..);
-                self.data[index] = drain.next().unwrap();
-                drain
+                let mut elements = elements.into_iter();
+                self.data[index] = elements.next().unwrap();
+                elements
             }
             Err(index) => {
                 if index == self.data.len() || elements.last().unwrap().0 < self.data[index].0 {
                     // We can copy the whole range without having to mix with
                     // existing elements.
-                    self.data.splice(index..index, elements.drain(..));
+                    self.data.splice(index..index, elements.into_iter());
                     return;
                 }
 
-                let mut drain = elements.drain(..);
-                self.data.insert(index, drain.next().unwrap());
-                drain
+                let mut elements = elements.into_iter();
+                self.data.insert(index, elements.next().unwrap());
+                elements
             }
         };
 
         // Insert the rest
-        for (k, v) in drain {
+        for (k, v) in elements {
             self.insert(k, v);
         }
     }
@@ -206,7 +222,7 @@ impl<K: Ord, V> SortedMap<K, V> {
         K: Borrow<Q>,
         Q: Ord + ?Sized,
     {
-        self.data.binary_search_by(|&(ref x, _)| x.borrow().cmp(key))
+        self.data.binary_search_by(|(x, _)| x.borrow().cmp(key))
     }
 
     #[inline]
@@ -215,10 +231,10 @@ impl<K: Ord, V> SortedMap<K, V> {
         R: RangeBounds<K>,
     {
         let start = match range.start_bound() {
-            Bound::Included(ref k) => match self.lookup_index_for(k) {
+            Bound::Included(k) => match self.lookup_index_for(k) {
                 Ok(index) | Err(index) => index,
             },
-            Bound::Excluded(ref k) => match self.lookup_index_for(k) {
+            Bound::Excluded(k) => match self.lookup_index_for(k) {
                 Ok(index) => index + 1,
                 Err(index) => index,
             },
@@ -226,11 +242,11 @@ impl<K: Ord, V> SortedMap<K, V> {
         };
 
         let end = match range.end_bound() {
-            Bound::Included(ref k) => match self.lookup_index_for(k) {
+            Bound::Included(k) => match self.lookup_index_for(k) {
                 Ok(index) => index + 1,
                 Err(index) => index,
             },
-            Bound::Excluded(ref k) => match self.lookup_index_for(k) {
+            Bound::Excluded(k) => match self.lookup_index_for(k) {
                 Ok(index) | Err(index) => index,
             },
             Bound::Unbounded => self.data.len(),
@@ -284,17 +300,23 @@ impl<K: Ord, V> FromIterator<(K, V)> for SortedMap<K, V> {
     fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> Self {
         let mut data: Vec<(K, V)> = iter.into_iter().collect();
 
-        data.sort_unstable_by(|&(ref k1, _), &(ref k2, _)| k1.cmp(k2));
-        data.dedup_by(|&mut (ref k1, _), &mut (ref k2, _)| k1.cmp(k2) == Ordering::Equal);
+        data.sort_unstable_by(|(k1, _), (k2, _)| k1.cmp(k2));
+        data.dedup_by(|(k1, _), (k2, _)| k1 == k2);
 
         SortedMap { data }
     }
 }
 
-impl<K: HashStable<CTX>, V: HashStable<CTX>, CTX> HashStable<CTX> for SortedMap<K, V> {
+impl<K: HashStable<CTX> + StableOrd, V: HashStable<CTX>, CTX> HashStable<CTX> for SortedMap<K, V> {
     #[inline]
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         self.data.hash_stable(ctx, hasher);
+    }
+}
+
+impl<K: Debug, V: Debug> Debug for SortedMap<K, V> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_map().entries(self.data.iter().map(|(a, b)| (a, b))).finish()
     }
 }
 

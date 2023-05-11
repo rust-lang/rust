@@ -1,0 +1,34 @@
+error: associated type constraints not allowed on negative bounds
+  --> $DIR/associated-constraints.rs:8:19
+   |
+LL | fn test<T: !Trait<Assoc = i32>>() {}
+   |                   ^^^^^^^^^^^
+
+error: associated type constraints not allowed on negative bounds
+  --> $DIR/associated-constraints.rs:11:31
+   |
+LL | fn test2<T>() where T: !Trait<Assoc = i32> {}
+   |                               ^^^^^^^^^^^
+
+error: associated type constraints not allowed on negative bounds
+  --> $DIR/associated-constraints.rs:14:20
+   |
+LL | fn test3<T: !Trait<Assoc: Send>>() {}
+   |                    ^^^^^^^^^^^
+
+error: associated type constraints not allowed on negative bounds
+  --> $DIR/associated-constraints.rs:17:31
+   |
+LL | fn test4<T>() where T: !Trait<Assoc: Send> {}
+   |                               ^^^^^^^^^^^
+
+warning: the feature `negative_bounds` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/associated-constraints.rs:1:12
+   |
+LL | #![feature(negative_bounds, associated_type_bounds)]
+   |            ^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: aborting due to 4 previous errors; 1 warning emitted
+

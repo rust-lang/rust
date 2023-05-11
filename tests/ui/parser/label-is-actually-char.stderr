@@ -1,0 +1,46 @@
+error: expected `while`, `for`, `loop` or `{` after a label
+  --> $DIR/label-is-actually-char.rs:2:15
+   |
+LL |     let c = 'a;
+   |               ^ expected `while`, `for`, `loop` or `{` after a label
+   |
+help: add `'` to close the char literal
+   |
+LL |     let c = 'a';
+   |               +
+
+error: unexpected token: `'b`
+  --> $DIR/label-is-actually-char.rs:6:15
+   |
+LL |         'a'..='b => {}
+   |               ^^
+   |
+help: add `'` to close the char literal
+   |
+LL |         'a'..='b' => {}
+   |                 +
+
+error: expected `while`, `for`, `loop` or `{` after a label
+  --> $DIR/label-is-actually-char.rs:11:16
+   |
+LL |     let x = ['a, 'b];
+   |                ^ expected `while`, `for`, `loop` or `{` after a label
+   |
+help: add `'` to close the char literal
+   |
+LL |     let x = ['a', 'b];
+   |                +
+
+error: expected `while`, `for`, `loop` or `{` after a label
+  --> $DIR/label-is-actually-char.rs:11:20
+   |
+LL |     let x = ['a, 'b];
+   |                    ^ expected `while`, `for`, `loop` or `{` after a label
+   |
+help: add `'` to close the char literal
+   |
+LL |     let x = ['a, 'b'];
+   |                    +
+
+error: aborting due to 4 previous errors
+

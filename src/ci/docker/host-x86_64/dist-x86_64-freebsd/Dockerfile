@@ -15,7 +15,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   xz-utils \
   wget \
   libssl-dev \
-  pkg-config
+  pkg-config \
+  && rm -rf /var/lib/apt/lists/*
 
 COPY scripts/freebsd-toolchain.sh /tmp/
 RUN /tmp/freebsd-toolchain.sh x86_64
@@ -27,9 +28,9 @@ COPY scripts/cmake.sh /scripts/
 RUN /scripts/cmake.sh
 
 ENV \
-    AR_x86_64_unknown_freebsd=x86_64-unknown-freebsd11-ar \
-    CC_x86_64_unknown_freebsd=x86_64-unknown-freebsd11-clang \
-    CXX_x86_64_unknown_freebsd=x86_64-unknown-freebsd11-clang++
+    AR_x86_64_unknown_freebsd=x86_64-unknown-freebsd12-ar \
+    CC_x86_64_unknown_freebsd=x86_64-unknown-freebsd12-clang \
+    CXX_x86_64_unknown_freebsd=x86_64-unknown-freebsd12-clang++
 
 ENV HOSTS=x86_64-unknown-freebsd
 

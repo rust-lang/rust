@@ -1,9 +1,10 @@
-// aux-build:option_helpers.rs
+//@aux-build:option_helpers.rs
 
 #![warn(clippy::all, clippy::pedantic)]
 #![allow(
-    clippy::blacklisted_name,
+    clippy::disallowed_names,
     clippy::default_trait_access,
+    clippy::let_underscore_untyped,
     clippy::missing_docs_in_private_items,
     clippy::missing_safety_doc,
     clippy::non_ascii_literal,
@@ -15,6 +16,7 @@
     clippy::use_self,
     clippy::useless_format,
     clippy::wrong_self_convention,
+    clippy::unused_async,
     clippy::unused_self,
     unused
 )]
@@ -26,7 +28,6 @@ use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::VecDeque;
-use std::iter::FromIterator;
 use std::ops::Mul;
 use std::rc::{self, Rc};
 use std::sync::{self, Arc};

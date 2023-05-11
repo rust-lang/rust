@@ -1,10 +1,17 @@
+//@aux-build:proc_macro_derive.rs
+
 #![warn(clippy::integer_arithmetic, clippy::float_arithmetic)]
 #![allow(clippy::no_effect, clippy::unnecessary_operation, clippy::op_ref)]
+
+extern crate proc_macro_derive;
+
+#[derive(proc_macro_derive::ShadowDerive)]
+pub struct Nothing;
 
 #[rustfmt::skip]
 fn main() {
     let mut i = 1i32;
-    let mut var1 = 0i32;
+    let mut var1 = 13i32;
     let mut var2 = -1i32;
     1 + i;
     i * 2;

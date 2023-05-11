@@ -27,15 +27,15 @@
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
-use rustc_hir::HirId;
 use rustc_middle::ty::TyCtxt;
+pub(crate) use rustc_resolve::rustdoc::main_body_opts;
+use rustc_resolve::rustdoc::may_be_doc_link;
 use rustc_span::edition::Edition;
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 
+use once_cell::sync::Lazy;
 use std::borrow::Cow;
-use std::cell::RefCell;
 use std::collections::VecDeque;
-use std::default::Default;
 use std::fmt::Write;
 use std::ops::{ControlFlow, Range};
 use std::str;
@@ -46,6 +46,7 @@ use crate::html::escape::Escape;
 use crate::html::format::Buffer;
 use crate::html::highlight;
 use crate::html::length_limit::HtmlWithLimit;
+use crate::html::render::small_url_encode;
 use crate::html::toc::TocBuilder;
 
 use pulldown_cmark::{
@@ -56,15 +57,6 @@ use pulldown_cmark::{
 mod tests;
 
 const MAX_HEADER_LEVEL: u32 = 6;
-
-/// Options for rendering Markdown in the main body of documentation.
-pub(crate) fn main_body_opts() -> Options {
-    Options::ENABLE_TABLES
-        | Options::ENABLE_FOOTNOTES
-        | Options::ENABLE_STRIKETHROUGH
-        | Options::ENABLE_TASKLISTS
-        | Options::ENABLE_SMART_PUNCTUATION
-}
 
 /// Options for rendering Markdown in summaries (e.g., in search results).
 pub(crate) fn summary_opts() -> Options {
@@ -102,24 +94,19 @@ pub struct Markdown<'a> {
     /// E.g. if `heading_offset: HeadingOffset::H2`, then `# something` renders an `<h2>`.
     pub heading_offset: HeadingOffset,
 }
-/// A tuple struct like `Markdown` that renders the markdown with a table of contents.
-crate struct MarkdownWithToc<'a>(
-    crate &'a str,
-    crate &'a mut IdMap,
-    crate ErrorCodes,
-    crate Edition,
-    crate &'a Option<Playground>,
-);
-/// A tuple struct like `Markdown` that renders the markdown escaping HTML tags.
-crate struct MarkdownHtml<'a>(
-    crate &'a str,
-    crate &'a mut IdMap,
-    crate ErrorCodes,
-    crate Edition,
-    crate &'a Option<Playground>,
-);
+/// A struct like `Markdown` that renders the markdown with a table of contents.
+pub(crate) struct MarkdownWithToc<'a> {
+    pub(crate) content: &'a str,
+    pub(crate) ids: &'a mut IdMap,
+    pub(crate) error_codes: ErrorCodes,
+    pub(crate) edition: Edition,
+    pub(crate) playground: &'a Option<Playground>,
+}
+/// A tuple struct like `Markdown` that renders the markdown escaping HTML tags
+/// and includes no paragraph tags.
+pub(crate) struct MarkdownItemInfo<'a>(pub(crate) &'a str, pub(crate) &'a mut IdMap);
 /// A tuple struct like `Markdown` that renders only the first paragraph.
-crate struct MarkdownSummaryLine<'a>(pub &'a str, pub &'a [RenderedLink]);
+pub(crate) struct MarkdownSummaryLine<'a>(pub &'a str, pub &'a [RenderedLink]);
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum ErrorCodes {
@@ -128,14 +115,14 @@ pub enum ErrorCodes {
 }
 
 impl ErrorCodes {
-    crate fn from(b: bool) -> Self {
+    pub(crate) fn from(b: bool) -> Self {
         match b {
             true => ErrorCodes::Yes,
             false => ErrorCodes::No,
         }
     }
 
-    crate fn as_bool(self) -> bool {
+    pub(crate) fn as_bool(self) -> bool {
         match self {
             ErrorCodes::Yes => true,
             ErrorCodes::No => false,
@@ -202,7 +189,7 @@ fn slugify(c: char) -> Option<char> {
 
 #[derive(Clone, Debug)]
 pub struct Playground {
-    pub crate_name: Option<String>,
+    pub crate_name: Option<Symbol>,
     pub url: String,
 }
 
@@ -240,18 +227,16 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             return event;
         };
 
-        let mut origtext = String::new();
+        let mut original_text = String::new();
         for event in &mut self.inner {
             match event {
                 Event::End(Tag::CodeBlock(..)) => break,
                 Event::Text(ref s) => {
-                    origtext.push_str(s);
+                    original_text.push_str(s);
                 }
                 _ => {}
             }
         }
-        let lines = origtext.lines().filter_map(|l| map_line(l).for_html());
-        let text = lines.intersperse("\n".into()).collect::<String>();
 
         let parse_result = match kind {
             CodeBlockKind::Fenced(ref lang) => {
@@ -264,7 +249,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                                  <pre class=\"language-{}\"><code>{}</code></pre>\
                              </div>",
                             lang,
-                            Escape(&text),
+                            Escape(&original_text),
                         )
                         .into(),
                     ));
@@ -273,6 +258,9 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             }
             CodeBlockKind::Indented => Default::default(),
         };
+
+        let lines = original_text.lines().filter_map(|l| map_line(l).for_html());
+        let text = lines.intersperse("\n".into()).collect::<String>();
 
         compile_fail = parse_result.compile_fail;
         should_panic = parse_result.should_panic;
@@ -288,40 +276,17 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             if url.is_empty() {
                 return None;
             }
-            let test = origtext
+            let test = original_text
                 .lines()
                 .map(|l| map_line(l).for_code())
                 .intersperse("\n".into())
                 .collect::<String>();
-            let krate = krate.as_ref().map(|s| &**s);
+            let krate = krate.as_ref().map(|s| s.as_str());
             let (test, _, _) =
                 doctest::make_test(&test, krate, false, &Default::default(), edition, None);
             let channel = if test.contains("#![feature(") { "&amp;version=nightly" } else { "" };
 
-            // These characters don't need to be escaped in a URI.
-            // FIXME: use a library function for percent encoding.
-            fn dont_escape(c: u8) -> bool {
-                (b'a' <= c && c <= b'z')
-                    || (b'A' <= c && c <= b'Z')
-                    || (b'0' <= c && c <= b'9')
-                    || c == b'-'
-                    || c == b'_'
-                    || c == b'.'
-                    || c == b'~'
-                    || c == b'!'
-                    || c == b'\''
-                    || c == b'('
-                    || c == b')'
-                    || c == b'*'
-            }
-            let mut test_escaped = String::new();
-            for b in test.bytes() {
-                if dont_escape(b) {
-                    test_escaped.push(char::from(b));
-                } else {
-                    write!(test_escaped, "%{:02X}", b).unwrap();
-                }
-            }
+            let test_escaped = small_url_encode(test);
             Some(format!(
                 r#"<a class="test-arrow" target="_blank" href="{}?code={}{}&amp;edition={}">Run</a>"#,
                 url, test_escaped, channel, edition,
@@ -329,34 +294,27 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
         });
 
         let tooltip = if ignore != Ignore::None {
-            Some((None, "ignore"))
+            highlight::Tooltip::Ignore
         } else if compile_fail {
-            Some((None, "compile_fail"))
+            highlight::Tooltip::CompileFail
         } else if should_panic {
-            Some((None, "should_panic"))
+            highlight::Tooltip::ShouldPanic
         } else if explicit_edition {
-            Some((Some(edition), "edition"))
+            highlight::Tooltip::Edition(edition)
         } else {
-            None
+            highlight::Tooltip::None
         };
 
         // insert newline to clearly separate it from the
         // previous block so we can shorten the html output
         let mut s = Buffer::new();
         s.push_str("\n");
-        highlight::render_with_highlighting(
+
+        highlight::render_example_with_highlighting(
             &text,
             &mut s,
-            Some(&format!(
-                "rust-example-rendered{}",
-                if let Some((_, class)) = tooltip { format!(" {}", class) } else { String::new() }
-            )),
-            playground_button.as_deref(),
             tooltip,
-            edition,
-            None,
-            None,
-            None,
+            playground_button.as_deref(),
         );
         Some(Event::Html(s.into_inner().into()))
     }
@@ -401,6 +359,9 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
                     trace!("it matched");
                     assert!(self.shortcut_link.is_none(), "shortcut links cannot be nested");
                     self.shortcut_link = Some(link);
+                    if title.is_empty() && !link.tooltip.is_empty() {
+                        *title = CowStr::Borrowed(link.tooltip.as_ref());
+                    }
                 }
             }
             // Now that we're done with the shortcut link, don't replace any more text.
@@ -451,9 +412,12 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
             }
             // If this is a link, but not a shortcut link,
             // replace the URL, since the broken_link_callback was not called.
-            Some(Event::Start(Tag::Link(_, dest, _))) => {
+            Some(Event::Start(Tag::Link(_, dest, title))) => {
                 if let Some(link) = self.links.iter().find(|&link| *link.original_text == **dest) {
                     *dest = CowStr::Borrowed(link.href.as_ref());
+                    if title.is_empty() && !link.tooltip.is_empty() {
+                        *title = CowStr::Borrowed(link.tooltip.as_ref());
+                    }
                 }
             }
             // Anything else couldn't have been a valid Rust path, so no need to replace the text.
@@ -577,23 +541,29 @@ struct SummaryLine<'a, I: Iterator<Item = Event<'a>>> {
     inner: I,
     started: bool,
     depth: u32,
+    skipped_tags: u32,
 }
 
 impl<'a, I: Iterator<Item = Event<'a>>> SummaryLine<'a, I> {
     fn new(iter: I) -> Self {
-        SummaryLine { inner: iter, started: false, depth: 0 }
+        SummaryLine { inner: iter, started: false, depth: 0, skipped_tags: 0 }
     }
 }
 
 fn check_if_allowed_tag(t: &Tag<'_>) -> bool {
-    matches!(
-        t,
-        Tag::Paragraph | Tag::Item | Tag::Emphasis | Tag::Strong | Tag::Link(..) | Tag::BlockQuote
-    )
+    matches!(t, Tag::Paragraph | Tag::Emphasis | Tag::Strong | Tag::Link(..) | Tag::BlockQuote)
 }
 
 fn is_forbidden_tag(t: &Tag<'_>) -> bool {
-    matches!(t, Tag::CodeBlock(_) | Tag::Table(_) | Tag::TableHead | Tag::TableRow | Tag::TableCell)
+    matches!(
+        t,
+        Tag::CodeBlock(_)
+            | Tag::Table(_)
+            | Tag::TableHead
+            | Tag::TableRow
+            | Tag::TableCell
+            | Tag::FootnoteDefinition(_)
+    )
 }
 
 impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
@@ -611,6 +581,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
             let is_allowed_tag = match event {
                 Event::Start(ref c) => {
                     if is_forbidden_tag(c) {
+                        self.skipped_tags += 1;
                         return None;
                     }
                     self.depth += 1;
@@ -618,14 +589,22 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
                 }
                 Event::End(ref c) => {
                     if is_forbidden_tag(c) {
+                        self.skipped_tags += 1;
                         return None;
                     }
                     self.depth -= 1;
                     is_start = false;
                     check_if_allowed_tag(c)
                 }
+                Event::FootnoteReference(_) => {
+                    self.skipped_tags += 1;
+                    false
+                }
                 _ => true,
             };
+            if !is_allowed_tag {
+                self.skipped_tags += 1;
+            }
             return if !is_allowed_tag {
                 if is_start {
                     Some(Event::Start(Tag::Paragraph))
@@ -715,7 +694,7 @@ impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Iterator for Footnotes<'a, I> {
     }
 }
 
-crate fn find_testable_code<T: doctest::Tester>(
+pub(crate) fn find_testable_code<T: doctest::Tester>(
     doc: &str,
     tests: &mut T,
     error_codes: ErrorCodes,
@@ -775,11 +754,7 @@ crate fn find_testable_code<T: doctest::Tester>(
             }
             Event::Text(ref s) if register_header.is_some() => {
                 let level = register_header.unwrap();
-                if s.is_empty() {
-                    tests.register_header("", level);
-                } else {
-                    tests.register_header(s, level);
-                }
+                tests.register_header(s, level);
                 register_header = None;
             }
             _ => {}
@@ -787,67 +762,45 @@ crate fn find_testable_code<T: doctest::Tester>(
     }
 }
 
-crate struct ExtraInfo<'tcx> {
-    id: ExtraInfoId,
+pub(crate) struct ExtraInfo<'tcx> {
+    def_id: DefId,
     sp: Span,
     tcx: TyCtxt<'tcx>,
 }
 
-enum ExtraInfoId {
-    Hir(HirId),
-    Def(DefId),
-}
-
 impl<'tcx> ExtraInfo<'tcx> {
-    crate fn new(tcx: TyCtxt<'tcx>, hir_id: HirId, sp: Span) -> ExtraInfo<'tcx> {
-        ExtraInfo { id: ExtraInfoId::Hir(hir_id), sp, tcx }
-    }
-
-    crate fn new_did(tcx: TyCtxt<'tcx>, did: DefId, sp: Span) -> ExtraInfo<'tcx> {
-        ExtraInfo { id: ExtraInfoId::Def(did), sp, tcx }
+    pub(crate) fn new(tcx: TyCtxt<'tcx>, def_id: DefId, sp: Span) -> ExtraInfo<'tcx> {
+        ExtraInfo { def_id, sp, tcx }
     }
 
     fn error_invalid_codeblock_attr(&self, msg: &str, help: &str) {
-        let hir_id = match self.id {
-            ExtraInfoId::Hir(hir_id) => hir_id,
-            ExtraInfoId::Def(item_did) => {
-                match item_did.as_local() {
-                    Some(item_did) => self.tcx.hir().local_def_id_to_hir_id(item_did),
-                    None => {
-                        // If non-local, no need to check anything.
-                        return;
-                    }
-                }
-            }
-        };
-        self.tcx.struct_span_lint_hir(
-            crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
-            hir_id,
-            self.sp,
-            |lint| {
-                let mut diag = lint.build(msg);
-                diag.help(help);
-                diag.emit();
-            },
-        );
+        if let Some(def_id) = self.def_id.as_local() {
+            self.tcx.struct_span_lint_hir(
+                crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
+                self.tcx.hir().local_def_id_to_hir_id(def_id),
+                self.sp,
+                msg,
+                |lint| lint.help(help),
+            );
+        }
     }
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
-crate struct LangString {
+pub(crate) struct LangString {
     original: String,
-    crate should_panic: bool,
-    crate no_run: bool,
-    crate ignore: Ignore,
-    crate rust: bool,
-    crate test_harness: bool,
-    crate compile_fail: bool,
-    crate error_codes: Vec<String>,
-    crate edition: Option<Edition>,
+    pub(crate) should_panic: bool,
+    pub(crate) no_run: bool,
+    pub(crate) ignore: Ignore,
+    pub(crate) rust: bool,
+    pub(crate) test_harness: bool,
+    pub(crate) compile_fail: bool,
+    pub(crate) error_codes: Vec<String>,
+    pub(crate) edition: Option<Edition>,
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
-crate enum Ignore {
+pub(crate) enum Ignore {
     All,
     None,
     Some(Vec<String>),
@@ -1022,7 +975,7 @@ impl Markdown<'_> {
         let Markdown {
             content: md,
             links,
-            mut ids,
+            ids,
             error_codes: codes,
             edition,
             playground,
@@ -1036,8 +989,8 @@ impl Markdown<'_> {
         let mut replacer = |broken_link: BrokenLink<'_>| {
             links
                 .iter()
-                .find(|link| link.original_text.as_str() == &*broken_link.reference)
-                .map(|link| (link.href.as_str().into(), link.new_text.as_str().into()))
+                .find(|link| &*link.original_text == &*broken_link.reference)
+                .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
         };
 
         let p = Parser::new_with_broken_link_callback(md, main_body_opts(), Some(&mut replacer));
@@ -1045,7 +998,7 @@ impl Markdown<'_> {
 
         let mut s = String::with_capacity(md.len() * 3 / 2);
 
-        let p = HeadingLinks::new(p, None, &mut ids, heading_offset);
+        let p = HeadingLinks::new(p, None, ids, heading_offset);
         let p = Footnotes::new(p);
         let p = LinkReplacer::new(p.map(|(ev, _)| ev), links);
         let p = TableWrapper::new(p);
@@ -1057,8 +1010,8 @@ impl Markdown<'_> {
 }
 
 impl MarkdownWithToc<'_> {
-    crate fn into_string(self) -> String {
-        let MarkdownWithToc(md, mut ids, codes, edition, playground) = self;
+    pub(crate) fn into_string(self) -> String {
+        let MarkdownWithToc { content: md, ids, error_codes: codes, edition, playground } = self;
 
         let p = Parser::new_ext(md, main_body_opts()).into_offset_iter();
 
@@ -1067,7 +1020,7 @@ impl MarkdownWithToc<'_> {
         let mut toc = TocBuilder::new();
 
         {
-            let p = HeadingLinks::new(p, Some(&mut toc), &mut ids, HeadingOffset::H1);
+            let p = HeadingLinks::new(p, Some(&mut toc), ids, HeadingOffset::H1);
             let p = Footnotes::new(p);
             let p = TableWrapper::new(p.map(|(ev, _)| ev));
             let p = CodeBlocks::new(p, codes, edition, playground);
@@ -1078,9 +1031,9 @@ impl MarkdownWithToc<'_> {
     }
 }
 
-impl MarkdownHtml<'_> {
-    crate fn into_string(self) -> String {
-        let MarkdownHtml(md, mut ids, codes, edition, playground) = self;
+impl MarkdownItemInfo<'_> {
+    pub(crate) fn into_string(self) -> String {
+        let MarkdownItemInfo(md, ids) = self;
 
         // This is actually common enough to special-case
         if md.is_empty() {
@@ -1096,10 +1049,12 @@ impl MarkdownHtml<'_> {
 
         let mut s = String::with_capacity(md.len() * 3 / 2);
 
-        let p = HeadingLinks::new(p, None, &mut ids, HeadingOffset::H1);
+        let p = HeadingLinks::new(p, None, ids, HeadingOffset::H1);
         let p = Footnotes::new(p);
         let p = TableWrapper::new(p.map(|(ev, _)| ev));
-        let p = CodeBlocks::new(p, codes, edition, playground);
+        let p = p.filter(|event| {
+            !matches!(event, Event::Start(Tag::Paragraph) | Event::End(Tag::Paragraph))
+        });
         html::push_html(&mut s, p);
 
         s
@@ -1107,27 +1062,40 @@ impl MarkdownHtml<'_> {
 }
 
 impl MarkdownSummaryLine<'_> {
-    crate fn into_string(self) -> String {
+    pub(crate) fn into_string_with_has_more_content(self) -> (String, bool) {
         let MarkdownSummaryLine(md, links) = self;
         // This is actually common enough to special-case
         if md.is_empty() {
-            return String::new();
+            return (String::new(), false);
         }
 
         let mut replacer = |broken_link: BrokenLink<'_>| {
             links
                 .iter()
-                .find(|link| link.original_text.as_str() == &*broken_link.reference)
-                .map(|link| (link.href.as_str().into(), link.new_text.as_str().into()))
+                .find(|link| &*link.original_text == &*broken_link.reference)
+                .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
         };
 
-        let p = Parser::new_with_broken_link_callback(md, summary_opts(), Some(&mut replacer));
+        let p = Parser::new_with_broken_link_callback(md, summary_opts(), Some(&mut replacer))
+            .peekable();
+        let mut summary = SummaryLine::new(p);
 
         let mut s = String::new();
 
-        html::push_html(&mut s, LinkReplacer::new(SummaryLine::new(p), links));
+        let without_paragraphs = LinkReplacer::new(&mut summary, links).filter(|event| {
+            !matches!(event, Event::Start(Tag::Paragraph) | Event::End(Tag::Paragraph))
+        });
 
-        s
+        html::push_html(&mut s, without_paragraphs);
+
+        let has_more_content =
+            matches!(summary.inner.peek(), Some(Event::Start(_))) || summary.skipped_tags > 0;
+
+        (s, has_more_content)
+    }
+
+    pub(crate) fn into_string(self) -> String {
+        self.into_string_with_has_more_content().0
     }
 }
 
@@ -1151,8 +1119,8 @@ fn markdown_summary_with_limit(
     let mut replacer = |broken_link: BrokenLink<'_>| {
         link_names
             .iter()
-            .find(|link| link.original_text.as_str() == &*broken_link.reference)
-            .map(|link| (link.href.as_str().into(), link.new_text.as_str().into()))
+            .find(|link| &*link.original_text == &*broken_link.reference)
+            .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
     };
 
     let p = Parser::new_with_broken_link_callback(md, summary_opts(), Some(&mut replacer));
@@ -1183,18 +1151,18 @@ fn markdown_summary_with_limit(
             Event::Start(tag) => match tag {
                 Tag::Emphasis => buf.open_tag("em"),
                 Tag::Strong => buf.open_tag("strong"),
-                Tag::CodeBlock(..) => return ControlFlow::BREAK,
+                Tag::CodeBlock(..) => return ControlFlow::Break(()),
                 _ => {}
             },
             Event::End(tag) => match tag {
                 Tag::Emphasis | Tag::Strong => buf.close_tag(),
-                Tag::Paragraph | Tag::Heading(..) => return ControlFlow::BREAK,
+                Tag::Paragraph | Tag::Heading(..) => return ControlFlow::Break(()),
                 _ => {}
             },
             Event::HardBreak | Event::SoftBreak => buf.push(" ")?,
             _ => {}
         };
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     });
 
     (buf.finish(), stopped_early)
@@ -1206,7 +1174,7 @@ fn markdown_summary_with_limit(
 /// Will shorten to 59 or 60 characters, including an ellipsis (…) if it was shortened.
 ///
 /// See [`markdown_summary_with_limit`] for details about what is rendered and what is not.
-crate fn short_markdown_summary(markdown: &str, link_names: &[RenderedLink]) -> String {
+pub(crate) fn short_markdown_summary(markdown: &str, link_names: &[RenderedLink]) -> String {
     let (mut s, was_shortened) = markdown_summary_with_limit(markdown, link_names, 59);
 
     if was_shortened {
@@ -1222,14 +1190,23 @@ crate fn short_markdown_summary(markdown: &str, link_names: &[RenderedLink]) -> 
 /// - Headings, links, and formatting are stripped.
 /// - Inline code is rendered as-is, surrounded by backticks.
 /// - HTML and code blocks are ignored.
-crate fn plain_text_summary(md: &str) -> String {
+pub(crate) fn plain_text_summary(md: &str, link_names: &[RenderedLink]) -> String {
     if md.is_empty() {
         return String::new();
     }
 
     let mut s = String::with_capacity(md.len() * 3 / 2);
 
-    for event in Parser::new_ext(md, summary_opts()) {
+    let mut replacer = |broken_link: BrokenLink<'_>| {
+        link_names
+            .iter()
+            .find(|link| &*link.original_text == &*broken_link.reference)
+            .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
+    };
+
+    let p = Parser::new_with_broken_link_callback(md, summary_opts(), Some(&mut replacer));
+
+    for event in p {
         match &event {
             Event::Text(text) => s.push_str(text),
             Event::Code(code) => {
@@ -1249,18 +1226,19 @@ crate fn plain_text_summary(md: &str) -> String {
 }
 
 #[derive(Debug)]
-crate struct MarkdownLink {
+pub(crate) struct MarkdownLink {
     pub kind: LinkType,
     pub link: String,
     pub range: Range<usize>,
 }
 
-crate fn markdown_links(md: &str) -> Vec<MarkdownLink> {
+pub(crate) fn markdown_links<R>(
+    md: &str,
+    preprocess_link: impl Fn(MarkdownLink) -> Option<R>,
+) -> Vec<R> {
     if md.is_empty() {
         return vec![];
     }
-
-    let links = RefCell::new(vec![]);
 
     // FIXME: remove this function once pulldown_cmark can provide spans for link definitions.
     let locate = |s: &str, fallback: Range<usize>| unsafe {
@@ -1293,48 +1271,39 @@ crate fn markdown_links(md: &str) -> Vec<MarkdownLink> {
         }
     };
 
-    let mut push = |link: BrokenLink<'_>| {
-        let span = span_for_link(&link.reference, link.span);
-        links.borrow_mut().push(MarkdownLink {
-            kind: LinkType::ShortcutUnknown,
-            link: link.reference.to_string(),
-            range: span,
-        });
-        None
-    };
-    let p = Parser::new_with_broken_link_callback(md, main_body_opts(), Some(&mut push))
-        .into_offset_iter();
-
-    // There's no need to thread an IdMap through to here because
-    // the IDs generated aren't going to be emitted anywhere.
-    let mut ids = IdMap::new();
-    let iter = Footnotes::new(HeadingLinks::new(p, None, &mut ids, HeadingOffset::H1));
-
-    for ev in iter {
-        if let Event::Start(Tag::Link(kind, dest, _)) = ev.0 {
-            debug!("found link: {dest}");
-            let span = span_for_link(&dest, ev.1);
-            links.borrow_mut().push(MarkdownLink { kind, link: dest.into_string(), range: span });
+    Parser::new_with_broken_link_callback(
+        md,
+        main_body_opts(),
+        Some(&mut |link: BrokenLink<'_>| Some((link.reference, "".into()))),
+    )
+    .into_offset_iter()
+    .filter_map(|(event, span)| match event {
+        Event::Start(Tag::Link(link_type, dest, _)) if may_be_doc_link(link_type) => {
+            preprocess_link(MarkdownLink {
+                kind: link_type,
+                range: span_for_link(&dest, span),
+                link: dest.into_string(),
+            })
         }
-    }
-
-    links.into_inner()
+        _ => None,
+    })
+    .collect()
 }
 
 #[derive(Debug)]
-crate struct RustCodeBlock {
+pub(crate) struct RustCodeBlock {
     /// The range in the markdown that the code block occupies. Note that this includes the fences
     /// for fenced code blocks.
-    crate range: Range<usize>,
+    pub(crate) range: Range<usize>,
     /// The range in the markdown that the code within the code block occupies.
-    crate code: Range<usize>,
-    crate is_fenced: bool,
-    crate lang_string: LangString,
+    pub(crate) code: Range<usize>,
+    pub(crate) is_fenced: bool,
+    pub(crate) lang_string: LangString,
 }
 
 /// Returns a range of bytes for each code block in the markdown that is tagged as `rust` or
 /// untagged (and assumed to be rust).
-crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_>) -> Vec<RustCodeBlock> {
+pub(crate) fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_>) -> Vec<RustCodeBlock> {
     let mut code_blocks = vec![];
 
     if md.is_empty() {
@@ -1415,65 +1384,70 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_>) -> Vec<RustCodeB
 
 #[derive(Clone, Default, Debug)]
 pub struct IdMap {
-    map: FxHashMap<String, usize>,
+    map: FxHashMap<Cow<'static, str>, usize>,
 }
 
-fn init_id_map() -> FxHashMap<String, usize> {
+// The map is pre-initialized and cloned each time to avoid reinitializing it repeatedly.
+static DEFAULT_ID_MAP: Lazy<FxHashMap<Cow<'static, str>, usize>> = Lazy::new(|| init_id_map());
+
+fn init_id_map() -> FxHashMap<Cow<'static, str>, usize> {
     let mut map = FxHashMap::default();
-    // This is the list of IDs used in Javascript.
-    map.insert("help".to_owned(), 1);
+    // This is the list of IDs used in JavaScript.
+    map.insert("help".into(), 1);
+    map.insert("settings".into(), 1);
+    map.insert("not-displayed".into(), 1);
+    map.insert("alternative-display".into(), 1);
+    map.insert("search".into(), 1);
+    map.insert("crate-search".into(), 1);
+    map.insert("crate-search-div".into(), 1);
     // This is the list of IDs used in HTML generated in Rust (including the ones
     // used in tera template files).
-    map.insert("mainThemeStyle".to_owned(), 1);
-    map.insert("themeStyle".to_owned(), 1);
-    map.insert("theme-picker".to_owned(), 1);
-    map.insert("theme-choices".to_owned(), 1);
-    map.insert("settings-menu".to_owned(), 1);
-    map.insert("help-button".to_owned(), 1);
-    map.insert("main-content".to_owned(), 1);
-    map.insert("search".to_owned(), 1);
-    map.insert("crate-search".to_owned(), 1);
-    map.insert("render-detail".to_owned(), 1);
-    map.insert("toggle-all-docs".to_owned(), 1);
-    map.insert("all-types".to_owned(), 1);
-    map.insert("default-settings".to_owned(), 1);
-    map.insert("rustdoc-vars".to_owned(), 1);
-    map.insert("sidebar-vars".to_owned(), 1);
-    map.insert("copy-path".to_owned(), 1);
-    map.insert("TOC".to_owned(), 1);
+    map.insert("mainThemeStyle".into(), 1);
+    map.insert("themeStyle".into(), 1);
+    map.insert("settings-menu".into(), 1);
+    map.insert("help-button".into(), 1);
+    map.insert("main-content".into(), 1);
+    map.insert("toggle-all-docs".into(), 1);
+    map.insert("all-types".into(), 1);
+    map.insert("default-settings".into(), 1);
+    map.insert("rustdoc-vars".into(), 1);
+    map.insert("sidebar-vars".into(), 1);
+    map.insert("copy-path".into(), 1);
+    map.insert("TOC".into(), 1);
     // This is the list of IDs used by rustdoc sections (but still generated by
     // rustdoc).
-    map.insert("fields".to_owned(), 1);
-    map.insert("variants".to_owned(), 1);
-    map.insert("implementors-list".to_owned(), 1);
-    map.insert("synthetic-implementors-list".to_owned(), 1);
-    map.insert("foreign-impls".to_owned(), 1);
-    map.insert("implementations".to_owned(), 1);
-    map.insert("trait-implementations".to_owned(), 1);
-    map.insert("synthetic-implementations".to_owned(), 1);
-    map.insert("blanket-implementations".to_owned(), 1);
-    map.insert("required-associated-types".to_owned(), 1);
-    map.insert("provided-associated-types".to_owned(), 1);
-    map.insert("provided-associated-consts".to_owned(), 1);
-    map.insert("required-associated-consts".to_owned(), 1);
-    map.insert("required-methods".to_owned(), 1);
-    map.insert("provided-methods".to_owned(), 1);
-    map.insert("implementors".to_owned(), 1);
-    map.insert("synthetic-implementors".to_owned(), 1);
-    map.insert("implementations-list".to_owned(), 1);
-    map.insert("trait-implementations-list".to_owned(), 1);
-    map.insert("synthetic-implementations-list".to_owned(), 1);
-    map.insert("blanket-implementations-list".to_owned(), 1);
-    map.insert("deref-methods".to_owned(), 1);
+    map.insert("fields".into(), 1);
+    map.insert("variants".into(), 1);
+    map.insert("implementors-list".into(), 1);
+    map.insert("synthetic-implementors-list".into(), 1);
+    map.insert("foreign-impls".into(), 1);
+    map.insert("implementations".into(), 1);
+    map.insert("trait-implementations".into(), 1);
+    map.insert("synthetic-implementations".into(), 1);
+    map.insert("blanket-implementations".into(), 1);
+    map.insert("required-associated-types".into(), 1);
+    map.insert("provided-associated-types".into(), 1);
+    map.insert("provided-associated-consts".into(), 1);
+    map.insert("required-associated-consts".into(), 1);
+    map.insert("required-methods".into(), 1);
+    map.insert("provided-methods".into(), 1);
+    map.insert("implementors".into(), 1);
+    map.insert("synthetic-implementors".into(), 1);
+    map.insert("implementations-list".into(), 1);
+    map.insert("trait-implementations-list".into(), 1);
+    map.insert("synthetic-implementations-list".into(), 1);
+    map.insert("blanket-implementations-list".into(), 1);
+    map.insert("deref-methods".into(), 1);
+    map.insert("layout".into(), 1);
     map
 }
 
 impl IdMap {
     pub fn new() -> Self {
-        IdMap { map: init_id_map() }
+        IdMap { map: DEFAULT_ID_MAP.clone() }
     }
 
-    crate fn derive<S: AsRef<str> + ToString>(&mut self, candidate: S) -> String {
+    pub(crate) fn derive<S: AsRef<str> + ToString>(&mut self, candidate: S) -> String {
         let id = match self.map.get_mut(candidate.as_ref()) {
             None => candidate.to_string(),
             Some(a) => {
@@ -1483,7 +1457,7 @@ impl IdMap {
             }
         };
 
-        self.map.insert(id.clone(), 1);
+        self.map.insert(id.clone().into(), 1);
         id
     }
 }

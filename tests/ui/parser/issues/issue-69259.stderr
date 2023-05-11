@@ -1,0 +1,8 @@
+error: unexpected closing delimiter: `)`
+  --> $DIR/issue-69259.rs:3:5
+   |
+LL | fn f) {}
+   |     ^ unexpected closing delimiter
+
+error: aborting due to previous error
+

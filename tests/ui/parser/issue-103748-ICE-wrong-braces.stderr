@@ -1,0 +1,51 @@
+error: invalid `?` in type
+  --> $DIR/issue-103748-ICE-wrong-braces.rs:3:36
+   |
+LL | struct Apple((Apple, Option(Banana ? Citron)));
+   |                                    ^ `?` is only allowed on expressions, not types
+   |
+help: if you meant to express that the type might not contain a value, use the `Option` wrapper type
+   |
+LL | struct Apple((Apple, Option(Option<Banana > Citron)));
+   |                             +++++++       ~
+
+error: expected one of `)` or `,`, found `Citron`
+  --> $DIR/issue-103748-ICE-wrong-braces.rs:3:38
+   |
+LL | struct Apple((Apple, Option(Banana ? Citron)));
+   |                                     -^^^^^^ expected one of `)` or `,`
+   |                                     |
+   |                                     help: missing `,`
+
+error[E0412]: cannot find type `Citron` in this scope
+  --> $DIR/issue-103748-ICE-wrong-braces.rs:3:38
+   |
+LL | struct Apple((Apple, Option(Banana ? Citron)));
+   |                                      ^^^^^^ not found in this scope
+
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/issue-103748-ICE-wrong-braces.rs:3:22
+   |
+LL | struct Apple((Apple, Option(Banana ? Citron)));
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^ only `Fn` traits may use parentheses
+   |
+help: use angle brackets instead
+   |
+LL | struct Apple((Apple, Option<Banana ? Citron>));
+   |                            ~               ~
+
+error[E0072]: recursive type `Apple` has infinite size
+  --> $DIR/issue-103748-ICE-wrong-braces.rs:3:1
+   |
+LL | struct Apple((Apple, Option(Banana ? Citron)));
+   | ^^^^^^^^^^^^  ----- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
+   |
+LL | struct Apple((Box<Apple>, Option(Banana ? Citron)));
+   |               ++++     +
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0072, E0214, E0412.
+For more information about an error, try `rustc --explain E0072`.

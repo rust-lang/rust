@@ -20,7 +20,6 @@ struct ClosureObligationProcessor<OF, BF, O, E> {
 struct TestOutcome<O, E> {
     pub completed: Vec<O>,
     pub errors: Vec<Error<O, E>>,
-    pub stalled: bool,
 }
 
 impl<O, E> OutcomeTrait for TestOutcome<O, E>
@@ -31,15 +30,7 @@ where
     type Obligation = O;
 
     fn new() -> Self {
-        Self { errors: vec![], stalled: false, completed: vec![] }
-    }
-
-    fn mark_not_stalled(&mut self) {
-        self.stalled = false;
-    }
-
-    fn is_stalled(&self) -> bool {
-        self.stalled
+        Self { errors: vec![], completed: vec![] }
     }
 
     fn record_completed(&mut self, outcome: &Self::Obligation) {
@@ -73,6 +64,11 @@ where
 {
     type Obligation = O;
     type Error = E;
+    type OUT = TestOutcome<O, E>;
+
+    fn needs_process_obligation(&self, _obligation: &Self::Obligation) -> bool {
+        true
+    }
 
     fn process_obligation(
         &mut self,
@@ -81,10 +77,15 @@ where
         (self.process_obligation)(obligation)
     }
 
-    fn process_backedge<'c, I>(&mut self, _cycle: I, _marker: PhantomData<&'c Self::Obligation>)
+    fn process_backedge<'c, I>(
+        &mut self,
+        _cycle: I,
+        _marker: PhantomData<&'c Self::Obligation>,
+    ) -> Result<(), Self::Error>
     where
         I: Clone + Iterator<Item = &'c Self::Obligation>,
     {
+        Ok(())
     }
 }
 

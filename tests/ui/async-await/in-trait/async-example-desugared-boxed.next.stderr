@@ -1,0 +1,11 @@
+error: method `foo` should be async because the method from the trait is async
+  --> $DIR/async-example-desugared-boxed.rs:17:5
+   |
+LL |     async fn foo(&self) -> i32;
+   |     --------------------------- required because the trait method is async
+...
+LL |     fn foo(&self) -> Pin<Box<dyn Future<Output = i32> + '_>> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

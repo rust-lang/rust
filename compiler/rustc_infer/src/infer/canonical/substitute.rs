@@ -7,16 +7,18 @@
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
 use crate::infer::canonical::{Canonical, CanonicalVarValues};
-use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::fold::{FnMutDelegate, TypeFoldable};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, TyCtxt};
 
-pub(super) trait CanonicalExt<'tcx, V> {
+/// FIXME(-Ztrait-solver=next): This or public because it is shared with the
+/// new trait solver implementation. We should deduplicate canonicalization.
+pub trait CanonicalExt<'tcx, V> {
     /// Instantiate the wrapped value, replacing each canonical value
     /// with the value given in `var_values`.
     fn substitute(&self, tcx: TyCtxt<'tcx>, var_values: &CanonicalVarValues<'tcx>) -> V
     where
-        V: TypeFoldable<'tcx>;
+        V: TypeFoldable<TyCtxt<'tcx>>;
 
     /// Allows one to apply a substitute to some subset of
     /// `self.value`. Invoke `projection_fn` with `self.value` to get
@@ -31,13 +33,13 @@ pub(super) trait CanonicalExt<'tcx, V> {
         projection_fn: impl FnOnce(&V) -> T,
     ) -> T
     where
-        T: TypeFoldable<'tcx>;
+        T: TypeFoldable<TyCtxt<'tcx>>;
 }
 
 impl<'tcx, V> CanonicalExt<'tcx, V> for Canonical<'tcx, V> {
     fn substitute(&self, tcx: TyCtxt<'tcx>, var_values: &CanonicalVarValues<'tcx>) -> V
     where
-        V: TypeFoldable<'tcx>,
+        V: TypeFoldable<TyCtxt<'tcx>>,
     {
         self.substitute_projected(tcx, var_values, |value| value.clone())
     }
@@ -49,7 +51,7 @@ impl<'tcx, V> CanonicalExt<'tcx, V> for Canonical<'tcx, V> {
         projection_fn: impl FnOnce(&V) -> T,
     ) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         assert_eq!(self.variables.len(), var_values.len());
         let value = projection_fn(&self.value);
@@ -66,26 +68,26 @@ pub(super) fn substitute_value<'tcx, T>(
     value: T,
 ) -> T
 where
-    T: TypeFoldable<'tcx>,
+    T: TypeFoldable<TyCtxt<'tcx>>,
 {
     if var_values.var_values.is_empty() {
         value
     } else {
-        let fld_r = |br: ty::BoundRegion| match var_values.var_values[br.var].unpack() {
-            GenericArgKind::Lifetime(l) => l,
-            r => bug!("{:?} is a region but value is {:?}", br, r),
+        let delegate = FnMutDelegate {
+            regions: &mut |br: ty::BoundRegion| match var_values[br.var].unpack() {
+                GenericArgKind::Lifetime(l) => l,
+                r => bug!("{:?} is a region but value is {:?}", br, r),
+            },
+            types: &mut |bound_ty: ty::BoundTy| match var_values[bound_ty.var].unpack() {
+                GenericArgKind::Type(ty) => ty,
+                r => bug!("{:?} is a type but value is {:?}", bound_ty, r),
+            },
+            consts: &mut |bound_ct: ty::BoundVar, _| match var_values[bound_ct].unpack() {
+                GenericArgKind::Const(ct) => ct,
+                c => bug!("{:?} is a const but value is {:?}", bound_ct, c),
+            },
         };
 
-        let fld_t = |bound_ty: ty::BoundTy| match var_values.var_values[bound_ty.var].unpack() {
-            GenericArgKind::Type(ty) => ty,
-            r => bug!("{:?} is a type but value is {:?}", bound_ty, r),
-        };
-
-        let fld_c = |bound_ct: ty::BoundVar, _| match var_values.var_values[bound_ct].unpack() {
-            GenericArgKind::Const(ct) => ct,
-            c => bug!("{:?} is a const but value is {:?}", bound_ct, c),
-        };
-
-        tcx.replace_escaping_bound_vars(value, fld_r, fld_t, fld_c)
+        tcx.replace_escaping_bound_vars_uncached(value, delegate)
     }
 }

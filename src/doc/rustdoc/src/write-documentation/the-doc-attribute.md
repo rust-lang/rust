@@ -9,11 +9,11 @@ are the same:
 
 ```rust,no_run
 /// This is a doc comment.
-#[doc = " This is a doc comment."]
+#[doc = r" This is a doc comment."]
 # fn f() {}
 ```
 
-(Note the leading space in the attribute version.)
+(Note the leading space and the raw string literal in the attribute version.)
 
 In most cases, `///` is easier to use than `#[doc]`. One case where the latter is easier is
 when generating documentation in macros; the `collapse-docs` pass will combine multiple
@@ -87,7 +87,9 @@ on your documentation examples make requests to.
 #![doc(html_playground_url = "https://playground.example.com/")]
 ```
 
-Now, when you press "run", the button will make a request to this domain.
+Now, when you press "run", the button will make a request to this domain. The request
+URL will contain 2 query parameters: `code` and `edition` for the code in the documentation
+and the Rust edition respectively.
 
 If you don't use this attribute, there will be no run buttons.
 

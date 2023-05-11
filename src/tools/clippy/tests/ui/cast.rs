@@ -1,13 +1,13 @@
 #![feature(repr128)]
 #![allow(incomplete_features)]
-
-#[warn(
+#![warn(
     clippy::cast_precision_loss,
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
     clippy::cast_possible_wrap
 )]
-#[allow(clippy::cast_abs_to_unsigned, clippy::no_effect, clippy::unnecessary_operation)]
+#![allow(clippy::cast_abs_to_unsigned, clippy::no_effect, clippy::unnecessary_operation)]
+
 fn main() {
     // Test clippy::cast_precision_loss
     let x0 = 1i32;
@@ -28,6 +28,13 @@ fn main() {
     1i32 as u8;
     1f64 as isize;
     1f64 as usize;
+    1f32 as u32 as u16;
+    {
+        let _x: i8 = 1i32 as _;
+        1f32 as i32;
+        1f64 as i32;
+        1f32 as u8;
+    }
     // Test clippy::cast_possible_wrap
     1u8 as i8;
     1u16 as i16;
@@ -251,4 +258,12 @@ fn main() {
             let _ = self as u64; // Don't lint.
         }
     }
+}
+
+fn avoid_subtract_overflow(q: u32) {
+    let c = (q >> 16) as u8;
+    c as usize;
+
+    let c = (q / 1000) as u8;
+    c as usize;
 }

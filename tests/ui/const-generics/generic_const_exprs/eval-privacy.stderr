@@ -1,0 +1,12 @@
+error[E0446]: private type `fn(u8) -> u8 {my_const_fn}` in public interface
+  --> $DIR/eval-privacy.rs:16:5
+   |
+LL |     type AssocTy = Const<{ my_const_fn(U) }>;
+   |     ^^^^^^^^^^^^ can't leak private type
+...
+LL | const fn my_const_fn(val: u8) -> u8 {
+   | ----------------------------------- `fn(u8) -> u8 {my_const_fn}` declared as private
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0446`.

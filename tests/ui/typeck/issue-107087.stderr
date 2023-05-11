@@ -1,0 +1,9 @@
+error[E0223]: ambiguous associated type
+  --> $DIR/issue-107087.rs:16:5
+   |
+LL |     A::B::<>::C
+   |     ^^^^^^^^ help: use the fully-qualified path: `<A<_> as Foo>::B`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0223`.

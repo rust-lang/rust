@@ -68,7 +68,9 @@ impl DoubleEndedIterator for Args {
     target_os = "l4re",
     target_os = "fuchsia",
     target_os = "redox",
-    target_os = "vxworks"
+    target_os = "vxworks",
+    target_os = "horizon",
+    target_os = "nto",
 ))]
 mod imp {
     use super::Args;
@@ -140,17 +142,33 @@ mod imp {
             // list.
             let argv = ARGV.load(Ordering::Relaxed);
             let argc = if argv.is_null() { 0 } else { ARGC.load(Ordering::Relaxed) };
-            (0..argc)
-                .map(|i| {
-                    let cstr = CStr::from_ptr(*argv.offset(i) as *const libc::c_char);
-                    OsStringExt::from_vec(cstr.to_bytes().to_vec())
-                })
-                .collect()
+            let mut args = Vec::with_capacity(argc as usize);
+            for i in 0..argc {
+                let ptr = *argv.offset(i) as *const libc::c_char;
+
+                // Some C commandline parsers (e.g. GLib and Qt) are replacing already
+                // handled arguments in `argv` with `NULL` and move them to the end. That
+                // means that `argc` might be bigger than the actual number of non-`NULL`
+                // pointers in `argv` at this point.
+                //
+                // To handle this we simply stop iterating at the first `NULL` argument.
+                //
+                // `argv` is also guaranteed to be `NULL`-terminated so any non-`NULL` arguments
+                // after the first `NULL` can safely be ignored.
+                if ptr.is_null() {
+                    break;
+                }
+
+                let cstr = CStr::from_ptr(ptr);
+                args.push(OsStringExt::from_vec(cstr.to_bytes().to_vec()));
+            }
+
+            args
         }
     }
 }
 
-#[cfg(any(target_os = "macos", target_os = "ios"))]
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
 mod imp {
     use super::Args;
     use crate::ffi::CStr;
@@ -191,7 +209,7 @@ mod imp {
     // for i in (0..[args count])
     //      res.push([args objectAtIndex:i])
     // res
-    #[cfg(target_os = "ios")]
+    #[cfg(any(target_os = "ios", target_os = "watchos"))]
     pub fn args() -> Args {
         use crate::ffi::OsString;
         use crate::mem;
@@ -247,7 +265,7 @@ mod imp {
     }
 }
 
-#[cfg(target_os = "espidf")]
+#[cfg(any(target_os = "espidf", target_os = "vita"))]
 mod imp {
     use super::Args;
 

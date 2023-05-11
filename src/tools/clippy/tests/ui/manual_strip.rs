@@ -64,3 +64,19 @@ fn main() {
         s4[2..].to_string();
     }
 }
+
+#[clippy::msrv = "1.44"]
+fn msrv_1_44() {
+    let s = "abc";
+    if s.starts_with('a') {
+        s[1..].to_string();
+    }
+}
+
+#[clippy::msrv = "1.45"]
+fn msrv_1_45() {
+    let s = "abc";
+    if s.starts_with('a') {
+        s[1..].to_string();
+    }
+}

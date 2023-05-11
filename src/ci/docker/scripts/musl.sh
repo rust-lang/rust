@@ -25,7 +25,7 @@ shift
 # Apparently applying `-fPIC` everywhere allows them to link successfully.
 export CFLAGS="-fPIC $CFLAGS"
 
-MUSL=musl-1.1.24
+MUSL=musl-1.2.3
 
 # may have been downloaded in a previous run
 if [ ! -d $MUSL ]; then
@@ -33,7 +33,7 @@ if [ ! -d $MUSL ]; then
 fi
 
 cd $MUSL
-./configure --enable-optimize --enable-debug --disable-shared --prefix=/musl-$TAG "$@"
+./configure --enable-debug --disable-shared --prefix=/musl-$TAG "$@"
 if [ "$TAG" = "i586" -o "$TAG" = "i686" ]; then
   hide_output make -j$(nproc) AR=ar RANLIB=ranlib
 else

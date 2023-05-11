@@ -1,0 +1,51 @@
+error: `^` is not the exponentiation operator
+  --> $DIR/suspicious_xor_used_as_pow.rs:19:13
+   |
+LL |     let _ = 2 ^ 5;
+   |             ^^^^^ help: did you mean to write: `2.pow(5)`
+   |
+   = note: `-D clippy::suspicious-xor-used-as-pow` implied by `-D warnings`
+
+error: `^` is not the exponentiation operator
+  --> $DIR/suspicious_xor_used_as_pow.rs:20:13
+   |
+LL |     let _ = 2i32 ^ 9i32;
+   |             ^^^^^^^^^^^ help: did you mean to write: `2_i32.pow(9_i32)`
+
+error: `^` is not the exponentiation operator
+  --> $DIR/suspicious_xor_used_as_pow.rs:21:13
+   |
+LL |     let _ = 2i32 ^ 2i32;
+   |             ^^^^^^^^^^^ help: did you mean to write: `2_i32.pow(2_i32)`
+
+error: `^` is not the exponentiation operator
+  --> $DIR/suspicious_xor_used_as_pow.rs:22:13
+   |
+LL |     let _ = 50i32 ^ 3i32;
+   |             ^^^^^^^^^^^^ help: did you mean to write: `50_i32.pow(3_i32)`
+
+error: `^` is not the exponentiation operator
+  --> $DIR/suspicious_xor_used_as_pow.rs:23:13
+   |
+LL |     let _ = 5i32 ^ 8i32;
+   |             ^^^^^^^^^^^ help: did you mean to write: `5_i32.pow(8_i32)`
+
+error: `^` is not the exponentiation operator
+  --> $DIR/suspicious_xor_used_as_pow.rs:24:13
+   |
+LL |     let _ = 2i32 ^ 32i32;
+   |             ^^^^^^^^^^^^ help: did you mean to write: `2_i32.pow(32_i32)`
+
+error: `^` is not the exponentiation operator
+  --> $DIR/suspicious_xor_used_as_pow.rs:13:9
+   |
+LL |         1 ^ 2 // should warn even if inside macro
+   |         ^^^^^ help: did you mean to write: `1.pow(2)`
+...
+LL |     macro_test_inside!();
+   |     -------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_test_inside` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 7 previous errors
+

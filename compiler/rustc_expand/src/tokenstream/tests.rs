@@ -1,10 +1,9 @@
 use crate::tests::string_to_stream;
 
 use rustc_ast::token;
-use rustc_ast::tokenstream::{Spacing, TokenStream, TokenStreamBuilder, TokenTree};
+use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_span::create_default_session_globals_then;
 use rustc_span::{BytePos, Span, Symbol};
-use smallvec::smallvec;
 
 fn string_to_ts(string: &str) -> TokenStream {
     string_to_stream(string.to_owned())
@@ -14,17 +13,15 @@ fn sp(a: u32, b: u32) -> Span {
     Span::with_root_ctxt(BytePos(a), BytePos(b))
 }
 
-fn joint(tree: TokenTree) -> TokenStream {
-    TokenStream::new(vec![(tree, Spacing::Joint)])
-}
-
 #[test]
 fn test_concat() {
     create_default_session_globals_then(|| {
         let test_res = string_to_ts("foo::bar::baz");
         let test_fst = string_to_ts("foo::bar");
         let test_snd = string_to_ts("::baz");
-        let eq_res = TokenStream::from_streams(smallvec![test_fst, test_snd]);
+        let mut eq_res = TokenStream::default();
+        eq_res.push_stream(test_fst);
+        eq_res.push_stream(test_snd);
         assert_eq!(test_res.trees().count(), 5);
         assert_eq!(eq_res.trees().count(), 5);
         assert_eq!(test_res.eq_unspanned(&eq_res), true);
@@ -35,7 +32,7 @@ fn test_concat() {
 fn test_to_from_bijection() {
     create_default_session_globals_then(|| {
         let test_start = string_to_ts("foo::bar(baz)");
-        let test_end = test_start.trees().collect();
+        let test_end = test_start.trees().cloned().collect();
         assert_eq!(test_start, test_end)
     })
 }
@@ -88,9 +85,8 @@ fn test_diseq_1() {
 #[test]
 fn test_is_empty() {
     create_default_session_globals_then(|| {
-        let test0: TokenStream = Vec::<TokenTree>::new().into_iter().collect();
-        let test1: TokenStream =
-            TokenTree::token(token::Ident(Symbol::intern("a"), false), sp(0, 1)).into();
+        let test0 = TokenStream::default();
+        let test1 = TokenStream::token_alone(token::Ident(Symbol::intern("a"), false), sp(0, 1));
         let test2 = string_to_ts("foo(bar::baz)");
 
         assert_eq!(test0.is_empty(), true);
@@ -102,11 +98,10 @@ fn test_is_empty() {
 #[test]
 fn test_dotdotdot() {
     create_default_session_globals_then(|| {
-        let mut builder = TokenStreamBuilder::new();
-        builder.push(joint(TokenTree::token(token::Dot, sp(0, 1))));
-        builder.push(joint(TokenTree::token(token::Dot, sp(1, 2))));
-        builder.push(TokenTree::token(token::Dot, sp(2, 3)));
-        let stream = builder.build();
+        let mut stream = TokenStream::default();
+        stream.push_tree(TokenTree::token_joint(token::Dot, sp(0, 1)));
+        stream.push_tree(TokenTree::token_joint(token::Dot, sp(1, 2)));
+        stream.push_tree(TokenTree::token_alone(token::Dot, sp(2, 3)));
         assert!(stream.eq_unspanned(&string_to_ts("...")));
         assert_eq!(stream.trees().count(), 1);
     })

@@ -1,0 +1,2 @@
+impl Vec< br##"*.."## > {}
+//~^ ERROR

@@ -1,62 +1,62 @@
 //! Support for serializing the dep-graph and reloading it.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![feature(crate_visibility_modifier)]
-#![feature(nll)]
+// this shouldn't be necessary, but the check for `&mut _` is too naive and denies returning a function pointer that takes a mut ref
+#![feature(const_mut_refs)]
 #![feature(min_specialization)]
-#![feature(once_cell)]
+#![feature(never_type)]
 #![feature(rustc_attrs)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
-#[macro_use]
-extern crate rustc_macros;
 #[macro_use]
 extern crate rustc_middle;
 
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::AtomicU64;
+use crate::plumbing::{encode_all_query_results, try_mark_green};
 use rustc_middle::arena::Arena;
-use rustc_middle::dep_graph::{self, DepKindStruct, SerializedDepNodeIndex};
-use rustc_middle::ty::query::{query_keys, query_storage, query_stored, query_values};
-use rustc_middle::ty::query::{ExternProviders, Providers, QueryEngine};
-use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::def_id::LocalDefId;
+use rustc_middle::dep_graph::{self, DepKind, DepKindStruct};
+use rustc_middle::query::erase::{erase, restore, Erase};
+use rustc_middle::query::AsLocalKey;
+use rustc_middle::ty::query::{
+    query_keys, query_provided, query_provided_to_value, query_storage, query_values,
+};
+use rustc_middle::ty::query::{ExternProviders, Providers, QueryEngine, QuerySystemFns};
+use rustc_middle::ty::TyCtxt;
+use rustc_query_system::dep_graph::SerializedDepNodeIndex;
+use rustc_query_system::Value;
 use rustc_span::Span;
 
 #[macro_use]
 mod plumbing;
-pub use plumbing::QueryCtxt;
-use rustc_query_system::query::*;
-
-mod keys;
-use keys::Key;
-
-mod values;
-use self::values::Value;
+pub use crate::plumbing::QueryCtxt;
 
 pub use rustc_query_system::query::QueryConfig;
-pub(crate) use rustc_query_system::query::{QueryDescription, QueryVtable};
-
-mod on_disk_cache;
-pub use on_disk_cache::OnDiskCache;
+use rustc_query_system::query::*;
 
 mod profiling_support;
 pub use self::profiling_support::alloc_self_profile_query_strings;
 
-fn describe_as_module(def_id: LocalDefId, tcx: TyCtxt<'_>) -> String {
-    if def_id.is_top_level_module() {
-        "top-level module".to_string()
-    } else {
-        format!("module `{}`", tcx.def_path_str(def_id.to_def_id()))
-    }
+/// This is implemented per query and restoring query values from their erased state.
+trait QueryConfigRestored<'tcx>: QueryConfig<QueryCtxt<'tcx>> + Default {
+    type RestoredValue;
+
+    fn restore(value: <Self as QueryConfig<QueryCtxt<'tcx>>>::Value) -> Self::RestoredValue;
 }
 
-rustc_query_append! { [define_queries!][<'tcx>] }
+rustc_query_append! { define_queries! }
 
-impl<'tcx> Queries<'tcx> {
-    // Force codegen in the dyn-trait transformation in this crate.
-    pub fn as_dyn(&'tcx self) -> &'tcx dyn QueryEngine<'tcx> {
-        self
+pub fn query_system_fns<'tcx>(
+    local_providers: Providers,
+    extern_providers: ExternProviders,
+) -> QuerySystemFns<'tcx> {
+    QuerySystemFns {
+        engine: engine(),
+        local_providers,
+        extern_providers,
+        query_structs: make_dep_kind_array!(query_structs).to_vec(),
+        encode_query_results: encode_all_query_results,
+        try_mark_green: try_mark_green,
     }
 }

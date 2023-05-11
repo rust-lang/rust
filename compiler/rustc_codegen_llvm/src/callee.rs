@@ -6,14 +6,14 @@
 
 use crate::abi::FnAbiLlvmExt;
 use crate::attributes;
+use crate::common;
 use crate::context::CodegenCx;
 use crate::llvm;
 use crate::value::Value;
 use rustc_codegen_ssa::traits::*;
-use tracing::debug;
 
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
-use rustc_middle::ty::{self, Instance, TypeFoldable};
+use rustc_middle::ty::{self, Instance, TypeVisitableExt};
 
 /// Codegens a reference to a fn/method item, monomorphizing and
 /// inlining as it goes.
@@ -27,7 +27,7 @@ pub fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) ->
 
     debug!("get_fn(instance={:?})", instance);
 
-    assert!(!instance.substs.needs_infer());
+    assert!(!instance.substs.has_infer());
     assert!(!instance.substs.has_escaping_bound_vars());
 
     if let Some(&llfn) = cx.instances.borrow().get(&instance) {
@@ -49,8 +49,8 @@ pub fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) ->
         let llptrty = fn_abi.ptr_to_llvm_type(cx);
 
         // This is subtle and surprising, but sometimes we have to bitcast
-        // the resulting fn pointer.  The reason has to do with external
-        // functions.  If you have two crates that both bind the same C
+        // the resulting fn pointer. The reason has to do with external
+        // functions. If you have two crates that both bind the same C
         // library, they may not use precisely the same types: for
         // example, they will probably each declare their own structs,
         // which are distinct types from LLVM's point of view (nominal
@@ -79,12 +79,30 @@ pub fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) ->
             llfn
         }
     } else {
-        let llfn = cx.declare_fn(sym, fn_abi);
+        let instance_def_id = instance.def_id();
+        let llfn = if tcx.sess.target.arch == "x86" &&
+            let Some(dllimport) = common::get_dllimport(tcx, instance_def_id, sym)
+        {
+            // Fix for https://github.com/rust-lang/rust/issues/104453
+            // On x86 Windows, LLVM uses 'L' as the prefix for any private
+            // global symbols, so when we create an undecorated function symbol
+            // that begins with an 'L' LLVM misinterprets that as a private
+            // global symbol that it created and so fails the compilation at a
+            // later stage since such a symbol must have a definition.
+            //
+            // To avoid this, we set the Storage Class to "DllImport" so that
+            // LLVM will prefix the name with `__imp_`. Ideally, we'd like the
+            // existing logic below to set the Storage Class, but it has an
+            // exemption for MinGW for backwards compatability.
+            let llfn = cx.declare_fn(&common::i686_decorated_name(&dllimport, common::is_mingw_gnu_toolchain(&tcx.sess.target), true), fn_abi);
+            unsafe { llvm::LLVMSetDLLStorageClass(llfn, llvm::DLLStorageClass::DllImport); }
+            llfn
+        } else {
+            cx.declare_fn(sym, fn_abi)
+        };
         debug!("get_fn: not casting pointer!");
 
         attributes::from_fn_attrs(cx, llfn, instance);
-
-        let instance_def_id = instance.def_id();
 
         // Apply an appropriate linkage/visibility value to our item that we
         // just declared.
@@ -174,7 +192,8 @@ pub fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) ->
             // MinGW: For backward compatibility we rely on the linker to decide whether it
             // should use dllimport for functions.
             if cx.use_dll_storage_attrs
-                && tcx.is_dllimport_foreign_item(instance_def_id)
+                && let Some(library) = tcx.native_library(instance_def_id)
+                && library.kind.is_dllimport()
                 && !matches!(tcx.sess.target.env.as_ref(), "gnu" | "uclibc")
             {
                 llvm::LLVMSetDLLStorageClass(llfn, llvm::DLLStorageClass::DllImport);

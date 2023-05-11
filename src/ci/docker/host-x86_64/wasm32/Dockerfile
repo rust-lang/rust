@@ -13,7 +13,8 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
   sudo \
   gdb \
   xz-utils \
-  bzip2
+  bzip2 \
+  && rm -rf /var/lib/apt/lists/*
 
 COPY scripts/emscripten.sh /scripts/
 RUN bash /scripts/emscripten.sh
@@ -47,6 +48,8 @@ ENV TARGETS=wasm32-unknown-emscripten
 
 # Use -O1 optimizations in the link step to reduce time spent optimizing.
 ENV EMCC_CFLAGS=-O1
+
+COPY static/gitconfig /etc/gitconfig
 
 # Emscripten installation is user-specific
 ENV NO_CHANGE_USER=1

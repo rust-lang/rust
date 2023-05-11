@@ -13,22 +13,25 @@ use rustc_span::source_map::{FilePathMapping, SourceMap};
 
 use crate::emitter::{Emitter, HumanReadableErrorType};
 use crate::registry::Registry;
+use crate::translation::{to_fluent_args, Translate};
 use crate::DiagnosticId;
-use crate::ToolMetadata;
-use crate::{CodeSuggestion, FluentBundle, MultiSpan, SpanLabel, SubDiagnostic};
+use crate::{
+    CodeSuggestion, FluentBundle, LazyFallbackBundle, MultiSpan, SpanLabel, SubDiagnostic,
+    TerminalUrl,
+};
 use rustc_lint_defs::Applicability;
 
 use rustc_data_structures::sync::Lrc;
 use rustc_error_messages::FluentArgs;
 use rustc_span::hygiene::ExpnData;
 use rustc_span::Span;
+use std::error::Report;
 use std::io::{self, Write};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::vec;
 
-use rustc_serialize::json::{as_json, as_pretty_json};
-use rustc_serialize::{Encodable, Encoder};
+use serde::Serialize;
 
 #[cfg(test)]
 mod tests;
@@ -38,12 +41,14 @@ pub struct JsonEmitter {
     registry: Option<Registry>,
     sm: Lrc<SourceMap>,
     fluent_bundle: Option<Lrc<FluentBundle>>,
-    fallback_bundle: Lrc<FluentBundle>,
+    fallback_bundle: LazyFallbackBundle,
     pretty: bool,
     ui_testing: bool,
     json_rendered: HumanReadableErrorType,
     diagnostic_width: Option<usize>,
     macro_backtrace: bool,
+    track_diagnostics: bool,
+    terminal_url: TerminalUrl,
 }
 
 impl JsonEmitter {
@@ -51,11 +56,13 @@ impl JsonEmitter {
         registry: Option<Registry>,
         source_map: Lrc<SourceMap>,
         fluent_bundle: Option<Lrc<FluentBundle>>,
-        fallback_bundle: Lrc<FluentBundle>,
+        fallback_bundle: LazyFallbackBundle,
         pretty: bool,
         json_rendered: HumanReadableErrorType,
         diagnostic_width: Option<usize>,
         macro_backtrace: bool,
+        track_diagnostics: bool,
+        terminal_url: TerminalUrl,
     ) -> JsonEmitter {
         JsonEmitter {
             dst: Box::new(io::BufWriter::new(io::stderr())),
@@ -68,6 +75,8 @@ impl JsonEmitter {
             json_rendered,
             diagnostic_width,
             macro_backtrace,
+            track_diagnostics,
+            terminal_url,
         }
     }
 
@@ -75,9 +84,11 @@ impl JsonEmitter {
         pretty: bool,
         json_rendered: HumanReadableErrorType,
         fluent_bundle: Option<Lrc<FluentBundle>>,
-        fallback_bundle: Lrc<FluentBundle>,
+        fallback_bundle: LazyFallbackBundle,
         diagnostic_width: Option<usize>,
         macro_backtrace: bool,
+        track_diagnostics: bool,
+        terminal_url: TerminalUrl,
     ) -> JsonEmitter {
         let file_path_mapping = FilePathMapping::empty();
         JsonEmitter::stderr(
@@ -89,6 +100,8 @@ impl JsonEmitter {
             json_rendered,
             diagnostic_width,
             macro_backtrace,
+            track_diagnostics,
+            terminal_url,
         )
     }
 
@@ -97,11 +110,13 @@ impl JsonEmitter {
         registry: Option<Registry>,
         source_map: Lrc<SourceMap>,
         fluent_bundle: Option<Lrc<FluentBundle>>,
-        fallback_bundle: Lrc<FluentBundle>,
+        fallback_bundle: LazyFallbackBundle,
         pretty: bool,
         json_rendered: HumanReadableErrorType,
         diagnostic_width: Option<usize>,
         macro_backtrace: bool,
+        track_diagnostics: bool,
+        terminal_url: TerminalUrl,
     ) -> JsonEmitter {
         JsonEmitter {
             dst,
@@ -114,6 +129,8 @@ impl JsonEmitter {
             json_rendered,
             diagnostic_width,
             macro_backtrace,
+            track_diagnostics,
+            terminal_url,
         }
     }
 
@@ -122,13 +139,23 @@ impl JsonEmitter {
     }
 }
 
+impl Translate for JsonEmitter {
+    fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
+        self.fluent_bundle.as_ref()
+    }
+
+    fn fallback_fluent_bundle(&self) -> &FluentBundle {
+        &self.fallback_bundle
+    }
+}
+
 impl Emitter for JsonEmitter {
     fn emit_diagnostic(&mut self, diag: &crate::Diagnostic) {
         let data = Diagnostic::from_errors_diagnostic(diag, self);
         let result = if self.pretty {
-            writeln!(&mut self.dst, "{}", as_pretty_json(&data))
+            writeln!(&mut self.dst, "{}", serde_json::to_string_pretty(&data).unwrap())
         } else {
-            writeln!(&mut self.dst, "{}", as_json(&data))
+            writeln!(&mut self.dst, "{}", serde_json::to_string(&data).unwrap())
         }
         .and_then(|_| self.dst.flush());
         if let Err(e) = result {
@@ -139,9 +166,9 @@ impl Emitter for JsonEmitter {
     fn emit_artifact_notification(&mut self, path: &Path, artifact_type: &str) {
         let data = ArtifactNotification { artifact: path, emit: artifact_type };
         let result = if self.pretty {
-            writeln!(&mut self.dst, "{}", as_pretty_json(&data))
+            writeln!(&mut self.dst, "{}", serde_json::to_string_pretty(&data).unwrap())
         } else {
-            writeln!(&mut self.dst, "{}", as_json(&data))
+            writeln!(&mut self.dst, "{}", serde_json::to_string(&data).unwrap())
         }
         .and_then(|_| self.dst.flush());
         if let Err(e) = result {
@@ -154,16 +181,16 @@ impl Emitter for JsonEmitter {
             .into_iter()
             .map(|mut diag| {
                 if diag.level == crate::Level::Allow {
-                    diag.level = crate::Level::Warning;
+                    diag.level = crate::Level::Warning(None);
                 }
                 FutureBreakageItem { diagnostic: Diagnostic::from_errors_diagnostic(&diag, self) }
             })
             .collect();
         let report = FutureIncompatReport { future_incompat_report: data };
         let result = if self.pretty {
-            writeln!(&mut self.dst, "{}", as_pretty_json(&report))
+            writeln!(&mut self.dst, "{}", serde_json::to_string_pretty(&report).unwrap())
         } else {
-            writeln!(&mut self.dst, "{}", as_json(&report))
+            writeln!(&mut self.dst, "{}", serde_json::to_string(&report).unwrap())
         }
         .and_then(|_| self.dst.flush());
         if let Err(e) = result {
@@ -171,12 +198,13 @@ impl Emitter for JsonEmitter {
         }
     }
 
-    fn emit_unused_externs(&mut self, lint_level: &str, unused_externs: &[&str]) {
+    fn emit_unused_externs(&mut self, lint_level: rustc_lint_defs::Level, unused_externs: &[&str]) {
+        let lint_level = lint_level.as_str();
         let data = UnusedExterns { lint_level, unused_extern_names: unused_externs };
         let result = if self.pretty {
-            writeln!(&mut self.dst, "{}", as_pretty_json(&data))
+            writeln!(&mut self.dst, "{}", serde_json::to_string_pretty(&data).unwrap())
         } else {
-            writeln!(&mut self.dst, "{}", as_json(&data))
+            writeln!(&mut self.dst, "{}", serde_json::to_string(&data).unwrap())
         }
         .and_then(|_| self.dst.flush());
         if let Err(e) = result {
@@ -188,14 +216,6 @@ impl Emitter for JsonEmitter {
         Some(&self.sm)
     }
 
-    fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
-        self.fluent_bundle.as_ref()
-    }
-
-    fn fallback_fluent_bundle(&self) -> &Lrc<FluentBundle> {
-        &self.fallback_bundle
-    }
-
     fn should_show_explain(&self) -> bool {
         !matches!(self.json_rendered, HumanReadableErrorType::Short(_))
     }
@@ -203,8 +223,7 @@ impl Emitter for JsonEmitter {
 
 // The following data types are provided just for serialisation.
 
-// NOTE: this has a manual implementation of Encodable which needs to be updated in
-// parallel.
+#[derive(Serialize)]
 struct Diagnostic {
     /// The primary error message.
     message: String,
@@ -216,68 +235,9 @@ struct Diagnostic {
     children: Vec<Diagnostic>,
     /// The message as rustc would render it.
     rendered: Option<String>,
-    /// Extra tool metadata
-    tool_metadata: ToolMetadata,
 }
 
-macro_rules! encode_fields {
-    (
-        $enc:expr,                  // encoder
-        $idx:expr,                  // starting field index
-        $struct:expr,               // struct we're serializing
-        $struct_name:ident,         // struct name
-        [ $($name:ident),+$(,)? ],  // fields to encode
-        [ $($ignore:ident),+$(,)? ] // fields we're skipping
-    ) => {
-        {
-            // Pattern match to make sure all fields are accounted for
-            let $struct_name { $($name,)+ $($ignore: _,)+ } = $struct;
-            let mut idx = $idx;
-            $(
-                $enc.emit_struct_field(
-                    stringify!($name),
-                    idx == 0,
-                    |enc| $name.encode(enc),
-                )?;
-                idx += 1;
-            )+
-            idx
-        }
-    };
-}
-
-// Special-case encoder to skip tool_metadata if not set
-impl<E: Encoder> Encodable<E> for Diagnostic {
-    fn encode(&self, s: &mut E) -> Result<(), E::Error> {
-        s.emit_struct(false, |s| {
-            let mut idx = 0;
-
-            idx = encode_fields!(
-                s,
-                idx,
-                self,
-                Self,
-                [message, code, level, spans, children, rendered],
-                [tool_metadata]
-            );
-            if self.tool_metadata.is_set() {
-                idx = encode_fields!(
-                    s,
-                    idx,
-                    self,
-                    Self,
-                    [tool_metadata],
-                    [message, code, level, spans, children, rendered]
-                );
-            }
-
-            let _ = idx;
-            Ok(())
-        })
-    }
-}
-
-#[derive(Encodable)]
+#[derive(Serialize)]
 struct DiagnosticSpan {
     file_name: String,
     byte_start: u32,
@@ -304,7 +264,7 @@ struct DiagnosticSpan {
     expansion: Option<Box<DiagnosticSpanMacroExpansion>>,
 }
 
-#[derive(Encodable)]
+#[derive(Serialize)]
 struct DiagnosticSpanLine {
     text: String,
 
@@ -314,7 +274,7 @@ struct DiagnosticSpanLine {
     highlight_end: usize,
 }
 
-#[derive(Encodable)]
+#[derive(Serialize)]
 struct DiagnosticSpanMacroExpansion {
     /// span where macro was applied to generate this code; note that
     /// this may itself derive from a macro (if
@@ -328,7 +288,7 @@ struct DiagnosticSpanMacroExpansion {
     def_site_span: DiagnosticSpan,
 }
 
-#[derive(Encodable)]
+#[derive(Serialize)]
 struct DiagnosticCode {
     /// The code itself.
     code: String,
@@ -336,7 +296,7 @@ struct DiagnosticCode {
     explanation: Option<&'static str>,
 }
 
-#[derive(Encodable)]
+#[derive(Serialize)]
 struct ArtifactNotification<'a> {
     /// The path of the artifact.
     artifact: &'a Path,
@@ -344,12 +304,12 @@ struct ArtifactNotification<'a> {
     emit: &'a str,
 }
 
-#[derive(Encodable)]
+#[derive(Serialize)]
 struct FutureBreakageItem {
     diagnostic: Diagnostic,
 }
 
-#[derive(Encodable)]
+#[derive(Serialize)]
 struct FutureIncompatReport {
     future_incompat_report: Vec<FutureBreakageItem>,
 }
@@ -358,7 +318,7 @@ struct FutureIncompatReport {
 // doctest component (as well as cargo).
 // We could unify this struct the one in rustdoc but they have different
 // ownership semantics, so doing so would create wasteful allocations.
-#[derive(Encodable)]
+#[derive(Serialize)]
 struct UnusedExterns<'a, 'b, 'c> {
     /// The severity level of the unused dependencies lint
     lint_level: &'a str,
@@ -368,9 +328,10 @@ struct UnusedExterns<'a, 'b, 'c> {
 
 impl Diagnostic {
     fn from_errors_diagnostic(diag: &crate::Diagnostic, je: &JsonEmitter) -> Diagnostic {
-        let args = je.to_fluent_args(diag.args());
+        let args = to_fluent_args(diag.args());
         let sugg = diag.suggestions.iter().flatten().map(|sugg| {
-            let translated_message = je.translate_message(&sugg.msg, &args);
+            let translated_message =
+                je.translate_message(&sugg.msg, &args).map_err(Report::new).unwrap();
             Diagnostic {
                 message: translated_message.to_string(),
                 code: None,
@@ -378,7 +339,6 @@ impl Diagnostic {
                 spans: DiagnosticSpan::from_suggestion(sugg, &args, je),
                 children: vec![],
                 rendered: None,
-                tool_metadata: sugg.tool_metadata.clone(),
             }
         });
 
@@ -407,6 +367,8 @@ impl Diagnostic {
                 false,
                 je.diagnostic_width,
                 je.macro_backtrace,
+                je.track_diagnostics,
+                je.terminal_url,
             )
             .ui_testing(je.ui_testing)
             .emit_diagnostic(diag);
@@ -426,7 +388,6 @@ impl Diagnostic {
                 .chain(sugg)
                 .collect(),
             rendered: Some(output),
-            tool_metadata: ToolMetadata::default(),
         }
     }
 
@@ -447,7 +408,6 @@ impl Diagnostic {
                 .unwrap_or_else(|| DiagnosticSpan::from_multispan(&diag.span, args, je)),
             children: vec![],
             rendered: None,
-            tool_metadata: ToolMetadata::default(),
         }
     }
 }
@@ -462,7 +422,10 @@ impl DiagnosticSpan {
         Self::from_span_etc(
             span.span,
             span.is_primary,
-            span.label.as_ref().map(|m| je.translate_message(m, args)).map(|m| m.to_string()),
+            span.label
+                .as_ref()
+                .map(|m| je.translate_message(m, args).unwrap())
+                .map(|m| m.to_string()),
             suggestion,
             je,
         )
@@ -617,7 +580,7 @@ impl DiagnosticCode {
             let je_result =
                 je.registry.as_ref().map(|registry| registry.try_find_description(&s)).unwrap();
 
-            DiagnosticCode { code: s, explanation: je_result.unwrap_or(None) }
+            DiagnosticCode { code: s, explanation: je_result.ok() }
         })
     }
 }

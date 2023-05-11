@@ -1,0 +1,56 @@
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/issue-22560.rs:9:23
+   |
+LL | type Test = dyn Add + Sub;
+   |                 ---   ^^^ additional non-auto trait
+   |                 |
+   |                 first non-auto trait
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Add + Sub {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error[E0191]: the value of the associated types `Output` (from trait `Add`), `Output` (from trait `Sub`) must be specified
+  --> $DIR/issue-22560.rs:9:17
+   |
+LL |     type Output;
+   |     ----------- `Output` defined here
+...
+LL |     type Output;
+   |     ----------- `Output` defined here
+...
+LL | type Test = dyn Add + Sub;
+   |                 ^^^   ^^^ associated type `Output` must be specified
+   |                 |
+   |                 associated type `Output` must be specified
+   |
+help: specify the associated types
+   |
+LL | type Test = dyn Add<Output = Type> + Sub<Output = Type>;
+   |                 ~~~~~~~~~~~~~~~~~~   ~~~~~~~~~~~~~~~~~~
+
+error[E0393]: the type parameter `Rhs` must be explicitly specified
+  --> $DIR/issue-22560.rs:9:17
+   |
+LL | trait Add<Rhs=Self> {
+   | ------------------- type parameter `Rhs` must be specified for this
+...
+LL | type Test = dyn Add + Sub;
+   |                 ^^^ help: set the type parameter to the desired type: `Add<Rhs>`
+   |
+   = note: because of the default `Self` reference, type parameters must be specified on object types
+
+error[E0393]: the type parameter `Rhs` must be explicitly specified
+  --> $DIR/issue-22560.rs:9:23
+   |
+LL | trait Sub<Rhs=Self> {
+   | ------------------- type parameter `Rhs` must be specified for this
+...
+LL | type Test = dyn Add + Sub;
+   |                       ^^^ help: set the type parameter to the desired type: `Sub<Rhs>`
+   |
+   = note: because of the default `Self` reference, type parameters must be specified on object types
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0191, E0225, E0393.
+For more information about an error, try `rustc --explain E0191`.

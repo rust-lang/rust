@@ -1,0 +1,18 @@
+error[E0277]: expected a `Fn<_>` closure, found `fn() -> str`
+  --> $DIR/builtin-fn-must-return-sized.rs:15:27
+   |
+LL |     foo::<fn() -> str, _>(None, ());
+   |     --------------------- ^^^^ expected an `Fn<_>` closure, found `fn() -> str`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Fn<_>` is not implemented for `fn() -> str`
+note: required by a bound in `foo`
+  --> $DIR/builtin-fn-must-return-sized.rs:10:11
+   |
+LL | fn foo<F: Fn<T>, T: Tuple>(f: Option<F>, t: T) {
+   |           ^^^^^ required by this bound in `foo`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,14 @@
+error[E0277]: the trait bound `(): Foo<FooX>` is not satisfied
+  --> $DIR/nested-tait-inference.rs:12:13
+   |
+LL | fn foo() -> impl Foo<FooX> {
+   |             ^^^^^^^^^^^^^^ the trait `Foo<FooX>` is not implemented for `()`
+...
+LL |     ()
+   |     -- return type was inferred to be `()` here
+   |
+   = help: the trait `Foo<()>` is implemented for `()`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

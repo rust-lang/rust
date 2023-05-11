@@ -1,0 +1,18 @@
+error[E0700]: hidden type for `impl PlusOne` captures lifetime that does not appear in bounds
+  --> $DIR/imply_bounds_from_bounds_param.rs:26:5
+   |
+LL | fn test<'a>(y: &'a mut i32) -> impl PlusOne {
+   |         --                     ------------ opaque type defined here
+   |         |
+   |         hidden type `<&'a mut i32 as Callable>::Output` captures the lifetime `'a` as defined here
+LL |     <&'a mut i32 as Callable>::call(y)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: to declare that `impl PlusOne` captures `'a`, you can add an explicit `'a` lifetime bound
+   |
+LL | fn test<'a>(y: &'a mut i32) -> impl PlusOne + 'a {
+   |                                             ++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0700`.

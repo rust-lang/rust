@@ -69,7 +69,7 @@ fn dot(x: &[f64], y: &[f64]) -> f64 {
 #[cfg(test)]
 #[test]
 fn test() {
-    assert_eq!(&format!("{:.9}", spectral_norm(100)), "1.274219991");
+    assert_eq!(format!("{:.9}", spectral_norm(100)), "1.274219991");
 }
 
 fn main() {

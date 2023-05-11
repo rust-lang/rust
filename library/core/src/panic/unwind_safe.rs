@@ -28,7 +28,7 @@ use crate::task::{Context, Poll};
 /// 2. This broken invariant is then later observed.
 ///
 /// Typically in Rust, it is difficult to perform step (2) because catching a
-/// panic involves either spawning a thread (which in turns makes it difficult
+/// panic involves either spawning a thread (which in turn makes it difficult
 /// to later witness broken invariants) or using the `catch_unwind` function in this
 /// module. Additionally, even if an invariant is witnessed, it typically isn't a
 /// problem in Rust because there are no uninitialized values (like in C or C++).
@@ -217,7 +217,7 @@ impl RefUnwindSafe for crate::sync::atomic::AtomicI32 {}
 #[stable(feature = "integer_atomics_stable", since = "1.34.0")]
 impl RefUnwindSafe for crate::sync::atomic::AtomicI64 {}
 #[cfg(target_has_atomic_load_store = "128")]
-#[unstable(feature = "integer_atomics", issue = "32976")]
+#[unstable(feature = "integer_atomics", issue = "99069")]
 impl RefUnwindSafe for crate::sync::atomic::AtomicI128 {}
 
 #[cfg(target_has_atomic_load_store = "ptr")]
@@ -236,7 +236,7 @@ impl RefUnwindSafe for crate::sync::atomic::AtomicU32 {}
 #[stable(feature = "integer_atomics_stable", since = "1.34.0")]
 impl RefUnwindSafe for crate::sync::atomic::AtomicU64 {}
 #[cfg(target_has_atomic_load_store = "128")]
-#[unstable(feature = "integer_atomics", issue = "32976")]
+#[unstable(feature = "integer_atomics", issue = "99069")]
 impl RefUnwindSafe for crate::sync::atomic::AtomicU128 {}
 
 #[cfg(target_has_atomic_load_store = "8")]
@@ -276,6 +276,13 @@ impl<R, F: FnOnce() -> R> FnOnce<()> for AssertUnwindSafe<F> {
 impl<T: fmt::Debug> fmt::Debug for AssertUnwindSafe<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("AssertUnwindSafe").field(&self.0).finish()
+    }
+}
+
+#[stable(feature = "assertunwindsafe_default", since = "1.62.0")]
+impl<T: Default> Default for AssertUnwindSafe<T> {
+    fn default() -> Self {
+        Self(Default::default())
     }
 }
 

@@ -32,7 +32,7 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust
     /// // Assuming that `clippy.toml` contains the following line:
-    /// // allowed-locales = ["Latin", "Cyrillic"]
+    /// // allowed-scripts = ["Latin", "Cyrillic"]
     /// let counter = 10; // OK, latin is allowed.
     /// let счётчик = 10; // OK, cyrillic is allowed.
     /// let zähler = 10; // OK, it's still latin.
@@ -99,8 +99,7 @@ impl EarlyLintPass for DisallowedScriptIdents {
                         DISALLOWED_SCRIPT_IDENTS,
                         span,
                         &format!(
-                            "identifier `{}` has a Unicode script that is not allowed by configuration: {}",
-                            symbol_str,
+                            "identifier `{symbol_str}` has a Unicode script that is not allowed by configuration: {}",
                             script.full_name()
                         ),
                     );

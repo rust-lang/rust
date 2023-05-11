@@ -1,10 +1,12 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 #set -x
 set -e
 
 codegen_channel=debug
 sysroot_channel=debug
+
+flags=
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -14,6 +16,15 @@ while [[ $# -gt 0 ]]; do
             ;;
         --release-sysroot)
             sysroot_channel=release
+            shift
+            ;;
+        --no-default-features)
+            flags="$flags --no-default-features"
+            shift
+            ;;
+        --features)
+            shift
+            flags="$flags --features $1"
             shift
             ;;
         *)
@@ -33,21 +44,13 @@ fi
 export LD_LIBRARY_PATH="$GCC_PATH"
 export LIBRARY_PATH="$GCC_PATH"
 
-features=
-
-if [[ "$1" == "--features" ]]; then
-    shift
-    features="--features $1"
-    shift
-fi
-
 if [[ "$codegen_channel" == "release" ]]; then
     export CHANNEL='release'
-    CARGO_INCREMENTAL=1 cargo rustc --release $features
+    CARGO_INCREMENTAL=1 cargo rustc --release $flags
 else
     echo $LD_LIBRARY_PATH
     export CHANNEL='debug'
-    cargo rustc $features
+    cargo rustc $flags
 fi
 
 source config.sh

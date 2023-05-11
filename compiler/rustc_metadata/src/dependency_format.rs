@@ -52,6 +52,10 @@
 //! than finding a number of solutions (there are normally quite a few).
 
 use crate::creader::CStore;
+use crate::errors::{
+    BadPanicStrategy, CrateDepMultiple, IncompatiblePanicInDropStrategy, LibRequired,
+    RequiredPanicStrategy, RlibRequired, RustcLibRequired, TwoPanicRuntimes,
+};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::CrateNum;
@@ -60,9 +64,8 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;
 use rustc_session::cstore::CrateDepKind;
 use rustc_session::cstore::LinkagePreference::{self, RequireDynamic, RequireStatic};
-use rustc_target::spec::PanicStrategy;
 
-crate fn calculate(tcx: TyCtxt<'_>) -> Dependencies {
+pub(crate) fn calculate(tcx: TyCtxt<'_>) -> Dependencies {
     tcx.sess
         .crate_types()
         .iter()
@@ -86,11 +89,25 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
         // to try to eagerly statically link all dependencies. This is normally
         // done for end-product dylibs, not intermediate products.
         //
-        // Treat cdylibs similarly. If `-C prefer-dynamic` is set, the caller may
-        // be code-size conscious, but without it, it makes sense to statically
-        // link a cdylib.
-        CrateType::Dylib | CrateType::Cdylib if !sess.opts.cg.prefer_dynamic => Linkage::Static,
-        CrateType::Dylib | CrateType::Cdylib => Linkage::Dynamic,
+        // Treat cdylibs and staticlibs similarly. If `-C prefer-dynamic` is set,
+        // the caller may be code-size conscious, but without it, it makes sense
+        // to statically link a cdylib or staticlib. For staticlibs we use
+        // `-Z staticlib-prefer-dynamic` for now. This may be merged into
+        // `-C prefer-dynamic` in the future.
+        CrateType::Dylib | CrateType::Cdylib => {
+            if sess.opts.cg.prefer_dynamic {
+                Linkage::Dynamic
+            } else {
+                Linkage::Static
+            }
+        }
+        CrateType::Staticlib => {
+            if sess.opts.unstable_opts.staticlib_prefer_dynamic {
+                Linkage::Dynamic
+            } else {
+                Linkage::Static
+            }
+        }
 
         // If the global prefer_dynamic switch is turned off, or the final
         // executable will be statically linked, prefer static crate linkage.
@@ -105,46 +122,39 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
         // No linkage happens with rlibs, we just needed the metadata (which we
         // got long ago), so don't bother with anything.
         CrateType::Rlib => Linkage::NotLinked,
-
-        // staticlibs must have all static dependencies.
-        CrateType::Staticlib => Linkage::Static,
     };
 
-    if preferred_linkage == Linkage::NotLinked {
+    match preferred_linkage {
         // If the crate is not linked, there are no link-time dependencies.
-        return Vec::new();
-    }
-
-    if preferred_linkage == Linkage::Static {
-        // Attempt static linkage first. For dylibs and executables, we may be
-        // able to retry below with dynamic linkage.
-        if let Some(v) = attempt_static(tcx) {
-            return v;
-        }
-
-        // Staticlibs and static executables must have all static dependencies.
-        // If any are not found, generate some nice pretty errors.
-        if ty == CrateType::Staticlib
-            || (ty == CrateType::Executable
-                && sess.crt_static(Some(ty))
-                && !sess.target.crt_static_allows_dylibs)
-        {
-            for &cnum in tcx.crates(()).iter() {
-                if tcx.dep_kind(cnum).macros_only() {
-                    continue;
-                }
-                let src = tcx.used_crate_source(cnum);
-                if src.rlib.is_some() {
-                    continue;
-                }
-                sess.err(&format!(
-                    "crate `{}` required to be available in rlib format, \
-                                   but was not found in this form",
-                    tcx.crate_name(cnum)
-                ));
+        Linkage::NotLinked => return Vec::new(),
+        Linkage::Static => {
+            // Attempt static linkage first. For dylibs and executables, we may be
+            // able to retry below with dynamic linkage.
+            if let Some(v) = attempt_static(tcx) {
+                return v;
             }
-            return Vec::new();
+
+            // Static executables must have all static dependencies.
+            // If any are not found, generate some nice pretty errors.
+            if (ty == CrateType::Staticlib && !sess.opts.unstable_opts.staticlib_allow_rdylib_deps)
+                || (ty == CrateType::Executable
+                    && sess.crt_static(Some(ty))
+                    && !sess.target.crt_static_allows_dylibs)
+            {
+                for &cnum in tcx.crates(()).iter() {
+                    if tcx.dep_kind(cnum).macros_only() {
+                        continue;
+                    }
+                    let src = tcx.used_crate_source(cnum);
+                    if src.rlib.is_some() {
+                        continue;
+                    }
+                    sess.emit_err(RlibRequired { crate_name: tcx.crate_name(cnum) });
+                }
+                return Vec::new();
+            }
         }
+        Linkage::Dynamic | Linkage::IncludedFromDylib => {}
     }
 
     let mut formats = FxHashMap::default();
@@ -159,11 +169,11 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
         let name = tcx.crate_name(cnum);
         let src = tcx.used_crate_source(cnum);
         if src.dylib.is_some() {
-            tracing::info!("adding dylib: {}", name);
+            info!("adding dylib: {}", name);
             add_library(tcx, cnum, RequireDynamic, &mut formats);
             let deps = tcx.dylib_dependency_formats(cnum);
             for &(depnum, style) in deps.iter() {
-                tracing::info!("adding {:?}: {}", style, tcx.crate_name(depnum));
+                info!("adding {:?}: {}", style, tcx.crate_name(depnum));
                 add_library(tcx, depnum, style, &mut formats);
             }
         }
@@ -191,7 +201,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
             && tcx.dep_kind(cnum) == CrateDepKind::Explicit
         {
             assert!(src.rlib.is_some() || src.rmeta.is_some());
-            tracing::info!("adding staticlib: {}", tcx.crate_name(cnum));
+            info!("adding staticlib: {}", tcx.crate_name(cnum));
             add_library(tcx, cnum, RequireStatic, &mut formats);
             ret[cnum.as_usize() - 1] = Linkage::Static;
         }
@@ -225,12 +235,12 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
                     Linkage::Static => "rlib",
                     _ => "dylib",
                 };
-                sess.err(&format!(
-                    "crate `{}` required to be available in {} format, \
-                                   but was not found in this form",
-                    tcx.crate_name(cnum),
-                    kind
-                ));
+                let crate_name = tcx.crate_name(cnum);
+                if crate_name.as_str().starts_with("rustc_") {
+                    sess.emit_err(RustcLibRequired { crate_name, kind });
+                } else {
+                    sess.emit_err(LibRequired { crate_name, kind });
+                }
             }
         }
     }
@@ -254,17 +264,7 @@ fn add_library(
             // This error is probably a little obscure, but I imagine that it
             // can be refined over time.
             if link2 != link || link == RequireStatic {
-                tcx.sess
-                    .struct_err(&format!(
-                        "cannot satisfy dependencies so `{}` only \
-                                              shows up once",
-                        tcx.crate_name(cnum)
-                    ))
-                    .help(
-                        "having upstream crates all available in one format \
-                           will likely make this go away",
-                    )
-                    .emit();
+                tcx.sess.emit_err(CrateDepMultiple { crate_name: tcx.crate_name(cnum) });
             }
         }
         None => {
@@ -294,12 +294,9 @@ fn attempt_static(tcx: TyCtxt<'_>) -> Option<DependencyList> {
     let mut ret = tcx
         .crates(())
         .iter()
-        .map(|&cnum| {
-            if tcx.dep_kind(cnum) == CrateDepKind::Explicit {
-                Linkage::Static
-            } else {
-                Linkage::NotLinked
-            }
+        .map(|&cnum| match tcx.dep_kind(cnum) {
+            CrateDepKind::Explicit => Linkage::Static,
+            CrateDepKind::MacrosOnly | CrateDepKind::Implicit => Linkage::NotLinked,
         })
         .collect::<Vec<_>>();
 
@@ -361,32 +358,30 @@ fn verify_ok(tcx: TyCtxt<'_>, list: &[Linkage]) {
             if let Some((prev, _)) = panic_runtime {
                 let prev_name = tcx.crate_name(prev);
                 let cur_name = tcx.crate_name(cnum);
-                sess.err(&format!(
-                    "cannot link together two \
-                                   panic runtimes: {} and {}",
-                    prev_name, cur_name
-                ));
+                sess.emit_err(TwoPanicRuntimes { prev_name, cur_name });
             }
-            panic_runtime = Some((cnum, tcx.panic_strategy(cnum)));
+            panic_runtime = Some((
+                cnum,
+                tcx.required_panic_strategy(cnum).unwrap_or_else(|| {
+                    bug!("cannot determine panic strategy of a panic runtime");
+                }),
+            ));
         }
     }
 
     // If we found a panic runtime, then we know by this point that it's the
     // only one, but we perform validation here that all the panic strategy
     // compilation modes for the whole DAG are valid.
-    if let Some((cnum, found_strategy)) = panic_runtime {
+    if let Some((runtime_cnum, found_strategy)) = panic_runtime {
         let desired_strategy = sess.panic_strategy();
 
         // First up, validate that our selected panic runtime is indeed exactly
         // our same strategy.
         if found_strategy != desired_strategy {
-            sess.err(&format!(
-                "the linked panic runtime `{}` is \
-                               not compiled with this crate's \
-                               panic strategy `{}`",
-                tcx.crate_name(cnum),
-                desired_strategy.desc()
-            ));
+            sess.emit_err(BadPanicStrategy {
+                runtime: tcx.crate_name(runtime_cnum),
+                strategy: desired_strategy,
+            });
         }
 
         // Next up, verify that all other crates are compatible with this panic
@@ -397,38 +392,25 @@ fn verify_ok(tcx: TyCtxt<'_>, list: &[Linkage]) {
             if let Linkage::NotLinked = *linkage {
                 continue;
             }
-            if desired_strategy == PanicStrategy::Abort {
-                continue;
-            }
             let cnum = CrateNum::new(i + 1);
-            if tcx.is_compiler_builtins(cnum) {
+            if cnum == runtime_cnum || tcx.is_compiler_builtins(cnum) {
                 continue;
             }
 
-            let found_strategy = tcx.panic_strategy(cnum);
-            if desired_strategy != found_strategy {
-                sess.err(&format!(
-                    "the crate `{}` is compiled with the \
-                               panic strategy `{}` which is \
-                               incompatible with this crate's \
-                               strategy of `{}`",
-                    tcx.crate_name(cnum),
-                    found_strategy.desc(),
-                    desired_strategy.desc()
-                ));
+            if let Some(found_strategy) = tcx.required_panic_strategy(cnum) && desired_strategy != found_strategy {
+                sess.emit_err(RequiredPanicStrategy {
+                    crate_name: tcx.crate_name(cnum),
+                    found_strategy,
+                    desired_strategy});
             }
 
             let found_drop_strategy = tcx.panic_in_drop_strategy(cnum);
-            if tcx.sess.opts.debugging_opts.panic_in_drop != found_drop_strategy {
-                sess.err(&format!(
-                    "the crate `{}` is compiled with the \
-                               panic-in-drop strategy `{}` which is \
-                               incompatible with this crate's \
-                               strategy of `{}`",
-                    tcx.crate_name(cnum),
-                    found_drop_strategy.desc(),
-                    tcx.sess.opts.debugging_opts.panic_in_drop.desc()
-                ));
+            if tcx.sess.opts.unstable_opts.panic_in_drop != found_drop_strategy {
+                sess.emit_err(IncompatiblePanicInDropStrategy {
+                    crate_name: tcx.crate_name(cnum),
+                    found_strategy: found_drop_strategy,
+                    desired_strategy: tcx.sess.opts.unstable_opts.panic_in_drop,
+                });
             }
         }
     }

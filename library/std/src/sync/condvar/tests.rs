@@ -188,24 +188,3 @@ fn wait_timeout_wake() {
         break;
     }
 }
-
-#[test]
-#[should_panic]
-#[cfg(all(unix, not(target_os = "linux"), not(target_os = "android")))]
-fn two_mutexes() {
-    let m = Arc::new(Mutex::new(()));
-    let m2 = m.clone();
-    let c = Arc::new(Condvar::new());
-    let c2 = c.clone();
-
-    let mut g = m.lock().unwrap();
-    let _t = thread::spawn(move || {
-        let _g = m2.lock().unwrap();
-        c2.notify_one();
-    });
-    g = c.wait(g).unwrap();
-    drop(g);
-
-    let m = Mutex::new(());
-    let _ = c.wait(m.lock().unwrap()).unwrap();
-}

@@ -2,31 +2,34 @@ use std::collections::hash_map::Entry;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathDataName;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::middle::exported_symbols::SymbolExportLevel;
+use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, Linkage, Visibility};
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::ty::print::characteristic_def_id_of_type;
-use rustc_middle::ty::{self, fold::TypeFoldable, DefIdTree, InstanceDef, TyCtxt};
+use rustc_middle::ty::{self, visit::TypeVisitableExt, InstanceDef, TyCtxt};
 use rustc_span::symbol::Symbol;
 
 use super::PartitioningCx;
 use crate::collector::InliningMap;
 use crate::partitioning::merging;
 use crate::partitioning::{
-    MonoItemPlacement, Partitioner, PostInliningPartitioning, PreInliningPartitioning,
+    MonoItemPlacement, Partition, PostInliningPartitioning, PreInliningPartitioning,
 };
 
 pub struct DefaultPartitioning;
 
-impl<'tcx> Partitioner<'tcx> for DefaultPartitioning {
-    fn place_root_mono_items(
+impl<'tcx> Partition<'tcx> for DefaultPartitioning {
+    fn place_root_mono_items<I>(
         &mut self,
         cx: &PartitioningCx<'_, 'tcx>,
-        mono_items: &mut dyn Iterator<Item = MonoItem<'tcx>>,
-    ) -> PreInliningPartitioning<'tcx> {
+        mono_items: &mut I,
+    ) -> PreInliningPartitioning<'tcx>
+    where
+        I: Iterator<Item = MonoItem<'tcx>>,
+    {
         let mut roots = FxHashSet::default();
         let mut codegen_units = FxHashMap::default();
         let is_incremental_build = cx.tcx.sess.opts.incremental.is_some();
@@ -93,10 +96,7 @@ impl<'tcx> Partitioner<'tcx> for DefaultPartitioning {
         }
 
         PreInliningPartitioning {
-            codegen_units: codegen_units
-                .into_iter()
-                .map(|(_, codegen_unit)| codegen_unit)
-                .collect(),
+            codegen_units: codegen_units.into_values().collect(),
             roots,
             internalization_candidates,
         }
@@ -274,15 +274,17 @@ fn characteristic_def_id_of_mono_item<'tcx>(
     match mono_item {
         MonoItem::Fn(instance) => {
             let def_id = match instance.def {
-                ty::InstanceDef::Item(def) => def.did,
-                ty::InstanceDef::VtableShim(..)
+                ty::InstanceDef::Item(def) => def,
+                ty::InstanceDef::VTableShim(..)
                 | ty::InstanceDef::ReifyShim(..)
                 | ty::InstanceDef::FnPtrShim(..)
                 | ty::InstanceDef::ClosureOnceShim { .. }
                 | ty::InstanceDef::Intrinsic(..)
                 | ty::InstanceDef::DropGlue(..)
                 | ty::InstanceDef::Virtual(..)
-                | ty::InstanceDef::CloneShim(..) => return None,
+                | ty::InstanceDef::CloneShim(..)
+                | ty::InstanceDef::ThreadLocalShim(..)
+                | ty::InstanceDef::FnPtrAddrShim(..) => return None,
             };
 
             // If this is a method, we want to put it into the same module as
@@ -307,7 +309,7 @@ fn characteristic_def_id_of_mono_item<'tcx>(
 
                 // When polymorphization is enabled, methods which do not depend on their generic
                 // parameters, but the self-type of their impl block do will fail to normalize.
-                if !tcx.sess.opts.debugging_opts.polymorphize || !instance.needs_subst() {
+                if !tcx.sess.opts.unstable_opts.polymorphize || !instance.has_param() {
                     // This is a method within an impl, find out what the self-type is:
                     let impl_self_ty = tcx.subst_and_normalize_erasing_regions(
                         instance.substs,
@@ -323,7 +325,7 @@ fn characteristic_def_id_of_mono_item<'tcx>(
             Some(def_id)
         }
         MonoItem::Static(def_id) => Some(def_id),
-        MonoItem::GlobalAsm(item_id) => Some(item_id.def_id.to_def_id()),
+        MonoItem::GlobalAsm(item_id) => Some(item_id.owner_id.to_def_id()),
     }
 }
 
@@ -339,10 +341,10 @@ fn compute_codegen_unit_name(
     let mut cgu_def_id = None;
     // Walk backwards from the item we want to find the module for.
     loop {
-        if current_def_id.index == CRATE_DEF_INDEX {
+        if current_def_id.is_crate_root() {
             if cgu_def_id.is_none() {
                 // If we have not found a module yet, take the crate root.
-                cgu_def_id = Some(DefId { krate: def_id.krate, index: CRATE_DEF_INDEX });
+                cgu_def_id = Some(def_id.krate.as_def_id());
             }
             break;
         } else if tcx.def_kind(current_def_id) == DefKind::Mod {
@@ -356,7 +358,7 @@ fn compute_codegen_unit_name(
             cgu_def_id = None;
         }
 
-        current_def_id = tcx.parent(current_def_id).unwrap();
+        current_def_id = tcx.parent(current_def_id);
     }
 
     let cgu_def_id = cgu_def_id.unwrap();
@@ -395,6 +397,19 @@ fn mono_item_linkage_and_visibility<'tcx>(
 
 type CguNameCache = FxHashMap<(DefId, bool), Symbol>;
 
+fn static_visibility<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    can_be_internalized: &mut bool,
+    def_id: DefId,
+) -> Visibility {
+    if tcx.is_reachable_non_generic(def_id) {
+        *can_be_internalized = false;
+        default_visibility(tcx, def_id, false)
+    } else {
+        Visibility::Hidden
+    }
+}
+
 fn mono_item_visibility<'tcx>(
     tcx: TyCtxt<'tcx>,
     mono_item: &MonoItem<'tcx>,
@@ -406,37 +421,30 @@ fn mono_item_visibility<'tcx>(
         MonoItem::Fn(instance) => instance,
 
         // Misc handling for generics and such, but otherwise:
-        MonoItem::Static(def_id) => {
-            return if tcx.is_reachable_non_generic(*def_id) {
-                *can_be_internalized = false;
-                default_visibility(tcx, *def_id, false)
-            } else {
-                Visibility::Hidden
-            };
-        }
+        MonoItem::Static(def_id) => return static_visibility(tcx, can_be_internalized, *def_id),
         MonoItem::GlobalAsm(item_id) => {
-            return if tcx.is_reachable_non_generic(item_id.def_id) {
-                *can_be_internalized = false;
-                default_visibility(tcx, item_id.def_id.to_def_id(), false)
-            } else {
-                Visibility::Hidden
-            };
+            return static_visibility(tcx, can_be_internalized, item_id.owner_id.to_def_id());
         }
     };
 
     let def_id = match instance.def {
-        InstanceDef::Item(def) => def.did,
-        InstanceDef::DropGlue(def_id, Some(_)) => def_id,
+        InstanceDef::Item(def_id) | InstanceDef::DropGlue(def_id, Some(_)) => def_id,
+
+        // We match the visibility of statics here
+        InstanceDef::ThreadLocalShim(def_id) => {
+            return static_visibility(tcx, can_be_internalized, def_id);
+        }
 
         // These are all compiler glue and such, never exported, always hidden.
-        InstanceDef::VtableShim(..)
+        InstanceDef::VTableShim(..)
         | InstanceDef::ReifyShim(..)
         | InstanceDef::FnPtrShim(..)
         | InstanceDef::Virtual(..)
         | InstanceDef::Intrinsic(..)
         | InstanceDef::ClosureOnceShim { .. }
         | InstanceDef::DropGlue(..)
-        | InstanceDef::CloneShim(..) => return Visibility::Hidden,
+        | InstanceDef::CloneShim(..)
+        | InstanceDef::FnPtrAddrShim(..) => return Visibility::Hidden,
     };
 
     // The `start_fn` lang item is actually a monomorphized instance of a
@@ -558,7 +566,7 @@ fn default_visibility(tcx: TyCtxt<'_>, id: DefId, is_generic: bool) -> Visibilit
     // C-export level items remain at `Default`, all other internal
     // items become `Hidden`.
     match tcx.reachable_non_generics(id.krate).get(&id) {
-        Some(SymbolExportLevel::C) => Visibility::Default,
+        Some(SymbolExportInfo { level: SymbolExportLevel::C, .. }) => Visibility::Default,
         _ => Visibility::Hidden,
     }
 }

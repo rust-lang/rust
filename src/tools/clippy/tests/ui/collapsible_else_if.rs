@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![allow(clippy::assertions_on_constants, clippy::equatable_if_let)]
 
 #[rustfmt::skip]
@@ -87,5 +87,14 @@ fn main() {
         if y == "world" {
             println!("world!")
         }
+    }
+}
+
+#[rustfmt::skip]
+#[allow(dead_code)]
+fn issue_7318() {
+    if true { println!("I've been resolved!")
+    }else{
+        if false {}
     }
 }

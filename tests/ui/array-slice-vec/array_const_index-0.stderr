@@ -1,0 +1,9 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/array_const_index-0.rs:2:16
+   |
+LL | const B: i32 = (&A)[1];
+   |                ^^^^^^^ index out of bounds: the length is 0 but the index is 1
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0080`.

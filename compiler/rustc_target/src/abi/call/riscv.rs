@@ -25,7 +25,7 @@ enum FloatConv {
 #[derive(Copy, Clone)]
 struct CannotUseFpConv;
 
-fn is_riscv_aggregate<'a, Ty>(arg: &ArgAbi<'a, Ty>) -> bool {
+fn is_riscv_aggregate<Ty>(arg: &ArgAbi<'_, Ty>) -> bool {
     match arg.layout.abi {
         Abi::Vector { .. } => true,
         _ => arg.layout.is_aggregate(),
@@ -45,7 +45,7 @@ where
 {
     match arg_layout.abi {
         Abi::Scalar(scalar) => match scalar.primitive() {
-            abi::Int(..) | abi::Pointer => {
+            abi::Int(..) | abi::Pointer(_) => {
                 if arg_layout.size.bits() > xlen {
                     return Err(CannotUseFpConv);
                 }
@@ -296,7 +296,7 @@ fn classify_arg<'a, Ty, C>(
     }
 }
 
-fn extend_integer_width<'a, Ty>(arg: &mut ArgAbi<'a, Ty>, xlen: u64) {
+fn extend_integer_width<Ty>(arg: &mut ArgAbi<'_, Ty>, xlen: u64) {
     if let Abi::Scalar(scalar) = arg.layout.abi {
         if let abi::Int(i, _) = scalar.primitive() {
             // 32-bit integers are always sign-extended
@@ -340,7 +340,7 @@ where
             arg,
             xlen,
             flen,
-            i >= fn_abi.fixed_count,
+            i >= fn_abi.fixed_count as usize,
             &mut avail_gprs,
             &mut avail_fprs,
         );

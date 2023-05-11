@@ -1,0 +1,10 @@
+// MIR for `tuple` after built
+
+fn tuple() -> (i32, bool) {
+    let mut _0: (i32, bool);             // return place in scope 0 at $DIR/aggregate_exprs.rs:+0:15: +0:26
+
+    bb0: {
+        _0 = (const 1_i32, const true);  // scope 0 at $DIR/aggregate_exprs.rs:+3:13: +3:28
+        return;                          // scope 0 at $DIR/aggregate_exprs.rs:+4:13: +4:21
+    }
+}

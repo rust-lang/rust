@@ -1,0 +1,18 @@
+error: expected a literal
+  --> $DIR/issue-106837.rs:5:13
+   |
+LL |     concat!(-"hello");
+   |             ^^^^^^^^
+   |
+   = note: only literals (like `"foo"`, `-42` and `3.14`) can be passed to `concat!()`
+
+error: expected a literal
+  --> $DIR/issue-106837.rs:8:13
+   |
+LL |     concat!(--1);
+   |             ^^^
+   |
+   = note: only literals (like `"foo"`, `-42` and `3.14`) can be passed to `concat!()`
+
+error: aborting due to 2 previous errors
+

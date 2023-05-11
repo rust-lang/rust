@@ -89,28 +89,37 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(never_type)]
-#![feature(nll)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate rustc_middle;
 
+#[macro_use]
+extern crate tracing;
+
+use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
+use rustc_fluent_macro::fluent_messages;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_middle::ty::{self, Instance, TyCtxt};
 use rustc_session::config::SymbolManglingVersion;
-use rustc_target::abi::call::FnAbi;
-
-use tracing::debug;
 
 mod legacy;
 mod v0;
 
+pub mod errors;
 pub mod test;
+pub mod typeid;
+
+fluent_messages! { "../messages.ftl" }
 
 /// This function computes the symbol name for the given `instance` and the
 /// given instantiating crate. That is, if you know that instance X is
@@ -149,9 +158,11 @@ fn symbol_name_provider<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty
     ty::SymbolName::new(tcx, &symbol_name)
 }
 
-/// This function computes the typeid for the given function ABI.
-pub fn typeid_for_fnabi<'tcx>(tcx: TyCtxt<'tcx>, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> String {
-    v0::mangle_typeid_for_fnabi(tcx, fn_abi)
+pub fn typeid_for_trait_ref<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_ref: ty::PolyExistentialTraitRef<'tcx>,
+) -> String {
+    v0::mangle_typeid_for_trait_ref(tcx, trait_ref)
 }
 
 /// Computes the symbol name for the given instance. This function will call
@@ -175,7 +186,11 @@ fn compute_symbol_name<'tcx>(
     }
 
     // FIXME(eddyb) Precompute a custom symbol name based on attributes.
-    let attrs = tcx.codegen_fn_attrs(def_id);
+    let attrs = if tcx.def_kind(def_id).has_codegen_attrs() {
+        tcx.codegen_fn_attrs(def_id)
+    } else {
+        CodegenFnAttrs::EMPTY
+    };
 
     // Foreign items by default use no mangling for their symbol name. There's a
     // few exceptions to this rule though:
@@ -213,23 +228,27 @@ fn compute_symbol_name<'tcx>(
         return tcx.item_name(def_id).to_string();
     }
 
-    let avoid_cross_crate_conflicts =
-        // If this is an instance of a generic function, we also hash in
-        // the ID of the instantiating crate. This avoids symbol conflicts
-        // in case the same instances is emitted in two crates of the same
-        // project.
-        is_generic(substs) ||
+    // If we're dealing with an instance of a function that's inlined from
+    // another crate but we're marking it as globally shared to our
+    // compilation (aka we're not making an internal copy in each of our
+    // codegen units) then this symbol may become an exported (but hidden
+    // visibility) symbol. This means that multiple crates may do the same
+    // and we want to be sure to avoid any symbol conflicts here.
+    let is_globally_shared_function = matches!(
+        tcx.def_kind(instance.def_id()),
+        DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::Generator | DefKind::Ctor(..)
+    ) && matches!(
+        MonoItem::Fn(instance).instantiation_mode(tcx),
+        InstantiationMode::GloballyShared { may_conflict: true }
+    );
 
-        // If we're dealing with an instance of a function that's inlined from
-        // another crate but we're marking it as globally shared to our
-        // compilation (aka we're not making an internal copy in each of our
-        // codegen units) then this symbol may become an exported (but hidden
-        // visibility) symbol. This means that multiple crates may do the same
-        // and we want to be sure to avoid any symbol conflicts here.
-        matches!(MonoItem::Fn(instance).instantiation_mode(tcx), InstantiationMode::GloballyShared { may_conflict: true });
+    // If this is an instance of a generic function, we also hash in
+    // the ID of the instantiating crate. This avoids symbol conflicts
+    // in case the same instances is emitted in two crates of the same
+    // project.
+    let avoid_cross_crate_conflicts = is_generic(substs) || is_globally_shared_function;
 
-    let instantiating_crate =
-        if avoid_cross_crate_conflicts { Some(compute_instantiating_crate()) } else { None };
+    let instantiating_crate = avoid_cross_crate_conflicts.then(compute_instantiating_crate);
 
     // Pick the crate responsible for the symbol mangling version, which has to:
     // 1. be stable for each instance, whether it's being defined or imported
@@ -253,8 +272,7 @@ fn compute_symbol_name<'tcx>(
 
     debug_assert!(
         rustc_demangle::try_demangle(&symbol).is_ok(),
-        "compute_symbol_name: `{}` cannot be demangled",
-        symbol
+        "compute_symbol_name: `{symbol}` cannot be demangled"
     );
 
     symbol

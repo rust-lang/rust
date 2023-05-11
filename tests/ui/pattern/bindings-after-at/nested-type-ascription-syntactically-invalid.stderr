@@ -1,0 +1,22 @@
+error: expected one of `!`, `(`, `+`, `::`, `;`, `<`, or `=`, found `@`
+  --> $DIR/nested-type-ascription-syntactically-invalid.rs:18:15
+   |
+LL |     let a: u8 @ b = 0;
+   |               ^ expected one of 7 possible tokens
+
+error: expected one of `)`, `,`, `@`, or `|`, found `:`
+  --> $DIR/nested-type-ascription-syntactically-invalid.rs:24:15
+   |
+LL |     let a @ (b: u8);
+   |               ^ expected one of `)`, `,`, `@`, or `|`
+   |
+   = note: type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
+
+error: expected one of `!`, `(`, `+`, `::`, `;`, `<`, or `=`, found `@`
+  --> $DIR/nested-type-ascription-syntactically-invalid.rs:30:15
+   |
+LL |     let a: T1 @ Outer(b: T2);
+   |               ^ expected one of 7 possible tokens
+
+error: aborting due to 3 previous errors
+

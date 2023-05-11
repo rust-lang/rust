@@ -3,17 +3,20 @@ use std::iter;
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
-use clippy_utils::ty::is_copy;
+use clippy_utils::ty::{for_each_top_level_late_bound_region, is_copy};
 use clippy_utils::{is_self, is_self_ty};
+use core::ops::ControlFlow;
 use if_chain::if_chain;
 use rustc_ast::attr;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{BindingAnnotation, Body, FnDecl, HirId, Impl, ItemKind, MutTy, Mutability, Node, PatKind};
+use rustc_hir::{BindingAnnotation, Body, FnDecl, Impl, ItemKind, MutTy, Mutability, Node, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
+use rustc_middle::ty::adjustment::{Adjust, PointerCast};
 use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::{self, RegionKind};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{sym, Span};
@@ -52,17 +55,16 @@ declare_clippy_lint! {
     /// to a function that needs the memory address. For further details, refer to
     /// [this issue](https://github.com/rust-lang/rust-clippy/issues/5953)
     /// that explains a real case in which this false positive
-    /// led to an **undefined behaviour** introduced with unsafe code.
+    /// led to an **undefined behavior** introduced with unsafe code.
     ///
     /// ### Example
     ///
     /// ```rust
-    /// // Bad
     /// fn foo(v: &u32) {}
     /// ```
     ///
+    /// Use instead:
     /// ```rust
-    /// // Better
     /// fn foo(v: u32) {}
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -89,14 +91,13 @@ declare_clippy_lint! {
     /// #[derive(Clone, Copy)]
     /// struct TooLarge([u8; 2048]);
     ///
-    /// // Bad
     /// fn foo(v: TooLarge) {}
     /// ```
-    /// ```rust
-    /// #[derive(Clone, Copy)]
-    /// struct TooLarge([u8; 2048]);
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # #[derive(Clone, Copy)]
+    /// # struct TooLarge([u8; 2048]);
     /// fn foo(v: &TooLarge) {}
     /// ```
     #[clippy::version = "1.49.0"]
@@ -124,7 +125,7 @@ impl<'tcx> PassByRefOrValue {
             // Cap the calculated bit width at 32-bits to reduce
             // portability problems between 32 and 64-bit targets
             let bit_width = cmp::min(bit_width, 32);
-            #[allow(clippy::integer_division)]
+            #[expect(clippy::integer_division)]
             let byte_width = bit_width / 8;
             // Use a limit of 2 times the register byte width
             byte_width * 2
@@ -138,55 +139,81 @@ impl<'tcx> PassByRefOrValue {
     }
 
     fn check_poly_fn(&mut self, cx: &LateContext<'tcx>, def_id: LocalDefId, decl: &FnDecl<'_>, span: Option<Span>) {
-        if self.avoid_breaking_exported_api && cx.access_levels.is_exported(def_id) {
+        if self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(def_id) {
             return;
         }
 
-        let fn_sig = cx.tcx.fn_sig(def_id);
-        let fn_sig = cx.tcx.erase_late_bound_regions(fn_sig);
-
+        let fn_sig = cx.tcx.fn_sig(def_id).subst_identity();
         let fn_body = cx.enclosing_body.map(|id| cx.tcx.hir().body(id));
 
-        for (index, (input, &ty)) in iter::zip(decl.inputs, fn_sig.inputs()).enumerate() {
+        // Gather all the lifetimes found in the output type which may affect whether
+        // `TRIVIALLY_COPY_PASS_BY_REF` should be linted.
+        let mut output_regions = FxHashSet::default();
+        for_each_top_level_late_bound_region(fn_sig.skip_binder().output(), |region| -> ControlFlow<!> {
+            output_regions.insert(region);
+            ControlFlow::Continue(())
+        });
+
+        for (index, (input, ty)) in iter::zip(
+            decl.inputs,
+            fn_sig.skip_binder().inputs().iter().map(|&ty| fn_sig.rebind(ty)),
+        )
+        .enumerate()
+        {
             // All spans generated from a proc-macro invocation are the same...
             match span {
-                Some(s) if s == input.span => return,
+                Some(s) if s == input.span => continue,
                 _ => (),
             }
 
-            match ty.kind() {
-                ty::Ref(input_lt, ty, Mutability::Not) => {
-                    // Use lifetimes to determine if we're returning a reference to the
-                    // argument. In that case we can't switch to pass-by-value as the
-                    // argument will not live long enough.
-                    let output_lts = match *fn_sig.output().kind() {
-                        ty::Ref(output_lt, _, _) => vec![output_lt],
-                        ty::Adt(_, substs) => substs.regions().collect(),
-                        _ => vec![],
-                    };
+            match *ty.skip_binder().kind() {
+                ty::Ref(lt, ty, Mutability::Not) => {
+                    match lt.kind() {
+                        RegionKind::ReLateBound(index, region)
+                            if index.as_u32() == 0 && output_regions.contains(&region) =>
+                        {
+                            continue;
+                        },
+                        // Early bound regions on functions are either from the containing item, are bounded by another
+                        // lifetime, or are used as a bound for a type or lifetime.
+                        RegionKind::ReEarlyBound(..) => continue,
+                        _ => (),
+                    }
 
-                    if_chain! {
-                        if !output_lts.contains(input_lt);
-                        if is_copy(cx, *ty);
-                        if let Some(size) = cx.layout_of(*ty).ok().map(|l| l.size.bytes());
-                        if size <= self.ref_min_size;
-                        if let hir::TyKind::Rptr(_, MutTy { ty: decl_ty, .. }) = input.kind;
-                        then {
-                            let value_type = if fn_body.and_then(|body| body.params.get(index)).map_or(false, is_self) {
-                                "self".into()
-                            } else {
-                                snippet(cx, decl_ty.span, "_").into()
-                            };
-                            span_lint_and_sugg(
-                                cx,
-                                TRIVIALLY_COPY_PASS_BY_REF,
-                                input.span,
-                                &format!("this argument ({} byte) is passed by reference, but would be more efficient if passed by value (limit: {} byte)", size, self.ref_min_size),
-                                "consider passing by value instead",
-                                value_type,
-                                Applicability::Unspecified,
-                            );
+                    let ty = cx.tcx.erase_late_bound_regions(fn_sig.rebind(ty));
+                    if is_copy(cx, ty)
+                        && let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes())
+                        && size <= self.ref_min_size
+                        && let hir::TyKind::Ref(_, MutTy { ty: decl_ty, .. }) = input.kind
+                    {
+                        if let Some(typeck) = cx.maybe_typeck_results() {
+                            // Don't lint if an unsafe pointer is created.
+                            // TODO: Limit the check only to unsafe pointers to the argument (or part of the argument)
+                            //       which escape the current function.
+                            if typeck.node_types().items().any(|(_, &ty)| ty.is_unsafe_ptr())
+                                || typeck
+                                    .adjustments()
+                                    .items()
+                                    .flat_map(|(_, a)| a)
+                                    .any(|a| matches!(a.kind, Adjust::Pointer(PointerCast::UnsafeFnPointer)))
+                            {
+                                continue;
+                            }
                         }
+                        let value_type = if fn_body.and_then(|body| body.params.get(index)).map_or(false, is_self) {
+                            "self".into()
+                        } else {
+                            snippet(cx, decl_ty.span, "_").into()
+                        };
+                        span_lint_and_sugg(
+                            cx,
+                            TRIVIALLY_COPY_PASS_BY_REF,
+                            input.span,
+                            &format!("this argument ({size} byte) is passed by reference, but would be more efficient if passed by value (limit: {} byte)", self.ref_min_size),
+                            "consider passing by value instead",
+                            value_type,
+                            Applicability::Unspecified,
+                        );
                     }
                 },
 
@@ -194,10 +221,11 @@ impl<'tcx> PassByRefOrValue {
                     // if function has a body and parameter is annotated with mut, ignore
                     if let Some(param) = fn_body.and_then(|body| body.params.get(index)) {
                         match param.pat.kind {
-                            PatKind::Binding(BindingAnnotation::Unannotated, _, _, _) => {},
+                            PatKind::Binding(BindingAnnotation::NONE, _, _, _) => {},
                             _ => continue,
                         }
                     }
+                    let ty = cx.tcx.erase_late_bound_regions(ty);
 
                     if_chain! {
                         if is_copy(cx, ty);
@@ -209,7 +237,7 @@ impl<'tcx> PassByRefOrValue {
                                 cx,
                                 LARGE_TYPES_PASSED_BY_VALUE,
                                 input.span,
-                                &format!("this argument ({} byte) is passed by value, but might be more efficient if passed by reference (limit: {} byte)", size, self.value_max_size),
+                                &format!("this argument ({size} byte) is passed by value, but might be more efficient if passed by reference (limit: {} byte)", self.value_max_size),
                                 "consider passing by reference instead",
                                 format!("&{}", snippet(cx, input.span, "_")),
                                 Applicability::MaybeIncorrect,
@@ -233,7 +261,7 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
         }
 
         if let hir::TraitItemKind::Fn(method_sig, _) = &item.kind {
-            self.check_poly_fn(cx, item.def_id, &*method_sig.decl, None);
+            self.check_poly_fn(cx, item.owner_id.def_id, method_sig.decl, None);
         }
     }
 
@@ -244,14 +272,15 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
         decl: &'tcx FnDecl<'_>,
         _body: &'tcx Body<'_>,
         span: Span,
-        hir_id: HirId,
+        def_id: LocalDefId,
     ) {
         if span.from_expansion() {
             return;
         }
 
+        let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id);
         match kind {
-            FnKind::ItemFn(.., header, _) => {
+            FnKind::ItemFn(.., header) => {
                 if header.abi != Abi::Rust {
                     return;
                 }
@@ -271,7 +300,7 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
         }
 
         // Exclude non-inherent impls
-        if let Some(Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(hir_id)) {
+        if let Some(Node::Item(item)) = cx.tcx.hir().find_parent(hir_id) {
             if matches!(
                 item.kind,
                 ItemKind::Impl(Impl { of_trait: Some(_), .. }) | ItemKind::Trait(..)
@@ -280,6 +309,6 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
             }
         }
 
-        self.check_poly_fn(cx, cx.tcx.hir().local_def_id(hir_id), decl, Some(span));
+        self.check_poly_fn(cx, def_id, decl, Some(span));
     }
 }

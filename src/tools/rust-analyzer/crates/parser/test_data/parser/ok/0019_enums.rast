@@ -1,0 +1,155 @@
+SOURCE_FILE
+  ENUM
+    ENUM_KW "enum"
+    WHITESPACE " "
+    NAME
+      IDENT "E1"
+    WHITESPACE " "
+    VARIANT_LIST
+      L_CURLY "{"
+      WHITESPACE "\n"
+      R_CURLY "}"
+  WHITESPACE "\n\n"
+  ENUM
+    ENUM_KW "enum"
+    WHITESPACE " "
+    NAME
+      IDENT "E2"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      TYPE_PARAM
+        NAME
+          IDENT "T"
+      R_ANGLE ">"
+    WHITESPACE " "
+    VARIANT_LIST
+      L_CURLY "{"
+      WHITESPACE "\n"
+      R_CURLY "}"
+  WHITESPACE "\n\n"
+  ENUM
+    ENUM_KW "enum"
+    WHITESPACE " "
+    NAME
+      IDENT "E3"
+    WHITESPACE " "
+    VARIANT_LIST
+      L_CURLY "{"
+      WHITESPACE "\n    "
+      VARIANT
+        NAME
+          IDENT "X"
+      WHITESPACE "\n"
+      R_CURLY "}"
+  WHITESPACE "\n\n"
+  ENUM
+    ENUM_KW "enum"
+    WHITESPACE " "
+    NAME
+      IDENT "E4"
+    WHITESPACE " "
+    VARIANT_LIST
+      L_CURLY "{"
+      WHITESPACE "\n    "
+      VARIANT
+        NAME
+          IDENT "X"
+      COMMA ","
+      WHITESPACE "\n"
+      R_CURLY "}"
+  WHITESPACE "\n\n"
+  ENUM
+    ENUM_KW "enum"
+    WHITESPACE " "
+    NAME
+      IDENT "E5"
+    WHITESPACE " "
+    VARIANT_LIST
+      L_CURLY "{"
+      WHITESPACE "\n    "
+      VARIANT
+        NAME
+          IDENT "A"
+      COMMA ","
+      WHITESPACE "\n    "
+      VARIANT
+        NAME
+          IDENT "B"
+        WHITESPACE " "
+        EQ "="
+        WHITESPACE " "
+        LITERAL
+          INT_NUMBER "92"
+      COMMA ","
+      WHITESPACE "\n    "
+      VARIANT
+        NAME
+          IDENT "C"
+        WHITESPACE " "
+        RECORD_FIELD_LIST
+          L_CURLY "{"
+          WHITESPACE "\n        "
+          RECORD_FIELD
+            NAME
+              IDENT "a"
+            COLON ":"
+            WHITESPACE " "
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "u32"
+          COMMA ","
+          WHITESPACE "\n        "
+          RECORD_FIELD
+            VISIBILITY
+              PUB_KW "pub"
+            WHITESPACE " "
+            NAME
+              IDENT "b"
+            COLON ":"
+            WHITESPACE " "
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "f64"
+          COMMA ","
+          WHITESPACE "\n    "
+          R_CURLY "}"
+      COMMA ","
+      WHITESPACE "\n    "
+      VARIANT
+        NAME
+          IDENT "F"
+        WHITESPACE " "
+        RECORD_FIELD_LIST
+          L_CURLY "{"
+          R_CURLY "}"
+      COMMA ","
+      WHITESPACE "\n    "
+      VARIANT
+        NAME
+          IDENT "D"
+        TUPLE_FIELD_LIST
+          L_PAREN "("
+          TUPLE_FIELD
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "u32"
+          COMMA ","
+          R_PAREN ")"
+      COMMA ","
+      WHITESPACE "\n    "
+      VARIANT
+        NAME
+          IDENT "E"
+        TUPLE_FIELD_LIST
+          L_PAREN "("
+          R_PAREN ")"
+      COMMA ","
+      WHITESPACE "\n"
+      R_CURLY "}"
+  WHITESPACE "\n"

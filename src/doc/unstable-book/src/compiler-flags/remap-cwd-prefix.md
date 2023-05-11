@@ -8,7 +8,7 @@ This flag will rewrite absolute paths under the current working directory,
 replacing the current working directory prefix with a specified value.
 
 The given value may be absolute or relative, or empty. This switch takes
-precidence over `--remap-path-prefix` in case they would both match a given
+precedence over `--remap-path-prefix` in case they would both match a given
 path.
 
 This flag helps to produce deterministic output, by removing the current working

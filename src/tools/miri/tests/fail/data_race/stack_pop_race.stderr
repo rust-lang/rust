@@ -1,0 +1,25 @@
+error: Undefined Behavior: Data race detected between (1) Read on thread `<unnamed>` and (2) Deallocate on thread `main` at ALLOC. (2) just happened here
+  --> $DIR/stack_pop_race.rs:LL:CC
+   |
+LL | }
+   |  ^ Data race detected between (1) Read on thread `<unnamed>` and (2) Deallocate on thread `main` at ALLOC. (2) just happened here
+   |
+help: and (1) occurred earlier here
+  --> $DIR/stack_pop_race.rs:LL:CC
+   |
+LL |         let _val = unsafe { *ptr.0 };
+   |                             ^^^^^^
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE (of the first span):
+   = note: inside `race` at $DIR/stack_pop_race.rs:LL:CC
+note: inside `main`
+  --> $DIR/stack_pop_race.rs:LL:CC
+   |
+LL |     race(0);
+   |     ^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

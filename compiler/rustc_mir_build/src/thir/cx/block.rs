@@ -5,16 +5,17 @@ use rustc_middle::middle::region;
 use rustc_middle::thir::*;
 use rustc_middle::ty;
 
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
+use rustc_middle::ty::CanonicalUserTypeAnnotation;
 
 impl<'tcx> Cx<'tcx> {
-    crate fn mirror_block(&mut self, block: &'tcx hir::Block<'tcx>) -> Block {
+    pub(crate) fn mirror_block(&mut self, block: &'tcx hir::Block<'tcx>) -> BlockId {
         // We have to eagerly lower the "spine" of the statements
         // in order to get the lexical scoping correctly.
         let stmts = self.mirror_stmts(block.hir_id.local_id, block.stmts);
         let opt_destruction_scope =
             self.region_scope_tree.opt_destruction_scope(block.hir_id.local_id);
-        Block {
+        let block = Block {
             targeted_by_break: block.targeted_by_break,
             region_scope: region::Scope {
                 id: block.hir_id.local_id,
@@ -33,7 +34,9 @@ impl<'tcx> Cx<'tcx> {
                     BlockSafety::ExplicitUnsafe(block.hir_id)
                 }
             },
-        }
+        };
+
+        self.thir.blocks.push(block)
     }
 
     fn mirror_stmts(
@@ -73,28 +76,39 @@ impl<'tcx> Cx<'tcx> {
                             )),
                         };
 
+                        let else_block = local.els.map(|els| self.mirror_block(els));
+
                         let mut pattern = self.pattern_from_hir(local.pat);
+                        debug!(?pattern);
 
                         if let Some(ty) = &local.ty {
                             if let Some(&user_ty) =
                                 self.typeck_results.user_provided_types().get(ty.hir_id)
                             {
                                 debug!("mirror_stmts: user_ty={:?}", user_ty);
-                                pattern = Pat {
+                                let annotation = CanonicalUserTypeAnnotation {
+                                    user_ty: Box::new(user_ty),
+                                    span: ty.span,
+                                    inferred_ty: self.typeck_results.node_type(ty.hir_id),
+                                };
+                                pattern = Box::new(Pat {
                                     ty: pattern.ty,
                                     span: pattern.span,
-                                    kind: Box::new(PatKind::AscribeUserType {
+                                    kind: PatKind::AscribeUserType {
                                         ascription: Ascription {
-                                            user_ty: PatTyProj::from_user_type(user_ty),
-                                            user_ty_span: ty.span,
+                                            annotation,
                                             variance: ty::Variance::Covariant,
                                         },
                                         subpattern: pattern,
-                                    }),
-                                };
+                                    },
+                                });
                             }
                         }
 
+                        let span = match local.init {
+                            Some(init) => local.span.with_hi(init.span.hi()),
+                            None => local.span,
+                        };
                         let stmt = Stmt {
                             kind: StmtKind::Let {
                                 remainder_scope,
@@ -104,7 +118,9 @@ impl<'tcx> Cx<'tcx> {
                                 },
                                 pattern,
                                 initializer: local.init.map(|init| self.mirror_expr(init)),
+                                else_block,
                                 lint_level: LintLevel::Explicit(local.hir_id),
+                                span,
                             },
                             opt_destruction_scope: opt_dxn_ext,
                         };

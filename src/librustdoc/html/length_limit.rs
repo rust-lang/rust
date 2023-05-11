@@ -61,14 +61,14 @@ impl HtmlWithLimit {
     /// and returns [`ControlFlow::Break`].
     pub(super) fn push(&mut self, text: &str) -> ControlFlow<(), ()> {
         if self.len + text.len() > self.limit {
-            return ControlFlow::BREAK;
+            return ControlFlow::Break(());
         }
 
         self.flush_queue();
         write!(self.buf, "{}", Escape(text)).unwrap();
         self.len += text.len();
 
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 
     /// Open an HTML tag.

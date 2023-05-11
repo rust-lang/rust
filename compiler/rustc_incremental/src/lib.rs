@@ -2,10 +2,11 @@
 
 #![deny(missing_docs)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![feature(let_else)]
-#![feature(nll)]
+#![feature(never_type)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate rustc_middle;
@@ -14,6 +15,7 @@ extern crate tracing;
 
 mod assert_dep_graph;
 pub mod assert_module_sources;
+mod errors;
 mod persist;
 
 use assert_dep_graph::assert_dep_graph;
@@ -29,3 +31,8 @@ pub use persist::save_dep_graph;
 pub use persist::save_work_product_index;
 pub use persist::LoadResult;
 pub use persist::{build_dep_graph, load_dep_graph, DepGraphFuture};
+
+use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
+use rustc_fluent_macro::fluent_messages;
+
+fluent_messages! { "../messages.ftl" }

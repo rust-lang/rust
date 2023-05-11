@@ -1,0 +1,15 @@
+{
+    "problemMatcher": [
+        {
+            "owner": "tidy-error-file-line",
+            "pattern": [
+                {
+                    "regexp": "^tidy error: /checkout/(.+):(\\d+): (.+)$",
+                    "file": 1,
+                    "line": 2,
+                    "message": 3
+                }
+            ]
+        }
+    ]
+}

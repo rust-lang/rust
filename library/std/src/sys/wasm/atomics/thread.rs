@@ -53,37 +53,3 @@ pub mod guard {
         None
     }
 }
-
-// We currently just use our own thread-local to store our
-// current thread's ID, and then we lazily initialize it to something allocated
-// from a global counter.
-pub fn my_id() -> u32 {
-    use crate::sync::atomic::{AtomicU32, Ordering::SeqCst};
-
-    static NEXT_ID: AtomicU32 = AtomicU32::new(0);
-
-    #[thread_local]
-    static mut MY_ID: u32 = 0;
-
-    unsafe {
-        // If our thread ID isn't set yet then we need to allocate one. Do so
-        // with with a simple "atomically add to a global counter" strategy.
-        // This strategy doesn't handled what happens when the counter
-        // overflows, however, so just abort everything once the counter
-        // overflows and eventually we could have some sort of recycling scheme
-        // (or maybe this is all totally irrelevant by that point!). In any case
-        // though we're using a CAS loop instead of a `fetch_add` to ensure that
-        // the global counter never overflows.
-        if MY_ID == 0 {
-            let mut cur = NEXT_ID.load(SeqCst);
-            MY_ID = loop {
-                let next = cur.checked_add(1).unwrap_or_else(|| crate::process::abort());
-                match NEXT_ID.compare_exchange(cur, next, SeqCst, SeqCst) {
-                    Ok(_) => break next,
-                    Err(i) => cur = i,
-                }
-            };
-        }
-        MY_ID
-    }
-}

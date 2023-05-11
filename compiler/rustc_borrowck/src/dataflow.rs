@@ -1,4 +1,6 @@
-use rustc_data_structures::fx::FxHashMap;
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::{self, BasicBlock, Body, Location, Place};
 use rustc_middle::ty::RegionVid;
@@ -9,9 +11,7 @@ use rustc_mir_dataflow::{self, fmt::DebugWithContext, CallReturnPlaces, GenKill}
 use rustc_mir_dataflow::{Analysis, Direction, Results};
 use std::fmt;
 
-use crate::{
-    places_conflict, BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext, ToRegionVid,
-};
+use crate::{places_conflict, BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext};
 
 /// A tuple with named fields that can hold either the results or the transient state of the
 /// dataflow analyses used by the borrow checker.
@@ -106,9 +106,8 @@ impl_visitable! {
 }
 
 rustc_index::newtype_index! {
-    pub struct BorrowIndex {
-        DEBUG_FORMAT = "bw{}"
-    }
+    #[debug_format = "bw{}"]
+    pub struct BorrowIndex {}
 }
 
 /// `Borrows` stores the data used in the analyses that track the flow
@@ -123,7 +122,7 @@ pub struct Borrows<'a, 'tcx> {
     body: &'a Body<'tcx>,
 
     borrow_set: &'a BorrowSet<'tcx>,
-    borrows_out_of_scope_at_location: FxHashMap<Location, Vec<BorrowIndex>>,
+    borrows_out_of_scope_at_location: FxIndexMap<Location, Vec<BorrowIndex>>,
 }
 
 struct StackEntry {
@@ -137,17 +136,17 @@ struct OutOfScopePrecomputer<'a, 'tcx> {
     visit_stack: Vec<StackEntry>,
     body: &'a Body<'tcx>,
     regioncx: &'a RegionInferenceContext<'tcx>,
-    borrows_out_of_scope_at_location: FxHashMap<Location, Vec<BorrowIndex>>,
+    borrows_out_of_scope_at_location: FxIndexMap<Location, Vec<BorrowIndex>>,
 }
 
 impl<'a, 'tcx> OutOfScopePrecomputer<'a, 'tcx> {
     fn new(body: &'a Body<'tcx>, regioncx: &'a RegionInferenceContext<'tcx>) -> Self {
         OutOfScopePrecomputer {
-            visited: BitSet::new_empty(body.basic_blocks().len()),
+            visited: BitSet::new_empty(body.basic_blocks.len()),
             visit_stack: vec![],
             body,
             regioncx,
-            borrows_out_of_scope_at_location: FxHashMap::default(),
+            borrows_out_of_scope_at_location: FxIndexMap::default(),
         }
     }
 }
@@ -199,7 +198,7 @@ impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
                 // Add successor BBs to the work list, if necessary.
                 let bb_data = &self.body[bb];
                 debug_assert!(hi == bb_data.statements.len());
-                for &succ_bb in bb_data.terminator().successors() {
+                for succ_bb in bb_data.terminator().successors() {
                     if !self.visited.insert(succ_bb) {
                         if succ_bb == location.block && first_lo > 0 {
                             // `succ_bb` has been seen before. If it wasn't
@@ -233,7 +232,7 @@ impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
 }
 
 impl<'a, 'tcx> Borrows<'a, 'tcx> {
-    crate fn new(
+    pub(crate) fn new(
         tcx: TyCtxt<'tcx>,
         body: &'a Body<'tcx>,
         nonlexical_regioncx: &'a RegionInferenceContext<'tcx>,
@@ -241,7 +240,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
     ) -> Self {
         let mut prec = OutOfScopePrecomputer::new(body, nonlexical_regioncx);
         for (borrow_index, borrow_data) in borrow_set.iter_enumerated() {
-            let borrow_region = borrow_data.region.to_region_vid();
+            let borrow_region = borrow_data.region;
             let location = borrow_data.reserve_location;
 
             prec.precompute_borrows_out_of_scope(borrow_index, borrow_region, location);
@@ -305,7 +304,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
         }
 
         // By passing `PlaceConflictBias::NoOverlap`, we conservatively assume that any given
-        // pair of array indices are unequal, so that when `places_conflict` returns true, we
+        // pair of array indices are not equal, so that when `places_conflict` returns true, we
         // will be assured that two places being compared definitely denotes the same sets of
         // locations.
         let definitely_conflicting_borrows = other_borrows_of_local.filter(|&i| {
@@ -356,9 +355,9 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
         stmt: &mir::Statement<'tcx>,
         location: Location,
     ) {
-        match stmt.kind {
-            mir::StatementKind::Assign(box (lhs, ref rhs)) => {
-                if let mir::Rvalue::Ref(_, _, place) = *rhs {
+        match &stmt.kind {
+            mir::StatementKind::Assign(box (lhs, rhs)) => {
+                if let mir::Rvalue::Ref(_, _, place) = rhs {
                     if place.ignore_borrow(
                         self.tcx,
                         self.body,
@@ -375,13 +374,13 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
 
                 // Make sure there are no remaining borrows for variables
                 // that are assigned over.
-                self.kill_borrows_on_place(trans, lhs);
+                self.kill_borrows_on_place(trans, *lhs);
             }
 
             mir::StatementKind::StorageDead(local) => {
                 // Make sure there are no remaining borrows for locals that
                 // are gone out of scope.
-                self.kill_borrows_on_place(trans, Place::from(local));
+                self.kill_borrows_on_place(trans, Place::from(*local));
             }
 
             mir::StatementKind::FakeRead(..)
@@ -389,9 +388,11 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
             | mir::StatementKind::Deinit(..)
             | mir::StatementKind::StorageLive(..)
             | mir::StatementKind::Retag { .. }
+            | mir::StatementKind::PlaceMention(..)
             | mir::StatementKind::AscribeUserType(..)
             | mir::StatementKind::Coverage(..)
-            | mir::StatementKind::CopyNonOverlapping(..)
+            | mir::StatementKind::Intrinsic(..)
+            | mir::StatementKind::ConstEvalCounter
             | mir::StatementKind::Nop => {}
         }
     }

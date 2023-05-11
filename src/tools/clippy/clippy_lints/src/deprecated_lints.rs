@@ -1,16 +1,21 @@
-// NOTE: if you add a deprecated lint in this file, please add a corresponding test in
-// tests/ui/deprecated.rs
+// NOTE: Entries should be created with `cargo dev deprecate`
 
 /// This struct fakes the `Lint` declaration that is usually created by `declare_lint!`. This
 /// enables the simple extraction of the metadata without changing the current deprecation
 /// declaration.
-pub struct ClippyDeprecatedLint;
+pub struct ClippyDeprecatedLint {
+    #[allow(dead_code)]
+    pub desc: &'static str,
+}
 
+#[macro_export]
 macro_rules! declare_deprecated_lint {
-    { $(#[$attr:meta])* pub $name: ident, $_reason: expr} => {
+    { $(#[$attr:meta])* pub $name: ident, $reason: literal} => {
         $(#[$attr])*
         #[allow(dead_code)]
-        pub static $name: ClippyDeprecatedLint = ClippyDeprecatedLint {};
+        pub static $name: ClippyDeprecatedLint = ClippyDeprecatedLint {
+            desc: $reason
+        };
     }
 }
 
@@ -194,7 +199,6 @@ declare_deprecated_lint! {
     /// ### Deprecation reason
     /// The `avoid_breaking_exported_api` config option was added, which
     /// enables the `enum_variant_names` lint for public items.
-    /// ```
     #[clippy::version = "1.54.0"]
     pub PUB_ENUM_VARIANT_NAMES,
     "set the `avoid-breaking-exported-api` config option to `false` to enable the `enum_variant_names` lint for public items"

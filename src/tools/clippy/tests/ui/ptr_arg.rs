@@ -1,8 +1,9 @@
+#![feature(lint_reasons)]
 #![allow(unused, clippy::many_single_char_names, clippy::redundant_clone)]
 #![warn(clippy::ptr_arg)]
 
 use std::borrow::Cow;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 fn do_vec(x: &Vec<i64>) {
     //Nothing here
@@ -109,8 +110,11 @@ mod issue_5644 {
         #[allow(clippy::ptr_arg)] _s: &String,
         #[allow(clippy::ptr_arg)] _p: &PathBuf,
         #[allow(clippy::ptr_arg)] _c: &Cow<[i32]>,
+        #[expect(clippy::ptr_arg)] _expect: &Cow<[i32]>,
     ) {
     }
+
+    fn some_allowed(#[allow(clippy::ptr_arg)] _v: &Vec<u32>, _s: &String) {}
 
     struct S;
     impl S {
@@ -119,6 +123,7 @@ mod issue_5644 {
             #[allow(clippy::ptr_arg)] _s: &String,
             #[allow(clippy::ptr_arg)] _p: &PathBuf,
             #[allow(clippy::ptr_arg)] _c: &Cow<[i32]>,
+            #[expect(clippy::ptr_arg)] _expect: &Cow<[i32]>,
         ) {
         }
     }
@@ -129,6 +134,7 @@ mod issue_5644 {
             #[allow(clippy::ptr_arg)] _s: &String,
             #[allow(clippy::ptr_arg)] _p: &PathBuf,
             #[allow(clippy::ptr_arg)] _c: &Cow<[i32]>,
+            #[expect(clippy::ptr_arg)] _expect: &Cow<[i32]>,
         ) {
         }
     }
@@ -200,4 +206,32 @@ fn cow_conditional_to_mut(a: &mut Cow<str>) {
     if a.is_empty() {
         a.to_mut().push_str("foo");
     }
+}
+
+// Issue #9542
+fn dyn_trait_ok(a: &mut Vec<u32>, b: &mut String, c: &mut PathBuf) {
+    trait T {}
+    impl<U> T for Vec<U> {}
+    impl T for String {}
+    impl T for PathBuf {}
+    fn takes_dyn(_: &mut dyn T) {}
+
+    takes_dyn(a);
+    takes_dyn(b);
+    takes_dyn(c);
+}
+
+fn dyn_trait(a: &mut Vec<u32>, b: &mut String, c: &mut PathBuf) {
+    trait T {}
+    impl<U> T for Vec<U> {}
+    impl<U> T for [U] {}
+    impl T for String {}
+    impl T for str {}
+    impl T for PathBuf {}
+    impl T for Path {}
+    fn takes_dyn(_: &mut dyn T) {}
+
+    takes_dyn(a);
+    takes_dyn(b);
+    takes_dyn(c);
 }

@@ -1,10 +1,10 @@
-use super::super::testing::crash_test::{CrashTestDummy, Panic};
-use super::super::testing::rng::DeterministicRng;
 use super::*;
+use crate::testing::crash_test::{CrashTestDummy, Panic};
+use crate::testing::rng::DeterministicRng;
 use crate::vec::Vec;
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
-use std::iter::FromIterator;
+use std::ops::Bound::{Excluded, Included};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
 #[test]
@@ -320,6 +320,42 @@ fn test_is_subset() {
 }
 
 #[test]
+fn test_is_superset() {
+    fn is_superset(a: &[i32], b: &[i32]) -> bool {
+        let set_a = BTreeSet::from_iter(a.iter());
+        let set_b = BTreeSet::from_iter(b.iter());
+        set_a.is_superset(&set_b)
+    }
+
+    assert_eq!(is_superset(&[], &[]), true);
+    assert_eq!(is_superset(&[], &[1, 2]), false);
+    assert_eq!(is_superset(&[0], &[1, 2]), false);
+    assert_eq!(is_superset(&[1], &[1, 2]), false);
+    assert_eq!(is_superset(&[4], &[1, 2]), false);
+    assert_eq!(is_superset(&[1, 4], &[1, 2]), false);
+    assert_eq!(is_superset(&[1, 2], &[1, 2]), true);
+    assert_eq!(is_superset(&[1, 2, 3], &[1, 3]), true);
+    assert_eq!(is_superset(&[1, 2, 3], &[]), true);
+    assert_eq!(is_superset(&[-1, 1, 2, 3], &[-1, 3]), true);
+
+    if cfg!(miri) {
+        // Miri is too slow
+        return;
+    }
+
+    let large = Vec::from_iter(0..100);
+    assert_eq!(is_superset(&[], &large), false);
+    assert_eq!(is_superset(&large, &[]), true);
+    assert_eq!(is_superset(&large, &[1]), true);
+    assert_eq!(is_superset(&large, &[50, 99]), true);
+    assert_eq!(is_superset(&large, &[100]), false);
+    assert_eq!(is_superset(&large, &[0, 99]), true);
+    assert_eq!(is_superset(&[-1], &large), false);
+    assert_eq!(is_superset(&[0], &large), false);
+    assert_eq!(is_superset(&[99, 100], &large), false);
+}
+
+#[test]
 fn test_retain() {
     let mut set = BTreeSet::from([1, 2, 3, 4, 5, 6]);
     set.retain(|&k| k % 2 == 0);
@@ -389,6 +425,26 @@ fn test_clear() {
     x.insert(1);
 
     x.clear();
+    assert!(x.is_empty());
+}
+#[test]
+fn test_remove() {
+    let mut x = BTreeSet::new();
+    assert!(x.is_empty());
+
+    x.insert(1);
+    x.insert(2);
+    x.insert(3);
+    x.insert(4);
+
+    assert_eq!(x.remove(&2), true);
+    assert_eq!(x.remove(&0), false);
+    assert_eq!(x.remove(&5), false);
+    assert_eq!(x.remove(&1), true);
+    assert_eq!(x.remove(&2), false);
+    assert_eq!(x.remove(&3), true);
+    assert_eq!(x.remove(&4), true);
+    assert_eq!(x.remove(&4), false);
     assert!(x.is_empty());
 }
 
@@ -774,4 +830,26 @@ fn from_array() {
     let set = BTreeSet::from([1, 2, 3, 4]);
     let unordered_duplicates = BTreeSet::from([4, 1, 4, 3, 2]);
     assert_eq!(set, unordered_duplicates);
+}
+
+#[should_panic(expected = "range start is greater than range end in BTreeSet")]
+#[test]
+fn test_range_panic_1() {
+    let mut set = BTreeSet::new();
+    set.insert(3);
+    set.insert(5);
+    set.insert(8);
+
+    let _invalid_range = set.range((Included(&8), Included(&3)));
+}
+
+#[should_panic(expected = "range start and end are equal and excluded in BTreeSet")]
+#[test]
+fn test_range_panic_2() {
+    let mut set = BTreeSet::new();
+    set.insert(3);
+    set.insert(5);
+    set.insert(8);
+
+    let _invalid_range = set.range((Excluded(&5), Excluded(&5)));
 }

@@ -1,0 +1,34 @@
+error[E0282]: type annotations needed
+  --> $DIR/suggest-fully-qualified-closure.rs:23:7
+   |
+LL |     q.lol(||());
+   |       ^^^
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL |     <Qqq as MyTrait<T>>::lol::<[closure@]>(&q, ||());
+   |     +++ ~
+
+error[E0283]: type annotations needed
+  --> $DIR/suggest-fully-qualified-closure.rs:23:7
+   |
+LL |     q.lol(||());
+   |       ^^^
+   |
+note: multiple `impl`s satisfying `Qqq: MyTrait<_>` found
+  --> $DIR/suggest-fully-qualified-closure.rs:14:1
+   |
+LL | impl MyTrait<u32> for Qqq{
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | impl MyTrait<u64> for Qqq{
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+help: try using a fully qualified path to specify the expected types
+   |
+LL |     <Qqq as MyTrait<T>>::lol::<[closure@]>(&q, ||());
+   |     +++ ~
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0282, E0283.
+For more information about an error, try `rustc --explain E0282`.

@@ -1,0 +1,9 @@
+error[E0282]: type annotations needed
+  --> $DIR/alias_eq_dont_use_normalizes_to_if_substs_eq.rs:38:41
+   |
+LL |     let _: <() as Foo<u16, T>>::Assoc = output::<_, T>();
+   |                                         ^^^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `output`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

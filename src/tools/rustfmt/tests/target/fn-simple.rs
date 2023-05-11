@@ -105,7 +105,7 @@ mod foo {
 // #2082
 pub(crate) fn init() {}
 
-crate fn init() {}
+pub(crate) fn init() {}
 
 // #2630
 fn make_map<T, F: (Fn(&T) -> String)>(records: &Vec<T>, key_fn: F) -> HashMap<String, usize> {}

@@ -1,5 +1,9 @@
 # `cf-protection`
 
+The tracking issue for this feature is: [#93754](https://github.com/rust-lang/rust/issues/93754).
+
+------------------------
+
 This option enables control-flow enforcement technology (CET) on x86; a more detailed description of
 CET is available [here]. Similar to `clang`, this flag takes one of the following values:
 
@@ -17,7 +21,7 @@ standard library does not ship with CET enabled by default, so you may need to r
 modules with a `cargo` command like:
 
 ```sh
-$ RUSTFLAGS="-Z cf-protection=full" RUSTC="rustc-custom" cargo +nightly build -Z build-std --target x86_64-unknown-linux-gnu
+$ RUSTFLAGS="-Z cf-protection=full" cargo +nightly build -Z build-std --target x86_64-unknown-linux-gnu
 ```
 
 ### Detection

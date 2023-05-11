@@ -8,7 +8,6 @@ pub fn opts() -> TargetOptions {
         linker: Some("wr-c++".into()),
         exe_suffix: ".vxe".into(),
         dynamic_linking: true,
-        executables: true,
         families: cvs!["unix"],
         has_rpath: true,
         has_thread_local: true,

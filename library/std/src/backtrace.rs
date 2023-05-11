@@ -9,19 +9,13 @@
 //! implementing `std::error::Error`) to get a causal chain of where an error
 //! was generated.
 //!
-//! > **Note**: this module is unstable and is designed in [RFC 2504], and you
-//! > can learn more about its status in the [tracking issue].
-//!
-//! [RFC 2504]: https://github.com/rust-lang/rfcs/blob/master/text/2504-fix-error.md
-//! [tracking issue]: https://github.com/rust-lang/rust/issues/53487
-//!
 //! ## Accuracy
 //!
 //! Backtraces are attempted to be as accurate as possible, but no guarantees
 //! are provided about the exact accuracy of a backtrace. Instruction pointers,
 //! symbol names, filenames, line numbers, etc, may all be incorrect when
-//! reported. Accuracy is attempted on a best-effort basis, however, and bugs
-//! are always welcome to indicate areas of improvement!
+//! reported. Accuracy is attempted on a best-effort basis, however, any bug
+//! reports are always welcome to indicate areas of improvement!
 //!
 //! For most platforms a backtrace with a filename/line number requires that
 //! programs be compiled with debug information. Without debug information
@@ -29,10 +23,10 @@
 //!
 //! ## Platform support
 //!
-//! Not all platforms that libstd compiles for support capturing backtraces.
-//! Some platforms simply do nothing when capturing a backtrace. To check
-//! whether the platform supports capturing backtraces you can consult the
-//! `BacktraceStatus` enum as a result of `Backtrace::status`.
+//! Not all platforms that std compiles for support capturing backtraces. Some
+//! platforms simply do nothing when capturing a backtrace. To check whether the
+//! platform supports capturing backtraces you can consult the `BacktraceStatus`
+//! enum as a result of `Backtrace::status`.
 //!
 //! Like above with accuracy platform support is done on a best effort basis.
 //! Sometimes libraries might not be available at runtime or something may go
@@ -45,7 +39,7 @@
 //! default. Its behavior is governed by two environment variables:
 //!
 //! * `RUST_LIB_BACKTRACE` - if this is set to `0` then `Backtrace::capture`
-//!   will never capture a backtrace. Any other value this is set to will enable
+//!   will never capture a backtrace. Any other value set will enable
 //!   `Backtrace::capture`.
 //!
 //! * `RUST_BACKTRACE` - if `RUST_LIB_BACKTRACE` is not set, then this variable
@@ -64,7 +58,7 @@
 //! `RUST_LIB_BACKTRACE` or `RUST_BACKTRACE` at runtime might not actually change
 //! how backtraces are captured.
 
-#![unstable(feature = "backtrace", issue = "53487")]
+#![stable(feature = "backtrace", since = "1.65.0")]
 
 #[cfg(test)]
 mod tests;
@@ -110,6 +104,7 @@ use crate::vec::Vec;
 /// previous point in time. In some instances the `Backtrace` type may
 /// internally be empty due to configuration. For more information see
 /// `Backtrace::capture`.
+#[stable(feature = "backtrace", since = "1.65.0")]
 #[must_use]
 pub struct Backtrace {
     inner: Inner,
@@ -117,17 +112,21 @@ pub struct Backtrace {
 
 /// The current status of a backtrace, indicating whether it was captured or
 /// whether it is empty for some other reason.
+#[stable(feature = "backtrace", since = "1.65.0")]
 #[non_exhaustive]
 #[derive(Debug, PartialEq, Eq)]
 pub enum BacktraceStatus {
     /// Capturing a backtrace is not supported, likely because it's not
     /// implemented for the current platform.
+    #[stable(feature = "backtrace", since = "1.65.0")]
     Unsupported,
     /// Capturing a backtrace has been disabled through either the
     /// `RUST_LIB_BACKTRACE` or `RUST_BACKTRACE` environment variables.
+    #[stable(feature = "backtrace", since = "1.65.0")]
     Disabled,
     /// A backtrace has been captured and the `Backtrace` should print
     /// reasonable information when rendered.
+    #[stable(feature = "backtrace", since = "1.65.0")]
     Captured,
 }
 
@@ -174,6 +173,7 @@ enum BytesOrWide {
     Wide(Vec<u16>),
 }
 
+#[stable(feature = "backtrace", since = "1.65.0")]
 impl fmt::Debug for Backtrace {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let capture = match &self.inner {
@@ -200,6 +200,7 @@ impl fmt::Debug for Backtrace {
     }
 }
 
+#[unstable(feature = "backtrace_frames", issue = "79676")]
 impl fmt::Debug for BacktraceFrame {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut dbg = fmt.debug_list();
@@ -288,6 +289,7 @@ impl Backtrace {
     ///
     /// To forcibly capture a backtrace regardless of environment variables, use
     /// the `Backtrace::force_capture` function.
+    #[stable(feature = "backtrace", since = "1.65.0")]
     #[inline(never)] // want to make sure there's a frame here to remove
     pub fn capture() -> Backtrace {
         if !Backtrace::enabled() {
@@ -306,6 +308,7 @@ impl Backtrace {
     /// Note that capturing a backtrace can be an expensive operation on some
     /// platforms, so this should be used with caution in performance-sensitive
     /// parts of code.
+    #[stable(feature = "backtrace", since = "1.65.0")]
     #[inline(never)] // want to make sure there's a frame here to remove
     pub fn force_capture() -> Backtrace {
         Backtrace::create(Backtrace::force_capture as usize)
@@ -313,6 +316,8 @@ impl Backtrace {
 
     /// Forcibly captures a disabled backtrace, regardless of environment
     /// variable configuration.
+    #[stable(feature = "backtrace", since = "1.65.0")]
+    #[rustc_const_stable(feature = "backtrace", since = "1.65.0")]
     pub const fn disabled() -> Backtrace {
         Backtrace { inner: Inner::Disabled }
     }
@@ -320,8 +325,7 @@ impl Backtrace {
     // Capture a backtrace which start just before the function addressed by
     // `ip`
     fn create(ip: usize) -> Backtrace {
-        // SAFETY: We don't attempt to lock this reentrantly.
-        let _lock = unsafe { lock() };
+        let _lock = lock();
         let mut frames = Vec::new();
         let mut actual_start = None;
         unsafe {
@@ -356,6 +360,7 @@ impl Backtrace {
     /// Returns the status of this backtrace, indicating whether this backtrace
     /// request was unsupported, disabled, or a stack trace was actually
     /// captured.
+    #[stable(feature = "backtrace", since = "1.65.0")]
     #[must_use]
     pub fn status(&self) -> BacktraceStatus {
         match self.inner {
@@ -375,6 +380,7 @@ impl<'a> Backtrace {
     }
 }
 
+#[stable(feature = "backtrace", since = "1.65.0")]
 impl fmt::Display for Backtrace {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let capture = match &self.inner {
@@ -462,8 +468,7 @@ impl Capture {
         // Use the global backtrace lock to synchronize this as it's a
         // requirement of the `backtrace` crate, and then actually resolve
         // everything.
-        // SAFETY: We don't attempt to lock this reentrantly.
-        let _lock = unsafe { lock() };
+        let _lock = lock();
         for frame in self.frames.iter_mut() {
             let symbols = &mut frame.symbols;
             let frame = match &frame.frame {

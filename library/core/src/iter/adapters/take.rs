@@ -1,5 +1,6 @@
 use crate::cmp;
 use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable, TrustedLen};
+use crate::num::NonZeroUsize;
 use crate::ops::{ControlFlow, Try};
 
 /// An iterator that only iterates over the first `n` iterations of `iter`.
@@ -75,7 +76,6 @@ where
     #[inline]
     fn try_fold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R
     where
-        Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
         R: Try<Output = Acc>,
     {
@@ -98,34 +98,39 @@ where
         }
     }
 
+    impl_fold_via_try_fold! { fold -> try_fold }
+
     #[inline]
-    fn fold<Acc, Fold>(mut self, init: Acc, fold: Fold) -> Acc
-    where
-        Self: Sized,
-        Fold: FnMut(Acc, Self::Item) -> Acc,
-    {
-        #[inline]
-        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
-            move |acc, x| Ok(f(acc, x))
+    fn for_each<F: FnMut(Self::Item)>(mut self, f: F) {
+        // The default implementation would use a unit accumulator, so we can
+        // avoid a stateful closure by folding over the remaining number
+        // of items we wish to return instead.
+        fn check<'a, Item>(
+            mut action: impl FnMut(Item) + 'a,
+        ) -> impl FnMut(usize, Item) -> Option<usize> + 'a {
+            move |more, x| {
+                action(x);
+                more.checked_sub(1)
+            }
         }
 
-        self.try_fold(init, ok(fold)).unwrap()
+        let remaining = self.n;
+        if remaining > 0 {
+            self.iter.try_fold(remaining - 1, check(f));
+        }
     }
 
     #[inline]
     #[rustc_inherit_overflow_checks]
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
         let min = self.n.min(n);
-        match self.iter.advance_by(min) {
-            Ok(_) => {
-                self.n -= min;
-                if min < n { Err(min) } else { Ok(()) }
-            }
-            ret @ Err(advanced) => {
-                self.n -= advanced;
-                ret
-            }
-        }
+        let rem = match self.iter.advance_by(min) {
+            Ok(()) => 0,
+            Err(rem) => rem.get(),
+        };
+        let advanced = min - rem;
+        self.n -= advanced;
+        NonZeroUsize::new(n - advanced).map_or(Ok(()), Err)
     }
 }
 
@@ -216,7 +221,7 @@ where
 
     #[inline]
     #[rustc_inherit_overflow_checks]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
         // The amount by which the inner iterator needs to be shortened for it to be
         // at most as long as the take() amount.
         let trim_inner = self.iter.len().saturating_sub(self.n);
@@ -225,12 +230,14 @@ where
         // about having to advance more than usize::MAX here.
         let advance_by = trim_inner.saturating_add(n);
 
-        let advanced = match self.iter.advance_back_by(advance_by) {
-            Ok(_) => advance_by - trim_inner,
-            Err(advanced) => advanced - trim_inner,
+        let remainder = match self.iter.advance_back_by(advance_by) {
+            Ok(()) => 0,
+            Err(rem) => rem.get(),
         };
-        self.n -= advanced;
-        return if advanced < n { Err(advanced) } else { Ok(()) };
+        let advanced_by_inner = advance_by - remainder;
+        let advanced_by = advanced_by_inner - trim_inner;
+        self.n -= advanced_by;
+        NonZeroUsize::new(n - advanced_by).map_or(Ok(()), Err)
     }
 }
 

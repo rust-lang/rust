@@ -1,0 +1,14 @@
+error: unsupported operation: racy imperfectly overlapping atomic access is not possible in the C++20 memory model, and not supported by Miri's weak memory emulation
+  --> $DIR/racing_mixed_size.rs:LL:CC
+   |
+LL |             std::intrinsics::atomic_load_relaxed(hi);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ racy imperfectly overlapping atomic access is not possible in the C++20 memory model, and not supported by Miri's weak memory emulation
+   |
+   = help: this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support
+   = note: BACKTRACE:
+   = note: inside closure at $DIR/racing_mixed_size.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

@@ -1,7 +1,7 @@
 use crate::mbe::macro_parser::count_metavar_decls;
 use crate::mbe::{Delimited, KleeneOp, KleeneToken, MetaVarExpr, SequenceRepetition, TokenTree};
 
-use rustc_ast::token::{self, Token};
+use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::{tokenstream, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_feature::Features;
@@ -10,8 +10,6 @@ use rustc_span::symbol::{kw, sym, Ident};
 
 use rustc_span::edition::Edition;
 use rustc_span::{Span, SyntaxContext};
-
-use rustc_data_structures::sync::Lrc;
 
 const VALID_FRAGMENT_NAMES_MSG: &str = "valid fragment specifiers are \
                                         `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, \
@@ -50,7 +48,7 @@ pub(super) fn parse(
 
     // For each token tree in `input`, parse the token into a `self::TokenTree`, consuming
     // additional trees if need be.
-    let mut trees = input.trees();
+    let mut trees = input.into_trees();
     while let Some(tree) = trees.next() {
         // Given the parsed tree, if there is a metavar and we are expecting matchers, actually
         // parse out the matcher (i.e., in `$id:ident` this would parse the `:` and `ident`).
@@ -58,9 +56,9 @@ pub(super) fn parse(
         match tree {
             TokenTree::MetaVar(start_sp, ident) if parsing_patterns => {
                 let span = match trees.next() {
-                    Some(tokenstream::TokenTree::Token(Token { kind: token::Colon, span })) => {
+                    Some(tokenstream::TokenTree::Token(Token { kind: token::Colon, span }, _)) => {
                         match trees.next() {
-                            Some(tokenstream::TokenTree::Token(token)) => match token.ident() {
+                            Some(tokenstream::TokenTree::Token(token, _)) => match token.ident() {
                                 Some((frag, _)) => {
                                     let span = token.span.with_lo(start_sp.lo());
 
@@ -87,7 +85,7 @@ pub(super) fn parse(
                                                     frag.name
                                                 );
                                                 sess.span_diagnostic
-                                                    .struct_span_err(span, &msg)
+                                                    .struct_span_err(span, msg)
                                                     .help(VALID_FRAGMENT_NAMES_MSG)
                                                     .emit();
                                                 token::NonterminalKind::Ident
@@ -148,12 +146,12 @@ fn parse_tree(
     // Depending on what `tree` is, we could be parsing different parts of a macro
     match tree {
         // `tree` is a `$` token. Look at the next token in `trees`
-        tokenstream::TokenTree::Token(Token { kind: token::Dollar, span }) => {
-            // FIXME: Handle `None`-delimited groups in a more systematic way
+        tokenstream::TokenTree::Token(Token { kind: token::Dollar, span }, _) => {
+            // FIXME: Handle `Invisible`-delimited groups in a more systematic way
             // during parsing.
             let mut next = outer_trees.next();
             let mut trees: Box<dyn Iterator<Item = tokenstream::TokenTree>>;
-            if let Some(tokenstream::TokenTree::Delimited(_, token::NoDelim, tts)) = next {
+            if let Some(tokenstream::TokenTree::Delimited(_, Delimiter::Invisible, tts)) = next {
                 trees = Box::new(tts.into_trees());
                 next = trees.next();
             } else {
@@ -164,7 +162,7 @@ fn parse_tree(
                 // `tree` is followed by a delimited set of token trees.
                 Some(tokenstream::TokenTree::Delimited(delim_span, delim, tts)) => {
                     if parsing_patterns {
-                        if delim != token::Paren {
+                        if delim != Delimiter::Parenthesis {
                             span_dollar_dollar_or_metavar_in_the_lhs_err(
                                 sess,
                                 &Token { kind: token::OpenDelim(delim), span: delim_span.entire() },
@@ -172,8 +170,8 @@ fn parse_tree(
                         }
                     } else {
                         match delim {
-                            token::Brace => {
-                                // The delimiter is `{`.  This indicates the beginning
+                            Delimiter::Brace => {
+                                // The delimiter is `{`. This indicates the beginning
                                 // of a meta-variable expression (e.g. `${count(ident)}`).
                                 // Try to parse the meta-variable expression.
                                 match MetaVarExpr::parse(&tts, delim_span.entire(), sess) {
@@ -193,16 +191,16 @@ fn parse_tree(
                                     }
                                 }
                             }
-                            token::Paren => {}
+                            Delimiter::Parenthesis => {}
                             _ => {
                                 let tok = pprust::token_kind_to_string(&token::OpenDelim(delim));
                                 let msg = format!("expected `(` or `{{`, found `{}`", tok);
-                                sess.span_diagnostic.span_err(delim_span.entire(), &msg);
+                                sess.span_diagnostic.span_err(delim_span.entire(), msg);
                             }
                         }
                     }
                     // If we didn't find a metavar expression above, then we must have a
-                    // repetition sequence in the macro (e.g. `$(pat)*`).  Parse the
+                    // repetition sequence in the macro (e.g. `$(pat)*`). Parse the
                     // contents of the sequence itself
                     let sequence = parse(tts, parsing_patterns, sess, node_id, features, edition);
                     // Get the Kleene operator and optional separator
@@ -213,18 +211,13 @@ fn parse_tree(
                         if parsing_patterns { count_metavar_decls(&sequence) } else { 0 };
                     TokenTree::Sequence(
                         delim_span,
-                        Lrc::new(SequenceRepetition {
-                            tts: sequence,
-                            separator,
-                            kleene,
-                            num_captures,
-                        }),
+                        SequenceRepetition { tts: sequence, separator, kleene, num_captures },
                     )
                 }
 
                 // `tree` is followed by an `ident`. This could be `$meta_var` or the `$crate`
                 // special metavariable that names the crate of the invocation.
-                Some(tokenstream::TokenTree::Token(token)) if token.is_ident() => {
+                Some(tokenstream::TokenTree::Token(token, _)) if token.is_ident() => {
                     let (ident, is_raw) = token.ident().unwrap();
                     let span = ident.span.with_lo(span.lo());
                     if ident.name == kw::Crate && !is_raw {
@@ -235,7 +228,7 @@ fn parse_tree(
                 }
 
                 // `tree` is followed by another `$`. This is an escaped `$`.
-                Some(tokenstream::TokenTree::Token(Token { kind: token::Dollar, span })) => {
+                Some(tokenstream::TokenTree::Token(Token { kind: token::Dollar, span }, _)) => {
                     if parsing_patterns {
                         span_dollar_dollar_or_metavar_in_the_lhs_err(
                             sess,
@@ -248,12 +241,12 @@ fn parse_tree(
                 }
 
                 // `tree` is followed by some other token. This is an error.
-                Some(tokenstream::TokenTree::Token(token)) => {
+                Some(tokenstream::TokenTree::Token(token, _)) => {
                     let msg = format!(
                         "expected identifier, found `{}`",
                         pprust::token_to_string(&token),
                     );
-                    sess.span_diagnostic.span_err(token.span, &msg);
+                    sess.span_diagnostic.span_err(token.span, msg);
                     TokenTree::MetaVar(token.span, Ident::empty())
                 }
 
@@ -263,16 +256,16 @@ fn parse_tree(
         }
 
         // `tree` is an arbitrary token. Keep it.
-        tokenstream::TokenTree::Token(token) => TokenTree::Token(token),
+        tokenstream::TokenTree::Token(token, _) => TokenTree::Token(token),
 
         // `tree` is the beginning of a delimited set of tokens (e.g., `(` or `{`). We need to
         // descend into the delimited set and further parse it.
         tokenstream::TokenTree::Delimited(span, delim, tts) => TokenTree::Delimited(
             span,
-            Lrc::new(Delimited {
+            Delimited {
                 delim,
                 tts: parse(tts, parsing_patterns, sess, node_id, features, edition),
-            }),
+            },
         ),
     }
 }
@@ -298,7 +291,7 @@ fn parse_kleene_op(
     span: Span,
 ) -> Result<Result<(KleeneOp, Span), Token>, Span> {
     match input.next() {
-        Some(tokenstream::TokenTree::Token(token)) => match kleene_op(&token) {
+        Some(tokenstream::TokenTree::Token(token, _)) => match kleene_op(&token) {
             Some(op) => Ok(Ok((op, token.span))),
             None => Ok(Err(token)),
         },
@@ -363,9 +356,9 @@ fn parse_sep_and_kleene_op(
 // `$$` or a meta-variable is the lhs of a macro but shouldn't.
 //
 // For example, `macro_rules! foo { ( ${length()} ) => {} }`
-fn span_dollar_dollar_or_metavar_in_the_lhs_err<'sess>(sess: &'sess ParseSess, token: &Token) {
+fn span_dollar_dollar_or_metavar_in_the_lhs_err(sess: &ParseSess, token: &Token) {
     sess.span_diagnostic
-        .span_err(token.span, &format!("unexpected token: {}", pprust::token_to_string(token)));
+        .span_err(token.span, format!("unexpected token: {}", pprust::token_to_string(token)));
     sess.span_diagnostic.span_note_without_error(
         token.span,
         "`$$` and meta-variable expressions are not allowed inside macro parameter definitions",

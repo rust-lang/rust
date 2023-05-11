@@ -1,13 +1,13 @@
 #![allow(missing_docs, nonstandard_style)]
 
-use crate::ffi::{OsStr, OsString};
+use crate::ffi::{CStr, OsStr, OsString};
 use crate::io::ErrorKind;
+use crate::mem::MaybeUninit;
 use crate::os::windows::ffi::{OsStrExt, OsStringExt};
 use crate::path::PathBuf;
 use crate::time::Duration;
 
 pub use self::rand::hashmap_random_keys;
-pub use libc::strlen;
 
 #[macro_use]
 pub mod compat;
@@ -29,27 +29,29 @@ pub mod path;
 pub mod pipe;
 pub mod process;
 pub mod rand;
+pub mod stdio;
 pub mod thread;
 pub mod thread_local_dtor;
 pub mod thread_local_key;
-pub mod thread_parker;
+pub mod thread_parking;
 pub mod time;
 cfg_if::cfg_if! {
     if #[cfg(not(target_vendor = "uwp"))] {
-        pub mod stdio;
         pub mod stack_overflow;
     } else {
-        pub mod stdio_uwp;
         pub mod stack_overflow_uwp;
-        pub use self::stdio_uwp as stdio;
         pub use self::stack_overflow_uwp as stack_overflow;
     }
 }
 
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
-pub unsafe fn init(_argc: isize, _argv: *const *const u8) {
+pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {
     stack_overflow::init();
+
+    // Normally, `thread::spawn` will call `Thread::set_name` but since this thread already
+    // exists, we have to call it ourselves.
+    thread::Thread::set_name(&CStr::from_bytes_with_nul_unchecked(b"main\0"));
 }
 
 // SAFETY: must be called only once during runtime cleanup.
@@ -66,10 +68,13 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         c::ERROR_ALREADY_EXISTS => return AlreadyExists,
         c::ERROR_FILE_EXISTS => return AlreadyExists,
         c::ERROR_BROKEN_PIPE => return BrokenPipe,
-        c::ERROR_FILE_NOT_FOUND => return NotFound,
-        c::ERROR_PATH_NOT_FOUND => return NotFound,
+        c::ERROR_FILE_NOT_FOUND
+        | c::ERROR_PATH_NOT_FOUND
+        | c::ERROR_INVALID_DRIVE
+        | c::ERROR_BAD_NETPATH
+        | c::ERROR_BAD_NET_NAME => return NotFound,
         c::ERROR_NO_DATA => return BrokenPipe,
-        c::ERROR_INVALID_NAME => return InvalidFilename,
+        c::ERROR_INVALID_NAME | c::ERROR_BAD_PATHNAME => return InvalidFilename,
         c::ERROR_INVALID_PARAMETER => return InvalidInput,
         c::ERROR_NOT_ENOUGH_MEMORY | c::ERROR_OUTOFMEMORY => return OutOfMemory,
         c::ERROR_SEM_TIMEOUT
@@ -157,7 +162,13 @@ pub fn unrolled_find_u16s(needle: u16, haystack: &[u16]) -> Option<usize> {
 
 pub fn to_u16s<S: AsRef<OsStr>>(s: S) -> crate::io::Result<Vec<u16>> {
     fn inner(s: &OsStr) -> crate::io::Result<Vec<u16>> {
-        let mut maybe_result: Vec<u16> = s.encode_wide().collect();
+        // Most paths are ASCII, so reserve capacity for as much as there are bytes
+        // in the OsStr plus one for the null-terminating character. We are not
+        // wasting bytes here as paths created by this function are primarily used
+        // in an ephemeral fashion.
+        let mut maybe_result = Vec::with_capacity(s.len() + 1);
+        maybe_result.extend(s.encode_wide());
+
         if unrolled_find_u16s(0, &maybe_result).is_some() {
             return Err(crate::io::const_io_error!(
                 ErrorKind::InvalidInput,
@@ -191,8 +202,12 @@ where
 {
     // Start off with a stack buf but then spill over to the heap if we end up
     // needing more space.
-    let mut stack_buf = [0u16; 512];
-    let mut heap_buf = Vec::new();
+    //
+    // This initial size also works around `GetFullPathNameW` returning
+    // incorrect size hints for some short paths:
+    // https://github.com/dylni/normpath/issues/5
+    let mut stack_buf: [MaybeUninit<u16>; 512] = MaybeUninit::uninit_array();
+    let mut heap_buf: Vec<MaybeUninit<u16>> = Vec::new();
     unsafe {
         let mut n = stack_buf.len();
         loop {
@@ -201,6 +216,11 @@ where
             } else {
                 let extra = n - heap_buf.len();
                 heap_buf.reserve(extra);
+                // We used `reserve` and not `reserve_exact`, so in theory we
+                // may have gotten more than requested. If so, we'd like to use
+                // it... so long as we won't cause overflow.
+                n = heap_buf.capacity().min(c::DWORD::MAX as usize);
+                // Safety: MaybeUninit<u16> does not need initialization
                 heap_buf.set_len(n);
                 &mut heap_buf[..]
             };
@@ -215,13 +235,13 @@ where
             // error" is still 0 then we interpret it as a 0 length buffer and
             // not an actual error.
             c::SetLastError(0);
-            let k = match f1(buf.as_mut_ptr(), n as c::DWORD) {
+            let k = match f1(buf.as_mut_ptr().cast::<u16>(), n as c::DWORD) {
                 0 if c::GetLastError() == 0 => 0,
                 0 => return Err(crate::io::Error::last_os_error()),
                 n => n,
             } as usize;
             if k == n && c::GetLastError() == c::ERROR_INSUFFICIENT_BUFFER {
-                n *= 2;
+                n = n.saturating_mul(2).min(c::DWORD::MAX as usize);
             } else if k > n {
                 n = k;
             } else if k == n {
@@ -231,7 +251,9 @@ where
                 // Therefore k never equals n.
                 unreachable!();
             } else {
-                return Ok(f2(&buf[..k]));
+                // Safety: First `k` values are initialized.
+                let slice: &[u16] = MaybeUninit::slice_assume_init_ref(&buf[..k]);
+                return Ok(f2(slice));
             }
         }
     }
@@ -308,3 +330,11 @@ pub fn abort_internal() -> ! {
     }
     crate::intrinsics::abort();
 }
+
+/// Align the inner value to 8 bytes.
+///
+/// This is enough for almost all of the buffers we're likely to work with in
+/// the Windows APIs we use.
+#[repr(C, align(8))]
+#[derive(Copy, Clone)]
+pub(crate) struct Align8<T: ?Sized>(pub T);

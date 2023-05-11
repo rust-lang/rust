@@ -9,11 +9,8 @@ use super::FunctionCx;
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn codegen_coverage(&self, bx: &mut Bx, coverage: Coverage, scope: SourceScope) {
         // Determine the instance that coverage data was originally generated for.
-        let scope_data = &self.mir.source_scopes[scope];
-        let instance = if let Some((inlined_instance, _)) = scope_data.inlined {
-            self.monomorphize(inlined_instance)
-        } else if let Some(inlined_scope) = scope_data.inlined_parent_scope {
-            self.monomorphize(self.mir.source_scopes[inlined_scope].inlined.unwrap().0)
+        let instance = if let Some(inlined) = scope.inlined_instance(&self.mir.source_scopes) {
+            self.monomorphize(inlined)
         } else {
             self.instance
         };

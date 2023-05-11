@@ -1,10 +1,9 @@
-use std::convert::TryFrom;
-
 use rustc_apfloat::Float;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, FloatTy, Ty};
+use rustc_target::abi::Abi;
 
 use super::{ImmTy, Immediate, InterpCx, Machine, PlaceTy};
 
@@ -14,19 +13,34 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn binop_with_overflow(
         &mut self,
         op: mir::BinOp,
-        left: &ImmTy<'tcx, M::PointerTag>,
-        right: &ImmTy<'tcx, M::PointerTag>,
-        dest: &PlaceTy<'tcx, M::PointerTag>,
+        left: &ImmTy<'tcx, M::Provenance>,
+        right: &ImmTy<'tcx, M::Provenance>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
         let (val, overflowed, ty) = self.overflowing_binary_op(op, &left, &right)?;
         debug_assert_eq!(
-            self.tcx.intern_tup(&[ty, self.tcx.types.bool]),
+            self.tcx.mk_tup(&[ty, self.tcx.types.bool]),
             dest.layout.ty,
             "type mismatch for result of {:?}",
             op,
         );
-        let val = Immediate::ScalarPair(val.into(), Scalar::from_bool(overflowed).into());
-        self.write_immediate(val, dest)
+        // Write the result to `dest`.
+        if let Abi::ScalarPair(..) = dest.layout.abi {
+            // We can use the optimized path and avoid `place_field` (which might do
+            // `force_allocation`).
+            let pair = Immediate::ScalarPair(val, Scalar::from_bool(overflowed));
+            self.write_immediate(pair, dest)?;
+        } else {
+            assert!(self.tcx.sess.opts.unstable_opts.randomize_layout);
+            // With randomized layout, `(int, bool)` might cease to be a `ScalarPair`, so we have to
+            // do a component-wise write here. This code path is slower than the above because
+            // `place_field` will have to `force_allocate` locals here.
+            let val_field = self.place_field(&dest, 0)?;
+            self.write_scalar(val, &val_field)?;
+            let overflowed_field = self.place_field(&dest, 1)?;
+            self.write_scalar(Scalar::from_bool(overflowed), &overflowed_field)?;
+        }
+        Ok(())
     }
 
     /// Applies the binary operation `op` to the arguments and writes the result to the
@@ -34,9 +48,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn binop_ignore_overflow(
         &mut self,
         op: mir::BinOp,
-        left: &ImmTy<'tcx, M::PointerTag>,
-        right: &ImmTy<'tcx, M::PointerTag>,
-        dest: &PlaceTy<'tcx, M::PointerTag>,
+        left: &ImmTy<'tcx, M::Provenance>,
+        right: &ImmTy<'tcx, M::Provenance>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
         let (val, _overflowed, ty) = self.overflowing_binary_op(op, left, right)?;
         assert_eq!(ty, dest.layout.ty, "type mismatch for result of {:?}", op);
@@ -50,7 +64,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         bin_op: mir::BinOp,
         l: char,
         r: char,
-    ) -> (Scalar<M::PointerTag>, bool, Ty<'tcx>) {
+    ) -> (Scalar<M::Provenance>, bool, Ty<'tcx>) {
         use rustc_middle::mir::BinOp::*;
 
         let res = match bin_op {
@@ -70,7 +84,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         bin_op: mir::BinOp,
         l: bool,
         r: bool,
-    ) -> (Scalar<M::PointerTag>, bool, Ty<'tcx>) {
+    ) -> (Scalar<M::Provenance>, bool, Ty<'tcx>) {
         use rustc_middle::mir::BinOp::*;
 
         let res = match bin_op {
@@ -88,13 +102,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         (Scalar::from_bool(res), false, self.tcx.types.bool)
     }
 
-    fn binary_float_op<F: Float + Into<Scalar<M::PointerTag>>>(
+    fn binary_float_op<F: Float + Into<Scalar<M::Provenance>>>(
         &self,
         bin_op: mir::BinOp,
         ty: Ty<'tcx>,
         l: F,
         r: F,
-    ) -> (Scalar<M::PointerTag>, bool, Ty<'tcx>) {
+    ) -> (Scalar<M::Provenance>, bool, Ty<'tcx>) {
         use rustc_middle::mir::BinOp::*;
 
         let (val, ty) = match bin_op {
@@ -122,7 +136,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         left_layout: TyAndLayout<'tcx>,
         r: u128,
         right_layout: TyAndLayout<'tcx>,
-    ) -> InterpResult<'tcx, (Scalar<M::PointerTag>, bool, Ty<'tcx>)> {
+    ) -> InterpResult<'tcx, (Scalar<M::Provenance>, bool, Ty<'tcx>)> {
         use rustc_middle::mir::BinOp::*;
 
         // Shift ops can have an RHS with a different numeric type.
@@ -154,14 +168,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let result = match bin_op {
                     Shl => l.checked_shl(r).unwrap(),
                     Shr => l.checked_shr(r).unwrap(),
-                    _ => bug!("it has already been checked that this is a shift op"),
+                    _ => bug!(),
                 };
                 result as u128
             } else {
                 match bin_op {
                     Shl => l.checked_shl(r).unwrap(),
                     Shr => l.checked_shr(r).unwrap(),
-                    _ => bug!("it has already been checked that this is a shift op"),
+                    _ => bug!(),
                 }
             };
             let truncated = self.truncate(result, left_layout);
@@ -285,14 +299,38 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok((val, false, ty))
     }
 
+    fn binary_ptr_op(
+        &self,
+        bin_op: mir::BinOp,
+        left: &ImmTy<'tcx, M::Provenance>,
+        right: &ImmTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, (Scalar<M::Provenance>, bool, Ty<'tcx>)> {
+        use rustc_middle::mir::BinOp::*;
+
+        match bin_op {
+            // Pointer ops that are always supported.
+            Offset => {
+                let ptr = left.to_scalar().to_pointer(self)?;
+                let offset_count = right.to_scalar().to_target_isize(self)?;
+                let pointee_ty = left.layout.ty.builtin_deref(true).unwrap().ty;
+
+                let offset_ptr = self.ptr_offset_inbounds(ptr, pointee_ty, offset_count)?;
+                Ok((Scalar::from_maybe_pointer(offset_ptr, self), false, left.layout.ty))
+            }
+
+            // Fall back to machine hook so Miri can support more pointer ops.
+            _ => M::binary_ptr_op(self, bin_op, left, right),
+        }
+    }
+
     /// Returns the result of the specified operation, whether it overflowed, and
     /// the result type.
     pub fn overflowing_binary_op(
         &self,
         bin_op: mir::BinOp,
-        left: &ImmTy<'tcx, M::PointerTag>,
-        right: &ImmTy<'tcx, M::PointerTag>,
-    ) -> InterpResult<'tcx, (Scalar<M::PointerTag>, bool, Ty<'tcx>)> {
+        left: &ImmTy<'tcx, M::Provenance>,
+        right: &ImmTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, (Scalar<M::Provenance>, bool, Ty<'tcx>)> {
         trace!(
             "Running binary op {:?}: {:?} ({:?}), {:?} ({:?})",
             bin_op,
@@ -305,21 +343,21 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match left.layout.ty.kind() {
             ty::Char => {
                 assert_eq!(left.layout.ty, right.layout.ty);
-                let left = left.to_scalar()?;
-                let right = right.to_scalar()?;
+                let left = left.to_scalar();
+                let right = right.to_scalar();
                 Ok(self.binary_char_op(bin_op, left.to_char()?, right.to_char()?))
             }
             ty::Bool => {
                 assert_eq!(left.layout.ty, right.layout.ty);
-                let left = left.to_scalar()?;
-                let right = right.to_scalar()?;
+                let left = left.to_scalar();
+                let right = right.to_scalar();
                 Ok(self.binary_bool_op(bin_op, left.to_bool()?, right.to_bool()?))
             }
             ty::Float(fty) => {
                 assert_eq!(left.layout.ty, right.layout.ty);
                 let ty = left.layout.ty;
-                let left = left.to_scalar()?;
-                let right = right.to_scalar()?;
+                let left = left.to_scalar();
+                let right = right.to_scalar();
                 Ok(match fty {
                     FloatTy::F32 => {
                         self.binary_float_op(bin_op, ty, left.to_f32()?, right.to_f32()?)
@@ -339,8 +377,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     right.layout.ty
                 );
 
-                let l = left.to_scalar()?.to_bits(left.layout.size)?;
-                let r = right.to_scalar()?.to_bits(right.layout.size)?;
+                let l = left.to_scalar().to_bits(left.layout.size)?;
+                let r = right.to_scalar().to_bits(right.layout.size)?;
                 self.binary_int_op(bin_op, l, left.layout, r, right.layout)
             }
             _ if left.layout.ty.is_any_ptr() => {
@@ -354,7 +392,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     right.layout.ty
                 );
 
-                M::binary_ptr_op(self, bin_op, left, right)
+                self.binary_ptr_op(bin_op, left, right)
             }
             _ => span_bug!(
                 self.cur_span(),
@@ -369,9 +407,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn binary_op(
         &self,
         bin_op: mir::BinOp,
-        left: &ImmTy<'tcx, M::PointerTag>,
-        right: &ImmTy<'tcx, M::PointerTag>,
-    ) -> InterpResult<'tcx, ImmTy<'tcx, M::PointerTag>> {
+        left: &ImmTy<'tcx, M::Provenance>,
+        right: &ImmTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
         let (val, _overflow, ty) = self.overflowing_binary_op(bin_op, left, right)?;
         Ok(ImmTy::from_scalar(val, self.layout_of(ty)?))
     }
@@ -381,12 +419,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn overflowing_unary_op(
         &self,
         un_op: mir::UnOp,
-        val: &ImmTy<'tcx, M::PointerTag>,
-    ) -> InterpResult<'tcx, (Scalar<M::PointerTag>, bool, Ty<'tcx>)> {
+        val: &ImmTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, (Scalar<M::Provenance>, bool, Ty<'tcx>)> {
         use rustc_middle::mir::UnOp::*;
 
         let layout = val.layout;
-        let val = val.to_scalar()?;
+        let val = val.to_scalar();
         trace!("Running unary op {:?}: {:?} ({:?})", un_op, val, layout.ty);
 
         match layout.ty.kind() {
@@ -431,8 +469,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn unary_op(
         &self,
         un_op: mir::UnOp,
-        val: &ImmTy<'tcx, M::PointerTag>,
-    ) -> InterpResult<'tcx, ImmTy<'tcx, M::PointerTag>> {
+        val: &ImmTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
         let (val, _overflow, ty) = self.overflowing_unary_op(un_op, val)?;
         Ok(ImmTy::from_scalar(val, self.layout_of(ty)?))
     }

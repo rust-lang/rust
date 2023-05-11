@@ -1,0 +1,43 @@
+error[E0277]: the trait bound `fn() -> bool {example}: Foo` is not satisfied
+  --> $DIR/fn-trait-cast-diagnostic.rs:21:15
+   |
+LL |     do_on_foo(example);
+   |     --------- ^^^^^^^ the trait `Foo` is not implemented for fn item `fn() -> bool {example}`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `do_on_foo`
+  --> $DIR/fn-trait-cast-diagnostic.rs:17:22
+   |
+LL | fn do_on_foo(v: impl Foo) {}
+   |                      ^^^ required by this bound in `do_on_foo`
+help: use parentheses to call this function
+   |
+LL |     do_on_foo(example());
+   |                      ++
+help: the trait `Foo` is implemented for fn pointer `fn() -> bool`, try casting using `as`
+   |
+LL |     do_on_foo(example as fn() -> bool);
+   |                       +++++++++++++++
+
+error[E0277]: the trait bound `fn() -> bool {example}: NoOtherFoo` is not satisfied
+  --> $DIR/fn-trait-cast-diagnostic.rs:24:22
+   |
+LL |     do_on_single_foo(example);
+   |     ---------------- ^^^^^^^ the trait `NoOtherFoo` is not implemented for fn item `fn() -> bool {example}`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `do_on_single_foo`
+  --> $DIR/fn-trait-cast-diagnostic.rs:18:29
+   |
+LL | fn do_on_single_foo(v: impl NoOtherFoo) {}
+   |                             ^^^^^^^^^^ required by this bound in `do_on_single_foo`
+help: the trait `NoOtherFoo` is implemented for fn pointer `fn() -> bool`, try casting using `as`
+   |
+LL |     do_on_single_foo(example as fn() -> bool);
+   |                              +++++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,26 @@
+error: expected identifier, found keyword `impl`
+  --> $DIR/const-impl-recovery.rs:6:7
+   |
+LL | const impl Foo for i32 {}
+   |       ^^^^ expected identifier, found keyword
+   |
+help: you might have meant to write a const trait impl
+   |
+LL - const impl Foo for i32 {}
+LL + impl const Foo for i32 {}
+   |
+
+error: expected identifier, found keyword `impl`
+  --> $DIR/const-impl-recovery.rs:11:7
+   |
+LL | const impl<T: Foo> Bar for T {}
+   |       ^^^^ expected identifier, found keyword
+   |
+help: you might have meant to write a const trait impl
+   |
+LL - const impl<T: Foo> Bar for T {}
+LL + impl<T: Foo> const Bar for T {}
+   |
+
+error: aborting due to 2 previous errors
+

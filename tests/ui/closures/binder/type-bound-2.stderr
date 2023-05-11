@@ -1,0 +1,17 @@
+warning: the feature `non_lifetime_binders` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/type-bound-2.rs:1:37
+   |
+LL | #![feature(closure_lifetime_binder, non_lifetime_binders)]
+   |                                     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: late-bound type parameter not allowed on closures
+  --> $DIR/type-bound-2.rs:5:9
+   |
+LL |     for<T> || -> () {};
+   |         ^
+
+error: aborting due to previous error; 1 warning emitted
+

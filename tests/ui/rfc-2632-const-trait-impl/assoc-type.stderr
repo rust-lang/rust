@@ -1,0 +1,8 @@
+error: ~const can only be applied to `#[const_trait]` traits
+  --> $DIR/assoc-type.rs:17:22
+   |
+LL |     type Bar: ~const std::ops::Add;
+   |                      ^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

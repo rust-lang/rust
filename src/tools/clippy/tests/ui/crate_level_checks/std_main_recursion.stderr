@@ -4,8 +4,8 @@ error: recursing into entrypoint `main`
 LL |     main();
    |     ^^^^
    |
-   = note: `-D clippy::main-recursion` implied by `-D warnings`
    = help: consider using another function for this recursion
+   = note: `-D clippy::main-recursion` implied by `-D warnings`
 
 error: aborting due to previous error
 

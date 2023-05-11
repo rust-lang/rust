@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![warn(clippy::match_wildcard_for_single_variants)]
 #![allow(dead_code)]
@@ -130,5 +130,27 @@ fn main() {
             Enum::B => (),
             _ => (),
         }
+    }
+}
+
+mod issue9993 {
+    enum Foo {
+        A(bool),
+        B,
+    }
+
+    fn test() {
+        let _ = match Foo::A(true) {
+            _ if false => 0,
+            Foo::A(true) => 1,
+            Foo::A(false) => 2,
+            Foo::B => 3,
+        };
+
+        let _ = match Foo::B {
+            _ if false => 0,
+            Foo::A(_) => 1,
+            _ => 2,
+        };
     }
 }

@@ -97,11 +97,11 @@ impl<W: Write> BufWriter<W> {
         BufWriter::with_capacity(DEFAULT_BUF_SIZE, inner)
     }
 
-    /// Creates a new `BufWriter<W>` with the specified buffer capacity.
+    /// Creates a new `BufWriter<W>` with at least the specified buffer capacity.
     ///
     /// # Examples
     ///
-    /// Creating a buffer with a buffer of a hundred bytes.
+    /// Creating a buffer with a buffer of at least a hundred bytes.
     ///
     /// ```no_run
     /// use std::io::BufWriter;
@@ -339,7 +339,7 @@ impl<W: Write> BufWriter<W> {
         let buf = if !self.panicked { Ok(buf) } else { Err(WriterPanicked { buf }) };
 
         // SAFETY: forget(self) prevents double dropping inner
-        let inner = unsafe { ptr::read(&mut self.inner) };
+        let inner = unsafe { ptr::read(&self.inner) };
         mem::forget(self);
 
         (inner, buf)

@@ -9,30 +9,20 @@ macro_rules! is_empty {
     };
 }
 
-// To get rid of some bounds checks (see `position`), we compute the length in a somewhat
-// unexpected way. (Tested by `codegen/slice-position-bounds-check`.)
 macro_rules! len {
     ($self: ident) => {{
         #![allow(unused_unsafe)] // we're sometimes used within an unsafe block
 
         let start = $self.ptr;
-        let size = size_from_ptr(start.as_ptr());
-        if size == 0 {
-            // This _cannot_ use `unchecked_sub` because we depend on wrapping
+        if T::IS_ZST {
+            // This _cannot_ use `ptr_sub` because we depend on wrapping
             // to represent the length of long ZST slice iterators.
             $self.end.addr().wrapping_sub(start.as_ptr().addr())
         } else {
-            // We know that `start <= end`, so can do better than `offset_from`,
-            // which needs to deal in signed.  By setting appropriate flags here
-            // we can tell LLVM this, which helps it remove bounds checks.
-            // SAFETY: By the type invariant, `start <= end`
-            let diff = unsafe { unchecked_sub($self.end.addr(), start.as_ptr().addr()) };
-            // By also telling LLVM that the pointers are apart by an exact
-            // multiple of the type size, it can optimize `len() == 0` down to
-            // `start == end` instead of `(end - start) < size`.
-            // SAFETY: By the type invariant, the pointers are aligned so the
-            //         distance between them must be a multiple of pointee size
-            unsafe { exact_div(diff, size) }
+            // To get rid of some bounds checks (see `position`), we use ptr_sub instead of
+            // offset_from (Tested by `codegen/slice-position-bounds-check`.)
+            // SAFETY: by the type invariant pointers are aligned and `start <= end`
+            unsafe { $self.end.sub_ptr(start.as_ptr()) }
         }
     }};
 }
@@ -64,7 +54,7 @@ macro_rules! iterator {
         // backwards by `n`. `n` must not exceed `self.len()`.
         macro_rules! zst_shrink {
             ($self: ident, $n: ident) => {
-                $self.end = ($self.end as * $raw_mut u8).wrapping_offset(-$n) as * $raw_mut T;
+                $self.end = $self.end.wrapping_byte_sub($n);
             }
         }
 
@@ -82,15 +72,15 @@ macro_rules! iterator {
             // returning the old start.
             // Unsafe because the offset must not exceed `self.len()`.
             #[inline(always)]
-            unsafe fn post_inc_start(&mut self, offset: isize) -> * $raw_mut T {
-                if mem::size_of::<T>() == 0 {
+            unsafe fn post_inc_start(&mut self, offset: usize) -> * $raw_mut T {
+                if T::IS_ZST {
                     zst_shrink!(self, offset);
                     self.ptr.as_ptr()
                 } else {
                     let old = self.ptr.as_ptr();
                     // SAFETY: the caller guarantees that `offset` doesn't exceed `self.len()`,
                     // so this new pointer is inside `self` and thus guaranteed to be non-null.
-                    self.ptr = unsafe { NonNull::new_unchecked(self.ptr.as_ptr().offset(offset)) };
+                    self.ptr = unsafe { NonNull::new_unchecked(self.ptr.as_ptr().add(offset)) };
                     old
                 }
             }
@@ -99,15 +89,15 @@ macro_rules! iterator {
             // returning the new end.
             // Unsafe because the offset must not exceed `self.len()`.
             #[inline(always)]
-            unsafe fn pre_dec_end(&mut self, offset: isize) -> * $raw_mut T {
-                if mem::size_of::<T>() == 0 {
+            unsafe fn pre_dec_end(&mut self, offset: usize) -> * $raw_mut T {
+                if T::IS_ZST {
                     zst_shrink!(self, offset);
                     self.ptr.as_ptr()
                 } else {
                     // SAFETY: the caller guarantees that `offset` doesn't exceed `self.len()`,
                     // which is guaranteed to not overflow an `isize`. Also, the resulting pointer
                     // is in bounds of `slice`, which fulfills the other requirements for `offset`.
-                    self.end = unsafe { self.end.offset(-offset) };
+                    self.end = unsafe { self.end.sub(offset) };
                     self.end
                 }
             }
@@ -134,13 +124,11 @@ macro_rules! iterator {
             fn next(&mut self) -> Option<$elem> {
                 // could be implemented with slices, but this avoids bounds checks
 
-                // SAFETY: `assume` calls are safe since a slice's start pointer
-                // must be non-null, and slices over non-ZSTs must also have a
-                // non-null end pointer. The call to `next_unchecked!` is safe
-                // since we check if the iterator is empty first.
+                // SAFETY: `assume` call is safe because slices over non-ZSTs must
+                // have a non-null end pointer. The call to `next_unchecked!` is
+                // safe since we check if the iterator is empty first.
                 unsafe {
-                    assume(!self.ptr.as_ptr().is_null());
-                    if mem::size_of::<T>() != 0 {
+                    if !<T>::IS_ZST {
                         assume(!self.end.is_null());
                     }
                     if is_empty!(self) {
@@ -166,7 +154,7 @@ macro_rules! iterator {
             fn nth(&mut self, n: usize) -> Option<$elem> {
                 if n >= len!(self) {
                     // This iterator is now empty.
-                    if mem::size_of::<T>() == 0 {
+                    if T::IS_ZST {
                         // We have to do it this way as `ptr` may never be 0, but `end`
                         // could be (due to wrapping).
                         self.end = self.ptr.as_ptr();
@@ -180,17 +168,17 @@ macro_rules! iterator {
                 }
                 // SAFETY: We are in bounds. `post_inc_start` does the right thing even for ZSTs.
                 unsafe {
-                    self.post_inc_start(n as isize);
+                    self.post_inc_start(n);
                     Some(next_unchecked!(self))
                 }
             }
 
             #[inline]
-            fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+            fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
                 let advance = cmp::min(len!(self), n);
                 // SAFETY: By construction, `advance` does not exceed `self.len()`.
-                unsafe { self.post_inc_start(advance as isize) };
-                if advance == n { Ok(()) } else { Err(advance) }
+                unsafe { self.post_inc_start(advance) };
+                NonZeroUsize::new(n - advance).map_or(Ok(()), Err)
             }
 
             #[inline]
@@ -325,7 +313,7 @@ macro_rules! iterator {
                 None
             }
 
-            #[doc(hidden)]
+            #[inline]
             unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
                 // SAFETY: the caller must guarantee that `i` is in bounds of
                 // the underlying slice, so `i` cannot overflow an `isize`, and
@@ -349,13 +337,11 @@ macro_rules! iterator {
             fn next_back(&mut self) -> Option<$elem> {
                 // could be implemented with slices, but this avoids bounds checks
 
-                // SAFETY: `assume` calls are safe since a slice's start pointer must be non-null,
-                // and slices over non-ZSTs must also have a non-null end pointer.
-                // The call to `next_back_unchecked!` is safe since we check if the iterator is
-                // empty first.
+                // SAFETY: `assume` call is safe because slices over non-ZSTs must
+                // have a non-null end pointer. The call to `next_back_unchecked!`
+                // is safe since we check if the iterator is empty first.
                 unsafe {
-                    assume(!self.ptr.as_ptr().is_null());
-                    if mem::size_of::<T>() != 0 {
+                    if !<T>::IS_ZST {
                         assume(!self.end.is_null());
                     }
                     if is_empty!(self) {
@@ -375,17 +361,17 @@ macro_rules! iterator {
                 }
                 // SAFETY: We are in bounds. `pre_dec_end` does the right thing even for ZSTs.
                 unsafe {
-                    self.pre_dec_end(n as isize);
+                    self.pre_dec_end(n);
                     Some(next_back_unchecked!(self))
                 }
             }
 
             #[inline]
-            fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+            fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
                 let advance = cmp::min(len!(self), n);
                 // SAFETY: By construction, `advance` does not exceed `self.len()`.
-                unsafe { self.pre_dec_end(advance as isize) };
-                if advance == n { Ok(()) } else { Err(advance) }
+                unsafe { self.pre_dec_end(advance) };
+                NonZeroUsize::new(n - advance).map_or(Ok(()), Err)
             }
         }
 
@@ -394,6 +380,29 @@ macro_rules! iterator {
 
         #[unstable(feature = "trusted_len", issue = "37572")]
         unsafe impl<T> TrustedLen for $name<'_, T> {}
+
+        impl<'a, T> UncheckedIterator for $name<'a, T> {
+            unsafe fn next_unchecked(&mut self) -> $elem {
+                // SAFETY: The caller promised there's at least one more item.
+                unsafe {
+                    next_unchecked!(self)
+                }
+            }
+        }
+
+        #[stable(feature = "default_iters", since = "1.70.0")]
+        impl<T> Default for $name<'_, T> {
+            /// Creates an empty slice iterator.
+            ///
+            /// ```
+            #[doc = concat!("# use core::slice::", stringify!($name), ";")]
+            #[doc = concat!("let iter: ", stringify!($name<'_, u8>), " = Default::default();")]
+            /// assert_eq!(iter.len(), 0);
+            /// ```
+            fn default() -> Self {
+                (& $( $mut_ )? []).into_iter()
+            }
+        }
     }
 }
 

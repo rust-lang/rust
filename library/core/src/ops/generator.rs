@@ -61,9 +61,10 @@ pub enum GeneratorState<Y, R> {
 /// }
 /// ```
 ///
-/// More documentation of generators can be found in the unstable book.
+/// More documentation of generators can be found in the [unstable book].
 ///
 /// [RFC 2033]: https://github.com/rust-lang/rfcs/pull/2033
+/// [unstable book]: ../../unstable-book/language-features/generators.html
 #[lang = "generator"]
 #[unstable(feature = "generator_trait", issue = "43122")]
 #[fundamental]
@@ -82,7 +83,6 @@ pub trait Generator<R = ()> {
     /// `return` statement or implicitly as the last expression of a generator
     /// literal. For example futures would use this as `Result<T, E>` as it
     /// represents a completed future.
-    #[lang = "generator_return"]
     type Return;
 
     /// Resumes the execution of this generator.

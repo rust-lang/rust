@@ -1,0 +1,17 @@
+error[E0277]: can't drop `UnconstDrop` in const contexts
+  --> $DIR/const-block-const-bound.rs:16:9
+   |
+LL |         f(UnconstDrop);
+   |         ^^^^^^^^^^^^^^ the trait `~const Destruct` is not implemented for `UnconstDrop`
+   |
+   = note: the trait bound `UnconstDrop: ~const Destruct` is not satisfied
+help: consider borrowing here
+   |
+LL |         &f(UnconstDrop);
+   |         +
+LL |         &mut f(UnconstDrop);
+   |         ++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

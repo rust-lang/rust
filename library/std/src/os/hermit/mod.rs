@@ -1,6 +1,11 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
+#[allow(unused_extern_crates)]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub extern crate hermit_abi as abi;
+
 pub mod ffi;
+pub mod io;
 
 /// A prelude for conveniently writing platform-specific code.
 ///

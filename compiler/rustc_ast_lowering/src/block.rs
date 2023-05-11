@@ -1,8 +1,6 @@
 use crate::{ImplTraitContext, ImplTraitPosition, LoweringContext};
-use rustc_ast::{AttrVec, Block, BlockCheckMode, Expr, Local, LocalKind, Stmt, StmtKind};
+use rustc_ast::{Block, BlockCheckMode, Local, LocalKind, Stmt, StmtKind};
 use rustc_hir as hir;
-use rustc_session::parse::feature_err;
-use rustc_span::{sym, DesugaringKind};
 
 use smallvec::SmallVec;
 
@@ -33,26 +31,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let mut stmts = SmallVec::<[hir::Stmt<'hir>; 8]>::new();
         let mut expr = None;
         while let [s, tail @ ..] = ast_stmts {
-            match s.kind {
-                StmtKind::Local(ref local) => {
+            match &s.kind {
+                StmtKind::Local(local) => {
                     let hir_id = self.lower_node_id(s.id);
-                    match &local.kind {
-                        LocalKind::InitElse(init, els) => {
-                            let e = self.lower_let_else(hir_id, local, init, els, tail);
-                            expr = Some(e);
-                            // remaining statements are in let-else expression
-                            break;
-                        }
-                        _ => {
-                            let local = self.lower_local(local);
-                            self.alias_attrs(hir_id, local.hir_id);
-                            let kind = hir::StmtKind::Local(local);
-                            let span = self.lower_span(s.span);
-                            stmts.push(hir::Stmt { hir_id, kind, span });
-                        }
-                    }
+                    let local = self.lower_local(local);
+                    self.alias_attrs(hir_id, local.hir_id);
+                    let kind = hir::StmtKind::Local(local);
+                    let span = self.lower_span(s.span);
+                    stmts.push(hir::Stmt { hir_id, kind, span });
                 }
-                StmtKind::Item(ref it) => {
+                StmtKind::Item(it) => {
                     stmts.extend(self.lower_item_ref(it).into_iter().enumerate().map(
                         |(i, item_id)| {
                             let hir_id = match i {
@@ -65,7 +53,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         },
                     ));
                 }
-                StmtKind::Expr(ref e) => {
+                StmtKind::Expr(e) => {
                     let e = self.lower_expr(e);
                     if tail.is_empty() {
                         expr = Some(e);
@@ -77,7 +65,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         stmts.push(hir::Stmt { hir_id, kind, span });
                     }
                 }
-                StmtKind::Semi(ref e) => {
+                StmtKind::Semi(e) => {
                     let e = self.lower_expr(e);
                     let hir_id = self.lower_node_id(s.id);
                     self.alias_attrs(hir_id, e.hir_id);
@@ -97,14 +85,19 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let ty = l
             .ty
             .as_ref()
-            .map(|t| self.lower_ty(t, ImplTraitContext::Disallowed(ImplTraitPosition::Variable)));
+            .map(|t| self.lower_ty(t, &ImplTraitContext::Disallowed(ImplTraitPosition::Variable)));
         let init = l.kind.init().map(|init| self.lower_expr(init));
         let hir_id = self.lower_node_id(l.id);
         let pat = self.lower_pat(&l.pat);
+        let els = if let LocalKind::InitElse(_, els) = &l.kind {
+            Some(self.lower_block(els, false))
+        } else {
+            None
+        };
         let span = self.lower_span(l.span);
         let source = hir::LocalSource::Normal;
         self.lower_attrs(hir_id, &l.attrs);
-        self.arena.alloc(hir::Local { hir_id, ty, pat, init, span, source })
+        self.arena.alloc(hir::Local { hir_id, ty, pat, init, els, span, source })
     }
 
     fn lower_block_check_mode(&mut self, b: &BlockCheckMode) -> hir::BlockCheckMode {
@@ -114,60 +107,5 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 hir::BlockCheckMode::UnsafeBlock(self.lower_unsafe_source(u))
             }
         }
-    }
-
-    fn lower_let_else(
-        &mut self,
-        stmt_hir_id: hir::HirId,
-        local: &Local,
-        init: &Expr,
-        els: &Block,
-        tail: &[Stmt],
-    ) -> &'hir hir::Expr<'hir> {
-        let ty = local
-            .ty
-            .as_ref()
-            .map(|t| self.lower_ty(t, ImplTraitContext::Disallowed(ImplTraitPosition::Variable)));
-        let span = self.lower_span(local.span);
-        let span = self.mark_span_with_reason(DesugaringKind::LetElse, span, None);
-        let init = self.lower_expr(init);
-        let local_hir_id = self.lower_node_id(local.id);
-        self.lower_attrs(local_hir_id, &local.attrs);
-        let let_expr = {
-            let lex = self.arena.alloc(hir::Let {
-                hir_id: local_hir_id,
-                pat: self.lower_pat(&local.pat),
-                ty,
-                init,
-                span,
-            });
-            self.arena.alloc(self.expr(span, hir::ExprKind::Let(lex), AttrVec::new()))
-        };
-        let then_expr = {
-            let (stmts, expr) = self.lower_stmts(tail);
-            let block = self.block_all(span, stmts, expr);
-            self.arena.alloc(self.expr_block(block, AttrVec::new()))
-        };
-        let else_expr = {
-            let block = self.lower_block(els, false);
-            self.arena.alloc(self.expr_block(block, AttrVec::new()))
-        };
-        self.alias_attrs(let_expr.hir_id, local_hir_id);
-        self.alias_attrs(else_expr.hir_id, local_hir_id);
-        let if_expr = self.arena.alloc(hir::Expr {
-            hir_id: stmt_hir_id,
-            span,
-            kind: hir::ExprKind::If(let_expr, then_expr, Some(else_expr)),
-        });
-        if !self.sess.features_untracked().let_else {
-            feature_err(
-                &self.sess.parse_sess,
-                sym::let_else,
-                local.span,
-                "`let...else` statements are unstable",
-            )
-            .emit();
-        }
-        if_expr
     }
 }

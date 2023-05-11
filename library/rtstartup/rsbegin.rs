@@ -35,6 +35,16 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
     drop_in_place(to_drop);
 }
 
+// Frame unwind info registration
+//
+// Each module's image contains a frame unwind info section (usually
+// ".eh_frame").  When a module is loaded/unloaded into the process, the
+// unwinder must be informed about the location of this section in memory. The
+// methods of achieving that vary by the platform.  On some (e.g., Linux), the
+// unwinder can discover unwind info sections on its own (by dynamically
+// enumerating currently loaded modules via the dl_iterate_phdr() API and
+// finding their ".eh_frame" sections); Others, like Windows, require modules
+// to actively register their unwind info sections via unwinder API.
 #[cfg(all(target_os = "windows", target_arch = "x86", target_env = "gnu"))]
 pub mod eh_frames {
     #[no_mangle]
@@ -62,20 +72,19 @@ pub mod eh_frames {
     }
 
     // Unwind info registration/deregistration routines.
-    // See the docs of libpanic_unwind.
     extern "C" {
-        fn rust_eh_register_frames(eh_frame_begin: *const u8, object: *mut u8);
-        fn rust_eh_unregister_frames(eh_frame_begin: *const u8, object: *mut u8);
+        fn __register_frame_info(eh_frame_begin: *const u8, object: *mut u8);
+        fn __deregister_frame_info(eh_frame_begin: *const u8, object: *mut u8);
     }
 
     unsafe extern "C" fn init() {
         // register unwind info on module startup
-        rust_eh_register_frames(&__EH_FRAME_BEGIN__ as *const u8, &mut OBJ as *mut _ as *mut u8);
+        __register_frame_info(&__EH_FRAME_BEGIN__ as *const u8, &mut OBJ as *mut _ as *mut u8);
     }
 
     unsafe extern "C" fn uninit() {
         // unregister on shutdown
-        rust_eh_unregister_frames(&__EH_FRAME_BEGIN__ as *const u8, &mut OBJ as *mut _ as *mut u8);
+        __deregister_frame_info(&__EH_FRAME_BEGIN__ as *const u8, &mut OBJ as *mut _ as *mut u8);
     }
 
     // MinGW-specific init/uninit routine registration

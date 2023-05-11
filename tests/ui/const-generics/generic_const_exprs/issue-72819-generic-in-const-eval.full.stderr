@@ -1,0 +1,35 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-72819-generic-in-const-eval.rs:20:12
+   |
+LL |     let x: Arr<{usize::MAX}> = Arr {};
+   |            ^^^^^^^^^^^^^^^^^ expected `false`, found `true`
+   |
+   = note: expected constant `false`
+              found constant `true`
+note: required by a bound in `Arr`
+  --> $DIR/issue-72819-generic-in-const-eval.rs:8:39
+   |
+LL | struct Arr<const N: usize>
+   |        --- required by a bound in this struct
+LL | where Assert::<{N < usize::MAX / 2}>: IsTrue,
+   |                                       ^^^^^^ required by this bound in `Arr`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-72819-generic-in-const-eval.rs:20:32
+   |
+LL |     let x: Arr<{usize::MAX}> = Arr {};
+   |                                ^^^ expected `false`, found `true`
+   |
+   = note: expected constant `false`
+              found constant `true`
+note: required by a bound in `Arr`
+  --> $DIR/issue-72819-generic-in-const-eval.rs:8:39
+   |
+LL | struct Arr<const N: usize>
+   |        --- required by a bound in this struct
+LL | where Assert::<{N < usize::MAX / 2}>: IsTrue,
+   |                                       ^^^^^^ required by this bound in `Arr`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

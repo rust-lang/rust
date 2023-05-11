@@ -1,0 +1,64 @@
+[
+    MappedRustDiagnostic {
+        url: Url {
+            scheme: "file",
+            cannot_be_a_base: false,
+            username: "",
+            password: None,
+            host: None,
+            port: None,
+            path: "/test/src/bin/current.rs",
+            query: None,
+            fragment: None,
+        },
+        diagnostic: Diagnostic {
+            range: Range {
+                start: Position {
+                    line: 0,
+                    character: 0,
+                },
+                end: Position {
+                    line: 0,
+                    character: 0,
+                },
+            },
+            severity: Some(
+                Error,
+            ),
+            code: Some(
+                String(
+                    "E0601",
+                ),
+            ),
+            code_description: Some(
+                CodeDescription {
+                    href: Url {
+                        scheme: "https",
+                        cannot_be_a_base: false,
+                        username: "",
+                        password: None,
+                        host: Some(
+                            Domain(
+                                "doc.rust-lang.org",
+                            ),
+                        ),
+                        port: None,
+                        path: "/error-index.html",
+                        query: None,
+                        fragment: Some(
+                            "E0601",
+                        ),
+                    },
+                },
+            ),
+            source: Some(
+                "rustc",
+            ),
+            message: "`main` function not found in crate `current`\nconsider adding a `main` function to `src/bin/current.rs`",
+            related_information: None,
+            tags: None,
+            data: None,
+        },
+        fix: None,
+    },
+]

@@ -1,0 +1,40 @@
+error: assignments don't nest intuitively
+  --> $DIR/multi_assignments.rs:4:5
+   |
+LL |     a = b = c;
+   |     ^^^^^^^^^
+   |
+   = note: `-D clippy::multi-assignments` implied by `-D warnings`
+
+error: assignments don't nest intuitively
+  --> $DIR/multi_assignments.rs:5:5
+   |
+LL |     a = b = c = d;
+   |     ^^^^^^^^^^^^^
+
+error: assignments don't nest intuitively
+  --> $DIR/multi_assignments.rs:5:9
+   |
+LL |     a = b = c = d;
+   |         ^^^^^^^^^
+
+error: assignments don't nest intuitively
+  --> $DIR/multi_assignments.rs:6:5
+   |
+LL |     a = b = { c };
+   |     ^^^^^^^^^^^^^
+
+error: assignments don't nest intuitively
+  --> $DIR/multi_assignments.rs:7:5
+   |
+LL |     a = { b = c };
+   |     ^^^^^^^^^^^^^
+
+error: assignments don't nest intuitively
+  --> $DIR/multi_assignments.rs:8:5
+   |
+LL |     a = (b = c);
+   |     ^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

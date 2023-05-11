@@ -7,8 +7,9 @@ struct C {
 }
 
 struct Foo(Vec<Box<u8>>);
-struct Bar(Vec<Box<u32>>);
-struct Baz(Vec<Box<(u32, u32)>>);
+struct Bar(Vec<Box<u16>>);
+struct Quux(Vec<Box<u32>>);
+struct Baz(Vec<Box<(u16, u16)>>);
 struct BarBaz(Vec<Box<S>>);
 struct FooBarBaz(Vec<Box<C>>);
 

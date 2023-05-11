@@ -1,0 +1,11 @@
+error: this function marked with #[test] is outside a #[cfg(test)] module
+  --> $DIR/tests_outside_test_module.rs:11:1
+   |
+LL | fn my_test() {}
+   | ^^^^^^^^^^^^^^^
+   |
+   = note: move it to a testing module marked with #[cfg(test)]
+   = note: `-D clippy::tests-outside-test-module` implied by `-D warnings`
+
+error: aborting due to previous error
+

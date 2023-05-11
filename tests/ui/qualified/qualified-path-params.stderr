@@ -1,0 +1,18 @@
+error[E0533]: expected unit struct, unit variant or constant, found associated function `<<S as Tr>::A>::f<u8>`
+  --> $DIR/qualified-path-params.rs:20:9
+   |
+LL |         <S as Tr>::A::f::<u8> => {}
+   |         ^^^^^^^^^^^^^^^^^^^^^ not a unit struct, unit variant or constant
+
+error[E0029]: only `char` and numeric types are allowed in range patterns
+  --> $DIR/qualified-path-params.rs:22:15
+   |
+LL |         0 ..= <S as Tr>::A::f::<u8> => {}
+   |         -     ^^^^^^^^^^^^^^^^^^^^^ this is of type `fn() {S::f::<u8>}` but it should be `char` or numeric
+   |         |
+   |         this is of type `{integer}`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0029, E0533.
+For more information about an error, try `rustc --explain E0029`.

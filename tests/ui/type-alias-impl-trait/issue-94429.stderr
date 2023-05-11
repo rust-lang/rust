@@ -1,0 +1,9 @@
+error[E0271]: type mismatch resolving `<[generator@$DIR/issue-94429.rs:17:9: 17:16] as Generator>::Yield == ()`
+  --> $DIR/issue-94429.rs:15:26
+   |
+LL |     fn run(&mut self) -> Self::Gen {
+   |                          ^^^^^^^^^ expected integer, found `()`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0271`.

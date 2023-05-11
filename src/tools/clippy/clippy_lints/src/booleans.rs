@@ -1,14 +1,15 @@
-use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
+use clippy_utils::eq_expr_value;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
-use clippy_utils::{eq_expr_value, get_trait_def_id, paths};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
-use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, HirId, UnOp};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, UnOp};
+use rustc_lint::{LateContext, LateLintPass, Level};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Span;
 use rustc_span::sym;
 
@@ -27,8 +28,14 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```ignore
-    /// if a && true  // should be: if a
-    /// if !(a == b)  // should be: if a != b
+    /// if a && true {}
+    /// if !(a == b) {}
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust,ignore
+    /// if a {}
+    /// if a != b {}
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub NONMINIMAL_BOOL,
@@ -48,12 +55,17 @@ declare_clippy_lint! {
     /// Ignores short circuiting behavior.
     ///
     /// ### Example
-    /// ```ignore
+    /// ```rust,ignore
+    /// // The `b` is unnecessary, the expression is equivalent to `if a`.
     /// if a && b || a { ... }
     /// ```
-    /// The `b` is unnecessary, the expression is equivalent to `if a`.
+    ///
+    /// Use instead:
+    /// ```rust,ignore
+    /// if a {}
+    /// ```
     #[clippy::version = "pre 1.29.0"]
-    pub LOGIC_BUG,
+    pub OVERLY_COMPLEX_BOOL_EXPR,
     correctness,
     "boolean expressions that contain terminals which can be eliminated"
 }
@@ -61,7 +73,7 @@ declare_clippy_lint! {
 // For each pairs, both orders are considered.
 const METHODS_WITH_NEGATION: [(&str, &str); 2] = [("is_some", "is_none"), ("is_err", "is_ok")];
 
-declare_lint_pass!(NonminimalBool => [NONMINIMAL_BOOL, LOGIC_BUG]);
+declare_lint_pass!(NonminimalBool => [NONMINIMAL_BOOL, OVERLY_COMPLEX_BOOL_EXPR]);
 
 impl<'tcx> LateLintPass<'tcx> for NonminimalBool {
     fn check_fn(
@@ -71,7 +83,7 @@ impl<'tcx> LateLintPass<'tcx> for NonminimalBool {
         _: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
         _: Span,
-        _: HirId,
+        _: LocalDefId,
     ) {
         NonminimalBoolVisitor { cx }.visit_body(body);
     }
@@ -137,7 +149,7 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
         }
         for (n, expr) in self.terminals.iter().enumerate() {
             if eq_expr_value(self.cx, e, expr) {
-                #[allow(clippy::cast_possible_truncation)]
+                #[expect(clippy::cast_possible_truncation)]
                 return Ok(Bool::Term(n as u8));
             }
 
@@ -149,7 +161,7 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
                 if eq_expr_value(self.cx, e_lhs, expr_lhs);
                 if eq_expr_value(self.cx, e_rhs, expr_rhs);
                 then {
-                    #[allow(clippy::cast_possible_truncation)]
+                    #[expect(clippy::cast_possible_truncation)]
                     return Ok(Bool::Not(Box::new(Bool::Term(n as u8))));
                 }
             }
@@ -157,7 +169,7 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
         let n = self.terminals.len();
         self.terminals.push(e);
         if n < 32 {
-            #[allow(clippy::cast_possible_truncation)]
+            #[expect(clippy::cast_possible_truncation)]
             Ok(Bool::Term(n as u8))
         } else {
             Err("too many literals".to_owned())
@@ -226,7 +238,7 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
                 }
             },
             &Term(n) => {
-                let snip = snippet_opt(self.cx, self.terminals[n as usize].span)?;
+                let snip = snippet_opt(self.cx, self.terminals[n as usize].span.source_callsite())?;
                 self.output.push_str(&snip);
             },
         }
@@ -252,15 +264,14 @@ fn simplify_not(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<String> {
             }
             .and_then(|op| {
                 Some(format!(
-                    "{}{}{}",
+                    "{}{op}{}",
                     snippet_opt(cx, lhs.span)?,
-                    op,
                     snippet_opt(cx, rhs.span)?
                 ))
             })
         },
-        ExprKind::MethodCall(path, args, _) if args.len() == 1 => {
-            let type_of_receiver = cx.typeck_results().expr_ty(&args[0]);
+        ExprKind::MethodCall(path, receiver, [], _) => {
+            let type_of_receiver = cx.typeck_results().expr_ty(receiver);
             if !is_type_diagnostic_item(cx, type_of_receiver, sym::Option)
                 && !is_type_diagnostic_item(cx, type_of_receiver, sym::Result)
             {
@@ -274,7 +285,7 @@ fn simplify_not(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<String> {
                     let path: &str = path.ident.name.as_str();
                     a == path
                 })
-                .and_then(|(_, neg_method)| Some(format!("{}.{}()", snippet_opt(cx, args[0].span)?, neg_method)))
+                .and_then(|(_, neg_method)| Some(format!("{}.{neg_method}()", snippet_opt(cx, receiver.span)?)))
         },
         _ => None,
     }
@@ -383,9 +394,10 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                         continue 'simplified;
                     }
                     if stats.terminals[i] != 0 && simplified_stats.terminals[i] == 0 {
-                        span_lint_and_then(
+                        span_lint_hir_and_then(
                             self.cx,
-                            LOGIC_BUG,
+                            OVERLY_COMPLEX_BOOL_EXPR,
+                            e.hir_id,
                             e.span,
                             "this boolean expression contains a logic bug",
                             |diag| {
@@ -418,22 +430,25 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                 }
             }
             let nonminimal_bool_lint = |suggestions: Vec<_>| {
-                span_lint_and_then(
-                    self.cx,
-                    NONMINIMAL_BOOL,
-                    e.span,
-                    "this boolean expression can be simplified",
-                    |diag| {
-                        diag.span_suggestions(
-                            e.span,
-                            "try",
-                            suggestions.into_iter(),
-                            // nonminimal_bool can produce minimal but
-                            // not human readable expressions (#3141)
-                            Applicability::Unspecified,
-                        );
-                    },
-                );
+                if self.cx.tcx.lint_level_at_node(NONMINIMAL_BOOL, e.hir_id).0 != Level::Allow {
+                    span_lint_hir_and_then(
+                        self.cx,
+                        NONMINIMAL_BOOL,
+                        e.hir_id,
+                        e.span,
+                        "this boolean expression can be simplified",
+                        |diag| {
+                            diag.span_suggestions(
+                                e.span,
+                                "try",
+                                suggestions.into_iter(),
+                                // nonminimal_bool can produce minimal but
+                                // not human readable expressions (#3141)
+                                Applicability::Unspecified,
+                            );
+                        },
+                    );
+                }
             };
             if improvements.is_empty() {
                 let mut visitor = NotSimplificationVisitor { cx: self.cx };
@@ -469,9 +484,11 @@ impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
     }
 }
 
-fn implements_ord<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> bool {
+fn implements_ord(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     let ty = cx.typeck_results().expr_ty(expr);
-    get_trait_def_id(cx, &paths::ORD).map_or(false, |id| implements_trait(cx, ty, id, &[]))
+    cx.tcx
+        .get_diagnostic_item(sym::Ord)
+        .map_or(false, |id| implements_trait(cx, ty, id, &[]))
 }
 
 struct NotSimplificationVisitor<'a, 'tcx> {
@@ -480,18 +497,20 @@ struct NotSimplificationVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for NotSimplificationVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if let ExprKind::Unary(UnOp::Not, inner) = &expr.kind {
-            if let Some(suggestion) = simplify_not(self.cx, inner) {
-                span_lint_and_sugg(
-                    self.cx,
-                    NONMINIMAL_BOOL,
-                    expr.span,
-                    "this boolean expression can be simplified",
-                    "try",
-                    suggestion,
-                    Applicability::MachineApplicable,
-                );
-            }
+        if let ExprKind::Unary(UnOp::Not, inner) = &expr.kind &&
+            !inner.span.from_expansion() &&
+            let Some(suggestion) = simplify_not(self.cx, inner)
+			&& self.cx.tcx.lint_level_at_node(NONMINIMAL_BOOL, expr.hir_id).0 != Level::Allow
+        {
+            span_lint_and_sugg(
+                self.cx,
+                NONMINIMAL_BOOL,
+                expr.span,
+                "this boolean expression can be simplified",
+                "try",
+                suggestion,
+                Applicability::MachineApplicable,
+            );
         }
 
         walk_expr(self, expr);

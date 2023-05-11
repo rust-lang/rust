@@ -1,0 +1,29 @@
+error: expected `;`, found `5.0`
+  --> $DIR/issue-103425.rs:2:6
+   |
+LL |     3
+   |      ^ help: add `;` here
+LL |
+LL |     5.0
+   |     --- unexpected token
+
+error: expected `;`, found `3_i8`
+  --> $DIR/issue-103425.rs:8:10
+   |
+LL |     2_u32
+   |          ^ help: add `;` here
+LL |
+LL |     3_i8
+   |     ---- unexpected token
+
+error: expected `;`, found `5.0`
+  --> $DIR/issue-103425.rs:10:9
+   |
+LL |     3_i8
+   |         ^ help: add `;` here
+LL |
+LL |     5.0
+   |     --- unexpected token
+
+error: aborting due to 3 previous errors
+

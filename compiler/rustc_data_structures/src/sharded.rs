@@ -1,13 +1,9 @@
 use crate::fx::{FxHashMap, FxHasher};
-use crate::sync::{Lock, LockGuard};
+use crate::sync::{CacheAligned, Lock, LockGuard};
 use std::borrow::Borrow;
 use std::collections::hash_map::RawEntryMut;
 use std::hash::{Hash, Hasher};
 use std::mem;
-
-#[derive(Clone, Default)]
-#[cfg_attr(parallel_compiler, repr(align(64)))]
-struct CacheAligned<T>(T);
 
 #[cfg(parallel_compiler)]
 // 32 shards is sufficient to reduce contention on an 8-core Ryzen 7 1700,
@@ -21,7 +17,6 @@ const SHARD_BITS: usize = 0;
 pub const SHARDS: usize = 1 << SHARD_BITS;
 
 /// An array of cache-line aligned inner locked structures with convenience methods.
-#[derive(Clone)]
 pub struct Sharded<T> {
     shards: [CacheAligned<Lock<T>>; SHARDS],
 }
@@ -141,6 +136,7 @@ pub fn make_hash<K: Hash + ?Sized>(val: &K) -> u64 {
 /// `hash` can be computed with any hasher, so long as that hasher is used
 /// consistently for each `Sharded` instance.
 #[inline]
+#[allow(clippy::modulo_one)]
 pub fn get_shard_index_by_hash(hash: u64) -> usize {
     let hash_len = mem::size_of::<usize>();
     // Ignore the top 7 bits as hashbrown uses these and get the next SHARD_BITS highest bits.

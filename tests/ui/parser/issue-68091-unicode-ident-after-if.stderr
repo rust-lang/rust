@@ -1,0 +1,10 @@
+error: missing condition for `if` expression
+  --> $DIR/issue-68091-unicode-ident-after-if.rs:3:14
+   |
+LL |         $($c)ö* {}
+   |              ^  - if this block is the condition of the `if` expression, then it must be followed by another block
+   |              |
+   |              expected condition here
+
+error: aborting due to previous error
+

@@ -26,7 +26,7 @@ mod fpu_precision {
     /// Developer's Manual (Volume 1).
     ///
     /// The only field which is relevant for the following code is PC, Precision Control. This
-    /// field determines the precision of the operations performed by the  FPU. It can be set to:
+    /// field determines the precision of the operations performed by the FPU. It can be set to:
     ///  - 0b00, single precision i.e., 32-bits
     ///  - 0b10, double precision i.e., 64-bits
     ///  - 0b11, double extended precision i.e., 80-bits (default state)

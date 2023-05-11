@@ -6,8 +6,11 @@
 
 const fs = require("fs");
 const path = require("path");
-const os = require('os');
-const {Options, runTest} = require('browser-ui-test');
+const os = require("os");
+const {Options, runTest} = require("browser-ui-test");
+
+// If a test fails or errors, we will retry it two more times in case it was a flaky failure.
+const NB_RETRY = 3;
 
 function showHelp() {
     console.log("rustdoc-js options:");
@@ -16,9 +19,11 @@ function showHelp() {
     console.log("  --debug                    : show extra information about script run");
     console.log("  --show-text                : render font in pages");
     console.log("  --no-headless              : disable headless mode");
+    console.log("  --no-sandbox               : disable sandbox mode");
     console.log("  --help                     : show this message then quit");
     console.log("  --tests-folder [PATH]      : location of the .GOML tests folder");
     console.log("  --jobs [NUMBER]            : number of threads to run tests on");
+    console.log("  --executable-path [PATH]   : path of the browser's executable to be used");
 }
 
 function isNumeric(s) {
@@ -26,7 +31,7 @@ function isNumeric(s) {
 }
 
 function parseOptions(args) {
-    var opts = {
+    const opts = {
         "doc_folder": "",
         "tests_folder": "",
         "files": [],
@@ -34,44 +39,54 @@ function parseOptions(args) {
         "show_text": false,
         "no_headless": false,
         "jobs": -1,
+        "executable_path": null,
+        "no_sandbox": false,
     };
-    var correspondances = {
+    const correspondences = {
         "--doc-folder": "doc_folder",
         "--tests-folder": "tests_folder",
         "--debug": "debug",
         "--show-text": "show_text",
         "--no-headless": "no_headless",
+        "--executable-path": "executable_path",
+        "--no-sandbox": "no_sandbox",
     };
 
-    for (var i = 0; i < args.length; ++i) {
-        if (args[i] === "--doc-folder"
-            || args[i] === "--tests-folder"
-            || args[i] === "--file"
-            || args[i] === "--jobs") {
+    for (let i = 0; i < args.length; ++i) {
+        const arg = args[i];
+        if (arg === "--doc-folder"
+            || arg === "--tests-folder"
+            || arg === "--file"
+            || arg === "--jobs"
+            || arg === "--executable-path") {
             i += 1;
             if (i >= args.length) {
-                console.log("Missing argument after `" + args[i - 1] + "` option.");
+                console.log("Missing argument after `" + arg + "` option.");
                 return null;
             }
-            if (args[i - 1] === "--jobs") {
-                if (!isNumeric(args[i])) {
+            const arg_value = args[i];
+            if (arg === "--jobs") {
+                if (!isNumeric(arg_value)) {
                     console.log(
-                        "`--jobs` option expects a positive number, found `" + args[i] + "`");
+                        "`--jobs` option expects a positive number, found `" + arg_value + "`");
                     return null;
                 }
-                opts["jobs"] = parseInt(args[i]);
-            } else if (args[i - 1] !== "--file") {
-                opts[correspondances[args[i - 1]]] = args[i];
+                opts["jobs"] = parseInt(arg_value);
+            } else if (arg !== "--file") {
+                opts[correspondences[arg]] = arg_value;
             } else {
-                opts["files"].push(args[i]);
+                opts["files"].push(arg_value);
             }
-        } else if (args[i] === "--help") {
+        } else if (arg === "--help") {
             showHelp();
             process.exit(0);
-        } else if (correspondances[args[i]]) {
-            opts[correspondances[args[i]]] = true;
+        } else if (arg === "--no-sandbox") {
+            console.log("`--no-sandbox` is being used. Be very careful!");
+            opts[correspondences[arg]] = true;
+        } else if (correspondences[arg]) {
+            opts[correspondences[arg]] = true;
         } else {
-            console.log("Unknown option `" + args[i] + "`.");
+            console.log("Unknown option `" + arg + "`.");
             console.log("Use `--help` to see the list of options");
             return null;
         }
@@ -119,13 +134,61 @@ function char_printer(n_tests) {
     };
 }
 
-/// Sort array by .file_name property
+// Sort array by .file_name property
 function by_filename(a, b) {
     return a.file_name - b.file_name;
 }
 
+async function runTests(opts, framework_options, files, results, status_bar, showTestFailures) {
+    const tests_queue = [];
+
+    for (const testPath of files) {
+        const callback = runTest(testPath, framework_options)
+            .then(out => {
+                const [output, nb_failures] = out;
+                results[nb_failures === 0 ? "successful" : "failed"].push({
+                    file_name: testPath,
+                    output: output,
+                });
+                if (nb_failures === 0) {
+                    status_bar.successful();
+                } else if (showTestFailures) {
+                    status_bar.erroneous();
+                }
+            })
+            .catch(err => {
+                results.errored.push({
+                    file_name: testPath,
+                    output: err,
+                });
+                if (showTestFailures) {
+                    status_bar.erroneous();
+                }
+            })
+            .finally(() => {
+                // We now remove the promise from the tests_queue.
+                tests_queue.splice(tests_queue.indexOf(callback), 1);
+            });
+        tests_queue.push(callback);
+        if (opts["jobs"] > 0 && tests_queue.length >= opts["jobs"]) {
+            await Promise.race(tests_queue);
+        }
+    }
+    if (tests_queue.length > 0) {
+        await Promise.all(tests_queue);
+    }
+}
+
+function createEmptyResults() {
+    return {
+        successful: [],
+        failed: [],
+        errored: [],
+    };
+}
+
 async function main(argv) {
-    let opts = parseOptions(argv.slice(2));
+    const opts = parseOptions(argv.slice(2));
     if (opts === null) {
         process.exit(1);
     }
@@ -134,12 +197,12 @@ async function main(argv) {
     let debug = false;
     // Run tests in sequentially
     let headless = true;
-    const options = new Options();
+    const framework_options = new Options();
     try {
         // This is more convenient that setting fields one by one.
-        let args = [
-            "--no-screenshot-comparison",
-            "--variable", "DOC_PATH", opts["doc_folder"],
+        const args = [
+            "--variable", "DOC_PATH", opts["doc_folder"], "--enable-fail-on-js-error",
+            "--allow-file-access-from-files",
         ];
         if (opts["debug"]) {
             debug = true;
@@ -148,28 +211,37 @@ async function main(argv) {
         if (opts["show_text"]) {
             args.push("--show-text");
         }
+        if (opts["no_sandbox"]) {
+            args.push("--no-sandbox");
+        }
         if (opts["no_headless"]) {
             args.push("--no-headless");
             headless = false;
         }
-        options.parseArguments(args);
+        if (opts["executable_path"] !== null) {
+            args.push("--executable-path");
+            args.push(opts["executable_path"]);
+        }
+        framework_options.parseArguments(args);
     } catch (error) {
         console.error(`invalid argument: ${error}`);
         process.exit(1);
     }
 
-    let failed = false;
     let files;
     if (opts["files"].length === 0) {
         files = fs.readdirSync(opts["tests_folder"]);
     } else {
         files = opts["files"];
     }
-    files = files.filter(file => path.extname(file) == ".goml");
+    files = files.filter(file => path.extname(file) === ".goml");
     if (files.length === 0) {
         console.error("rustdoc-gui: No test selected");
         process.exit(2);
     }
+    files.forEach((file_name, index) => {
+        files[index] = path.join(opts["tests_folder"], file_name);
+    });
     files.sort();
 
     if (!headless) {
@@ -185,51 +257,45 @@ async function main(argv) {
         process.setMaxListeners(opts["jobs"] + 1);
     }
 
-    const tests_queue = [];
-    let results = {
-        successful: [],
-        failed: [],
-        errored: [],
+    // We catch this "event" to display a nicer message in case of unexpected exit (because of a
+    // missing `--no-sandbox`).
+    const exitHandling = () => {
+        if (!opts["no_sandbox"]) {
+            console.log("");
+            console.log(
+                "`browser-ui-test` crashed unexpectedly. Please try again with adding `--test-args \
+--no-sandbox` at the end. For example: `x.py test tests/rustdoc-gui --test-args --no-sandbox`");
+            console.log("");
+        }
     };
+    process.on("exit", exitHandling);
+
+    const originalFilesLen = files.length;
+    const results = createEmptyResults();
     const status_bar = char_printer(files.length);
-    for (let i = 0; i < files.length; ++i) {
-        const file_name = files[i];
-        const testPath = path.join(opts["tests_folder"], file_name);
-        const callback = runTest(testPath, options)
-            .then(out => {
-                const [output, nb_failures] = out;
-                results[nb_failures === 0 ? "successful" : "failed"].push({
-                    file_name: testPath,
-                    output: output,
-                });
-                if (nb_failures > 0) {
-                    status_bar.erroneous();
-                    failed = true;
-                } else {
-                    status_bar.successful();
-                }
-            })
-            .catch(err => {
-                results.errored.push({
-                    file_name: testPath + file_name,
-                    output: err,
-                });
-                status_bar.erroneous();
-                failed = true;
-            })
-            .finally(() => {
-                // We now remove the promise from the tests_queue.
-                tests_queue.splice(tests_queue.indexOf(callback), 1);
-            });
-        tests_queue.push(callback);
-        if (opts["jobs"] > 0 && tests_queue.length >= opts["jobs"]) {
-            await Promise.race(tests_queue);
+
+    let new_results;
+    for (let it = 0; it < NB_RETRY && files.length > 0; ++it) {
+        new_results = createEmptyResults();
+        await runTests(opts, framework_options, files, new_results, status_bar, it + 1 >= NB_RETRY);
+        Array.prototype.push.apply(results.successful, new_results.successful);
+        // We generate the new list of files with the previously failing tests.
+        files = Array.prototype.concat(new_results.failed, new_results.errored).map(
+            f => f["file_name"]);
+        if (files.length > originalFilesLen / 2) {
+            // If we have too many failing tests, it's very likely not flaky failures anymore so
+            // no need to retry.
+            break;
         }
     }
-    if (tests_queue.length > 0) {
-        await Promise.all(tests_queue);
-    }
+
     status_bar.finish();
+
+    Array.prototype.push.apply(results.failed, new_results.failed);
+    Array.prototype.push.apply(results.errored, new_results.errored);
+
+    // We don't need this listener anymore.
+    process.removeListener("exit", exitHandling);
 
     if (debug) {
         results.successful.sort(by_filename);
@@ -254,7 +320,7 @@ async function main(argv) {
         });
     }
 
-    if (failed) {
+    if (results.failed.length > 0 || results.errored.length > 0) {
         process.exit(1);
     }
 }

@@ -1,0 +1,57 @@
+error[E0411]: cannot find type `Self` in this scope
+  --> $DIR/issue-24968.rs:3:11
+   |
+LL | fn foo(_: Self) {
+   |    ---    ^^^^ `Self` is only available in impls, traits, and type definitions
+   |    |
+   |    `Self` not allowed in a function
+
+error[E0411]: cannot find type `Self` in this scope
+  --> $DIR/issue-24968.rs:8:12
+   |
+LL | fn foo2() {
+   |    ---- `Self` not allowed in a function
+LL |     let x: Self;
+   |            ^^^^ `Self` is only available in impls, traits, and type definitions
+
+error[E0411]: cannot find type `Self` in this scope
+  --> $DIR/issue-24968.rs:14:5
+   |
+LL | type Foo<T>
+   |      --- `Self` not allowed in a type alias
+LL | where
+LL |     Self: Clone,
+   |     ^^^^ `Self` is only available in impls, traits, and type definitions
+
+error[E0411]: cannot find type `Self` in this scope
+  --> $DIR/issue-24968.rs:18:12
+   |
+LL | const FOO: Self = 0;
+   |       ---  ^^^^ `Self` is only available in impls, traits, and type definitions
+   |       |
+   |       `Self` not allowed in a constant item
+
+error[E0411]: cannot find type `Self` in this scope
+  --> $DIR/issue-24968.rs:24:15
+   |
+LL | static FOO_S: Self = 0;
+   |        -----  ^^^^ `Self` is only available in impls, traits, and type definitions
+   |        |
+   |        `Self` not allowed in a static item
+
+error[E0433]: failed to resolve: `Self` is only available in impls, traits, and type definitions
+  --> $DIR/issue-24968.rs:21:19
+   |
+LL | const FOO2: u32 = Self::bar();
+   |                   ^^^^ `Self` is only available in impls, traits, and type definitions
+
+error[E0433]: failed to resolve: `Self` is only available in impls, traits, and type definitions
+  --> $DIR/issue-24968.rs:27:22
+   |
+LL | static FOO_S2: u32 = Self::bar();
+   |                      ^^^^ `Self` is only available in impls, traits, and type definitions
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0411, E0433.
+For more information about an error, try `rustc --explain E0411`.

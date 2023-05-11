@@ -25,7 +25,7 @@ pub(super) fn check<'tcx>(
                 |diag| {
                     if let Some(arg) = sugg::Sugg::hir_opt(cx, arg) {
                         let sugg = arg.as_ty(cx.tcx.mk_ptr(*to_ty));
-                        diag.span_suggestion(e.span, "try", sugg.to_string(), Applicability::Unspecified);
+                        diag.span_suggestion(e.span, "try", sugg, Applicability::Unspecified);
                     }
                 },
             );

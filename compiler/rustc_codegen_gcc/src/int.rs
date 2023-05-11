@@ -153,8 +153,15 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let a_type = a.get_type();
         let b_type = b.get_type();
         if self.is_native_int_type_or_bool(a_type) && self.is_native_int_type_or_bool(b_type) {
-            if a.get_type() != b.get_type() {
-                b = self.context.new_cast(None, b, a.get_type());
+            if a_type != b_type {
+                if a_type.is_vector() {
+                    // Vector types need to be bitcast.
+                    // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
+                    b = self.context.new_bitcast(None, b, a.get_type());
+                }
+                else {
+                    b = self.context.new_cast(None, b, a.get_type());
+                }
             }
             self.context.new_binary_op(None, operation, a_type, a, b)
         }
@@ -382,18 +389,22 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 };
             self.context.new_comparison(None, op, cmp, self.context.new_rvalue_from_int(self.int_type, limit))
         }
+        else if a_type.get_pointee().is_some() && b_type.get_pointee().is_some() {
+            // NOTE: gcc cannot compare pointers to different objects, but rustc does that, so cast them to usize.
+            lhs = self.context.new_bitcast(None, lhs, self.usize_type);
+            rhs = self.context.new_bitcast(None, rhs, self.usize_type);
+            self.context.new_comparison(None, op.to_gcc_comparison(), lhs, rhs)
+        }
         else {
-            let left_type = lhs.get_type();
-            let right_type = rhs.get_type();
-            if left_type != right_type {
+            if a_type != b_type {
                 // NOTE: because libgccjit cannot compare function pointers.
-                if left_type.dyncast_function_ptr_type().is_some() && right_type.dyncast_function_ptr_type().is_some() {
+                if a_type.dyncast_function_ptr_type().is_some() && b_type.dyncast_function_ptr_type().is_some() {
                     lhs = self.context.new_cast(None, lhs, self.usize_type.make_pointer());
                     rhs = self.context.new_cast(None, rhs, self.usize_type.make_pointer());
                 }
                 // NOTE: hack because we try to cast a vector type to the same vector type.
-                else if format!("{:?}", left_type) != format!("{:?}", right_type) {
-                    rhs = self.context.new_cast(None, rhs, left_type);
+                else if format!("{:?}", a_type) != format!("{:?}", b_type) {
+                    rhs = self.context.new_cast(None, rhs, a_type);
                 }
             }
             self.context.new_comparison(None, op.to_gcc_comparison(), lhs, rhs)
@@ -593,7 +604,10 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let b_type = b.get_type();
         let a_native = self.is_native_int_type_or_bool(a_type);
         let b_native = self.is_native_int_type_or_bool(b_type);
-        if a_native && b_native {
+        if a_type.is_vector() && b_type.is_vector() {
+            self.context.new_binary_op(None, operation, a_type, a, b)
+        }
+        else if a_native && b_native {
             if a_type != b_type {
                 b = self.context.new_cast(None, b, a_type);
             }
@@ -639,6 +653,8 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         else {
             // Since u128 and i128 are the only types that can be unsupported, we know the type of
             // value and the destination type have the same size, so a bitcast is fine.
+
+            // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
             self.context.new_bitcast(None, value, dest_typ)
         }
     }

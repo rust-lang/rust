@@ -89,8 +89,8 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
             if let Some(trait_id) = trait_ref.trait_def_id();
             if send_trait == trait_id;
             if hir_impl.polarity == ImplPolarity::Positive;
-            if let Some(ty_trait_ref) = cx.tcx.impl_trait_ref(item.def_id);
-            if let self_ty = ty_trait_ref.self_ty();
+            if let Some(ty_trait_ref) = cx.tcx.impl_trait_ref(item.owner_id);
+            if let self_ty = ty_trait_ref.subst_identity().self_ty();
             if let ty::Adt(adt_def, impl_trait_substs) = self_ty.kind();
             then {
                 let mut non_send_fields = Vec::new();
@@ -131,13 +131,13 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
                             for field in non_send_fields {
                                 diag.span_note(
                                     field.def.span,
-                                    &format!("it is not safe to send field `{}` to another thread", field.def.ident.name),
+                                    format!("it is not safe to send field `{}` to another thread", field.def.ident.name),
                                 );
 
                                 match field.generic_params.len() {
                                     0 => diag.help("use a thread-safe type that implements `Send`"),
-                                    1 if is_ty_param(field.ty) => diag.help(&format!("add `{}: Send` bound in `Send` impl", field.ty)),
-                                    _ => diag.help(&format!(
+                                    1 if is_ty_param(field.ty) => diag.help(format!("add `{}: Send` bound in `Send` impl", field.ty)),
+                                    _ => diag.help(format!(
                                         "add bounds on type parameter{} `{}` that satisfy `{}: Send`",
                                         if field.generic_params.len() > 1 { "s" } else { "" },
                                         field.generic_params_string(),

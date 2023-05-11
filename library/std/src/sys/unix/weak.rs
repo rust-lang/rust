@@ -1,9 +1,8 @@
 //! Support for "weak linkage" to symbols on Unix
 //!
-//! Some I/O operations we do in libstd require newer versions of OSes but we
-//! need to maintain binary compatibility with older releases for now. In order
-//! to use the new functionality when available we use this module for
-//! detection.
+//! Some I/O operations we do in std require newer versions of OSes but we need
+//! to maintain binary compatibility with older releases for now. In order to
+//! use the new functionality when available we use this module for detection.
 //!
 //! One option to use here is weak linkage, but that is unfortunately only
 //! really workable with ELF. Otherwise, use dlsym to get the symbol value at
@@ -25,7 +24,8 @@
 use crate::ffi::CStr;
 use crate::marker::PhantomData;
 use crate::mem;
-use crate::sync::atomic::{self, AtomicUsize, Ordering};
+use crate::ptr;
+use crate::sync::atomic::{self, AtomicPtr, Ordering};
 
 // We can use true weak linkage on ELF targets.
 #[cfg(not(any(target_os = "macos", target_os = "ios")))]
@@ -34,7 +34,7 @@ pub(crate) macro weak {
         let ref $name: ExternWeak<unsafe extern "C" fn($($t),*) -> $ret> = {
             extern "C" {
                 #[linkage = "extern_weak"]
-                static $name: *const libc::c_void;
+                static $name: Option<unsafe extern "C" fn($($t),*) -> $ret>;
             }
             #[allow(unused_unsafe)]
             ExternWeak::new(unsafe { $name })
@@ -46,28 +46,19 @@ pub(crate) macro weak {
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 pub(crate) use self::dlsym as weak;
 
-pub(crate) struct ExternWeak<F> {
-    weak_ptr: *const libc::c_void,
-    _marker: PhantomData<F>,
+pub(crate) struct ExternWeak<F: Copy> {
+    weak_ptr: Option<F>,
 }
 
-impl<F> ExternWeak<F> {
+impl<F: Copy> ExternWeak<F> {
     #[inline]
-    pub(crate) fn new(weak_ptr: *const libc::c_void) -> Self {
-        ExternWeak { weak_ptr, _marker: PhantomData }
+    pub(crate) fn new(weak_ptr: Option<F>) -> Self {
+        ExternWeak { weak_ptr }
     }
-}
 
-impl<F> ExternWeak<F> {
     #[inline]
     pub(crate) fn get(&self) -> Option<F> {
-        unsafe {
-            if self.weak_ptr.is_null() {
-                None
-            } else {
-                Some(mem::transmute_copy::<*const libc::c_void, F>(&self.weak_ptr))
-            }
-        }
+        self.weak_ptr
     }
 }
 
@@ -83,13 +74,13 @@ pub(crate) macro dlsym {
 }
 pub(crate) struct DlsymWeak<F> {
     name: &'static str,
-    addr: AtomicUsize,
+    func: AtomicPtr<libc::c_void>,
     _marker: PhantomData<F>,
 }
 
 impl<F> DlsymWeak<F> {
     pub(crate) const fn new(name: &'static str) -> Self {
-        DlsymWeak { name, addr: AtomicUsize::new(1), _marker: PhantomData }
+        DlsymWeak { name, func: AtomicPtr::new(ptr::invalid_mut(1)), _marker: PhantomData }
     }
 
     #[inline]
@@ -97,11 +88,11 @@ impl<F> DlsymWeak<F> {
         unsafe {
             // Relaxed is fine here because we fence before reading through the
             // pointer (see the comment below).
-            match self.addr.load(Ordering::Relaxed) {
-                1 => self.initialize(),
-                0 => None,
-                addr => {
-                    let func = mem::transmute_copy::<usize, F>(&addr);
+            match self.func.load(Ordering::Relaxed) {
+                func if func.addr() == 1 => self.initialize(),
+                func if func.is_null() => None,
+                func => {
+                    let func = mem::transmute_copy::<*mut libc::c_void, F>(&func);
                     // The caller is presumably going to read through this value
                     // (by calling the function we've dlsymed). This means we'd
                     // need to have loaded it with at least C11's consume
@@ -129,25 +120,22 @@ impl<F> DlsymWeak<F> {
     // Cold because it should only happen during first-time initialization.
     #[cold]
     unsafe fn initialize(&self) -> Option<F> {
-        assert_eq!(mem::size_of::<F>(), mem::size_of::<usize>());
+        assert_eq!(mem::size_of::<F>(), mem::size_of::<*mut libc::c_void>());
 
         let val = fetch(self.name);
         // This synchronizes with the acquire fence in `get`.
-        self.addr.store(val, Ordering::Release);
+        self.func.store(val, Ordering::Release);
 
-        match val {
-            0 => None,
-            addr => Some(mem::transmute_copy::<usize, F>(&addr)),
-        }
+        if val.is_null() { None } else { Some(mem::transmute_copy::<*mut libc::c_void, F>(&val)) }
     }
 }
 
-unsafe fn fetch(name: &str) -> usize {
+unsafe fn fetch(name: &str) -> *mut libc::c_void {
     let name = match CStr::from_bytes_with_nul(name.as_bytes()) {
         Ok(cstr) => cstr,
-        Err(..) => return 0,
+        Err(..) => return ptr::null_mut(),
     };
-    libc::dlsym(libc::RTLD_DEFAULT, name.as_ptr()) as usize
+    libc::dlsym(libc::RTLD_DEFAULT, name.as_ptr())
 }
 
 #[cfg(not(any(target_os = "linux", target_os = "android")))]

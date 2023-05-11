@@ -112,8 +112,7 @@ where
     Some(ch)
 }
 
-// use truncation to fit u64 into usize
-const NONASCII_MASK: usize = 0x80808080_80808080u64 as usize;
+const NONASCII_MASK: usize = usize::repeat_u8(0x80);
 
 /// Returns `true` if any byte in the word `x` is nonascii (>= 128).
 #[inline]
@@ -217,12 +216,12 @@ pub(super) const fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
                     // SAFETY: since `align - index` and `ascii_block_size` are
                     // multiples of `usize_bytes`, `block = ptr.add(index)` is
                     // always aligned with a `usize` so it's safe to dereference
-                    // both `block` and `block.offset(1)`.
+                    // both `block` and `block.add(1)`.
                     unsafe {
                         let block = ptr.add(index) as *const usize;
                         // break if there is a nonascii byte
                         let zu = contains_nonascii(*block);
-                        let zv = contains_nonascii(*block.offset(1));
+                        let zv = contains_nonascii(*block.add(1));
                         if zu || zv {
                             break;
                         }

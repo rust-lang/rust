@@ -25,9 +25,9 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
                     cx,
                     FN_TO_NUMERIC_CAST,
                     expr.span,
-                    &format!("casting function pointer `{}` to `{}`", from_snippet, cast_to),
+                    &format!("casting function pointer `{from_snippet}` to `{cast_to}`"),
                     "try",
-                    format!("{} as usize", from_snippet),
+                    format!("{from_snippet} as usize"),
                     applicability,
                 );
             }

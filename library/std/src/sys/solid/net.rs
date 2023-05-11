@@ -2,7 +2,7 @@ use super::abi;
 use crate::{
     cmp,
     ffi::CStr,
-    io::{self, ErrorKind, IoSlice, IoSliceMut},
+    io::{self, BorrowedBuf, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut},
     mem,
     net::{Shutdown, SocketAddr},
     ptr, str,
@@ -112,6 +112,7 @@ impl FileDesc {
 }
 
 impl AsInner<c_int> for FileDesc {
+    #[inline]
     fn as_inner(&self) -> &c_int {
         &self.fd
     }
@@ -230,8 +231,8 @@ impl Socket {
     pub fn connect_timeout(&self, addr: &SocketAddr, timeout: Duration) -> io::Result<()> {
         self.set_nonblocking(true)?;
         let r = unsafe {
-            let (addrp, len) = addr.into_inner();
-            cvt(netc::connect(self.0.raw(), addrp, len))
+            let (addr, len) = addr.into_inner();
+            cvt(netc::connect(self.0.raw(), addr.as_ptr(), len))
         };
         self.set_nonblocking(false)?;
 
@@ -294,19 +295,30 @@ impl Socket {
         self.0.duplicate().map(Socket)
     }
 
-    fn recv_with_flags(&self, buf: &mut [u8], flags: c_int) -> io::Result<usize> {
+    fn recv_with_flags(&self, mut buf: BorrowedCursor<'_>, flags: c_int) -> io::Result<()> {
         let ret = cvt(unsafe {
-            netc::recv(self.0.raw(), buf.as_mut_ptr() as *mut c_void, buf.len(), flags)
+            netc::recv(self.0.raw(), buf.as_mut().as_mut_ptr().cast(), buf.capacity(), flags)
         })?;
-        Ok(ret as usize)
+        unsafe {
+            buf.advance(ret as usize);
+        }
+        Ok(())
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
-        self.recv_with_flags(buf, 0)
+        let mut buf = BorrowedBuf::from(buf);
+        self.recv_with_flags(buf.unfilled(), 0)?;
+        Ok(buf.len())
     }
 
     pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
-        self.recv_with_flags(buf, MSG_PEEK)
+        let mut buf = BorrowedBuf::from(buf);
+        self.recv_with_flags(buf.unfilled(), MSG_PEEK)?;
+        Ok(buf.len())
+    }
+
+    pub fn read_buf(&self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+        self.recv_with_flags(buf, 0)
     }
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
@@ -451,6 +463,7 @@ impl Socket {
 }
 
 impl AsInner<c_int> for Socket {
+    #[inline]
     fn as_inner(&self) -> &c_int {
         self.0.as_inner()
     }

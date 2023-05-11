@@ -23,7 +23,7 @@ body:
     id: reproducer
     attributes:
       label: Reproducer
-      description: Please provide the code and steps to repoduce the bug
+      description: Please provide the code and steps to reproduce the bug
       value: |
         I tried this code:
 

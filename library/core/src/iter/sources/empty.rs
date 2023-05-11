@@ -22,17 +22,12 @@ pub const fn empty<T>() -> Empty<T> {
     Empty(marker::PhantomData)
 }
 
-// Newtype for use in `PhantomData` to avoid
-// > error: const-stable function cannot use `#[feature(const_fn_fn_ptr_basics)]`
-// in `const fn empty<T>()` above.
-struct FnReturning<T>(fn() -> T);
-
 /// An iterator that yields nothing.
 ///
 /// This `struct` is created by the [`empty()`] function. See its documentation for more.
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "iter_empty", since = "1.2.0")]
-pub struct Empty<T>(marker::PhantomData<FnReturning<T>>);
+pub struct Empty<T>(marker::PhantomData<fn() -> T>);
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<T> fmt::Debug for Empty<T> {
@@ -86,8 +81,7 @@ impl<T> Clone for Empty<T> {
 // not #[derive] because that adds a Default bound on T,
 // which isn't necessary.
 #[stable(feature = "iter_empty", since = "1.2.0")]
-#[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
-impl<T> const Default for Empty<T> {
+impl<T> Default for Empty<T> {
     fn default() -> Empty<T> {
         Empty(marker::PhantomData)
     }

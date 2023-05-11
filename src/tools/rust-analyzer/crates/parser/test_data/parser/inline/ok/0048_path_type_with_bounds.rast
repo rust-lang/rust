@@ -1,0 +1,85 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    RET_TYPE
+      THIN_ARROW "->"
+      WHITESPACE " "
+      PATH_TYPE
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "Box"
+            GENERIC_ARG_LIST
+              L_ANGLE "<"
+              TYPE_ARG
+                DYN_TRAIT_TYPE
+                  TYPE_BOUND_LIST
+                    TYPE_BOUND
+                      PATH_TYPE
+                        PATH
+                          PATH_SEGMENT
+                            NAME_REF
+                              IDENT "T"
+                    WHITESPACE " "
+                    PLUS "+"
+                    WHITESPACE " "
+                    TYPE_BOUND
+                      LIFETIME
+                        LIFETIME_IDENT "'f"
+              R_ANGLE ">"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    RET_TYPE
+      THIN_ARROW "->"
+      WHITESPACE " "
+      PATH_TYPE
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "Box"
+            GENERIC_ARG_LIST
+              L_ANGLE "<"
+              TYPE_ARG
+                DYN_TRAIT_TYPE
+                  DYN_KW "dyn"
+                  WHITESPACE " "
+                  TYPE_BOUND_LIST
+                    TYPE_BOUND
+                      PATH_TYPE
+                        PATH
+                          PATH_SEGMENT
+                            NAME_REF
+                              IDENT "T"
+                    WHITESPACE " "
+                    PLUS "+"
+                    WHITESPACE " "
+                    TYPE_BOUND
+                      LIFETIME
+                        LIFETIME_IDENT "'f"
+              R_ANGLE ">"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"

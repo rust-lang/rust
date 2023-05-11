@@ -1,0 +1,194 @@
+error[E0004]: non-exhaustive patterns: `E::B` and `E::C` not covered
+  --> $DIR/non-exhaustive-defined-here.rs:35:11
+   |
+LL |     match e1 {
+   |           ^^ patterns `E::B` and `E::C` not covered
+   |
+note: `E` defined here
+  --> $DIR/non-exhaustive-defined-here.rs:14:5
+   |
+LL | enum E {
+   |      -
+...
+LL |     B,
+   |     ^ not covered
+...
+LL |     C
+   |     ^ not covered
+   = note: the matched value is of type `E`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+   |
+LL ~         E::A => {},
+LL +         E::B | E::C => todo!()
+   |
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/non-exhaustive-defined-here.rs:41:9
+   |
+LL |     let E::A = e;
+   |         ^^^^ patterns `E::B` and `E::C` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+note: `E` defined here
+  --> $DIR/non-exhaustive-defined-here.rs:6:6
+   |
+LL | enum E {
+   |      ^
+...
+LL |     B,
+   |     - not covered
+...
+LL |     C
+   |     - not covered
+   = note: the matched value is of type `E`
+help: you might want to use `if let` to ignore the variants that aren't matched
+   |
+LL |     if let E::A = e { todo!() };
+   |     ++              +++++++++++
+
+error[E0004]: non-exhaustive patterns: `&E::B` and `&E::C` not covered
+  --> $DIR/non-exhaustive-defined-here.rs:50:11
+   |
+LL |     match e {
+   |           ^ patterns `&E::B` and `&E::C` not covered
+   |
+note: `E` defined here
+  --> $DIR/non-exhaustive-defined-here.rs:14:5
+   |
+LL | enum E {
+   |      -
+...
+LL |     B,
+   |     ^ not covered
+...
+LL |     C
+   |     ^ not covered
+   = note: the matched value is of type `&E`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+   |
+LL ~         E::A => {},
+LL +         &E::B | &E::C => todo!()
+   |
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/non-exhaustive-defined-here.rs:57:9
+   |
+LL |     let E::A = e;
+   |         ^^^^ patterns `&E::B` and `&E::C` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+note: `E` defined here
+  --> $DIR/non-exhaustive-defined-here.rs:6:6
+   |
+LL | enum E {
+   |      ^
+...
+LL |     B,
+   |     - not covered
+...
+LL |     C
+   |     - not covered
+   = note: the matched value is of type `&E`
+help: you might want to use `if let` to ignore the variants that aren't matched
+   |
+LL |     if let E::A = e { todo!() };
+   |     ++              +++++++++++
+
+error[E0004]: non-exhaustive patterns: `&&mut &E::B` and `&&mut &E::C` not covered
+  --> $DIR/non-exhaustive-defined-here.rs:66:11
+   |
+LL |     match e {
+   |           ^ patterns `&&mut &E::B` and `&&mut &E::C` not covered
+   |
+note: `E` defined here
+  --> $DIR/non-exhaustive-defined-here.rs:14:5
+   |
+LL | enum E {
+   |      -
+...
+LL |     B,
+   |     ^ not covered
+...
+LL |     C
+   |     ^ not covered
+   = note: the matched value is of type `&&mut &E`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+   |
+LL ~         E::A => {},
+LL +         &&mut &E::B | &&mut &E::C => todo!()
+   |
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/non-exhaustive-defined-here.rs:73:9
+   |
+LL |     let E::A = e;
+   |         ^^^^ patterns `&&mut &E::B` and `&&mut &E::C` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+note: `E` defined here
+  --> $DIR/non-exhaustive-defined-here.rs:6:6
+   |
+LL | enum E {
+   |      ^
+...
+LL |     B,
+   |     - not covered
+...
+LL |     C
+   |     - not covered
+   = note: the matched value is of type `&&mut &E`
+help: you might want to use `if let` to ignore the variants that aren't matched
+   |
+LL |     if let E::A = e { todo!() };
+   |     ++              +++++++++++
+
+error[E0004]: non-exhaustive patterns: `Opt::None` not covered
+  --> $DIR/non-exhaustive-defined-here.rs:92:11
+   |
+LL |     match e {
+   |           ^ pattern `Opt::None` not covered
+   |
+note: `Opt` defined here
+  --> $DIR/non-exhaustive-defined-here.rs:85:5
+   |
+LL | enum Opt {
+   |      ---
+...
+LL |     None,
+   |     ^^^^ not covered
+   = note: the matched value is of type `Opt`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~         Opt::Some(ref _x) => {},
+LL +         Opt::None => todo!()
+   |
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/non-exhaustive-defined-here.rs:99:9
+   |
+LL |     let Opt::Some(ref _x) = e;
+   |         ^^^^^^^^^^^^^^^^^ pattern `Opt::None` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+note: `Opt` defined here
+  --> $DIR/non-exhaustive-defined-here.rs:81:6
+   |
+LL | enum Opt {
+   |      ^^^
+...
+LL |     None,
+   |     ---- not covered
+   = note: the matched value is of type `Opt`
+help: you might want to use `let else` to handle the variant that isn't matched
+   |
+LL |     let Opt::Some(ref _x) = e else { todo!() };
+   |                               ++++++++++++++++
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0004, E0005.
+For more information about an error, try `rustc --explain E0004`.

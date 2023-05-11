@@ -1,9 +1,5 @@
 #![cfg_attr(feature = "as_crate", no_std)] // We are std!
-#![cfg_attr(
-    feature = "as_crate",
-    feature(platform_intrinsics),
-    feature(portable_simd)
-)]
+#![cfg_attr(feature = "as_crate", feature(platform_intrinsics), feature(portable_simd))]
 #[cfg(not(feature = "as_crate"))]
 use core::simd;
 #[cfg(feature = "as_crate")]

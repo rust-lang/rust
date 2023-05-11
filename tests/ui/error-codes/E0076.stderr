@@ -1,0 +1,9 @@
+error[E0076]: SIMD vector should be homogeneous
+  --> $DIR/E0076.rs:4:1
+   |
+LL | struct Bad(u16, u32, u32);
+   | ^^^^^^^^^^ SIMD elements must have the same type
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0076`.

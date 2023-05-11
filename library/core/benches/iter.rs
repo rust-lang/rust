@@ -1,4 +1,7 @@
+use core::borrow::Borrow;
 use core::iter::*;
+use core::mem;
+use core::num::Wrapping;
 use test::{black_box, Bencher};
 
 #[bench]
@@ -364,6 +367,73 @@ fn bench_partial_cmp(b: &mut Bencher) {
 }
 
 #[bench]
+fn bench_chain_partial_cmp(b: &mut Bencher) {
+    b.iter(|| {
+        (0..50000).chain(50000..100000).map(black_box).partial_cmp((0..100000).map(black_box))
+    })
+}
+
+#[bench]
 fn bench_lt(b: &mut Bencher) {
     b.iter(|| (0..100000).map(black_box).lt((0..100000).map(black_box)))
+}
+
+#[bench]
+fn bench_trusted_random_access_adapters(b: &mut Bencher) {
+    let vec1: Vec<_> = (0usize..100000).collect();
+    let vec2 = black_box(vec1.clone());
+    b.iter(|| {
+        let mut iter = vec1
+            .iter()
+            .copied()
+            .enumerate()
+            .map(|(idx, e)| idx.wrapping_add(e))
+            .zip(vec2.iter().copied())
+            .map(|(a, b)| a.wrapping_add(b))
+            .fuse();
+        let mut acc: usize = 0;
+        let size = iter.size();
+        for i in 0..size {
+            // SAFETY: TRA requirements are satisfied by 0..size iteration and then dropping the
+            // iterator.
+            acc = acc.wrapping_add(unsafe { iter.__iterator_get_unchecked(i) });
+        }
+        acc
+    })
+}
+
+/// Exercises the iter::Copied specialization for slice::Iter
+#[bench]
+fn bench_copied_chunks(b: &mut Bencher) {
+    let v = vec![1u8; 1024];
+
+    b.iter(|| {
+        let mut iter = black_box(&v).iter().copied();
+        let mut acc = Wrapping(0);
+        // This uses a while-let loop to side-step the TRA specialization in ArrayChunks
+        while let Ok(chunk) = iter.next_chunk::<{ mem::size_of::<u64>() }>() {
+            let d = u64::from_ne_bytes(chunk);
+            acc += Wrapping(d.rotate_left(7).wrapping_add(1));
+        }
+        acc
+    })
+}
+
+/// Exercises the TrustedRandomAccess specialization in ArrayChunks
+#[bench]
+fn bench_trusted_random_access_chunks(b: &mut Bencher) {
+    let v = vec![1u8; 1024];
+
+    b.iter(|| {
+        black_box(&v)
+            .iter()
+            // this shows that we're not relying on the slice::Iter specialization in Copied
+            .map(|b| *b.borrow())
+            .array_chunks::<{ mem::size_of::<u64>() }>()
+            .map(|ary| {
+                let d = u64::from_ne_bytes(ary);
+                Wrapping(d.rotate_left(7).wrapping_add(1))
+            })
+            .sum::<Wrapping<u64>>()
+    })
 }

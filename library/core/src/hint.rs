@@ -5,27 +5,78 @@
 
 use crate::intrinsics;
 
-/// Informs the compiler that this point in the code is not reachable, enabling
-/// further optimizations.
+/// Informs the compiler that the site which is calling this function is not
+/// reachable, possibly enabling further optimizations.
 ///
 /// # Safety
 ///
-/// Reaching this function is completely *undefined behavior* (UB). In
-/// particular, the compiler assumes that all UB must never happen, and
-/// therefore will eliminate all branches that reach to a call to
-/// `unreachable_unchecked()`.
+/// Reaching this function is *Undefined Behavior*.
 ///
-/// Like all instances of UB, if this assumption turns out to be wrong, i.e., the
-/// `unreachable_unchecked()` call is actually reachable among all possible
-/// control flow, the compiler will apply the wrong optimization strategy, and
-/// may sometimes even corrupt seemingly unrelated code, causing
-/// difficult-to-debug problems.
+/// As the compiler assumes that all forms of Undefined Behavior can never
+/// happen, it will eliminate all branches in the surrounding code that it can
+/// determine will invariably lead to a call to `unreachable_unchecked()`.
 ///
-/// Use this function only when you can prove that the code will never call it.
-/// Otherwise, consider using the [`unreachable!`] macro, which does not allow
-/// optimizations but will panic when executed.
+/// If the assumptions embedded in using this function turn out to be wrong -
+/// that is, if the site which is calling `unreachable_unchecked()` is actually
+/// reachable at runtime - the compiler may have generated nonsensical machine
+/// instructions for this situation, including in seemingly unrelated code,
+/// causing difficult-to-debug problems.
 ///
-/// # Example
+/// Use this function sparingly. Consider using the [`unreachable!`] macro,
+/// which may prevent some optimizations but will safely panic in case it is
+/// actually reached at runtime. Benchmark your code to find out if using
+/// `unreachable_unchecked()` comes with a performance benefit.
+///
+/// # Examples
+///
+/// `unreachable_unchecked()` can be used in situations where the compiler
+/// can't prove invariants that were previously established. Such situations
+/// have a higher chance of occurring if those invariants are upheld by
+/// external code that the compiler can't analyze.
+/// ```
+/// fn prepare_inputs(divisors: &mut Vec<u32>) {
+///     // Note to future-self when making changes: The invariant established
+///     // here is NOT checked in `do_computation()`; if this changes, you HAVE
+///     // to change `do_computation()`.
+///     divisors.retain(|divisor| *divisor != 0)
+/// }
+///
+/// /// # Safety
+/// /// All elements of `divisor` must be non-zero.
+/// unsafe fn do_computation(i: u32, divisors: &[u32]) -> u32 {
+///     divisors.iter().fold(i, |acc, divisor| {
+///         // Convince the compiler that a division by zero can't happen here
+///         // and a check is not needed below.
+///         if *divisor == 0 {
+///             // Safety: `divisor` can't be zero because of `prepare_inputs`,
+///             // but the compiler does not know about this. We *promise*
+///             // that we always call `prepare_inputs`.
+///             std::hint::unreachable_unchecked()
+///         }
+///         // The compiler would normally introduce a check here that prevents
+///         // a division by zero. However, if `divisor` was zero, the branch
+///         // above would reach what we explicitly marked as unreachable.
+///         // The compiler concludes that `divisor` can't be zero at this point
+///         // and removes the - now proven useless - check.
+///         acc / divisor
+///     })
+/// }
+///
+/// let mut divisors = vec![2, 0, 4];
+/// prepare_inputs(&mut divisors);
+/// let result = unsafe {
+///     // Safety: prepare_inputs() guarantees that divisors is non-zero
+///     do_computation(100, &divisors)
+/// };
+/// assert_eq!(result, 12);
+///
+/// ```
+///
+/// While using `unreachable_unchecked()` is perfectly sound in the following
+/// example, as the compiler is able to prove that a division by zero is not
+/// possible, benchmarking reveals that `unreachable_unchecked()` provides
+/// no benefit over using [`unreachable!`], while the latter does not introduce
+/// the possibility of Undefined Behavior.
 ///
 /// ```
 /// fn div_1(a: u32, b: u32) -> u32 {
@@ -45,10 +96,14 @@ use crate::intrinsics;
 #[inline]
 #[stable(feature = "unreachable", since = "1.27.0")]
 #[rustc_const_stable(feature = "const_unreachable_unchecked", since = "1.57.0")]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub const unsafe fn unreachable_unchecked() -> ! {
     // SAFETY: the safety contract for `intrinsics::unreachable` must
     // be upheld by the caller.
-    unsafe { intrinsics::unreachable() }
+    unsafe {
+        intrinsics::assert_unsafe_precondition!("hint::unreachable_unchecked must never be reached", () => false);
+        intrinsics::unreachable()
+    }
 }
 
 /// Emits a machine instruction to signal the processor that it is running in
@@ -105,22 +160,19 @@ pub const unsafe fn unreachable_unchecked() -> ! {
 /// ```
 ///
 /// [`thread::yield_now`]: ../../std/thread/fn.yield_now.html
-#[inline]
+#[inline(always)]
 #[stable(feature = "renamed_spin_loop", since = "1.49.0")]
 pub fn spin_loop() {
-    #[cfg(all(any(target_arch = "x86", target_arch = "x86_64"), target_feature = "sse2"))]
+    #[cfg(target_arch = "x86")]
     {
-        #[cfg(target_arch = "x86")]
-        {
-            // SAFETY: the `cfg` attr ensures that we only execute this on x86 targets.
-            unsafe { crate::arch::x86::_mm_pause() };
-        }
+        // SAFETY: the `cfg` attr ensures that we only execute this on x86 targets.
+        unsafe { crate::arch::x86::_mm_pause() };
+    }
 
-        #[cfg(target_arch = "x86_64")]
-        {
-            // SAFETY: the `cfg` attr ensures that we only execute this on x86_64 targets.
-            unsafe { crate::arch::x86_64::_mm_pause() };
-        }
+    #[cfg(target_arch = "x86_64")]
+    {
+        // SAFETY: the `cfg` attr ensures that we only execute this on x86_64 targets.
+        unsafe { crate::arch::x86_64::_mm_pause() };
     }
 
     // RISC-V platform spin loop hint implementation
@@ -164,11 +216,78 @@ pub fn spin_loop() {
 ///
 /// Note however, that `black_box` is only (and can only be) provided on a "best-effort" basis. The
 /// extent to which it can block optimisations may vary depending upon the platform and code-gen
-/// backend used. Programs cannot rely on `black_box` for *correctness* in any way.
+/// backend used. Programs cannot rely on `black_box` for *correctness*, beyond it behaving as the
+/// identity function. As such, it **must not be relied upon to control critical program behavior.**
+/// This _immediately_ precludes any direct use of this function for cryptographic or security
+/// purposes.
 ///
 /// [`std::convert::identity`]: crate::convert::identity
+///
+/// # When is this useful?
+///
+/// While not suitable in those mission-critical cases, `black_box`'s functionality can generally be
+/// relied upon for benchmarking, and should be used there. It will try to ensure that the
+/// compiler doesn't optimize away part of the intended test code based on context. For
+/// example:
+///
+/// ```
+/// fn contains(haystack: &[&str], needle: &str) -> bool {
+///     haystack.iter().any(|x| x == &needle)
+/// }
+///
+/// pub fn benchmark() {
+///     let haystack = vec!["abc", "def", "ghi", "jkl", "mno"];
+///     let needle = "ghi";
+///     for _ in 0..10 {
+///         contains(&haystack, needle);
+///     }
+/// }
+/// ```
+///
+/// The compiler could theoretically make optimizations like the following:
+///
+/// - `needle` and `haystack` are always the same, move the call to `contains` outside the loop and
+///   delete the loop
+/// - Inline `contains`
+/// - `needle` and `haystack` have values known at compile time, `contains` is always true. Remove
+///   the call and replace with `true`
+/// - Nothing is done with the result of `contains`: delete this function call entirely
+/// - `benchmark` now has no purpose: delete this function
+///
+/// It is not likely that all of the above happens, but the compiler is definitely able to make some
+/// optimizations that could result in a very inaccurate benchmark. This is where `black_box` comes
+/// in:
+///
+/// ```
+/// use std::hint::black_box;
+///
+/// // Same `contains` function
+/// fn contains(haystack: &[&str], needle: &str) -> bool {
+///     haystack.iter().any(|x| x == &needle)
+/// }
+///
+/// pub fn benchmark() {
+///     let haystack = vec!["abc", "def", "ghi", "jkl", "mno"];
+///     let needle = "ghi";
+///     for _ in 0..10 {
+///         // Adjust our benchmark loop contents
+///         black_box(contains(black_box(&haystack), black_box(needle)));
+///     }
+/// }
+/// ```
+///
+/// This essentially tells the compiler to block optimizations across any calls to `black_box`. So,
+/// it now:
+///
+/// - Treats both arguments to `contains` as unpredictable: the body of `contains` can no longer be
+///   optimized based on argument values
+/// - Treats the call to `contains` and its result as volatile: the body of `benchmark` cannot
+///   optimize this away
+///
+/// This makes our benchmark much more realistic to how the function would be used in situ, where
+/// arguments are usually not known at compile time and the result is used in some way.
 #[inline]
-#[unstable(feature = "bench_black_box", issue = "64102")]
+#[stable(feature = "bench_black_box", since = "1.66.0")]
 #[rustc_const_unstable(feature = "const_black_box", issue = "none")]
 pub const fn black_box<T>(dummy: T) -> T {
     crate::intrinsics::black_box(dummy)
@@ -293,6 +412,7 @@ pub const fn black_box<T>(dummy: T) -> T {
 #[unstable(feature = "hint_must_use", issue = "94745")]
 #[rustc_const_unstable(feature = "hint_must_use", issue = "94745")]
 #[must_use] // <-- :)
+#[inline(always)]
 pub const fn must_use<T>(value: T) -> T {
     value
 }

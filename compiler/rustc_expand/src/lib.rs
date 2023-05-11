@@ -1,36 +1,48 @@
-#![allow(rustc::potential_query_instability)]
+#![feature(array_windows)]
 #![feature(associated_type_bounds)]
 #![feature(associated_type_defaults)]
-#![feature(crate_visibility_modifier)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
-#![feature(let_else)]
 #![feature(macro_metavar_expr)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_span)]
+#![feature(rustc_attrs)]
 #![feature(try_blocks)]
 #![recursion_limit = "256"]
+#![deny(rustc::untranslatable_diagnostic)]
 
 #[macro_use]
 extern crate rustc_macros;
 
+#[macro_use]
+extern crate tracing;
+
 extern crate proc_macro as pm;
+
+use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
+use rustc_fluent_macro::fluent_messages;
 
 mod placeholders;
 mod proc_macro_server;
 
 pub use mbe::macro_rules::compile_declarative_macro;
-crate use rustc_span::hygiene;
+pub(crate) use rustc_span::hygiene;
 pub mod base;
 pub mod build;
 #[macro_use]
 pub mod config;
+pub mod errors;
 pub mod expand;
 pub mod module;
+
+// FIXME(Nilstrieb) Translate proc_macro diagnostics
+#[allow(rustc::untranslatable_diagnostic)]
 pub mod proc_macro;
 
-crate mod mbe;
+// FIXME(Nilstrieb) Translate macro_rules diagnostics
+#[allow(rustc::untranslatable_diagnostic)]
+pub(crate) mod mbe;
 
 // HACK(Centril, #64197): These shouldn't really be here.
 // Rather, they should be with their respective modules which are defined in other crates.
@@ -51,3 +63,5 @@ mod tokenstream {
 mod mut_visit {
     mod tests;
 }
+
+fluent_messages! { "../messages.ftl" }

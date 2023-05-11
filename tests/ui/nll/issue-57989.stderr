@@ -1,0 +1,26 @@
+error[E0594]: cannot assign to `*x`, which is behind a `&` reference
+  --> $DIR/issue-57989.rs:5:5
+   |
+LL |     *x = 0;
+   |     ^^^^^^ `x` is a `&` reference, so the data it refers to cannot be written
+   |
+help: consider changing this to be a mutable reference
+   |
+LL | fn f(x: &mut i32) {
+   |          +++
+
+error[E0506]: cannot assign to `*x` because it is borrowed
+  --> $DIR/issue-57989.rs:5:5
+   |
+LL |     let g = &x;
+   |             -- `*x` is borrowed here
+LL |     *x = 0;
+   |     ^^^^^^ `*x` is assigned to here but it was already borrowed
+LL |
+LL |     g;
+   |     - borrow later used here
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0506, E0594.
+For more information about an error, try `rustc --explain E0506`.

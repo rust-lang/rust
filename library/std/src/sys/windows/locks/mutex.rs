@@ -15,15 +15,11 @@
 //!    is that there are no guarantees of fairness.
 
 use crate::cell::UnsafeCell;
-use crate::mem::MaybeUninit;
 use crate::sys::c;
 
 pub struct Mutex {
     srwlock: UnsafeCell<c::SRWLOCK>,
 }
-
-// Windows SRW Locks are movable (while not borrowed).
-pub type MovableMutex = Mutex;
 
 unsafe impl Send for Mutex {}
 unsafe impl Sync for Mutex {}
@@ -34,63 +30,25 @@ pub unsafe fn raw(m: &Mutex) -> c::PSRWLOCK {
 }
 
 impl Mutex {
+    #[inline]
     pub const fn new() -> Mutex {
         Mutex { srwlock: UnsafeCell::new(c::SRWLOCK_INIT) }
     }
-    #[inline]
-    pub unsafe fn init(&mut self) {}
 
     #[inline]
-    pub unsafe fn lock(&self) {
-        c::AcquireSRWLockExclusive(raw(self));
+    pub fn lock(&self) {
+        unsafe {
+            c::AcquireSRWLockExclusive(raw(self));
+        }
     }
 
     #[inline]
-    pub unsafe fn try_lock(&self) -> bool {
-        c::TryAcquireSRWLockExclusive(raw(self)) != 0
+    pub fn try_lock(&self) -> bool {
+        unsafe { c::TryAcquireSRWLockExclusive(raw(self)) != 0 }
     }
 
     #[inline]
     pub unsafe fn unlock(&self) {
         c::ReleaseSRWLockExclusive(raw(self));
-    }
-
-    #[inline]
-    pub unsafe fn destroy(&self) {
-        // SRWLock does not need to be destroyed.
-    }
-}
-
-pub struct ReentrantMutex {
-    inner: MaybeUninit<UnsafeCell<c::CRITICAL_SECTION>>,
-}
-
-unsafe impl Send for ReentrantMutex {}
-unsafe impl Sync for ReentrantMutex {}
-
-impl ReentrantMutex {
-    pub const fn uninitialized() -> ReentrantMutex {
-        ReentrantMutex { inner: MaybeUninit::uninit() }
-    }
-
-    pub unsafe fn init(&self) {
-        c::InitializeCriticalSection(UnsafeCell::raw_get(self.inner.as_ptr()));
-    }
-
-    pub unsafe fn lock(&self) {
-        c::EnterCriticalSection(UnsafeCell::raw_get(self.inner.as_ptr()));
-    }
-
-    #[inline]
-    pub unsafe fn try_lock(&self) -> bool {
-        c::TryEnterCriticalSection(UnsafeCell::raw_get(self.inner.as_ptr())) != 0
-    }
-
-    pub unsafe fn unlock(&self) {
-        c::LeaveCriticalSection(UnsafeCell::raw_get(self.inner.as_ptr()));
-    }
-
-    pub unsafe fn destroy(&self) {
-        c::DeleteCriticalSection(UnsafeCell::raw_get(self.inner.as_ptr()));
     }
 }

@@ -1,0 +1,44 @@
+error[E0529]: expected an array or slice, found `Vec<i32>`
+  --> $DIR/pattern-slice-vec.rs:8:12
+   |
+LL |     if let [_, _, _] = foo() {}
+   |            ^^^^^^^^^   ----- help: consider slicing here: `foo()[..]`
+   |            |
+   |            pattern cannot match with input type `Vec<i32>`
+
+error[E0529]: expected an array or slice, found `Vec<i32>`
+  --> $DIR/pattern-slice-vec.rs:12:12
+   |
+LL |     if let [] = &foo() {}
+   |            ^^   ------ help: consider slicing here: `&foo()[..]`
+   |            |
+   |            pattern cannot match with input type `Vec<i32>`
+
+error[E0529]: expected an array or slice, found `Vec<i32>`
+  --> $DIR/pattern-slice-vec.rs:16:12
+   |
+LL |     if let [] = foo() {}
+   |            ^^   ----- help: consider slicing here: `foo()[..]`
+   |            |
+   |            pattern cannot match with input type `Vec<i32>`
+
+error[E0529]: expected an array or slice, found `Vec<_>`
+  --> $DIR/pattern-slice-vec.rs:23:9
+   |
+LL |     match &v {
+   |           -- help: consider slicing here: `&v[..]`
+LL |
+LL |         [5] => {}
+   |         ^^^ pattern cannot match with input type `Vec<_>`
+
+error[E0529]: expected an array or slice, found `Vec<{integer}>`
+  --> $DIR/pattern-slice-vec.rs:28:9
+   |
+LL |     let [..] = vec![1, 2, 3];
+   |         ^^^^   ------------- help: consider slicing here: `vec![1, 2, 3][..]`
+   |         |
+   |         pattern cannot match with input type `Vec<{integer}>`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0529`.

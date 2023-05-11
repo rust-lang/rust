@@ -1,9 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_hir::intravisit::{walk_expr, walk_fn, FnKind, Visitor};
-use rustc_hir::{Body, Expr, ExprKind, FnDecl, FnHeader, HirId, IsAsync, YieldSource};
+use rustc_hir::{Body, Expr, ExprKind, FnDecl, YieldSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
 
 declare_clippy_lint! {
@@ -17,13 +18,14 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
     /// async fn get_random_number() -> i64 {
     ///     4 // Chosen by fair dice roll. Guaranteed to be random.
     /// }
     /// let number_future = get_random_number();
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
     /// fn get_random_number_improved() -> i64 {
     ///     4 // Chosen by fair dice roll. Guaranteed to be random.
     /// }
@@ -65,22 +67,20 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
         fn_decl: &'tcx FnDecl<'tcx>,
         body: &Body<'tcx>,
         span: Span,
-        hir_id: HirId,
+        def_id: LocalDefId,
     ) {
-        if let FnKind::ItemFn(_, _, FnHeader { asyncness, .. }, _) = &fn_kind {
-            if matches!(asyncness, IsAsync::Async) {
-                let mut visitor = AsyncFnVisitor { cx, found_await: false };
-                walk_fn(&mut visitor, fn_kind, fn_decl, body.id(), span, hir_id);
-                if !visitor.found_await {
-                    span_lint_and_help(
-                        cx,
-                        UNUSED_ASYNC,
-                        span,
-                        "unused `async` for function with no await statements",
-                        None,
-                        "consider removing the `async` from this function",
-                    );
-                }
+        if !span.from_expansion() && fn_kind.asyncness().is_async() {
+            let mut visitor = AsyncFnVisitor { cx, found_await: false };
+            walk_fn(&mut visitor, fn_kind, fn_decl, body.id(), def_id);
+            if !visitor.found_await {
+                span_lint_and_help(
+                    cx,
+                    UNUSED_ASYNC,
+                    span,
+                    "unused `async` for function with no await statements",
+                    None,
+                    "consider removing the `async` from this function",
+                );
             }
         }
     }

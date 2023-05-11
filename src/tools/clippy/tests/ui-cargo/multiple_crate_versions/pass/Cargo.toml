@@ -1,5 +1,5 @@
 [package]
-name = "cargo_common_metadata"
+name = "multiple_crate_versions"
 version = "0.1.0"
 publish = false
 

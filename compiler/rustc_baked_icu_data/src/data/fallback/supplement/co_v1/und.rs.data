@@ -1,0 +1,22 @@
+::icu_provider_adapters::fallback::provider::LocaleFallbackSupplementV1 {
+    parents: unsafe {
+        #[allow(unused_unsafe)]
+        ::zerovec::ZeroMap::from_parts_unchecked(
+            unsafe { ::zerovec::VarZeroVec::from_bytes_unchecked(b"\x01\0\0\0\0\0yue") },
+            unsafe { ::zerovec::ZeroVec::from_bytes_unchecked(b"zh\0\x01Hant\0\0\0\0") },
+        )
+    },
+    unicode_extension_defaults: unsafe {
+        #[allow(unused_unsafe)]
+        ::zerovec::ZeroMap2d::from_parts_unchecked(
+            unsafe { ::zerovec::ZeroVec::from_bytes_unchecked(b"co") },
+            unsafe { ::zerovec::ZeroVec::from_bytes_unchecked(b"\x02\0\0\0") },
+            unsafe {
+                ::zerovec::VarZeroVec::from_bytes_unchecked(b"\x02\0\0\0\0\0\x02\0zhzh-Hant")
+            },
+            unsafe {
+                ::zerovec::VarZeroVec::from_bytes_unchecked(b"\x02\0\0\0\0\0\x06\0pinyinstroke")
+            },
+        )
+    },
+}

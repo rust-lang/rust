@@ -29,6 +29,8 @@ pub fn config_type(_args: TokenStream, input: TokenStream) -> TokenStream {
 /// Used to conditionally output the TokenStream for tests that need to be run on nightly only.
 ///
 /// ```rust
+/// # use rustfmt_config_proc_macro::nightly_only_test;
+///
 /// #[nightly_only_test]
 /// #[test]
 /// fn test_needs_nightly_rustfmt() {
@@ -49,6 +51,8 @@ pub fn nightly_only_test(_args: TokenStream, input: TokenStream) -> TokenStream 
 /// Used to conditionally output the TokenStream for tests that need to be run on stable only.
 ///
 /// ```rust
+/// # use rustfmt_config_proc_macro::stable_only_test;
+///
 /// #[stable_only_test]
 /// #[test]
 /// fn test_needs_stable_rustfmt() {
@@ -63,5 +67,18 @@ pub fn stable_only_test(_args: TokenStream, input: TokenStream) -> TokenStream {
     } else {
         // output an empty token stream if CFG_RELEASE_CHANNEL is not set or is not 'stable'
         TokenStream::from_str("").unwrap()
+    }
+}
+
+/// Used to conditionally output the TokenStream for tests that should be run as part of rustfmts
+/// test suite, but should be ignored when running in the rust-lang/rust test suite.
+#[proc_macro_attribute]
+pub fn rustfmt_only_ci_test(_args: TokenStream, input: TokenStream) -> TokenStream {
+    if option_env!("RUSTFMT_CI").is_some() {
+        input
+    } else {
+        let mut token_stream = TokenStream::from_str("#[ignore]").unwrap();
+        token_stream.extend(input);
+        token_stream
     }
 }

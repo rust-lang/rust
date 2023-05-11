@@ -5,10 +5,10 @@ license = "MIT OR Apache-2.0"
 edition = "2021"
 
 [dependencies]
-clap = "2.25.0"
-env_logger = "0.7.1"
+clap = "4.0.32"
+env_logger = "0.10"
 
 [dependencies.mdbook]
-version = "0.4.14"
+version = "0.4.28"
 default-features = false
 features = ["search"]

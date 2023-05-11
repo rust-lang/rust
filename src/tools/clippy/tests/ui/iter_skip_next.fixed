@@ -1,8 +1,8 @@
-// run-rustfix
-// aux-build:option_helpers.rs
+//@run-rustfix
+//@aux-build:option_helpers.rs
 
 #![warn(clippy::iter_skip_next)]
-#![allow(clippy::blacklisted_name)]
+#![allow(clippy::disallowed_names)]
 #![allow(clippy::iter_nth)]
 #![allow(unused_mut, dead_code)]
 

@@ -1,0 +1,20 @@
+error[E0034]: multiple applicable items in scope
+  --> $DIR/ambiguity.rs:15:24
+   |
+LL |     let _: Wrapper<_>::Foo = ();
+   |                        ^^^ multiple `Foo` found
+   |
+note: candidate #1 is defined in an impl for the type `Wrapper<i32>`
+  --> $DIR/ambiguity.rs:7:5
+   |
+LL |     type Foo = i32;
+   |     ^^^^^^^^
+note: candidate #2 is defined in an impl for the type `Wrapper<()>`
+  --> $DIR/ambiguity.rs:11:5
+   |
+LL |     type Foo = ();
+   |     ^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0034`.

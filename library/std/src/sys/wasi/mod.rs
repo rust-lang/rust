@@ -25,6 +25,9 @@ pub mod cmath;
 pub mod env;
 pub mod fd;
 pub mod fs;
+#[allow(unused)]
+#[path = "../wasm/atomics/futex.rs"]
+pub mod futex;
 pub mod io;
 #[path = "../unsupported/locks/mod.rs"]
 pub mod locks;
@@ -44,7 +47,16 @@ pub mod thread;
 pub mod thread_local_dtor;
 #[path = "../unsupported/thread_local_key.rs"]
 pub mod thread_local_key;
+#[path = "../unsupported/thread_parking.rs"]
+pub mod thread_parking;
 pub mod time;
+
+cfg_if::cfg_if! {
+    if #[cfg(not(target_feature = "atomics"))] {
+        #[path = "../unsupported/once.rs"]
+        pub mod once;
+    }
+}
 
 #[path = "../unsupported/common.rs"]
 #[deny(unsafe_op_in_unsafe_fn)]

@@ -1,0 +1,12 @@
+error[E0599]: no method named `poll` found for opaque type `impl Future<Output = ()>` in the current scope
+  --> $DIR/issue-108572.rs:10:9
+   |
+LL |     fut.poll();
+   |         ^^^^ method not found in `impl Future<Output = ()>`
+   |
+   = help: method `poll` found on `Pin<&mut impl Future<Output = ()>>`, see documentation for `std::pin::Pin`
+   = help: self type must be pinned to call `Future::poll`, see https://rust-lang.github.io/async-book/04_pinning/01_chapter.html#pinning-in-practice
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.

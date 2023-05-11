@@ -4,8 +4,8 @@ error: you seem to be using a `LinkedList`! Perhaps you meant some other data st
 LL | const C: LinkedList<i32> = LinkedList::new();
    |          ^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::linkedlist` implied by `-D warnings`
    = help: a `VecDeque` might work
+   = note: `-D clippy::linkedlist` implied by `-D warnings`
 
 error: you seem to be using a `LinkedList`! Perhaps you meant some other data structure?
   --> $DIR/linkedlist.rs:9:11

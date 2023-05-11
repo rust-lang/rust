@@ -1,0 +1,11 @@
+error[E0658]: the `#[custom_mir]` attribute is just used for the Rust test suite
+  --> $DIR/feature-gate-custom_mir.rs:5:1
+   |
+LL | #[custom_mir(dialect = "built")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(custom_mir)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

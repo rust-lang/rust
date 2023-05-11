@@ -1,10 +1,11 @@
 use crate::context::LintContext;
-use crate::rustc_middle::ty::TypeFoldable;
+use crate::lints::{NoopMethodCallDiag, SuspiciousDoubleRefDiag};
 use crate::LateContext;
 use crate::LateLintPass;
 use rustc_hir::def::DefKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_middle::ty;
+use rustc_middle::ty::adjustment::Adjust;
 use rustc_span::symbol::sym;
 
 declare_lint! {
@@ -35,17 +36,47 @@ declare_lint! {
     "detects the use of well-known noop methods"
 }
 
-declare_lint_pass!(NoopMethodCall => [NOOP_METHOD_CALL]);
+declare_lint! {
+    /// The `suspicious_double_ref_op` lint checks for usage of `.clone()`/`.borrow()`/`.deref()`
+    /// on an `&&T` when `T: !Deref/Borrow/Clone`, which means the call will return the inner `&T`,
+    /// instead of performing the operation on the underlying `T` and can be confusing.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// # #![allow(unused)]
+    /// struct Foo;
+    /// let foo = &&Foo;
+    /// let clone: &Foo = foo.clone();
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Since `Foo` doesn't implement `Clone`, running `.clone()` only dereferences the double
+    /// reference, instead of cloning the inner type which should be what was intended.
+    pub SUSPICIOUS_DOUBLE_REF_OP,
+    Warn,
+    "suspicious call of trait method on `&&T`"
+}
+
+declare_lint_pass!(NoopMethodCall => [NOOP_METHOD_CALL, SUSPICIOUS_DOUBLE_REF_OP]);
 
 impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // We only care about method calls.
-        let ExprKind::MethodCall(call, elements, _) = &expr.kind else {
-            return
+        let ExprKind::MethodCall(call, receiver, _, call_span) = &expr.kind else {
+            return;
         };
+
+        if call_span.from_expansion() {
+            return;
+        }
+
         // We only care about method calls corresponding to the `Clone`, `Deref` and `Borrow`
         // traits and ignore any other method call.
-        let (trait_id, did) = match cx.typeck_results().type_dependent_def(expr.hir_id) {
+        let did = match cx.typeck_results().type_dependent_def(expr.hir_id) {
             // Verify we are dealing with a method/associated function.
             Some((DefKind::AssocFn, did)) => match cx.tcx.trait_of_item(did) {
                 // Check that we're dealing with a trait method for one of the traits we care about.
@@ -55,54 +86,54 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
                         Some(sym::Borrow | sym::Clone | sym::Deref)
                     ) =>
                 {
-                    (trait_id, did)
+                    did
                 }
                 _ => return,
             },
             _ => return,
         };
-        let substs = cx.typeck_results().node_substs(expr.hir_id);
-        if substs.needs_subst() {
-            // We can't resolve on types that require monomorphization, so we don't handle them if
-            // we need to perform substitution.
-            return;
-        }
-        let param_env = cx.tcx.param_env(trait_id);
+        let substs = cx
+            .tcx
+            .normalize_erasing_regions(cx.param_env, cx.typeck_results().node_substs(expr.hir_id));
         // Resolve the trait method instance.
-        let Ok(Some(i)) = ty::Instance::resolve(cx.tcx, param_env, did, substs) else {
+        let Ok(Some(i)) = ty::Instance::resolve(cx.tcx, cx.param_env, did, substs) else {
             return
         };
         // (Re)check that it implements the noop diagnostic.
         let Some(name) = cx.tcx.get_diagnostic_name(i.def_id()) else { return };
-        if !matches!(
-            name,
-            sym::noop_method_borrow | sym::noop_method_clone | sym::noop_method_deref
-        ) {
-            return;
-        }
-        let method = &call.ident.name;
-        let receiver = &elements[0];
+
+        let op = match name {
+            sym::noop_method_borrow => "borrow",
+            sym::noop_method_clone => "clone",
+            sym::noop_method_deref => "deref",
+            _ => return,
+        };
+
         let receiver_ty = cx.typeck_results().expr_ty(receiver);
         let expr_ty = cx.typeck_results().expr_ty_adjusted(expr);
-        if receiver_ty != expr_ty {
-            // This lint will only trigger if the receiver type and resulting expression \
-            // type are the same, implying that the method call is unnecessary.
+        let arg_adjustments = cx.typeck_results().expr_adjustments(receiver);
+
+        // If there is any user defined auto-deref step, then we don't want to warn.
+        // https://github.com/rust-lang/rust-clippy/issues/9272
+        if arg_adjustments.iter().any(|adj| matches!(adj.kind, Adjust::Deref(Some(_)))) {
             return;
         }
-        let expr_span = expr.span;
-        let note = format!(
-            "the type `{:?}` which `{}` is being called on is the same as \
-             the type returned from `{}`, so the method call does not do \
-             anything and can be removed",
-            receiver_ty, method, method,
-        );
 
+        let expr_span = expr.span;
         let span = expr_span.with_lo(receiver.span.hi());
-        cx.struct_span_lint(NOOP_METHOD_CALL, span, |lint| {
-            let method = &call.ident.name;
-            let message =
-                format!("call to `.{}()` on a reference in this situation does nothing", &method,);
-            lint.build(&message).span_label(span, "unnecessary method call").note(&note).emit();
-        });
+
+        if receiver_ty == expr_ty {
+            cx.emit_spanned_lint(
+                NOOP_METHOD_CALL,
+                span,
+                NoopMethodCallDiag { method: call.ident.name, receiver_ty, label: span },
+            );
+        } else {
+            cx.emit_spanned_lint(
+                SUSPICIOUS_DOUBLE_REF_OP,
+                span,
+                SuspiciousDoubleRefDiag { call: call.ident.name, ty: expr_ty, op },
+            )
+        }
     }
 }

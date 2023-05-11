@@ -119,7 +119,7 @@
         <SetProperty Sequence="ui" Before="CostFinalize"
             Id="WixAppFolder" Value="WixPerUserFolder">NOT ALLUSERS</SetProperty>
 
-        <!-- UI sets ALLUSERS per user selection; progagate this choice to MSIINSTALLPERUSER before executing installation actions -->
+        <!-- UI sets ALLUSERS per user selection; propagate this choice to MSIINSTALLPERUSER before executing installation actions -->
         <SetProperty Sequence="ui" Before="ExecuteAction"
             Id="MSIINSTALLPERUSER" Value="1">NOT ALLUSERS</SetProperty>
 
@@ -167,13 +167,11 @@
                     <?if $(env.CFG_MINGW)="1" ?>
                         <Directory Id="Gcc" Name="." />
                     <?endif?>
+                    <!-- tool-rust-docs-start -->
                     <Directory Id="Docs" Name="." />
+                    <!-- tool-rust-docs-end -->
                     <Directory Id="Cargo" Name="." />
                     <Directory Id="Std" Name="." />
-                    <!-- tool-rls-start -->
-                    <Directory Id="Rls" Name="." />
-                    <Directory Id="Analysis" Name="." />
-                    <!-- tool-rls-end -->
                 </Directory>
             </Directory>
 
@@ -213,6 +211,7 @@
                         <RegistryValue Root="HKMU" Key="$(var.BaseRegKey)" Name="RustShell" Type="integer" Value="1" KeyPath="yes" />
                         <RemoveFolder Id="ApplicationProgramsFolder1" On="uninstall" />
                     </Component>
+                    <!-- tool-rust-docs-start -->
                     <Component Id="DocIndexShortcut" Guid="*">
                         <Shortcut Id="RustDocs"
                                   Name="$(var.ProductName) Documentation"
@@ -221,6 +220,7 @@
                         <RegistryValue Root="HKMU" Key="$(var.BaseRegKey)" Name="RustDocs" Type="integer" Value="1" KeyPath="yes" />
                         <RemoveFolder Id="ApplicationProgramsFolder2" On="uninstall" />
                     </Component>
+                    <!-- tool-rust-docs-end -->
                 </Directory>
             </Directory>
 
@@ -260,6 +260,7 @@
                      <ComponentGroupRef Id="GccGroup" />
             </Feature>
         <?endif?>
+        <!-- tool-rust-docs-start -->
         <Feature Id="Docs"
                  Title="HTML documentation"
                  Display="5"
@@ -268,6 +269,7 @@
                  <ComponentGroupRef Id="DocsGroup" />
                  <ComponentRef Id="DocIndexShortcut" />
         </Feature>
+        <!-- tool-rust-docs-end -->
         <Feature Id="Path"
                  Title="Add to PATH"
                  Description="Add Rust to PATH environment variable"
@@ -277,16 +279,6 @@
                  <ComponentRef Id="PathEnvPerMachine" />
                  <ComponentRef Id="PathEnvPerUser" />
         </Feature>
-        <!-- tool-rls-start -->
-        <Feature Id="RLS"
-                 Title="RLS, the Rust Language Server"
-                 Display="7"
-                 Level="2"
-                 AllowAdvertise="no">
-                 <ComponentGroupRef Id="RlsGroup" />
-                 <ComponentGroupRef Id="AnalysisGroup" />
-        </Feature>
-        <!-- tool-rls-end -->
 
         <UIRef Id="RustUI" />
     </Product>

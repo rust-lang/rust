@@ -12,19 +12,19 @@ error: casting function pointer `foo` to `i16`, which truncates the value
 LL |     let _ = foo as i16;
    |             ^^^^^^^^^^ help: try: `foo as usize`
 
-error: casting function pointer `foo` to `i32`
+error: casting function pointer `foo` to `i32`, which truncates the value
   --> $DIR/fn_to_numeric_cast_32bit.rs:12:13
    |
 LL |     let _ = foo as i32;
    |             ^^^^^^^^^^ help: try: `foo as usize`
-   |
-   = note: `-D clippy::fn-to-numeric-cast` implied by `-D warnings`
 
 error: casting function pointer `foo` to `i64`
   --> $DIR/fn_to_numeric_cast_32bit.rs:13:13
    |
 LL |     let _ = foo as i64;
    |             ^^^^^^^^^^ help: try: `foo as usize`
+   |
+   = note: `-D clippy::fn-to-numeric-cast` implied by `-D warnings`
 
 error: casting function pointer `foo` to `i128`
   --> $DIR/fn_to_numeric_cast_32bit.rs:14:13
@@ -50,7 +50,7 @@ error: casting function pointer `foo` to `u16`, which truncates the value
 LL |     let _ = foo as u16;
    |             ^^^^^^^^^^ help: try: `foo as usize`
 
-error: casting function pointer `foo` to `u32`
+error: casting function pointer `foo` to `u32`, which truncates the value
   --> $DIR/fn_to_numeric_cast_32bit.rs:19:13
    |
 LL |     let _ = foo as u32;
@@ -80,7 +80,7 @@ error: casting function pointer `abc` to `i16`, which truncates the value
 LL |     let _ = abc as i16;
    |             ^^^^^^^^^^ help: try: `abc as usize`
 
-error: casting function pointer `abc` to `i32`
+error: casting function pointer `abc` to `i32`, which truncates the value
   --> $DIR/fn_to_numeric_cast_32bit.rs:36:13
    |
 LL |     let _ = abc as i32;
@@ -116,7 +116,7 @@ error: casting function pointer `abc` to `u16`, which truncates the value
 LL |     let _ = abc as u16;
    |             ^^^^^^^^^^ help: try: `abc as usize`
 
-error: casting function pointer `abc` to `u32`
+error: casting function pointer `abc` to `u32`, which truncates the value
   --> $DIR/fn_to_numeric_cast_32bit.rs:43:13
    |
 LL |     let _ = abc as u32;
@@ -134,7 +134,7 @@ error: casting function pointer `abc` to `u128`
 LL |     let _ = abc as u128;
    |             ^^^^^^^^^^^ help: try: `abc as usize`
 
-error: casting function pointer `f` to `i32`
+error: casting function pointer `f` to `i32`, which truncates the value
   --> $DIR/fn_to_numeric_cast_32bit.rs:52:5
    |
 LL |     f as i32

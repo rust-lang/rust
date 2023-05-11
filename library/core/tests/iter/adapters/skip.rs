@@ -1,4 +1,7 @@
 use core::iter::*;
+use core::num::NonZeroUsize;
+
+use super::Unfuse;
 
 #[test]
 fn test_iterator_skip() {
@@ -72,11 +75,14 @@ fn test_iterator_skip_nth() {
 #[test]
 fn test_skip_advance_by() {
     assert_eq!((0..0).skip(10).advance_by(0), Ok(()));
-    assert_eq!((0..0).skip(10).advance_by(1), Err(0));
-    assert_eq!((0u128..(usize::MAX as u128) + 1).skip(usize::MAX).advance_by(usize::MAX), Err(1));
-    assert_eq!((0u128..u128::MAX).skip(usize::MAX).advance_by(1), Ok(()));
+    assert_eq!((0..0).skip(10).advance_by(1), Err(NonZeroUsize::new(1).unwrap()));
+    assert_eq!(
+        (0u128..(usize::MAX as u128) + 1).skip(usize::MAX - 10).advance_by(usize::MAX - 5),
+        Err(NonZeroUsize::new(usize::MAX - 16).unwrap())
+    );
+    assert_eq!((0u128..u128::MAX).skip(usize::MAX - 10).advance_by(20), Ok(()));
 
-    assert_eq!((0..2).skip(1).advance_back_by(10), Err(1));
+    assert_eq!((0..2).skip(1).advance_back_by(10), Err(NonZeroUsize::new(9).unwrap()));
     assert_eq!((0..0).skip(1).advance_back_by(0), Ok(()));
 }
 
@@ -189,4 +195,44 @@ fn test_skip_nth_back() {
     let mut it = xs.iter();
     it.by_ref().skip(2).nth_back(10);
     assert_eq!(it.next_back(), Some(&1));
+}
+
+#[test]
+fn test_skip_non_fused() {
+    let non_fused = Unfuse::new(0..10);
+
+    // `Skip` would previously exhaust the iterator in this `next` call and then erroneously try to
+    // advance it further. `Unfuse` tests that this doesn't happen by panicking in that scenario.
+    let _ = non_fused.skip(20).next();
+}
+
+#[test]
+fn test_skip_non_fused_nth_overflow() {
+    let non_fused = Unfuse::new(0..10);
+
+    // Ensures that calling skip and `nth` where the sum would overflow does not fail for non-fused
+    // iterators.
+    let _ = non_fused.skip(20).nth(usize::MAX);
+}
+
+#[test]
+fn test_skip_overflow_wrapping() {
+    // Test to ensure even on overflowing on `skip+nth` the correct amount of elements are yielded.
+    struct WrappingIterator(usize);
+
+    impl Iterator for WrappingIterator {
+        type Item = usize;
+
+        fn next(&mut self) -> core::option::Option<Self::Item> {
+            <Self as Iterator>::nth(self, 0)
+        }
+
+        fn nth(&mut self, nth: usize) -> core::option::Option<Self::Item> {
+            self.0 = self.0.wrapping_add(nth.wrapping_add(1));
+            Some(self.0)
+        }
+    }
+
+    let wrap = WrappingIterator(0);
+    assert_eq!(wrap.skip(20).nth(usize::MAX), Some(20));
 }

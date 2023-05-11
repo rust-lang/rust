@@ -6,13 +6,15 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::OptLevel;
+use rustc_span::symbol::sym;
 use rustc_target::spec::abi::Abi;
 use rustc_target::spec::{FramePointer, SanitizerSet, StackProbeType, StackProtector};
 use smallvec::SmallVec;
 
 use crate::attributes;
+use crate::errors::{MissingFeatures, SanitizerMemtagRequiresMte, TargetFeatureDisableOrEnable};
 use crate::llvm::AttributePlace::Function;
-use crate::llvm::{self, Attribute, AttributeKind, AttributePlace};
+use crate::llvm::{self, AllocKindFlags, Attribute, AttributeKind, AttributePlace, MemoryEffects};
 use crate::llvm_util;
 pub use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 
@@ -34,6 +36,10 @@ pub fn apply_to_callsite(callsite: &Value, idx: AttributePlace, attrs: &[&Attrib
 /// Get LLVM attribute for the provided inline heuristic.
 #[inline]
 fn inline_attr<'ll>(cx: &CodegenCx<'ll, '_>, inline: InlineAttr) -> Option<&'ll Attribute> {
+    if !cx.tcx.sess.opts.unstable_opts.inline_llvm {
+        // disable LLVM inlining
+        return Some(AttributeKind::NoInline.create_attr(cx.llcx));
+    }
     match inline {
         InlineAttr::Hint => Some(AttributeKind::InlineHint.create_attr(cx.llcx)),
         InlineAttr::Always => Some(AttributeKind::AlwaysInline.create_attr(cx.llcx)),
@@ -55,8 +61,8 @@ pub fn sanitize_attrs<'ll>(
     no_sanitize: SanitizerSet,
 ) -> SmallVec<[&'ll Attribute; 4]> {
     let mut attrs = SmallVec::new();
-    let enabled = cx.tcx.sess.opts.debugging_opts.sanitizer - no_sanitize;
-    if enabled.contains(SanitizerSet::ADDRESS) {
+    let enabled = cx.tcx.sess.opts.unstable_opts.sanitizer - no_sanitize;
+    if enabled.contains(SanitizerSet::ADDRESS) || enabled.contains(SanitizerSet::KERNELADDRESS) {
         attrs.push(llvm::AttributeKind::SanitizeAddress.create_attr(cx.llcx));
     }
     if enabled.contains(SanitizerSet::MEMORY) {
@@ -68,13 +74,16 @@ pub fn sanitize_attrs<'ll>(
     if enabled.contains(SanitizerSet::HWADDRESS) {
         attrs.push(llvm::AttributeKind::SanitizeHWAddress.create_attr(cx.llcx));
     }
+    if enabled.contains(SanitizerSet::SHADOWCALLSTACK) {
+        attrs.push(llvm::AttributeKind::ShadowCallStack.create_attr(cx.llcx));
+    }
     if enabled.contains(SanitizerSet::MEMTAG) {
         // Check to make sure the mte target feature is actually enabled.
         let features = cx.tcx.global_backend_features(());
         let mte_feature =
             features.iter().map(|s| &s[..]).rfind(|n| ["+mte", "-mte"].contains(&&n[..]));
         if let None | Some("-mte") = mte_feature {
-            cx.tcx.sess.err("`-Zsanitizer=memtag` requires `-Ctarget-feature=+mte`");
+            cx.tcx.sess.emit_err(SanitizerMemtagRequiresMte);
         }
 
         attrs.push(llvm::AttributeKind::SanitizeMemTag.create_attr(cx.llcx));
@@ -93,10 +102,10 @@ pub fn uwtable_attr(llcx: &llvm::Context) -> &Attribute {
 
 pub fn frame_pointer_type_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
     let mut fp = cx.sess().target.frame_pointer;
+    let opts = &cx.sess().opts;
     // "mcount" function relies on stack pointer.
     // See <https://sourceware.org/binutils/docs/gprof/Implementation.html>.
-    if cx.sess().instrument_mcount() || matches!(cx.sess().opts.cg.force_frame_pointers, Some(true))
-    {
+    if opts.unstable_opts.instrument_mcount || matches!(opts.cg.force_frame_pointers, Some(true)) {
         fp = FramePointer::Always;
     }
     let attr_value = match fp {
@@ -109,8 +118,9 @@ pub fn frame_pointer_type_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attr
 
 /// Tell LLVM what instrument function to insert.
 #[inline]
-fn instrument_function_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
-    if cx.sess().instrument_mcount() {
+fn instrument_function_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'ll Attribute; 4]> {
+    let mut attrs = SmallVec::new();
+    if cx.sess().opts.unstable_opts.instrument_mcount {
         // Similar to `clang -pg` behavior. Handled by the
         // `post-inline-ee-instrument` LLVM pass.
 
@@ -118,14 +128,49 @@ fn instrument_function_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribu
         // See test/CodeGen/mcount.c in clang.
         let mcount_name = cx.sess().target.mcount.as_ref();
 
-        Some(llvm::CreateAttrStringValue(
+        attrs.push(llvm::CreateAttrStringValue(
             cx.llcx,
             "instrument-function-entry-inlined",
             &mcount_name,
-        ))
-    } else {
-        None
+        ));
     }
+    if let Some(options) = &cx.sess().opts.unstable_opts.instrument_xray {
+        // XRay instrumentation is similar to __cyg_profile_func_{enter,exit}.
+        // Function prologue and epilogue are instrumented with NOP sleds,
+        // a runtime library later replaces them with detours into tracing code.
+        if options.always {
+            attrs.push(llvm::CreateAttrStringValue(cx.llcx, "function-instrument", "xray-always"));
+        }
+        if options.never {
+            attrs.push(llvm::CreateAttrStringValue(cx.llcx, "function-instrument", "xray-never"));
+        }
+        if options.ignore_loops {
+            attrs.push(llvm::CreateAttrString(cx.llcx, "xray-ignore-loops"));
+        }
+        // LLVM will not choose the default for us, but rather requires specific
+        // threshold in absence of "xray-always". Use the same default as Clang.
+        let threshold = options.instruction_threshold.unwrap_or(200);
+        attrs.push(llvm::CreateAttrStringValue(
+            cx.llcx,
+            "xray-instruction-threshold",
+            &threshold.to_string(),
+        ));
+        if options.skip_entry {
+            attrs.push(llvm::CreateAttrString(cx.llcx, "xray-skip-entry"));
+        }
+        if options.skip_exit {
+            attrs.push(llvm::CreateAttrString(cx.llcx, "xray-skip-exit"));
+        }
+    }
+    attrs
+}
+
+fn nojumptables_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
+    if !cx.sess().opts.unstable_opts.no_jump_tables {
+        return None;
+    }
+
+    Some(llvm::CreateAttrStringValue(cx.llcx, "no-jump-tables", "true"))
 }
 
 fn probestack_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
@@ -135,7 +180,7 @@ fn probestack_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
     if cx
         .sess()
         .opts
-        .debugging_opts
+        .unstable_opts
         .sanitizer
         .intersects(SanitizerSet::ADDRESS | SanitizerSet::THREAD)
     {
@@ -148,7 +193,7 @@ fn probestack_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
     }
 
     // probestack doesn't play nice either with gcov profiling.
-    if cx.sess().opts.debugging_opts.profile {
+    if cx.sess().opts.unstable_opts.profile {
         return None;
     }
 
@@ -223,6 +268,10 @@ pub(crate) fn default_optimisation_attrs<'ll>(
     attrs
 }
 
+fn create_alloc_family_attr(llcx: &llvm::Context) -> &llvm::Attribute {
+    llvm::CreateAttrStringValue(llcx, "alloc-family", "__rust_alloc")
+}
+
 /// Composite function which sets LLVM attributes for function depending on its AST (`#[attribute]`)
 /// attributes.
 pub fn from_fn_attrs<'ll, 'tcx>(
@@ -246,13 +295,15 @@ pub fn from_fn_attrs<'ll, 'tcx>(
         OptimizeAttr::Speed => {}
     }
 
-    let inline = if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) || autodiff_attrs.is_active() {
-        InlineAttr::Never
-    } else if codegen_fn_attrs.inline == InlineAttr::None && instance.def.requires_inline(cx.tcx) {
-        InlineAttr::Hint
-    } else {
-        codegen_fn_attrs.inline
-    };
+    let inline =
+        if codegen_fn_attrs.inline == InlineAttr::None && instance.def.requires_inline(cx.tcx) {
+            InlineAttr::Hint
+        } else if autodiff_attrs.is_active() {
+            InlineAttr::Never
+        } else {
+            codegen_fn_attrs.inline
+        };
+
     to_add.extend(inline_attr(cx, inline));
 
     // The `uwtable` attribute according to LLVM is:
@@ -275,13 +326,14 @@ pub fn from_fn_attrs<'ll, 'tcx>(
         to_add.push(uwtable_attr(cx.llcx));
     }
 
-    if cx.sess().opts.debugging_opts.profile_sample_use.is_some() {
+    if cx.sess().opts.unstable_opts.profile_sample_use.is_some() {
         to_add.push(llvm::CreateAttrString(cx.llcx, "use-sample-profile"));
     }
 
     // FIXME: none of these three functions interact with source level attributes.
     to_add.extend(frame_pointer_type_attr(cx));
     to_add.extend(instrument_function_attr(cx));
+    to_add.extend(nojumptables_attr(cx));
     to_add.extend(probestack_attr(cx));
     to_add.extend(stackprotector_attr(cx));
 
@@ -292,18 +344,67 @@ pub fn from_fn_attrs<'ll, 'tcx>(
         to_add.push(AttributeKind::ReturnsTwice.create_attr(cx.llcx));
     }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::FFI_PURE) {
-        to_add.push(AttributeKind::ReadOnly.create_attr(cx.llcx));
+        to_add.push(MemoryEffects::ReadOnly.create_attr(cx.llcx));
     }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::FFI_CONST) {
-        to_add.push(AttributeKind::ReadNone.create_attr(cx.llcx));
+        to_add.push(MemoryEffects::None.create_attr(cx.llcx));
     }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
         to_add.push(AttributeKind::Naked.create_attr(cx.llcx));
+        // HACK(jubilee): "indirect branch tracking" works by attaching prologues to functions.
+        // And it is a module-level attribute, so the alternative is pulling naked functions into new LLVM modules.
+        // Otherwise LLVM's "naked" functions come with endbr prefixes per https://github.com/rust-lang/rust/issues/98768
+        to_add.push(AttributeKind::NoCfCheck.create_attr(cx.llcx));
+        // Need this for AArch64.
+        to_add.push(llvm::CreateAttrStringValue(cx.llcx, "branch-target-enforcement", "false"));
     }
-    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::ALLOCATOR) {
+    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::ALLOCATOR)
+        || codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::ALLOCATOR_ZEROED)
+    {
+        if llvm_util::get_version() >= (15, 0, 0) {
+            to_add.push(create_alloc_family_attr(cx.llcx));
+            // apply to argument place instead of function
+            let alloc_align = AttributeKind::AllocAlign.create_attr(cx.llcx);
+            attributes::apply_to_llfn(llfn, AttributePlace::Argument(1), &[alloc_align]);
+            to_add.push(llvm::CreateAllocSizeAttr(cx.llcx, 0));
+            let mut flags = AllocKindFlags::Alloc | AllocKindFlags::Aligned;
+            if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::ALLOCATOR) {
+                flags |= AllocKindFlags::Uninitialized;
+            } else {
+                flags |= AllocKindFlags::Zeroed;
+            }
+            to_add.push(llvm::CreateAllocKindAttr(cx.llcx, flags));
+        }
         // apply to return place instead of function (unlike all other attributes applied in this function)
         let no_alias = AttributeKind::NoAlias.create_attr(cx.llcx);
         attributes::apply_to_llfn(llfn, AttributePlace::ReturnValue, &[no_alias]);
+    }
+    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::REALLOCATOR) {
+        if llvm_util::get_version() >= (15, 0, 0) {
+            to_add.push(create_alloc_family_attr(cx.llcx));
+            to_add.push(llvm::CreateAllocKindAttr(
+                cx.llcx,
+                AllocKindFlags::Realloc | AllocKindFlags::Aligned,
+            ));
+            // applies to argument place instead of function place
+            let allocated_pointer = AttributeKind::AllocatedPointer.create_attr(cx.llcx);
+            attributes::apply_to_llfn(llfn, AttributePlace::Argument(0), &[allocated_pointer]);
+            // apply to argument place instead of function
+            let alloc_align = AttributeKind::AllocAlign.create_attr(cx.llcx);
+            attributes::apply_to_llfn(llfn, AttributePlace::Argument(2), &[alloc_align]);
+            to_add.push(llvm::CreateAllocSizeAttr(cx.llcx, 3));
+        }
+        let no_alias = AttributeKind::NoAlias.create_attr(cx.llcx);
+        attributes::apply_to_llfn(llfn, AttributePlace::ReturnValue, &[no_alias]);
+    }
+    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::DEALLOCATOR) {
+        if llvm_util::get_version() >= (15, 0, 0) {
+            to_add.push(create_alloc_family_attr(cx.llcx));
+            to_add.push(llvm::CreateAllocKindAttr(cx.llcx, AllocKindFlags::Free));
+            // applies to argument place instead of function place
+            let allocated_pointer = AttributeKind::AllocatedPointer.create_attr(cx.llcx);
+            attributes::apply_to_llfn(llfn, AttributePlace::Argument(0), &[allocated_pointer]);
+        }
     }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::CMSE_NONSECURE_ENTRY) {
         to_add.push(llvm::CreateAttrString(cx.llcx, "cmse_nonsecure_entry"));
@@ -330,17 +431,17 @@ pub fn from_fn_attrs<'ll, 'tcx>(
     ) {
         let span = cx
             .tcx
-            .get_attrs(instance.def_id())
-            .iter()
-            .find(|a| a.has_name(rustc_span::sym::target_feature))
+            .get_attrs(instance.def_id(), sym::target_feature)
+            .next()
             .map_or_else(|| cx.tcx.def_span(instance.def_id()), |a| a.span);
-        let msg = format!(
-            "the target features {} must all be either enabled or disabled together",
-            f.join(", ")
-        );
-        let mut err = cx.tcx.sess.struct_span_err(span, &msg);
-        err.help("add the missing features in a `target_feature` attribute");
-        err.emit();
+        cx.tcx
+            .sess
+            .create_err(TargetFeatureDisableOrEnable {
+                features: f,
+                span: Some(span),
+                missing_features: Some(MissingFeatures),
+            })
+            .emit();
         return;
     }
 
@@ -372,7 +473,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
         // the WebAssembly specification, which has this feature. This won't be
         // needed when LLVM enables this `multivalue` feature by default.
         if !cx.tcx.is_closure(instance.def_id()) {
-            let abi = cx.tcx.fn_sig(instance.def_id()).abi();
+            let abi = cx.tcx.fn_sig(instance.def_id()).skip_binder().abi();
             if abi == Abi::Wasm {
                 function_features.push("+multivalue".to_string());
             }

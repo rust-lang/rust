@@ -100,7 +100,7 @@ fn test_iter() {
     let s = "The %d'th word %% is: `%.*s` %!\n";
     let subs: Vec<_> = iter_subs(s, 0).map(|sub| sub.translate().ok()).collect();
     assert_eq!(
-        subs.iter().map(|ms| ms.as_ref().map(|s| &s[..])).collect::<Vec<_>>(),
+        subs.iter().map(Option::as_deref).collect::<Vec<_>>(),
         vec![Some("{}"), None, Some("{:.*}"), None]
     );
 }

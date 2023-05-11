@@ -8,7 +8,6 @@ use crate::visit::DocVisitor;
 use rustc_hir as hir;
 use rustc_lint::builtin::MISSING_DOCS;
 use rustc_middle::lint::LintLevelSource;
-use rustc_middle::ty::DefIdTree;
 use rustc_session::lint;
 use rustc_span::FileName;
 use serde::Serialize;
@@ -16,7 +15,7 @@ use serde::Serialize;
 use std::collections::BTreeMap;
 use std::ops;
 
-crate const CALCULATE_DOC_COVERAGE: Pass = Pass {
+pub(crate) const CALCULATE_DOC_COVERAGE: Pass = Pass {
     name: "calculate-doc-coverage",
     run: calculate_doc_coverage,
     description: "counts the number of items with and without documentation",
@@ -185,7 +184,7 @@ impl<'a, 'b> CoverageCalculator<'a, 'b> {
 
 impl<'a, 'b> DocVisitor for CoverageCalculator<'a, 'b> {
     fn visit_item(&mut self, i: &clean::Item) {
-        if !i.def_id.is_local() {
+        if !i.item_id.is_local() {
             // non-local items are skipped because they can be out of the users control,
             // especially in the case of trait impls, which rustdoc eagerly inlines
             return;
@@ -215,15 +214,8 @@ impl<'a, 'b> DocVisitor for CoverageCalculator<'a, 'b> {
                     None,
                 );
 
-                let filename = i.span(self.ctx.tcx).filename(self.ctx.sess());
                 let has_doc_example = tests.found_tests != 0;
-                // The `expect_def_id()` should be okay because `local_def_id_to_hir_id`
-                // would presumably panic if a fake `DefIndex` were passed.
-                let hir_id = self
-                    .ctx
-                    .tcx
-                    .hir()
-                    .local_def_id_to_hir_id(i.def_id.expect_def_id().expect_local());
+                let hir_id = DocContext::as_local_hir_id(self.ctx.tcx, i.item_id).unwrap();
                 let (level, source) = self.ctx.tcx.lint_level_at_node(MISSING_DOCS, hir_id);
 
                 // In case we have:
@@ -237,18 +229,18 @@ impl<'a, 'b> DocVisitor for CoverageCalculator<'a, 'b> {
                 // there is no need to require documentation on the fields of tuple variants and
                 // tuple structs.
                 let should_be_ignored = i
-                    .def_id
+                    .item_id
                     .as_def_id()
-                    .and_then(|def_id| self.ctx.tcx.parent(def_id))
+                    .and_then(|def_id| self.ctx.tcx.opt_parent(def_id))
                     .and_then(|def_id| self.ctx.tcx.hir().get_if_local(def_id))
                     .map(|node| {
                         matches!(
                             node,
                             hir::Node::Variant(hir::Variant {
-                                data: hir::VariantData::Tuple(_, _),
+                                data: hir::VariantData::Tuple(_, _, _),
                                 ..
                             }) | hir::Node::Item(hir::Item {
-                                kind: hir::ItemKind::Struct(hir::VariantData::Tuple(_, _), _),
+                                kind: hir::ItemKind::Struct(hir::VariantData::Tuple(_, _, _), _),
                                 ..
                             })
                         )
@@ -261,13 +253,16 @@ impl<'a, 'b> DocVisitor for CoverageCalculator<'a, 'b> {
                 let should_have_docs = !should_be_ignored
                     && (level != lint::Level::Allow || matches!(source, LintLevelSource::Default));
 
-                debug!("counting {:?} {:?} in {:?}", i.type_(), i.name, filename);
-                self.items.entry(filename).or_default().count_item(
-                    has_docs,
-                    has_doc_example,
-                    should_have_doc_example(self.ctx, &i),
-                    should_have_docs,
-                );
+                if let Some(span) = i.span(self.ctx.tcx) {
+                    let filename = span.filename(self.ctx.sess());
+                    debug!("counting {:?} {:?} in {:?}", i.type_(), i.name, filename);
+                    self.items.entry(filename).or_default().count_item(
+                        has_docs,
+                        has_doc_example,
+                        should_have_doc_example(self.ctx, i),
+                        should_have_docs,
+                    );
+                }
             }
         }
 

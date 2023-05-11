@@ -1,4 +1,4 @@
-#![allow(clippy::assertions_on_constants, clippy::eq_op)]
+#![allow(clippy::assertions_on_constants, clippy::eq_op, clippy::let_unit_value)]
 #![feature(inline_const)]
 #![warn(clippy::unimplemented, clippy::unreachable, clippy::todo, clippy::panic)]
 

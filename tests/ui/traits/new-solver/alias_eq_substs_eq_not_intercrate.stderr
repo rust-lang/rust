@@ -1,0 +1,9 @@
+error[E0282]: type annotations needed
+  --> $DIR/alias_eq_substs_eq_not_intercrate.rs:16:12
+   |
+LL |     let _: <_ as TraitB>::Assoc = needs_a::<T>();
+   |            ^^^^^^^^^^^^^^^^^^^^ cannot infer type for associated type `<_ as TraitB>::Assoc`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

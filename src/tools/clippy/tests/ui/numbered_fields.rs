@@ -1,5 +1,6 @@
-//run-rustfix
+//@run-rustfix
 #![warn(clippy::init_numbered_fields)]
+#![allow(unused_tuple_struct_fields)]
 
 #[derive(Default)]
 struct TupleStruct(u32, u32, u8);
@@ -38,4 +39,9 @@ fn main() {
 
     // Ok because it's in macro
     let _ = tuple_struct_init!();
+
+    type Alias = TupleStruct;
+
+    // Aliases can't be tuple constructed #8638
+    let _ = Alias { 0: 0, 1: 1, 2: 2 };
 }

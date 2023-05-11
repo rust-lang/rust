@@ -1,0 +1,14 @@
+error: the associated type `Proj` exists for `Container<T>`, but its trait bounds were not satisfied
+  --> $DIR/not-found-unsatisfied-bounds-1.rs:9:26
+   |
+LL |     let _: Container<T>::Proj = String::new();
+   |                          ^^^^ associated type cannot be referenced on `Container<T>` due to unsatisfied trait bounds
+...
+LL | struct Container<T>(T);
+   | ------------------- associated item `Proj` not found for this struct
+   |
+   = note: the following trait bounds were not satisfied:
+           `T: Clone`
+
+error: aborting due to previous error
+

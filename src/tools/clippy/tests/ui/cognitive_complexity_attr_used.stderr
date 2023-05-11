@@ -4,8 +4,8 @@ error: the function has a cognitive complexity of (3/0)
 LL | fn kaboom() {
    |    ^^^^^^
    |
-   = note: `-D clippy::cognitive-complexity` implied by `-D warnings`
    = help: you could split it up into multiple smaller functions
+   = note: `-D clippy::cognitive-complexity` implied by `-D warnings`
 
 error: aborting due to previous error
 

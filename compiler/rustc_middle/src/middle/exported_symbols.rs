@@ -21,11 +21,29 @@ impl SymbolExportLevel {
     }
 }
 
+/// Kind of exported symbols.
+#[derive(Eq, PartialEq, Debug, Copy, Clone, Encodable, Decodable, HashStable)]
+pub enum SymbolExportKind {
+    Text,
+    Data,
+    Tls,
+}
+
+/// The `SymbolExportInfo` of a symbols specifies symbol-related information
+/// that is relevant to code generation and linking.
+#[derive(Eq, PartialEq, Debug, Copy, Clone, TyEncodable, TyDecodable, HashStable)]
+pub struct SymbolExportInfo {
+    pub level: SymbolExportLevel,
+    pub kind: SymbolExportKind,
+    pub used: bool,
+}
+
 #[derive(Eq, PartialEq, Debug, Copy, Clone, TyEncodable, TyDecodable, HashStable)]
 pub enum ExportedSymbol<'tcx> {
     NonGeneric(DefId),
     Generic(DefId, SubstsRef<'tcx>),
     DropGlue(Ty<'tcx>),
+    ThreadLocalShim(DefId),
     NoDefId(ty::SymbolName<'tcx>),
 }
 
@@ -41,6 +59,10 @@ impl<'tcx> ExportedSymbol<'tcx> {
             ExportedSymbol::DropGlue(ty) => {
                 tcx.symbol_name(ty::Instance::resolve_drop_in_place(tcx, ty))
             }
+            ExportedSymbol::ThreadLocalShim(def_id) => tcx.symbol_name(ty::Instance {
+                def: ty::InstanceDef::ThreadLocalShim(def_id),
+                substs: ty::InternalSubsts::empty(),
+            }),
             ExportedSymbol::NoDefId(symbol_name) => symbol_name,
         }
     }
@@ -50,6 +72,6 @@ pub fn metadata_symbol_name(tcx: TyCtxt<'_>) -> String {
     format!(
         "rust_metadata_{}_{:08x}",
         tcx.crate_name(LOCAL_CRATE),
-        tcx.sess.local_stable_crate_id().to_u64(),
+        tcx.sess.local_stable_crate_id(),
     )
 }

@@ -53,7 +53,26 @@ mod unused_self_allow {
         // shouldn't trigger
         fn unused_self_move(self) {}
     }
+
+    pub struct D;
+
+    impl D {
+        // shouldn't trigger for public methods
+        pub fn unused_self_move(self) {}
+    }
+
+    pub struct E;
+
+    impl E {
+        // shouldn't trigger if body contains todo!()
+        pub fn unused_self_todo(self) {
+            let x = 42;
+            todo!()
+        }
+    }
 }
+
+pub use unused_self_allow::D;
 
 mod used_self {
     use std::pin::Pin;

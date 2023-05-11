@@ -1,13 +1,11 @@
 use clippy_utils::diagnostics::span_lint;
-use rustc_ast::ast::Lit;
 use rustc_lint::EarlyContext;
+use rustc_span::Span;
 
 use super::MIXED_CASE_HEX_LITERALS;
 
-pub(super) fn check(cx: &EarlyContext<'_>, lit: &Lit, suffix: &str, lit_snip: &str) {
-    let maybe_last_sep_idx = if let Some(val) = lit_snip.len().checked_sub(suffix.len() + 1) {
-        val
-    } else {
+pub(super) fn check(cx: &EarlyContext<'_>, lit_span: Span, suffix: &str, lit_snip: &str) {
+    let Some(maybe_last_sep_idx) = lit_snip.len().checked_sub(suffix.len() + 1) else {
         return; // It's useless so shouldn't lint.
     };
     if maybe_last_sep_idx <= 2 {
@@ -25,7 +23,7 @@ pub(super) fn check(cx: &EarlyContext<'_>, lit: &Lit, suffix: &str, lit_snip: &s
             span_lint(
                 cx,
                 MIXED_CASE_HEX_LITERALS,
-                lit.span,
+                lit_span,
                 "inconsistent casing in hexadecimal literal",
             );
             break;

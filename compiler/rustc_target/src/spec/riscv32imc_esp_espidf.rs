@@ -1,5 +1,4 @@
-use crate::spec::{cvs, Target, TargetOptions};
-use crate::spec::{LinkerFlavor, PanicStrategy, RelocModel};
+use crate::spec::{cvs, PanicStrategy, RelocModel, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -13,7 +12,6 @@ pub fn target() -> Target {
             os: "espidf".into(),
             env: "newlib".into(),
             vendor: "espressif".into(),
-            linker_flavor: LinkerFlavor::Gcc,
             linker: Some("riscv32-esp-elf-gcc".into()),
             cpu: "generic-rv32".into(),
 
@@ -26,7 +24,6 @@ pub fn target() -> Target {
             atomic_cas: true,
 
             features: "+m,+c".into(),
-            executables: true,
             panic_strategy: PanicStrategy::Abort,
             relocation_model: RelocModel::Static,
             emit_debug_gdb_scripts: false,

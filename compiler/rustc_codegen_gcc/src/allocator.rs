@@ -1,3 +1,5 @@
+#[cfg(feature="master")]
+use gccjit::FnAttribute;
 use gccjit::{FunctionType, GlobalKind, ToRValue};
 use rustc_ast::expand::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS};
 use rustc_middle::bug;
@@ -7,7 +9,7 @@ use rustc_span::symbol::sym;
 
 use crate::GccContext;
 
-pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, _module_name: &str, kind: AllocatorKind, has_alloc_error_handler: bool) {
+pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, _module_name: &str, kind: AllocatorKind, alloc_error_handler_kind: AllocatorKind) {
     let context = &mods.context;
     let usize =
         match tcx.sess.target.pointer_width {
@@ -50,7 +52,8 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, _module_nam
         let func = context.new_function(None, FunctionType::Exported, output.unwrap_or(void), &args, name, false);
 
         if tcx.sess.target.options.default_hidden_visibility {
-            // TODO(antoyo): set visibility.
+            #[cfg(feature="master")]
+            func.add_attribute(FnAttribute::Visibility(gccjit::Visibility::Hidden));
         }
         if tcx.sess.must_emit_unwind_tables() {
             // TODO(antoyo): emit unwind tables.
@@ -61,7 +64,8 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, _module_nam
             .map(|(index, typ)| context.new_parameter(None, *typ, &format!("param{}", index)))
             .collect();
         let callee = context.new_function(None, FunctionType::Extern, output.unwrap_or(void), &args, callee, false);
-        // TODO(antoyo): set visibility.
+        #[cfg(feature="master")]
+        callee.add_attribute(FnAttribute::Visibility(gccjit::Visibility::Hidden));
 
         let block = func.new_block("entry");
 
@@ -90,19 +94,18 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, _module_nam
         .collect();
     let func = context.new_function(None, FunctionType::Exported, void, &args, name, false);
 
-    let kind =
-        if has_alloc_error_handler {
-            AllocatorKind::Global
-        }
-        else {
-            AllocatorKind::Default
-        };
-    let callee = kind.fn_name(sym::oom);
+    if tcx.sess.target.default_hidden_visibility {
+        #[cfg(feature="master")]
+        func.add_attribute(FnAttribute::Visibility(gccjit::Visibility::Hidden));
+    }
+
+    let callee = alloc_error_handler_kind.fn_name(sym::oom);
     let args: Vec<_> = types.iter().enumerate()
         .map(|(index, typ)| context.new_parameter(None, *typ, &format!("param{}", index)))
         .collect();
     let callee = context.new_function(None, FunctionType::Extern, void, &args, callee, false);
-    //llvm::LLVMRustSetVisibility(callee, llvm::Visibility::Hidden);
+    #[cfg(feature="master")]
+    callee.add_attribute(FnAttribute::Visibility(gccjit::Visibility::Hidden));
 
     let block = func.new_block("entry");
 
@@ -117,7 +120,7 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, _module_nam
 
     let name = OomStrategy::SYMBOL.to_string();
     let global = context.new_global(None, GlobalKind::Exported, i8, name);
-    let value = tcx.sess.opts.debugging_opts.oom.should_panic();
+    let value = tcx.sess.opts.unstable_opts.oom.should_panic();
     let value = context.new_rvalue_from_int(i8, value as i32);
     global.global_set_initializer_rvalue(value);
 }

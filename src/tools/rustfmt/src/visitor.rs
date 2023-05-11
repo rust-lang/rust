@@ -1,14 +1,14 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use rustc_ast::{ast, token::DelimToken, visit, AstLike};
+use rustc_ast::{ast, token::Delimiter, visit};
 use rustc_data_structures::sync::Lrc;
 use rustc_span::{symbol, BytePos, Pos, Span};
 
 use crate::attr::*;
 use crate::comment::{contains_comment, rewrite_comment, CodeCharKind, CommentCodeSlices};
 use crate::config::Version;
-use crate::config::{BraceStyle, Config};
+use crate::config::{BraceStyle, Config, MacroSelector};
 use crate::coverage::transform_missing_snippet;
 use crate::items::{
     format_impl, format_trait, format_trait_alias, is_mod_decl, is_use_item, rewrite_extern_crate,
@@ -382,7 +382,6 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     pub(crate) fn visit_fn(
         &mut self,
         fk: visit::FnKind<'_>,
-        generics: &ast::Generics,
         fd: &ast::FnDecl,
         s: Span,
         defaultness: ast::Defaultness,
@@ -391,12 +390,12 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         let indent = self.block_indent;
         let block;
         let rewrite = match fk {
-            visit::FnKind::Fn(_, ident, _, _, Some(ref b)) => {
+            visit::FnKind::Fn(_, ident, _, _, _, Some(ref b)) => {
                 block = b;
                 self.rewrite_fn_before_block(
                     indent,
                     ident,
-                    &FnSig::from_fn_kind(&fk, generics, fd, defaultness),
+                    &FnSig::from_fn_kind(&fk, fd, defaultness),
                     mk_sp(s.lo(), b.span.lo()),
                 )
             }
@@ -552,8 +551,14 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                             _ => visit::FnCtxt::Foreign,
                         };
                         self.visit_fn(
-                            visit::FnKind::Fn(fn_ctxt, item.ident, sig, &item.vis, Some(body)),
-                            generics,
+                            visit::FnKind::Fn(
+                                fn_ctxt,
+                                item.ident,
+                                sig,
+                                &item.vis,
+                                generics,
+                                Some(body),
+                            ),
                             &sig.decl,
                             item.span,
                             defaultness,
@@ -642,8 +647,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     let inner_attrs = inner_attributes(&ai.attrs);
                     let fn_ctxt = visit::FnCtxt::Assoc(assoc_ctxt);
                     self.visit_fn(
-                        visit::FnKind::Fn(fn_ctxt, ai.ident, sig, &ai.vis, Some(body)),
-                        generics,
+                        visit::FnKind::Fn(fn_ctxt, ai.ident, sig, &ai.vis, generics, Some(body)),
                         &sig.decl,
                         ai.span,
                         defaultness,
@@ -656,7 +660,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     self.push_rewrite(ai.span, rewrite);
                 }
             }
-            (ast::AssocItemKind::TyAlias(ref ty_alias), _) => {
+            (ast::AssocItemKind::Type(ref ty_alias), _) => {
                 self.visit_ty_alias_kind(ty_alias, visitor_kind, ai.span);
             }
             (ast::AssocItemKind::MacCall(ref mac), _) => {
@@ -685,7 +689,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         // with whitespace between the delimiters and trailing semi (i.e. `foo!(abc)     ;`)
         // are formatted correctly.
         let (span, rewrite) = match macro_style(mac, &self.get_context()) {
-            DelimToken::Bracket | DelimToken::Paren if MacroPosition::Item == pos => {
+            Delimiter::Bracket | Delimiter::Parenthesis if MacroPosition::Item == pos => {
                 let search_span = mk_sp(mac.span().hi(), self.snippet_provider.end_pos());
                 let hi = self.snippet_provider.span_before(search_span, ";");
                 let target_span = mk_sp(mac.span().lo(), hi + BytePos(1));
@@ -766,6 +770,15 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         snippet_provider: &'a SnippetProvider,
         report: FormatReport,
     ) -> FmtVisitor<'a> {
+        let mut skip_context = SkipContext::default();
+        let mut macro_names = Vec::new();
+        for macro_selector in config.skip_macro_invocations().0 {
+            match macro_selector {
+                MacroSelector::Name(name) => macro_names.push(name.to_string()),
+                MacroSelector::All => skip_context.macros.skip_all(),
+            }
+        }
+        skip_context.macros.extend(macro_names);
         FmtVisitor {
             parent_context: None,
             parse_sess: parse_session,
@@ -780,7 +793,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             is_macro_def: false,
             macro_rewrite_failure: false,
             report,
-            skip_context: Default::default(),
+            skip_context,
         }
     }
 
@@ -807,8 +820,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 );
             } else {
                 match &attr.kind {
-                    ast::AttrKind::Normal(ref attribute_item, _)
-                        if self.is_unknown_rustfmt_attr(&attribute_item.path.segments) =>
+                    ast::AttrKind::Normal(ref normal)
+                        if self.is_unknown_rustfmt_attr(&normal.item.path.segments) =>
                     {
                         let file_name = self.parse_sess.span_to_filename(attr.span);
                         self.report.append(

@@ -1,0 +1,40 @@
+SOURCE_FILE
+  EXTERN_CRATE
+    EXTERN_KW "extern"
+    WHITESPACE " "
+    CRATE_KW "crate"
+    WHITESPACE " "
+    NAME_REF
+      IDENT "foo"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  EXTERN_CRATE
+    EXTERN_KW "extern"
+    WHITESPACE " "
+    CRATE_KW "crate"
+    WHITESPACE " "
+    NAME_REF
+      IDENT "foo"
+    WHITESPACE " "
+    RENAME
+      AS_KW "as"
+      WHITESPACE " "
+      NAME
+        IDENT "bar"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  EXTERN_CRATE
+    EXTERN_KW "extern"
+    WHITESPACE " "
+    CRATE_KW "crate"
+    WHITESPACE " "
+    NAME_REF
+      SELF_KW "self"
+    WHITESPACE " "
+    RENAME
+      AS_KW "as"
+      WHITESPACE " "
+      NAME
+        IDENT "baz"
+    SEMICOLON ";"
+  WHITESPACE "\n"

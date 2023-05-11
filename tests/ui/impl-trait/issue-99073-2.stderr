@@ -1,0 +1,14 @@
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/issue-99073-2.rs:9:22
+   |
+LL |         let i: u32 = test::<i32>(-1, false);
+   |                      ^^^^^^^^^^^^^^^^^^^^^^ expected `T`, got `u32`
+   |
+note: previous use here
+  --> $DIR/issue-99073-2.rs:16:5
+   |
+LL |     t
+   |     ^
+
+error: aborting due to previous error
+

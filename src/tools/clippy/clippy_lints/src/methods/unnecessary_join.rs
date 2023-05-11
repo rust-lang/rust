@@ -1,10 +1,10 @@
-use clippy_utils::{diagnostics::span_lint_and_sugg, ty::is_type_diagnostic_item};
+use clippy_utils::{diagnostics::span_lint_and_sugg, ty::is_type_lang_item};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind};
+use rustc_hir::{Expr, ExprKind, LangItem};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{Ref, Slice};
-use rustc_span::{sym, Span};
+use rustc_span::Span;
 
 use super::UNNECESSARY_JOIN;
 
@@ -21,7 +21,7 @@ pub(super) fn check<'tcx>(
         // the turbofish for collect is ::<Vec<String>>
         if let Ref(_, ref_type, _) = collect_output_adjusted_type.kind();
         if let Slice(slice) = ref_type.kind();
-        if is_type_diagnostic_item(cx, *slice, sym::String);
+        if is_type_lang_item(cx, *slice, LangItem::String);
         // the argument for join is ""
         if let ExprKind::Lit(spanned) = &join_arg.kind;
         if let LitKind::Str(symbol, _) = spanned.node;
@@ -31,7 +31,7 @@ pub(super) fn check<'tcx>(
                 cx,
                 UNNECESSARY_JOIN,
                 span.with_hi(expr.span.hi()),
-                r#"called `.collect<Vec<String>>().join("")` on an iterator"#,
+                r#"called `.collect::<Vec<String>>().join("")` on an iterator"#,
                 "try using",
                 "collect::<String>()".to_owned(),
                 applicability,

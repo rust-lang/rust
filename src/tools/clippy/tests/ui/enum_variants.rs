@@ -158,4 +158,35 @@ enum Phase {
     PostLookup,
 }
 
+mod issue9018 {
+    enum DoLint {
+        _TypeCreate,
+        _TypeRead,
+        _TypeUpdate,
+        _TypeDestroy,
+    }
+
+    enum DoLintToo {
+        _CreateType,
+        _UpdateType,
+        _DeleteType,
+    }
+
+    enum DoNotLint {
+        _Foo,
+        _Bar,
+        _Baz,
+    }
+}
+
+mod allow_attributes_on_variants {
+    enum Enum {
+        #[allow(clippy::enum_variant_names)]
+        EnumStartsWith,
+        #[allow(clippy::enum_variant_names)]
+        EndsWithEnum,
+        Foo,
+    }
+}
+
 fn main() {}

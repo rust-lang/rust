@@ -1,23 +1,17 @@
 use crate::ich;
+
 use rustc_ast as ast;
-use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::stable_hasher::{HashingControls, NodeIdHashingMode};
+use rustc_data_structures::stable_hasher::{HashStable, HashingControls, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::definitions::{DefPathHash, Definitions};
-use rustc_session::cstore::CrateStore;
+use rustc_hir::definitions::DefPathHash;
+use rustc_session::cstore::Untracked;
 use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Symbol;
-use rustc_span::{BytePos, CachingSourceMapView, SourceFile, Span, SpanData};
-
-fn compute_ignored_attr_names() -> FxHashSet<Symbol> {
-    debug_assert!(!ich::IGNORED_ATTRIBUTES.is_empty());
-    ich::IGNORED_ATTRIBUTES.iter().copied().collect()
-}
+use rustc_span::{BytePos, CachingSourceMapView, SourceFile, Span, SpanData, DUMMY_SP};
 
 /// This is the context state available during incr. comp. hashing. It contains
 /// enough information to transform `DefId`s and `HirId`s into stable `DefPath`s (i.e.,
@@ -25,10 +19,9 @@ fn compute_ignored_attr_names() -> FxHashSet<Symbol> {
 /// things (e.g., each `DefId`/`DefPath` is only hashed once).
 #[derive(Clone)]
 pub struct StableHashingContext<'a> {
-    definitions: &'a Definitions,
-    cstore: &'a dyn CrateStore,
+    untracked: &'a Untracked,
     // The value of `-Z incremental-ignore-spans`.
-    // This field should only be used by `debug_opts_incremental_ignore_span`
+    // This field should only be used by `unstable_opts_incremental_ignore_span`
     incremental_ignore_spans: bool,
     pub(super) body_resolver: BodyResolver<'a>,
     // Very often, we are hashing something that does not need the
@@ -44,90 +37,44 @@ pub struct StableHashingContext<'a> {
 #[derive(Clone, Copy)]
 pub(super) enum BodyResolver<'tcx> {
     Forbidden,
+    Ignore,
     Traverse {
-        hash_bodies: bool,
-        owner: LocalDefId,
+        owner: hir::OwnerId,
         bodies: &'tcx SortedMap<hir::ItemLocalId, &'tcx hir::Body<'tcx>>,
     },
 }
 
 impl<'a> StableHashingContext<'a> {
     #[inline]
-    fn new_with_or_without_spans(
-        sess: &'a Session,
-        definitions: &'a Definitions,
-        cstore: &'a dyn CrateStore,
-        always_ignore_spans: bool,
-    ) -> Self {
-        let hash_spans_initial =
-            !always_ignore_spans && !sess.opts.debugging_opts.incremental_ignore_spans;
+    pub fn new(sess: &'a Session, untracked: &'a Untracked) -> Self {
+        let hash_spans_initial = !sess.opts.unstable_opts.incremental_ignore_spans;
 
         StableHashingContext {
             body_resolver: BodyResolver::Forbidden,
-            definitions,
-            cstore,
-            incremental_ignore_spans: sess.opts.debugging_opts.incremental_ignore_spans,
+            untracked,
+            incremental_ignore_spans: sess.opts.unstable_opts.incremental_ignore_spans,
             caching_source_map: None,
             raw_source_map: sess.source_map(),
-            hashing_controls: HashingControls {
-                hash_spans: hash_spans_initial,
-                node_id_hashing_mode: NodeIdHashingMode::HashDefPath,
-            },
+            hashing_controls: HashingControls { hash_spans: hash_spans_initial },
         }
     }
 
     #[inline]
-    pub fn new(
-        sess: &'a Session,
-        definitions: &'a Definitions,
-        cstore: &'a dyn CrateStore,
-    ) -> Self {
-        Self::new_with_or_without_spans(
-            sess,
-            definitions,
-            cstore,
-            /*always_ignore_spans=*/ false,
-        )
-    }
-
-    #[inline]
-    pub fn ignore_spans(
-        sess: &'a Session,
-        definitions: &'a Definitions,
-        cstore: &'a dyn CrateStore,
-    ) -> Self {
-        let always_ignore_spans = true;
-        Self::new_with_or_without_spans(sess, definitions, cstore, always_ignore_spans)
-    }
-
-    /// Allow hashing
-    #[inline]
-    pub fn while_hashing_hir_bodies(&mut self, hb: bool, f: impl FnOnce(&mut Self)) {
-        let prev = match &mut self.body_resolver {
-            BodyResolver::Forbidden => panic!("Hashing HIR bodies is forbidden."),
-            BodyResolver::Traverse { ref mut hash_bodies, .. } => {
-                std::mem::replace(hash_bodies, hb)
-            }
-        };
-        f(self);
-        match &mut self.body_resolver {
-            BodyResolver::Forbidden => unreachable!(),
-            BodyResolver::Traverse { ref mut hash_bodies, .. } => *hash_bodies = prev,
-        }
+    pub fn without_hir_bodies(&mut self, f: impl FnOnce(&mut StableHashingContext<'_>)) {
+        f(&mut StableHashingContext { body_resolver: BodyResolver::Ignore, ..self.clone() });
     }
 
     #[inline]
     pub fn with_hir_bodies(
         &mut self,
-        hash_bodies: bool,
-        owner: LocalDefId,
-        bodies: &'a SortedMap<hir::ItemLocalId, &'a hir::Body<'a>>,
-        f: impl FnOnce(&mut Self),
+        owner: hir::OwnerId,
+        bodies: &SortedMap<hir::ItemLocalId, &hir::Body<'_>>,
+        f: impl FnOnce(&mut StableHashingContext<'_>),
     ) {
-        let prev = self.body_resolver;
-        self.body_resolver = BodyResolver::Traverse { hash_bodies, owner, bodies };
-        f(self);
-        self.body_resolver = prev;
+        f(&mut StableHashingContext {
+            body_resolver: BodyResolver::Traverse { owner, bodies },
+            ..self.clone()
+        });
     }
 
     #[inline]
@@ -139,29 +86,17 @@ impl<'a> StableHashingContext<'a> {
     }
 
     #[inline]
-    pub fn with_node_id_hashing_mode<F: FnOnce(&mut Self)>(
-        &mut self,
-        mode: NodeIdHashingMode,
-        f: F,
-    ) {
-        let prev = self.hashing_controls.node_id_hashing_mode;
-        self.hashing_controls.node_id_hashing_mode = mode;
-        f(self);
-        self.hashing_controls.node_id_hashing_mode = prev;
-    }
-
-    #[inline]
     pub fn def_path_hash(&self, def_id: DefId) -> DefPathHash {
         if let Some(def_id) = def_id.as_local() {
             self.local_def_path_hash(def_id)
         } else {
-            self.cstore.def_path_hash(def_id)
+            self.untracked.cstore.read().def_path_hash(def_id)
         }
     }
 
     #[inline]
     pub fn local_def_path_hash(&self, def_id: LocalDefId) -> DefPathHash {
-        self.definitions.def_path_hash(def_id)
+        self.untracked.definitions.read().def_path_hash(def_id)
     }
 
     #[inline]
@@ -177,10 +112,7 @@ impl<'a> StableHashingContext<'a> {
 
     #[inline]
     pub fn is_ignored_attr(&self, name: Symbol) -> bool {
-        thread_local! {
-            static IGNORED_ATTRIBUTES: FxHashSet<Symbol> = compute_ignored_attr_names();
-        }
-        IGNORED_ATTRIBUTES.with(|attrs| attrs.contains(&name))
+        ich::IGNORED_ATTRIBUTES.contains(&name)
     }
 
     #[inline]
@@ -203,7 +135,7 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
     }
 
     #[inline]
-    fn debug_opts_incremental_ignore_spans(&self) -> bool {
+    fn unstable_opts_incremental_ignore_spans(&self) -> bool {
         self.incremental_ignore_spans
     }
 
@@ -214,7 +146,7 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
 
     #[inline]
     fn def_span(&self, def_id: LocalDefId) -> Span {
-        self.definitions.def_span(def_id)
+        self.untracked.source_span.get(def_id).unwrap_or(DUMMY_SP)
     }
 
     #[inline]
@@ -228,14 +160,6 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
     #[inline]
     fn hashing_controls(&self) -> HashingControls {
         self.hashing_controls.clone()
-    }
-}
-
-impl<'a> rustc_data_structures::intern::InternedHashingContext for StableHashingContext<'a> {
-    fn with_def_path_and_no_spans(&mut self, f: impl FnOnce(&mut Self)) {
-        self.while_hashing_spans(false, |hcx| {
-            hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| f(hcx))
-        });
     }
 }
 

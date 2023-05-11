@@ -1,4 +1,5 @@
 use core::simd::f32x4;
+use core::simd::SimdFloat;
 
 #[test]
 fn testing() {

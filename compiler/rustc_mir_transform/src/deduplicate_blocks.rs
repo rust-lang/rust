@@ -58,7 +58,7 @@ fn find_duplicates(body: &Body<'_>) -> FxHashMap<BasicBlock, BasicBlock> {
     let mut duplicates = FxHashMap::default();
 
     let bbs_to_go_through =
-        body.basic_blocks().iter_enumerated().filter(|(_, bbd)| !bbd.is_cleanup).count();
+        body.basic_blocks.iter_enumerated().filter(|(_, bbd)| !bbd.is_cleanup).count();
 
     let mut same_hashes =
         FxHashMap::with_capacity_and_hasher(bbs_to_go_through, Default::default());
@@ -71,8 +71,7 @@ fn find_duplicates(body: &Body<'_>) -> FxHashMap<BasicBlock, BasicBlock> {
     // When we see bb1, we see that it is a duplicate of bb3, and therefore insert it in the duplicates list
     // with replacement bb3.
     // When the duplicates are removed, we will end up with only bb3.
-    for (bb, bbd) in body.basic_blocks().iter_enumerated().rev().filter(|(_, bbd)| !bbd.is_cleanup)
-    {
+    for (bb, bbd) in body.basic_blocks.iter_enumerated().rev().filter(|(_, bbd)| !bbd.is_cleanup) {
         // Basic blocks can get really big, so to avoid checking for duplicates in basic blocks
         // that are unlikely to have duplicates, we stop early. The early bail number has been
         // found experimentally by eprintln while compiling the crates in the rustc-perf suite.

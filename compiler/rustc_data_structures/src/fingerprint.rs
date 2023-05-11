@@ -1,6 +1,5 @@
-use crate::stable_hasher;
-use rustc_serialize::{Decodable, Encodable};
-use std::convert::TryInto;
+use crate::stable_hasher::{Hash64, StableHasher, StableHasherResult};
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::hash::{Hash, Hasher};
 
 #[cfg(test)]
@@ -10,32 +9,49 @@ mod tests;
 #[repr(C)]
 pub struct Fingerprint(u64, u64);
 
+pub trait FingerprintComponent {
+    fn as_u64(&self) -> u64;
+}
+
+impl FingerprintComponent for Hash64 {
+    #[inline]
+    fn as_u64(&self) -> u64 {
+        Hash64::as_u64(*self)
+    }
+}
+
+impl FingerprintComponent for u64 {
+    #[inline]
+    fn as_u64(&self) -> u64 {
+        *self
+    }
+}
+
 impl Fingerprint {
     pub const ZERO: Fingerprint = Fingerprint(0, 0);
 
     #[inline]
-    pub fn new(_0: u64, _1: u64) -> Fingerprint {
-        Fingerprint(_0, _1)
+    pub fn new<A, B>(_0: A, _1: B) -> Fingerprint
+    where
+        A: FingerprintComponent,
+        B: FingerprintComponent,
+    {
+        Fingerprint(_0.as_u64(), _1.as_u64())
     }
 
     #[inline]
-    pub fn from_smaller_hash(hash: u64) -> Fingerprint {
-        Fingerprint(hash, hash)
-    }
-
-    #[inline]
-    pub fn to_smaller_hash(&self) -> u64 {
+    pub fn to_smaller_hash(&self) -> Hash64 {
         // Even though both halves of the fingerprint are expected to be good
         // quality hash values, let's still combine the two values because the
         // Fingerprints in DefPathHash have the StableCrateId portion which is
         // the same for all DefPathHashes from the same crate. Combining the
-        // two halfs makes sure we get a good quality hash in such cases too.
-        self.0.wrapping_mul(3).wrapping_add(self.1)
+        // two halves makes sure we get a good quality hash in such cases too.
+        Hash64::new(self.0.wrapping_mul(3).wrapping_add(self.1))
     }
 
     #[inline]
-    pub fn as_value(&self) -> (u64, u64) {
-        (self.0, self.1)
+    pub fn split(&self) -> (Hash64, Hash64) {
+        (Hash64::new(self.0), Hash64::new(self.1))
     }
 
     #[inline]
@@ -46,6 +62,11 @@ impl Fingerprint {
             self.0.wrapping_mul(3).wrapping_add(other.0),
             self.1.wrapping_mul(3).wrapping_add(other.1),
         )
+    }
+
+    #[inline]
+    pub(crate) fn as_u128(self) -> u128 {
+        u128::from(self.1) << 64 | u128::from(self.0)
     }
 
     // Combines two hashes in an order independent way. Make sure this is what
@@ -120,7 +141,7 @@ impl FingerprintHasher for crate::unhash::Unhasher {
         // quality hash values, let's still combine the two values because the
         // Fingerprints in DefPathHash have the StableCrateId portion which is
         // the same for all DefPathHashes from the same crate. Combining the
-        // two halfs makes sure we get a good quality hash in such cases too.
+        // two halves makes sure we get a good quality hash in such cases too.
         //
         // Since `Unhasher` is used only in the context of HashMaps, it is OK
         // to combine the two components in an order-independent way (which is
@@ -132,25 +153,24 @@ impl FingerprintHasher for crate::unhash::Unhasher {
     }
 }
 
-impl stable_hasher::StableHasherResult for Fingerprint {
+impl StableHasherResult for Fingerprint {
     #[inline]
-    fn finish(hasher: stable_hasher::StableHasher) -> Self {
+    fn finish(hasher: StableHasher) -> Self {
         let (_0, _1) = hasher.finalize();
         Fingerprint(_0, _1)
     }
 }
 
-impl_stable_hash_via_hash!(Fingerprint);
+impl_stable_traits_for_trivial_type!(Fingerprint);
 
-impl<E: rustc_serialize::Encoder> Encodable<E> for Fingerprint {
+impl<E: Encoder> Encodable<E> for Fingerprint {
     #[inline]
-    fn encode(&self, s: &mut E) -> Result<(), E::Error> {
-        s.emit_raw_bytes(&self.to_le_bytes())?;
-        Ok(())
+    fn encode(&self, s: &mut E) {
+        s.emit_raw_bytes(&self.to_le_bytes());
     }
 }
 
-impl<D: rustc_serialize::Decoder> Decodable<D> for Fingerprint {
+impl<D: Decoder> Decodable<D> for Fingerprint {
     #[inline]
     fn decode(d: &mut D) -> Self {
         Fingerprint::from_le_bytes(d.read_raw_bytes(16).try_into().unwrap())
@@ -185,16 +205,16 @@ impl std::fmt::Display for PackedFingerprint {
     }
 }
 
-impl<E: rustc_serialize::Encoder> Encodable<E> for PackedFingerprint {
+impl<E: Encoder> Encodable<E> for PackedFingerprint {
     #[inline]
-    fn encode(&self, s: &mut E) -> Result<(), E::Error> {
+    fn encode(&self, s: &mut E) {
         // Copy to avoid taking reference to packed field.
         let copy = self.0;
-        copy.encode(s)
+        copy.encode(s);
     }
 }
 
-impl<D: rustc_serialize::Decoder> Decodable<D> for PackedFingerprint {
+impl<D: Decoder> Decodable<D> for PackedFingerprint {
     #[inline]
     fn decode(d: &mut D) -> Self {
         Self(Fingerprint::decode(d))

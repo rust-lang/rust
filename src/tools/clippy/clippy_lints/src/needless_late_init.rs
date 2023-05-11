@@ -1,10 +1,14 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::path_to_local;
 use clippy_utils::source::snippet_opt;
-use clippy_utils::visitors::{expr_visitor, is_local_used};
-use rustc_errors::Applicability;
-use rustc_hir::intravisit::Visitor;
-use rustc_hir::{Block, Expr, ExprKind, HirId, Local, LocalSource, MatchSource, Node, Pat, PatKind, Stmt, StmtKind};
+use clippy_utils::ty::needs_ordered_drop;
+use clippy_utils::visitors::{for_each_expr, for_each_expr_with_closures, is_local_used};
+use core::ops::ControlFlow;
+use rustc_errors::{Applicability, MultiSpan};
+use rustc_hir::{
+    BindingAnnotation, Block, Expr, ExprKind, HirId, Local, LocalSource, MatchSource, Node, Pat, PatKind, Stmt,
+    StmtKind,
+};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
@@ -52,7 +56,7 @@ declare_clippy_lint! {
     ///     -1
     /// };
     /// ```
-    #[clippy::version = "1.58.0"]
+    #[clippy::version = "1.59.0"]
     pub NEEDLESS_LATE_INIT,
     style,
     "late initializations that can be replaced by a `let` statement with an initializer"
@@ -60,17 +64,36 @@ declare_clippy_lint! {
 declare_lint_pass!(NeedlessLateInit => [NEEDLESS_LATE_INIT]);
 
 fn contains_assign_expr<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'tcx>) -> bool {
-    let mut seen = false;
-    expr_visitor(cx, |expr| {
-        if let ExprKind::Assign(..) = expr.kind {
-            seen = true;
+    for_each_expr_with_closures(cx, stmt, |e| {
+        if matches!(e.kind, ExprKind::Assign(..)) {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
         }
-
-        !seen
     })
-    .visit_stmt(stmt);
+    .is_some()
+}
 
-    seen
+fn contains_let(cond: &Expr<'_>) -> bool {
+    for_each_expr(cond, |e| {
+        if matches!(e.kind, ExprKind::Let(_)) {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    })
+    .is_some()
+}
+
+fn stmt_needs_ordered_drop(cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
+    let StmtKind::Local(local) = stmt.kind else { return false };
+    !local.pat.walk_short(|pat| {
+        if let PatKind::Binding(.., None) = pat.kind {
+            !needs_ordered_drop(cx, cx.typeck_results().pat_ty(pat))
+        } else {
+            true
+        }
+    })
 }
 
 #[derive(Debug)]
@@ -156,23 +179,27 @@ fn assignment_suggestions<'tcx>(
 
     let suggestions = assignments
         .iter()
-        .map(|assignment| Some((assignment.span.until(assignment.rhs_span), String::new())))
-        .chain(assignments.iter().map(|assignment| {
-            Some((
-                assignment.rhs_span.shrink_to_hi().with_hi(assignment.span.hi()),
-                String::new(),
-            ))
-        }))
-        .collect::<Option<Vec<(Span, String)>>>()?;
+        .flat_map(|assignment| {
+            let mut spans = vec![assignment.span.until(assignment.rhs_span)];
 
-    let applicability = if suggestions.len() > 1 {
+            if assignment.rhs_span.hi() != assignment.span.hi() {
+                spans.push(assignment.rhs_span.shrink_to_hi().with_hi(assignment.span.hi()));
+            }
+
+            spans
+        })
+        .map(|span| (span, String::new()))
+        .collect::<Vec<(Span, String)>>();
+
+    match suggestions.len() {
+        // All of `exprs` are never types
+        // https://github.com/rust-lang/rust-clippy/issues/8911
+        0 => None,
+        1 => Some((Applicability::MachineApplicable, suggestions)),
         // multiple suggestions don't work with rustfix in multipart_suggest
         // https://github.com/rust-lang/rustfix/issues/141
-        Applicability::Unspecified
-    } else {
-        Applicability::MachineApplicable
-    };
-    Some((applicability, suggestions))
+        _ => Some((Applicability::Unspecified, suggestions)),
+    }
 }
 
 struct Usage<'tcx> {
@@ -187,11 +214,14 @@ fn first_usage<'tcx>(
     local_stmt_id: HirId,
     block: &'tcx Block<'tcx>,
 ) -> Option<Usage<'tcx>> {
+    let significant_drop = needs_ordered_drop(cx, cx.typeck_results().node_type(binding_id));
+
     block
         .stmts
         .iter()
         .skip_while(|stmt| stmt.hir_id != local_stmt_id)
         .skip(1)
+        .take_while(|stmt| !significant_drop || !stmt_needs_ordered_drop(cx, stmt))
         .find(|&stmt| is_local_used(cx, stmt, binding_id))
         .and_then(|stmt| match stmt.kind {
             StmtKind::Expr(expr) => Some(Usage {
@@ -235,44 +265,47 @@ fn check<'tcx>(
     match usage.expr.kind {
         ExprKind::Assign(..) => {
             let assign = LocalAssign::new(cx, usage.expr, binding_id)?;
+            let mut msg_span = MultiSpan::from_spans(vec![local_stmt.span, assign.span]);
+            msg_span.push_span_label(local_stmt.span, "created here");
+            msg_span.push_span_label(assign.span, "initialised here");
 
             span_lint_and_then(
                 cx,
                 NEEDLESS_LATE_INIT,
-                local_stmt.span,
-                "unneeded late initalization",
+                msg_span,
+                "unneeded late initialization",
                 |diag| {
                     diag.tool_only_span_suggestion(
                         local_stmt.span,
                         "remove the local",
-                        String::new(),
+                        "",
                         Applicability::MachineApplicable,
                     );
 
                     diag.span_suggestion(
                         assign.lhs_span,
-                        &format!("declare `{}` here", binding_name),
+                        format!("declare `{binding_name}` here"),
                         let_snippet,
                         Applicability::MachineApplicable,
                     );
                 },
             );
         },
-        ExprKind::If(_, then_expr, Some(else_expr)) => {
+        ExprKind::If(cond, then_expr, Some(else_expr)) if !contains_let(cond) => {
             let (applicability, suggestions) = assignment_suggestions(cx, binding_id, [then_expr, else_expr])?;
 
             span_lint_and_then(
                 cx,
                 NEEDLESS_LATE_INIT,
                 local_stmt.span,
-                "unneeded late initalization",
+                "unneeded late initialization",
                 |diag| {
                     diag.tool_only_span_suggestion(local_stmt.span, "remove the local", String::new(), applicability);
 
                     diag.span_suggestion_verbose(
                         usage.stmt.span.shrink_to_lo(),
-                        &format!("declare `{}` here", binding_name),
-                        format!("{} = ", let_snippet),
+                        format!("declare `{binding_name}` here"),
+                        format!("{let_snippet} = "),
                         applicability,
                     );
 
@@ -282,7 +315,7 @@ fn check<'tcx>(
                         diag.span_suggestion(
                             usage.stmt.span.shrink_to_hi(),
                             "add a semicolon after the `if` expression",
-                            ";".to_string(),
+                            ";",
                             applicability,
                         );
                     }
@@ -296,14 +329,14 @@ fn check<'tcx>(
                 cx,
                 NEEDLESS_LATE_INIT,
                 local_stmt.span,
-                "unneeded late initalization",
+                "unneeded late initialization",
                 |diag| {
                     diag.tool_only_span_suggestion(local_stmt.span, "remove the local", String::new(), applicability);
 
                     diag.span_suggestion_verbose(
                         usage.stmt.span.shrink_to_lo(),
-                        &format!("declare `{}` here", binding_name),
-                        format!("{} = ", let_snippet),
+                        format!("declare `{binding_name}` here"),
+                        format!("{let_snippet} = "),
                         applicability,
                     );
 
@@ -317,7 +350,7 @@ fn check<'tcx>(
                         diag.span_suggestion(
                             usage.stmt.span.shrink_to_hi(),
                             "add a semicolon after the `match` expression",
-                            ";".to_string(),
+                            ";",
                             applicability,
                         );
                     }
@@ -333,12 +366,11 @@ fn check<'tcx>(
 impl<'tcx> LateLintPass<'tcx> for NeedlessLateInit {
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'tcx>) {
         let mut parents = cx.tcx.hir().parent_iter(local.hir_id);
-
         if_chain! {
             if let Local {
                 init: None,
                 pat: &Pat {
-                    kind: PatKind::Binding(_, binding_id, _, None),
+                    kind: PatKind::Binding(BindingAnnotation::NONE, binding_id, _, None),
                     ..
                 },
                 source: LocalSource::Normal,

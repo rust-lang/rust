@@ -15,7 +15,7 @@ use crate::task::{Context, Poll};
 /// # Examples
 ///
 /// ```
-/// #![feature(future_join, future_poll_fn)]
+/// #![feature(future_join)]
 ///
 /// use std::future::join;
 ///
@@ -31,7 +31,7 @@ use crate::task::{Context, Poll};
 /// `join!` is variadic, so you can pass any number of futures:
 ///
 /// ```
-/// #![feature(future_join, future_poll_fn)]
+/// #![feature(future_join)]
 ///
 /// use std::future::join;
 ///

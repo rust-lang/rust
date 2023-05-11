@@ -7,7 +7,7 @@ edition = "2021"
 proc-macro = true
 
 [dependencies]
-synstructure = "0.12.1"
-syn = { version = "1", features = ["full"] }
+synstructure = "0.13.0"
+syn = { version = "2", features = ["full"] }
 proc-macro2 = "1"
 quote = "1"

@@ -1,12 +1,12 @@
 use crate::abi::Endian;
-use crate::spec::{LinkerFlavor, Target};
+use crate::spec::{Cc, LinkerFlavor, Lld, Target};
 
 pub fn target() -> Target {
     let mut base = super::linux_gnu_base::opts();
     base.endian = Endian::Big;
     base.cpu = "v9".into();
     base.max_atomic_width = Some(64);
-    base.pre_link_args.entry(LinkerFlavor::Gcc).or_default().push("-mv8plus".into());
+    base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-mv8plus"]);
 
     Target {
         llvm_target: "sparc-unknown-linux-gnu".into(),

@@ -1,0 +1,11 @@
+// MIR for `tuple` after built
+
+fn tuple() -> (i32, bool) {
+    let mut _0: (i32, bool);             // return place in scope 0 at $DIR/composite_return.rs:+0:15: +0:26
+
+    bb0: {
+        (_0.0: i32) = const 1_i32;       // scope 0 at $DIR/composite_return.rs:+4:13: +4:22
+        (_0.1: bool) = const true;       // scope 0 at $DIR/composite_return.rs:+5:13: +5:25
+        return;                          // scope 0 at $DIR/composite_return.rs:+6:13: +6:21
+    }
+}

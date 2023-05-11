@@ -1,7 +1,7 @@
 //! A pass that eliminates branches on uninhabited enum variants.
 
 use crate::MirPass;
-use rustc_data_structures::stable_set::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir::{
     BasicBlockData, Body, Local, Operand, Rvalue, StatementKind, SwitchTargets, Terminator,
     TerminatorKind,
@@ -65,7 +65,7 @@ fn variant_discriminants<'tcx>(
         Variants::Multiple { variants, .. } => variants
             .iter_enumerated()
             .filter_map(|(idx, layout)| {
-                (layout.abi() != Abi::Uninhabited)
+                (layout.abi != Abi::Uninhabited)
                     .then(|| ty.discriminant_for_variant(tcx, idx).unwrap().val)
             })
             .collect(),
@@ -79,7 +79,7 @@ fn ensure_otherwise_unreachable<'tcx>(
     targets: &SwitchTargets,
 ) -> Option<BasicBlockData<'tcx>> {
     let otherwise = targets.otherwise();
-    let bb = &body.basic_blocks()[otherwise];
+    let bb = &body.basic_blocks[otherwise];
     if bb.terminator().kind == TerminatorKind::Unreachable
         && bb.statements.iter().all(|s| matches!(&s.kind, StatementKind::StorageDead(_)))
     {
@@ -102,14 +102,16 @@ impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         trace!("UninhabitedEnumBranching starting for {:?}", body.source);
 
-        for bb in body.basic_blocks().indices() {
+        for bb in body.basic_blocks.indices() {
             trace!("processing block {:?}", bb);
 
-            let Some(discriminant_ty) = get_switched_on_type(&body.basic_blocks()[bb], tcx, body) else {
+            let Some(discriminant_ty) = get_switched_on_type(&body.basic_blocks[bb], tcx, body) else {
                 continue;
             };
 
-            let layout = tcx.layout_of(tcx.param_env(body.source.def_id()).and(discriminant_ty));
+            let layout = tcx.layout_of(
+                tcx.param_env_reveal_all_normalized(body.source.def_id()).and(discriminant_ty),
+            );
 
             let allowed_variants = if let Ok(layout) = layout {
                 variant_discriminants(&layout, discriminant_ty, tcx)

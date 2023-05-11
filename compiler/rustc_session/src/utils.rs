@@ -1,15 +1,10 @@
-use crate::parse::ParseSess;
 use crate::session::Session;
-use rustc_ast::token::{self, DelimToken, Nonterminal, Token};
-use rustc_ast::tokenstream::CanSynthesizeMissingTokens;
-use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_data_structures::profiling::VerboseTimingGuard;
+use rustc_fs_util::try_canonicalize;
 use std::path::{Path, PathBuf};
 
-pub type NtToTokenstream = fn(&Nonterminal, &ParseSess, CanSynthesizeMissingTokens) -> TokenStream;
-
 impl Session {
-    pub fn timer<'a>(&'a self, what: &'static str) -> VerboseTimingGuard<'a> {
+    pub fn timer(&self, what: &'static str) -> VerboseTimingGuard<'_> {
         self.prof.verbose_generic_activity(what)
     }
     pub fn time<R>(&self, what: &'static str, f: impl FnOnce() -> R) -> R {
@@ -18,6 +13,7 @@ impl Session {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
+#[derive(HashStable_Generic)]
 pub enum NativeLibKind {
     /// Static library (e.g. `libfoo.a` on Linux or `foo.lib` on Windows/MSVC)
     Static {
@@ -39,6 +35,13 @@ pub enum NativeLibKind {
         /// Whether the framework will be linked only if it satisfies some undefined symbols
         as_needed: Option<bool>,
     },
+    /// Argument which is passed to linker, relative order with libraries and other arguments
+    /// is preserved
+    LinkArg,
+
+    /// Module imported from WebAssembly
+    WasmImportModule,
+
     /// The library kind wasn't specified, `Dylib` is currently used as a default.
     Unspecified,
 }
@@ -52,14 +55,27 @@ impl NativeLibKind {
             NativeLibKind::Dylib { as_needed } | NativeLibKind::Framework { as_needed } => {
                 as_needed.is_some()
             }
-            NativeLibKind::RawDylib | NativeLibKind::Unspecified => false,
+            NativeLibKind::RawDylib
+            | NativeLibKind::Unspecified
+            | NativeLibKind::LinkArg
+            | NativeLibKind::WasmImportModule => false,
         }
+    }
+
+    pub fn is_statically_included(&self) -> bool {
+        matches!(self, NativeLibKind::Static { .. })
+    }
+
+    pub fn is_dllimport(&self) -> bool {
+        matches!(
+            self,
+            NativeLibKind::Dylib { .. } | NativeLibKind::RawDylib | NativeLibKind::Unspecified
+        )
     }
 }
 
-rustc_data_structures::impl_stable_hash_via_hash!(NativeLibKind);
-
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
+#[derive(HashStable_Generic)]
 pub struct NativeLib {
     pub name: String,
     pub new_name: Option<String>,
@@ -73,8 +89,6 @@ impl NativeLib {
     }
 }
 
-rustc_data_structures::impl_stable_hash_via_hash!(NativeLib);
-
 /// A path that has been canonicalized along with its original, non-canonicalized form
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CanonicalizedPath {
@@ -85,7 +99,7 @@ pub struct CanonicalizedPath {
 
 impl CanonicalizedPath {
     pub fn new(path: &Path) -> Self {
-        Self { original: path.to_owned(), canonicalized: std::fs::canonicalize(path).ok() }
+        Self { original: path.to_owned(), canonicalized: try_canonicalize(path).ok() }
     }
 
     pub fn canonicalized(&self) -> &PathBuf {
@@ -94,57 +108,5 @@ impl CanonicalizedPath {
 
     pub fn original(&self) -> &PathBuf {
         &self.original
-    }
-}
-
-// FIXME: Find a better spot for this - it needs to be accessible from `rustc_ast_lowering`,
-// and needs to access `ParseSess
-pub struct FlattenNonterminals<'a> {
-    pub parse_sess: &'a ParseSess,
-    pub synthesize_tokens: CanSynthesizeMissingTokens,
-    pub nt_to_tokenstream: NtToTokenstream,
-}
-
-impl<'a> FlattenNonterminals<'a> {
-    pub fn process_token_stream(&mut self, tokens: TokenStream) -> TokenStream {
-        fn can_skip(stream: &TokenStream) -> bool {
-            stream.trees().all(|tree| match tree {
-                TokenTree::Token(token) => !matches!(token.kind, token::Interpolated(_)),
-                TokenTree::Delimited(_, _, inner) => can_skip(&inner),
-            })
-        }
-
-        if can_skip(&tokens) {
-            return tokens;
-        }
-
-        tokens.into_trees().flat_map(|tree| self.process_token_tree(tree).into_trees()).collect()
-    }
-
-    pub fn process_token_tree(&mut self, tree: TokenTree) -> TokenStream {
-        match tree {
-            TokenTree::Token(token) => self.process_token(token),
-            TokenTree::Delimited(span, delim, tts) => {
-                TokenTree::Delimited(span, delim, self.process_token_stream(tts)).into()
-            }
-        }
-    }
-
-    pub fn process_token(&mut self, token: Token) -> TokenStream {
-        match token.kind {
-            token::Interpolated(nt) if let token::NtIdent(ident, is_raw) = *nt => {
-                TokenTree::Token(Token::new(token::Ident(ident.name, is_raw), ident.span)).into()
-            }
-            token::Interpolated(nt) => {
-                let tts = (self.nt_to_tokenstream)(&nt, self.parse_sess, self.synthesize_tokens);
-                TokenTree::Delimited(
-                    DelimSpan::from_single(token.span),
-                    DelimToken::NoDelim,
-                    self.process_token_stream(tts),
-                )
-                .into()
-            }
-            _ => TokenTree::Token(token).into(),
-        }
     }
 }

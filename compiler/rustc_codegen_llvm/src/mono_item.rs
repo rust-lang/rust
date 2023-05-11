@@ -1,6 +1,7 @@
 use crate::attributes;
 use crate::base;
 use crate::context::CodegenCx;
+use crate::errors::SymbolAlreadyDefined;
 use crate::llvm;
 use crate::type_of::LayoutLlvmExt;
 use rustc_codegen_ssa::traits::*;
@@ -8,10 +9,9 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 pub use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::mir::mono::{Linkage, Visibility};
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf};
-use rustc_middle::ty::{self, Instance, TypeFoldable};
+use rustc_middle::ty::{self, Instance, TypeVisitableExt};
 use rustc_session::config::CrateType;
 use rustc_target::spec::RelocModel;
-use tracing::debug;
 
 impl<'tcx> PreDefineMethods<'tcx> for CodegenCx<'_, 'tcx> {
     fn predefine_static(
@@ -26,10 +26,8 @@ impl<'tcx> PreDefineMethods<'tcx> for CodegenCx<'_, 'tcx> {
         let llty = self.layout_of(ty).llvm_type(self);
 
         let g = self.define_global(symbol_name, llty).unwrap_or_else(|| {
-            self.sess().span_fatal(
-                self.tcx.def_span(def_id),
-                &format!("symbol `{}` is already defined", symbol_name),
-            )
+            self.sess()
+                .emit_fatal(SymbolAlreadyDefined { span: self.tcx.def_span(def_id), symbol_name })
         });
 
         unsafe {
@@ -50,7 +48,7 @@ impl<'tcx> PreDefineMethods<'tcx> for CodegenCx<'_, 'tcx> {
         visibility: Visibility,
         symbol_name: &str,
     ) {
-        assert!(!instance.substs.needs_infer());
+        assert!(!instance.substs.has_infer());
 
         let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
         let lldecl = self.declare_fn(symbol_name, fn_abi);

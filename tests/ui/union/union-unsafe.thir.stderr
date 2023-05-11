@@ -1,0 +1,75 @@
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:33:6
+   |
+LL |     *(u.p) = 13;
+   |      ^^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:46:6
+   |
+LL |     *u3.a = T::default();
+   |      ^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:52:6
+   |
+LL |     *u3.a = T::default();
+   |      ^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:60:13
+   |
+LL |     let a = u1.a;
+   |             ^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:63:14
+   |
+LL |     let U1 { a } = u1;
+   |              ^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:64:8
+   |
+LL |     if let U1 { a: 12 } = u1 {}
+   |        ^^^^^^^^^^^^^^^^^^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:69:6
+   |
+LL |     *u2.a = String::from("new");
+   |      ^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:73:6
+   |
+LL |     *u3.a = 1;
+   |      ^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:77:6
+   |
+LL |     *u3.a = String::from("new");
+   |      ^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0133`.

@@ -9,12 +9,13 @@ use smallvec::{smallvec, SmallVec};
 /// this adds an extra parameter pointing to where the return value needs to be stored.
 pub(super) fn codegen_return_param<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
-    ssa_analyzed: &rustc_index::vec::IndexVec<Local, crate::analyze::SsaKind>,
+    ssa_analyzed: &rustc_index::IndexSlice<Local, crate::analyze::SsaKind>,
     block_params_iter: &mut impl Iterator<Item = Value>,
 ) -> CPlace<'tcx> {
     let (ret_place, ret_param): (_, SmallVec<[_; 2]>) = match fx.fn_abi.as_ref().unwrap().ret.mode {
-        PassMode::Ignore | PassMode::Direct(_) | PassMode::Pair(_, _) | PassMode::Cast(_) => {
-            let is_ssa = ssa_analyzed[RETURN_PLACE] == crate::analyze::SsaKind::Ssa;
+        PassMode::Ignore | PassMode::Direct(_) | PassMode::Pair(_, _) | PassMode::Cast(..) => {
+            let is_ssa =
+                ssa_analyzed[RETURN_PLACE].is_ssa(fx, fx.fn_abi.as_ref().unwrap().ret.layout.ty);
             (
                 super::make_local_place(
                     fx,
@@ -44,7 +45,7 @@ pub(super) fn codegen_return_param<'tcx>(
         Some(RETURN_PLACE),
         None,
         &ret_param,
-        fx.fn_abi.as_ref().unwrap().ret.mode,
+        &fx.fn_abi.as_ref().unwrap().ret.mode,
         fx.fn_abi.as_ref().unwrap().ret.layout,
     );
 
@@ -56,27 +57,26 @@ pub(super) fn codegen_return_param<'tcx>(
 pub(super) fn codegen_with_call_return_arg<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     ret_arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
-    ret_place: Option<CPlace<'tcx>>,
+    ret_place: CPlace<'tcx>,
     f: impl FnOnce(&mut FunctionCx<'_, '_, 'tcx>, Option<Value>) -> Inst,
 ) {
     let (ret_temp_place, return_ptr) = match ret_arg_abi.mode {
         PassMode::Ignore => (None, None),
-        PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ } => match ret_place {
-            Some(ret_place) if matches!(ret_place.inner(), CPlaceInner::Addr(_, None)) => {
+        PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ } => {
+            if let Some(ret_ptr) = ret_place.try_to_ptr() {
                 // This is an optimization to prevent unnecessary copies of the return value when
                 // the return place is already a memory place as opposed to a register.
                 // This match arm can be safely removed.
-                (None, Some(ret_place.to_ptr().get_addr(fx)))
-            }
-            _ => {
+                (None, Some(ret_ptr.get_addr(fx)))
+            } else {
                 let place = CPlace::new_stack_slot(fx, ret_arg_abi.layout);
                 (Some(place), Some(place.to_ptr().get_addr(fx)))
             }
-        },
+        }
         PassMode::Indirect { attrs: _, extra_attrs: Some(_), on_stack: _ } => {
             unreachable!("unsized return value")
         }
-        PassMode::Direct(_) | PassMode::Pair(_, _) | PassMode::Cast(_) => (None, None),
+        PassMode::Direct(_) | PassMode::Pair(_, _) | PassMode::Cast(..) => (None, None),
     };
 
     let call_inst = f(fx, return_ptr);
@@ -84,39 +84,25 @@ pub(super) fn codegen_with_call_return_arg<'tcx>(
     match ret_arg_abi.mode {
         PassMode::Ignore => {}
         PassMode::Direct(_) => {
-            if let Some(ret_place) = ret_place {
-                let ret_val = fx.bcx.inst_results(call_inst)[0];
-                ret_place.write_cvalue(fx, CValue::by_val(ret_val, ret_arg_abi.layout));
-            }
+            let ret_val = fx.bcx.inst_results(call_inst)[0];
+            ret_place.write_cvalue(fx, CValue::by_val(ret_val, ret_arg_abi.layout));
         }
         PassMode::Pair(_, _) => {
-            if let Some(ret_place) = ret_place {
-                let ret_val_a = fx.bcx.inst_results(call_inst)[0];
-                let ret_val_b = fx.bcx.inst_results(call_inst)[1];
-                ret_place.write_cvalue(
-                    fx,
-                    CValue::by_val_pair(ret_val_a, ret_val_b, ret_arg_abi.layout),
-                );
-            }
+            let ret_val_a = fx.bcx.inst_results(call_inst)[0];
+            let ret_val_b = fx.bcx.inst_results(call_inst)[1];
+            ret_place
+                .write_cvalue(fx, CValue::by_val_pair(ret_val_a, ret_val_b, ret_arg_abi.layout));
         }
-        PassMode::Cast(cast) => {
-            if let Some(ret_place) = ret_place {
-                let results = fx
-                    .bcx
-                    .inst_results(call_inst)
-                    .iter()
-                    .copied()
-                    .collect::<SmallVec<[Value; 2]>>();
-                let result =
-                    super::pass_mode::from_casted_value(fx, &results, ret_place.layout(), cast);
-                ret_place.write_cvalue(fx, result);
-            }
+        PassMode::Cast(ref cast, _) => {
+            let results =
+                fx.bcx.inst_results(call_inst).iter().copied().collect::<SmallVec<[Value; 2]>>();
+            let result =
+                super::pass_mode::from_casted_value(fx, &results, ret_place.layout(), cast);
+            ret_place.write_cvalue(fx, result);
         }
         PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ } => {
-            if let (Some(ret_place), Some(ret_temp_place)) = (ret_place, ret_temp_place) {
-                // Both ret_place and ret_temp_place must be Some. If ret_place is None, this is
-                // a non-returning call. If ret_temp_place is None, it is not necessary to copy the
-                // return value.
+            if let Some(ret_temp_place) = ret_temp_place {
+                // If ret_temp_place is None, it is not necessary to copy the return value.
                 let ret_temp_value = ret_temp_place.to_cvalue(fx);
                 ret_place.write_cvalue(fx, ret_temp_value);
             }
@@ -146,7 +132,7 @@ pub(crate) fn codegen_return(fx: &mut FunctionCx<'_, '_, '_>) {
             let (ret_val_a, ret_val_b) = place.to_cvalue(fx).load_scalar_pair(fx);
             fx.bcx.ins().return_(&[ret_val_a, ret_val_b]);
         }
-        PassMode::Cast(cast) => {
+        PassMode::Cast(ref cast, _) => {
             let place = fx.get_local_place(RETURN_PLACE);
             let ret_val = place.to_cvalue(fx);
             let ret_vals = super::pass_mode::to_casted_value(fx, ret_val, cast);

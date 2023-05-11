@@ -1,0 +1,28 @@
+error[E0277]: can't compare `TypeId` with `TypeId` in const contexts
+  --> $DIR/issue-73976-monomorphic.rs:21:5
+   |
+LL |     GetTypeId::<T>::VALUE == GetTypeId::<usize>::VALUE
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `TypeId == TypeId`
+   |
+   = help: the trait `~const PartialEq` is not implemented for `TypeId`
+note: the trait `PartialEq` is implemented for `TypeId`, but that implementation is not `const`
+  --> $DIR/issue-73976-monomorphic.rs:21:5
+   |
+LL |     GetTypeId::<T>::VALUE == GetTypeId::<usize>::VALUE
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0015]: cannot call non-const operator in constant functions
+  --> $DIR/issue-73976-monomorphic.rs:21:5
+   |
+LL |     GetTypeId::<T>::VALUE == GetTypeId::<usize>::VALUE
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: impl defined here, but it is not `const`
+  --> $SRC_DIR/core/src/any.rs:LL:COL
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+   = note: this error originates in the derive macro `PartialEq` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0015, E0277.
+For more information about an error, try `rustc --explain E0015`.

@@ -1,4 +1,5 @@
 use core::cell::RefCell;
+use core::mem::{self, MaybeUninit};
 use core::num::NonZeroUsize;
 use core::ptr;
 use core::ptr::*;
@@ -18,12 +19,13 @@ fn test_const_from_raw_parts() {
 #[test]
 fn test() {
     unsafe {
+        #[repr(C)]
         struct Pair {
             fst: isize,
             snd: isize,
         }
         let mut p = Pair { fst: 10, snd: 20 };
-        let pptr: *mut Pair = &mut p;
+        let pptr: *mut Pair = addr_of_mut!(p);
         let iptr: *mut isize = pptr as *mut isize;
         assert_eq!(*iptr, 10);
         *iptr = 30;
@@ -93,6 +95,15 @@ fn test_is_null() {
 
     let nmi: *mut dyn ToString = null_mut::<isize>();
     assert!(nmi.is_null());
+
+    extern "C" {
+        type Extern;
+    }
+    let ec: *const Extern = null::<Extern>();
+    assert!(ec.is_null());
+
+    let em: *mut Extern = null_mut::<Extern>();
+    assert!(em.is_null());
 }
 
 #[test]
@@ -339,16 +350,32 @@ fn align_offset_zst() {
     // all, because no amount of elements will align the pointer.
     let mut p = 1;
     while p < 1024 {
-        assert_eq!((p as *const ()).align_offset(p), 0);
+        assert_eq!(ptr::invalid::<()>(p).align_offset(p), 0);
         if p != 1 {
-            assert_eq!(((p + 1) as *const ()).align_offset(p), !0);
+            assert_eq!(ptr::invalid::<()>(p + 1).align_offset(p), !0);
         }
         p = (p + 1).next_power_of_two();
     }
 }
 
 #[test]
-fn align_offset_stride1() {
+fn align_offset_zst_const() {
+    const {
+        // For pointers of stride = 0, the pointer is already aligned or it cannot be aligned at
+        // all, because no amount of elements will align the pointer.
+        let mut p = 1;
+        while p < 1024 {
+            assert!(ptr::invalid::<()>(p).align_offset(p) == 0);
+            if p != 1 {
+                assert!(ptr::invalid::<()>(p + 1).align_offset(p) == !0);
+            }
+            p = (p + 1).next_power_of_two();
+        }
+    }
+}
+
+#[test]
+fn align_offset_stride_one() {
     // For pointers of stride = 1, the pointer can always be aligned. The offset is equal to
     // number of bytes.
     let mut align = 1;
@@ -357,7 +384,7 @@ fn align_offset_stride1() {
             let expected = ptr % align;
             let offset = if expected == 0 { 0 } else { align - expected };
             assert_eq!(
-                (ptr as *const u8).align_offset(align),
+                ptr::invalid::<u8>(ptr).align_offset(align),
                 offset,
                 "ptr = {}, align = {}, size = 1",
                 ptr,
@@ -369,24 +396,27 @@ fn align_offset_stride1() {
 }
 
 #[test]
-fn align_offset_weird_strides() {
-    #[repr(packed)]
-    struct A3(u16, u8);
-    struct A4(u32);
-    #[repr(packed)]
-    struct A5(u32, u8);
-    #[repr(packed)]
-    struct A6(u32, u16);
-    #[repr(packed)]
-    struct A7(u32, u16, u8);
-    #[repr(packed)]
-    struct A8(u32, u32);
-    #[repr(packed)]
-    struct A9(u32, u32, u8);
-    #[repr(packed)]
-    struct A10(u32, u32, u16);
+fn align_offset_stride_one_const() {
+    const {
+        // For pointers of stride = 1, the pointer can always be aligned. The offset is equal to
+        // number of bytes.
+        let mut align = 1;
+        while align < 1024 {
+            let mut ptr = 1;
+            while ptr < 2 * align {
+                let expected = ptr % align;
+                let offset = if expected == 0 { 0 } else { align - expected };
+                assert!(ptr::invalid::<u8>(ptr).align_offset(align) == offset);
+                ptr += 1;
+            }
+            align = (align + 1).next_power_of_two();
+        }
+    }
+}
 
-    unsafe fn test_weird_stride<T>(ptr: *const T, align: usize) -> bool {
+#[test]
+fn align_offset_various_strides() {
+    unsafe fn test_stride<T>(ptr: *const T, align: usize) -> bool {
         let numptr = ptr as usize;
         let mut expected = usize::MAX;
         // Naive but definitely correct way to find the *first* aligned element of stride::<T>.
@@ -420,19 +450,282 @@ fn align_offset_weird_strides() {
     while align < limit {
         for ptr in 1usize..4 * align {
             unsafe {
-                x |= test_weird_stride::<A3>(ptr as *const A3, align);
-                x |= test_weird_stride::<A4>(ptr as *const A4, align);
-                x |= test_weird_stride::<A5>(ptr as *const A5, align);
-                x |= test_weird_stride::<A6>(ptr as *const A6, align);
-                x |= test_weird_stride::<A7>(ptr as *const A7, align);
-                x |= test_weird_stride::<A8>(ptr as *const A8, align);
-                x |= test_weird_stride::<A9>(ptr as *const A9, align);
-                x |= test_weird_stride::<A10>(ptr as *const A10, align);
+                #[repr(packed)]
+                struct A3(u16, u8);
+                x |= test_stride::<A3>(ptr::invalid::<A3>(ptr), align);
+
+                struct A4(u32);
+                x |= test_stride::<A4>(ptr::invalid::<A4>(ptr), align);
+
+                #[repr(packed)]
+                struct A5(u32, u8);
+                x |= test_stride::<A5>(ptr::invalid::<A5>(ptr), align);
+
+                #[repr(packed)]
+                struct A6(u32, u16);
+                x |= test_stride::<A6>(ptr::invalid::<A6>(ptr), align);
+
+                #[repr(packed)]
+                struct A7(u32, u16, u8);
+                x |= test_stride::<A7>(ptr::invalid::<A7>(ptr), align);
+
+                #[repr(packed)]
+                struct A8(u32, u32);
+                x |= test_stride::<A8>(ptr::invalid::<A8>(ptr), align);
+
+                #[repr(packed)]
+                struct A9(u32, u32, u8);
+                x |= test_stride::<A9>(ptr::invalid::<A9>(ptr), align);
+
+                #[repr(packed)]
+                struct A10(u32, u32, u16);
+                x |= test_stride::<A10>(ptr::invalid::<A10>(ptr), align);
+
+                x |= test_stride::<u32>(ptr::invalid::<u32>(ptr), align);
+                x |= test_stride::<u128>(ptr::invalid::<u128>(ptr), align);
             }
         }
         align = (align + 1).next_power_of_two();
     }
     assert!(!x);
+}
+
+#[test]
+fn align_offset_various_strides_const() {
+    const unsafe fn test_stride<T>(ptr: *const T, numptr: usize, align: usize) {
+        let mut expected = usize::MAX;
+        // Naive but definitely correct way to find the *first* aligned element of stride::<T>.
+        let mut el = 0;
+        while el < align {
+            if (numptr + el * ::std::mem::size_of::<T>()) % align == 0 {
+                expected = el;
+                break;
+            }
+            el += 1;
+        }
+        let got = ptr.align_offset(align);
+        assert!(got == expected);
+    }
+
+    const {
+        // For pointers of stride != 1, we verify the algorithm against the naivest possible
+        // implementation
+        let mut align = 1;
+        let limit = 32;
+        while align < limit {
+            let mut ptr = 1;
+            while ptr < 4 * align {
+                unsafe {
+                    #[repr(packed)]
+                    struct A3(u16, u8);
+                    test_stride::<A3>(ptr::invalid::<A3>(ptr), ptr, align);
+
+                    struct A4(u32);
+                    test_stride::<A4>(ptr::invalid::<A4>(ptr), ptr, align);
+
+                    #[repr(packed)]
+                    struct A5(u32, u8);
+                    test_stride::<A5>(ptr::invalid::<A5>(ptr), ptr, align);
+
+                    #[repr(packed)]
+                    struct A6(u32, u16);
+                    test_stride::<A6>(ptr::invalid::<A6>(ptr), ptr, align);
+
+                    #[repr(packed)]
+                    struct A7(u32, u16, u8);
+                    test_stride::<A7>(ptr::invalid::<A7>(ptr), ptr, align);
+
+                    #[repr(packed)]
+                    struct A8(u32, u32);
+                    test_stride::<A8>(ptr::invalid::<A8>(ptr), ptr, align);
+
+                    #[repr(packed)]
+                    struct A9(u32, u32, u8);
+                    test_stride::<A9>(ptr::invalid::<A9>(ptr), ptr, align);
+
+                    #[repr(packed)]
+                    struct A10(u32, u32, u16);
+                    test_stride::<A10>(ptr::invalid::<A10>(ptr), ptr, align);
+
+                    test_stride::<u32>(ptr::invalid::<u32>(ptr), ptr, align);
+                    test_stride::<u128>(ptr::invalid::<u128>(ptr), ptr, align);
+                }
+                ptr += 1;
+            }
+            align = (align + 1).next_power_of_two();
+        }
+    }
+}
+
+#[test]
+fn align_offset_with_provenance_const() {
+    const {
+        // On some platforms (e.g. msp430-none-elf), the alignment of `i32` is less than 4.
+        #[repr(align(4))]
+        struct AlignedI32(i32);
+
+        let data = AlignedI32(42);
+
+        // `stride % align == 0` (usual case)
+
+        let ptr: *const i32 = &data.0;
+        assert!(ptr.align_offset(1) == 0);
+        assert!(ptr.align_offset(2) == 0);
+        assert!(ptr.align_offset(4) == 0);
+        assert!(ptr.align_offset(8) == usize::MAX);
+        assert!(ptr.wrapping_byte_add(1).align_offset(1) == 0);
+        assert!(ptr.wrapping_byte_add(1).align_offset(2) == usize::MAX);
+        assert!(ptr.wrapping_byte_add(2).align_offset(1) == 0);
+        assert!(ptr.wrapping_byte_add(2).align_offset(2) == 0);
+        assert!(ptr.wrapping_byte_add(2).align_offset(4) == usize::MAX);
+        assert!(ptr.wrapping_byte_add(3).align_offset(1) == 0);
+        assert!(ptr.wrapping_byte_add(3).align_offset(2) == usize::MAX);
+
+        assert!(ptr.wrapping_add(42).align_offset(4) == 0);
+        assert!(ptr.wrapping_add(42).align_offset(8) == usize::MAX);
+
+        let ptr1: *const i8 = ptr.cast();
+        assert!(ptr1.align_offset(1) == 0);
+        assert!(ptr1.align_offset(2) == 0);
+        assert!(ptr1.align_offset(4) == 0);
+        assert!(ptr1.align_offset(8) == usize::MAX);
+        assert!(ptr1.wrapping_byte_add(1).align_offset(1) == 0);
+        assert!(ptr1.wrapping_byte_add(1).align_offset(2) == 1);
+        assert!(ptr1.wrapping_byte_add(1).align_offset(4) == 3);
+        assert!(ptr1.wrapping_byte_add(1).align_offset(8) == usize::MAX);
+        assert!(ptr1.wrapping_byte_add(2).align_offset(1) == 0);
+        assert!(ptr1.wrapping_byte_add(2).align_offset(2) == 0);
+        assert!(ptr1.wrapping_byte_add(2).align_offset(4) == 2);
+        assert!(ptr1.wrapping_byte_add(2).align_offset(8) == usize::MAX);
+        assert!(ptr1.wrapping_byte_add(3).align_offset(1) == 0);
+        assert!(ptr1.wrapping_byte_add(3).align_offset(2) == 1);
+        assert!(ptr1.wrapping_byte_add(3).align_offset(4) == 1);
+        assert!(ptr1.wrapping_byte_add(3).align_offset(8) == usize::MAX);
+
+        let ptr2: *const i16 = ptr.cast();
+        assert!(ptr2.align_offset(1) == 0);
+        assert!(ptr2.align_offset(2) == 0);
+        assert!(ptr2.align_offset(4) == 0);
+        assert!(ptr2.align_offset(8) == usize::MAX);
+        assert!(ptr2.wrapping_byte_add(1).align_offset(1) == 0);
+        assert!(ptr2.wrapping_byte_add(1).align_offset(2) == usize::MAX);
+        assert!(ptr2.wrapping_byte_add(2).align_offset(1) == 0);
+        assert!(ptr2.wrapping_byte_add(2).align_offset(2) == 0);
+        assert!(ptr2.wrapping_byte_add(2).align_offset(4) == 1);
+        assert!(ptr2.wrapping_byte_add(2).align_offset(8) == usize::MAX);
+        assert!(ptr2.wrapping_byte_add(3).align_offset(1) == 0);
+        assert!(ptr2.wrapping_byte_add(3).align_offset(2) == usize::MAX);
+
+        let ptr3: *const i64 = ptr.cast();
+        assert!(ptr3.align_offset(1) == 0);
+        assert!(ptr3.align_offset(2) == 0);
+        assert!(ptr3.align_offset(4) == 0);
+        assert!(ptr3.align_offset(8) == usize::MAX);
+        assert!(ptr3.wrapping_byte_add(1).align_offset(1) == 0);
+        assert!(ptr3.wrapping_byte_add(1).align_offset(2) == usize::MAX);
+
+        // `stride % align != 0` (edge case)
+
+        let ptr4: *const [u8; 3] = ptr.cast();
+        assert!(ptr4.align_offset(1) == 0);
+        assert!(ptr4.align_offset(2) == 0);
+        assert!(ptr4.align_offset(4) == 0);
+        assert!(ptr4.align_offset(8) == usize::MAX);
+        assert!(ptr4.wrapping_byte_add(1).align_offset(1) == 0);
+        assert!(ptr4.wrapping_byte_add(1).align_offset(2) == 1);
+        assert!(ptr4.wrapping_byte_add(1).align_offset(4) == 1);
+        assert!(ptr4.wrapping_byte_add(1).align_offset(8) == usize::MAX);
+        assert!(ptr4.wrapping_byte_add(2).align_offset(1) == 0);
+        assert!(ptr4.wrapping_byte_add(2).align_offset(2) == 0);
+        assert!(ptr4.wrapping_byte_add(2).align_offset(4) == 2);
+        assert!(ptr4.wrapping_byte_add(2).align_offset(8) == usize::MAX);
+        assert!(ptr4.wrapping_byte_add(3).align_offset(1) == 0);
+        assert!(ptr4.wrapping_byte_add(3).align_offset(2) == 1);
+        assert!(ptr4.wrapping_byte_add(3).align_offset(4) == 3);
+        assert!(ptr4.wrapping_byte_add(3).align_offset(8) == usize::MAX);
+
+        let ptr5: *const [u8; 5] = ptr.cast();
+        assert!(ptr5.align_offset(1) == 0);
+        assert!(ptr5.align_offset(2) == 0);
+        assert!(ptr5.align_offset(4) == 0);
+        assert!(ptr5.align_offset(8) == usize::MAX);
+        assert!(ptr5.wrapping_byte_add(1).align_offset(1) == 0);
+        assert!(ptr5.wrapping_byte_add(1).align_offset(2) == 1);
+        assert!(ptr5.wrapping_byte_add(1).align_offset(4) == 3);
+        assert!(ptr5.wrapping_byte_add(1).align_offset(8) == usize::MAX);
+        assert!(ptr5.wrapping_byte_add(2).align_offset(1) == 0);
+        assert!(ptr5.wrapping_byte_add(2).align_offset(2) == 0);
+        assert!(ptr5.wrapping_byte_add(2).align_offset(4) == 2);
+        assert!(ptr5.wrapping_byte_add(2).align_offset(8) == usize::MAX);
+        assert!(ptr5.wrapping_byte_add(3).align_offset(1) == 0);
+        assert!(ptr5.wrapping_byte_add(3).align_offset(2) == 1);
+        assert!(ptr5.wrapping_byte_add(3).align_offset(4) == 1);
+        assert!(ptr5.wrapping_byte_add(3).align_offset(8) == usize::MAX);
+    }
+}
+
+#[test]
+fn align_offset_issue_103361() {
+    #[cfg(target_pointer_width = "64")]
+    const SIZE: usize = 1 << 47;
+    #[cfg(target_pointer_width = "32")]
+    const SIZE: usize = 1 << 30;
+    #[cfg(target_pointer_width = "16")]
+    const SIZE: usize = 1 << 13;
+    struct HugeSize([u8; SIZE - 1]);
+    let _ = ptr::invalid::<HugeSize>(SIZE).align_offset(SIZE);
+}
+
+#[test]
+fn align_offset_issue_103361_const() {
+    #[cfg(target_pointer_width = "64")]
+    const SIZE: usize = 1 << 47;
+    #[cfg(target_pointer_width = "32")]
+    const SIZE: usize = 1 << 30;
+    #[cfg(target_pointer_width = "16")]
+    const SIZE: usize = 1 << 13;
+    struct HugeSize([u8; SIZE - 1]);
+
+    const {
+        assert!(ptr::invalid::<HugeSize>(SIZE - 1).align_offset(SIZE) == SIZE - 1);
+        assert!(ptr::invalid::<HugeSize>(SIZE).align_offset(SIZE) == 0);
+        assert!(ptr::invalid::<HugeSize>(SIZE + 1).align_offset(SIZE) == 1);
+    }
+}
+
+#[test]
+fn is_aligned() {
+    let data = 42;
+    let ptr: *const i32 = &data;
+    assert!(ptr.is_aligned());
+    assert!(ptr.is_aligned_to(1));
+    assert!(ptr.is_aligned_to(2));
+    assert!(ptr.is_aligned_to(4));
+    assert!(ptr.wrapping_byte_add(2).is_aligned_to(1));
+    assert!(ptr.wrapping_byte_add(2).is_aligned_to(2));
+    assert!(!ptr.wrapping_byte_add(2).is_aligned_to(4));
+
+    // At runtime either `ptr` or `ptr+1` is aligned to 8.
+    assert_ne!(ptr.is_aligned_to(8), ptr.wrapping_add(1).is_aligned_to(8));
+}
+
+#[test]
+fn is_aligned_const() {
+    const {
+        let data = 42;
+        let ptr: *const i32 = &data;
+        assert!(ptr.is_aligned());
+        assert!(ptr.is_aligned_to(1));
+        assert!(ptr.is_aligned_to(2));
+        assert!(ptr.is_aligned_to(4));
+        assert!(ptr.wrapping_byte_add(2).is_aligned_to(1));
+        assert!(ptr.wrapping_byte_add(2).is_aligned_to(2));
+        assert!(!ptr.wrapping_byte_add(2).is_aligned_to(4));
+
+        // At comptime neither `ptr` nor `ptr+1` is aligned to 8.
+        assert!(!ptr.is_aligned_to(8));
+        assert!(!ptr.wrapping_add(1).is_aligned_to(8));
+    }
 }
 
 #[test]
@@ -465,8 +758,8 @@ fn ptr_metadata() {
     let () = metadata(&[4, 7]);
     let () = metadata(&(4, String::new()));
     let () = metadata(&Pair(4, String::new()));
-    let () = metadata(0 as *const Extern);
-    let () = metadata(0 as *const <&u32 as std::ops::Deref>::Target);
+    let () = metadata(ptr::null::<()>() as *const Extern);
+    let () = metadata(ptr::null::<()>() as *const <&u32 as std::ops::Deref>::Target);
 
     assert_eq!(metadata("foo"), 3_usize);
     assert_eq!(metadata(&[4, 7][..]), 2_usize);
@@ -514,7 +807,7 @@ fn ptr_metadata_bounds() {
     }
     // "Synthetic" trait impls generated by the compiler like those of `Pointee`
     // are not checked for bounds of associated type.
-    // So with a buggy libcore we could have both:
+    // So with a buggy core we could have both:
     // * `<dyn Display as Pointee>::Metadata == DynMetadata`
     // * `DynMetadata: !PartialEq`
     // … and cause an ICE here:
@@ -630,7 +923,7 @@ fn thin_box() {
                     .unwrap_or_else(|| handle_alloc_error(layout))
                     .cast::<DynMetadata<T>>();
                 ptr.as_ptr().write(meta);
-                ptr.cast::<u8>().as_ptr().add(offset).cast::<Value>().write(value);
+                ptr.as_ptr().byte_add(offset).cast::<Value>().write(value);
                 Self { ptr, phantom: PhantomData }
             }
         }
@@ -768,4 +1061,68 @@ fn nonnull_tagged_pointer_with_provenance() {
             })
         }
     }
+}
+
+#[test]
+fn swap_copy_untyped() {
+    // We call `{swap,copy}{,_nonoverlapping}` at `bool` type on data that is not a valid bool.
+    // These should all do untyped copies, so this should work fine.
+    let mut x = 5u8;
+    let mut y = 6u8;
+
+    let ptr1 = addr_of_mut!(x).cast::<bool>();
+    let ptr2 = addr_of_mut!(y).cast::<bool>();
+
+    unsafe {
+        ptr::swap(ptr1, ptr2);
+        ptr::swap_nonoverlapping(ptr1, ptr2, 1);
+    }
+    assert_eq!(x, 5);
+    assert_eq!(y, 6);
+
+    unsafe {
+        ptr::copy(ptr1, ptr2, 1);
+        ptr::copy_nonoverlapping(ptr1, ptr2, 1);
+    }
+    assert_eq!(x, 5);
+    assert_eq!(y, 5);
+}
+
+#[test]
+fn test_const_copy() {
+    const {
+        let ptr1 = &1;
+        let mut ptr2 = &666;
+
+        // Copy ptr1 to ptr2, bytewise.
+        unsafe {
+            ptr::copy(
+                &ptr1 as *const _ as *const MaybeUninit<u8>,
+                &mut ptr2 as *mut _ as *mut MaybeUninit<u8>,
+                mem::size_of::<&i32>(),
+            );
+        }
+
+        // Make sure they still work.
+        assert!(*ptr1 == 1);
+        assert!(*ptr2 == 1);
+    };
+
+    const {
+        let ptr1 = &1;
+        let mut ptr2 = &666;
+
+        // Copy ptr1 to ptr2, bytewise.
+        unsafe {
+            ptr::copy_nonoverlapping(
+                &ptr1 as *const _ as *const MaybeUninit<u8>,
+                &mut ptr2 as *mut _ as *mut MaybeUninit<u8>,
+                mem::size_of::<&i32>(),
+            );
+        }
+
+        // Make sure they still work.
+        assert!(*ptr1 == 1);
+        assert!(*ptr2 == 1);
+    };
 }

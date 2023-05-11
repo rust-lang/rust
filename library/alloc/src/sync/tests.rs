@@ -102,8 +102,40 @@ fn try_unwrap() {
 }
 
 #[test]
+fn into_inner() {
+    for _ in 0..100
+    // ^ Increase chances of hitting potential race conditions
+    {
+        let x = Arc::new(3);
+        let y = Arc::clone(&x);
+        let r_thread = std::thread::spawn(|| Arc::into_inner(x));
+        let s_thread = std::thread::spawn(|| Arc::into_inner(y));
+        let r = r_thread.join().expect("r_thread panicked");
+        let s = s_thread.join().expect("s_thread panicked");
+        assert!(
+            matches!((r, s), (None, Some(3)) | (Some(3), None)),
+            "assertion failed: unexpected result `{:?}`\
+            \n  expected `(None, Some(3))` or `(Some(3), None)`",
+            (r, s),
+        );
+    }
+
+    let x = Arc::new(3);
+    assert_eq!(Arc::into_inner(x), Some(3));
+
+    let x = Arc::new(4);
+    let y = Arc::clone(&x);
+    assert_eq!(Arc::into_inner(x), None);
+    assert_eq!(Arc::into_inner(y), Some(4));
+
+    let x = Arc::new(5);
+    let _w = Arc::downgrade(&x);
+    assert_eq!(Arc::into_inner(x), Some(5));
+}
+
+#[test]
 fn into_from_raw() {
-    let x = Arc::new(box "hello");
+    let x = Arc::new(Box::new("hello"));
     let y = x.clone();
 
     let x_ptr = Arc::into_raw(x);
@@ -142,7 +174,7 @@ fn test_into_from_raw_unsized() {
 
 #[test]
 fn into_from_weak_raw() {
-    let x = Arc::new(box "hello");
+    let x = Arc::new(Box::new("hello"));
     let y = Arc::downgrade(&x);
 
     let y_ptr = Weak::into_raw(y);
@@ -467,7 +499,7 @@ fn test_clone_from_slice_panic() {
 
 #[test]
 fn test_from_box() {
-    let b: Box<u32> = box 123;
+    let b: Box<u32> = Box::new(123);
     let r: Arc<u32> = Arc::from(b);
 
     assert_eq!(*r, 123);
@@ -496,7 +528,7 @@ fn test_from_box_trait() {
     use std::fmt::Display;
     use std::string::ToString;
 
-    let b: Box<dyn Display> = box 123;
+    let b: Box<dyn Display> = Box::new(123);
     let r: Arc<dyn Display> = Arc::from(b);
 
     assert_eq!(r.to_string(), "123");
@@ -506,7 +538,7 @@ fn test_from_box_trait() {
 fn test_from_box_trait_zero_sized() {
     use std::fmt::Debug;
 
-    let b: Box<dyn Debug> = box ();
+    let b: Box<dyn Debug> = Box::new(());
     let r: Arc<dyn Debug> = Arc::from(b);
 
     assert_eq!(format!("{r:?}"), "()");
@@ -617,4 +649,23 @@ fn test_arc_cyclic_two_refs() {
 
     assert_eq!(Arc::strong_count(&two_refs), 3);
     assert_eq!(Arc::weak_count(&two_refs), 2);
+}
+
+/// Test for Arc::drop bug (https://github.com/rust-lang/rust/issues/55005)
+#[test]
+#[cfg(miri)] // relies on Stacked Borrows in Miri
+fn arc_drop_dereferenceable_race() {
+    // The bug seems to take up to 700 iterations to reproduce with most seeds (tested 0-9).
+    for _ in 0..750 {
+        let arc_1 = Arc::new(());
+        let arc_2 = arc_1.clone();
+        let thread = thread::spawn(|| drop(arc_2));
+        // Spin a bit; makes the race more likely to appear
+        let mut i = 0;
+        while i < 256 {
+            i += 1;
+        }
+        drop(arc_1);
+        thread.join().unwrap();
+    }
 }

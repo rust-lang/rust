@@ -1,0 +1,14 @@
+error[E0282]: type annotations needed for `[usize; N]`
+  --> $DIR/issue-83606.rs:8:9
+   |
+LL |     let _ = foo("foo");
+   |         ^
+   |
+help: consider giving this pattern a type, where the value of const parameter `N` is specified
+   |
+LL |     let _: [usize; N] = foo("foo");
+   |          ++++++++++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

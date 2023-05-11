@@ -1,3 +1,4 @@
+use crate::lints::{DropGlue, DropTraitConstraintsDiag};
 use crate::LateContext;
 use crate::LateLintPass;
 use crate::LintContext;
@@ -86,11 +87,12 @@ declare_lint_pass!(
 
 impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
+        use rustc_middle::ty::Clause;
         use rustc_middle::ty::PredicateKind::*;
 
-        let predicates = cx.tcx.explicit_predicates_of(item.def_id);
+        let predicates = cx.tcx.explicit_predicates_of(item.owner_id);
         for &(predicate, span) in predicates.predicates {
-            let Trait(trait_predicate) = predicate.kind().skip_binder() else {
+            let Clause(Clause::Trait(trait_predicate)) = predicate.kind().skip_binder() else {
                 continue
             };
             let def_id = trait_predicate.trait_ref.def_id;
@@ -99,18 +101,14 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
                 if trait_predicate.trait_ref.self_ty().is_impl_trait() {
                     continue;
                 }
-                cx.struct_span_lint(DROP_BOUNDS, span, |lint| {
-                    let Some(needs_drop) = cx.tcx.get_diagnostic_item(sym::needs_drop) else {
-                        return
-                    };
-                    let msg = format!(
-                        "bounds on `{}` are most likely incorrect, consider instead \
-                         using `{}` to detect whether a type can be trivially dropped",
-                        predicate,
-                        cx.tcx.def_path_str(needs_drop)
-                    );
-                    lint.build(&msg).emit();
-                });
+                let Some(def_id) = cx.tcx.get_diagnostic_item(sym::needs_drop) else {
+                    return
+                };
+                cx.emit_spanned_lint(
+                    DROP_BOUNDS,
+                    span,
+                    DropTraitConstraintsDiag { predicate, tcx: cx.tcx, def_id },
+                );
             }
         }
     }
@@ -122,17 +120,10 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
         for bound in &bounds[..] {
             let def_id = bound.trait_ref.trait_def_id();
             if cx.tcx.lang_items().drop_trait() == def_id {
-                cx.struct_span_lint(DYN_DROP, bound.span, |lint| {
-                    let Some(needs_drop) = cx.tcx.get_diagnostic_item(sym::needs_drop) else {
-                        return
-                    };
-                    let msg = format!(
-                        "types that do not implement `Drop` can still have drop glue, consider \
-                        instead using `{}` to detect whether a type is trivially dropped",
-                        cx.tcx.def_path_str(needs_drop)
-                    );
-                    lint.build(&msg).emit();
-                });
+                let Some(def_id) = cx.tcx.get_diagnostic_item(sym::needs_drop) else {
+                    return
+                };
+                cx.emit_spanned_lint(DYN_DROP, bound.span, DropGlue { tcx: cx.tcx, def_id });
             }
         }
     }

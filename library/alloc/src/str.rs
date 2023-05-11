@@ -1,26 +1,6 @@
-//! Unicode string slices.
+//! Utilities for the `str` primitive type.
 //!
 //! *[See also the `str` primitive type](str).*
-//!
-//! The `&str` type is one of the two main string types, the other being `String`.
-//! Unlike its `String` counterpart, its contents are borrowed.
-//!
-//! # Basic Usage
-//!
-//! A basic string declaration of `&str` type:
-//!
-//! ```
-//! let hello_world = "Hello, World!";
-//! ```
-//!
-//! Here we have declared a string literal, also known as a string slice.
-//! String literals have a static lifetime, which means the string `hello_world`
-//! is guaranteed to be valid for the duration of the entire program.
-//! We can explicitly specify `hello_world`'s lifetime as well:
-//!
-//! ```
-//! let hello_world: &'static str = "Hello, world!";
-//! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]
 // Many of the usings in this module are only used in the test configuration.
@@ -71,6 +51,8 @@ pub use core::str::{RSplit, Split};
 pub use core::str::{RSplitN, SplitN};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{RSplitTerminator, SplitTerminator};
+#[unstable(feature = "utf8_chunks", issue = "99543")]
+pub use core::str::{Utf8Chunk, Utf8Chunks};
 
 /// Note: `str` in `Concat<str>` is not meaningful here.
 /// This type parameter of the trait only exists to enable another impl.
@@ -271,9 +253,10 @@ impl str {
     /// let s = "this is old";
     ///
     /// assert_eq!("this is new", s.replace("old", "new"));
+    /// assert_eq!("than an old", s.replace("is", "an"));
     /// ```
     ///
-    /// When the pattern doesn't match:
+    /// When the pattern doesn't match, it returns this string slice as [`String`]:
     ///
     /// ```
     /// let s = "this is old";
@@ -314,7 +297,7 @@ impl str {
     /// assert_eq!("foo foo new23 foo", s.replacen(char::is_numeric, "new", 1));
     /// ```
     ///
-    /// When the pattern doesn't match:
+    /// When the pattern doesn't match, it returns this string slice as [`String`]:
     ///
     /// ```
     /// let s = "this is old";
@@ -383,15 +366,23 @@ impl str {
                   without modifying the original"]
     #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
     pub fn to_lowercase(&self) -> String {
-        let mut s = String::with_capacity(self.len());
-        for (i, c) in self[..].char_indices() {
+        let out = convert_while_ascii(self.as_bytes(), u8::to_ascii_lowercase);
+
+        // Safety: we know this is a valid char boundary since
+        // out.len() is only progressed if ascii bytes are found
+        let rest = unsafe { self.get_unchecked(out.len()..) };
+
+        // Safety: We have written only valid ASCII to our vec
+        let mut s = unsafe { String::from_utf8_unchecked(out) };
+
+        for (i, c) in rest[..].char_indices() {
             if c == 'Σ' {
                 // Σ maps to σ, except at the end of a word where it maps to ς.
                 // This is the only conditional (contextual) but language-independent mapping
                 // in `SpecialCasing.txt`,
                 // so hard-code it rather than have a generic "condition" mechanism.
                 // See https://github.com/rust-lang/rust/issues/26035
-                map_uppercase_sigma(self, i, &mut s)
+                map_uppercase_sigma(rest, i, &mut s)
             } else {
                 match conversions::to_lower(c) {
                     [a, '\0', _] => s.push(a),
@@ -413,12 +404,12 @@ impl str {
             // See https://www.unicode.org/versions/Unicode7.0.0/ch03.pdf#G33992
             // for the definition of `Final_Sigma`.
             debug_assert!('Σ'.len_utf8() == 2);
-            let is_word_final = case_ignoreable_then_cased(from[..i].chars().rev())
-                && !case_ignoreable_then_cased(from[i + 2..].chars());
+            let is_word_final = case_ignorable_then_cased(from[..i].chars().rev())
+                && !case_ignorable_then_cased(from[i + 2..].chars());
             to.push_str(if is_word_final { "ς" } else { "σ" });
         }
 
-        fn case_ignoreable_then_cased<I: Iterator<Item = char>>(iter: I) -> bool {
+        fn case_ignorable_then_cased<I: Iterator<Item = char>>(iter: I) -> bool {
             use core::unicode::{Case_Ignorable, Cased};
             match iter.skip_while(|&c| Case_Ignorable(c)).next() {
                 Some(c) => Cased(c),
@@ -466,8 +457,16 @@ impl str {
                   without modifying the original"]
     #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
     pub fn to_uppercase(&self) -> String {
-        let mut s = String::with_capacity(self.len());
-        for c in self[..].chars() {
+        let out = convert_while_ascii(self.as_bytes(), u8::to_ascii_uppercase);
+
+        // Safety: we know this is a valid char boundary since
+        // out.len() is only progressed if ascii bytes are found
+        let rest = unsafe { self.get_unchecked(out.len()..) };
+
+        // Safety: We have written only valid ASCII to our vec
+        let mut s = unsafe { String::from_utf8_unchecked(out) };
+
+        for c in rest.chars() {
             match conversions::to_upper(c) {
                 [a, '\0', _] => s.push(a),
                 [a, b, '\0'] => {
@@ -560,10 +559,9 @@ impl str {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_uppercase(&self) -> String {
-        let mut bytes = self.as_bytes().to_vec();
-        bytes.make_ascii_uppercase();
-        // make_ascii_uppercase() preserves the UTF-8 invariant.
-        unsafe { String::from_utf8_unchecked(bytes) }
+        let mut s = self.to_owned();
+        s.make_ascii_uppercase();
+        s
     }
 
     /// Returns a copy of this string where each character is mapped to its
@@ -593,10 +591,9 @@ impl str {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_lowercase(&self) -> String {
-        let mut bytes = self.as_bytes().to_vec();
-        bytes.make_ascii_lowercase();
-        // make_ascii_lowercase() preserves the UTF-8 invariant.
-        unsafe { String::from_utf8_unchecked(bytes) }
+        let mut s = self.to_owned();
+        s.make_ascii_lowercase();
+        s
     }
 }
 
@@ -618,4 +615,52 @@ impl str {
 #[inline]
 pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
     unsafe { Box::from_raw(Box::into_raw(v) as *mut str) }
+}
+
+/// Converts the bytes while the bytes are still ascii.
+/// For better average performance, this is happens in chunks of `2*size_of::<usize>()`.
+/// Returns a vec with the converted bytes.
+#[inline]
+#[cfg(not(test))]
+#[cfg(not(no_global_oom_handling))]
+fn convert_while_ascii(b: &[u8], convert: fn(&u8) -> u8) -> Vec<u8> {
+    let mut out = Vec::with_capacity(b.len());
+
+    const USIZE_SIZE: usize = mem::size_of::<usize>();
+    const MAGIC_UNROLL: usize = 2;
+    const N: usize = USIZE_SIZE * MAGIC_UNROLL;
+    const NONASCII_MASK: usize = usize::from_ne_bytes([0x80; USIZE_SIZE]);
+
+    let mut i = 0;
+    unsafe {
+        while i + N <= b.len() {
+            // Safety: we have checks the sizes `b` and `out` to know that our
+            let in_chunk = b.get_unchecked(i..i + N);
+            let out_chunk = out.spare_capacity_mut().get_unchecked_mut(i..i + N);
+
+            let mut bits = 0;
+            for j in 0..MAGIC_UNROLL {
+                // read the bytes 1 usize at a time (unaligned since we haven't checked the alignment)
+                // safety: in_chunk is valid bytes in the range
+                bits |= in_chunk.as_ptr().cast::<usize>().add(j).read_unaligned();
+            }
+            // if our chunks aren't ascii, then return only the prior bytes as init
+            if bits & NONASCII_MASK != 0 {
+                break;
+            }
+
+            // perform the case conversions on N bytes (gets heavily autovec'd)
+            for j in 0..N {
+                // safety: in_chunk and out_chunk is valid bytes in the range
+                let out = out_chunk.get_unchecked_mut(j);
+                out.write(convert(in_chunk.get_unchecked(j)));
+            }
+
+            // mark these bytes as initialised
+            i += N;
+        }
+        out.set_len(i);
+    }
+
+    out
 }

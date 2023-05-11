@@ -1,12 +1,12 @@
 //! Fuchsia-specific raw type definitions
 
 #![stable(feature = "raw_ext", since = "1.1.0")]
-#![rustc_deprecated(
+#![deprecated(
     since = "1.8.0",
-    reason = "these type aliases are no longer supported by \
-              the standard library, the `libc` crate on \
-              crates.io should be used instead for the correct \
-              definitions"
+    note = "these type aliases are no longer supported by \
+            the standard library, the `libc` crate on \
+            crates.io should be used instead for the correct \
+            definitions"
 )]
 #![allow(deprecated)]
 
@@ -24,12 +24,7 @@ pub type pthread_t = c_ulong;
 #[stable(feature = "raw_ext", since = "1.1.0")]
 pub use self::arch::{blkcnt_t, blksize_t, ino_t, nlink_t, off_t, stat, time_t};
 
-#[cfg(any(
-    target_arch = "x86",
-    target_arch = "le32",
-    target_arch = "powerpc",
-    target_arch = "arm"
-))]
+#[cfg(any(target_arch = "x86", target_arch = "powerpc", target_arch = "arm"))]
 mod arch {
     use crate::os::raw::{c_long, c_short, c_uint};
 
@@ -290,4 +285,10 @@ mod arch {
         #[stable(feature = "raw_ext", since = "1.1.0")]
         pub __unused: [c_long; 3],
     }
+}
+
+#[cfg(target_arch = "riscv64")]
+mod arch {
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub use libc::{blkcnt_t, blksize_t, ino_t, nlink_t, off_t, stat, time_t};
 }

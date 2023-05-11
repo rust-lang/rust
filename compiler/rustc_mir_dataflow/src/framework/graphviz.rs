@@ -1,11 +1,12 @@
 //! A helpful diagram for debugging dataflow problems.
 
 use std::borrow::Cow;
-use std::lazy::SyncOnceCell;
+use std::sync::OnceLock;
 use std::{io, ops, str};
 
 use regex::Regex;
 use rustc_graphviz as dot;
+use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::graphviz_safe_def_name;
 use rustc_middle::mir::{self, BasicBlock, Body, Location};
 
@@ -34,6 +35,7 @@ where
     body: &'a Body<'tcx>,
     results: &'a Results<'tcx, A>,
     style: OutputStyle,
+    reachable: BitSet<BasicBlock>,
 }
 
 impl<'a, 'tcx, A> Formatter<'a, 'tcx, A>
@@ -41,7 +43,8 @@ where
     A: Analysis<'tcx>,
 {
     pub fn new(body: &'a Body<'tcx>, results: &'a Results<'tcx, A>, style: OutputStyle) -> Self {
-        Formatter { body, results, style }
+        let reachable = mir::traversal::reachable_as_bitset(body);
+        Formatter { body, results, style, reachable }
     }
 }
 
@@ -71,7 +74,7 @@ where
 
     fn graph_id(&self) -> dot::Id<'_> {
         let name = graphviz_safe_def_name(self.body.source.def_id());
-        dot::Id::new(format!("graph_for_def_id_{}", name)).unwrap()
+        dot::Id::new(format!("graph_for_def_id_{name}")).unwrap()
     }
 
     fn node_id(&self, n: &Self::Node) -> dot::Id<'_> {
@@ -108,12 +111,17 @@ where
     type Edge = CfgEdge;
 
     fn nodes(&self) -> dot::Nodes<'_, Self::Node> {
-        self.body.basic_blocks().indices().collect::<Vec<_>>().into()
+        self.body
+            .basic_blocks
+            .indices()
+            .filter(|&idx| self.reachable.contains(idx))
+            .collect::<Vec<_>>()
+            .into()
     }
 
     fn edges(&self) -> dot::Edges<'_, Self::Edge> {
         self.body
-            .basic_blocks()
+            .basic_blocks
             .indices()
             .flat_map(|bb| dataflow_successors(self.body, bb))
             .collect::<Vec<_>>()
@@ -125,7 +133,7 @@ where
     }
 
     fn target(&self, edge: &Self::Edge) -> Self::Node {
-        self.body[edge.source].terminator().successors().nth(edge.index).copied().unwrap()
+        self.body[edge.source].terminator().successors().nth(edge.index).unwrap()
     }
 }
 
@@ -190,7 +198,7 @@ where
             " cellpadding=\"3\"",
             " sides=\"rb\"",
         );
-        write!(w, r#"<table{fmt}>"#, fmt = table_fmt)?;
+        write!(w, r#"<table{table_fmt}>"#)?;
 
         // A + B: Block header
         match self.style {
@@ -216,9 +224,9 @@ where
         // Write the full dataflow state immediately after the terminator if it differs from the
         // state at block entry.
         self.results.seek_to_block_end(block);
-        if self.results.get() != &block_start_state || A::Direction::is_backward() {
+        if self.results.get() != &block_start_state || A::Direction::IS_BACKWARD {
             let after_terminator_name = match terminator.kind {
-                mir::TerminatorKind::Call { destination: Some(_), .. } => "(on unwind)",
+                mir::TerminatorKind::Call { target: Some(_), .. } => "(on unwind)",
                 _ => "(on end)",
             };
 
@@ -231,14 +239,14 @@ where
         // for the basic block itself. That way, we could display terminator-specific effects for
         // backward dataflow analyses as well as effects for `SwitchInt` terminators.
         match terminator.kind {
-            mir::TerminatorKind::Call { destination: Some((return_place, _)), .. } => {
+            mir::TerminatorKind::Call { destination, .. } => {
                 self.write_row(w, "", "(on successful return)", |this, w, fmt| {
                     let state_on_unwind = this.results.get().clone();
                     this.results.apply_custom_effect(|analysis, state| {
                         analysis.apply_call_return_effect(
                             state,
                             block,
-                            CallReturnPlaces::Call(return_place),
+                            CallReturnPlaces::Call(destination),
                         );
                     });
 
@@ -372,7 +380,7 @@ where
         write!(w, concat!("<tr>", r#"<td colspan="2" {fmt}>MIR</td>"#,), fmt = fmt,)?;
 
         for name in state_column_names {
-            write!(w, "<td {fmt}>{name}</td>", fmt = fmt, name = name)?;
+            write!(w, "<td {fmt}>{name}</td>")?;
         }
 
         write!(w, "</tr>")
@@ -386,34 +394,34 @@ where
     ) -> io::Result<()> {
         let diffs = StateDiffCollector::run(body, block, self.results.results(), self.style);
 
-        let mut befores = diffs.before.map(|v| v.into_iter());
-        let mut afters = diffs.after.into_iter();
+        let mut diffs_before = diffs.before.map(|v| v.into_iter());
+        let mut diffs_after = diffs.after.into_iter();
 
         let next_in_dataflow_order = |it: &mut std::vec::IntoIter<_>| {
-            if A::Direction::is_forward() { it.next().unwrap() } else { it.next_back().unwrap() }
+            if A::Direction::IS_FORWARD { it.next().unwrap() } else { it.next_back().unwrap() }
         };
 
         for (i, statement) in body[block].statements.iter().enumerate() {
-            let statement_str = format!("{:?}", statement);
-            let index_str = format!("{}", i);
+            let statement_str = format!("{statement:?}");
+            let index_str = format!("{i}");
 
-            let after = next_in_dataflow_order(&mut afters);
-            let before = befores.as_mut().map(next_in_dataflow_order);
+            let after = next_in_dataflow_order(&mut diffs_after);
+            let before = diffs_before.as_mut().map(next_in_dataflow_order);
 
             self.write_row(w, &index_str, &statement_str, |_this, w, fmt| {
                 if let Some(before) = before {
-                    write!(w, r#"<td {fmt} align="left">{diff}</td>"#, fmt = fmt, diff = before)?;
+                    write!(w, r#"<td {fmt} align="left">{before}</td>"#)?;
                 }
 
-                write!(w, r#"<td {fmt} align="left">{diff}</td>"#, fmt = fmt, diff = after)
+                write!(w, r#"<td {fmt} align="left">{after}</td>"#)
             })?;
         }
 
-        let after = next_in_dataflow_order(&mut afters);
-        let before = befores.as_mut().map(next_in_dataflow_order);
+        let after = next_in_dataflow_order(&mut diffs_after);
+        let before = diffs_before.as_mut().map(next_in_dataflow_order);
 
-        assert!(afters.is_empty());
-        assert!(befores.as_ref().map_or(true, ExactSizeIterator::is_empty));
+        assert!(diffs_after.is_empty());
+        assert!(diffs_before.as_ref().map_or(true, ExactSizeIterator::is_empty));
 
         let terminator = body[block].terminator();
         let mut terminator_str = String::new();
@@ -421,10 +429,10 @@ where
 
         self.write_row(w, "T", &terminator_str, |_this, w, fmt| {
             if let Some(before) = before {
-                write!(w, r#"<td {fmt} align="left">{diff}</td>"#, fmt = fmt, diff = before)?;
+                write!(w, r#"<td {fmt} align="left">{before}</td>"#)?;
             }
 
-            write!(w, r#"<td {fmt} align="left">{diff}</td>"#, fmt = fmt, diff = after)
+            write!(w, r#"<td {fmt} align="left">{after}</td>"#)
         })
     }
 
@@ -475,7 +483,10 @@ where
                 r#"<td colspan="{colspan}" {fmt} align="left">{state}</td>"#,
                 colspan = this.style.num_state_columns(),
                 fmt = fmt,
-                state = format!("{:?}", DebugWithAdapter { this: state, ctxt: analysis }),
+                state = dot::escape_html(&format!(
+                    "{:?}",
+                    DebugWithAdapter { this: state, ctxt: analysis }
+                )),
             )
         })
     }
@@ -527,7 +538,7 @@ where
         _block_data: &mir::BasicBlockData<'tcx>,
         _block: BasicBlock,
     ) {
-        if A::Direction::is_forward() {
+        if A::Direction::IS_FORWARD {
             self.prev_state.clone_from(state);
         }
     }
@@ -538,7 +549,7 @@ where
         _block_data: &mir::BasicBlockData<'tcx>,
         _block: BasicBlock,
     ) {
-        if A::Direction::is_backward() {
+        if A::Direction::IS_BACKWARD {
             self.prev_state.clone_from(state);
         }
     }
@@ -590,7 +601,7 @@ where
 
 macro_rules! regex {
     ($re:literal $(,)?) => {{
-        static RE: SyncOnceCell<regex::Regex> = SyncOnceCell::new();
+        static RE: OnceLock<regex::Regex> = OnceLock::new();
         RE.get_or_init(|| Regex::new($re).unwrap())
     }};
 }

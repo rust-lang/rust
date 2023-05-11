@@ -19,7 +19,8 @@ LL +             return;
 LL +         } else {
 LL +             println!("{}", v);
 LL +         }
- ...
+LL +     }
+   |
 help: ...and replace `return` with `continue`
    |
 LL |             continue;

@@ -1,0 +1,8 @@
+error: link cfg must have a single predicate argument
+  --> $DIR/issue-43925.rs:1:22
+   |
+LL | #[link(name = "foo", cfg("rlib"))]
+   |                      ^^^^^^^^^^^
+
+error: aborting due to previous error
+

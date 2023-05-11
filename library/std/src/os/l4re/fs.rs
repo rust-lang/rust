@@ -38,7 +38,7 @@ pub trait MetadataExt {
     /// }
     /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
-    #[rustc_deprecated(since = "1.8.0", reason = "other methods of this trait are now preferred")]
+    #[deprecated(since = "1.8.0", note = "other methods of this trait are now preferred")]
     #[allow(deprecated)]
     fn as_raw_stat(&self) -> &raw::stat;
 

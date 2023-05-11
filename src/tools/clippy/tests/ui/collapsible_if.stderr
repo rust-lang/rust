@@ -126,5 +126,13 @@ LL | |         if matches!(true, true) {}
 LL | |     }
    | |_____^ help: collapse nested if block: `if matches!(true, true) && matches!(true, true) {}`
 
-error: aborting due to 8 previous errors
+error: this `if` statement can be collapsed
+  --> $DIR/collapsible_if.rs:159:5
+   |
+LL | /     if matches!(true, true) && truth() {
+LL | |         if matches!(true, true) {}
+LL | |     }
+   | |_____^ help: collapse nested if block: `if matches!(true, true) && truth() && matches!(true, true) {}`
+
+error: aborting due to 9 previous errors
 

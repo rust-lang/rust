@@ -20,6 +20,7 @@ fn bindings() {
                 category,
                 span,
                 &format!("`{}`", name),
+                "function",
             ),
         (
             ref name,

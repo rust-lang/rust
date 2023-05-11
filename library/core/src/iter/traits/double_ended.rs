@@ -1,3 +1,4 @@
+use crate::num::NonZeroUsize;
 use crate::ops::{ControlFlow, Try};
 
 /// An iterator able to yield elements from both ends.
@@ -98,10 +99,11 @@ pub trait DoubleEndedIterator: Iterator {
     /// eagerly skip `n` elements starting from the back by calling [`next_back`] up
     /// to `n` times until [`None`] is encountered.
     ///
-    /// `advance_back_by(n)` will return [`Ok(())`] if the iterator successfully advances by
-    /// `n` elements, or [`Err(k)`] if [`None`] is encountered, where `k` is the number of
-    /// elements the iterator is advanced by before running out of elements (i.e. the length
-    /// of the iterator). Note that `k` is always less than `n`.
+    /// `advance_back_by(n)` will return `Ok(())` if the iterator successfully advances by
+    /// `n` elements, or a `Err(NonZeroUsize)` with value `k` if [`None`] is encountered, where `k`
+    /// is remaining number of steps that could not be advanced because the iterator ran out.
+    /// If `self` is empty and `n` is non-zero, then this returns `Err(n)`.
+    /// Otherwise, `k` is always less than `n`.
     ///
     /// Calling `advance_back_by(0)` can do meaningful work, for example [`Flatten`] can advance its
     /// outer iterator until it finds an inner iterator that is not empty, which then often
@@ -118,22 +120,26 @@ pub trait DoubleEndedIterator: Iterator {
     /// ```
     /// #![feature(iter_advance_by)]
     ///
+    /// use std::num::NonZeroUsize;
     /// let a = [3, 4, 5, 6];
     /// let mut iter = a.iter();
     ///
     /// assert_eq!(iter.advance_back_by(2), Ok(()));
     /// assert_eq!(iter.next_back(), Some(&4));
     /// assert_eq!(iter.advance_back_by(0), Ok(()));
-    /// assert_eq!(iter.advance_back_by(100), Err(1)); // only `&3` was skipped
+    /// assert_eq!(iter.advance_back_by(100), Err(NonZeroUsize::new(99).unwrap())); // only `&3` was skipped
     /// ```
     ///
     /// [`Ok(())`]: Ok
     /// [`Err(k)`]: Err
     #[inline]
     #[unstable(feature = "iter_advance_by", reason = "recently added", issue = "77404")]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
         for i in 0..n {
-            self.next_back().ok_or(i)?;
+            if self.next_back().is_none() {
+                // SAFETY: `i` is always less than `n`.
+                return Err(unsafe { NonZeroUsize::new_unchecked(n - i) });
+            }
         }
         Ok(())
     }
@@ -182,7 +188,9 @@ pub trait DoubleEndedIterator: Iterator {
     #[inline]
     #[stable(feature = "iter_nth_back", since = "1.37.0")]
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
-        self.advance_back_by(n).ok()?;
+        if self.advance_back_by(n).is_err() {
+            return None;
+        }
         self.next_back()
     }
 
@@ -352,7 +360,7 @@ pub trait DoubleEndedIterator: Iterator {
         #[inline]
         fn check<T>(mut predicate: impl FnMut(&T) -> bool) -> impl FnMut((), T) -> ControlFlow<T> {
             move |(), x| {
-                if predicate(&x) { ControlFlow::Break(x) } else { ControlFlow::CONTINUE }
+                if predicate(&x) { ControlFlow::Break(x) } else { ControlFlow::Continue(()) }
             }
         }
 
@@ -365,7 +373,7 @@ impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
     fn next_back(&mut self) -> Option<I::Item> {
         (**self).next_back()
     }
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
         (**self).advance_back_by(n)
     }
     fn nth_back(&mut self, n: usize) -> Option<I::Item> {

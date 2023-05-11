@@ -1,0 +1,15 @@
+error[E0220]: associated type `Pr` not found for `S<bool>` in the current scope
+  --> $DIR/not-found-self-type-differs-shadowing-trait-item.rs:28:23
+   |
+LL | struct S<T>(T);
+   | ----------- associated item `Pr` not found for this struct
+...
+LL |     let _: S::<bool>::Pr = ();
+   |                       ^^ associated item not found in `S<bool>`
+   |
+   = note: the associated type was found for
+           - `S<()>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0220`.

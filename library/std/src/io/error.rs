@@ -11,7 +11,6 @@ mod repr_unpacked;
 #[cfg(not(target_pointer_width = "64"))]
 use repr_unpacked::Repr;
 
-use crate::convert::From;
 use crate::error;
 use crate::fmt;
 use crate::result;
@@ -76,15 +75,34 @@ impl fmt::Debug for Error {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
+impl From<alloc::ffi::NulError> for Error {
+    /// Converts a [`alloc::ffi::NulError`] into a [`Error`].
+    fn from(_: alloc::ffi::NulError) -> Error {
+        const_io_error!(ErrorKind::InvalidInput, "data provided contains a nul byte")
+    }
+}
+
 // Only derive debug in tests, to make sure it
 // doesn't accidentally get printed.
 #[cfg_attr(test, derive(Debug))]
 enum ErrorData<C> {
-    Os(i32),
+    Os(RawOsError),
     Simple(ErrorKind),
     SimpleMessage(&'static SimpleMessage),
     Custom(C),
 }
+
+/// The type of raw OS error codes returned by [`Error::raw_os_error`].
+///
+/// This is an [`i32`] on all currently supported platforms, but platforms
+/// added in the future (such as UEFI) may use a different primitive type like
+/// [`usize`]. Use `as`or [`into`] conversions where applicable to ensure maximum
+/// portability.
+///
+/// [`into`]: Into::into
+#[unstable(feature = "raw_os_error_ty", issue = "107792")]
+pub type RawOsError = i32;
 
 // `#[repr(align(4))]` is probably redundant, it should have that value or
 // higher already. We include it just because repr_bitpacked.rs's encoding
@@ -351,7 +369,7 @@ pub enum ErrorKind {
 
     // "Unusual" error kinds which do not correspond simply to (sets
     // of) OS error codes, should be added just above this comment.
-    // `Other` and `Uncategorised` should remain at the end:
+    // `Other` and `Uncategorized` should remain at the end:
     //
     /// A custom error that does not fall under any other I/O error kind.
     ///
@@ -379,7 +397,7 @@ pub enum ErrorKind {
 impl ErrorKind {
     pub(crate) fn as_str(&self) -> &'static str {
         use ErrorKind::*;
-        // Strictly alphabetical, please.  (Sadly rustfmt cannot do this yet.)
+        // tidy-alphabetical-start
         match *self {
             AddrInUse => "address in use",
             AddrNotAvailable => "address not available",
@@ -423,6 +441,7 @@ impl ErrorKind {
             WouldBlock => "operation would block",
             WriteZero => "write zero",
         }
+        // tidy-alphabetical-end
     }
 }
 
@@ -473,6 +492,7 @@ impl Error {
     /// originate from the OS itself. The `error` argument is an arbitrary
     /// payload which will be contained in this [`Error`].
     ///
+    /// Note that this function allocates memory on the heap.
     /// If no extra payload is required, use the `From` conversion from
     /// `ErrorKind`.
     ///
@@ -487,7 +507,7 @@ impl Error {
     /// // errors can also be created from other errors
     /// let custom_error2 = Error::new(ErrorKind::Interrupted, custom_error);
     ///
-    /// // creating an error without payload
+    /// // creating an error without payload (and without memory allocation)
     /// let eof_error = Error::from(ErrorKind::UnexpectedEof);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -564,10 +584,12 @@ impl Error {
     /// println!("last OS error: {os_error:?}");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[doc(alias = "GetLastError")]
+    #[doc(alias = "errno")]
     #[must_use]
     #[inline]
     pub fn last_os_error() -> Error {
-        Error::from_raw_os_error(sys::os::errno() as i32)
+        Error::from_raw_os_error(sys::os::errno())
     }
 
     /// Creates a new instance of an [`Error`] from a particular OS error code.
@@ -598,7 +620,7 @@ impl Error {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     #[inline]
-    pub fn from_raw_os_error(code: i32) -> Error {
+    pub fn from_raw_os_error(code: RawOsError) -> Error {
         Error { repr: Repr::new_os(code) }
     }
 
@@ -634,7 +656,7 @@ impl Error {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     #[inline]
-    pub fn raw_os_error(&self) -> Option<i32> {
+    pub fn raw_os_error(&self) -> Option<RawOsError> {
         match self.repr.data() {
             ErrorData::Os(i) => Some(i),
             ErrorData::Custom(..) => None,
@@ -795,7 +817,76 @@ impl Error {
         }
     }
 
+    /// Attempt to downgrade the inner error to `E` if any.
+    ///
+    /// If this [`Error`] was constructed via [`new`] then this function will
+    /// attempt to perform downgrade on it, otherwise it will return [`Err`].
+    ///
+    /// If downgrade succeeds, it will return [`Ok`], otherwise it will also
+    /// return [`Err`].
+    ///
+    /// [`new`]: Error::new
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(io_error_downcast)]
+    ///
+    /// use std::fmt;
+    /// use std::io;
+    /// use std::error::Error;
+    ///
+    /// #[derive(Debug)]
+    /// enum E {
+    ///     Io(io::Error),
+    ///     SomeOtherVariant,
+    /// }
+    ///
+    /// impl fmt::Display for E {
+    ///    // ...
+    /// #    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    /// #        todo!()
+    /// #    }
+    /// }
+    /// impl Error for E {}
+    ///
+    /// impl From<io::Error> for E {
+    ///     fn from(err: io::Error) -> E {
+    ///         err.downcast::<E>()
+    ///             .map(|b| *b)
+    ///             .unwrap_or_else(E::Io)
+    ///     }
+    /// }
+    /// ```
+    #[unstable(feature = "io_error_downcast", issue = "99262")]
+    pub fn downcast<E>(self) -> result::Result<Box<E>, Self>
+    where
+        E: error::Error + Send + Sync + 'static,
+    {
+        match self.repr.into_data() {
+            ErrorData::Custom(b) if b.error.is::<E>() => {
+                let res = (*b).error.downcast::<E>();
+
+                // downcast is a really trivial and is marked as inline, so
+                // it's likely be inlined here.
+                //
+                // And the compiler should be able to eliminate the branch
+                // that produces `Err` here since b.error.is::<E>()
+                // returns true.
+                Ok(res.unwrap())
+            }
+            repr_data => Err(Self { repr: Repr::new(repr_data) }),
+        }
+    }
+
     /// Returns the corresponding [`ErrorKind`] for this error.
+    ///
+    /// This may be a value set by Rust code constructing custom `io::Error`s,
+    /// or if this `io::Error` was sourced from the operating system,
+    /// it will be a value inferred from the system's error encoding.
+    /// See [`last_os_error`] for more details.
+    ///
+    /// [`last_os_error`]: Error::last_os_error
     ///
     /// # Examples
     ///
@@ -807,7 +898,8 @@ impl Error {
     /// }
     ///
     /// fn main() {
-    ///     // Will print "Uncategorized".
+    ///     // As no error has (visibly) occurred, this may print anything!
+    ///     // It likely prints a placeholder for unidentified (non-)errors.
     ///     print_error(Error::last_os_error());
     ///     // Will print "AddrInUse".
     ///     print_error(Error::new(ErrorKind::AddrInUse, "oh no!"));

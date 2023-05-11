@@ -7,5 +7,4 @@
     issue = "none"
 )]
 #![allow(unused_features)]
-#![feature(nll)]
 #![feature(staged_api)]

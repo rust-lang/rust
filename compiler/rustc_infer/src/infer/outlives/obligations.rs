@@ -33,9 +33,9 @@
 //! Consider:
 //!
 //! ```
-//! fn bar<T>(a: T, b: impl for<'a> Fn(&'a T));
+//! fn bar<T>(a: T, b: impl for<'a> Fn(&'a T)) {}
 //! fn foo<T>(x: T) {
-//!     bar(x, |y| { ... })
+//!     bar(x, |y| { /* ... */})
 //!          // ^ closure arg
 //! }
 //! ```
@@ -66,30 +66,25 @@ use crate::infer::{
     self, GenericKind, InferCtxt, RegionObligation, SubregionOrigin, UndoLog, VerifyBound,
 };
 use crate::traits::{ObligationCause, ObligationCauseCode};
-use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{self, Region, Ty, TyCtxt, TypeFoldable};
-
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::undo_log::UndoLogs;
-use rustc_hir as hir;
+use rustc_middle::mir::ConstraintCategory;
+use rustc_middle::ty::subst::GenericArgKind;
+use rustc_middle::ty::{self, Region, SubstsRef, Ty, TyCtxt, TypeVisitableExt};
 use smallvec::smallvec;
 
-impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
+use super::env::OutlivesEnvironment;
+
+impl<'tcx> InferCtxt<'tcx> {
     /// Registers that the given region obligation must be resolved
     /// from within the scope of `body_id`. These regions are enqueued
     /// and later processed by regionck, when full type information is
     /// available (see `region_obligations` field for more
     /// information).
-    pub fn register_region_obligation(
-        &self,
-        body_id: hir::HirId,
-        obligation: RegionObligation<'tcx>,
-    ) {
-        debug!("register_region_obligation(body_id={:?}, obligation={:?})", body_id, obligation);
-
+    #[instrument(level = "debug", skip(self))]
+    pub fn register_region_obligation(&self, obligation: RegionObligation<'tcx>) {
         let mut inner = self.inner.borrow_mut();
         inner.undo_log.push(UndoLog::PushRegionObligation);
-        inner.region_obligations.push((body_id, obligation));
+        inner.region_obligations.push(obligation);
     }
 
     pub fn register_region_obligation_with_cause(
@@ -98,68 +93,38 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         sub_region: Region<'tcx>,
         cause: &ObligationCause<'tcx>,
     ) {
+        debug!(?sup_type, ?sub_region, ?cause);
         let origin = SubregionOrigin::from_obligation_cause(cause, || {
             infer::RelateParamBound(
                 cause.span,
                 sup_type,
                 match cause.code().peel_derives() {
-                    ObligationCauseCode::BindingObligation(_, span) => Some(*span),
+                    ObligationCauseCode::BindingObligation(_, span)
+                    | ObligationCauseCode::ExprBindingObligation(_, span, ..) => Some(*span),
                     _ => None,
                 },
             )
         });
 
-        self.register_region_obligation(
-            cause.body_id,
-            RegionObligation { sup_type, sub_region, origin },
-        );
+        self.register_region_obligation(RegionObligation { sup_type, sub_region, origin });
     }
 
     /// Trait queries just want to pass back type obligations "as is"
-    pub fn take_registered_region_obligations(&self) -> Vec<(hir::HirId, RegionObligation<'tcx>)> {
+    pub fn take_registered_region_obligations(&self) -> Vec<RegionObligation<'tcx>> {
         std::mem::take(&mut self.inner.borrow_mut().region_obligations)
     }
 
     /// Process the region obligations that must be proven (during
     /// `regionck`) for the given `body_id`, given information about
-    /// the region bounds in scope and so forth. This function must be
-    /// invoked for all relevant body-ids before region inference is
-    /// done (or else an assert will fire).
+    /// the region bounds in scope and so forth.
     ///
     /// See the `region_obligations` field of `InferCtxt` for some
     /// comments about how this function fits into the overall expected
     /// flow of the inferencer. The key point is that it is
     /// invoked after all type-inference variables have been bound --
-    /// towards the end of regionck. This also ensures that the
-    /// region-bound-pairs are available (see comments above regarding
-    /// closures).
-    ///
-    /// # Parameters
-    ///
-    /// - `region_bound_pairs`: the set of region bounds implied by
-    ///   the parameters and where-clauses. In particular, each pair
-    ///   `('a, K)` in this list tells us that the bounds in scope
-    ///   indicate that `K: 'a`, where `K` is either a generic
-    ///   parameter like `T` or a projection like `T::Item`.
-    /// - `implicit_region_bound`: if some, this is a region bound
-    ///   that is considered to hold for all type parameters (the
-    ///   function body).
-    /// - `param_env` is the parameter environment for the enclosing function.
-    /// - `body_id` is the body-id whose region obligations are being
-    ///   processed.
-    ///
-    /// # Returns
-    ///
-    /// This function may have to perform normalizations, and hence it
-    /// returns an `InferOk` with subobligations that must be
-    /// processed.
-    #[instrument(level = "debug", skip(self, region_bound_pairs_map))]
-    pub fn process_registered_region_obligations(
-        &self,
-        region_bound_pairs_map: &FxHashMap<hir::HirId, RegionBoundPairs<'tcx>>,
-        implicit_region_bound: Option<ty::Region<'tcx>>,
-        param_env: ty::ParamEnv<'tcx>,
-    ) {
+    /// right before lexical region resolution.
+    #[instrument(level = "debug", skip(self, outlives_env))]
+    pub fn process_registered_region_obligations(&self, outlives_env: &OutlivesEnvironment<'tcx>) {
         assert!(
             !self.in_snapshot.get(),
             "cannot process registered region obligations in a snapshot"
@@ -167,29 +132,19 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
 
         let my_region_obligations = self.take_registered_region_obligations();
 
-        for (body_id, RegionObligation { sup_type, sub_region, origin }) in my_region_obligations {
-            debug!(
-                "process_registered_region_obligations: sup_type={:?} sub_region={:?} origin={:?}",
-                sup_type, sub_region, origin
-            );
-
+        for RegionObligation { sup_type, sub_region, origin } in my_region_obligations {
+            debug!(?sup_type, ?sub_region, ?origin);
             let sup_type = self.resolve_vars_if_possible(sup_type);
 
-            if let Some(region_bound_pairs) = region_bound_pairs_map.get(&body_id) {
-                let outlives = &mut TypeOutlives::new(
-                    self,
-                    self.tcx,
-                    &region_bound_pairs,
-                    implicit_region_bound,
-                    param_env,
-                );
-                outlives.type_must_outlive(origin, sup_type, sub_region);
-            } else {
-                self.tcx.sess.delay_span_bug(
-                    origin.span(),
-                    &format!("no region-bound-pairs for {:?}", body_id),
-                );
-            }
+            let outlives = &mut TypeOutlives::new(
+                self,
+                self.tcx,
+                &outlives_env.region_bound_pairs(),
+                None,
+                outlives_env.param_env,
+            );
+            let category = origin.to_constraint_category();
+            outlives.type_must_outlive(origin, sup_type, sub_region, category);
         }
     }
 }
@@ -217,6 +172,7 @@ pub trait TypeOutlivesDelegate<'tcx> {
         origin: SubregionOrigin<'tcx>,
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
+        constraint_category: ConstraintCategory<'tcx>,
     );
 
     fn push_verify(
@@ -259,19 +215,19 @@ where
     /// - `origin`, the reason we need this constraint
     /// - `ty`, the type `T`
     /// - `region`, the region `'a`
+    #[instrument(level = "debug", skip(self))]
     pub fn type_must_outlive(
         &mut self,
         origin: infer::SubregionOrigin<'tcx>,
         ty: Ty<'tcx>,
         region: ty::Region<'tcx>,
+        category: ConstraintCategory<'tcx>,
     ) {
-        debug!("type_must_outlive(ty={:?}, region={:?}, origin={:?})", ty, region, origin);
-
         assert!(!ty.has_escaping_bound_vars());
 
         let mut components = smallvec![];
         push_outlives_components(self.tcx, ty, &mut components);
-        self.components_must_outlive(origin, &components, region);
+        self.components_must_outlive(origin, &components, region, category);
     }
 
     fn components_must_outlive(
@@ -279,21 +235,20 @@ where
         origin: infer::SubregionOrigin<'tcx>,
         components: &[Component<'tcx>],
         region: ty::Region<'tcx>,
+        category: ConstraintCategory<'tcx>,
     ) {
         for component in components.iter() {
             let origin = origin.clone();
             match component {
                 Component::Region(region1) => {
-                    self.delegate.push_sub_region_constraint(origin, region, *region1);
+                    self.delegate.push_sub_region_constraint(origin, region, *region1, category);
                 }
                 Component::Param(param_ty) => {
                     self.param_ty_must_outlive(origin, region, *param_ty);
                 }
-                Component::Projection(projection_ty) => {
-                    self.projection_must_outlive(origin, region, *projection_ty);
-                }
-                Component::EscapingProjection(subcomponents) => {
-                    self.components_must_outlive(origin, &subcomponents, region);
+                Component::Alias(alias_ty) => self.alias_ty_must_outlive(origin, region, *alias_ty),
+                Component::EscapingAlias(subcomponents) => {
+                    self.components_must_outlive(origin, &subcomponents, region, category);
                 }
                 Component::UnresolvedInferenceVariable(v) => {
                     // ignore this, we presume it will yield an error
@@ -301,39 +256,35 @@ where
                     // this point it never will be
                     self.tcx.sess.delay_span_bug(
                         origin.span(),
-                        &format!("unresolved inference variable in outlives: {:?}", v),
+                        format!("unresolved inference variable in outlives: {:?}", v),
                     );
                 }
             }
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn param_ty_must_outlive(
         &mut self,
         origin: infer::SubregionOrigin<'tcx>,
         region: ty::Region<'tcx>,
         param_ty: ty::ParamTy,
     ) {
-        debug!(
-            "param_ty_must_outlive(region={:?}, param_ty={:?}, origin={:?})",
-            region, param_ty, origin
-        );
-
-        let generic = GenericKind::Param(param_ty);
-        let verify_bound = self.verify_bound.generic_bound(generic);
-        self.delegate.push_verify(origin, generic, region, verify_bound);
+        let verify_bound = self.verify_bound.param_bound(param_ty);
+        self.delegate.push_verify(origin, GenericKind::Param(param_ty), region, verify_bound);
     }
 
-    fn projection_must_outlive(
+    #[instrument(level = "debug", skip(self))]
+    fn alias_ty_must_outlive(
         &mut self,
         origin: infer::SubregionOrigin<'tcx>,
         region: ty::Region<'tcx>,
-        projection_ty: ty::ProjectionTy<'tcx>,
+        alias_ty: ty::AliasTy<'tcx>,
     ) {
-        debug!(
-            "projection_must_outlive(region={:?}, projection_ty={:?}, origin={:?})",
-            region, projection_ty, origin
-        );
+        // An optimization for a common case with opaque types.
+        if alias_ty.substs.is_empty() {
+            return;
+        }
 
         // This case is thorny for inference. The fundamental problem is
         // that there are many cases where we have choice, and inference
@@ -341,7 +292,7 @@ where
         // particular). :) First off, we have to choose between using the
         // OutlivesProjectionEnv, OutlivesProjectionTraitDef, and
         // OutlivesProjectionComponent rules, any one of which is
-        // sufficient.  If there are no inference variables involved, it's
+        // sufficient. If there are no inference variables involved, it's
         // not hard to pick the right rule, but if there are, we're in a
         // bit of a catch 22: if we picked which rule we were going to
         // use, we could add constraints to the region inference graph
@@ -353,29 +304,30 @@ where
         // These are guaranteed to apply, no matter the inference
         // results.
         let trait_bounds: Vec<_> =
-            self.verify_bound.projection_declared_bounds_from_trait(projection_ty).collect();
+            self.verify_bound.declared_bounds_from_definition(alias_ty).collect();
 
         debug!(?trait_bounds);
 
         // Compute the bounds we can derive from the environment. This
         // is an "approximate" match -- in some cases, these bounds
         // may not apply.
-        let mut approx_env_bounds =
-            self.verify_bound.projection_approx_declared_bounds_from_env(projection_ty);
-        debug!("projection_must_outlive: approx_env_bounds={:?}", approx_env_bounds);
+        let mut approx_env_bounds = self.verify_bound.approx_declared_bounds_from_env(alias_ty);
+        debug!(?approx_env_bounds);
 
         // Remove outlives bounds that we get from the environment but
         // which are also deducible from the trait. This arises (cc
         // #55756) in cases where you have e.g., `<T as Foo<'a>>::Item:
         // 'a` in the environment but `trait Foo<'b> { type Item: 'b
         // }` in the trait definition.
-        approx_env_bounds.retain(|bound| match *bound.0.kind() {
-            ty::Projection(projection_ty) => self
-                .verify_bound
-                .projection_declared_bounds_from_trait(projection_ty)
-                .all(|r| r != bound.1),
-
-            _ => panic!("expected only projection types from env, not {:?}", bound.0),
+        approx_env_bounds.retain(|bound_outlives| {
+            // OK to skip binder because we only manipulate and compare against other
+            // values from the same binder. e.g. if we have (e.g.) `for<'a> <T as Trait<'a>>::Item: 'a`
+            // in `bound`, the `'a` will be a `^1` (bound, debruijn index == innermost) region.
+            // If the declaration is `trait Trait<'b> { type Item: 'b; }`, then `projection_declared_bounds_from_trait`
+            // will be invoked with `['b => ^1]` and so we will get `^1` returned.
+            let bound = bound_outlives.skip_binder();
+            let ty::Alias(_, alias_ty) = bound.0.kind() else { bug!("expected AliasTy") };
+            self.verify_bound.declared_bounds_from_definition(*alias_ty).all(|r| r != bound.1)
         });
 
         // If declared bounds list is empty, the only applicable rule is
@@ -392,24 +344,14 @@ where
         // the problem is to add `T: 'r`, which isn't true. So, if there are no
         // inference variables, we use a verify constraint instead of adding
         // edges, which winds up enforcing the same condition.
-        let needs_infer = projection_ty.needs_infer();
-        if approx_env_bounds.is_empty() && trait_bounds.is_empty() && needs_infer {
-            debug!("projection_must_outlive: no declared bounds");
-
-            for k in projection_ty.substs {
-                match k.unpack() {
-                    GenericArgKind::Lifetime(lt) => {
-                        self.delegate.push_sub_region_constraint(origin.clone(), region, lt);
-                    }
-                    GenericArgKind::Type(ty) => {
-                        self.type_must_outlive(origin.clone(), ty, region);
-                    }
-                    GenericArgKind::Const(_) => {
-                        // Const parameters don't impose constraints.
-                    }
-                }
-            }
-
+        let is_opaque = alias_ty.kind(self.tcx) == ty::Opaque;
+        if approx_env_bounds.is_empty()
+            && trait_bounds.is_empty()
+            && (alias_ty.has_infer() || is_opaque)
+        {
+            debug!("no declared bounds");
+            let opt_variances = is_opaque.then(|| self.tcx.variances_of(alias_ty.def_id));
+            self.substs_must_outlive(alias_ty.substs, origin, region, opt_variances);
             return;
         }
 
@@ -426,13 +368,22 @@ where
         if !trait_bounds.is_empty()
             && trait_bounds[1..]
                 .iter()
-                .chain(approx_env_bounds.iter().map(|b| &b.1))
-                .all(|b| *b == trait_bounds[0])
+                .map(|r| Some(*r))
+                .chain(
+                    // NB: The environment may contain `for<'a> T: 'a` style bounds.
+                    // In that case, we don't know if they are equal to the trait bound
+                    // or not (since we don't *know* whether the environment bound even applies),
+                    // so just map to `None` here if there are bound vars, ensuring that
+                    // the call to `all` will fail below.
+                    approx_env_bounds.iter().map(|b| b.map_bound(|b| b.1).no_bound_vars()),
+                )
+                .all(|b| b == Some(trait_bounds[0]))
         {
             let unique_bound = trait_bounds[0];
-            debug!("projection_must_outlive: unique trait bound = {:?}", unique_bound);
-            debug!("projection_must_outlive: unique declared bound appears in trait ref");
-            self.delegate.push_sub_region_constraint(origin, region, unique_bound);
+            debug!(?unique_bound);
+            debug!("unique declared bound appears in trait ref");
+            let category = origin.to_constraint_category();
+            self.delegate.push_sub_region_constraint(origin, region, unique_bound, category);
             return;
         }
 
@@ -441,18 +392,55 @@ where
         // projection outlive; in some cases, this may add insufficient
         // edges into the inference graph, leading to inference failures
         // even though a satisfactory solution exists.
-        let generic = GenericKind::Projection(projection_ty);
-        let verify_bound = self.verify_bound.generic_bound(generic);
-        self.delegate.push_verify(origin, generic, region, verify_bound);
+        let verify_bound = self.verify_bound.alias_bound(alias_ty, &mut Default::default());
+        debug!("alias_must_outlive: pushing {:?}", verify_bound);
+        self.delegate.push_verify(origin, GenericKind::Alias(alias_ty), region, verify_bound);
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    fn substs_must_outlive(
+        &mut self,
+        substs: SubstsRef<'tcx>,
+        origin: infer::SubregionOrigin<'tcx>,
+        region: ty::Region<'tcx>,
+        opt_variances: Option<&[ty::Variance]>,
+    ) {
+        let constraint = origin.to_constraint_category();
+        for (index, k) in substs.iter().enumerate() {
+            match k.unpack() {
+                GenericArgKind::Lifetime(lt) => {
+                    let variance = if let Some(variances) = opt_variances {
+                        variances[index]
+                    } else {
+                        ty::Invariant
+                    };
+                    if variance == ty::Invariant {
+                        self.delegate.push_sub_region_constraint(
+                            origin.clone(),
+                            region,
+                            lt,
+                            constraint,
+                        );
+                    }
+                }
+                GenericArgKind::Type(ty) => {
+                    self.type_must_outlive(origin.clone(), ty, region, constraint);
+                }
+                GenericArgKind::Const(_) => {
+                    // Const parameters don't impose constraints.
+                }
+            }
+        }
     }
 }
 
-impl<'cx, 'tcx> TypeOutlivesDelegate<'tcx> for &'cx InferCtxt<'cx, 'tcx> {
+impl<'cx, 'tcx> TypeOutlivesDelegate<'tcx> for &'cx InferCtxt<'tcx> {
     fn push_sub_region_constraint(
         &mut self,
         origin: SubregionOrigin<'tcx>,
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
+        _constraint_category: ConstraintCategory<'tcx>,
     ) {
         self.sub_regions(origin, a, b)
     }

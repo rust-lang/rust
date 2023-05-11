@@ -2,6 +2,7 @@ use crate::pp::Breaks::Inconsistent;
 use crate::pprust::state::delimited::IterDelimited;
 use crate::pprust::state::{AnnNode, PrintState, State, INDENT_UNIT};
 
+use ast::StaticItem;
 use rustc_ast as ast;
 use rustc_ast::GenericBound;
 use rustc_ast::ModKind;
@@ -19,7 +20,7 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_foreign_item(&mut self, item: &ast::ForeignItem) {
+    pub(crate) fn print_foreign_item(&mut self, item: &ast::ForeignItem) {
         let ast::Item { id, span, ident, ref attrs, ref kind, ref vis, tokens: _ } = *item;
         self.ann.pre(self, AnnNode::SubItem(id));
         self.hardbreak_if_not_bol();
@@ -114,7 +115,10 @@ impl<'a> State<'a> {
         self.word_space("type");
         self.print_ident(ident);
         self.print_generic_params(&generics.params);
-        self.print_type_bounds(":", bounds);
+        if !bounds.is_empty() {
+            self.word_nbsp(":");
+            self.print_type_bounds(bounds);
+        }
         self.print_where_clause_parts(where_clauses.0.0, before_predicates);
         if let Some(ty) = ty {
             self.space();
@@ -128,15 +132,15 @@ impl<'a> State<'a> {
     }
 
     /// Pretty-prints an item.
-    crate fn print_item(&mut self, item: &ast::Item) {
+    pub(crate) fn print_item(&mut self, item: &ast::Item) {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
         self.print_outer_attributes(&item.attrs);
         self.ann.pre(self, AnnNode::Item(item));
-        match item.kind {
+        match &item.kind {
             ast::ItemKind::ExternCrate(orig_name) => {
                 self.head(visibility_qualified(&item.vis, "extern crate"));
-                if let Some(orig_name) = orig_name {
+                if let &Some(orig_name) = orig_name {
                     self.print_name(orig_name);
                     self.space();
                     self.word("as");
@@ -147,35 +151,48 @@ impl<'a> State<'a> {
                 self.end(); // end inner head-block
                 self.end(); // end outer head-block
             }
-            ast::ItemKind::Use(ref tree) => {
+            ast::ItemKind::Use(tree) => {
                 self.print_visibility(&item.vis);
                 self.word_nbsp("use");
                 self.print_use_tree(tree);
                 self.word(";");
             }
-            ast::ItemKind::Static(ref ty, mutbl, ref body) => {
+            ast::ItemKind::Static(box StaticItem { ty, mutability: mutbl, expr: body }) => {
                 let def = ast::Defaultness::Final;
-                self.print_item_const(item.ident, Some(mutbl), ty, body.as_deref(), &item.vis, def);
+                self.print_item_const(
+                    item.ident,
+                    Some(*mutbl),
+                    ty,
+                    body.as_deref(),
+                    &item.vis,
+                    def,
+                );
             }
-            ast::ItemKind::Const(def, ref ty, ref body) => {
-                self.print_item_const(item.ident, None, ty, body.as_deref(), &item.vis, def);
+            ast::ItemKind::Const(box ast::ConstItem { defaultness, ty, expr }) => {
+                self.print_item_const(
+                    item.ident,
+                    None,
+                    ty,
+                    expr.as_deref(),
+                    &item.vis,
+                    *defaultness,
+                );
             }
-            ast::ItemKind::Fn(box ast::Fn { defaultness, ref sig, ref generics, ref body }) => {
-                let body = body.as_deref();
+            ast::ItemKind::Fn(box ast::Fn { defaultness, sig, generics, body }) => {
                 self.print_fn_full(
                     sig,
                     item.ident,
                     generics,
                     &item.vis,
-                    defaultness,
-                    body,
+                    *defaultness,
+                    body.as_deref(),
                     &item.attrs,
                 );
             }
-            ast::ItemKind::Mod(unsafety, ref mod_kind) => {
+            ast::ItemKind::Mod(unsafety, mod_kind) => {
                 self.head(Self::to_string(|s| {
                     s.print_visibility(&item.vis);
-                    s.print_unsafety(unsafety);
+                    s.print_unsafety(*unsafety);
                     s.word("mod");
                 }));
                 self.print_ident(item.ident);
@@ -198,13 +215,13 @@ impl<'a> State<'a> {
                     }
                 }
             }
-            ast::ItemKind::ForeignMod(ref nmod) => {
+            ast::ItemKind::ForeignMod(nmod) => {
                 self.head(Self::to_string(|s| {
                     s.print_unsafety(nmod.unsafety);
                     s.word("extern");
                 }));
                 if let Some(abi) = nmod.abi {
-                    self.print_literal(&abi.as_lit());
+                    self.print_token_literal(abi.as_token_lit(), abi.span);
                     self.nbsp();
                 }
                 self.bopen();
@@ -212,39 +229,40 @@ impl<'a> State<'a> {
                 let empty = item.attrs.is_empty() && nmod.items.is_empty();
                 self.bclose(item.span, empty);
             }
-            ast::ItemKind::GlobalAsm(ref asm) => {
+            ast::ItemKind::GlobalAsm(asm) => {
                 self.head(visibility_qualified(&item.vis, "global_asm!"));
                 self.print_inline_asm(asm);
+                self.word(";");
+                self.end();
                 self.end();
             }
             ast::ItemKind::TyAlias(box ast::TyAlias {
                 defaultness,
-                ref generics,
+                generics,
                 where_clauses,
                 where_predicates_split,
-                ref bounds,
-                ref ty,
+                bounds,
+                ty,
             }) => {
-                let ty = ty.as_deref();
                 self.print_associated_type(
                     item.ident,
                     generics,
-                    where_clauses,
-                    where_predicates_split,
+                    *where_clauses,
+                    *where_predicates_split,
                     bounds,
-                    ty,
+                    ty.as_deref(),
                     &item.vis,
-                    defaultness,
+                    *defaultness,
                 );
             }
-            ast::ItemKind::Enum(ref enum_definition, ref params) => {
+            ast::ItemKind::Enum(enum_definition, params) => {
                 self.print_enum_def(enum_definition, params, item.ident, item.span, &item.vis);
             }
-            ast::ItemKind::Struct(ref struct_def, ref generics) => {
+            ast::ItemKind::Struct(struct_def, generics) => {
                 self.head(visibility_qualified(&item.vis, "struct"));
                 self.print_struct(struct_def, generics, item.ident, item.span, true);
             }
-            ast::ItemKind::Union(ref struct_def, ref generics) => {
+            ast::ItemKind::Union(struct_def, generics) => {
                 self.head(visibility_qualified(&item.vis, "union"));
                 self.print_struct(struct_def, generics, item.ident, item.span, true);
             }
@@ -253,15 +271,15 @@ impl<'a> State<'a> {
                 polarity,
                 defaultness,
                 constness,
-                ref generics,
-                ref of_trait,
-                ref self_ty,
-                ref items,
+                generics,
+                of_trait,
+                self_ty,
+                items,
             }) => {
                 self.head("");
                 self.print_visibility(&item.vis);
-                self.print_defaultness(defaultness);
-                self.print_unsafety(unsafety);
+                self.print_defaultness(*defaultness);
+                self.print_unsafety(*unsafety);
                 self.word("impl");
 
                 if generics.params.is_empty() {
@@ -271,13 +289,13 @@ impl<'a> State<'a> {
                     self.space();
                 }
 
-                self.print_constness(constness);
+                self.print_constness(*constness);
 
                 if let ast::ImplPolarity::Negative(_) = polarity {
                     self.word("!");
                 }
 
-                if let Some(ref t) = *of_trait {
+                if let Some(t) = of_trait {
                     self.print_trait_ref(t);
                     self.space();
                     self.word_space("for");
@@ -298,21 +316,21 @@ impl<'a> State<'a> {
             ast::ItemKind::Trait(box ast::Trait {
                 is_auto,
                 unsafety,
-                ref generics,
-                ref bounds,
-                ref items,
+                generics,
+                bounds,
+                items,
                 ..
             }) => {
                 self.head("");
                 self.print_visibility(&item.vis);
-                self.print_unsafety(unsafety);
-                self.print_is_auto(is_auto);
+                self.print_unsafety(*unsafety);
+                self.print_is_auto(*is_auto);
                 self.word_nbsp("trait");
                 self.print_ident(item.ident);
                 self.print_generic_params(&generics.params);
                 let mut real_bounds = Vec::with_capacity(bounds.len());
                 for b in bounds.iter() {
-                    if let GenericBound::Trait(ref ptr, ast::TraitBoundModifier::Maybe) = *b {
+                    if let GenericBound::Trait(ptr, ast::TraitBoundModifier::Maybe) = b {
                         self.space();
                         self.word_space("for ?");
                         self.print_trait_ref(&ptr.trait_ref);
@@ -320,7 +338,10 @@ impl<'a> State<'a> {
                         real_bounds.push(b.clone());
                     }
                 }
-                self.print_type_bounds(":", &real_bounds);
+                if !real_bounds.is_empty() {
+                    self.word_nbsp(":");
+                    self.print_type_bounds(&real_bounds);
+                }
                 self.print_where_clause(&generics.where_clause);
                 self.word(" ");
                 self.bopen();
@@ -331,35 +352,27 @@ impl<'a> State<'a> {
                 let empty = item.attrs.is_empty() && items.is_empty();
                 self.bclose(item.span, empty);
             }
-            ast::ItemKind::TraitAlias(ref generics, ref bounds) => {
+            ast::ItemKind::TraitAlias(generics, bounds) => {
                 self.head(visibility_qualified(&item.vis, "trait"));
                 self.print_ident(item.ident);
                 self.print_generic_params(&generics.params);
-                let mut real_bounds = Vec::with_capacity(bounds.len());
-                // FIXME(durka) this seems to be some quite outdated syntax
-                for b in bounds.iter() {
-                    if let GenericBound::Trait(ref ptr, ast::TraitBoundModifier::Maybe) = *b {
-                        self.space();
-                        self.word_space("for ?");
-                        self.print_trait_ref(&ptr.trait_ref);
-                    } else {
-                        real_bounds.push(b.clone());
-                    }
-                }
                 self.nbsp();
-                self.print_type_bounds("=", &real_bounds);
+                if !bounds.is_empty() {
+                    self.word_nbsp("=");
+                    self.print_type_bounds(&bounds);
+                }
                 self.print_where_clause(&generics.where_clause);
                 self.word(";");
                 self.end(); // end inner head-block
                 self.end(); // end outer head-block
             }
-            ast::ItemKind::MacCall(ref mac) => {
+            ast::ItemKind::MacCall(mac) => {
                 self.print_mac(mac);
                 if mac.args.need_semicolon() {
                     self.word(";");
                 }
             }
-            ast::ItemKind::MacroDef(ref macro_def) => {
+            ast::ItemKind::MacroDef(macro_def) => {
                 self.print_mac_def(macro_def, &item.ident, item.span, |state| {
                     state.print_visibility(&item.vis)
                 });
@@ -400,19 +413,15 @@ impl<'a> State<'a> {
         self.bclose(span, empty)
     }
 
-    crate fn print_visibility(&mut self, vis: &ast::Visibility) {
-        match vis.kind {
+    pub(crate) fn print_visibility(&mut self, vis: &ast::Visibility) {
+        match &vis.kind {
             ast::VisibilityKind::Public => self.word_nbsp("pub"),
-            ast::VisibilityKind::Crate(sugar) => match sugar {
-                ast::CrateSugar::PubCrate => self.word_nbsp("pub(crate)"),
-                ast::CrateSugar::JustCrate => self.word_nbsp("crate"),
-            },
-            ast::VisibilityKind::Restricted { ref path, .. } => {
+            ast::VisibilityKind::Restricted { path, shorthand, .. } => {
                 let path = Self::to_string(|s| s.print_path(path, false, 0));
-                if path == "self" || path == "super" {
-                    self.word_nbsp(format!("pub({})", path))
+                if *shorthand && (path == "crate" || path == "self" || path == "super") {
+                    self.word_nbsp(format!("pub({path})"))
                 } else {
-                    self.word_nbsp(format!("pub(in {})", path))
+                    self.word_nbsp(format!("pub(in {path})"))
                 }
             }
             ast::VisibilityKind::Inherited => {}
@@ -458,7 +467,7 @@ impl<'a> State<'a> {
     ) {
         self.print_ident(ident);
         self.print_generic_params(&generics.params);
-        match struct_def {
+        match &struct_def {
             ast::VariantData::Tuple(..) | ast::VariantData::Unit(..) => {
                 if let ast::VariantData::Tuple(..) = struct_def {
                     self.popen();
@@ -477,26 +486,26 @@ impl<'a> State<'a> {
                 self.end();
                 self.end(); // Close the outer-box.
             }
-            ast::VariantData::Struct(ref fields, ..) => {
+            ast::VariantData::Struct(fields, ..) => {
                 self.print_where_clause(&generics.where_clause);
                 self.print_record_struct_body(fields, span);
             }
         }
     }
 
-    crate fn print_variant(&mut self, v: &ast::Variant) {
+    pub(crate) fn print_variant(&mut self, v: &ast::Variant) {
         self.head("");
         self.print_visibility(&v.vis);
         let generics = ast::Generics::default();
         self.print_struct(&v.data, &generics, v.ident, v.span, false);
-        if let Some(ref d) = v.disr_expr {
+        if let Some(d) = &v.disr_expr {
             self.space();
             self.word_space("=");
             self.print_expr(&d.value)
         }
     }
 
-    fn print_assoc_item(&mut self, item: &ast::AssocItem) {
+    pub(crate) fn print_assoc_item(&mut self, item: &ast::AssocItem) {
         let ast::Item { id, span, ident, ref attrs, ref kind, ref vis, tokens: _ } = *item;
         self.ann.pre(self, AnnNode::SubItem(id));
         self.hardbreak_if_not_bol();
@@ -506,10 +515,10 @@ impl<'a> State<'a> {
             ast::AssocItemKind::Fn(box ast::Fn { defaultness, sig, generics, body }) => {
                 self.print_fn_full(sig, ident, generics, vis, *defaultness, body.as_deref(), attrs);
             }
-            ast::AssocItemKind::Const(def, ty, body) => {
-                self.print_item_const(ident, None, ty, body.as_deref(), vis, *def);
+            ast::AssocItemKind::Const(box ast::ConstItem { defaultness, ty, expr }) => {
+                self.print_item_const(ident, None, ty, expr.as_deref(), vis, *defaultness);
             }
-            ast::AssocItemKind::TyAlias(box ast::TyAlias {
+            ast::AssocItemKind::Type(box ast::TyAlias {
                 defaultness,
                 generics,
                 where_clauses,
@@ -562,7 +571,7 @@ impl<'a> State<'a> {
         }
     }
 
-    crate fn print_fn(
+    pub(crate) fn print_fn(
         &mut self,
         decl: &ast::FnDecl,
         header: ast::FnHeader,
@@ -579,7 +588,7 @@ impl<'a> State<'a> {
         self.print_where_clause(&generics.where_clause)
     }
 
-    crate fn print_fn_params_and_ret(&mut self, decl: &ast::FnDecl, is_closure: bool) {
+    pub(crate) fn print_fn_params_and_ret(&mut self, decl: &ast::FnDecl, is_closure: bool) {
         let (open, close) = if is_closure { ("|", "|") } else { ("(", ")") };
         self.word(open);
         self.commasep(Inconsistent, &decl.inputs, |s, param| s.print_param(param, is_closure));
@@ -591,7 +600,7 @@ impl<'a> State<'a> {
         self.print_where_clause_parts(where_clause.has_where_token, &where_clause.predicates);
     }
 
-    crate fn print_where_clause_parts(
+    pub(crate) fn print_where_clause_parts(
         &mut self,
         has_where_token: bool,
         predicates: &[ast::WherePredicate],
@@ -622,14 +631,23 @@ impl<'a> State<'a> {
             }) => {
                 self.print_formal_generic_params(bound_generic_params);
                 self.print_type(bounded_ty);
-                self.print_type_bounds(":", bounds);
+                self.word(":");
+                if !bounds.is_empty() {
+                    self.nbsp();
+                    self.print_type_bounds(bounds);
+                }
             }
             ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
                 lifetime,
                 bounds,
                 ..
             }) => {
-                self.print_lifetime_bounds(*lifetime, bounds);
+                self.print_lifetime(*lifetime);
+                self.word(":");
+                if !bounds.is_empty() {
+                    self.nbsp();
+                    self.print_lifetime_bounds(bounds);
+                }
             }
             ast::WherePredicate::EqPredicate(ast::WhereEqPredicate { lhs_ty, rhs_ty, .. }) => {
                 self.print_type(lhs_ty);
@@ -641,10 +659,10 @@ impl<'a> State<'a> {
     }
 
     fn print_use_tree(&mut self, tree: &ast::UseTree) {
-        match tree.kind {
-            ast::UseTreeKind::Simple(rename, ..) => {
+        match &tree.kind {
+            ast::UseTreeKind::Simple(rename) => {
                 self.print_path(&tree.prefix, false, 0);
-                if let Some(rename) = rename {
+                if let &Some(rename) = rename {
                     self.nbsp();
                     self.word_nbsp("as");
                     self.print_ident(rename);
@@ -657,7 +675,7 @@ impl<'a> State<'a> {
                 }
                 self.word("*");
             }
-            ast::UseTreeKind::Nested(ref items) => {
+            ast::UseTreeKind::Nested(items) => {
                 if !tree.prefix.segments.is_empty() {
                     self.print_path(&tree.prefix, false, 0);
                     self.word("::");

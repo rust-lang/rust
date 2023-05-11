@@ -30,11 +30,6 @@ impl Pointer {
         Pointer { base: PointerBase::Stack(stack_slot), offset: Offset32::new(0) }
     }
 
-    pub(crate) fn const_addr(fx: &mut FunctionCx<'_, '_, '_>, addr: i64) -> Self {
-        let addr = fx.bcx.ins().iconst(fx.pointer_type, addr);
-        Pointer { base: PointerBase::Addr(addr), offset: Offset32::new(0) }
-    }
-
     pub(crate) fn dangling(align: Align) -> Self {
         Pointer { base: PointerBase::Dangling(align), offset: Offset32::new(0) }
     }

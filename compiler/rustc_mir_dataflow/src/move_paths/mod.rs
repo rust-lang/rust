@@ -1,5 +1,6 @@
+use crate::move_paths::builder::MoveDat;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_index::vec::IndexVec;
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_span::Span;
@@ -13,27 +14,24 @@ use self::abs_domain::{AbstractElem, Lift};
 mod abs_domain;
 
 rustc_index::newtype_index! {
-    pub struct MovePathIndex {
-        DEBUG_FORMAT = "mp{}"
-    }
+    #[debug_format = "mp{}"]
+    pub struct MovePathIndex {}
 }
 
 impl polonius_engine::Atom for MovePathIndex {
     fn index(self) -> usize {
-        rustc_index::vec::Idx::index(self)
+        rustc_index::Idx::index(self)
     }
 }
 
 rustc_index::newtype_index! {
-    pub struct MoveOutIndex {
-        DEBUG_FORMAT = "mo{}"
-    }
+    #[debug_format = "mo{}"]
+    pub struct MoveOutIndex {}
 }
 
 rustc_index::newtype_index! {
-    pub struct InitIndex {
-        DEBUG_FORMAT = "in{}"
-    }
+    #[debug_format = "in{}"]
+    pub struct InitIndex {}
 }
 
 impl MoveOutIndex {
@@ -66,7 +64,7 @@ impl<'tcx> MovePath<'tcx> {
     /// Returns an iterator over the parents of `self`.
     pub fn parents<'a>(
         &self,
-        move_paths: &'a IndexVec<MovePathIndex, MovePath<'tcx>>,
+        move_paths: &'a IndexSlice<MovePathIndex, MovePath<'tcx>>,
     ) -> impl 'a + Iterator<Item = (MovePathIndex, &'a MovePath<'tcx>)> {
         let first = self.parent.map(|mpi| (mpi, &move_paths[mpi]));
         MovePathLinearIter {
@@ -80,7 +78,7 @@ impl<'tcx> MovePath<'tcx> {
     /// Returns an iterator over the immediate children of `self`.
     pub fn children<'a>(
         &self,
-        move_paths: &'a IndexVec<MovePathIndex, MovePath<'tcx>>,
+        move_paths: &'a IndexSlice<MovePathIndex, MovePath<'tcx>>,
     ) -> impl 'a + Iterator<Item = (MovePathIndex, &'a MovePath<'tcx>)> {
         let first = self.first_child.map(|mpi| (mpi, &move_paths[mpi]));
         MovePathLinearIter {
@@ -97,7 +95,7 @@ impl<'tcx> MovePath<'tcx> {
     /// `f` will **not** be called on `self`.
     pub fn find_descendant(
         &self,
-        move_paths: &IndexVec<MovePathIndex, MovePath<'_>>,
+        move_paths: &IndexSlice<MovePathIndex, MovePath<'_>>,
         f: impl Fn(MovePathIndex) -> bool,
     ) -> Option<MovePathIndex> {
         let mut todo = if let Some(child) = self.first_child {
@@ -131,13 +129,13 @@ impl<'tcx> fmt::Debug for MovePath<'tcx> {
     fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(w, "MovePath {{")?;
         if let Some(parent) = self.parent {
-            write!(w, " parent: {:?},", parent)?;
+            write!(w, " parent: {parent:?},")?;
         }
         if let Some(first_child) = self.first_child {
-            write!(w, " first_child: {:?},", first_child)?;
+            write!(w, " first_child: {first_child:?},")?;
         }
         if let Some(next_sibling) = self.next_sibling {
-            write!(w, " next_sibling: {:?}", next_sibling)?;
+            write!(w, " next_sibling: {next_sibling:?}")?;
         }
         write!(w, " place: {:?} }}", self.place)
     }
@@ -216,7 +214,7 @@ where
     fn new(body: &Body<'_>) -> Self {
         LocationMap {
             map: body
-                .basic_blocks()
+                .basic_blocks
                 .iter()
                 .map(|block| vec![T::default(); block.statements.len() + 1])
                 .collect(),
@@ -386,7 +384,7 @@ impl<'tcx> MoveData<'tcx> {
         body: &Body<'tcx>,
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
-    ) -> Result<Self, (Self, Vec<(Place<'tcx>, MoveError<'tcx>)>)> {
+    ) -> MoveDat<'tcx> {
         builder::gather_moves(body, tcx, param_env)
     }
 

@@ -6,21 +6,22 @@
 //! for their size, offset of a field, etc.).
 
 use rustc_hir::{def::DefKind, def_id::DefId, ConstContext};
-use rustc_index::bit_set::FiniteBitSet;
 use rustc_middle::mir::{
+    self,
     visit::{TyContext, Visitor},
-    Local, LocalDecl, Location,
+    Constant, ConstantKind, Local, LocalDecl, Location,
 };
 use rustc_middle::ty::{
     self,
-    fold::{TypeFoldable, TypeVisitor},
     query::Providers,
     subst::SubstsRef,
-    Const, Ty, TyCtxt,
+    visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor},
+    Const, Ty, TyCtxt, UnusedGenericParams,
 };
 use rustc_span::symbol::sym;
-use std::convert::TryInto;
 use std::ops::ControlFlow;
+
+use crate::errors::UnusedGenericParamsHint;
 
 /// Provide implementations of queries relating to polymorphization analysis.
 pub fn provide(providers: &mut Providers) {
@@ -31,20 +32,21 @@ pub fn provide(providers: &mut Providers) {
 ///
 /// Returns a bitset where bits representing unused parameters are set (`is_empty` indicates all
 /// parameters are used).
-#[instrument(level = "debug", skip(tcx))]
 fn unused_generic_params<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: ty::InstanceDef<'tcx>,
-) -> FiniteBitSet<u32> {
-    if !tcx.sess.opts.debugging_opts.polymorphize {
+) -> UnusedGenericParams {
+    assert!(instance.def_id().is_local());
+
+    if !tcx.sess.opts.unstable_opts.polymorphize {
         // If polymorphization disabled, then all parameters are used.
-        return FiniteBitSet::new_empty();
+        return UnusedGenericParams::new_all_used();
     }
 
     let def_id = instance.def_id();
     // Exit early if this instance should not be polymorphized.
     if !should_polymorphize(tcx, def_id, instance) {
-        return FiniteBitSet::new_empty();
+        return UnusedGenericParams::new_all_used();
     }
 
     let generics = tcx.generics_of(def_id);
@@ -52,14 +54,13 @@ fn unused_generic_params<'tcx>(
 
     // Exit early when there are no parameters to be unused.
     if generics.count() == 0 {
-        return FiniteBitSet::new_empty();
+        return UnusedGenericParams::new_all_used();
     }
 
     // Create a bitset with N rightmost ones for each parameter.
     let generics_count: u32 =
         generics.count().try_into().expect("more generic parameters than can fit into a `u32`");
-    let mut unused_parameters = FiniteBitSet::<u32>::new_empty();
-    unused_parameters.set_range(0..generics_count);
+    let mut unused_parameters = UnusedGenericParams::new_all_unused(generics_count);
     debug!(?unused_parameters, "(start)");
 
     mark_used_by_default_parameters(tcx, def_id, generics, &mut unused_parameters);
@@ -77,7 +78,7 @@ fn unused_generic_params<'tcx>(
     debug!(?unused_parameters, "(end)");
 
     // Emit errors for debugging and testing if enabled.
-    if !unused_parameters.is_empty() {
+    if !unused_parameters.all_used() {
         emit_unused_generic_params_error(tcx, def_id, generics, &unused_parameters);
     }
 
@@ -98,13 +99,6 @@ fn should_polymorphize<'tcx>(
 
     // Don't polymorphize intrinsics or virtual calls - calling `instance_mir` will panic.
     if matches!(instance, ty::InstanceDef::Intrinsic(..) | ty::InstanceDef::Virtual(..)) {
-        return false;
-    }
-
-    // Polymorphization results are stored in cross-crate metadata only when there are unused
-    // parameters, so assume that non-local items must have only used parameters (else this query
-    // would not be invoked, and the cross-crate metadata used instead).
-    if !def_id.is_local() {
         return false;
     }
 
@@ -135,13 +129,13 @@ fn mark_used_by_default_parameters<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     generics: &'tcx ty::Generics,
-    unused_parameters: &mut FiniteBitSet<u32>,
+    unused_parameters: &mut UnusedGenericParams,
 ) {
     match tcx.def_kind(def_id) {
         DefKind::Closure | DefKind::Generator => {
             for param in &generics.params {
                 debug!(?param, "(closure/gen)");
-                unused_parameters.clear(param.index);
+                unused_parameters.mark_used(param.index);
             }
         }
         DefKind::Mod
@@ -169,14 +163,15 @@ fn mark_used_by_default_parameters<'tcx>(
         | DefKind::AnonConst
         | DefKind::InlineConst
         | DefKind::OpaqueTy
+        | DefKind::ImplTraitPlaceholder
         | DefKind::Field
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
-        | DefKind::Impl => {
+        | DefKind::Impl { .. } => {
             for param in &generics.params {
                 debug!(?param, "(other)");
                 if let ty::GenericParamDefKind::Lifetime = param.kind {
-                    unused_parameters.clear(param.index);
+                    unused_parameters.mark_used(param.index);
                 }
             }
         }
@@ -194,10 +189,10 @@ fn emit_unused_generic_params_error<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     generics: &'tcx ty::Generics,
-    unused_parameters: &FiniteBitSet<u32>,
+    unused_parameters: &UnusedGenericParams,
 ) {
     let base_def_id = tcx.typeck_root_def_id(def_id);
-    if !tcx.get_attrs(base_def_id).iter().any(|a| a.has_name(sym::rustc_polymorphize_error)) {
+    if !tcx.has_attr(base_def_id, sym::rustc_polymorphize_error) {
         return;
     }
 
@@ -206,29 +201,30 @@ fn emit_unused_generic_params_error<'tcx>(
         _ => tcx.def_span(def_id),
     };
 
-    let mut err = tcx.sess.struct_span_err(fn_span, "item has unused generic parameters");
-
+    let mut param_spans = Vec::new();
+    let mut param_names = Vec::new();
     let mut next_generics = Some(generics);
     while let Some(generics) = next_generics {
         for param in &generics.params {
-            if unused_parameters.contains(param.index).unwrap_or(false) {
+            if unused_parameters.is_unused(param.index) {
                 debug!(?param);
                 let def_span = tcx.def_span(param.def_id);
-                err.span_label(def_span, &format!("generic parameter `{}` is unused", param.name));
+                param_spans.push(def_span);
+                param_names.push(param.name.to_string());
             }
         }
 
         next_generics = generics.parent.map(|did| tcx.generics_of(did));
     }
 
-    err.emit();
+    tcx.sess.emit_err(UnusedGenericParamsHint { span: fn_span, param_spans, param_names });
 }
 
 /// Visitor used to aggregate generic parameter uses.
 struct MarkUsedGenericParams<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-    unused_parameters: &'a mut FiniteBitSet<u32>,
+    unused_parameters: &'a mut UnusedGenericParams,
 }
 
 impl<'a, 'tcx> MarkUsedGenericParams<'a, 'tcx> {
@@ -236,12 +232,12 @@ impl<'a, 'tcx> MarkUsedGenericParams<'a, 'tcx> {
     /// a closure, generator or constant).
     #[instrument(level = "debug", skip(self, def_id, substs))]
     fn visit_child_body(&mut self, def_id: DefId, substs: SubstsRef<'tcx>) {
-        let instance = ty::InstanceDef::Item(ty::WithOptConstParam::unknown(def_id));
+        let instance = ty::InstanceDef::Item(def_id);
         let unused = self.tcx.unused_generic_params(instance);
         debug!(?self.unused_parameters, ?unused);
         for (i, arg) in substs.iter().enumerate() {
             let i = i.try_into().unwrap();
-            if !unused.contains(i).unwrap_or(false) {
+            if unused.is_used(i) {
                 arg.visit_with(self);
             }
         }
@@ -267,8 +263,27 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
         self.super_local_decl(local, local_decl);
     }
 
-    fn visit_const(&mut self, c: Const<'tcx>, _: Location) {
-        c.visit_with(self);
+    fn visit_constant(&mut self, ct: &Constant<'tcx>, location: Location) {
+        match ct.literal {
+            ConstantKind::Ty(c) => {
+                c.visit_with(self);
+            }
+            ConstantKind::Unevaluated(mir::UnevaluatedConst { def, substs: _, promoted }, ty) => {
+                // Avoid considering `T` unused when constants are of the form:
+                //   `<Self as Foo<T>>::foo::promoted[p]`
+                if let Some(p) = promoted {
+                    if self.def_id == def && !self.tcx.generics_of(def).has_self {
+                        // If there is a promoted, don't look at the substs - since it will always contain
+                        // the generic parameters, instead, traverse the promoted MIR.
+                        let promoted = self.tcx.promoted_mir(def);
+                        self.visit_body(&promoted[p]);
+                    }
+                }
+
+                Visitor::visit_ty(self, ty, TyContext::Location(location));
+            }
+            ConstantKind::Val(_, ty) => Visitor::visit_ty(self, ty, TyContext::Location(location)),
+        }
     }
 
     fn visit_ty(&mut self, ty: Ty<'tcx>, _: TyContext) {
@@ -276,35 +291,24 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
+impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for MarkUsedGenericParams<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn visit_const(&mut self, c: Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if !c.has_param_types_or_consts() {
-            return ControlFlow::CONTINUE;
+        if !c.has_non_region_param() {
+            return ControlFlow::Continue(());
         }
 
-        match c.val() {
+        match c.kind() {
             ty::ConstKind::Param(param) => {
                 debug!(?param);
-                self.unused_parameters.clear(param.index);
-                ControlFlow::CONTINUE
+                self.unused_parameters.mark_used(param.index);
+                ControlFlow::Continue(())
             }
-            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs: _, promoted: Some(p)})
-                // Avoid considering `T` unused when constants are of the form:
-                //   `<Self as Foo<T>>::foo::promoted[p]`
-                if self.def_id == def.did && !self.tcx.generics_of(def.did).has_self =>
+            ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, substs })
+                if matches!(self.tcx.def_kind(def), DefKind::AnonConst) =>
             {
-                // If there is a promoted, don't look at the substs - since it will always contain
-                // the generic parameters, instead, traverse the promoted MIR.
-                let promoted = self.tcx.promoted_mir(def.did);
-                self.visit_body(&promoted[p]);
-                ControlFlow::CONTINUE
-            }
-            ty::ConstKind::Unevaluated(uv)
-                if matches!(self.tcx.def_kind(uv.def.did), DefKind::AnonConst | DefKind::InlineConst) =>
-            {
-                self.visit_child_body(uv.def.did, uv.substs);
-                ControlFlow::CONTINUE
+                self.visit_child_body(def, substs);
+                ControlFlow::Continue(())
             }
             _ => c.super_visit_with(self),
         }
@@ -312,8 +316,8 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if !ty.has_param_types_or_consts() {
-            return ControlFlow::CONTINUE;
+        if !ty.has_non_region_param() {
+            return ControlFlow::Continue(());
         }
 
         match *ty.kind() {
@@ -321,63 +325,18 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
                 debug!(?def_id);
                 // Avoid cycle errors with generators.
                 if def_id == self.def_id {
-                    return ControlFlow::CONTINUE;
+                    return ControlFlow::Continue(());
                 }
 
                 // Consider any generic parameters used by any closures/generators as used in the
                 // parent.
                 self.visit_child_body(def_id, substs);
-                ControlFlow::CONTINUE
+                ControlFlow::Continue(())
             }
             ty::Param(param) => {
                 debug!(?param);
-                self.unused_parameters.clear(param.index);
-                ControlFlow::CONTINUE
-            }
-            _ => ty.super_visit_with(self),
-        }
-    }
-}
-
-/// Visitor used to check if a generic parameter is used.
-struct HasUsedGenericParams<'a> {
-    unused_parameters: &'a FiniteBitSet<u32>,
-}
-
-impl<'a, 'tcx> TypeVisitor<'tcx> for HasUsedGenericParams<'a> {
-    type BreakTy = ();
-
-    #[instrument(level = "debug", skip(self))]
-    fn visit_const(&mut self, c: Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if !c.has_param_types_or_consts() {
-            return ControlFlow::CONTINUE;
-        }
-
-        match c.val() {
-            ty::ConstKind::Param(param) => {
-                if self.unused_parameters.contains(param.index).unwrap_or(false) {
-                    ControlFlow::CONTINUE
-                } else {
-                    ControlFlow::BREAK
-                }
-            }
-            _ => c.super_visit_with(self),
-        }
-    }
-
-    #[instrument(level = "debug", skip(self))]
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if !ty.has_param_types_or_consts() {
-            return ControlFlow::CONTINUE;
-        }
-
-        match ty.kind() {
-            ty::Param(param) => {
-                if self.unused_parameters.contains(param.index).unwrap_or(false) {
-                    ControlFlow::CONTINUE
-                } else {
-                    ControlFlow::BREAK
-                }
+                self.unused_parameters.mark_used(param.index);
+                ControlFlow::Continue(())
             }
             _ => ty.super_visit_with(self),
         }

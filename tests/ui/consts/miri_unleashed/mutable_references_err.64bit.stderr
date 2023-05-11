@@ -1,0 +1,54 @@
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/mutable_references_err.rs:15:1
+   |
+LL | const MUH: Meh = Meh {
+   | ^^^^^^^^^^^^^^ constructing invalid value at .x.<deref>: encountered `UnsafeCell` in a `const`
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               ╾───────alloc3────────╼                         │ ╾──────╼
+           }
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/mutable_references_err.rs:25:1
+   |
+LL | const SNEAKY: &dyn Sync = &Synced { x: UnsafeCell::new(42) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>.<dyn-downcast>.x: encountered `UnsafeCell` in a `const`
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 16, align: 8) {
+               ╾───────alloc7────────╼ ╾───────alloc8────────╼ │ ╾──────╼╾──────╼
+           }
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/mutable_references_err.rs:29:1
+   |
+LL | const BLUNT: &mut i32 = &mut 42;
+   | ^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered mutable reference in a `const`
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               ╾───────alloc10───────╼                         │ ╾──────╼
+           }
+
+warning: skipping const checks
+   |
+help: skipping check that does not even have a feature gate
+  --> $DIR/mutable_references_err.rs:16:8
+   |
+LL |     x: &UnsafeCell::new(42),
+   |        ^^^^^^^^^^^^^^^^^^^^
+help: skipping check that does not even have a feature gate
+  --> $DIR/mutable_references_err.rs:25:27
+   |
+LL | const SNEAKY: &dyn Sync = &Synced { x: UnsafeCell::new(42) };
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: skipping check that does not even have a feature gate
+  --> $DIR/mutable_references_err.rs:29:25
+   |
+LL | const BLUNT: &mut i32 = &mut 42;
+   |                         ^^^^^^^
+
+error: aborting due to 3 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0080`.

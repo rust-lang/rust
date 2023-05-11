@@ -1,0 +1,26 @@
+error[E0631]: type mismatch in closure arguments
+  --> $DIR/late-bound-in-borrow-closure-sugg.rs:26:24
+   |
+LL |     let closure = |trader : Trader| {
+   |                   ----------------- found signature defined here
+...
+LL |     trader.set_closure(closure);
+   |            ----------- ^^^^^^^ expected due to this
+   |            |
+   |            required by a bound introduced by this call
+   |
+   = note: expected closure signature `for<'a, 'b> fn(&'a mut Trader<'b>) -> _`
+              found closure signature `for<'a> fn(Trader<'a>) -> _`
+note: required by a bound in `Trader::<'a>::set_closure`
+  --> $DIR/late-bound-in-borrow-closure-sugg.rs:15:50
+   |
+LL |     pub fn set_closure(&mut self, function: impl Fn(&mut Trader) + 'a) {
+   |                                                  ^^^^^^^^^^^^^^^ required by this bound in `Trader::<'a>::set_closure`
+help: consider borrowing the argument
+   |
+LL |     let closure = |trader : &mut Trader| {
+   |                             ++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0631`.

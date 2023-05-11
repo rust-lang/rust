@@ -1,11 +1,10 @@
-// compile-flags: --emit=link
-// no-prefer-dynamic
+//@compile-flags: --emit=link
+//@no-prefer-dynamic
 
 #![crate_type = "proc-macro"]
 
 extern crate proc_macro;
 use proc_macro::{token_stream, Delimiter, Group, Ident, Span, TokenStream, TokenTree};
-use std::iter::FromIterator;
 
 fn read_ident(iter: &mut token_stream::IntoIter) -> Ident {
     match iter.next() {

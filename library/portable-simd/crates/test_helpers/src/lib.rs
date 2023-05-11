@@ -78,11 +78,11 @@ impl<T: core::fmt::Debug + DefaultStrategy, const LANES: usize> DefaultStrategy 
 }
 
 #[cfg(not(miri))]
-fn make_runner() -> proptest::test_runner::TestRunner {
+pub fn make_runner() -> proptest::test_runner::TestRunner {
     Default::default()
 }
 #[cfg(miri)]
-fn make_runner() -> proptest::test_runner::TestRunner {
+pub fn make_runner() -> proptest::test_runner::TestRunner {
     // Only run a few tests on Miri
     proptest::test_runner::TestRunner::new(proptest::test_runner::Config::with_cases(4))
 }

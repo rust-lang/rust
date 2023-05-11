@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::neg_multiply)]
 #![allow(clippy::no_effect, clippy::unnecessary_operation, clippy::precedence)]
 #![allow(unused)]
@@ -37,6 +37,9 @@ fn main() {
     -17;
 
     0xcafe | -0xff00;
+
+    -(3_usize as i32);
+    -(3_usize as i32);
 
     -1 * -1; // should be ok
 

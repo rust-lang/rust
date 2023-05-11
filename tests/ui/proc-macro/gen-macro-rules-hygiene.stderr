@@ -1,0 +1,32 @@
+error[E0426]: use of undeclared label `'label_use`
+  --> $DIR/gen-macro-rules-hygiene.rs:12:1
+   |
+LL | gen_macro_rules!();
+   | ^^^^^^^^^^^^^^^^^^ undeclared label `'label_use`
+...
+LL |         generated!();
+   |         ------------ in this macro invocation
+   |
+   = note: this error originates in the macro `generated` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find value `local_use` in this scope
+  --> $DIR/gen-macro-rules-hygiene.rs:12:1
+   |
+LL | gen_macro_rules!();
+   | ^^^^^^^^^^^^^^^^^^ help: a local variable with a similar name exists: `local_def`
+...
+LL |         generated!();
+   |         ------------ in this macro invocation
+   |
+   = note: this error originates in the macro `generated` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find value `local_def` in this scope
+  --> $DIR/gen-macro-rules-hygiene.rs:21:9
+   |
+LL |         local_def;
+   |         ^^^^^^^^^ help: a local variable with a similar name exists: `local_use`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0425, E0426.
+For more information about an error, try `rustc --explain E0425`.

@@ -1,5 +1,5 @@
-// only-x86_64
-// ignore-aarch64
+//@only-x86_64
+//@ignore-aarch64
 
 #[warn(clippy::inline_asm_x86_intel_syntax)]
 mod warn_intel {

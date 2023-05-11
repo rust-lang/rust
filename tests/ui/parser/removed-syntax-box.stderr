@@ -1,0 +1,57 @@
+error: `box_syntax` has been removed
+  --> $DIR/removed-syntax-box.rs:9:13
+   |
+LL |     let _ = box ();
+   |             ^^^^^^
+   |
+help: use `Box::new()` instead
+   |
+LL |     let _ = Box::new(());
+   |             ~~~~~~~~~~~~
+
+error: `box_syntax` has been removed
+  --> $DIR/removed-syntax-box.rs:10:13
+   |
+LL |     let _ = box 1;
+   |             ^^^^^
+   |
+help: use `Box::new()` instead
+   |
+LL |     let _ = Box::new(1);
+   |             ~~~~~~~~~~~
+
+error: `box_syntax` has been removed
+  --> $DIR/removed-syntax-box.rs:11:13
+   |
+LL |     let _ = box T { a: 12, b: 18 };
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `Box::new()` instead
+   |
+LL |     let _ = Box::new(T { a: 12, b: 18 });
+   |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error: `box_syntax` has been removed
+  --> $DIR/removed-syntax-box.rs:12:13
+   |
+LL |     let _ = box [5; 30];
+   |             ^^^^^^^^^^^
+   |
+help: use `Box::new()` instead
+   |
+LL |     let _ = Box::new([5; 30]);
+   |             ~~~~~~~~~~~~~~~~~
+
+error: `box_syntax` has been removed
+  --> $DIR/removed-syntax-box.rs:13:22
+   |
+LL |     let _: Box<()> = box ();
+   |                      ^^^^^^
+   |
+help: use `Box::new()` instead
+   |
+LL |     let _: Box<()> = Box::new(());
+   |                      ~~~~~~~~~~~~
+
+error: aborting due to 5 previous errors
+

@@ -2,10 +2,11 @@
 
 #![deny(clippy::missing_docs_in_private_items)]
 
+use crate::consts::{constant_simple, Constant};
 use crate::ty::is_type_diagnostic_item;
 use crate::{is_expn_of, match_def_path, paths};
 use if_chain::if_chain;
-use rustc_ast::ast::{self, LitKind};
+use rustc_ast::ast;
 use rustc_hir as hir;
 use rustc_hir::{Arm, Block, Expr, ExprKind, HirId, LoopSource, MatchSource, Node, Pat, QPath};
 use rustc_lint::LateContext;
@@ -34,7 +35,7 @@ impl<'tcx> ForLoop<'tcx> {
             if let hir::ExprKind::Match(iterexpr, [arm], hir::MatchSource::ForLoopDesugar) = e.kind;
             if let hir::ExprKind::Call(_, [arg]) = iterexpr.kind;
             if let hir::ExprKind::Loop(block, ..) = arm.body.kind;
-            if let [stmt] = &*block.stmts;
+            if let [stmt] = block.stmts;
             if let hir::StmtKind::Expr(e) = stmt.kind;
             if let hir::ExprKind::Match(_, [_, some_arm], _) = e.kind;
             if let hir::PatKind::Struct(_, [field], _) = some_arm.pat.kind;
@@ -286,15 +287,12 @@ impl<'a> VecArgs<'a> {
                     Some(VecArgs::Repeat(&args[0], &args[1]))
                 } else if match_def_path(cx, fun_def_id, &paths::SLICE_INTO_VEC) && args.len() == 1 {
                     // `vec![a, b, c]` case
-                    if_chain! {
-                        if let hir::ExprKind::Box(boxed) = args[0].kind;
-                        if let hir::ExprKind::Array(args) = boxed.kind;
-                        then {
-                            return Some(VecArgs::Vec(args));
-                        }
+                    if let hir::ExprKind::Call(_, [arg]) = &args[0].kind
+                        && let hir::ExprKind::Array(args) = arg.kind {
+                        Some(VecArgs::Vec(args))
+                    } else {
+                        None
                     }
-
-                    None
                 } else if match_def_path(cx, fun_def_id, &paths::VEC_NEW) && args.is_empty() {
                     Some(VecArgs::Vec(&[]))
                 } else {
@@ -313,6 +311,8 @@ pub struct While<'hir> {
     pub condition: &'hir Expr<'hir>,
     /// `while` loop body
     pub body: &'hir Expr<'hir>,
+    /// Span of the loop header
+    pub span: Span,
 }
 
 impl<'hir> While<'hir> {
@@ -338,10 +338,10 @@ impl<'hir> While<'hir> {
             },
             _,
             LoopSource::While,
-            _,
+            span,
         ) = expr.kind
         {
-            return Some(Self { condition, body });
+            return Some(Self { condition, body, span });
         }
         None
     }
@@ -431,7 +431,7 @@ pub enum VecInitKind {
     /// `Vec::default()` or `Default::default()`
     Default,
     /// `Vec::with_capacity(123)`
-    WithLiteralCapacity(u64),
+    WithConstCapacity(u128),
     /// `Vec::with_capacity(slice.len())`
     WithExprCapacity(HirId),
 }
@@ -449,15 +449,11 @@ pub fn get_vec_init_kind<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -
                     return Some(VecInitKind::Default);
                 } else if name.ident.name.as_str() == "with_capacity" {
                     let arg = args.get(0)?;
-                    if_chain! {
-                        if let ExprKind::Lit(lit) = &arg.kind;
-                        if let LitKind::Int(num, _) = lit.node;
-                        then {
-                            return Some(VecInitKind::WithLiteralCapacity(num.try_into().ok()?));
-                        }
-                    }
-                    return Some(VecInitKind::WithExprCapacity(arg.hir_id));
-                }
+                    return match constant_simple(cx, cx.typeck_results(), arg) {
+                        Some(Constant::Int(num)) => Some(VecInitKind::WithConstCapacity(num)),
+                        _ => Some(VecInitKind::WithExprCapacity(arg.hir_id)),
+                    };
+                };
             },
             ExprKind::Path(QPath::Resolved(_, path))
                 if match_def_path(cx, path.res.opt_def_id()?, &paths::DEFAULT_TRAIT_METHOD)

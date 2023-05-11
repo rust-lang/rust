@@ -129,6 +129,7 @@ pub trait OsStrExt: Sealed {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl OsStrExt for OsStr {
+    #[inline]
     fn encode_wide(&self) -> EncodeWide<'_> {
         self.as_inner().inner.encode_wide()
     }

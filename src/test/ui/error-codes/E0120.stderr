@@ -1,9 +1,0 @@
-error[E0120]: the `Drop` trait may only be implemented for structs, enums, and unions
-  --> $DIR/E0120.rs:3:15
-   |
-LL | impl Drop for dyn MyTrait {
-   |               ^^^^^^^^^^^ must be a struct, enum, or union
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0120`.

@@ -1,0 +1,11 @@
+error[E0119]: conflicting implementations of trait `OtherTrait` for type `()`
+  --> $DIR/coherence-conflict.rs:12:1
+   |
+LL | impl OtherTrait for () {}
+   | ---------------------- first implementation here
+LL | impl<T: MyTrait> OtherTrait for T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `()`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0119`.

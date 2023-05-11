@@ -70,8 +70,8 @@ fn test_adjacent_edges<N: PartialEq + Debug, E: PartialEq + Debug>(
             "counter={:?} expected={:?} edge_index={:?} edge={:?}",
             counter, expected_incoming[counter], edge_index, edge
         );
-        match expected_incoming[counter] {
-            (ref e, ref n) => {
+        match &expected_incoming[counter] {
+            (e, n) => {
                 assert!(e == &edge.data);
                 assert!(n == graph.node_data(edge.source()));
                 assert!(start_index == edge.target);
@@ -88,8 +88,8 @@ fn test_adjacent_edges<N: PartialEq + Debug, E: PartialEq + Debug>(
             "counter={:?} expected={:?} edge_index={:?} edge={:?}",
             counter, expected_outgoing[counter], edge_index, edge
         );
-        match expected_outgoing[counter] {
-            (ref e, ref n) => {
+        match &expected_outgoing[counter] {
+            (e, n) => {
                 assert!(e == &edge.data);
                 assert!(start_index == edge.source);
                 assert!(n == graph.node_data(edge.target));

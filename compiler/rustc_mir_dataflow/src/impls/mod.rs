@@ -3,7 +3,7 @@
 //! zero-sized structure.
 
 use rustc_index::bit_set::{BitSet, ChunkedBitSet};
-use rustc_index::vec::Idx;
+use rustc_index::Idx;
 use rustc_middle::mir::visit::{MirVisitable, Visitor};
 use rustc_middle::mir::{self, Body, Location};
 use rustc_middle::ty::{self, TyCtxt};
@@ -19,14 +19,14 @@ use crate::{drop_flag_effects, on_all_children_bits};
 use crate::{lattice, AnalysisDomain, GenKill, GenKillAnalysis};
 
 mod borrowed_locals;
-mod init_locals;
 mod liveness;
 mod storage_liveness;
 
+pub use self::borrowed_locals::borrowed_locals;
 pub use self::borrowed_locals::MaybeBorrowedLocals;
-pub use self::init_locals::MaybeInitializedLocals;
 pub use self::liveness::MaybeLiveLocals;
-pub use self::storage_liveness::{MaybeRequiresStorage, MaybeStorageLive};
+pub use self::liveness::MaybeTransitiveLiveLocals;
+pub use self::storage_liveness::{MaybeRequiresStorage, MaybeStorageDead, MaybeStorageLive};
 
 /// `MaybeInitializedPlaces` tracks all places that might be
 /// initialized upon reaching a particular point in the control flow
@@ -37,21 +37,21 @@ pub use self::storage_liveness::{MaybeRequiresStorage, MaybeStorageLive};
 ///
 /// ```rust
 /// struct S;
-/// fn foo(pred: bool) {                       // maybe-init:
-///                                            // {}
-///     let a = S; let b = S; let c; let d;    // {a, b}
+/// fn foo(pred: bool) {                        // maybe-init:
+///                                             // {}
+///     let a = S; let mut b = S; let c; let d; // {a, b}
 ///
 ///     if pred {
-///         drop(a);                           // {   b}
-///         b = S;                             // {   b}
+///         drop(a);                            // {   b}
+///         b = S;                              // {   b}
 ///
 ///     } else {
-///         drop(b);                           // {a}
-///         d = S;                             // {a,       d}
+///         drop(b);                            // {a}
+///         d = S;                              // {a,       d}
 ///
-///     }                                      // {a, b,    d}
+///     }                                       // {a, b,    d}
 ///
-///     c = S;                                 // {a, b, c, d}
+///     c = S;                                  // {a, b, c, d}
 /// }
 /// ```
 ///
@@ -90,21 +90,21 @@ impl<'a, 'tcx> HasMoveData<'tcx> for MaybeInitializedPlaces<'a, 'tcx> {
 ///
 /// ```rust
 /// struct S;
-/// fn foo(pred: bool) {                       // maybe-uninit:
-///                                            // {a, b, c, d}
-///     let a = S; let b = S; let c; let d;    // {      c, d}
+/// fn foo(pred: bool) {                        // maybe-uninit:
+///                                             // {a, b, c, d}
+///     let a = S; let mut b = S; let c; let d; // {      c, d}
 ///
 ///     if pred {
-///         drop(a);                           // {a,    c, d}
-///         b = S;                             // {a,    c, d}
+///         drop(a);                            // {a,    c, d}
+///         b = S;                              // {a,    c, d}
 ///
 ///     } else {
-///         drop(b);                           // {   b, c, d}
-///         d = S;                             // {   b, c   }
+///         drop(b);                            // {   b, c, d}
+///         d = S;                              // {   b, c   }
 ///
-///     }                                      // {a, b, c, d}
+///     }                                       // {a, b, c, d}
 ///
-///     c = S;                                 // {a, b,    d}
+///     c = S;                                  // {a, b,    d}
 /// }
 /// ```
 ///
@@ -155,21 +155,21 @@ impl<'a, 'tcx> HasMoveData<'tcx> for MaybeUninitializedPlaces<'a, 'tcx> {
 ///
 /// ```rust
 /// struct S;
-/// fn foo(pred: bool) {                       // definite-init:
-///                                            // {          }
-///     let a = S; let b = S; let c; let d;    // {a, b      }
+/// fn foo(pred: bool) {                        // definite-init:
+///                                             // {          }
+///     let a = S; let mut b = S; let c; let d; // {a, b      }
 ///
 ///     if pred {
-///         drop(a);                           // {   b,     }
-///         b = S;                             // {   b,     }
+///         drop(a);                            // {   b,     }
+///         b = S;                              // {   b,     }
 ///
 ///     } else {
-///         drop(b);                           // {a,        }
-///         d = S;                             // {a,       d}
+///         drop(b);                            // {a,        }
+///         d = S;                              // {a,       d}
 ///
-///     }                                      // {          }
+///     }                                       // {          }
 ///
-///     c = S;                                 // {       c  }
+///     c = S;                                  // {       c  }
 /// }
 /// ```
 ///
@@ -210,21 +210,21 @@ impl<'a, 'tcx> HasMoveData<'tcx> for DefinitelyInitializedPlaces<'a, 'tcx> {
 ///
 /// ```rust
 /// struct S;
-/// fn foo(pred: bool) {                       // ever-init:
-///                                            // {          }
-///     let a = S; let b = S; let c; let d;    // {a, b      }
+/// fn foo(pred: bool) {                        // ever-init:
+///                                             // {          }
+///     let a = S; let mut b = S; let c; let d; // {a, b      }
 ///
 ///     if pred {
-///         drop(a);                           // {a, b,     }
-///         b = S;                             // {a, b,     }
+///         drop(a);                            // {a, b,     }
+///         b = S;                              // {a, b,     }
 ///
 ///     } else {
-///         drop(b);                           // {a, b,      }
-///         d = S;                             // {a, b,    d }
+///         drop(b);                            // {a, b,      }
+///         d = S;                              // {a, b,    d }
 ///
-///     }                                      // {a, b,    d }
+///     }                                       // {a, b,    d }
 ///
-///     c = S;                                 // {a, b, c, d }
+///     c = S;                                  // {a, b, c, d }
 /// }
 /// ```
 pub struct EverInitializedPlaces<'a, 'tcx> {
@@ -315,7 +315,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
             Self::update_bits(trans, path, s)
         });
 
-        if !self.tcx.sess.opts.debugging_opts.precise_enum_drop_elaboration {
+        if !self.tcx.sess.opts.unstable_opts.precise_enum_drop_elaboration {
             return;
         }
 
@@ -338,7 +338,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
             Self::update_bits(trans, path, s)
         });
 
-        if !self.tcx.sess.opts.debugging_opts.precise_enum_drop_elaboration {
+        if !self.tcx.sess.opts.unstable_opts.precise_enum_drop_elaboration {
             return;
         }
 
@@ -377,7 +377,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         discr: &mir::Operand<'tcx>,
         edge_effects: &mut impl SwitchIntEdgeEffects<G>,
     ) {
-        if !self.tcx.sess.opts.debugging_opts.precise_enum_drop_elaboration {
+        if !self.tcx.sess.opts.unstable_opts.precise_enum_drop_elaboration {
             return;
         }
 
@@ -493,7 +493,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         discr: &mir::Operand<'tcx>,
         edge_effects: &mut impl SwitchIntEdgeEffects<G>,
     ) {
-        if !self.tcx.sess.opts.debugging_opts.precise_enum_drop_elaboration {
+        if !self.tcx.sess.opts.unstable_opts.precise_enum_drop_elaboration {
             return;
         }
 
@@ -750,7 +750,7 @@ where
 
 /// Calls `f` for each mutable borrow or raw reference in the program.
 ///
-/// This DOES NOT call `f` for a shared borrow of a type with interior mutability.  That's okay for
+/// This DOES NOT call `f` for a shared borrow of a type with interior mutability. That's okay for
 /// initializedness, because we cannot move from an `UnsafeCell` (outside of `core::cell`), but
 /// other analyses will likely need to check for `!Freeze`.
 fn for_each_mut_borrow<'tcx>(

@@ -1,5 +1,8 @@
 //! A solver for dataflow problems.
 
+use crate::errors::{
+    DuplicateValuesFor, PathMustEndInFilename, RequiresAnArgument, UnknownFormatter,
+};
 use crate::framework::BitSetExt;
 
 use std::ffi::OsString;
@@ -9,10 +12,10 @@ use rustc_ast as ast;
 use rustc_data_structures::work_queue::WorkQueue;
 use rustc_graphviz as dot;
 use rustc_hir::def_id::DefId;
-use rustc_index::bit_set::BitSet;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::{self, traversal, BasicBlock};
 use rustc_middle::mir::{create_dump_file, dump_enabled};
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::{sym, Symbol};
 
@@ -75,7 +78,6 @@ where
 {
     tcx: TyCtxt<'tcx>,
     body: &'a mir::Body<'tcx>,
-    dead_unwinds: Option<&'a BitSet<BasicBlock>>,
     entry_sets: IndexVec<BasicBlock, A::Domain>,
     pass_name: Option<&'static str>,
     analysis: A,
@@ -101,16 +103,16 @@ where
         // transfer function for each block exactly once (assuming that we process blocks in RPO).
         //
         // In this case, there's no need to compute the block transfer functions ahead of time.
-        if !body.is_cfg_cyclic() {
+        if !body.basic_blocks.is_cfg_cyclic() {
             return Self::new(tcx, body, analysis, None);
         }
 
         // Otherwise, compute and store the cumulative transfer function for each block.
 
         let identity = GenKillSet::identity(analysis.bottom_value(body).domain_size());
-        let mut trans_for_block = IndexVec::from_elem(identity, body.basic_blocks());
+        let mut trans_for_block = IndexVec::from_elem(identity, &body.basic_blocks);
 
-        for (block, block_data) in body.basic_blocks().iter_enumerated() {
+        for (block, block_data) in body.basic_blocks.iter_enumerated() {
             let trans = &mut trans_for_block[block];
             A::Direction::gen_kill_effects_in_block(&analysis, trans, block, block_data);
         }
@@ -144,32 +146,14 @@ where
         apply_trans_for_block: Option<Box<dyn Fn(BasicBlock, &mut A::Domain)>>,
     ) -> Self {
         let bottom_value = analysis.bottom_value(body);
-        let mut entry_sets = IndexVec::from_elem(bottom_value.clone(), body.basic_blocks());
+        let mut entry_sets = IndexVec::from_elem(bottom_value.clone(), &body.basic_blocks);
         analysis.initialize_start_block(body, &mut entry_sets[mir::START_BLOCK]);
 
-        if A::Direction::is_backward() && entry_sets[mir::START_BLOCK] != bottom_value {
+        if A::Direction::IS_BACKWARD && entry_sets[mir::START_BLOCK] != bottom_value {
             bug!("`initialize_start_block` is not yet supported for backward dataflow analyses");
         }
 
-        Engine {
-            analysis,
-            tcx,
-            body,
-            dead_unwinds: None,
-            pass_name: None,
-            entry_sets,
-            apply_trans_for_block,
-        }
-    }
-
-    /// Signals that we do not want dataflow state to propagate across unwind edges for these
-    /// `BasicBlock`s.
-    ///
-    /// You must take care that `dead_unwinds` does not contain a `BasicBlock` that *can* actually
-    /// unwind during execution. Otherwise, your dataflow results will not be correct.
-    pub fn dead_unwinds(mut self, dead_unwinds: &'a BitSet<BasicBlock>) -> Self {
-        self.dead_unwinds = Some(dead_unwinds);
-        self
+        Engine { analysis, tcx, body, pass_name: None, entry_sets, apply_trans_for_block }
     }
 
     /// Adds an identifier to the graphviz output for this particular run of a dataflow analysis.
@@ -187,20 +171,12 @@ where
         A::Domain: DebugWithContext<A>,
     {
         let Engine {
-            analysis,
-            body,
-            dead_unwinds,
-            mut entry_sets,
-            tcx,
-            apply_trans_for_block,
-            pass_name,
-            ..
+            analysis, body, mut entry_sets, tcx, apply_trans_for_block, pass_name, ..
         } = self;
 
-        let mut dirty_queue: WorkQueue<BasicBlock> =
-            WorkQueue::with_none(body.basic_blocks().len());
+        let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_none(body.basic_blocks.len());
 
-        if A::Direction::is_forward() {
+        if A::Direction::IS_FORWARD {
             for (bb, _) in traversal::reverse_postorder(body) {
                 dirty_queue.insert(bb);
             }
@@ -234,7 +210,6 @@ where
                 &analysis,
                 tcx,
                 body,
-                dead_unwinds,
                 &mut state,
                 (bb, bb_data),
                 |target: BasicBlock, state: &A::Domain| {
@@ -289,17 +264,10 @@ where
             io::BufWriter::new(fs::File::create(&path)?)
         }
 
-        None if tcx.sess.opts.debugging_opts.dump_mir_dataflow
+        None if tcx.sess.opts.unstable_opts.dump_mir_dataflow
             && dump_enabled(tcx, A::NAME, def_id) =>
         {
-            create_dump_file(
-                tcx,
-                ".dot",
-                None,
-                A::NAME,
-                &pass_name.unwrap_or("-----"),
-                body.source,
-            )?
+            create_dump_file(tcx, ".dot", false, A::NAME, &pass_name.unwrap_or("-----"), body)?
         }
 
         _ => return Ok(()),
@@ -314,11 +282,11 @@ where
 
     let graphviz = graphviz::Formatter::new(body, results, style);
     let mut render_opts =
-        vec![dot::RenderOption::Fontname(tcx.sess.opts.debugging_opts.graphviz_font.clone())];
-    if tcx.sess.opts.debugging_opts.graphviz_dark_mode {
+        vec![dot::RenderOption::Fontname(tcx.sess.opts.unstable_opts.graphviz_font.clone())];
+    if tcx.sess.opts.unstable_opts.graphviz_dark_mode {
         render_opts.push(dot::RenderOption::DarkTheme);
     }
-    dot::render_opts(&graphviz, &mut buf, &render_opts)?;
+    with_no_trimmed_paths!(dot::render_opts(&graphviz, &mut buf, &render_opts)?);
 
     file.write_all(&buf)?;
 
@@ -333,14 +301,11 @@ struct RustcMirAttrs {
 
 impl RustcMirAttrs {
     fn parse(tcx: TyCtxt<'_>, def_id: DefId) -> Result<Self, ()> {
-        let attrs = tcx.get_attrs(def_id);
-
         let mut result = Ok(());
         let mut ret = RustcMirAttrs::default();
 
-        let rustc_mir_attrs = attrs
-            .iter()
-            .filter(|attr| attr.has_name(sym::rustc_mir))
+        let rustc_mir_attrs = tcx
+            .get_attrs(def_id, sym::rustc_mir)
             .flat_map(|attr| attr.meta_item_list().into_iter().flat_map(|v| v.into_iter()));
 
         for attr in rustc_mir_attrs {
@@ -350,7 +315,7 @@ impl RustcMirAttrs {
                     match path.file_name() {
                         Some(_) => Ok(path),
                         None => {
-                            tcx.sess.span_err(attr.span(), "path must end in a filename");
+                            tcx.sess.emit_err(PathMustEndInFilename { span: attr.span() });
                             Err(())
                         }
                     }
@@ -359,7 +324,7 @@ impl RustcMirAttrs {
                 Self::set_field(&mut ret.formatter, tcx, &attr, |s| match s {
                     sym::gen_kill | sym::two_phase => Ok(s),
                     _ => {
-                        tcx.sess.span_err(attr.span(), "unknown formatter");
+                        tcx.sess.emit_err(UnknownFormatter { span: attr.span() });
                         Err(())
                     }
                 })
@@ -380,8 +345,7 @@ impl RustcMirAttrs {
         mapper: impl FnOnce(Symbol) -> Result<T, ()>,
     ) -> Result<(), ()> {
         if field.is_some() {
-            tcx.sess
-                .span_err(attr.span(), &format!("duplicate values for `{}`", attr.name_or_empty()));
+            tcx.sess.emit_err(DuplicateValuesFor { span: attr.span(), name: attr.name_or_empty() });
 
             return Err(());
         }
@@ -390,8 +354,7 @@ impl RustcMirAttrs {
             *field = Some(mapper(s)?);
             Ok(())
         } else {
-            tcx.sess
-                .span_err(attr.span(), &format!("`{}` requires an argument", attr.name_or_empty()));
+            tcx.sess.emit_err(RequiresAnArgument { span: attr.span(), name: attr.name_or_empty() });
             Err(())
         }
     }

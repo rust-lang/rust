@@ -1,9 +1,0 @@
-error[E0080]: evaluation of constant value failed
-  --> $DIR/E0396-fixed.rs:5:28
-   |
-LL | const VALUE: u8 = unsafe { *REG_ADDR };
-   |                            ^^^^^^^^^ dereferencing pointer failed: 0x5f3759df is not a valid pointer
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0080`.

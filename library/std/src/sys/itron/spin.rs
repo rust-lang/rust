@@ -1,7 +1,6 @@
 use super::abi;
 use crate::{
     cell::UnsafeCell,
-    convert::TryFrom,
     mem::MaybeUninit,
     sync::atomic::{AtomicBool, AtomicUsize, Ordering},
 };

@@ -9,7 +9,8 @@ mod zero_prefixed_literal;
 
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::source::snippet_opt;
-use rustc_ast::ast::{Expr, ExprKind, Generics, Lit, LitFloatType, LitIntType, LitKind, NodeId, Pat, PatKind};
+use rustc_ast::ast::{Expr, ExprKind, Generics, LitFloatType, LitIntType, LitKind, NodeId, Pat, PatKind};
+use rustc_ast::token;
 use rustc_ast::visit::FnKind;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
@@ -34,13 +35,21 @@ declare_clippy_lint! {
     /// # }
     /// let f = Foo { a: 0, b: 0, c: 0 };
     ///
-    /// // Bad
     /// match f {
     ///     Foo { a: _, b: 0, .. } => {},
     ///     Foo { a: _, b: _, c: _ } => {},
     /// }
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # struct Foo {
+    /// #     a: i32,
+    /// #     b: i32,
+    /// #     c: i32,
+    /// # }
+    /// let f = Foo { a: 0, b: 0, c: 0 };
+    ///
     /// match f {
     ///     Foo { b: 0, .. } => {},
     ///     Foo { .. } => {},
@@ -62,10 +71,11 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
     /// fn foo(a: i32, _a: i32) {}
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
     /// fn bar(a: i32, _b: i32) {}
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -103,11 +113,16 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
-    /// let y = 0x1a9BAcD;
+    /// # let _ =
+    /// 0x1a9BAcD
+    /// # ;
+    /// ```
     ///
-    /// // Good
-    /// let y = 0x1A9BACD;
+    /// Use instead:
+    /// ```rust
+    /// # let _ =
+    /// 0x1A9BACD
+    /// # ;
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub MIXED_CASE_HEX_LITERALS,
@@ -127,11 +142,16 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
-    /// let y = 123832i32;
+    /// # let _ =
+    /// 123832i32
+    /// # ;
+    /// ```
     ///
-    /// // Good
-    /// let y = 123832_i32;
+    /// Use instead:
+    /// ```rust
+    /// # let _ =
+    /// 123832_i32
+    /// # ;
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub UNSEPARATED_LITERAL_SUFFIX,
@@ -150,11 +170,16 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
-    /// let y = 123832_i32;
+    /// # let _ =
+    /// 123832_i32
+    /// # ;
+    /// ```
     ///
-    /// // Good
-    /// let y = 123832i32;
+    /// Use instead:
+    /// ```rust
+    /// # let _ =
+    /// 123832i32
+    /// # ;
     /// ```
     #[clippy::version = "1.58.0"]
     pub SEPARATED_LITERAL_SUFFIX,
@@ -234,14 +259,15 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust
     /// # let v = Some("abc");
-    ///
-    /// // Bad
     /// match v {
     ///     Some(x) => (),
     ///     y @ _ => (),
     /// }
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # let v = Some("abc");
     /// match v {
     ///     Some(x) => (),
     ///     y => (),
@@ -262,6 +288,7 @@ declare_clippy_lint! {
     /// means there are 0 or more elements left. This can make a difference
     /// when refactoring, but shouldn't result in errors in the refactored code,
     /// since the wildcard pattern isn't used anyway.
+    ///
     /// ### Why is this bad?
     /// The wildcard pattern is unneeded as the rest pattern
     /// can match that element as well.
@@ -270,13 +297,16 @@ declare_clippy_lint! {
     /// ```rust
     /// # struct TupleStruct(u32, u32, u32);
     /// # let t = TupleStruct(1, 2, 3);
-    /// // Bad
     /// match t {
     ///     TupleStruct(0, .., _) => (),
     ///     _ => (),
     /// }
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # struct TupleStruct(u32, u32, u32);
+    /// # let t = TupleStruct(1, 2, 3);
     /// match t {
     ///     TupleStruct(0, ..) => (),
     ///     _ => (),
@@ -328,9 +358,8 @@ impl EarlyLintPass for MiscEarlyLints {
                             DUPLICATE_UNDERSCORE_ARGUMENT,
                             *correspondence,
                             &format!(
-                                "`{}` already exists, having another argument having almost the same \
-                                 name makes code comprehension and documentation more difficult",
-                                arg_name
+                                "`{arg_name}` already exists, having another argument having almost the same \
+                                 name makes code comprehension and documentation more difficult"
                             ),
                         );
                     }
@@ -346,42 +375,43 @@ impl EarlyLintPass for MiscEarlyLints {
             return;
         }
 
-        if let ExprKind::Lit(ref lit) = expr.kind {
-            MiscEarlyLints::check_lit(cx, lit);
+        if let ExprKind::Lit(lit) = expr.kind {
+            MiscEarlyLints::check_lit(cx, lit, expr.span);
         }
         double_neg::check(cx, expr);
     }
 }
 
 impl MiscEarlyLints {
-    fn check_lit(cx: &EarlyContext<'_>, lit: &Lit) {
+    fn check_lit(cx: &EarlyContext<'_>, lit: token::Lit, span: Span) {
         // We test if first character in snippet is a number, because the snippet could be an expansion
         // from a built-in macro like `line!()` or a proc-macro like `#[wasm_bindgen]`.
         // Note that this check also covers special case that `line!()` is eagerly expanded by compiler.
         // See <https://github.com/rust-lang/rust-clippy/issues/4507> for a regression.
         // FIXME: Find a better way to detect those cases.
-        let lit_snip = match snippet_opt(cx, lit.span) {
-            Some(snip) if snip.chars().next().map_or(false, |c| c.is_digit(10)) => snip,
+        let lit_snip = match snippet_opt(cx, span) {
+            Some(snip) if snip.chars().next().map_or(false, |c| c.is_ascii_digit()) => snip,
             _ => return,
         };
 
-        if let LitKind::Int(value, lit_int_type) = lit.kind {
+        let lit_kind = LitKind::from_token_lit(lit);
+        if let Ok(LitKind::Int(value, lit_int_type)) = lit_kind {
             let suffix = match lit_int_type {
                 LitIntType::Signed(ty) => ty.name_str(),
                 LitIntType::Unsigned(ty) => ty.name_str(),
                 LitIntType::Unsuffixed => "",
             };
-            literal_suffix::check(cx, lit, &lit_snip, suffix, "integer");
+            literal_suffix::check(cx, span, &lit_snip, suffix, "integer");
             if lit_snip.starts_with("0x") {
-                mixed_case_hex_literals::check(cx, lit, suffix, &lit_snip);
+                mixed_case_hex_literals::check(cx, span, suffix, &lit_snip);
             } else if lit_snip.starts_with("0b") || lit_snip.starts_with("0o") {
                 // nothing to do
             } else if value != 0 && lit_snip.starts_with('0') {
-                zero_prefixed_literal::check(cx, lit, &lit_snip);
+                zero_prefixed_literal::check(cx, span, &lit_snip);
             }
-        } else if let LitKind::Float(_, LitFloatType::Suffixed(float_ty)) = lit.kind {
+        } else if let Ok(LitKind::Float(_, LitFloatType::Suffixed(float_ty))) = lit_kind {
             let suffix = float_ty.name_str();
-            literal_suffix::check(cx, lit, &lit_snip, suffix, "float");
+            literal_suffix::check(cx, span, &lit_snip, suffix, "float");
         }
     }
 }

@@ -1,17 +1,19 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+
 use std::collections::VecDeque;
 use std::rc::Rc;
 
 use crate::{
     def_use::{self, DefUse},
-    nll::ToRegionVid,
     region_infer::{Cause, RegionInferenceContext},
 };
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_middle::mir::visit::{MirVisitable, PlaceContext, Visitor};
-use rustc_middle::mir::{Body, Local, Location};
+use rustc_middle::mir::{self, Body, Local, Location};
 use rustc_middle::ty::{RegionVid, TyCtxt};
 
-crate fn find<'tcx>(
+pub(crate) fn find<'tcx>(
     body: &Body<'tcx>,
     regioncx: &Rc<RegionInferenceContext<'tcx>>,
     tcx: TyCtxt<'tcx>,
@@ -34,7 +36,7 @@ struct UseFinder<'cx, 'tcx> {
 impl<'cx, 'tcx> UseFinder<'cx, 'tcx> {
     fn find(&mut self) -> Option<Cause> {
         let mut queue = VecDeque::new();
-        let mut visited = FxHashSet::default();
+        let mut visited = FxIndexSet::default();
 
         queue.push_back(self.start_point);
         while let Some(p) = queue.pop_front() {
@@ -67,8 +69,11 @@ impl<'cx, 'tcx> UseFinder<'cx, 'tcx> {
                             block_data
                                 .terminator()
                                 .successors()
-                                .filter(|&bb| Some(&Some(*bb)) != block_data.terminator().unwind())
-                                .map(|&bb| Location { statement_index: 0, block: bb }),
+                                .filter(|&bb| {
+                                    Some(&mir::UnwindAction::Cleanup(bb))
+                                        != block_data.terminator().unwind()
+                                })
+                                .map(|bb| Location { statement_index: 0, block: bb }),
                         );
                     }
                 }
@@ -106,12 +111,12 @@ enum DefUseResult {
 }
 
 impl<'cx, 'tcx> Visitor<'tcx> for DefUseVisitor<'cx, 'tcx> {
-    fn visit_local(&mut self, &local: &Local, context: PlaceContext, _: Location) {
+    fn visit_local(&mut self, local: Local, context: PlaceContext, _: Location) {
         let local_ty = self.body.local_decls[local].ty;
 
         let mut found_it = false;
         self.tcx.for_each_free_region(&local_ty, |r| {
-            if r.to_region_vid() == self.region_vid {
+            if r.as_var() == self.region_vid {
                 found_it = true;
             }
         });

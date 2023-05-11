@@ -30,17 +30,22 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, cal
             if let hir::ExprKind::Index(caller_var, index_expr) = &caller_expr.kind;
             if let Some(higher::Range { start: Some(start_expr), end: None, limits: ast::RangeLimits::HalfOpen })
                 = higher::Range::hir(index_expr);
-            if let hir::ExprKind::Lit(ref start_lit) = &start_expr.kind;
+            if let hir::ExprKind::Lit(start_lit) = &start_expr.kind;
             if let ast::LitKind::Int(start_idx, _) = start_lit.node;
             then {
                 let mut applicability = Applicability::MachineApplicable;
+                let suggest = if start_idx == 0 {
+                    format!("{}.first()", snippet_with_applicability(cx, caller_var.span, "..", &mut applicability))
+                } else {
+                    format!("{}.get({start_idx})", snippet_with_applicability(cx, caller_var.span, "..", &mut applicability))
+                };
                 span_lint_and_sugg(
                     cx,
                     ITER_NEXT_SLICE,
                     expr.span,
                     "using `.iter().next()` on a Slice without end index",
                     "try calling",
-                    format!("{}.get({})", snippet_with_applicability(cx, caller_var.span, "..", &mut applicability), start_idx),
+                    suggest,
                     applicability,
                 );
             }
@@ -55,7 +60,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, cal
             "using `.iter().next()` on an array",
             "try calling",
             format!(
-                "{}.get(0)",
+                "{}.first()",
                 snippet_with_applicability(cx, caller_expr.span, "..", &mut applicability)
             ),
             applicability,

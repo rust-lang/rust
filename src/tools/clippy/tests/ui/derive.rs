@@ -1,6 +1,6 @@
-#![feature(untagged_unions)]
 #![allow(dead_code)]
 #![warn(clippy::expl_impl_clone_on_copy)]
+
 
 #[derive(Copy)]
 struct Qux;
@@ -83,6 +83,17 @@ struct GenericRef<'a, T, U>(T, &'a U);
 impl<T: Clone, U> Clone for GenericRef<'_, T, U> {
     fn clone(&self) -> Self {
         Self(self.0.clone(), self.1)
+    }
+}
+
+// https://github.com/rust-lang/rust-clippy/issues/10188
+#[repr(packed)]
+#[derive(Copy)]
+struct Packed<T>(T);
+
+impl<T: Copy> Clone for Packed<T> {
+    fn clone(&self) -> Self {
+        *self
     }
 }
 

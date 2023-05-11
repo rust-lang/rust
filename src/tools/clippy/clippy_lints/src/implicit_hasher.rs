@@ -5,6 +5,7 @@ use rustc_errors::Diagnostic;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_body, walk_expr, walk_inf, walk_ty, Visitor};
 use rustc_hir::{Body, Expr, ExprKind, GenericArg, Item, ItemKind, QPath, TyKind};
+use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::in_external_macro;
@@ -12,7 +13,6 @@ use rustc_middle::ty::{Ty, TypeckResults};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::sym;
-use rustc_typeck::hir_ty_to_ty;
 
 use if_chain::if_chain;
 
@@ -62,12 +62,12 @@ declare_clippy_lint! {
 declare_lint_pass!(ImplicitHasher => [IMPLICIT_HASHER]);
 
 impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
-    #[allow(clippy::cast_possible_truncation, clippy::too_many_lines)]
+    #[expect(clippy::cast_possible_truncation, clippy::too_many_lines)]
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         use rustc_span::BytePos;
 
-        fn suggestion<'tcx>(
-            cx: &LateContext<'tcx>,
+        fn suggestion(
+            cx: &LateContext<'_>,
             diag: &mut Diagnostic,
             generics_span: Span,
             generics_suggestion_span: Span,
@@ -89,8 +89,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                     (
                         generics_suggestion_span,
                         format!(
-                            "<{}{}S: ::std::hash::BuildHasher{}>",
-                            generics_snip,
+                            "<{generics_snip}{}S: ::std::hash::BuildHasher{}>",
                             if generics_snip.is_empty() { "" } else { ", " },
                             if vis.suggestions.is_empty() {
                                 ""
@@ -112,12 +111,12 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
             }
         }
 
-        if !cx.access_levels.is_exported(item.def_id) {
+        if !cx.effective_visibilities.is_exported(item.owner_id.def_id) {
             return;
         }
 
         match item.kind {
-            ItemKind::Impl(ref impl_) => {
+            ItemKind::Impl(impl_) => {
                 let mut vis = ImplicitHasherTypeVisitor::new(cx);
                 vis.visit_ty(impl_.self_ty);
 
@@ -155,7 +154,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                     );
                 }
             },
-            ItemKind::Fn(ref sig, ref generics, body_id) => {
+            ItemKind::Fn(ref sig, generics, body_id) => {
                 let body = cx.tcx.hir().body(body_id);
 
                 for ty in sig.decl.inputs {
@@ -263,8 +262,8 @@ impl<'tcx> ImplicitHasherType<'tcx> {
 
     fn type_arguments(&self) -> String {
         match *self {
-            ImplicitHasherType::HashMap(.., ref k, ref v) => format!("{}, {}", k, v),
-            ImplicitHasherType::HashSet(.., ref t) => format!("{}", t),
+            ImplicitHasherType::HashMap(.., ref k, ref v) => format!("{k}, {v}"),
+            ImplicitHasherType::HashSet(.., ref t) => format!("{t}"),
         }
     }
 

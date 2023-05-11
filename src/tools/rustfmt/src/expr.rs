@@ -2,8 +2,8 @@ use std::borrow::Cow;
 use std::cmp::min;
 
 use itertools::Itertools;
-use rustc_ast::token::{DelimToken, LitKind};
-use rustc_ast::{ast, ptr};
+use rustc_ast::token::{Delimiter, LitKind};
+use rustc_ast::{ast, ptr, token};
 use rustc_span::{BytePos, Span};
 
 use crate::chains::rewrite_chain;
@@ -29,9 +29,9 @@ use crate::spanned::Spanned;
 use crate::string::{rewrite_string, StringFormat};
 use crate::types::{rewrite_path, PathContext};
 use crate::utils::{
-    colon_spaces, contains_skip, count_newlines, first_line_ends_with, inner_attributes,
-    last_line_extendable, last_line_width, mk_sp, outer_attributes, semicolon_for_expr,
-    unicode_str_width, wrap_str,
+    colon_spaces, contains_skip, count_newlines, filtered_str_fits, first_line_ends_with,
+    inner_attributes, last_line_extendable, last_line_width, mk_sp, outer_attributes,
+    semicolon_for_expr, unicode_str_width, wrap_str,
 };
 use crate::vertical::rewrite_with_alignment;
 use crate::visitor::FmtVisitor;
@@ -75,12 +75,12 @@ pub(crate) fn format_expr(
             choose_separator_tactic(context, expr.span),
             None,
         ),
-        ast::ExprKind::Lit(ref l) => {
-            if let Some(expr_rw) = rewrite_literal(context, l, shape) {
+        ast::ExprKind::Lit(token_lit) => {
+            if let Some(expr_rw) = rewrite_literal(context, token_lit, expr.span, shape) {
                 Some(expr_rw)
             } else {
-                if let LitKind::StrRaw(_) = l.token.kind {
-                    Some(context.snippet(l.span).trim().into())
+                if let LitKind::StrRaw(_) = token_lit.kind {
+                    Some(context.snippet(expr.span).trim().into())
                 } else {
                     None
                 }
@@ -116,7 +116,7 @@ pub(crate) fn format_expr(
             rewrite_struct_lit(
                 context,
                 path,
-                qself.as_ref(),
+                qself,
                 fields,
                 rest,
                 &expr.attrs,
@@ -169,7 +169,7 @@ pub(crate) fn format_expr(
             rewrite_match(context, cond, arms, shape, expr.span, &expr.attrs)
         }
         ast::ExprKind::Path(ref qself, ref path) => {
-            rewrite_path(context, PathContext::Expr, qself.as_ref(), path, shape)
+            rewrite_path(context, PathContext::Expr, qself, path, shape)
         }
         ast::ExprKind::Assign(ref lhs, ref rhs, _) => {
             rewrite_assignment(context, lhs, rhs, None, shape)
@@ -203,15 +203,22 @@ pub(crate) fn format_expr(
                 Some("yield".to_string())
             }
         }
-        ast::ExprKind::Closure(capture, ref is_async, movability, ref fn_decl, ref body, _) => {
-            closures::rewrite_closure(
-                capture, is_async, movability, fn_decl, body, expr.span, context, shape,
-            )
-        }
+        ast::ExprKind::Closure(ref cl) => closures::rewrite_closure(
+            &cl.binder,
+            cl.constness,
+            cl.capture_clause,
+            &cl.asyncness,
+            cl.movability,
+            &cl.fn_decl,
+            &cl.body,
+            expr.span,
+            context,
+            shape,
+        ),
         ast::ExprKind::Try(..)
         | ast::ExprKind::Field(..)
         | ast::ExprKind::MethodCall(..)
-        | ast::ExprKind::Await(_) => rewrite_chain(expr, context, shape),
+        | ast::ExprKind::Await(_, _) => rewrite_chain(expr, context, shape),
         ast::ExprKind::MacCall(ref mac) => {
             rewrite_macro(mac, None, context, shape, MacroPosition::Expression).or_else(|| {
                 wrap_str(
@@ -225,7 +232,10 @@ pub(crate) fn format_expr(
         ast::ExprKind::Ret(Some(ref expr)) => {
             rewrite_unary_prefix(context, "return ", &**expr, shape)
         }
-        ast::ExprKind::Box(ref expr) => rewrite_unary_prefix(context, "box ", &**expr, shape),
+        ast::ExprKind::Yeet(None) => Some("do yeet".to_owned()),
+        ast::ExprKind::Yeet(Some(ref expr)) => {
+            rewrite_unary_prefix(context, "do yeet ", &**expr, shape)
+        }
         ast::ExprKind::AddrOf(borrow_kind, mutability, ref expr) => {
             rewrite_expr_addrof(context, borrow_kind, mutability, expr, shape)
         }
@@ -264,9 +274,9 @@ pub(crate) fn format_expr(
 
             fn needs_space_before_range(context: &RewriteContext<'_>, lhs: &ast::Expr) -> bool {
                 match lhs.kind {
-                    ast::ExprKind::Lit(ref lit) => match lit.kind {
-                        ast::LitKind::Float(_, ast::LitFloatType::Unsuffixed) => {
-                            context.snippet(lit.span).ends_with('.')
+                    ast::ExprKind::Lit(token_lit) => match token_lit.kind {
+                        token::LitKind::Float if token_lit.suffix.is_none() => {
+                            context.snippet(lhs.span).ends_with('.')
                         }
                         _ => false,
                     },
@@ -356,7 +366,7 @@ pub(crate) fn format_expr(
                 ))
             }
         }
-        ast::ExprKind::Async(capture_by, _node_id, ref block) => {
+        ast::ExprKind::Async(capture_by, ref block) => {
             let mover = if capture_by == ast::CaptureBy::Value {
                 "move "
             } else {
@@ -389,6 +399,12 @@ pub(crate) fn format_expr(
             }
         }
         ast::ExprKind::Underscore => Some("_".to_owned()),
+        ast::ExprKind::FormatArgs(..)
+        | ast::ExprKind::IncludedBytes(..)
+        | ast::ExprKind::OffsetOf(..) => {
+            // These do not occur in the AST because macros aren't expanded.
+            unreachable!()
+        }
         ast::ExprKind::Err => None,
     };
 
@@ -412,7 +428,7 @@ pub(crate) fn rewrite_array<'a, T: 'a + IntoOverflowableItem<'a>>(
     context: &'a RewriteContext<'_>,
     shape: Shape,
     force_separator_tactic: Option<SeparatorTactic>,
-    delim_token: Option<DelimToken>,
+    delim_token: Option<Delimiter>,
 ) -> Option<String> {
     overflow::rewrite_with_square_brackets(
         context,
@@ -649,7 +665,7 @@ fn to_control_flow(expr: &ast::Expr, expr_type: ExprType) -> Option<ControlFlow<
         ast::ExprKind::ForLoop(ref pat, ref cond, ref block, label) => {
             Some(ControlFlow::new_for(pat, cond, block, label, expr.span))
         }
-        ast::ExprKind::Loop(ref block, label) => {
+        ast::ExprKind::Loop(ref block, label, _) => {
             Some(ControlFlow::new_loop(block, label, expr.span))
         }
         ast::ExprKind::While(ref cond, ref block, label) => {
@@ -1174,14 +1190,15 @@ pub(crate) fn is_unsafe_block(block: &ast::Block) -> bool {
 
 pub(crate) fn rewrite_literal(
     context: &RewriteContext<'_>,
-    l: &ast::Lit,
+    token_lit: token::Lit,
+    span: Span,
     shape: Shape,
 ) -> Option<String> {
-    match l.kind {
-        ast::LitKind::Str(_, ast::StrStyle::Cooked) => rewrite_string_lit(context, l.span, shape),
-        ast::LitKind::Int(..) => rewrite_int_lit(context, l, shape),
+    match token_lit.kind {
+        token::LitKind::Str => rewrite_string_lit(context, span, shape),
+        token::LitKind::Integer => rewrite_int_lit(context, token_lit, span, shape),
         _ => wrap_str(
-            context.snippet(l.span).to_owned(),
+            context.snippet(span).to_owned(),
             context.config.max_width(),
             shape,
         ),
@@ -1214,9 +1231,13 @@ fn rewrite_string_lit(context: &RewriteContext<'_>, span: Span, shape: Shape) ->
     )
 }
 
-fn rewrite_int_lit(context: &RewriteContext<'_>, lit: &ast::Lit, shape: Shape) -> Option<String> {
-    let span = lit.span;
-    let symbol = lit.token.symbol.as_str();
+fn rewrite_int_lit(
+    context: &RewriteContext<'_>,
+    token_lit: token::Lit,
+    span: Span,
+    shape: Shape,
+) -> Option<String> {
+    let symbol = token_lit.symbol.as_str();
 
     if let Some(symbol_stripped) = symbol.strip_prefix("0x") {
         let hex_lit = match context.config.hex_literal_case() {
@@ -1229,7 +1250,7 @@ fn rewrite_int_lit(context: &RewriteContext<'_>, lit: &ast::Lit, shape: Shape) -
                 format!(
                     "0x{}{}",
                     hex_lit,
-                    lit.token.suffix.map_or(String::new(), |s| s.to_string())
+                    token_lit.suffix.map_or(String::new(), |s| s.to_string())
                 ),
                 context.config.max_width(),
                 shape,
@@ -1279,7 +1300,6 @@ pub(crate) fn is_simple_expr(expr: &ast::Expr) -> bool {
         ast::ExprKind::Lit(..) => true,
         ast::ExprKind::Path(ref qself, ref path) => qself.is_none() && path.segments.len() <= 1,
         ast::ExprKind::AddrOf(_, _, ref expr)
-        | ast::ExprKind::Box(ref expr)
         | ast::ExprKind::Cast(ref expr, _)
         | ast::ExprKind::Field(ref expr, _)
         | ast::ExprKind::Try(ref expr)
@@ -1325,7 +1345,7 @@ pub(crate) fn can_be_overflowed_expr(
         }
         ast::ExprKind::MacCall(ref mac) => {
             match (
-                rustc_ast::ast::MacDelimiter::from_token(mac.args.delim()),
+                rustc_ast::ast::MacDelimiter::from_token(mac.args.delim.to_token()),
                 context.config.overflow_delimited_expr(),
             ) {
                 (Some(ast::MacDelimiter::Bracket), true)
@@ -1341,7 +1361,6 @@ pub(crate) fn can_be_overflowed_expr(
 
         // Handle unary-like expressions
         ast::ExprKind::AddrOf(_, _, ref expr)
-        | ast::ExprKind::Box(ref expr)
         | ast::ExprKind::Try(ref expr)
         | ast::ExprKind::Unary(_, ref expr)
         | ast::ExprKind::Cast(ref expr, _) => can_be_overflowed_expr(context, expr, args_len),
@@ -1353,7 +1372,6 @@ pub(crate) fn is_nested_call(expr: &ast::Expr) -> bool {
     match expr.kind {
         ast::ExprKind::Call(..) | ast::ExprKind::MacCall(..) => true,
         ast::ExprKind::AddrOf(_, _, ref expr)
-        | ast::ExprKind::Box(ref expr)
         | ast::ExprKind::Try(ref expr)
         | ast::ExprKind::Unary(_, ref expr)
         | ast::ExprKind::Cast(ref expr, _) => is_nested_call(expr),
@@ -1521,7 +1539,7 @@ fn struct_lit_can_be_aligned(fields: &[ast::ExprField], has_base: bool) -> bool 
 fn rewrite_struct_lit<'a>(
     context: &RewriteContext<'_>,
     path: &ast::Path,
-    qself: Option<&ast::QSelf>,
+    qself: &Option<ptr::P<ast::QSelf>>,
     fields: &'a [ast::ExprField],
     struct_rest: &ast::StructRest,
     attrs: &[ast::Attribute],
@@ -1871,7 +1889,7 @@ impl<'ast> RhsAssignKind<'ast> {
                     ast::ExprKind::Try(..)
                         | ast::ExprKind::Field(..)
                         | ast::ExprKind::MethodCall(..)
-                        | ast::ExprKind::Await(_)
+                        | ast::ExprKind::Await(_, _)
                 )
             }
             _ => false,
@@ -2033,8 +2051,7 @@ fn choose_rhs<R: Rewrite>(
 
             match (orig_rhs, new_rhs) {
                 (Some(ref orig_rhs), Some(ref new_rhs))
-                    if wrap_str(new_rhs.clone(), context.config.max_width(), new_shape)
-                        .is_none() =>
+                    if !filtered_str_fits(&new_rhs, context.config.max_width(), new_shape) =>
                 {
                     Some(format!("{}{}", before_space_str, orig_rhs))
                 }
@@ -2114,7 +2131,6 @@ pub(crate) fn is_method_call(expr: &ast::Expr) -> bool {
     match expr.kind {
         ast::ExprKind::MethodCall(..) => true,
         ast::ExprKind::AddrOf(_, _, ref expr)
-        | ast::ExprKind::Box(ref expr)
         | ast::ExprKind::Cast(ref expr, _)
         | ast::ExprKind::Try(ref expr)
         | ast::ExprKind::Unary(_, ref expr) => is_method_call(expr),

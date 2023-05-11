@@ -1,0 +1,33 @@
+error[E0381]: partially assigned binding `t` isn't fully initialized
+  --> $DIR/partial-initialization-across-await.rs:13:5
+   |
+LL |     let mut t: (i32, i32);
+   |         ----- binding declared here but left uninitialized
+LL |     t.0 = 42;
+   |     ^^^^^^^^ `t` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0381]: partially assigned binding `t` isn't fully initialized
+  --> $DIR/partial-initialization-across-await.rs:21:5
+   |
+LL |     let mut t: T;
+   |         ----- binding declared here but left uninitialized
+LL |     t.0 = 42;
+   |     ^^^^^^^^ `t` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0381]: partially assigned binding `t` isn't fully initialized
+  --> $DIR/partial-initialization-across-await.rs:29:5
+   |
+LL |     let mut t: S;
+   |         ----- binding declared here but left uninitialized
+LL |     t.x = 42;
+   |     ^^^^^^^^ `t` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0381`.

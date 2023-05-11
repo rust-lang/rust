@@ -1,0 +1,53 @@
+error: requires at least a format string argument
+  --> $DIR/format-parse-errors.rs:4:5
+   |
+LL |     format!();
+   |     ^^^^^^^^^
+   |
+   = note: this error originates in the macro `$crate::__export::format_args` which comes from the expansion of the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected expression, found keyword `struct`
+  --> $DIR/format-parse-errors.rs:5:13
+   |
+LL |     format!(struct);
+   |             ^^^^^^ expected expression
+
+error: expected expression, found end of macro arguments
+  --> $DIR/format-parse-errors.rs:6:24
+   |
+LL |     format!("s", name =);
+   |                        ^ expected expression
+
+error: positional arguments cannot follow named arguments
+  --> $DIR/format-parse-errors.rs:10:9
+   |
+LL |         foo = foo,
+   |         --------- named argument
+LL |         bar,
+   |         ^^^ positional arguments must be before named arguments
+
+error: expected expression, found keyword `struct`
+  --> $DIR/format-parse-errors.rs:12:30
+   |
+LL |     format!("s {foo}", foo = struct);
+   |                              ^^^^^^ expected expression
+
+error: expected expression, found keyword `struct`
+  --> $DIR/format-parse-errors.rs:13:18
+   |
+LL |     format!("s", struct);
+   |                  ^^^^^^ expected expression
+
+error: format argument must be a string literal
+  --> $DIR/format-parse-errors.rs:16:13
+   |
+LL |     format!(123);
+   |             ^^^
+   |
+help: you might be missing a string literal to format with
+   |
+LL |     format!("{}", 123);
+   |             +++++
+
+error: aborting due to 7 previous errors
+

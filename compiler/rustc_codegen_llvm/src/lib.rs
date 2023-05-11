@@ -5,23 +5,25 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![feature(bool_to_option)]
-#![feature(crate_visibility_modifier)]
-#![feature(let_chains)]
-#![feature(let_else)]
 #![feature(extern_types)]
-#![feature(once_cell)]
-#![feature(nll)]
+#![feature(hash_raw_entry)]
 #![feature(iter_intersperse)]
+#![feature(let_chains)]
+#![feature(never_type)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate rustc_macros;
+#[macro_use]
+extern crate tracing;
 
 use back::write::{create_informational_target_machine, create_target_machine};
 
 use llvm::TypeTree;
+use errors::ParseTargetMachineConfig;
 pub use llvm_util::target_features;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
@@ -32,7 +34,8 @@ use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{ErrorGuaranteed, FatalError, Handler};
+use rustc_errors::{DiagnosticMessage, ErrorGuaranteed, FatalError, Handler, SubdiagnosticMessage};
+use rustc_fluent_macro::fluent_messages;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::query::Providers;
@@ -65,10 +68,11 @@ mod context;
 mod coverageinfo;
 mod debuginfo;
 mod declare;
+mod errors;
 mod intrinsic;
 mod typetree;
 
-// The following is a work around that replaces `pub mod llvm;` and that fixes issue 53912.
+// The following is a workaround that replaces `pub mod llvm;` and that fixes issue 53912.
 #[path = "llvm/mod.rs"]
 mod llvm_;
 pub mod llvm {
@@ -81,6 +85,8 @@ mod type_;
 mod type_of;
 mod va_arg;
 mod value;
+
+fluent_messages! { "../messages.ftl" }
 
 #[derive(Clone)]
 pub struct LlvmCodegenBackend(());
@@ -107,19 +113,18 @@ impl Drop for TimeTraceProfiler {
 }
 
 impl ExtraBackendMethods for LlvmCodegenBackend {
-    fn new_metadata(&self, tcx: TyCtxt<'_>, mod_name: &str) -> ModuleLlvm {
-        ModuleLlvm::new_metadata(tcx, mod_name)
-    }
-
     fn codegen_allocator<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
-        module_llvm: &mut ModuleLlvm,
         module_name: &str,
         kind: AllocatorKind,
-        has_alloc_error_handler: bool,
-        ) {
-        unsafe { allocator::codegen(tcx, module_llvm, module_name, kind, has_alloc_error_handler) }
+        alloc_error_handler_kind: AllocatorKind,
+    ) -> ModuleLlvm {
+        let mut module_llvm = ModuleLlvm::new_metadata(tcx, module_name);
+        unsafe {
+            allocator::codegen(tcx, &mut module_llvm, module_name, kind, alloc_error_handler_kind);
+        }
+        module_llvm
     }
     fn compile_codegen_unit(
         &self,
@@ -135,12 +140,6 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
         target_features: &[String],
         ) -> TargetMachineFactoryFn<Self> {
         back::write::target_machine_factory(sess, optlvl, target_features)
-    }
-    fn target_cpu<'b>(&self, sess: &'b Session) -> &'b str {
-        llvm_util::target_cpu(sess)
-    }
-    fn tune_cpu<'b>(&self, sess: &'b Session) -> Option<&'b str> {
-        llvm_util::tune_cpu(sess)
     }
 
     fn spawn_thread<F, T>(time_trace: bool, f: F) -> std::thread::JoinHandle<T>
@@ -175,8 +174,8 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
 impl WriteBackendMethods for LlvmCodegenBackend {
     type Module = ModuleLlvm;
     type ModuleBuffer = back::lto::ModuleBuffer;
-    type Context = llvm::Context;
     type TargetMachine = &'static mut llvm::TargetMachine;
+    type TargetMachineError = crate::errors::LlvmError<'static>;
     type ThinData = back::lto::ThinData;
     type ThinBuffer = back::lto::ThinBuffer;
     type TypeTree = DiffTypeTree;
@@ -215,10 +214,17 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         ) -> Result<(), FatalError> {
         back::write::optimize(cgcx, diag_handler, module, config)
     }
+    fn optimize_fat(
+        cgcx: &CodegenContext<Self>,
+        module: &mut ModuleCodegen<Self::Module>,
+    ) -> Result<(), FatalError> {
+        let diag_handler = cgcx.create_diag_handler();
+        back::lto::run_pass_manager(cgcx, &diag_handler, module, false)
+    }
     unsafe fn optimize_thin(
         cgcx: &CodegenContext<Self>,
-        thin: &mut ThinModule<Self>,
-        ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
+        thin: ThinModule<Self>,
+    ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
         back::lto::optimize_thin_module(thin, cgcx)
     }
     unsafe fn codegen(
@@ -234,15 +240,6 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     }
     fn serialize_module(module: ModuleCodegen<Self::Module>) -> (String, Self::ModuleBuffer) {
         (module.name, back::lto::ModuleBuffer::new(module.module_llvm.llmod()))
-    }
-    fn run_lto_pass_manager(
-        cgcx: &CodegenContext<Self>,
-        module: &ModuleCodegen<Self::Module>,
-        config: &ModuleConfig,
-        thin: bool,
-        ) -> Result<(), FatalError> {
-        let diag_handler = cgcx.create_diag_handler();
-        back::lto::run_pass_manager(cgcx, &diag_handler, module, config, thin)
     }
     /// Generate autodiff rules
     fn autodiff(
@@ -272,6 +269,10 @@ impl LlvmCodegenBackend {
 }
 
 impl CodegenBackend for LlvmCodegenBackend {
+    fn locale_resource(&self) -> &'static str {
+        crate::DEFAULT_LOCALE_RESOURCE
+    }
+
     fn init(&self, sess: &Session) {
         llvm_util::init(sess); // Make sure llvm is inited
     }
@@ -330,8 +331,8 @@ impl CodegenBackend for LlvmCodegenBackend {
           local stack variable in the ABI.)
 
     basic
-        Generate stack canaries in functions with:
-        - local variables of `[T; N]` type, where `T` is byte-sized and `N` > 8.
+        Generate stack canaries in functions with local variables of `[T; N]`
+        type, where `T` is byte-sized and `N` >= 8.
 
     none
         Do not generate stack canaries.
@@ -350,8 +351,8 @@ impl CodegenBackend for LlvmCodegenBackend {
         llvm_util::print_version();
     }
 
-    fn target_features(&self, sess: &Session) -> Vec<Symbol> {
-        target_features(sess)
+    fn target_features(&self, sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
+        target_features(sess, allow_unstable)
     }
 
     fn codegen_crate<'tcx>(
@@ -380,12 +381,12 @@ impl CodegenBackend for LlvmCodegenBackend {
             .expect("Expected LlvmCodegenBackend's OngoingCodegen, found Box<Any>")
             .join(sess);
 
-        sess.time("llvm_dump_timing_file", || {
-            if sess.opts.debugging_opts.llvm_time_trace {
+        if sess.opts.unstable_opts.llvm_time_trace {
+            sess.time("llvm_dump_timing_file", || {
                 let file_name = outputs.with_extension("llvm_timings.json");
                 llvm_util::time_trace_profiler_finish(&file_name);
-            }
-        });
+            });
+        }
 
         Ok((codegen_results, work_products))
     }
@@ -395,13 +396,13 @@ impl CodegenBackend for LlvmCodegenBackend {
         sess: &Session,
         codegen_results: CodegenResults,
         outputs: &OutputFilenames,
-        ) -> Result<(), ErrorGuaranteed> {
-        use crate::back::archive::LlvmArchiveBuilder;
+    ) -> Result<(), ErrorGuaranteed> {
+        use crate::back::archive::LlvmArchiveBuilderBuilder;
         use rustc_codegen_ssa::back::link::link_binary;
 
         // Run the linker on any artifacts that resulted from the LLVM run.
         // This should produce either a finished executable or library.
-        link_binary::<LlvmArchiveBuilder<'_>>(sess, &codegen_results, outputs)
+        link_binary(sess, &LlvmArchiveBuilderBuilder, &codegen_results, outputs)
     }
 }
 
@@ -452,8 +453,7 @@ impl ModuleLlvm {
             let tm = match (cgcx.tm_factory)(tm_factory_config) {
                 Ok(m) => m,
                 Err(e) => {
-                    handler.struct_err(&e).emit();
-                    return Err(FatalError);
+                    return Err(handler.emit_almost_fatal(ParseTargetMachineConfig(e)));
                 }
             };
 

@@ -1,0 +1,18 @@
+error[E0204]: the trait `Copy` cannot be implemented for this type
+  --> $DIR/deep-bad-copy-reason.rs:33:24
+   |
+LL | pub struct List<'tcx, T>(Interned<'tcx, ListS<T>>);
+   |                          ------------------------ this field does not implement `Copy`
+...
+LL | impl<'tcx, T> Copy for List<'tcx, T> {}
+   |                        ^^^^^^^^^^^^^
+   |
+note: the `Copy` impl for `Interned<'tcx, ListS<T>>` requires that `OpaqueListContents: Sized`
+  --> $DIR/deep-bad-copy-reason.rs:23:26
+   |
+LL | pub struct List<'tcx, T>(Interned<'tcx, ListS<T>>);
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0204`.

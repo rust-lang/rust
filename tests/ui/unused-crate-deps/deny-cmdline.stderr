@@ -1,0 +1,10 @@
+error: external crate `bar` unused in `deny_cmdline`: remove the dependency or add `use bar as _;`
+  --> $DIR/deny-cmdline.rs:7:1
+   |
+LL | fn main() {}
+   | ^
+   |
+   = note: requested on the command line with `-D unused-crate-dependencies`
+
+error: aborting due to previous error
+

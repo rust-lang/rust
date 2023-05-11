@@ -8,7 +8,6 @@ use rustc_middle::mir::{self, BasicBlock, Local, Location, Statement, StatementK
 use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::JoinSemiLattice;
 use rustc_mir_dataflow::{Analysis, AnalysisDomain, CallReturnPlaces};
-use rustc_span::DUMMY_SP;
 
 use std::fmt;
 use std::marker::PhantomData;
@@ -120,10 +119,7 @@ where
     ///
     /// [rust-lang/unsafe-code-guidelines#134]: https://github.com/rust-lang/unsafe-code-guidelines/issues/134
     fn shared_borrow_allows_mutation(&self, place: mir::Place<'tcx>) -> bool {
-        !place
-            .ty(self.ccx.body, self.ccx.tcx)
-            .ty
-            .is_freeze(self.ccx.tcx.at(DUMMY_SP), self.ccx.param_env)
+        !place.ty(self.ccx.body, self.ccx.tcx).ty.is_freeze(self.ccx.tcx, self.ccx.param_env)
     }
 }
 
@@ -199,6 +195,7 @@ where
             mir::Rvalue::Cast(..)
             | mir::Rvalue::ShallowInitBox(..)
             | mir::Rvalue::Use(..)
+            | mir::Rvalue::CopyForDeref(..)
             | mir::Rvalue::ThreadLocalRef(..)
             | mir::Rvalue::Repeat(..)
             | mir::Rvalue::Len(..)
@@ -225,23 +222,8 @@ where
         // The effect of assignment to the return place in `TerminatorKind::Call` is not applied
         // here; that occurs in `apply_call_return_effect`.
 
-        if let mir::TerminatorKind::DropAndReplace { value, place, .. } = &terminator.kind {
-            let qualif = qualifs::in_operand::<Q, _>(
-                self.ccx,
-                &mut |l| self.state.qualif.contains(l),
-                value,
-            );
-
-            if !place.is_indirect() {
-                self.assign_qualif_direct(place, qualif);
-            }
-        }
-
         // We ignore borrow on drop because custom drop impls are not allowed in consts.
         // FIXME: Reconsider if accounting for borrows in drops is necessary for const drop.
-
-        // We need to assign qualifs to the dropped location before visiting the operand that
-        // replaces it since qualifs can be cleared on move.
         self.super_terminator(terminator, location);
     }
 }

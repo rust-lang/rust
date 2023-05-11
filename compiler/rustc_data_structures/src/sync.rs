@@ -1,54 +1,76 @@
-//! This module defines types which are thread safe if cfg!(parallel_compiler) is true.
+//! This module defines various operations and types that are implemented in
+//! one way for the serial compiler, and another way the parallel compiler.
 //!
-//! `Lrc` is an alias of `Arc` if cfg!(parallel_compiler) is true, `Rc` otherwise.
+//! Operations
+//! ----------
+//! The parallel versions of operations use Rayon to execute code in parallel,
+//! while the serial versions degenerate straightforwardly to serial execution.
+//! The operations include `join`, `parallel`, `par_iter`, and `par_for_each`.
 //!
-//! `Lock` is a mutex.
-//! It internally uses `parking_lot::Mutex` if cfg!(parallel_compiler) is true,
-//! `RefCell` otherwise.
+//! Types
+//! -----
+//! The parallel versions of types provide various kinds of synchronization,
+//! while the serial compiler versions do not.
 //!
-//! `RwLock` is a read-write lock.
-//! It internally uses `parking_lot::RwLock` if cfg!(parallel_compiler) is true,
-//! `RefCell` otherwise.
+//! The following table shows how the types are implemented internally. Except
+//! where noted otherwise, the type in column one is defined as a
+//! newtype around the type from column two or three.
 //!
-//! `MTLock` is a mutex which disappears if cfg!(parallel_compiler) is false.
+//! | Type                    | Serial version      | Parallel version                |
+//! | ----------------------- | ------------------- | ------------------------------- |
+//! | `Lrc<T>`                | `rc::Rc<T>`         | `sync::Arc<T>`                  |
+//! |` Weak<T>`               | `rc::Weak<T>`       | `sync::Weak<T>`                 |
+//! |                         |                     |                                 |
+//! | `AtomicBool`            | `Cell<bool>`        | `atomic::AtomicBool`            |
+//! | `AtomicU32`             | `Cell<u32>`         | `atomic::AtomicU32`             |
+//! | `AtomicU64`             | `Cell<u64>`         | `atomic::AtomicU64`             |
+//! | `AtomicUsize`           | `Cell<usize>`       | `atomic::AtomicUsize`           |
+//! |                         |                     |                                 |
+//! | `Lock<T>`               | `RefCell<T>`        | `parking_lot::Mutex<T>`         |
+//! | `RwLock<T>`             | `RefCell<T>`        | `parking_lot::RwLock<T>`        |
+//! | `MTLock<T>`        [^1] | `T`                 | `Lock<T>`                       |
+//! | `MTLockRef<'a, T>` [^2] | `&'a mut MTLock<T>` | `&'a MTLock<T>`                 |
+//! |                         |                     |                                 |
+//! | `ParallelIterator`      | `Iterator`          | `rayon::iter::ParallelIterator` |
 //!
-//! `MTRef` is an immutable reference if cfg!(parallel_compiler), and a mutable reference otherwise.
+//! [^1] `MTLock` is similar to `Lock`, but the serial version avoids the cost
+//! of a `RefCell`. This is appropriate when interior mutability is not
+//! required.
 //!
-//! `rustc_erase_owner!` erases an OwningRef owner into Erased or Erased + Send + Sync
-//! depending on the value of cfg!(parallel_compiler).
+//! [^2] `MTLockRef` is a typedef.
 
-use crate::owning_ref::{Erased, OwningRef};
+use crate::owned_slice::OwnedSlice;
 use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
 use std::ops::{Deref, DerefMut};
+use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
+
+mod worker_local;
+pub use worker_local::{Registry, WorkerLocal};
 
 pub use std::sync::atomic::Ordering;
 pub use std::sync::atomic::Ordering::SeqCst;
 
+pub use vec::{AppendOnlyIndexVec, AppendOnlyVec};
+
+mod vec;
+
 cfg_if! {
     if #[cfg(not(parallel_compiler))] {
-        pub auto trait Send {}
-        pub auto trait Sync {}
+        pub unsafe auto trait Send {}
+        pub unsafe auto trait Sync {}
 
-        impl<T: ?Sized> Send for T {}
-        impl<T: ?Sized> Sync for T {}
-
-        #[macro_export]
-        macro_rules! rustc_erase_owner {
-            ($v:expr) => {
-                $v.erase_owner()
-            }
-        }
+        unsafe impl<T> Send for T {}
+        unsafe impl<T> Sync for T {}
 
         use std::ops::Add;
-        use std::panic::{resume_unwind, catch_unwind, AssertUnwindSafe};
 
         /// This is a single threaded variant of `AtomicU64`, `AtomicUsize`, etc.
         /// It has explicit ordering arguments and is only intended for use with
         /// the native atomic types.
         /// You should use this type through the `AtomicU64`, `AtomicUsize`, etc, type aliases
         /// as it's not intended to be used separately.
-        #[derive(Debug)]
+        #[derive(Debug, Default)]
         pub struct Atomic<T: Copy>(Cell<T>);
 
         impl<T: Copy> Atomic<T> {
@@ -56,9 +78,7 @@ cfg_if! {
             pub fn new(v: T) -> Self {
                 Atomic(Cell::new(v))
             }
-        }
 
-        impl<T: Copy> Atomic<T> {
             #[inline]
             pub fn into_inner(self) -> T {
                 self.0.into_inner()
@@ -77,6 +97,14 @@ cfg_if! {
             #[inline]
             pub fn swap(&self, val: T, _: Ordering) -> T {
                 self.0.replace(val)
+            }
+        }
+
+        impl Atomic<bool> {
+            pub fn fetch_or(&self, val: bool, _: Ordering) -> bool {
+                let result = self.0.get() | val;
+                self.0.set(val);
+                result
             }
         }
 
@@ -140,13 +168,13 @@ cfg_if! {
             }
         }
 
-        pub use std::iter::Iterator as ParallelIterator;
+        pub use Iterator as ParallelIterator;
 
         pub fn par_iter<T: IntoIterator>(t: T) -> T::IntoIter {
             t.into_iter()
         }
 
-        pub fn par_for_each_in<T: IntoIterator>(t: T, for_each: impl Fn(T::Item) + Sync + Send) {
+        pub fn par_for_each_in<T: IntoIterator>(t: T, mut for_each: impl FnMut(T::Item) + Sync + Send) {
             // We catch panics here ensuring that all the loop iterations execute.
             // This makes behavior consistent with the parallel compiler.
             let mut panic = None;
@@ -162,7 +190,7 @@ cfg_if! {
             }
         }
 
-        pub type MetadataRef = OwningRef<Box<dyn Erased>, [u8]>;
+        pub type MetadataRef = OwnedSlice;
 
         pub use std::rc::Rc as Lrc;
         pub use std::rc::Weak as Weak;
@@ -173,41 +201,14 @@ cfg_if! {
         pub use std::cell::RefMut as LockGuard;
         pub use std::cell::RefMut as MappedLockGuard;
 
-        pub use std::lazy::OnceCell;
+        pub use std::cell::OnceCell;
 
         use std::cell::RefCell as InnerRwLock;
         use std::cell::RefCell as InnerLock;
 
         use std::cell::Cell;
 
-        #[derive(Debug)]
-        pub struct WorkerLocal<T>(OneThread<T>);
-
-        impl<T> WorkerLocal<T> {
-            /// Creates a new worker local where the `initial` closure computes the
-            /// value this worker local should take for each thread in the thread pool.
-            #[inline]
-            pub fn new<F: FnMut(usize) -> T>(mut f: F) -> WorkerLocal<T> {
-                WorkerLocal(OneThread::new(f(0)))
-            }
-
-            /// Returns the worker-local value for each thread
-            #[inline]
-            pub fn into_inner(self) -> Vec<T> {
-                vec![OneThread::into_inner(self.0)]
-            }
-        }
-
-        impl<T> Deref for WorkerLocal<T> {
-            type Target = T;
-
-            #[inline(always)]
-            fn deref(&self) -> &T {
-                &*self.0
-            }
-        }
-
-        pub type MTRef<'a, T> = &'a mut T;
+        pub type MTLockRef<'a, T> = &'a mut MTLock<T>;
 
         #[derive(Debug, Default)]
         pub struct MTLock<T>(T);
@@ -258,14 +259,14 @@ cfg_if! {
         pub use parking_lot::MutexGuard as LockGuard;
         pub use parking_lot::MappedMutexGuard as MappedLockGuard;
 
-        pub use std::lazy::SyncOnceCell as OnceCell;
+        pub use std::sync::OnceLock as OnceCell;
 
         pub use std::sync::atomic::{AtomicBool, AtomicUsize, AtomicU32, AtomicU64};
 
         pub use std::sync::Arc as Lrc;
         pub use std::sync::Weak as Weak;
 
-        pub type MTRef<'a, T> = &'a T;
+        pub type MTLockRef<'a, T> = &'a MTLock<T>;
 
         #[derive(Debug, Default)]
         pub struct MTLock<T>(Lock<T>);
@@ -326,8 +327,6 @@ cfg_if! {
             };
         }
 
-        pub use rayon_core::WorkerLocal;
-
         pub use rayon::iter::ParallelIterator;
         use rayon::iter::IntoParallelIterator;
 
@@ -339,23 +338,17 @@ cfg_if! {
             t: T,
             for_each: impl Fn(T::Item) + Sync + Send,
         ) {
-            t.into_par_iter().for_each(for_each)
+            let ps: Vec<_> = t.into_par_iter().map(|i| catch_unwind(AssertUnwindSafe(|| for_each(i)))).collect();
+            ps.into_iter().for_each(|p| if let Err(panic) = p {
+                resume_unwind(panic)
+            });
         }
 
-        pub type MetadataRef = OwningRef<Box<dyn Erased + Send + Sync>, [u8]>;
+        pub type MetadataRef = OwnedSlice;
 
         /// This makes locks panic if they are already held.
         /// It is only useful when you are running in a single thread
         const ERROR_CHECKING: bool = false;
-
-        #[macro_export]
-        macro_rules! rustc_erase_owner {
-            ($v:expr) => {{
-                let v = $v;
-                ::rustc_data_structures::sync::assert_send_val(&v);
-                v.erase_send_sync_owner()
-            }}
-        }
     }
 }
 
@@ -363,6 +356,10 @@ pub fn assert_sync<T: ?Sized + Sync>() {}
 pub fn assert_send<T: ?Sized + Send>() {}
 pub fn assert_send_val<T: ?Sized + Send>(_t: &T) {}
 pub fn assert_send_sync_val<T: ?Sized + Sync + Send>(_t: &T) {}
+
+#[derive(Default)]
+#[cfg_attr(parallel_compiler, repr(align(64)))]
+pub struct CacheAligned<T>(pub T);
 
 pub trait HashMapExt<K, V> {
     /// Same as HashMap::insert, but it may panic if there's already an
@@ -409,6 +406,7 @@ impl<T> Lock<T> {
 
     #[cfg(parallel_compiler)]
     #[inline(always)]
+    #[track_caller]
     pub fn lock(&self) -> LockGuard<'_, T> {
         if ERROR_CHECKING {
             self.0.try_lock().expect("lock was already held")
@@ -419,21 +417,25 @@ impl<T> Lock<T> {
 
     #[cfg(not(parallel_compiler))]
     #[inline(always)]
+    #[track_caller]
     pub fn lock(&self) -> LockGuard<'_, T> {
         self.0.borrow_mut()
     }
 
     #[inline(always)]
+    #[track_caller]
     pub fn with_lock<F: FnOnce(&mut T) -> R, R>(&self, f: F) -> R {
         f(&mut *self.lock())
     }
 
     #[inline(always)]
+    #[track_caller]
     pub fn borrow(&self) -> LockGuard<'_, T> {
         self.lock()
     }
 
     #[inline(always)]
+    #[track_caller]
     pub fn borrow_mut(&self) -> LockGuard<'_, T> {
         self.lock()
     }
@@ -443,14 +445,6 @@ impl<T: Default> Default for Lock<T> {
     #[inline]
     fn default() -> Self {
         Lock::new(T::default())
-    }
-}
-
-// FIXME: Probably a bad idea
-impl<T: Clone> Clone for Lock<T> {
-    #[inline]
-    fn clone(&self) -> Self {
-        Lock::new(self.borrow().clone())
     }
 }
 
@@ -475,6 +469,7 @@ impl<T> RwLock<T> {
 
     #[cfg(not(parallel_compiler))]
     #[inline(always)]
+    #[track_caller]
     pub fn read(&self) -> ReadGuard<'_, T> {
         self.0.borrow()
     }
@@ -490,6 +485,7 @@ impl<T> RwLock<T> {
     }
 
     #[inline(always)]
+    #[track_caller]
     pub fn with_read_lock<F: FnOnce(&T) -> R, R>(&self, f: F) -> R {
         f(&*self.read())
     }
@@ -508,6 +504,7 @@ impl<T> RwLock<T> {
 
     #[cfg(not(parallel_compiler))]
     #[inline(always)]
+    #[track_caller]
     pub fn write(&self) -> WriteGuard<'_, T> {
         self.0.borrow_mut()
     }
@@ -523,18 +520,36 @@ impl<T> RwLock<T> {
     }
 
     #[inline(always)]
+    #[track_caller]
     pub fn with_write_lock<F: FnOnce(&mut T) -> R, R>(&self, f: F) -> R {
         f(&mut *self.write())
     }
 
     #[inline(always)]
+    #[track_caller]
     pub fn borrow(&self) -> ReadGuard<'_, T> {
         self.read()
     }
 
     #[inline(always)]
+    #[track_caller]
     pub fn borrow_mut(&self) -> WriteGuard<'_, T> {
         self.write()
+    }
+
+    #[cfg(not(parallel_compiler))]
+    #[inline(always)]
+    pub fn leak(&self) -> &T {
+        ReadGuard::leak(self.read())
+    }
+
+    #[cfg(parallel_compiler)]
+    #[inline(always)]
+    pub fn leak(&self) -> &T {
+        let guard = self.read();
+        let ret = unsafe { &*(&*guard as *const T) };
+        std::mem::forget(guard);
+        ret
     }
 }
 

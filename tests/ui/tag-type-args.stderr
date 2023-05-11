@@ -1,0 +1,19 @@
+error[E0107]: missing generics for enum `Quux`
+  --> $DIR/tag-type-args.rs:3:11
+   |
+LL | fn foo(c: Quux) { assert!((false)); }
+   |           ^^^^ expected 1 generic argument
+   |
+note: enum defined here, with 1 generic parameter: `T`
+  --> $DIR/tag-type-args.rs:1:6
+   |
+LL | enum Quux<T> { Bar }
+   |      ^^^^ -
+help: add missing generic argument
+   |
+LL | fn foo(c: Quux<T>) { assert!((false)); }
+   |               +++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0107`.

@@ -11,6 +11,6 @@
 ///
 fn foo() {}
 
-/// A long commment for wrapping
+/// A long comment for wrapping
 /// This is a long long long long long long long long long long long long long long long long long long long long sentence.
 fn bar() {}

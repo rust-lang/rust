@@ -1,32 +1,26 @@
 use crate::cell::UnsafeCell;
-use crate::mem::MaybeUninit;
+use crate::mem::{forget, MaybeUninit};
 use crate::sys::cvt_nz;
+use crate::sys_common::lazy_box::{LazyBox, LazyInit};
+
+struct AllocatedMutex(UnsafeCell<libc::pthread_mutex_t>);
 
 pub struct Mutex {
-    inner: UnsafeCell<libc::pthread_mutex_t>,
+    inner: LazyBox<AllocatedMutex>,
 }
-
-pub type MovableMutex = Box<Mutex>;
 
 #[inline]
 pub unsafe fn raw(m: &Mutex) -> *mut libc::pthread_mutex_t {
-    m.inner.get()
+    m.inner.0.get()
 }
 
-unsafe impl Send for Mutex {}
-unsafe impl Sync for Mutex {}
+unsafe impl Send for AllocatedMutex {}
+unsafe impl Sync for AllocatedMutex {}
 
-#[allow(dead_code)] // sys isn't exported yet
-impl Mutex {
-    pub const fn new() -> Mutex {
-        // Might be moved to a different address, so it is better to avoid
-        // initialization of potentially opaque OS data before it landed.
-        // Be very careful using this newly constructed `Mutex`, reentrant
-        // locking is undefined behavior until `init` is called!
-        Mutex { inner: UnsafeCell::new(libc::PTHREAD_MUTEX_INITIALIZER) }
-    }
-    #[inline]
-    pub unsafe fn init(&mut self) {
+impl LazyInit for AllocatedMutex {
+    fn init() -> Box<Self> {
+        let mutex = Box::new(AllocatedMutex(UnsafeCell::new(libc::PTHREAD_MUTEX_INITIALIZER)));
+
         // Issue #33770
         //
         // A pthread mutex initialized with PTHREAD_MUTEX_INITIALIZER will have
@@ -51,42 +45,77 @@ impl Mutex {
         // references, we instead create the mutex with type
         // PTHREAD_MUTEX_NORMAL which is guaranteed to deadlock if we try to
         // re-lock it from the same thread, thus avoiding undefined behavior.
-        let mut attr = MaybeUninit::<libc::pthread_mutexattr_t>::uninit();
-        cvt_nz(libc::pthread_mutexattr_init(attr.as_mut_ptr())).unwrap();
-        let attr = PthreadMutexAttr(&mut attr);
-        cvt_nz(libc::pthread_mutexattr_settype(attr.0.as_mut_ptr(), libc::PTHREAD_MUTEX_NORMAL))
+        unsafe {
+            let mut attr = MaybeUninit::<libc::pthread_mutexattr_t>::uninit();
+            cvt_nz(libc::pthread_mutexattr_init(attr.as_mut_ptr())).unwrap();
+            let attr = PthreadMutexAttr(&mut attr);
+            cvt_nz(libc::pthread_mutexattr_settype(
+                attr.0.as_mut_ptr(),
+                libc::PTHREAD_MUTEX_NORMAL,
+            ))
             .unwrap();
-        cvt_nz(libc::pthread_mutex_init(self.inner.get(), attr.0.as_ptr())).unwrap();
+            cvt_nz(libc::pthread_mutex_init(mutex.0.get(), attr.0.as_ptr())).unwrap();
+        }
+
+        mutex
     }
+
+    fn destroy(mutex: Box<Self>) {
+        // We're not allowed to pthread_mutex_destroy a locked mutex,
+        // so check first if it's unlocked.
+        if unsafe { libc::pthread_mutex_trylock(mutex.0.get()) == 0 } {
+            unsafe { libc::pthread_mutex_unlock(mutex.0.get()) };
+            drop(mutex);
+        } else {
+            // The mutex is locked. This happens if a MutexGuard is leaked.
+            // In this case, we just leak the Mutex too.
+            forget(mutex);
+        }
+    }
+
+    fn cancel_init(_: Box<Self>) {
+        // In this case, we can just drop it without any checks,
+        // since it cannot have been locked yet.
+    }
+}
+
+impl Drop for AllocatedMutex {
+    #[inline]
+    fn drop(&mut self) {
+        let r = unsafe { libc::pthread_mutex_destroy(self.0.get()) };
+        if cfg!(target_os = "dragonfly") {
+            // On DragonFly pthread_mutex_destroy() returns EINVAL if called on a
+            // mutex that was just initialized with libc::PTHREAD_MUTEX_INITIALIZER.
+            // Once it is used (locked/unlocked) or pthread_mutex_init() is called,
+            // this behaviour no longer occurs.
+            debug_assert!(r == 0 || r == libc::EINVAL);
+        } else {
+            debug_assert_eq!(r, 0);
+        }
+    }
+}
+
+impl Mutex {
+    #[inline]
+    pub const fn new() -> Mutex {
+        Mutex { inner: LazyBox::new() }
+    }
+
     #[inline]
     pub unsafe fn lock(&self) {
-        let r = libc::pthread_mutex_lock(self.inner.get());
+        let r = libc::pthread_mutex_lock(raw(self));
         debug_assert_eq!(r, 0);
     }
+
     #[inline]
     pub unsafe fn unlock(&self) {
-        let r = libc::pthread_mutex_unlock(self.inner.get());
+        let r = libc::pthread_mutex_unlock(raw(self));
         debug_assert_eq!(r, 0);
     }
+
     #[inline]
     pub unsafe fn try_lock(&self) -> bool {
-        libc::pthread_mutex_trylock(self.inner.get()) == 0
-    }
-    #[inline]
-    #[cfg(not(target_os = "dragonfly"))]
-    pub unsafe fn destroy(&self) {
-        let r = libc::pthread_mutex_destroy(self.inner.get());
-        debug_assert_eq!(r, 0);
-    }
-    #[inline]
-    #[cfg(target_os = "dragonfly")]
-    pub unsafe fn destroy(&self) {
-        let r = libc::pthread_mutex_destroy(self.inner.get());
-        // On DragonFly pthread_mutex_destroy() returns EINVAL if called on a
-        // mutex that was just initialized with libc::PTHREAD_MUTEX_INITIALIZER.
-        // Once it is used (locked/unlocked) or pthread_mutex_init() is called,
-        // this behaviour no longer occurs.
-        debug_assert!(r == 0 || r == libc::EINVAL);
+        libc::pthread_mutex_trylock(raw(self)) == 0
     }
 }
 

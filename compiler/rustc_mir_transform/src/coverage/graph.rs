@@ -5,7 +5,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::dominators::{self, Dominators};
 use rustc_data_structures::graph::{self, GraphSuccessors, WithNumNodes, WithStartNode};
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::IndexVec;
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::{self, BasicBlock, BasicBlockData, Terminator, TerminatorKind};
 
@@ -37,8 +37,7 @@ impl CoverageGraph {
         // `SwitchInt` to have multiple targets to the same destination `BasicBlock`, so
         // de-duplication is required. This is done without reordering the successors.
 
-        let bcbs_len = bcbs.len();
-        let mut seen = IndexVec::from_elem_n(false, bcbs_len);
+        let mut seen = IndexVec::from_elem(false, &bcbs);
         let successors = IndexVec::from_fn_n(
             |bcb| {
                 for b in seen.iter_mut() {
@@ -60,7 +59,7 @@ impl CoverageGraph {
             bcbs.len(),
         );
 
-        let mut predecessors = IndexVec::from_elem_n(Vec::new(), bcbs.len());
+        let mut predecessors = IndexVec::from_elem(Vec::new(), &bcbs);
         for (bcb, bcb_successors) in successors.iter_enumerated() {
             for &successor in bcb_successors {
                 predecessors[successor].push(bcb);
@@ -80,7 +79,7 @@ impl CoverageGraph {
         IndexVec<BasicCoverageBlock, BasicCoverageBlockData>,
         IndexVec<BasicBlock, Option<BasicCoverageBlock>>,
     ) {
-        let num_basic_blocks = mir_body.num_nodes();
+        let num_basic_blocks = mir_body.basic_blocks.len();
         let mut bcbs = IndexVec::with_capacity(num_basic_blocks);
         let mut bb_to_bcb = IndexVec::from_elem_n(None, num_basic_blocks);
 
@@ -95,7 +94,7 @@ impl CoverageGraph {
         let mut basic_blocks = Vec::new();
         for (bb, data) in mir_cfg_without_unwind {
             if let Some(last) = basic_blocks.last() {
-                let predecessors = &mir_body.predecessors()[bb];
+                let predecessors = &mir_body.basic_blocks.predecessors()[bb];
                 if predecessors.len() > 1 || !predecessors.contains(last) {
                     // The `bb` has more than one _incoming_ edge, and should start its own
                     // `BasicCoverageBlockData`. (Note, the `basic_blocks` vector does not yet
@@ -112,7 +111,7 @@ impl CoverageGraph {
                         if predecessors.len() > 1 {
                             "predecessors.len() > 1".to_owned()
                         } else {
-                            format!("bb {} is not in precessors: {:?}", bb.index(), predecessors)
+                            format!("bb {} is not in predecessors: {:?}", bb.index(), predecessors)
                         }
                     );
                 }
@@ -123,7 +122,7 @@ impl CoverageGraph {
 
             match term.kind {
                 TerminatorKind::Return { .. }
-                | TerminatorKind::Abort
+                | TerminatorKind::Terminate
                 | TerminatorKind::Yield { .. }
                 | TerminatorKind::SwitchInt { .. } => {
                     // The `bb` has more than one _outgoing_ edge, or exits the function. Save the
@@ -137,7 +136,7 @@ impl CoverageGraph {
                     debug!("  because term.kind = {:?}", term.kind);
                     // Note that this condition is based on `TerminatorKind`, even though it
                     // theoretically boils down to `successors().len() != 1`; that is, either zero
-                    // (e.g., `Return`, `Abort`) or multiple successors (e.g., `SwitchInt`), but
+                    // (e.g., `Return`, `Terminate`) or multiple successors (e.g., `SwitchInt`), but
                     // since the BCB CFG ignores things like unwind branches (which exist in the
                     // `Terminator`s `successors()` list) checking the number of successors won't
                     // work.
@@ -156,7 +155,6 @@ impl CoverageGraph {
                 | TerminatorKind::Resume
                 | TerminatorKind::Unreachable
                 | TerminatorKind::Drop { .. }
-                | TerminatorKind::DropAndReplace { .. }
                 | TerminatorKind::Call { .. }
                 | TerminatorKind::GeneratorDrop
                 | TerminatorKind::Assert { .. }
@@ -177,10 +175,10 @@ impl CoverageGraph {
 
     fn add_basic_coverage_block(
         bcbs: &mut IndexVec<BasicCoverageBlock, BasicCoverageBlockData>,
-        bb_to_bcb: &mut IndexVec<BasicBlock, Option<BasicCoverageBlock>>,
+        bb_to_bcb: &mut IndexSlice<BasicBlock, Option<BasicCoverageBlock>>,
         basic_blocks: Vec<BasicBlock>,
     ) {
-        let bcb = BasicCoverageBlock::from_usize(bcbs.len());
+        let bcb = bcbs.next_index();
         for &bb in basic_blocks.iter() {
             bb_to_bcb[bb] = Some(bcb);
         }
@@ -209,8 +207,8 @@ impl CoverageGraph {
     }
 
     #[inline(always)]
-    pub fn is_dominated_by(&self, node: BasicCoverageBlock, dom: BasicCoverageBlock) -> bool {
-        self.dominators.as_ref().unwrap().is_dominated_by(node, dom)
+    pub fn dominates(&self, dom: BasicCoverageBlock, node: BasicCoverageBlock) -> bool {
+        self.dominators.as_ref().unwrap().dominates(dom, node)
     }
 
     #[inline(always)]
@@ -282,9 +280,9 @@ impl graph::WithPredecessors for CoverageGraph {
 
 rustc_index::newtype_index! {
     /// A node in the control-flow graph of CoverageGraph.
+    #[debug_format = "bcb{}"]
     pub(super) struct BasicCoverageBlock {
-        DEBUG_FORMAT = "bcb{}",
-        const START_BCB = 0,
+        const START_BCB = 0;
     }
 }
 
@@ -312,7 +310,7 @@ rustc_index::newtype_index! {
 /// to the BCB's primary counter or expression).
 ///
 /// The BCB CFG is critical to simplifying the coverage analysis by ensuring graph path-based
-/// queries (`is_dominated_by()`, `predecessors`, `successors`, etc.) have branch (control flow)
+/// queries (`dominates()`, `predecessors`, `successors`, etc.) have branch (control flow)
 /// significance.
 #[derive(Debug, Clone)]
 pub(super) struct BasicCoverageBlockData {
@@ -481,20 +479,20 @@ impl std::fmt::Debug for BcbBranch {
 // FIXME(#78544): MIR InstrumentCoverage: Improve coverage of `#[should_panic]` tests and
 // `catch_unwind()` handlers.
 fn bcb_filtered_successors<'a, 'tcx>(
-    body: &'tcx &'a mir::Body<'tcx>,
-    term_kind: &'tcx TerminatorKind<'tcx>,
+    body: &'a mir::Body<'tcx>,
+    term_kind: &'a TerminatorKind<'tcx>,
 ) -> Box<dyn Iterator<Item = BasicBlock> + 'a> {
-    let mut successors = term_kind.successors();
     Box::new(
         match &term_kind {
             // SwitchInt successors are never unwind, and all of them should be traversed.
-            TerminatorKind::SwitchInt { .. } => successors,
+            TerminatorKind::SwitchInt { ref targets, .. } => {
+                None.into_iter().chain(targets.all_targets().into_iter().copied())
+            }
             // For all other kinds, return only the first successor, if any, and ignore unwinds.
             // NOTE: `chain(&[])` is required to coerce the `option::iter` (from
             // `next().into_iter()`) into the `mir::Successors` aliased type.
-            _ => successors.next().into_iter().chain(&[]),
+            _ => term_kind.successors().next().into_iter().chain((&[]).into_iter().copied()),
         }
-        .copied()
         .filter(move |&successor| body[successor].terminator().kind != TerminatorKind::Unreachable),
     )
 }
@@ -538,29 +536,29 @@ impl TraverseCoverageGraphWithLoops {
             "TraverseCoverageGraphWithLoops::next - context_stack: {:?}",
             self.context_stack.iter().rev().collect::<Vec<_>>()
         );
-        while let Some(next_bcb) = {
-            // Strip contexts with empty worklists from the top of the stack
-            while self.context_stack.last().map_or(false, |context| context.worklist.is_empty()) {
+
+        while let Some(context) = self.context_stack.last_mut() {
+            if let Some(next_bcb) = context.worklist.pop() {
+                if !self.visited.insert(next_bcb) {
+                    debug!("Already visited: {:?}", next_bcb);
+                    continue;
+                }
+                debug!("Visiting {:?}", next_bcb);
+                if self.backedges[next_bcb].len() > 0 {
+                    debug!("{:?} is a loop header! Start a new TraversalContext...", next_bcb);
+                    self.context_stack.push(TraversalContext {
+                        loop_backedges: Some((self.backedges[next_bcb].clone(), next_bcb)),
+                        worklist: Vec::new(),
+                    });
+                }
+                self.extend_worklist(basic_coverage_blocks, next_bcb);
+                return Some(next_bcb);
+            } else {
+                // Strip contexts with empty worklists from the top of the stack
                 self.context_stack.pop();
             }
-            // Pop the next bcb off of the current context_stack. If none, all BCBs were visited.
-            self.context_stack.last_mut().map_or(None, |context| context.worklist.pop())
-        } {
-            if !self.visited.insert(next_bcb) {
-                debug!("Already visited: {:?}", next_bcb);
-                continue;
-            }
-            debug!("Visiting {:?}", next_bcb);
-            if self.backedges[next_bcb].len() > 0 {
-                debug!("{:?} is a loop header! Start a new TraversalContext...", next_bcb);
-                self.context_stack.push(TraversalContext {
-                    loop_backedges: Some((self.backedges[next_bcb].clone(), next_bcb)),
-                    worklist: Vec::new(),
-                });
-            }
-            self.extend_worklist(basic_coverage_blocks, next_bcb);
-            return Some(next_bcb);
         }
+
         None
     }
 
@@ -594,7 +592,7 @@ impl TraverseCoverageGraphWithLoops {
                 // branching block would have given an `Expression` (or vice versa).
                 let (some_successor_to_add, some_loop_header) =
                     if let Some((_, loop_header)) = context.loop_backedges {
-                        if basic_coverage_blocks.is_dominated_by(successor, loop_header) {
+                        if basic_coverage_blocks.dominates(loop_header, successor) {
                             (Some(successor), Some(loop_header))
                         } else {
                             (None, None)
@@ -666,15 +664,15 @@ pub(super) fn find_loop_backedges(
     //
     // The overall complexity appears to be comparable to many other MIR transform algorithms, and I
     // don't expect that this function is creating a performance hot spot, but if this becomes an
-    // issue, there may be ways to optimize the `is_dominated_by` algorithm (as indicated by an
+    // issue, there may be ways to optimize the `dominates` algorithm (as indicated by an
     // existing `FIXME` comment in that code), or possibly ways to optimize it's usage here, perhaps
     // by keeping track of results for visited `BasicCoverageBlock`s if they can be used to short
-    // circuit downstream `is_dominated_by` checks.
+    // circuit downstream `dominates` checks.
     //
     // For now, that kind of optimization seems unnecessarily complicated.
     for (bcb, _) in basic_coverage_blocks.iter_enumerated() {
         for &successor in &basic_coverage_blocks.successors[bcb] {
-            if basic_coverage_blocks.is_dominated_by(bcb, successor) {
+            if basic_coverage_blocks.dominates(successor, bcb) {
                 let loop_header = successor;
                 let backedge_from_bcb = bcb;
                 debug!(
@@ -691,12 +689,9 @@ pub(super) fn find_loop_backedges(
 pub struct ShortCircuitPreorder<
     'a,
     'tcx,
-    F: Fn(
-        &'tcx &'a mir::Body<'tcx>,
-        &'tcx TerminatorKind<'tcx>,
-    ) -> Box<dyn Iterator<Item = BasicBlock> + 'a>,
+    F: Fn(&'a mir::Body<'tcx>, &'a TerminatorKind<'tcx>) -> Box<dyn Iterator<Item = BasicBlock> + 'a>,
 > {
-    body: &'tcx &'a mir::Body<'tcx>,
+    body: &'a mir::Body<'tcx>,
     visited: BitSet<BasicBlock>,
     worklist: Vec<BasicBlock>,
     filtered_successors: F,
@@ -705,21 +700,18 @@ pub struct ShortCircuitPreorder<
 impl<
     'a,
     'tcx,
-    F: Fn(
-        &'tcx &'a mir::Body<'tcx>,
-        &'tcx TerminatorKind<'tcx>,
-    ) -> Box<dyn Iterator<Item = BasicBlock> + 'a>,
+    F: Fn(&'a mir::Body<'tcx>, &'a TerminatorKind<'tcx>) -> Box<dyn Iterator<Item = BasicBlock> + 'a>,
 > ShortCircuitPreorder<'a, 'tcx, F>
 {
     pub fn new(
-        body: &'tcx &'a mir::Body<'tcx>,
+        body: &'a mir::Body<'tcx>,
         filtered_successors: F,
     ) -> ShortCircuitPreorder<'a, 'tcx, F> {
         let worklist = vec![mir::START_BLOCK];
 
         ShortCircuitPreorder {
             body,
-            visited: BitSet::new_empty(body.basic_blocks().len()),
+            visited: BitSet::new_empty(body.basic_blocks.len()),
             worklist,
             filtered_successors,
         }
@@ -727,12 +719,9 @@ impl<
 }
 
 impl<
-    'a: 'tcx,
+    'a,
     'tcx,
-    F: Fn(
-        &'tcx &'a mir::Body<'tcx>,
-        &'tcx TerminatorKind<'tcx>,
-    ) -> Box<dyn Iterator<Item = BasicBlock> + 'a>,
+    F: Fn(&'a mir::Body<'tcx>, &'a TerminatorKind<'tcx>) -> Box<dyn Iterator<Item = BasicBlock> + 'a>,
 > Iterator for ShortCircuitPreorder<'a, 'tcx, F>
 {
     type Item = (BasicBlock, &'a BasicBlockData<'tcx>);
@@ -756,7 +745,7 @@ impl<
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let size = self.body.basic_blocks().len() - self.visited.count();
+        let size = self.body.basic_blocks.len() - self.visited.count();
         (size, Some(size))
     }
 }

@@ -8,10 +8,8 @@ use rustc_session::Session;
 /// Tries to infer the path of a binary for the target toolchain from the linker name.
 pub(crate) fn get_toolchain_binary(sess: &Session, tool: &str) -> PathBuf {
     let (mut linker, _linker_flavor) = linker_and_flavor(sess);
-    let linker_file_name = linker
-        .file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or_else(|| sess.fatal("couldn't extract file name from specified linker"));
+    let linker_file_name =
+        linker.file_name().unwrap().to_str().expect("linker filename should be valid UTF-8");
 
     if linker_file_name == "ld.lld" {
         if tool != "ld" {

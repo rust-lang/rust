@@ -1,0 +1,22 @@
+warning: the feature `return_type_notation` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/non-rpitit.rs:1:12
+   |
+LL | #![feature(return_type_notation)]
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #109417 <https://github.com/rust-lang/rust/issues/109417> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: return type notation used on function that is not `async` and does not return `impl Trait`
+  --> $DIR/non-rpitit.rs:8:18
+   |
+LL |     fn method() {}
+   |     ----------- this function must be `async` or return `impl Trait`
+...
+LL | fn test<T: Trait<method(): Send>>() {}
+   |                  ^^^^^^^^^^^^^^
+   |
+   = note: function returns `()`, which is not compatible with associated type return bounds
+
+error: aborting due to previous error; 1 warning emitted
+

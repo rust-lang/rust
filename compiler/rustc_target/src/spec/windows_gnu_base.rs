@@ -1,31 +1,36 @@
-use crate::spec::crt_objects::{self, CrtObjectsFallback};
-use crate::spec::{cvs, LinkArgs, LinkerFlavor, LldFlavor, TargetOptions};
+use crate::spec::crt_objects::{self, LinkSelfContainedDefault};
+use crate::spec::{cvs, Cc, DebuginfoKind, LinkerFlavor, Lld, SplitDebuginfo, TargetOptions};
+use std::borrow::Cow;
 
 pub fn opts() -> TargetOptions {
-    let mut pre_link_args = LinkArgs::new();
-    pre_link_args.insert(
-        LinkerFlavor::Gcc,
-        vec![
+    let mut pre_link_args = TargetOptions::link_args(
+        LinkerFlavor::Gnu(Cc::No, Lld::No),
+        &[
+            // Enable ASLR
+            "--dynamicbase",
+            // ASLR will rebase it anyway so leaving that option enabled only leads to confusion
+            "--disable-auto-image-base",
+        ],
+    );
+    super::add_link_args(
+        &mut pre_link_args,
+        LinkerFlavor::Gnu(Cc::Yes, Lld::No),
+        &[
             // Tell GCC to avoid linker plugins, because we are not bundling
             // them with Windows installer, and Rust does its own LTO anyways.
-            "-fno-use-linker-plugin".into(),
-            // Enable ASLR
-            "-Wl,--dynamicbase".into(),
-            // ASLR will rebase it anyway so leaving that option enabled only leads to confusion
-            "-Wl,--disable-auto-image-base".into(),
+            "-fno-use-linker-plugin",
+            "-Wl,--dynamicbase",
+            "-Wl,--disable-auto-image-base",
         ],
     );
 
-    let mut late_link_args = LinkArgs::new();
-    let mut late_link_args_dynamic = LinkArgs::new();
-    let mut late_link_args_static = LinkArgs::new();
     // Order of `late_link_args*` was found through trial and error to work with various
     // mingw-w64 versions (not tested on the CI). It's expected to change from time to time.
-    let mingw_libs = vec![
-        "-lmsvcrt".into(),
-        "-lmingwex".into(),
-        "-lmingw32".into(),
-        "-lgcc".into(), // alas, mingw* libraries above depend on libgcc
+    let mingw_libs = &[
+        "-lmsvcrt",
+        "-lmingwex",
+        "-lmingw32",
+        "-lgcc", // alas, mingw* libraries above depend on libgcc
         // mingw's msvcrt is a weird hybrid import library and static library.
         // And it seems that the linker fails to use import symbols from msvcrt
         // that are required from functions in msvcrt in certain cases. For example
@@ -33,31 +38,37 @@ pub fn opts() -> TargetOptions {
         // The library is purposely listed twice to fix that.
         //
         // See https://github.com/rust-lang/rust/pull/47483 for some more details.
-        "-lmsvcrt".into(),
-        "-luser32".into(),
-        "-lkernel32".into(),
+        "-lmsvcrt",
+        "-luser32",
+        "-lkernel32",
     ];
-    late_link_args.insert(LinkerFlavor::Gcc, mingw_libs.clone());
-    late_link_args.insert(LinkerFlavor::Lld(LldFlavor::Ld), mingw_libs);
-    let dynamic_unwind_libs = vec![
-        // If any of our crates are dynamically linked then we need to use
-        // the shared libgcc_s-dw2-1.dll. This is required to support
-        // unwinding across DLL boundaries.
-        "-lgcc_s".into(),
-    ];
-    late_link_args_dynamic.insert(LinkerFlavor::Gcc, dynamic_unwind_libs.clone());
-    late_link_args_dynamic.insert(LinkerFlavor::Lld(LldFlavor::Ld), dynamic_unwind_libs);
-    let static_unwind_libs = vec![
-        // If all of our crates are statically linked then we can get away
-        // with statically linking the libgcc unwinding code. This allows
-        // binaries to be redistributed without the libgcc_s-dw2-1.dll
-        // dependency, but unfortunately break unwinding across DLL
-        // boundaries when unwinding across FFI boundaries.
-        "-lgcc_eh".into(),
-        "-l:libpthread.a".into(),
-    ];
-    late_link_args_static.insert(LinkerFlavor::Gcc, static_unwind_libs.clone());
-    late_link_args_static.insert(LinkerFlavor::Lld(LldFlavor::Ld), static_unwind_libs);
+    let mut late_link_args =
+        TargetOptions::link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), mingw_libs);
+    super::add_link_args(&mut late_link_args, LinkerFlavor::Gnu(Cc::Yes, Lld::No), mingw_libs);
+    // If any of our crates are dynamically linked then we need to use
+    // the shared libgcc_s-dw2-1.dll. This is required to support
+    // unwinding across DLL boundaries.
+    let dynamic_unwind_libs = &["-lgcc_s"];
+    let mut late_link_args_dynamic =
+        TargetOptions::link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), dynamic_unwind_libs);
+    super::add_link_args(
+        &mut late_link_args_dynamic,
+        LinkerFlavor::Gnu(Cc::Yes, Lld::No),
+        dynamic_unwind_libs,
+    );
+    // If all of our crates are statically linked then we can get away
+    // with statically linking the libgcc unwinding code. This allows
+    // binaries to be redistributed without the libgcc_s-dw2-1.dll
+    // dependency, but unfortunately break unwinding across DLL
+    // boundaries when unwinding across FFI boundaries.
+    let static_unwind_libs = &["-lgcc_eh", "-l:libpthread.a"];
+    let mut late_link_args_static =
+        TargetOptions::link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), static_unwind_libs);
+    super::add_link_args(
+        &mut late_link_args_static,
+        LinkerFlavor::Gnu(Cc::Yes, Lld::No),
+        static_unwind_libs,
+    );
 
     TargetOptions {
         os: "windows".into(),
@@ -67,7 +78,7 @@ pub fn opts() -> TargetOptions {
         function_sections: false,
         linker: Some("gcc".into()),
         dynamic_linking: true,
-        executables: true,
+        dll_tls_export: false,
         dll_prefix: "".into(),
         dll_suffix: ".dll".into(),
         exe_suffix: ".exe".into(),
@@ -77,9 +88,9 @@ pub fn opts() -> TargetOptions {
         pre_link_args,
         pre_link_objects: crt_objects::pre_mingw(),
         post_link_objects: crt_objects::post_mingw(),
-        pre_link_objects_fallback: crt_objects::pre_mingw_fallback(),
-        post_link_objects_fallback: crt_objects::post_mingw_fallback(),
-        crt_objects_fallback: Some(CrtObjectsFallback::Mingw),
+        pre_link_objects_self_contained: crt_objects::pre_mingw_self_contained(),
+        post_link_objects_self_contained: crt_objects::post_mingw_self_contained(),
+        link_self_contained: LinkSelfContainedDefault::Mingw,
         late_link_args,
         late_link_args_dynamic,
         late_link_args_static,
@@ -87,6 +98,10 @@ pub fn opts() -> TargetOptions {
         emit_debug_gdb_scripts: false,
         requires_uwtable: true,
         eh_frame_header: false,
+        // FIXME(davidtwco): Support Split DWARF on Windows GNU - may require LLVM changes to
+        // output DWO, despite using DWARF, doesn't use ELF..
+        debuginfo_kind: DebuginfoKind::Pdb,
+        supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Off]),
         ..Default::default()
     }
 }

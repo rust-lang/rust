@@ -1,0 +1,17 @@
+error[E0283]: type annotations needed: cannot satisfy `u32: C`
+  --> $DIR/coherence-overlap-trait-alias.rs:15:12
+   |
+LL | impl C for u32 {}
+   |            ^^^
+   |
+note: multiple `impl`s satisfying `u32: C` found
+  --> $DIR/coherence-overlap-trait-alias.rs:14:1
+   |
+LL | impl<T: AB> C for T {}
+   | ^^^^^^^^^^^^^^^^^^^
+LL | impl C for u32 {}
+   | ^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0283`.

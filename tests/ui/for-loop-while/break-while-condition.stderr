@@ -1,0 +1,45 @@
+error[E0308]: mismatched types
+  --> $DIR/break-while-condition.rs:9:20
+   |
+LL |           let _: ! = {
+   |  ____________________^
+LL | |             'a: while break 'a {};
+LL | |         };
+   | |_________^ expected `!`, found `()`
+   |
+   = note:   expected type `!`
+           found unit type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/break-while-condition.rs:16:13
+   |
+LL | /             while false {
+LL | |                 break
+LL | |             }
+   | |_____________^ expected `!`, found `()`
+   |
+   = note:   expected type `!`
+           found unit type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/break-while-condition.rs:24:13
+   |
+LL | /             while false {
+LL | |                 return
+LL | |             }
+   | |_____________^ expected `!`, found `()`
+   |
+   = note:   expected type `!`
+           found unit type `()`
+note: the function expects a value to always be returned, but loops might run zero times
+  --> $DIR/break-while-condition.rs:24:13
+   |
+LL |             while false {
+   |             ^^^^^^^^^^^ this might have zero elements to iterate on
+LL |                 return
+   |                 ------ if the loop doesn't execute, this value would never get returned
+   = help: return a value for the case when the loop has zero elements to iterate on, or consider changing the return type to account for that possibility
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

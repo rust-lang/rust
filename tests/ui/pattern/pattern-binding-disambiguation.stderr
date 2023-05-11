@@ -1,0 +1,63 @@
+error[E0530]: match bindings cannot shadow tuple structs
+  --> $DIR/pattern-binding-disambiguation.rs:24:9
+   |
+LL | struct TupleStruct();
+   | --------------------- the tuple struct `TupleStruct` is defined here
+...
+LL |         TupleStruct => {}
+   |         ^^^^^^^^^^^
+   |         |
+   |         cannot be named the same as a tuple struct
+   |         help: try specify the pattern arguments: `TupleStruct(..)`
+
+error[E0530]: match bindings cannot shadow tuple variants
+  --> $DIR/pattern-binding-disambiguation.rs:33:9
+   |
+LL | use E::*;
+   |     ---- the tuple variant `TupleVariant` is imported here
+...
+LL |         TupleVariant => {}
+   |         ^^^^^^^^^^^^
+   |         |
+   |         cannot be named the same as a tuple variant
+   |         help: try specify the pattern arguments: `TupleVariant(..)`
+
+error[E0530]: match bindings cannot shadow statics
+  --> $DIR/pattern-binding-disambiguation.rs:42:9
+   |
+LL | static STATIC: () = ();
+   | ----------------------- the static `STATIC` is defined here
+...
+LL |         STATIC => {}
+   |         ^^^^^^ cannot be named the same as a static
+
+error[E0530]: let bindings cannot shadow tuple structs
+  --> $DIR/pattern-binding-disambiguation.rs:49:9
+   |
+LL | struct TupleStruct();
+   | --------------------- the tuple struct `TupleStruct` is defined here
+...
+LL |     let TupleStruct = doesnt_matter;
+   |         ^^^^^^^^^^^ cannot be named the same as a tuple struct
+
+error[E0530]: let bindings cannot shadow tuple variants
+  --> $DIR/pattern-binding-disambiguation.rs:52:9
+   |
+LL | use E::*;
+   |     ---- the tuple variant `TupleVariant` is imported here
+...
+LL |     let TupleVariant = doesnt_matter;
+   |         ^^^^^^^^^^^^ cannot be named the same as a tuple variant
+
+error[E0530]: let bindings cannot shadow statics
+  --> $DIR/pattern-binding-disambiguation.rs:55:9
+   |
+LL | static STATIC: () = ();
+   | ----------------------- the static `STATIC` is defined here
+...
+LL |     let STATIC = doesnt_matter;
+   |         ^^^^^^ cannot be named the same as a static
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0530`.

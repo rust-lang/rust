@@ -4,12 +4,12 @@ error: this closure returns the unit type which also implements Ord
 LL |     structs.sort_by_key(|s| {
    |                         ^^^
    |
-   = note: `-D clippy::unit-return-expecting-ord` implied by `-D warnings`
 help: probably caused by this trailing semicolon
   --> $DIR/unit_return_expecting_ord.rs:19:24
    |
 LL |         double(s.field);
    |                        ^
+   = note: `-D clippy::unit-return-expecting-ord` implied by `-D warnings`
 
 error: this closure returns the unit type which also implements PartialOrd
   --> $DIR/unit_return_expecting_ord.rs:22:30

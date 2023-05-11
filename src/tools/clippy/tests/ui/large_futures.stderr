@@ -1,0 +1,82 @@
+error: large future with a size of 16385 bytes
+  --> $DIR/large_futures.rs:10:9
+   |
+LL |         big_fut([0u8; 1024 * 16]).await;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Box::pin` on it: `Box::pin(big_fut([0u8; 1024 * 16]))`
+   |
+   = note: `-D clippy::large-futures` implied by `-D warnings`
+
+error: large future with a size of 16386 bytes
+  --> $DIR/large_futures.rs:12:5
+   |
+LL |     f.await
+   |     ^ help: consider `Box::pin` on it: `Box::pin(f)`
+
+error: large future with a size of 16387 bytes
+  --> $DIR/large_futures.rs:16:9
+   |
+LL |         wait().await;
+   |         ^^^^^^ help: consider `Box::pin` on it: `Box::pin(wait())`
+
+error: large future with a size of 16387 bytes
+  --> $DIR/large_futures.rs:20:13
+   |
+LL |             wait().await;
+   |             ^^^^^^ help: consider `Box::pin` on it: `Box::pin(wait())`
+
+error: large future with a size of 65540 bytes
+  --> $DIR/large_futures.rs:27:5
+   |
+LL |     foo().await;
+   |     ^^^^^ help: consider `Box::pin` on it: `Box::pin(foo())`
+
+error: large future with a size of 49159 bytes
+  --> $DIR/large_futures.rs:28:5
+   |
+LL |     calls_fut(fut).await;
+   |     ^^^^^^^^^^^^^^ help: consider `Box::pin` on it: `Box::pin(calls_fut(fut))`
+
+error: large future with a size of 65540 bytes
+  --> $DIR/large_futures.rs:40:5
+   |
+LL | /     async {
+LL | |         let x = [0i32; 1024 * 16];
+LL | |         async {}.await;
+LL | |         println!("{:?}", x);
+LL | |     }
+   | |_____^
+   |
+help: consider `Box::pin` on it
+   |
+LL ~     Box::pin(async {
+LL +         let x = [0i32; 1024 * 16];
+LL +         async {}.await;
+LL +         println!("{:?}", x);
+LL +     })
+   |
+
+error: large future with a size of 65540 bytes
+  --> $DIR/large_futures.rs:51:13
+   |
+LL | /             async {
+LL | |                 let x = [0i32; 1024 * 16];
+LL | |                 async {}.await;
+LL | |                 println!("macro: {:?}", x);
+LL | |             }
+   | |_____________^
+...
+LL |       macro_!().await
+   |       --------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider `Box::pin` on it
+   |
+LL ~             Box::pin(async {
+LL +                 let x = [0i32; 1024 * 16];
+LL +                 async {}.await;
+LL +                 println!("macro: {:?}", x);
+LL +             })
+   |
+
+error: aborting due to 8 previous errors
+

@@ -1,4 +1,4 @@
-// compile-flags: --test
+//@compile-flags: --test
 #![warn(clippy::dbg_macro)]
 
 fn foo(n: u32) -> u32 {
@@ -45,4 +45,16 @@ mod issue7274 {
 #[test]
 pub fn issue8481() {
     dbg!(1);
+}
+
+#[cfg(test)]
+fn foo2() {
+    dbg!(1);
+}
+
+#[cfg(test)]
+mod mod1 {
+    fn func() {
+        dbg!(1);
+    }
 }

@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_context;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
 use clippy_utils::visitors::is_expr_unsafe;
 use clippy_utils::{get_parent_node, match_libc_symbol};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{Block, BlockCheckMode, Expr, ExprKind, Node, UnsafeSource};
+use rustc_hir::{Block, BlockCheckMode, Expr, ExprKind, LangItem, Node, UnsafeSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::sym;
@@ -47,7 +47,7 @@ impl<'tcx> LateLintPass<'tcx> for StrlenOnCStrings {
             if let ExprKind::Path(path) = &func.kind;
             if let Some(did) = cx.qpath_res(path, func.hir_id).opt_def_id();
             if match_libc_symbol(cx, did, "strlen");
-            if let ExprKind::MethodCall(path, [self_arg], _) = recv.kind;
+            if let ExprKind::MethodCall(path, self_arg, [], _) = recv.kind;
             if !recv.span.from_expansion();
             if path.ident.name == sym::as_ptr;
             then {
@@ -67,7 +67,7 @@ impl<'tcx> LateLintPass<'tcx> for StrlenOnCStrings {
                 let val_name = snippet_with_context(cx, self_arg.span, ctxt, "..", &mut app).0;
                 let method_name = if is_type_diagnostic_item(cx, ty, sym::cstring_type) {
                     "as_bytes"
-                } else if is_type_diagnostic_item(cx, ty, sym::CStr) {
+                } else if is_type_lang_item(cx, ty, LangItem::CStr) {
                     "to_bytes"
                 } else {
                     return;
@@ -79,7 +79,7 @@ impl<'tcx> LateLintPass<'tcx> for StrlenOnCStrings {
                     span,
                     "using `libc::strlen` on a `CString` or `CStr` value",
                     "try this",
-                    format!("{}.{}().len()", val_name, method_name),
+                    format!("{val_name}.{method_name}().len()"),
                     app,
                 );
             }

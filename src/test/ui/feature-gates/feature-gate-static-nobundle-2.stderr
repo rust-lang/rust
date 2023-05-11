@@ -1,2 +1,0 @@
-warning: library kind `static-nobundle` has been superseded by specifying `-bundle` on library kind `static`. Try `static:-bundle`
-

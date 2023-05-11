@@ -1,9 +1,9 @@
 macro_rules! uint_module {
-    ($T:ident, $T_i:ident) => {
+    ($T:ident) => {
         #[cfg(test)]
         mod tests {
             use core::ops::{BitAnd, BitOr, BitXor, Not, Shl, Shr};
-            use core::$T_i::*;
+            use core::$T::*;
             use std::str::FromStr;
 
             use crate::num;
@@ -229,6 +229,28 @@ macro_rules! uint_module {
                 assert_eq!((23 as $T).checked_next_multiple_of(8), Some(24));
                 assert_eq!((1 as $T).checked_next_multiple_of(0), None);
                 assert_eq!(MAX.checked_next_multiple_of(2), None);
+            }
+
+            #[test]
+            fn test_carrying_add() {
+                assert_eq!($T::MAX.carrying_add(1, false), (0, true));
+                assert_eq!($T::MAX.carrying_add(0, true), (0, true));
+                assert_eq!($T::MAX.carrying_add(1, true), (1, true));
+
+                assert_eq!($T::MIN.carrying_add($T::MAX, false), ($T::MAX, false));
+                assert_eq!($T::MIN.carrying_add(0, true), (1, false));
+                assert_eq!($T::MIN.carrying_add($T::MAX, true), (0, true));
+            }
+
+            #[test]
+            fn test_borrowing_sub() {
+                assert_eq!($T::MIN.borrowing_sub(1, false), ($T::MAX, true));
+                assert_eq!($T::MIN.borrowing_sub(0, true), ($T::MAX, true));
+                assert_eq!($T::MIN.borrowing_sub(1, true), ($T::MAX - 1, true));
+
+                assert_eq!($T::MAX.borrowing_sub($T::MAX, false), (0, false));
+                assert_eq!($T::MAX.borrowing_sub(0, true), ($T::MAX - 1, false));
+                assert_eq!($T::MAX.borrowing_sub($T::MAX, true), ($T::MAX, true));
             }
         }
     };

@@ -1,0 +1,26 @@
+error: 4th rule of macro `num` is never used
+  --> $DIR/unused-macro-rules-decl.rs:11:5
+   |
+LL |     (four) => { 4 },
+   |     ^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/unused-macro-rules-decl.rs:2:9
+   |
+LL | #![deny(unused_macro_rules)]
+   |         ^^^^^^^^^^^^^^^^^^
+
+error: 2nd rule of macro `num` is never used
+  --> $DIR/unused-macro-rules-decl.rs:9:5
+   |
+LL |     (two) => { 2 },
+   |     ^^^^^
+
+error: 3rd rule of macro `num_rec` is never used
+  --> $DIR/unused-macro-rules-decl.rs:31:5
+   |
+LL |     (three) => {
+   |     ^^^^^^^
+
+error: aborting due to 3 previous errors
+

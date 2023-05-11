@@ -7,15 +7,15 @@
     </Expand>
   </Type>
   <Type Name="core::cell::Ref&lt;*&gt;">
-    <DisplayString>{value}</DisplayString>
+    <DisplayString>{value.pointer}</DisplayString>
     <Expand>
-      <ExpandedItem>value</ExpandedItem>
+      <ExpandedItem>value.pointer</ExpandedItem>
     </Expand>
   </Type>
   <Type Name="core::cell::RefMut&lt;*&gt;">
-    <DisplayString>{value}</DisplayString>
+    <DisplayString>{value.pointer}</DisplayString>
     <Expand>
-      <ExpandedItem>value</ExpandedItem>
+      <ExpandedItem>value.pointer</ExpandedItem>
     </Expand>
   </Type>
   <Type Name="core::cell::RefCell&lt;*&gt;">
@@ -113,7 +113,7 @@
   </Type>
 
   <Type Name="core::ptr::unique::Unique&lt;*&gt;">
-    <DisplayString>Unique({(void*)pointer}: {pointer})</DisplayString>
+    <DisplayString>Unique({(void*)pointer.pointer}: {pointer.pointer})</DisplayString>
     <Expand>
       <ExpandedItem>pointer</ExpandedItem>
     </Expand>
@@ -154,10 +154,10 @@
   </Type>
 
   <Type Name="core::time::Duration">
-    <DisplayString>{secs,d}s {nanos,d}ns</DisplayString>
+    <DisplayString>{secs,d}s {nanos.__0,d}ns</DisplayString>
     <Expand>
       <Item Name="seconds">secs,d</Item>
-      <Item Name="nanoseconds">nanos,d</Item>
+      <Item Name="nanoseconds">nanos.__0,d</Item>
     </Expand>
   </Type>
 </AutoVisualizer>

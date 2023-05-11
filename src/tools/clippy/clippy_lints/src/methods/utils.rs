@@ -22,13 +22,13 @@ pub(super) fn derefs_to_slice<'tcx>(
             ty::Slice(_) => true,
             ty::Adt(def, _) if def.is_box() => may_slice(cx, ty.boxed_ty()),
             ty::Adt(..) => is_type_diagnostic_item(cx, ty, sym::Vec),
-            ty::Array(_, size) => size.try_eval_usize(cx.tcx, cx.param_env).is_some(),
+            ty::Array(_, size) => size.try_eval_target_usize(cx.tcx, cx.param_env).is_some(),
             ty::Ref(_, inner, _) => may_slice(cx, *inner),
             _ => false,
         }
     }
 
-    if let hir::ExprKind::MethodCall(path, [self_arg, ..], _) = &expr.kind {
+    if let hir::ExprKind::MethodCall(path, self_arg, ..) = &expr.kind {
         if path.ident.name == sym::iter && may_slice(cx, cx.typeck_results().expr_ty(self_arg)) {
             Some(self_arg)
         } else {
@@ -139,11 +139,11 @@ impl<'cx, 'tcx> Visitor<'tcx> for CloneOrCopyVisitor<'cx, 'tcx> {
                         self.addr_of_exprs.push(parent);
                         return;
                     },
-                    ExprKind::MethodCall(_, args, _) => {
+                    ExprKind::MethodCall(.., args, _) => {
                         if_chain! {
-                            if args.iter().skip(1).all(|arg| !self.is_binding(arg));
+                            if args.iter().all(|arg| !self.is_binding(arg));
                             if let Some(method_def_id) = self.cx.typeck_results().type_dependent_def_id(parent.hir_id);
-                            let method_ty = self.cx.tcx.type_of(method_def_id);
+                            let method_ty = self.cx.tcx.type_of(method_def_id).subst_identity();
                             let self_ty = method_ty.fn_sig(self.cx.tcx).input(0).skip_binder();
                             if matches!(self_ty.kind(), ty::Ref(_, _, Mutability::Not));
                             then {

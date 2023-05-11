@@ -1,4 +1,5 @@
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsStr;
+use std::num::ParseIntError;
 use std::path::Path;
 use std::process::Command;
 use std::thread;
@@ -7,10 +8,10 @@ use std::time::{Duration, SystemTime};
 /// # Panics
 ///
 /// Panics if the python commands could not be spawned
-pub fn run(port: u16, lint: Option<&str>) -> ! {
+pub fn run(port: u16, lint: Option<&String>) -> ! {
     let mut url = Some(match lint {
-        None => format!("http://localhost:{}", port),
-        Some(lint) => format!("http://localhost:{}/#{}", port, lint),
+        None => format!("http://localhost:{port}"),
+        Some(lint) => format!("http://localhost:{port}/#{lint}"),
     });
 
     loop {
@@ -48,7 +49,7 @@ fn mtime(path: impl AsRef<Path>) -> SystemTime {
             .into_iter()
             .flatten()
             .flatten()
-            .map(|entry| mtime(&entry.path()))
+            .map(|entry| mtime(entry.path()))
             .max()
             .unwrap_or(SystemTime::UNIX_EPOCH)
     } else {
@@ -59,9 +60,6 @@ fn mtime(path: impl AsRef<Path>) -> SystemTime {
 }
 
 #[allow(clippy::missing_errors_doc)]
-pub fn validate_port(arg: &OsStr) -> Result<(), OsString> {
-    match arg.to_string_lossy().parse::<u16>() {
-        Ok(_port) => Ok(()),
-        Err(err) => Err(OsString::from(err.to_string())),
-    }
+pub fn validate_port(arg: &OsStr) -> Result<(), ParseIntError> {
+    arg.to_string_lossy().parse::<u16>().map(|_| ())
 }

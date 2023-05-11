@@ -12,8 +12,6 @@ pub struct RwLock {
     rwl: SpinIdOnceCell<()>,
 }
 
-pub type MovableRwLock = RwLock;
-
 // Safety: `num_readers` is protected by `mtx_num_readers`
 unsafe impl Send for RwLock {}
 unsafe impl Sync for RwLock {}
@@ -23,6 +21,7 @@ fn new_rwl() -> Result<abi::ID, ItronError> {
 }
 
 impl RwLock {
+    #[inline]
     pub const fn new() -> RwLock {
         RwLock { rwl: SpinIdOnceCell::new() }
     }
@@ -36,13 +35,13 @@ impl RwLock {
     }
 
     #[inline]
-    pub unsafe fn read(&self) {
+    pub fn read(&self) {
         let rwl = self.raw();
         expect_success(unsafe { abi::rwl_loc_rdl(rwl) }, &"rwl_loc_rdl");
     }
 
     #[inline]
-    pub unsafe fn try_read(&self) -> bool {
+    pub fn try_read(&self) -> bool {
         let rwl = self.raw();
         match unsafe { abi::rwl_ploc_rdl(rwl) } {
             abi::E_TMOUT => false,
@@ -54,13 +53,13 @@ impl RwLock {
     }
 
     #[inline]
-    pub unsafe fn write(&self) {
+    pub fn write(&self) {
         let rwl = self.raw();
         expect_success(unsafe { abi::rwl_loc_wrl(rwl) }, &"rwl_loc_wrl");
     }
 
     #[inline]
-    pub unsafe fn try_write(&self) -> bool {
+    pub fn try_write(&self) -> bool {
         let rwl = self.raw();
         match unsafe { abi::rwl_ploc_wrl(rwl) } {
             abi::E_TMOUT => false,
@@ -82,9 +81,11 @@ impl RwLock {
         let rwl = self.raw();
         expect_success_aborting(unsafe { abi::rwl_unl_rwl(rwl) }, &"rwl_unl_rwl");
     }
+}
 
+impl Drop for RwLock {
     #[inline]
-    pub unsafe fn destroy(&self) {
+    fn drop(&mut self) {
         if let Some(rwl) = self.rwl.get().map(|x| x.0) {
             expect_success_aborting(unsafe { abi::rwl_del_rwl(rwl) }, &"rwl_del_rwl");
         }

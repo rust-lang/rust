@@ -1,0 +1,20 @@
+error[E0277]: the trait bound `Bar: Eq` is not satisfied
+  --> $DIR/where-clauses-method-unsatisfied.rs:18:7
+   |
+LL |     x.equals(&x);
+   |       ^^^^^^ the trait `Eq` is not implemented for `Bar`
+   |
+note: required by a bound in `Foo::<T>::equals`
+  --> $DIR/where-clauses-method-unsatisfied.rs:11:52
+   |
+LL |     fn equals(&self, u: &Foo<T>) -> bool where T : Eq {
+   |                                                    ^^ required by this bound in `Foo::<T>::equals`
+help: consider annotating `Bar` with `#[derive(Eq)]`
+   |
+LL + #[derive(Eq)]
+LL | struct Bar; // does not implement Eq
+   |
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

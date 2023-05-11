@@ -1,7 +1,6 @@
-use crate::convert::TryFrom;
 use crate::error;
 use crate::fmt;
-use crate::io::{self, IoSlice, IoSliceMut};
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, ToSocketAddrs};
 use crate::sync::Arc;
 use crate::sys::fd::FileDesc;
@@ -25,6 +24,7 @@ impl Socket {
 }
 
 impl AsInner<FileDesc> for Socket {
+    #[inline]
     fn as_inner(&self) -> &FileDesc {
         &self.inner
     }
@@ -145,6 +145,10 @@ impl TcpStream {
         self.inner.inner.read(buf)
     }
 
+    pub fn read_buf(&self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+        self.inner.inner.read_buf(buf)
+    }
+
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.inner.inner.read_vectored(bufs)
     }
@@ -217,6 +221,7 @@ impl TcpStream {
 }
 
 impl AsInner<Socket> for TcpStream {
+    #[inline]
     fn as_inner(&self) -> &Socket {
         &self.inner
     }
@@ -301,6 +306,7 @@ impl TcpListener {
 }
 
 impl AsInner<Socket> for TcpListener {
+    #[inline]
     fn as_inner(&self) -> &Socket {
         &self.inner
     }
@@ -539,6 +545,4 @@ pub mod netc {
 
     #[derive(Copy, Clone)]
     pub struct sockaddr {}
-
-    pub type socklen_t = usize;
 }

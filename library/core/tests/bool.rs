@@ -89,6 +89,7 @@ fn test_bool_to_option() {
     assert_eq!(false.then(|| 0), None);
     assert_eq!(true.then(|| 0), Some(0));
 
+    /* FIXME(#110395)
     const fn zero() -> i32 {
         0
     }
@@ -102,4 +103,5 @@ fn test_bool_to_option() {
     assert_eq!(B, Some(0));
     assert_eq!(C, None);
     assert_eq!(D, Some(0));
+    */
 }

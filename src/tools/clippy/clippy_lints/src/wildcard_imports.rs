@@ -8,6 +8,7 @@ use rustc_hir::{
     Item, ItemKind, PathSegment, UseKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::kw;
 use rustc_span::{sym, BytePos};
@@ -25,13 +26,18 @@ declare_clippy_lint! {
     /// still around.
     ///
     /// ### Example
-    /// ```rust,ignore
-    /// // Bad
+    /// ```rust
     /// use std::cmp::Ordering::*;
-    /// foo(Less);
     ///
-    /// // Good
+    /// # fn foo(_: std::cmp::Ordering) {}
+    /// foo(Less);
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
     /// use std::cmp::Ordering;
+    ///
+    /// # fn foo(_: Ordering) {}
     /// foo(Ordering::Less)
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -75,14 +81,13 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust,ignore
-    /// // Bad
     /// use crate1::*;
     ///
     /// foo();
     /// ```
     ///
+    /// Use instead:
     /// ```rust,ignore
-    /// // Good
     /// use crate1::foo;
     ///
     /// foo();
@@ -115,13 +120,14 @@ impl LateLintPass<'_> for WildcardImports {
         if is_test_module_or_function(cx.tcx, item) {
             self.test_modules_deep = self.test_modules_deep.saturating_add(1);
         }
-        if item.vis.node.is_pub() || item.vis.node.is_pub_restricted() {
+        let module = cx.tcx.parent_module_from_def_id(item.owner_id.def_id);
+        if cx.tcx.visibility(item.owner_id.def_id) != ty::Visibility::Restricted(module.to_def_id()) {
             return;
         }
         if_chain! {
             if let ItemKind::Use(use_path, UseKind::Glob) = &item.kind;
             if self.warn_on_all || !self.check_exceptions(item, use_path.segments);
-            let used_imports = cx.tcx.names_imported_by_glob_use(item.def_id);
+            let used_imports = cx.tcx.names_imported_by_glob_use(item.owner_id.def_id);
             if !used_imports.is_empty(); // Already handled by `unused_imports`
             then {
                 let mut applicability = Applicability::MachineApplicable;
@@ -149,28 +155,23 @@ impl LateLintPass<'_> for WildcardImports {
                     )
                 };
 
-                let imports_string = if used_imports.len() == 1 {
-                    used_imports.iter().next().unwrap().to_string()
+                let mut imports = used_imports.items().map(ToString::to_string).into_sorted_stable_ord(false);
+                let imports_string = if imports.len() == 1 {
+                    imports.pop().unwrap()
+                } else if braced_glob {
+                    imports.join(", ")
                 } else {
-                    let mut imports = used_imports
-                        .iter()
-                        .map(ToString::to_string)
-                        .collect::<Vec<_>>();
-                    imports.sort();
-                    if braced_glob {
-                        imports.join(", ")
-                    } else {
-                        format!("{{{}}}", imports.join(", "))
-                    }
+                    format!("{{{}}}", imports.join(", "))
                 };
 
                 let sugg = if braced_glob {
                     imports_string
                 } else {
-                    format!("{}::{}", import_source_snippet, imports_string)
+                    format!("{import_source_snippet}::{imports_string}")
                 };
 
-                let (lint, message) = if let Res::Def(DefKind::Enum, _) = use_path.res {
+                // Glob imports always have a single resolution.
+                let (lint, message) = if let Res::Def(DefKind::Enum, _) = use_path.res[0] {
                     (ENUM_GLOB_USE, "usage of wildcard import for enum variants")
                 } else {
                     (WILDCARD_IMPORTS, "usage of wildcard import")

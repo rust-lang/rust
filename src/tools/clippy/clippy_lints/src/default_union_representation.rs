@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_hir::{self as hir, HirId, Item, ItemKind};
+use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
-use rustc_typeck::hir_ty_to_ty;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -25,7 +25,7 @@ declare_clippy_lint! {
     ///
     /// fn main() {
     ///     let _x: u32 = unsafe {
-    ///         Foo { a: 0_i32 }.b // Undefined behaviour: `b` is allowed to be padding
+    ///         Foo { a: 0_i32 }.b // Undefined behavior: `b` is allowed to be padding
     ///     };
     /// }
     /// ```
@@ -39,7 +39,7 @@ declare_clippy_lint! {
     ///
     /// fn main() {
     ///     let _x: u32 = unsafe {
-    ///         Foo { a: 0_i32 }.b // Now defined behaviour, this is just an i32 -> u32 transmute
+    ///         Foo { a: 0_i32 }.b // Now defined behavior, this is just an i32 -> u32 transmute
     ///     };
     /// }
     /// ```
@@ -61,7 +61,7 @@ impl<'tcx> LateLintPass<'tcx> for DefaultUnionRepresentation {
                 None,
                 &format!(
                     "consider annotating `{}` with `#[repr(C)]` to explicitly specify memory layout",
-                    cx.tcx.def_path_str(item.def_id.to_def_id())
+                    cx.tcx.def_path_str(item.owner_id)
                 ),
             );
         }

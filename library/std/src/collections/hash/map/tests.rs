@@ -3,7 +3,8 @@ use super::HashMap;
 use super::RandomState;
 use crate::assert_matches::assert_matches;
 use crate::cell::RefCell;
-use rand::{thread_rng, Rng};
+use crate::test_helpers::test_rng;
+use rand::Rng;
 use realstd::collections::TryReserveErrorKind::*;
 
 // https://github.com/rust-lang/rust/issues/62301
@@ -268,10 +269,13 @@ fn test_lots_of_insertions() {
 
     // Try this a few times to make sure we never screw up the hashmap's
     // internal state.
-    for _ in 0..10 {
+    let loops = if cfg!(miri) { 2 } else { 10 };
+    for _ in 0..loops {
         assert!(m.is_empty());
 
-        for i in 1..1001 {
+        let count = if cfg!(miri) { 101 } else { 1001 };
+
+        for i in 1..count {
             assert!(m.insert(i, i).is_none());
 
             for j in 1..=i {
@@ -279,42 +283,42 @@ fn test_lots_of_insertions() {
                 assert_eq!(r, Some(&j));
             }
 
-            for j in i + 1..1001 {
+            for j in i + 1..count {
                 let r = m.get(&j);
                 assert_eq!(r, None);
             }
         }
 
-        for i in 1001..2001 {
+        for i in count..(2 * count) {
             assert!(!m.contains_key(&i));
         }
 
         // remove forwards
-        for i in 1..1001 {
+        for i in 1..count {
             assert!(m.remove(&i).is_some());
 
             for j in 1..=i {
                 assert!(!m.contains_key(&j));
             }
 
-            for j in i + 1..1001 {
+            for j in i + 1..count {
                 assert!(m.contains_key(&j));
             }
         }
 
-        for i in 1..1001 {
+        for i in 1..count {
             assert!(!m.contains_key(&i));
         }
 
-        for i in 1..1001 {
+        for i in 1..count {
             assert!(m.insert(i, i).is_none());
         }
 
         // remove backwards
-        for i in (1..1001).rev() {
+        for i in (1..count).rev() {
             assert!(m.remove(&i).is_some());
 
-            for j in i..1001 {
+            for j in i..count {
                 assert!(!m.contains_key(&j));
             }
 
@@ -707,16 +711,16 @@ fn test_entry_take_doesnt_corrupt() {
     }
 
     let mut m = HashMap::new();
-    let mut rng = thread_rng();
+    let mut rng = test_rng();
 
     // Populate the map with some items.
     for _ in 0..50 {
-        let x = rng.gen_range(-10, 10);
+        let x = rng.gen_range(-10..10);
         m.insert(x, ());
     }
 
     for _ in 0..1000 {
-        let x = rng.gen_range(-10, 10);
+        let x = rng.gen_range(-10..10);
         match m.entry(x) {
             Vacant(_) => {}
             Occupied(e) => {
@@ -817,6 +821,7 @@ fn test_retain() {
 }
 
 #[test]
+#[cfg_attr(miri, ignore)] // Miri does not support signalling OOM
 #[cfg_attr(target_os = "android", ignore)] // Android used in CI has a broken dlmalloc
 fn test_try_reserve() {
     let mut empty_bytes: HashMap<u8, u8> = HashMap::new();
@@ -1110,4 +1115,10 @@ fn from_array() {
     // If you make a change that causes this line to no longer infer,
     // that's a problem!
     let _must_not_require_type_annotation = HashMap::from([(1, 2)]);
+}
+
+#[test]
+fn const_with_hasher() {
+    const X: HashMap<(), (), ()> = HashMap::with_hasher(());
+    assert_eq!(X.len(), 0);
 }

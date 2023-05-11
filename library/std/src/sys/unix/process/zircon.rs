@@ -1,6 +1,5 @@
 #![allow(non_camel_case_types, unused)]
 
-use crate::convert::TryInto;
 use crate::io;
 use crate::mem::MaybeUninit;
 use crate::os::raw::c_char;

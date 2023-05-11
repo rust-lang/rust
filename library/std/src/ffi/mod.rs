@@ -104,7 +104,7 @@
 //! On Unix, [`OsStr`] implements the
 //! <code>std::os::unix::ffi::[OsStrExt][unix.OsStrExt]</code> trait, which
 //! augments it with two methods, [`from_bytes`] and [`as_bytes`].
-//! These do inexpensive conversions from and to UTF-8 byte slices.
+//! These do inexpensive conversions from and to byte slices.
 //!
 //! Additionally, on Unix [`OsString`] implements the
 //! <code>std::os::unix::ffi::[OsStringExt][unix.OsStringExt]</code> trait,
@@ -146,27 +146,22 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#[stable(feature = "cstr_from_bytes", since = "1.10.0")]
-pub use self::c_str::FromBytesWithNulError;
-#[stable(feature = "cstring_from_vec_with_nul", since = "1.58.0")]
-pub use self::c_str::FromVecWithNulError;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use self::c_str::{CStr, CString, IntoStringError, NulError};
+#[stable(feature = "alloc_c_string", since = "1.64.0")]
+pub use alloc::ffi::{CString, FromVecWithNulError, IntoStringError, NulError};
+#[stable(feature = "core_c_str", since = "1.64.0")]
+pub use core::ffi::{CStr, FromBytesWithNulError};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::os_str::{OsStr, OsString};
 
-#[stable(feature = "core_c_void", since = "1.30.0")]
-pub use core::ffi::c_void;
-
-#[unstable(feature = "core_ffi_c", issue = "94501")]
+#[stable(feature = "core_ffi_c", since = "1.64.0")]
 pub use core::ffi::{
     c_char, c_double, c_float, c_int, c_long, c_longlong, c_schar, c_short, c_uchar, c_uint,
     c_ulong, c_ulonglong, c_ushort,
 };
 
-#[unstable(feature = "c_size_t", issue = "88345")]
-pub use core::ffi::{c_ptrdiff_t, c_size_t, c_ssize_t};
+#[stable(feature = "core_c_void", since = "1.30.0")]
+pub use core::ffi::c_void;
 
 #[unstable(
     feature = "c_variadic",
@@ -176,5 +171,4 @@ pub use core::ffi::{c_ptrdiff_t, c_size_t, c_ssize_t};
 )]
 pub use core::ffi::{VaList, VaListImpl};
 
-mod c_str;
 mod os_str;

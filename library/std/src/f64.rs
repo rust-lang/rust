@@ -1,4 +1,4 @@
-//! Constants specific to the `f64` double-precision floating point type.
+//! Constants for the `f64` double-precision floating point type.
 //!
 //! *[See also the `f64` primitive type](primitive@f64).*
 //!
@@ -29,7 +29,7 @@ pub use core::f64::{
 
 #[cfg(not(test))]
 impl f64 {
-    /// Returns the largest integer less than or equal to a number.
+    /// Returns the largest integer less than or equal to `self`.
     ///
     /// # Examples
     ///
@@ -50,7 +50,7 @@ impl f64 {
         unsafe { intrinsics::floorf64(self) }
     }
 
-    /// Returns the smallest integer greater than or equal to a number.
+    /// Returns the smallest integer greater than or equal to `self`.
     ///
     /// # Examples
     ///
@@ -69,17 +69,23 @@ impl f64 {
         unsafe { intrinsics::ceilf64(self) }
     }
 
-    /// Returns the nearest integer to a number. Round half-way cases away from
-    /// `0.0`.
+    /// Returns the nearest integer to `self`. If a value is half-way between two
+    /// integers, round away from `0.0`.
     ///
     /// # Examples
     ///
     /// ```
     /// let f = 3.3_f64;
     /// let g = -3.3_f64;
+    /// let h = -3.7_f64;
+    /// let i = 3.5_f64;
+    /// let j = 4.5_f64;
     ///
     /// assert_eq!(f.round(), 3.0);
     /// assert_eq!(g.round(), -3.0);
+    /// assert_eq!(h.round(), -4.0);
+    /// assert_eq!(i.round(), 4.0);
+    /// assert_eq!(j.round(), 5.0);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -89,7 +95,34 @@ impl f64 {
         unsafe { intrinsics::roundf64(self) }
     }
 
-    /// Returns the integer part of a number.
+    /// Returns the nearest integer to a number. Rounds half-way cases to the number
+    /// with an even least significant digit.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(round_ties_even)]
+    ///
+    /// let f = 3.3_f64;
+    /// let g = -3.3_f64;
+    /// let h = 3.5_f64;
+    /// let i = 4.5_f64;
+    ///
+    /// assert_eq!(f.round_ties_even(), 3.0);
+    /// assert_eq!(g.round_ties_even(), -3.0);
+    /// assert_eq!(h.round_ties_even(), 4.0);
+    /// assert_eq!(i.round_ties_even(), 4.0);
+    /// ```
+    #[rustc_allow_incoherent_impl]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "round_ties_even", issue = "96710")]
+    #[inline]
+    pub fn round_ties_even(self) -> f64 {
+        unsafe { intrinsics::rintf64(self) }
+    }
+
+    /// Returns the integer part of `self`.
+    /// This means that non-integer numbers are always truncated towards zero.
     ///
     /// # Examples
     ///
@@ -110,7 +143,7 @@ impl f64 {
         unsafe { intrinsics::truncf64(self) }
     }
 
-    /// Returns the fractional part of a number.
+    /// Returns the fractional part of `self`.
     ///
     /// # Examples
     ///
@@ -131,8 +164,7 @@ impl f64 {
         self - self.trunc()
     }
 
-    /// Computes the absolute value of `self`. Returns `NAN` if the
-    /// number is `NAN`.
+    /// Computes the absolute value of `self`.
     ///
     /// # Examples
     ///
@@ -160,7 +192,7 @@ impl f64 {
     ///
     /// - `1.0` if the number is positive, `+0.0` or `INFINITY`
     /// - `-1.0` if the number is negative, `-0.0` or `NEG_INFINITY`
-    /// - `NAN` if the number is `NAN`
+    /// - NaN if the number is NaN
     ///
     /// # Examples
     ///
@@ -184,8 +216,10 @@ impl f64 {
     /// `sign`.
     ///
     /// Equal to `self` if the sign of `self` and `sign` are the same, otherwise
-    /// equal to `-self`. If `self` is a `NAN`, then a `NAN` with the sign of
-    /// `sign` is returned.
+    /// equal to `-self`. If `self` is a NaN, then a NaN with the sign bit of
+    /// `sign` is returned. Note, however, that conserving the sign bit on NaN
+    /// across arithmetical operations is not generally guaranteed.
+    /// See [explanation of NaN as a special value](primitive@f32) for more info.
     ///
     /// # Examples
     ///
@@ -273,7 +307,7 @@ impl f64 {
     /// This result is not an element of the function's codomain, but it is the
     /// closest floating point number in the real numbers and thus fulfills the
     /// property `self == self.div_euclid(rhs) * rhs + self.rem_euclid(rhs)`
-    /// approximatively.
+    /// approximately.
     ///
     /// # Examples
     ///
@@ -298,7 +332,9 @@ impl f64 {
 
     /// Raises a number to an integer power.
     ///
-    /// Using this function is generally faster than using `powf`
+    /// Using this function is generally faster than using `powf`.
+    /// It might have a different sequence of rounding operations than `powf`,
+    /// so the results are not guaranteed to agree.
     ///
     /// # Examples
     ///
@@ -513,15 +549,15 @@ impl f64 {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    #[rustc_deprecated(
+    #[deprecated(
         since = "1.10.0",
-        reason = "you probably meant `(self - other).abs()`: \
-                  this operation is `(self - other).max(0.0)` \
-                  except that `abs_sub` also propagates NaNs (also \
-                  known as `fdim` in C). If you truly need the positive \
-                  difference, consider using that expression or the C function \
-                  `fdim`, depending on how you wish to handle NaN (please consider \
-                  filing an issue describing your use-case too)."
+        note = "you probably meant `(self - other).abs()`: \
+                this operation is `(self - other).max(0.0)` \
+                except that `abs_sub` also propagates NaNs (also \
+                known as `fdim` in C). If you truly need the positive \
+                difference, consider using that expression or the C function \
+                `fdim`, depending on how you wish to handle NaN (please consider \
+                filing an issue describing your use-case too)."
     )]
     pub fn abs_sub(self, other: f64) -> f64 {
         unsafe { cmath::fdim(self, other) }
@@ -547,8 +583,10 @@ impl f64 {
         unsafe { cmath::cbrt(self) }
     }
 
-    /// Calculates the length of the hypotenuse of a right-angle triangle given
-    /// legs of length `x` and `y`.
+    /// Compute the distance between the origin and a point (`x`, `y`) on the
+    /// Euclidean plane. Equivalently, compute the length of the hypotenuse of a
+    /// right-angle triangle with other sides having length `x.abs()` and
+    /// `y.abs()`.
     ///
     /// # Examples
     ///
@@ -876,7 +914,9 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn asinh(self) -> f64 {
-        (self.abs() + ((self * self) + 1.0).sqrt()).ln().copysign(self)
+        let ax = self.abs();
+        let ix = 1.0 / ax;
+        (ax + (ax / (Self::hypot(1.0, ix) + ix))).ln_1p().copysign(self)
     }
 
     /// Inverse hyperbolic cosine function.
@@ -896,7 +936,11 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn acosh(self) -> f64 {
-        if self < 1.0 { Self::NAN } else { (self + ((self * self) - 1.0).sqrt()).ln() }
+        if self < 1.0 {
+            Self::NAN
+        } else {
+            (self + ((self - 1.0).sqrt() * (self + 1.0).sqrt())).ln()
+        }
     }
 
     /// Inverse hyperbolic tangent function.

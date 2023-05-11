@@ -1,0 +1,14 @@
+error[E0308]: mismatched types
+  --> $DIR/upcast-wrong-substs.rs:11:30
+   |
+LL |     let y: &dyn Bar<usize> = x;
+   |            ---------------   ^ expected trait `Bar`, found trait `Foo`
+   |            |
+   |            expected due to this
+   |
+   = note: expected reference `&dyn Bar<usize>`
+              found reference `&dyn Foo`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,10 @@
+error: lifetime may not live long enough
+  --> $DIR/field-projection-mutating-context2.rs:8:25
+   |
+LL | fn foo<'a>(mut x: Foo<fn(&'a str)>, string: &'a str) {
+   |        -- lifetime `'a` defined here
+LL |     let Foo(ref mut y): Foo<fn(&'static str)> = x;
+   |                         ^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
+
+error: aborting due to previous error
+

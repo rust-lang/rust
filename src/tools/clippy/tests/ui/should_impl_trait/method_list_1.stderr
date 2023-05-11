@@ -6,8 +6,8 @@ LL | |         unimplemented!()
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::should-implement-trait` implied by `-D warnings`
    = help: consider implementing the trait `std::ops::Add` or choosing a less ambiguous method name
+   = note: `-D clippy::should-implement-trait` implied by `-D warnings`
 
 error: method `as_mut` can be confused for the standard trait method `std::convert::AsMut::as_mut`
   --> $DIR/method_list_1.rs:29:5
@@ -99,6 +99,16 @@ LL | |     }
    |
    = help: consider implementing the trait `std::cmp::Ord` or choosing a less ambiguous method name
 
+error: method `default` can be confused for the standard trait method `std::default::Default::default`
+  --> $DIR/method_list_1.rs:65:5
+   |
+LL | /     pub fn default() -> Self {
+LL | |         unimplemented!()
+LL | |     }
+   | |_____^
+   |
+   = help: consider implementing the trait `std::default::Default` or choosing a less ambiguous method name
+
 error: method `deref` can be confused for the standard trait method `std::ops::Deref::deref`
   --> $DIR/method_list_1.rs:69:5
    |
@@ -139,5 +149,5 @@ LL | |     }
    |
    = help: consider implementing the trait `std::ops::Drop` or choosing a less ambiguous method name
 
-error: aborting due to 14 previous errors
+error: aborting due to 15 previous errors
 

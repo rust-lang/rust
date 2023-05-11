@@ -1,0 +1,11 @@
+error[E0739]: attribute should be applied to a function definition
+  --> $DIR/only-for-fns.rs:1:1
+   |
+LL | #[track_caller]
+   | ^^^^^^^^^^^^^^^
+LL | struct S;
+   | --------- not a function definition
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0739`.

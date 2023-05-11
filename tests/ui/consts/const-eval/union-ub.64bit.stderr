@@ -1,0 +1,20 @@
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/union-ub.rs:32:1
+   |
+LL | const BAD_BOOL: bool = unsafe { DummyUnion { u8: 42 }.bool};
+   | ^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered 0x2a, but expected a boolean
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 1, align: 1) {
+               2a                                              │ *
+           }
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/union-ub.rs:34:36
+   |
+LL | const UNINIT_BOOL: bool = unsafe { DummyUnion { unit: () }.bool};
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

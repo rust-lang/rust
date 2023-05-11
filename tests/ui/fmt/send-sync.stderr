@@ -1,0 +1,47 @@
+error[E0277]: `core::fmt::rt::Opaque` cannot be shared between threads safely
+  --> $DIR/send-sync.rs:8:10
+   |
+LL |     send(format_args!("{:?}", c));
+   |     ---- ^^^^^^^^^^^^^^^^^^^^^^^ `core::fmt::rt::Opaque` cannot be shared between threads safely
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: within `[core::fmt::rt::Argument<'_>]`, the trait `Sync` is not implemented for `core::fmt::rt::Opaque`
+   = note: required because it appears within the type `&core::fmt::rt::Opaque`
+note: required because it appears within the type `Argument<'_>`
+  --> $SRC_DIR/core/src/fmt/rt.rs:LL:COL
+   = note: required because it appears within the type `[Argument<'_>]`
+   = note: required for `&[core::fmt::rt::Argument<'_>]` to implement `Send`
+note: required because it appears within the type `Arguments<'_>`
+  --> $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+note: required by a bound in `send`
+  --> $DIR/send-sync.rs:1:12
+   |
+LL | fn send<T: Send>(_: T) {}
+   |            ^^^^ required by this bound in `send`
+
+error[E0277]: `core::fmt::rt::Opaque` cannot be shared between threads safely
+  --> $DIR/send-sync.rs:9:10
+   |
+LL |     sync(format_args!("{:?}", c));
+   |     ---- ^^^^^^^^^^^^^^^^^^^^^^^ `core::fmt::rt::Opaque` cannot be shared between threads safely
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: within `Arguments<'_>`, the trait `Sync` is not implemented for `core::fmt::rt::Opaque`
+   = note: required because it appears within the type `&core::fmt::rt::Opaque`
+note: required because it appears within the type `Argument<'_>`
+  --> $SRC_DIR/core/src/fmt/rt.rs:LL:COL
+   = note: required because it appears within the type `[Argument<'_>]`
+   = note: required because it appears within the type `&[Argument<'_>]`
+note: required because it appears within the type `Arguments<'_>`
+  --> $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+note: required by a bound in `sync`
+  --> $DIR/send-sync.rs:2:12
+   |
+LL | fn sync<T: Sync>(_: T) {}
+   |            ^^^^ required by this bound in `sync`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

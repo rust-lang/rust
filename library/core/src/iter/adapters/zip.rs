@@ -1,7 +1,7 @@
 use crate::cmp;
 use crate::fmt::{self, Debug};
 use crate::iter::{DoubleEndedIterator, ExactSizeIterator, FusedIterator, Iterator};
-use crate::iter::{InPlaceIterable, SourceIter, TrustedLen};
+use crate::iter::{InPlaceIterable, SourceIter, TrustedLen, UncheckedIterator};
 
 /// An iterator that iterates two other iterators simultaneously.
 ///
@@ -95,7 +95,6 @@ where
     }
 
     #[inline]
-    #[doc(hidden)]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
     where
         Self: TrustedRandomAccessNoCoerce,
@@ -418,6 +417,13 @@ where
 {
 }
 
+impl<A, B> UncheckedIterator for Zip<A, B>
+where
+    A: UncheckedIterator,
+    B: UncheckedIterator,
+{
+}
+
 // Arbitrarily selects the left side of the zip iteration as extractable "source"
 // it would require negative trait bounds to be able to try both
 #[unstable(issue = "none", feature = "inplace_iteration")]
@@ -554,6 +560,7 @@ pub unsafe trait TrustedRandomAccessNoCoerce: Sized {
 ///
 /// Same requirements calling `get_unchecked` directly.
 #[doc(hidden)]
+#[inline]
 pub(in crate::iter::adapters) unsafe fn try_get_unchecked<I>(it: &mut I, idx: usize) -> I::Item
 where
     I: Iterator,
@@ -576,6 +583,7 @@ unsafe impl<I: Iterator> SpecTrustedRandomAccess for I {
 }
 
 unsafe impl<I: Iterator + TrustedRandomAccessNoCoerce> SpecTrustedRandomAccess for I {
+    #[inline]
     unsafe fn try_get_unchecked(&mut self, index: usize) -> Self::Item {
         // SAFETY: the caller must uphold the contract for
         // `Iterator::__iterator_get_unchecked`.

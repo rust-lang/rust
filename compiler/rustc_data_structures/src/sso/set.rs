@@ -1,6 +1,5 @@
 use std::fmt;
 use std::hash::Hash;
-use std::iter::FromIterator;
 
 use super::map::SsoHashMap;
 
@@ -27,7 +26,7 @@ pub struct SsoHashSet<T> {
     map: SsoHashMap<T, ()>,
 }
 
-/// Adapter function used ot return
+/// Adapter function used to return
 /// result if SsoHashMap functions into
 /// result SsoHashSet should return.
 #[inline(always)]
@@ -126,9 +125,10 @@ impl<T: Eq + Hash> SsoHashSet<T> {
 
     /// Adds a value to the set.
     ///
-    /// If the set did not have this value present, `true` is returned.
+    /// Returns whether the value was newly inserted. That is:
     ///
-    /// If the set did have this value present, `false` is returned.
+    /// - If the set did not previously contain this value, `true` is returned.
+    /// - If the set already contained this value, `false` is returned.
     #[inline]
     pub fn insert(&mut self, elem: T) -> bool {
         self.map.insert(elem, ()).is_none()

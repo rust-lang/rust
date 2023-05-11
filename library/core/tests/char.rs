@@ -21,6 +21,7 @@ fn test_convert() {
     assert!(char::try_from(0xFFFF_FFFF_u32).is_err());
 }
 
+/* FIXME(#110395)
 #[test]
 const fn test_convert_const() {
     assert!(u32::from('a') == 0x61);
@@ -30,6 +31,7 @@ const fn test_convert_const() {
     assert!(char::from(b'a') == 'a');
     assert!(char::from(b'\xFF') == '\u{FF}');
 }
+*/
 
 #[test]
 fn test_from_str() {
@@ -306,6 +308,10 @@ fn test_decode_utf16() {
     }
     check(&[0xD800, 0x41, 0x42], &[Err(0xD800), Ok('A'), Ok('B')]);
     check(&[0xD800, 0], &[Err(0xD800), Ok('\0')]);
+    check(&[0xD800], &[Err(0xD800)]);
+    check(&[0xD840, 0xDC00], &[Ok('\u{20000}')]);
+    check(&[0xD840, 0xD840, 0xDC00], &[Err(0xD840), Ok('\u{20000}')]);
+    check(&[0xDC00, 0xD840], &[Err(0xDC00), Err(0xD840)]);
 }
 
 #[test]

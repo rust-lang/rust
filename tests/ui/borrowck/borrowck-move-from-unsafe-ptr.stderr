@@ -1,0 +1,15 @@
+error[E0507]: cannot move out of `*x` which is behind a raw pointer
+  --> $DIR/borrowck-move-from-unsafe-ptr.rs:2:13
+   |
+LL |     let y = *x;
+   |             ^^ move occurs because `*x` has type `Box<isize>`, which does not implement the `Copy` trait
+   |
+help: consider removing the dereference here
+   |
+LL -     let y = *x;
+LL +     let y = x;
+   |
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0507`.

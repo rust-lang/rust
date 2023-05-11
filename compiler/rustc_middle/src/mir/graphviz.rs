@@ -16,19 +16,16 @@ where
 {
     let def_ids = dump_mir_def_ids(tcx, single);
 
-    let mirs =
-        def_ids
-            .iter()
-            .flat_map(|def_id| {
-                if tcx.is_const_fn_raw(*def_id) {
-                    vec![tcx.optimized_mir(*def_id), tcx.mir_for_ctfe(*def_id)]
-                } else {
-                    vec![tcx.instance_mir(ty::InstanceDef::Item(ty::WithOptConstParam::unknown(
-                        *def_id,
-                    )))]
-                }
-            })
-            .collect::<Vec<_>>();
+    let mirs = def_ids
+        .iter()
+        .flat_map(|def_id| {
+            if tcx.is_const_fn_raw(*def_id) {
+                vec![tcx.optimized_mir(*def_id), tcx.mir_for_ctfe(*def_id)]
+            } else {
+                vec![tcx.instance_mir(ty::InstanceDef::Item(*def_id))]
+            }
+        })
+        .collect::<Vec<_>>();
 
     let use_subgraphs = mirs.len() > 1;
     if use_subgraphs {
@@ -57,11 +54,11 @@ where
     W: Write,
 {
     // Global graph properties
-    let font = format!(r#"fontname="{}""#, tcx.sess.opts.debugging_opts.graphviz_font);
+    let font = format!(r#"fontname="{}""#, tcx.sess.opts.unstable_opts.graphviz_font);
     let mut graph_attrs = vec![&font[..]];
     let mut content_attrs = vec![&font[..]];
 
-    let dark_mode = tcx.sess.opts.debugging_opts.graphviz_dark_mode;
+    let dark_mode = tcx.sess.opts.unstable_opts.graphviz_dark_mode;
     if dark_mode {
         graph_attrs.push(r#"bgcolor="black""#);
         graph_attrs.push(r#"fontcolor="white""#);
@@ -110,7 +107,7 @@ fn write_graph_label<'tcx, W: std::fmt::Write>(
         let decl = &body.local_decls[local];
 
         write!(w, "let ")?;
-        if decl.mutability == Mutability::Mut {
+        if decl.mutability.is_mut() {
             write!(w, "mut ")?;
         }
 

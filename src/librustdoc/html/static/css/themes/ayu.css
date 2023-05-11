@@ -3,138 +3,155 @@ Based off of the Ayu theme
 Original by Dempfi (https://github.com/dempfi/ayu)
 */
 
-/* General structure and fonts */
-
-body {
-	background-color: #0f1419;
-	color: #c5c5c5;
+:root {
+	--main-background-color: #0f1419;
+	--main-color: #c5c5c5;
+	--settings-input-color: #ffb454;
+	--settings-input-border-color: #999;
+	--settings-button-color: #fff;
+	--settings-button-border-focus: #e0e0e0;
+	--sidebar-background-color: #14191f;
+	--sidebar-background-color-hover: rgba(70, 70, 70, 0.33);
+	--code-block-background-color: #191f26;
+	--scrollbar-track-background-color: transparent;
+	--scrollbar-thumb-background-color: #5c6773;
+	--scrollbar-color: #5c6773 #24292f;
+	--headings-border-bottom-color: #5c6773;
+	--border-color: #5c6773;
+	--button-background-color: #141920;
+	--right-side-color: grey;
+	--code-attribute-color: #999;
+	--toggles-color: #999;
+	--toggle-filter: invert(100%);
+	--search-input-focused-border-color: #5c6773; /* Same as `--border-color`. */
+	--copy-path-button-color: #fff;
+	--copy-path-img-filter: invert(70%);
+	--copy-path-img-hover-filter: invert(100%);
+	--codeblock-error-hover-color: rgb(255, 0, 0);
+	--codeblock-error-color: rgba(255, 0, 0, .5);
+	--codeblock-ignore-hover-color: rgb(255, 142, 0);
+	--codeblock-ignore-color: rgba(255, 142, 0, .6);
+	--type-link-color: #ffa0a5;
+	--trait-link-color: #39afd7;
+	--assoc-item-link-color: #39afd7;
+	--function-link-color: #fdd687;
+	--macro-link-color: #a37acc;
+	--keyword-link-color: #39afd7;
+	--mod-link-color: #39afd7;
+	--link-color: #39afd7;
+	--sidebar-link-color: #53b1db;
+	--sidebar-current-link-background-color: transparent;
+	--search-result-link-focus-background-color: #3c3c3c;
+	--search-result-border-color: #aaa3;
+	--search-color: #fff;
+	--search-error-code-background-color: #4f4c4c;
+	--search-results-alias-color: #c5c5c5;
+	--search-results-grey-color: #999;
+	--search-tab-title-count-color: #888;
+	--search-tab-button-not-selected-border-top-color: none;
+	--search-tab-button-not-selected-background: transparent !important;
+	--search-tab-button-selected-border-top-color: none;
+	--search-tab-button-selected-background: #141920 !important;
+	--stab-background-color: #314559;
+	--stab-code-color: #e6e1cf;
+	--code-highlight-kw-color: #ff7733;
+	--code-highlight-kw-2-color: #ff7733;
+	--code-highlight-lifetime-color: #ff7733;
+	--code-highlight-prelude-color: #69f2df;
+	--code-highlight-prelude-val-color: #ff7733;
+	--code-highlight-number-color: #b8cc52;
+	--code-highlight-string-color: #b8cc52;
+	--code-highlight-literal-color: #ff7733;
+	--code-highlight-attribute-color: #e6e1cf;
+	--code-highlight-self-color: #36a3d9;
+	--code-highlight-macro-color: #a37acc;
+	--code-highlight-question-mark-color: #ff9011;
+	--code-highlight-comment-color: #788797;
+	--code-highlight-doc-comment-color: #a1ac88;
+	--src-line-numbers-span-color: #5c6773;
+	--src-line-number-highlighted-background-color: rgba(255, 236, 164, 0.06);
+	--test-arrow-color: #788797;
+	--test-arrow-background-color: rgba(57, 175, 215, 0.09);
+	--test-arrow-hover-color: #c5c5c5;
+	--test-arrow-hover-background-color: rgba(57, 175, 215, 0.368);
+	--target-background-color: rgba(255, 236, 164, 0.06);
+	--target-border-color: rgba(255, 180, 76, 0.85);
+	--kbd-color: #c5c5c5;
+	--kbd-background: #314559;
+	--kbd-box-shadow-color: #5c6773;
+	--rust-logo-filter: drop-shadow(1px 0 0px #fff)
+		drop-shadow(0 1px 0 #fff)
+		drop-shadow(-1px 0 0 #fff)
+		drop-shadow(0 -1px 0 #fff);
+	/* match border-color; uses https://codepen.io/sosuke/pen/Pjoqqp */
+	--crate-search-div-filter: invert(41%) sepia(12%) saturate(487%) hue-rotate(171deg)
+		brightness(94%) contrast(94%);
+	--crate-search-div-hover-filter: invert(98%) sepia(12%) saturate(81%) hue-rotate(343deg)
+		brightness(113%) contrast(76%);
+	--crate-search-hover-border: #e0e0e0;
+	--source-sidebar-background-selected: #14191f;
+	--source-sidebar-background-hover: #14191f;
+	--table-alt-row-background-color: #191f26;
+	--codeblock-link-background: #333;
+	--scrape-example-toggle-line-background: #999;
+	--scrape-example-toggle-line-hover-background: #c5c5c5;
+	--scrape-example-code-line-highlight: rgb(91, 59, 1);
+	--scrape-example-code-line-highlight-focus: rgb(124, 75, 15);
+	--scrape-example-help-border-color: #aaa;
+	--scrape-example-help-color: #eee;
+	--scrape-example-help-hover-border-color: #fff;
+	--scrape-example-help-hover-color: #fff;
+	--scrape-example-code-wrapper-background-start: rgba(15, 20, 25, 1);
+	--scrape-example-code-wrapper-background-end: rgba(15, 20, 25, 0);
 }
 
-h1, h2, h3, h4 {
-	color: white;
-}
-h1.fqn {
-	border-bottom-color: #5c6773;
-}
-h1.fqn  a {
+h1, h2, h3, h4,
+h1 a, .sidebar h2 a, .sidebar h3 a,
+#source-sidebar > .title {
 	color: #fff;
-}
-h2, h3, h4 {
-	border-bottom-color: #5c6773;
 }
 h4 {
 	border: none;
 }
 
-.in-band {
-	background-color: #0f1419;
-}
-
-.invisible {
-	background: rgba(0, 0, 0, 0);
-}
-
 .docblock code {
 	color: #ffb454;
-}
-.code-header {
-	color: #e6e1cf;
-}
-.docblock pre > code, pre > code {
-	color: #e6e1cf;
-}
-span code {
-	color: #e6e1cf;
 }
 .docblock a > code {
 	color: #39AFD7 !important;
 }
-.docblock code, .docblock-short code {
-	background-color: #191f26;
-}
-pre, .rustdoc.source .example-wrap {
+.code-header,
+.docblock pre > code,
+pre, pre > code,
+.item-info code,
+.rustdoc.source .example-wrap {
 	color: #e6e1cf;
-	background-color: #191f26;
-}
-
-.sidebar, .mobile-topbar, .sidebar-menu-toggle {
-	background-color: #14191f;
-}
-
-.rust-logo {
-	filter: drop-shadow(1px 0 0px #fff)
-		drop-shadow(0 1px 0 #fff)
-		drop-shadow(-1px 0 0 #fff)
-		drop-shadow(0 -1px 0 #fff);
-}
-
-/* Improve the scrollbar display on firefox */
-* {
-	scrollbar-color: #5c6773 #24292f;
-}
-
-.sidebar {
-	scrollbar-color: #5c6773 #24292f;
-}
-
-/* Improve the scrollbar display on webkit-based browsers */
-::-webkit-scrollbar-track {
-	background-color: transparent;
-}
-::-webkit-scrollbar-thumb {
-	background-color: #5c6773;
-}
-.sidebar::-webkit-scrollbar-track {
-	background-color: transparent;
-}
-.sidebar::-webkit-scrollbar-thumb {
-	background-color: #5c6773;
 }
 
 .sidebar .current,
-.sidebar a:hover {
-	background-color: transparent;
+.sidebar a:hover,
+#source-sidebar div.files > a:hover, details.dir-entry summary:hover,
+#source-sidebar div.files > a:focus, details.dir-entry summary:focus,
+#source-sidebar div.files > a.selected {
 	color: #ffb44c;
-}
-
-.source .sidebar {
-	background-color: #14191f;
 }
 
 .sidebar-elems .location {
 	color: #ff7733;
 }
 
-.line-numbers span { color: #5c6773; }
-.line-numbers .line-highlighted {
+.src-line-numbers .line-highlighted {
 	color: #708090;
-	background-color: rgba(255, 236, 164, 0.06);
-	padding-right: 4px;
+	padding-right: 7px;
 	border-right: 1px solid #ffb44c;
 }
 
-.docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5, .docblock h6 {
-	border-bottom-color: #5c6773;
-}
-
-.docblock table td, .docblock table th {
-	border-color: #5c6773;
-}
-
-.content .method .where,
-.content .fn .where,
-.content .where.fmt-newline {
-	color: #c5c5c5;
-}
-
-.search-results a:hover {
-	background-color: #777;
-}
-
+.search-results a:hover,
 .search-results a:focus {
-	color: #000 !important;
-	background-color: #c6afb3;
+	color: #fff !important;
+	background-color: #3c3c3c;
 }
+
 .search-results a {
 	color: #0096cf;
 }
@@ -142,490 +159,22 @@ pre, .rustdoc.source .example-wrap {
 	color: #c5c5c5;
 }
 
-.content .item-info::before { color: #ccc; }
-
-.content span.foreigntype, .content a.foreigntype { color: #ffa0a5; }
-.content span.union, .content a.union { color: #ffa0a5; }
-.content span.constant, .content a.constant,
-.content span.static, .content a.static { color: #39AFD7; }
-.content span.primitive, .content a.primitive { color: #ffa0a5; }
-.content span.traitalias, .content a.traitalias { color: #39AFD7; }
-.content span.keyword, .content a.keyword { color: #39AFD7; }
-
-.content span.externcrate, .content span.mod, .content a.mod {
-	color: #39AFD7;
-}
-.content span.struct, .content a.struct {
-	color: #ffa0a5;
-}
-.content span.enum, .content a.enum {
-	color: #ffa0a5;
-}
-.content span.trait, .content a.trait {
-	color: #39AFD7;
-}
-.content span.type, .content a.type {
-	color: #39AFD7;
-}
-.content span.type,
-.content a.type,
-.block a.current.type { color: #39AFD7; }
-.content span.associatedtype,
-.content a.associatedtype,
-.block a.current.associatedtype { color: #39AFD7; }
-.content span.fn, .content a.fn, .content span.method,
-.content a.method, .content span.tymethod,
-.content a.tymethod, .content .fnname {
-	color: #fdd687;
-}
-.content span.attr, .content a.attr, .content span.derive,
-.content a.derive, .content span.macro, .content a.macro {
-	color: #a37acc;
-}
-
-.sidebar a { color: #53b1db; }
-.sidebar a.current.type { color: #53b1db; }
-.sidebar a.current.associatedtype { color: #53b1db; }
-
-pre.rust .comment { color: #788797; }
-pre.rust .doccomment { color: #a1ac88; }
-
-nav.main .current {
-	border-top-color: #5c6773;
-	border-bottom-color: #5c6773;
-}
-nav.main .separator {
-	border: 1px solid #5c6773;
-}
-a {
-	color: #39AFD7;
-}
-
-a#toggle-all-docs,
-a.anchor,
-.small-section-header a,
-#source-sidebar a,
-pre.rust a,
-.sidebar h2 a,
-.sidebar h3 a,
-.mobile-topbar h2 a,
-.in-band a {
-	color: #c5c5c5;
-}
-.sidebar h2 a,
-.sidebar h3 a {
-	color: white;
-}
-.search-results a {
-	color: #0096cf;
-}
-body.source .example-wrap pre.rust a {
-	background: #333;
-}
-
-details.rustdoc-toggle > summary.hideme > span,
-details.rustdoc-toggle > summary::before,
-details.undocumented > summary::before {
-	color: #999;
-}
-
-details.rustdoc-toggle > summary::before,
-details.undocumented > summary::before {
-	filter: invert(100%);
-}
-
-#crate-search, .search-input {
-	background-color: #141920;
-	border-color: #424c57;
-	color: #c5c5c5;
-}
-
-.search-input {
-	color: #ffffff;
-}
-
-.module-item .stab,
-.import-item .stab {
-	color: #000;
-}
-
-.stab.unstable,
-.stab.deprecated,
-.stab.portability {
-	color: #c5c5c5;
-	background: #314559 !important;
-	border-style: none !important;
-	border-radius: 4px;
-	padding: 3px 6px 3px 6px;
-}
-
-.stab.portability > code {
-	color: #e6e1cf;
-	background: none;
-}
-
-#help > div {
-	background: #14191f;
-	box-shadow: 0px 6px 20px 0px black;
-	border: none;
-	border-radius: 4px;
-}
-
-#help span.bottom, #help span.top {
-	border-color: #5c6773;
-}
-
-.rightside,
-.out-of-band {
-	color: grey;
-}
-
 .result-name .primitive > i, .result-name .keyword > i {
 	color: #788797;
 }
 
-.line-numbers :target { background-color: transparent; }
-
-/* Code highlighting */
-pre.rust .number, pre.rust .string { color: #b8cc52; }
-pre.rust .kw, pre.rust .kw-2, pre.rust .prelude-ty,
-pre.rust .bool-val, pre.rust .prelude-val,
-pre.rust .op, pre.rust .lifetime { color: #ff7733; }
-pre.rust .macro, pre.rust .macro-nonterminal { color: #a37acc; }
-pre.rust .question-mark {
-	color: #ff9011;
-}
-pre.rust .self {
-	color: #36a3d9;
-	font-style: italic;
-}
-pre.rust .attribute {
-	color: #e6e1cf;
-}
-pre.rust .attribute .ident, pre.rust .attribute .op {
-	color: #e6e1cf;
-}
-
-.example-wrap > pre.line-number {
-	color: #5c67736e;
-	border: none;
-}
-
-a.test-arrow {
-	font-size: 100%;
-	color: #788797;
-	border-radius: 4px;
-	background-color: rgba(57, 175, 215, 0.09);
-}
-
-a.test-arrow:hover {
-	background-color: rgba(57, 175, 215, 0.368);
-	color: #c5c5c5;
-}
-
-.toggle-label,
-.code-attribute {
-	color: #999;
-}
-
-:target {
-	background: rgba(255, 236, 164, 0.06);
-	border-right: 3px solid rgba(255, 180, 76, 0.85);
-}
-
-pre.compile_fail {
-	border-left: 2px solid rgba(255,0,0,.4);
-}
-
-pre.compile_fail:hover, .information:hover + pre.compile_fail {
-	border-left: 2px solid #f00;
-}
-
-pre.should_panic {
-	border-left: 2px solid rgba(255,0,0,.4);
-}
-
-pre.should_panic:hover, .information:hover + pre.should_panic {
-	border-left: 2px solid #f00;
-}
-
-pre.ignore {
-	border-left: 2px solid rgba(255,142,0,.6);
-}
-
-pre.ignore:hover, .information:hover + pre.ignore {
-	border-left: 2px solid #ff9200;
-}
-
-.tooltip.compile_fail {
-	color: rgba(255,0,0,.5);
-}
-
-.information > .compile_fail:hover {
-	color: #f00;
-}
-
-.tooltip.should_panic {
-	color: rgba(255,0,0,.5);
-}
-
-.information > .should_panic:hover {
-	color: #f00;
-}
-
-.tooltip.ignore {
-	color: rgba(255,142,0,.6);
-}
-
-.information > .ignore:hover {
-	color: #ff9200;
-}
-
-.search-failed a {
-	color: #39AFD7;
-}
-
-.tooltip::after {
-	background-color: #314559;
-	color: #c5c5c5;
-	border: 1px solid #5c6773;
-}
-
-.tooltip::before {
-	border-color: transparent #314559 transparent transparent;
-}
-
-.notable-traits-tooltiptext {
-	background-color: #314559;
-	border-color: #5c6773;
-}
-
-.notable-traits-tooltiptext .notable {
-	border-bottom-color: #5c6773;
-}
-
-#titles > button.selected {
-	background-color: #141920 !important;
+#search-tabs > button.selected {
 	border-bottom: 1px solid #ffb44c !important;
 	border-top: none;
 }
-
-#titles > button:not(.selected) {
-	background-color: transparent !important;
+#search-tabs > button:not(.selected) {
 	border: none;
+	background-color: transparent !important;
 }
-
-#titles > button:hover {
+#search-tabs > button:hover {
 	border-bottom: 1px solid rgba(242, 151, 24, 0.3);
 }
 
-#titles > button > div.count {
-	color: #888;
-}
-
-/* rules that this theme does not need to set, here to satisfy the rule checker */
-/* note that a lot of these are partially set in some way (meaning they are set
-individually rather than as a group) */
-/* FIXME: these rules should be at the bottom of the file but currently must be
-above the `@media (max-width: 700px)` rules due to a bug in the css checker */
-/* see https://github.com/rust-lang/rust/pull/71237#issuecomment-618170143 */
-.search-input:focus {}
-.content span.attr,.content a.attr,.block a.current.attr,.content span.derive,.content a.derive,
-.block a.current.derive,.content span.macro,.content a.macro,.block a.current.macro {}
-.content span.struct,.content a.struct,.block a.current.struct {}
-#titles>button:hover,#titles>button.selected {}
-.content span.typedef,.content a.typedef,.block a.current.typedef {}
-.content span.union,.content a.union,.block a.current.union {}
-pre.rust .lifetime {}
-.stab.unstable {}
-h2,
-h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod) {}
-.content span.enum,.content a.enum,.block a.current.enum {}
-.content span.constant,.content a.constant,.block a.current.constant,.content span.static,
-.content a.static, .block a.current.static {}
-.content span.keyword,.content a.keyword,.block a.current.keyword {}
-pre.rust .comment {}
-.content span.traitalias,.content a.traitalias,.block a.current.traitalias {}
-.content span.fn,.content a.fn,.block a.current.fn,.content span.method,.content a.method,
-.block a.current.method,.content span.tymethod,.content a.tymethod,.block a.current.tymethod,
-.content .fnname {}
-pre.rust .kw {}
-pre.rust .self,pre.rust .bool-val,pre.rust .prelude-val,pre.rust .attribute,
-pre.rust .attribute .ident {}
-.content span.foreigntype,.content a.foreigntype,.block a.current.foreigntype {}
-pre.rust .doccomment {}
-.stab.deprecated {}
-.content a.attr,.content a.derive,.content a.macro {}
-.stab.portability {}
-.content span.primitive,.content a.primitive,.block a.current.primitive {}
-.content span.externcrate,.content span.mod,.content a.mod,.block a.current.mod {}
-pre.rust .kw-2,pre.rust .prelude-ty {}
-.content span.trait,.content a.trait,.block a.current.trait {}
-
-.search-results a:focus span {}
-a.result-trait:focus {}
-a.result-traitalias:focus {}
-a.result-mod:focus,
-a.result-externcrate:focus {}
-a.result-mod:focus {}
-a.result-externcrate:focus {}
-a.result-enum:focus {}
-a.result-struct:focus {}
-a.result-union:focus {}
-a.result-fn:focus,
-a.result-method:focus,
-a.result-tymethod:focus {}
-a.result-type:focus {}
-a.result-associatedtype:focus {}
-a.result-foreigntype:focus {}
-a.result-attr:focus,
-a.result-derive:focus,
-a.result-macro:focus {}
-a.result-constant:focus,
-a.result-static:focus {}
-a.result-primitive:focus {}
-a.result-keyword:focus {}
-
-.sidebar a.current.enum {}
-.sidebar a.current.struct {}
-.sidebar a.current.foreigntype {}
-.sidebar a.current.attr,
-.sidebar a.current.derive,
-.sidebar a.current.macro {}
-.sidebar a.current.union {}
-.sidebar a.current.constant
-.sidebar a.current.static {}
-.sidebar a.current.primitive {}
-.sidebar a.current.externcrate
-.sidebar a.current.mod {}
-.sidebar a.current.trait {}
-.sidebar a.current.traitalias {}
-.sidebar a.current.fn,
-.sidebar a.current.method,
-.sidebar a.current.tymethod {}
-.sidebar a.current.keyword {}
-
-@media (max-width: 700px) {
-	.sidebar-menu {
-		background-color: #14191f;
-		border-bottom-color: #5c6773;
-		border-right-color: #5c6773;
-	}
-
-	.sidebar-elems {
-		background-color: #14191f;
-		border-right-color: #5c6773;
-	}
-
-	#sidebar-filler {
-		background-color: #14191f;
-		border-bottom-color: #5c6773;
-	}
-}
-
-kbd {
-	color: #c5c5c5;
-	background-color: #314559;
-	border-color: #5c6773;
-	border-bottom-color: #5c6773;
-	box-shadow: inset 0 -1px 0 #5c6773;
-}
-
-#theme-picker, #settings-menu, #help-button {
-	border-color: #5c6773;
-	background-color: #0f1419;
-	color: #fff;
-}
-
-#theme-picker > img, #settings-menu > img {
+#settings-menu > a img {
 	filter: invert(100);
-}
-
-#copy-path {
-	color: #fff;
-}
-#copy-path > img {
-	filter: invert(70%);
-}
-#copy-path:hover > img {
-	filter: invert(100%);
-}
-
-#theme-picker:hover, #theme-picker:focus,
-#settings-menu:hover, #settings-menu:focus,
-#help-button:hover, #help-button:focus {
-	border-color: #e0e0e0;
-}
-
-#theme-choices {
-	border-color: #5c6773;
-	background-color: #0f1419;
-}
-
-#theme-choices > button:not(:first-child) {
-	border-top-color: #5c6773;
-}
-
-#theme-choices > button:hover, #theme-choices > button:focus {
-	background-color: rgba(110, 110, 110, 0.33);
-}
-
-@media (max-width: 700px) {
-	#theme-picker {
-		background: #0f1419;
-	}
-}
-
-.search-results .result-name span.alias {
-	color: #c5c5c5;
-}
-.search-results .result-name span.grey {
-	color: #999;
-}
-
-#sidebar-toggle {
-	background-color: #14191f;
-}
-#sidebar-toggle:hover {
-	background-color: rgba(70, 70, 70, 0.33);
-}
-#source-sidebar {
-	background-color: #14191f;
-}
-#source-sidebar > .title {
-	color: #fff;
-	border-bottom-color: #5c6773;
-}
-div.files > a:hover, div.name:hover {
-	background-color: #14191f;
-	color: #ffb44c;
-}
-div.files > .selected {
-	background-color: #14191f;
-	color: #ffb44c;
-}
-.setting-line > .title {
-	border-bottom-color: #5c6773;
-}
-input:checked + .slider {
-	background-color: #ffb454 !important;
-}
-
-.scraped-example .example-wrap .rust span.highlight {
-	background: rgb(91, 59, 1);
-}
-.scraped-example .example-wrap .rust span.highlight.focus {
-	background: rgb(124, 75, 15);
-}
-.scraped-example:not(.expanded) .code-wrapper:before {
-	background: linear-gradient(to bottom, rgba(15, 20, 25, 1), rgba(15, 20, 25, 0));
-}
-.scraped-example:not(.expanded) .code-wrapper:after {
-	background: linear-gradient(to top, rgba(15, 20, 25, 1), rgba(15, 20, 25, 0));
-}
-.toggle-line-inner {
-	background: #616161;
-}
-.toggle-line:hover .toggle-line-inner {
-	background: #898989;
 }

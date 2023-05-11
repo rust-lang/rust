@@ -1,0 +1,15 @@
+error[E0282]: type annotations needed
+  --> $DIR/hidden-type-is-opaque-2.rs:9:9
+   |
+LL |         cont.reify_as();
+   |         ^^^^ cannot infer type
+
+error[E0282]: type annotations needed
+  --> $DIR/hidden-type-is-opaque-2.rs:18:9
+   |
+LL |         cont.reify_as();
+   |         ^^^^ cannot infer type
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0282`.

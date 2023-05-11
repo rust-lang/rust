@@ -5,7 +5,6 @@ mod tests;
 
 use crate::cmp;
 use crate::collections::BTreeMap;
-use crate::convert::{TryFrom, TryInto};
 use crate::env;
 use crate::env::consts::{EXE_EXTENSION, EXE_SUFFIX};
 use crate::ffi::{OsStr, OsString};
@@ -14,9 +13,11 @@ use crate::io::{self, Error, ErrorKind};
 use crate::mem;
 use crate::num::NonZeroI32;
 use crate::os::windows::ffi::{OsStrExt, OsStringExt};
-use crate::os::windows::io::{AsRawHandle, FromRawHandle, IntoRawHandle};
+use crate::os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle};
 use crate::path::{Path, PathBuf};
 use crate::ptr;
+use crate::sync::Mutex;
+use crate::sys::args::{self, Arg};
 use crate::sys::c;
 use crate::sys::c::NonZeroDWORD;
 use crate::sys::cvt;
@@ -25,9 +26,8 @@ use crate::sys::handle::Handle;
 use crate::sys::path;
 use crate::sys::pipe::{self, AnonPipe};
 use crate::sys::stdio;
-use crate::sys_common::mutex::StaticMutex;
 use crate::sys_common::process::{CommandEnv, CommandEnvs};
-use crate::sys_common::{AsInner, IntoInner};
+use crate::sys_common::IntoInner;
 
 use libc::{c_void, EXIT_FAILURE, EXIT_SUCCESS};
 
@@ -147,7 +147,7 @@ impl AsRef<OsStr> for EnvKey {
     }
 }
 
-fn ensure_no_nuls<T: AsRef<OsStr>>(str: T) -> io::Result<T> {
+pub(crate) fn ensure_no_nuls<T: AsRef<OsStr>>(str: T) -> io::Result<T> {
     if str.as_ref().encode_wide().any(|b| b == 0) {
         Err(io::const_io_error!(ErrorKind::InvalidInput, "nul byte found in provided data"))
     } else {
@@ -172,6 +172,7 @@ pub enum Stdio {
     Inherit,
     Null,
     MakePipe,
+    Pipe(AnonPipe),
     Handle(Handle),
 }
 
@@ -179,14 +180,6 @@ pub struct StdioPipes {
     pub stdin: Option<AnonPipe>,
     pub stdout: Option<AnonPipe>,
     pub stderr: Option<AnonPipe>,
-}
-
-#[derive(Debug)]
-enum Arg {
-    /// Add quotes (if needed)
-    Regular(OsString),
-    /// Append raw string without quoting
-    Raw(OsString),
 }
 
 impl Command {
@@ -259,10 +252,6 @@ impl Command {
     ) -> io::Result<(Process, StdioPipes)> {
         let maybe_env = self.env.capture_if_changed();
 
-        let mut si = zeroed_startupinfo();
-        si.cb = mem::size_of::<c::STARTUPINFO>() as c::DWORD;
-        si.dwFlags = c::STARTF_USESTDHANDLES;
-
         let child_paths = if let Some(env) = maybe_env.as_ref() {
             env.get(&EnvKey::new("PATH")).map(|s| s.as_os_str())
         } else {
@@ -274,8 +263,15 @@ impl Command {
             program.len().checked_sub(5).and_then(|i| program.get(i..)),
             Some([46, 98 | 66, 97 | 65, 116 | 84, 0] | [46, 99 | 67, 109 | 77, 100 | 68, 0])
         );
-        let mut cmd_str =
-            make_command_line(&program, &self.args, self.force_quotes_enabled, is_batch_file)?;
+        let (program, mut cmd_str) = if is_batch_file {
+            (
+                command_prompt()?,
+                args::make_bat_command_line(&program, &self.args, self.force_quotes_enabled)?,
+            )
+        } else {
+            let cmd_str = make_command_line(&self.program, &self.args, self.force_quotes_enabled)?;
+            (program, cmd_str)
+        };
         cmd_str.push(0); // add null terminator
 
         // stolen from the libuv code.
@@ -297,9 +293,9 @@ impl Command {
         //
         // For more information, msdn also has an article about this race:
         // https://support.microsoft.com/kb/315939
-        static CREATE_PROCESS_LOCK: StaticMutex = StaticMutex::new();
+        static CREATE_PROCESS_LOCK: Mutex<()> = Mutex::new(());
 
-        let _guard = unsafe { CREATE_PROCESS_LOCK.lock() };
+        let _guard = CREATE_PROCESS_LOCK.lock();
 
         let mut pipes = StdioPipes { stdin: None, stdout: None, stderr: None };
         let null = Stdio::Null;
@@ -310,9 +306,21 @@ impl Command {
         let stdin = stdin.to_handle(c::STD_INPUT_HANDLE, &mut pipes.stdin)?;
         let stdout = stdout.to_handle(c::STD_OUTPUT_HANDLE, &mut pipes.stdout)?;
         let stderr = stderr.to_handle(c::STD_ERROR_HANDLE, &mut pipes.stderr)?;
-        si.hStdInput = stdin.as_raw_handle();
-        si.hStdOutput = stdout.as_raw_handle();
-        si.hStdError = stderr.as_raw_handle();
+
+        let mut si = zeroed_startupinfo();
+        si.cb = mem::size_of::<c::STARTUPINFOW>() as c::DWORD;
+
+        // If at least one of stdin, stdout or stderr are set (i.e. are non null)
+        // then set the `hStd` fields in `STARTUPINFO`.
+        // Otherwise skip this and allow the OS to apply its default behaviour.
+        // This provides more consistent behaviour between Win7 and Win8+.
+        let is_set = |stdio: &Handle| !stdio.as_raw_handle().is_null();
+        if is_set(&stderr) || is_set(&stdout) || is_set(&stdin) {
+            si.dwFlags |= c::STARTF_USESTDHANDLES;
+            si.hStdInput = stdin.as_raw_handle();
+            si.hStdOutput = stdout.as_raw_handle();
+            si.hStdError = stderr.as_raw_handle();
+        }
 
         unsafe {
             cvt(c::CreateProcessW(
@@ -324,19 +332,25 @@ impl Command {
                 flags,
                 envp,
                 dirp,
-                &mut si,
+                &si,
                 &mut pi,
             ))
         }?;
 
-        // We close the thread handle because we don't care about keeping
-        // the thread id valid, and we aren't keeping the thread handle
-        // around to be able to close it later.
         unsafe {
-            drop(Handle::from_raw_handle(pi.hThread));
-
-            Ok((Process { handle: Handle::from_raw_handle(pi.hProcess) }, pipes))
+            Ok((
+                Process {
+                    handle: Handle::from_raw_handle(pi.hProcess),
+                    main_thread_handle: Handle::from_raw_handle(pi.hThread),
+                },
+                pipes,
+            ))
         }
+    }
+
+    pub fn output(&mut self) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
+        let (proc, pipes) = self.spawn(Stdio::MakePipe, false)?;
+        crate::sys_common::process::wait_with_output(proc, pipes)
     }
 }
 
@@ -392,7 +406,7 @@ fn resolve_exe<'a>(
         if has_exe_suffix {
             // The application name is a path to a `.exe` file.
             // Let `CreateProcessW` figure out if it exists or not.
-            return path::maybe_verbatim(Path::new(exe_path));
+            return args::to_user_path(Path::new(exe_path));
         }
         let mut path = PathBuf::from(exe_path);
 
@@ -404,7 +418,7 @@ fn resolve_exe<'a>(
             // It's ok to use `set_extension` here because the intent is to
             // remove the extension that was just added.
             path.set_extension("");
-            return path::maybe_verbatim(&path);
+            return args::to_user_path(&path);
         }
     } else {
         ensure_no_nuls(exe_path)?;
@@ -492,7 +506,7 @@ where
 /// Check if a file exists without following symlinks.
 fn program_exists(path: &Path) -> Option<Vec<u16>> {
     unsafe {
-        let path = path::maybe_verbatim(path).ok()?;
+        let path = args::to_user_path(path).ok()?;
         // Getting attributes using `GetFileAttributesW` does not follow symlinks
         // and it will almost always be successful if the link exists.
         // There are some exceptions for special system files (e.g. the pagefile)
@@ -508,9 +522,6 @@ fn program_exists(path: &Path) -> Option<Vec<u16>> {
 impl Stdio {
     fn to_handle(&self, stdio_id: c::DWORD, pipe: &mut Option<AnonPipe>) -> io::Result<Handle> {
         match *self {
-            // If no stdio handle is available, then inherit means that it
-            // should still be unavailable so propagate the
-            // INVALID_HANDLE_VALUE.
             Stdio::Inherit => match stdio::get_handle(stdio_id) {
                 Ok(io) => unsafe {
                     let io = Handle::from_raw_handle(io);
@@ -518,7 +529,8 @@ impl Stdio {
                     io.into_raw_handle();
                     ret
                 },
-                Err(..) => unsafe { Ok(Handle::from_raw_handle(c::INVALID_HANDLE_VALUE)) },
+                // If no stdio handle is available, then propagate the null value.
+                Err(..) => unsafe { Ok(Handle::from_raw_handle(ptr::null_mut())) },
             },
 
             Stdio::MakePipe => {
@@ -526,6 +538,11 @@ impl Stdio {
                 let pipes = pipe::anon_pipe(ours_readable, true)?;
                 *pipe = Some(pipes.ours);
                 Ok(pipes.theirs.into_handle())
+            }
+
+            Stdio::Pipe(ref source) => {
+                let ours_readable = stdio_id != c::STD_INPUT_HANDLE;
+                pipe::spawn_pipe_relay(source, ours_readable, true).map(AnonPipe::into_handle)
             }
 
             Stdio::Handle(ref handle) => handle.duplicate(0, true, c::DUPLICATE_SAME_ACCESS),
@@ -552,7 +569,7 @@ impl Stdio {
 
 impl From<AnonPipe> for Stdio {
     fn from(pipe: AnonPipe) -> Stdio {
-        Stdio::Handle(pipe.into_handle())
+        Stdio::Pipe(pipe)
     }
 }
 
@@ -573,6 +590,7 @@ impl From<File> for Stdio {
 /// for the process to terminate.
 pub struct Process {
     handle: Handle,
+    main_thread_handle: Handle,
 }
 
 impl Process {
@@ -583,6 +601,10 @@ impl Process {
 
     pub fn id(&self) -> u32 {
         unsafe { c::GetProcessId(self.handle.as_raw_handle()) as u32 }
+    }
+
+    pub fn main_thread_handle(&self) -> BorrowedHandle<'_> {
+        self.main_thread_handle.as_handle()
     }
 
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
@@ -692,8 +714,14 @@ impl From<u8> for ExitCode {
     }
 }
 
-fn zeroed_startupinfo() -> c::STARTUPINFO {
-    c::STARTUPINFO {
+impl From<u32> for ExitCode {
+    fn from(code: u32) -> Self {
+        ExitCode(c::DWORD::from(code))
+    }
+}
+
+fn zeroed_startupinfo() -> c::STARTUPINFOW {
+    c::STARTUPINFOW {
         cb: 0,
         lpReserved: ptr::null_mut(),
         lpDesktop: ptr::null_mut(),
@@ -703,15 +731,15 @@ fn zeroed_startupinfo() -> c::STARTUPINFO {
         dwXSize: 0,
         dwYSize: 0,
         dwXCountChars: 0,
-        dwYCountCharts: 0,
+        dwYCountChars: 0,
         dwFillAttribute: 0,
         dwFlags: 0,
         wShowWindow: 0,
         cbReserved2: 0,
         lpReserved2: ptr::null_mut(),
-        hStdInput: c::INVALID_HANDLE_VALUE,
-        hStdOutput: c::INVALID_HANDLE_VALUE,
-        hStdError: c::INVALID_HANDLE_VALUE,
+        hStdInput: ptr::null_mut(),
+        hStdOutput: ptr::null_mut(),
+        hStdError: ptr::null_mut(),
     }
 }
 
@@ -724,96 +752,36 @@ fn zeroed_process_information() -> c::PROCESS_INFORMATION {
     }
 }
 
-enum Quote {
-    // Every arg is quoted
-    Always,
-    // Whitespace and empty args are quoted
-    Auto,
-    // Arg appended without any changes (#29494)
-    Never,
-}
-
 // Produces a wide string *without terminating null*; returns an error if
 // `prog` or any of the `args` contain a nul.
-fn make_command_line(
-    prog: &[u16],
-    args: &[Arg],
-    force_quotes: bool,
-    is_batch_file: bool,
-) -> io::Result<Vec<u16>> {
+fn make_command_line(argv0: &OsStr, args: &[Arg], force_quotes: bool) -> io::Result<Vec<u16>> {
     // Encode the command and arguments in a command line string such
     // that the spawned process may recover them using CommandLineToArgvW.
     let mut cmd: Vec<u16> = Vec::new();
-
-    // CreateFileW has special handling for .bat and .cmd files, which means we
-    // need to add an extra pair of quotes surrounding the whole command line
-    // so they are properly passed on to the script.
-    // See issue #91991.
-    if is_batch_file {
-        cmd.push(b'"' as u16);
-    }
 
     // Always quote the program name so CreateProcess to avoid ambiguity when
     // the child process parses its arguments.
     // Note that quotes aren't escaped here because they can't be used in arg0.
     // But that's ok because file paths can't contain quotes.
     cmd.push(b'"' as u16);
-    cmd.extend_from_slice(prog.strip_suffix(&[0]).unwrap_or(prog));
+    cmd.extend(argv0.encode_wide());
     cmd.push(b'"' as u16);
 
     for arg in args {
         cmd.push(' ' as u16);
-        let (arg, quote) = match arg {
-            Arg::Regular(arg) => (arg, if force_quotes { Quote::Always } else { Quote::Auto }),
-            Arg::Raw(arg) => (arg, Quote::Never),
-        };
-        append_arg(&mut cmd, arg, quote)?;
+        args::append_arg(&mut cmd, arg, force_quotes)?;
     }
-    if is_batch_file {
-        cmd.push(b'"' as u16);
-    }
-    return Ok(cmd);
+    Ok(cmd)
+}
 
-    fn append_arg(cmd: &mut Vec<u16>, arg: &OsStr, quote: Quote) -> io::Result<()> {
-        // If an argument has 0 characters then we need to quote it to ensure
-        // that it actually gets passed through on the command line or otherwise
-        // it will be dropped entirely when parsed on the other end.
-        ensure_no_nuls(arg)?;
-        let arg_bytes = &arg.as_inner().inner.as_inner();
-        let (quote, escape) = match quote {
-            Quote::Always => (true, true),
-            Quote::Auto => {
-                (arg_bytes.iter().any(|c| *c == b' ' || *c == b'\t') || arg_bytes.is_empty(), true)
-            }
-            Quote::Never => (false, false),
-        };
-        if quote {
-            cmd.push('"' as u16);
-        }
-
-        let mut backslashes: usize = 0;
-        for x in arg.encode_wide() {
-            if escape {
-                if x == '\\' as u16 {
-                    backslashes += 1;
-                } else {
-                    if x == '"' as u16 {
-                        // Add n+1 backslashes to total 2n+1 before internal '"'.
-                        cmd.extend((0..=backslashes).map(|_| '\\' as u16));
-                    }
-                    backslashes = 0;
-                }
-            }
-            cmd.push(x);
-        }
-
-        if quote {
-            // Add n backslashes to total 2n before ending '"'.
-            cmd.extend((0..backslashes).map(|_| '\\' as u16));
-            cmd.push('"' as u16);
-        }
-        Ok(())
-    }
+// Get `cmd.exe` for use with bat scripts, encoded as a UTF-16 string.
+fn command_prompt() -> io::Result<Vec<u16>> {
+    let mut system: Vec<u16> = super::fill_utf16_buf(
+        |buf, size| unsafe { c::GetSystemDirectoryW(buf, size) },
+        |buf| buf.into(),
+    )?;
+    system.extend("\\cmd.exe".encode_utf16().chain([0]));
+    Ok(system)
 }
 
 fn make_envp(maybe_env: Option<BTreeMap<EnvKey, OsString>>) -> io::Result<(*mut c_void, Vec<u16>)> {

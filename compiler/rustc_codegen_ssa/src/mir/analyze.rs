@@ -5,7 +5,7 @@ use super::FunctionCx;
 use crate::traits::*;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::IndexVec;
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::traversal;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, Location, TerminatorKind};
@@ -15,7 +15,7 @@ pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     fx: &FunctionCx<'a, 'tcx, Bx>,
 ) -> BitSet<mir::Local> {
     let mir = fx.mir;
-    let dominators = mir.dominators();
+    let dominators = mir.basic_blocks.dominators();
     let locals = mir
         .local_decls
         .iter()
@@ -36,13 +36,13 @@ pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     // Arguments get assigned to by means of the function being called
     for arg in mir.args_iter() {
-        analyzer.assign(arg, mir::START_BLOCK.start_location());
+        analyzer.assign(arg, DefLocation::Argument);
     }
 
     // If there exists a local definition that dominates all uses of that local,
-    // the definition should be visited first. Traverse blocks in preorder which
+    // the definition should be visited first. Traverse blocks in an order that
     // is a topological sort of dominance partial order.
-    for (bb, data) in traversal::preorder(&mir) {
+    for (bb, data) in traversal::reverse_postorder(&mir) {
         analyzer.visit_basic_block_data(bb, data);
     }
 
@@ -64,7 +64,22 @@ enum LocalKind {
     /// A scalar or a scalar pair local that is neither defined nor used.
     Unused,
     /// A scalar or a scalar pair local with a single definition that dominates all uses.
-    SSA(mir::Location),
+    SSA(DefLocation),
+}
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+enum DefLocation {
+    Argument,
+    Body(Location),
+}
+
+impl DefLocation {
+    fn dominates(self, location: Location, dominators: &Dominators<mir::BasicBlock>) -> bool {
+        match self {
+            DefLocation::Argument => true,
+            DefLocation::Body(def) => def.successor_within_block().dominates(location, dominators),
+        }
+    }
 }
 
 struct LocalAnalyzer<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
@@ -74,17 +89,13 @@ struct LocalAnalyzer<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
 }
 
 impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
-    fn assign(&mut self, local: mir::Local, location: Location) {
+    fn assign(&mut self, local: mir::Local, location: DefLocation) {
         let kind = &mut self.locals[local];
         match *kind {
             LocalKind::ZST => {}
             LocalKind::Memory => {}
-            LocalKind::Unused => {
-                *kind = LocalKind::SSA(location);
-            }
-            LocalKind::SSA(_) => {
-                *kind = LocalKind::Memory;
-            }
+            LocalKind::Unused => *kind = LocalKind::SSA(location),
+            LocalKind::SSA(_) => *kind = LocalKind::Memory,
         }
     }
 
@@ -143,13 +154,13 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx,
             // now that we have moved to the "slice of projections" representation.
             if let mir::ProjectionElem::Index(local) = elem {
                 self.visit_local(
-                    &local,
+                    local,
                     PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
                     location,
                 );
             }
         } else {
-            self.visit_local(&place_ref.local, context, location);
+            self.visit_local(place_ref.local, context, location);
         }
     }
 }
@@ -166,7 +177,7 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
         debug!("visit_assign(place={:?}, rvalue={:?})", place, rvalue);
 
         if let Some(local) = place.as_local() {
-            self.assign(local, location);
+            self.assign(local, DefLocation::Body(location));
             if self.locals[local] != LocalKind::Memory {
                 let decl_span = self.fx.mir.local_decls[local].source_info.span;
                 if !self.fx.rvalue_creates_operand(rvalue, decl_span) {
@@ -185,14 +196,16 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
         self.process_place(&place.as_ref(), context, location);
     }
 
-    fn visit_local(&mut self, &local: &mir::Local, context: PlaceContext, location: Location) {
+    fn visit_local(&mut self, local: mir::Local, context: PlaceContext, location: Location) {
         match context {
             PlaceContext::MutatingUse(MutatingUseContext::Call)
             | PlaceContext::MutatingUse(MutatingUseContext::Yield) => {
-                self.assign(local, location);
+                self.assign(local, DefLocation::Body(location));
             }
 
-            PlaceContext::NonUse(_) | PlaceContext::MutatingUse(MutatingUseContext::Retag) => {}
+            PlaceContext::NonUse(_)
+            | PlaceContext::NonMutatingUse(NonMutatingUseContext::PlaceMention)
+            | PlaceContext::MutatingUse(MutatingUseContext::Retag) => {}
 
             PlaceContext::NonMutatingUse(
                 NonMutatingUseContext::Copy | NonMutatingUseContext::Move,
@@ -261,16 +274,19 @@ impl CleanupKind {
     }
 }
 
+/// MSVC requires unwinding code to be split to a tree of *funclets*, where each funclet can only
+/// branch to itself or to its parent. Luckily, the code we generates matches this pattern.
+/// Recover that structure in an analyze pass.
 pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKind> {
     fn discover_masters<'tcx>(
-        result: &mut IndexVec<mir::BasicBlock, CleanupKind>,
+        result: &mut IndexSlice<mir::BasicBlock, CleanupKind>,
         mir: &mir::Body<'tcx>,
     ) {
-        for (bb, data) in mir.basic_blocks().iter_enumerated() {
+        for (bb, data) in mir.basic_blocks.iter_enumerated() {
             match data.terminator().kind {
                 TerminatorKind::Goto { .. }
                 | TerminatorKind::Resume
-                | TerminatorKind::Abort
+                | TerminatorKind::Terminate
                 | TerminatorKind::Return
                 | TerminatorKind::GeneratorDrop
                 | TerminatorKind::Unreachable
@@ -278,12 +294,11 @@ pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKi
                 | TerminatorKind::Yield { .. }
                 | TerminatorKind::FalseEdge { .. }
                 | TerminatorKind::FalseUnwind { .. } => { /* nothing to do */ }
-                TerminatorKind::Call { cleanup: unwind, .. }
-                | TerminatorKind::InlineAsm { cleanup: unwind, .. }
-                | TerminatorKind::Assert { cleanup: unwind, .. }
-                | TerminatorKind::DropAndReplace { unwind, .. }
+                TerminatorKind::Call { unwind, .. }
+                | TerminatorKind::InlineAsm { unwind, .. }
+                | TerminatorKind::Assert { unwind, .. }
                 | TerminatorKind::Drop { unwind, .. } => {
-                    if let Some(unwind) = unwind {
+                    if let mir::UnwindAction::Cleanup(unwind) = unwind {
                         debug!(
                             "cleanup_kinds: {:?}/{:?} registering {:?} as funclet",
                             bb, data, unwind
@@ -295,8 +310,11 @@ pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKi
         }
     }
 
-    fn propagate<'tcx>(result: &mut IndexVec<mir::BasicBlock, CleanupKind>, mir: &mir::Body<'tcx>) {
-        let mut funclet_succs = IndexVec::from_elem(None, mir.basic_blocks());
+    fn propagate<'tcx>(
+        result: &mut IndexSlice<mir::BasicBlock, CleanupKind>,
+        mir: &mir::Body<'tcx>,
+    ) {
+        let mut funclet_succs = IndexVec::from_elem(None, &mir.basic_blocks);
 
         let mut set_successor = |funclet: mir::BasicBlock, succ| match funclet_succs[funclet] {
             ref mut s @ None => {
@@ -328,7 +346,7 @@ pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKi
                 bb, data, result[bb], funclet
             );
 
-            for &succ in data.terminator().successors() {
+            for succ in data.terminator().successors() {
                 let kind = result[succ];
                 debug!("cleanup_kinds: propagating {:?} to {:?}/{:?}", funclet, succ, kind);
                 match kind {
@@ -359,7 +377,7 @@ pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKi
         }
     }
 
-    let mut result = IndexVec::from_elem(CleanupKind::NotCleanup, mir.basic_blocks());
+    let mut result = IndexVec::from_elem(CleanupKind::NotCleanup, &mir.basic_blocks);
 
     discover_masters(&mut result, mir);
     propagate(&mut result, mir);

@@ -1,0 +1,37 @@
+error[E0593]: function is expected to take 1 argument, but it takes 2 arguments
+  --> $DIR/issue-47706.rs:11:22
+   |
+LL |     pub fn new(foo: Option<i32>, _: ()) -> Foo {
+   |     ------------------------------------------ takes 2 arguments
+...
+LL |         self.foo.map(Foo::new)
+   |                  --- ^^^^^^^^ expected function that takes 1 argument
+   |                  |
+   |                  required by a bound introduced by this call
+   |
+note: required by a bound in `Option::<T>::map`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+
+error[E0593]: function is expected to take 0 arguments, but it takes 1 argument
+  --> $DIR/issue-47706.rs:27:9
+   |
+LL |     Bar(i32),
+   |     --- takes 1 argument
+...
+LL |     foo(Qux::Bar);
+   |     --- ^^^^^^^^ expected function that takes 0 arguments
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `foo`
+  --> $DIR/issue-47706.rs:22:8
+   |
+LL | fn foo<F>(f: F)
+   |    --- required by a bound in this function
+LL | where
+LL |     F: Fn(),
+   |        ^^^^ required by this bound in `foo`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0593`.

@@ -1,0 +1,16 @@
+error[E0405]: cannot find trait `Oops` in this scope
+  --> $DIR/issue-104513-ice.rs:3:19
+   |
+LL |     let _: S<impl Oops> = S;
+   |                   ^^^^ not found in this scope
+
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in variable bindings
+  --> $DIR/issue-104513-ice.rs:3:14
+   |
+LL |     let _: S<impl Oops> = S;
+   |              ^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0405, E0562.
+For more information about an error, try `rustc --explain E0405`.

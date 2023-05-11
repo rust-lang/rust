@@ -1,0 +1,13 @@
+// run-rustfix
+#![allow(unused_variables, dead_code)]
+
+trait Trait {
+    fn foo(&self) where Self: Other, Self: Sized { }
+    fn bar(self: &Self) {} //~ ERROR invalid `self` parameter type
+}
+
+fn bar(x: &dyn Trait) {} //~ ERROR the trait `Trait` cannot be made into an object
+
+trait Other {}
+
+fn main() {}

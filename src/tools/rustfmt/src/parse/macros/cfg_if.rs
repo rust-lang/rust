@@ -1,7 +1,7 @@
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
 use rustc_ast::ast;
-use rustc_ast::token::{DelimToken, TokenKind};
+use rustc_ast::token::{Delimiter, TokenKind};
 use rustc_parse::parser::ForceCollect;
 use rustc_span::symbol::kw;
 
@@ -23,7 +23,7 @@ fn parse_cfg_if_inner<'a>(
     sess: &'a ParseSess,
     mac: &'a ast::MacCall,
 ) -> Result<Vec<ast::Item>, &'static str> {
-    let ts = mac.args.inner_tokens();
+    let ts = mac.args.tokens.clone();
     let mut parser = build_stream_parser(sess.inner(), ts);
 
     let mut items = vec![];
@@ -47,11 +47,11 @@ fn parse_cfg_if_inner<'a>(
                 .map_err(|_| "Failed to parse attributes")?;
         }
 
-        if !parser.eat(&TokenKind::OpenDelim(DelimToken::Brace)) {
+        if !parser.eat(&TokenKind::OpenDelim(Delimiter::Brace)) {
             return Err("Expected an opening brace");
         }
 
-        while parser.token != TokenKind::CloseDelim(DelimToken::Brace)
+        while parser.token != TokenKind::CloseDelim(Delimiter::Brace)
             && parser.token.kind != TokenKind::Eof
         {
             let item = match parser.parse_item(ForceCollect::No) {
@@ -70,7 +70,7 @@ fn parse_cfg_if_inner<'a>(
             }
         }
 
-        if !parser.eat(&TokenKind::CloseDelim(DelimToken::Brace)) {
+        if !parser.eat(&TokenKind::CloseDelim(Delimiter::Brace)) {
             return Err("Expected a closing brace");
         }
 

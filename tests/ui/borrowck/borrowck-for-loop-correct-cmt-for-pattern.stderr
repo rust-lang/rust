@@ -1,0 +1,48 @@
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:12:15
+   |
+LL |     for &a in x.iter() {
+   |          -    ^^^^^^^^
+   |          |
+   |          data moved here
+   |          move occurs because `a` has type `&mut i32`, which does not implement the `Copy` trait
+   |
+help: consider removing the borrow
+   |
+LL -     for &a in x.iter() {
+LL +     for a in x.iter() {
+   |
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:18:15
+   |
+LL |     for &a in &f.a {
+   |          -    ^^^^
+   |          |
+   |          data moved here
+   |          move occurs because `a` has type `Box<isize>`, which does not implement the `Copy` trait
+   |
+help: consider removing the borrow
+   |
+LL -     for &a in &f.a {
+LL +     for a in &f.a {
+   |
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:22:15
+   |
+LL |     for &a in x.iter() {
+   |          -    ^^^^^^^^
+   |          |
+   |          data moved here
+   |          move occurs because `a` has type `Box<i32>`, which does not implement the `Copy` trait
+   |
+help: consider removing the borrow
+   |
+LL -     for &a in x.iter() {
+LL +     for a in x.iter() {
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0507`.

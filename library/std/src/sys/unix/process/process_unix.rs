@@ -1,9 +1,7 @@
-use crate::convert::{TryFrom, TryInto};
 use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
 use crate::mem;
 use crate::num::NonZeroI32;
-use crate::ptr;
 use crate::sys;
 use crate::sys::cvt;
 use crate::sys::process::process_common::*;
@@ -20,6 +18,7 @@ use crate::sys::weak::raw_syscall;
     target_os = "freebsd",
     all(target_os = "linux", target_env = "gnu"),
     all(target_os = "linux", target_env = "musl"),
+    target_os = "nto",
 ))]
 use crate::sys::weak::weak;
 
@@ -31,6 +30,15 @@ use libc::{c_int, pid_t};
 
 #[cfg(not(any(target_os = "vxworks", target_os = "l4re")))]
 use libc::{gid_t, uid_t};
+
+cfg_if::cfg_if! {
+    if #[cfg(all(target_os = "nto", target_env = "nto71"))] {
+        use crate::thread;
+        use libc::{c_char, posix_spawn_file_actions_t, posix_spawnattr_t};
+        // arbitrary number of tries:
+        const MAX_FORKSPAWN_TRIES: u32 = 4;
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
@@ -68,14 +76,15 @@ impl Command {
         //
         // Note that as soon as we're done with the fork there's no need to hold
         // a lock any more because the parent won't do anything and the child is
-        // in its own process. Thus the parent drops the lock guard while the child
-        // forgets it to avoid unlocking it on a new thread, which would be invalid.
+        // in its own process. Thus the parent drops the lock guard immediately.
+        // The child calls `mem::forget` to leak the lock, which is crucial because
+        // releasing a lock is not async-signal-safe.
         let env_lock = sys::os::env_read_lock();
         let (pid, pidfd) = unsafe { self.do_fork()? };
 
         if pid == 0 {
             crate::panic::always_abort();
-            mem::forget(env_lock);
+            mem::forget(env_lock); // avoid non-async-signal-safe unlocking
             drop(input);
             let Err(err) = unsafe { self.do_exec(theirs, envp.as_ref()) };
             let errno = err.raw_os_error().unwrap_or(libc::EINVAL) as u32;
@@ -134,11 +143,36 @@ impl Command {
         }
     }
 
+    pub fn output(&mut self) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
+        let (proc, pipes) = self.spawn(Stdio::MakePipe, false)?;
+        crate::sys_common::process::wait_with_output(proc, pipes)
+    }
+
     // Attempts to fork the process. If successful, returns Ok((0, -1))
     // in the child, and Ok((child_pid, -1)) in the parent.
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(not(any(target_os = "linux", all(target_os = "nto", target_env = "nto71"))))]
     unsafe fn do_fork(&mut self) -> Result<(pid_t, pid_t), io::Error> {
         cvt(libc::fork()).map(|res| (res, -1))
+    }
+
+    // On QNX Neutrino, fork can fail with EBADF in case "another thread might have opened
+    // or closed a file descriptor while the fork() was occurring".
+    // Documentation says "... or try calling fork() again". This is what we do here.
+    // See also https://www.qnx.com/developers/docs/7.1/#com.qnx.doc.neutrino.lib_ref/topic/f/fork.html
+    #[cfg(all(target_os = "nto", target_env = "nto71"))]
+    unsafe fn do_fork(&mut self) -> Result<(pid_t, pid_t), io::Error> {
+        use crate::sys::os::errno;
+
+        let mut tries_left = MAX_FORKSPAWN_TRIES;
+        loop {
+            let r = libc::fork();
+            if r == -1 as libc::pid_t && tries_left > 0 && errno() as libc::c_int == libc::EBADF {
+                thread::yield_now();
+                tries_left -= 1;
+            } else {
+                return cvt(r).map(|res| (res, -1));
+            }
+        }
     }
 
     // Attempts to fork the process. If successful, returns Ok((0, -1))
@@ -311,7 +345,7 @@ impl Command {
                 //FIXME: Redox kernel does not support setgroups yet
                 #[cfg(not(target_os = "redox"))]
                 if libc::getuid() == 0 && self.get_groups().is_none() {
-                    cvt(libc::setgroups(0, ptr::null()))?;
+                    cvt(libc::setgroups(0, crate::ptr::null()))?;
                 }
                 cvt(libc::setuid(u as uid_t))?;
             }
@@ -327,29 +361,26 @@ impl Command {
         // emscripten has no signal support.
         #[cfg(not(target_os = "emscripten"))]
         {
-            use crate::mem::MaybeUninit;
-            // Reset signal handling so the child process starts in a
-            // standardized state. libstd ignores SIGPIPE, and signal-handling
-            // libraries often set a mask. Child processes inherit ignored
-            // signals and the signal mask from their parent, but most
-            // UNIX programs do not reset these things on their own, so we
-            // need to clean things up now to avoid confusing the program
-            // we're about to run.
-            let mut set = MaybeUninit::<libc::sigset_t>::uninit();
-            cvt(sigemptyset(set.as_mut_ptr()))?;
-            cvt(libc::pthread_sigmask(libc::SIG_SETMASK, set.as_ptr(), ptr::null_mut()))?;
+            // Inherit the signal mask from the parent rather than resetting it (i.e. do not call
+            // pthread_sigmask).
 
-            #[cfg(target_os = "android")] // see issue #88585
-            {
-                let mut action: libc::sigaction = mem::zeroed();
-                action.sa_sigaction = libc::SIG_DFL;
-                cvt(libc::sigaction(libc::SIGPIPE, &action, ptr::null_mut()))?;
-            }
-            #[cfg(not(target_os = "android"))]
-            {
-                let ret = sys::signal(libc::SIGPIPE, libc::SIG_DFL);
-                if ret == libc::SIG_ERR {
-                    return Err(io::Error::last_os_error());
+            // If #[unix_sigpipe] is specified, don't reset SIGPIPE to SIG_DFL.
+            // If #[unix_sigpipe] is not specified, reset SIGPIPE to SIG_DFL for backward compatibility.
+            //
+            // #[unix_sigpipe] is an opportunity to change the default here.
+            if !crate::sys::unix_sigpipe_attr_specified() {
+                #[cfg(target_os = "android")] // see issue #88585
+                {
+                    let mut action: libc::sigaction = mem::zeroed();
+                    action.sa_sigaction = libc::SIG_DFL;
+                    cvt(libc::sigaction(libc::SIGPIPE, &action, crate::ptr::null_mut()))?;
+                }
+                #[cfg(not(target_os = "android"))]
+                {
+                    let ret = sys::signal(libc::SIGPIPE, libc::SIG_DFL);
+                    if ret == libc::SIG_ERR {
+                        return Err(io::Error::last_os_error());
+                    }
                 }
             }
         }
@@ -388,6 +419,7 @@ impl Command {
         target_os = "freebsd",
         all(target_os = "linux", target_env = "gnu"),
         all(target_os = "linux", target_env = "musl"),
+        target_os = "nto",
     )))]
     fn posix_spawn(
         &mut self,
@@ -404,6 +436,7 @@ impl Command {
         target_os = "freebsd",
         all(target_os = "linux", target_env = "gnu"),
         all(target_os = "linux", target_env = "musl"),
+        target_os = "nto",
     ))]
     fn posix_spawn(
         &mut self,
@@ -411,7 +444,7 @@ impl Command {
         envp: Option<&CStringArray>,
     ) -> io::Result<Option<Process>> {
         use crate::mem::MaybeUninit;
-        use crate::sys::{self, cvt_nz};
+        use crate::sys::{self, cvt_nz, unix_sigpipe_attr_specified};
 
         if self.get_gid().is_some()
             || self.get_uid().is_some()
@@ -435,6 +468,34 @@ impl Command {
             }
         }
 
+        // On QNX Neutrino, posix_spawnp can fail with EBADF in case "another thread might have opened
+        // or closed a file descriptor while the posix_spawn() was occurring".
+        // Documentation says "... or try calling posix_spawn() again". This is what we do here.
+        // See also http://www.qnx.com/developers/docs/7.1/#com.qnx.doc.neutrino.lib_ref/topic/p/posix_spawn.html
+        #[cfg(all(target_os = "nto", target_env = "nto71"))]
+        unsafe fn retrying_libc_posix_spawnp(
+            pid: *mut pid_t,
+            file: *const c_char,
+            file_actions: *const posix_spawn_file_actions_t,
+            attrp: *const posix_spawnattr_t,
+            argv: *const *mut c_char,
+            envp: *const *mut c_char,
+        ) -> i32 {
+            let mut tries_left = MAX_FORKSPAWN_TRIES;
+            loop {
+                match libc::posix_spawnp(pid, file, file_actions, attrp, argv, envp) {
+                    libc::EBADF if tries_left > 0 => {
+                        thread::yield_now();
+                        tries_left -= 1;
+                        continue;
+                    }
+                    r => {
+                        return r;
+                    }
+                }
+            }
+        }
+
         // Solaris, glibc 2.29+, and musl 1.24+ can set a new working directory,
         // and maybe others will gain this non-POSIX function too. We'll check
         // for this weak symbol as soon as it's needed, so we can return early
@@ -453,7 +514,9 @@ impl Command {
                     // successfully launch the program, but erroneously return
                     // ENOENT when used with posix_spawn_file_actions_addchdir_np
                     // which was introduced in macOS 10.15.
-                    return Ok(None);
+                    if self.get_program_kind() == ProgramKind::Relative {
+                        return Ok(None);
+                    }
                 }
                 match posix_spawn_file_actions_addchdir_np.get() {
                     Some(f) => Some((f, cwd)),
@@ -529,19 +592,35 @@ impl Command {
                 cvt_nz(libc::posix_spawnattr_setpgroup(attrs.0.as_mut_ptr(), pgroup))?;
             }
 
-            let mut set = MaybeUninit::<libc::sigset_t>::uninit();
-            cvt(sigemptyset(set.as_mut_ptr()))?;
-            cvt_nz(libc::posix_spawnattr_setsigmask(attrs.0.as_mut_ptr(), set.as_ptr()))?;
-            cvt(sigaddset(set.as_mut_ptr(), libc::SIGPIPE))?;
-            cvt_nz(libc::posix_spawnattr_setsigdefault(attrs.0.as_mut_ptr(), set.as_ptr()))?;
+            // Inherit the signal mask from this process rather than resetting it (i.e. do not call
+            // posix_spawnattr_setsigmask).
 
-            flags |= libc::POSIX_SPAWN_SETSIGDEF | libc::POSIX_SPAWN_SETSIGMASK;
+            // If #[unix_sigpipe] is specified, don't reset SIGPIPE to SIG_DFL.
+            // If #[unix_sigpipe] is not specified, reset SIGPIPE to SIG_DFL for backward compatibility.
+            //
+            // #[unix_sigpipe] is an opportunity to change the default here.
+            if !unix_sigpipe_attr_specified() {
+                let mut default_set = MaybeUninit::<libc::sigset_t>::uninit();
+                cvt(sigemptyset(default_set.as_mut_ptr()))?;
+                cvt(sigaddset(default_set.as_mut_ptr(), libc::SIGPIPE))?;
+                cvt_nz(libc::posix_spawnattr_setsigdefault(
+                    attrs.0.as_mut_ptr(),
+                    default_set.as_ptr(),
+                ))?;
+                flags |= libc::POSIX_SPAWN_SETSIGDEF;
+            }
+
             cvt_nz(libc::posix_spawnattr_setflags(attrs.0.as_mut_ptr(), flags as _))?;
 
             // Make sure we synchronize access to the global `environ` resource
             let _env_lock = sys::os::env_read_lock();
             let envp = envp.map(|c| c.as_ptr()).unwrap_or_else(|| *sys::os::environ() as *const _);
-            cvt_nz(libc::posix_spawnp(
+
+            #[cfg(not(target_os = "nto"))]
+            let spawn_fn = libc::posix_spawnp;
+            #[cfg(target_os = "nto")]
+            let spawn_fn = retrying_libc_posix_spawnp;
+            cvt_nz(spawn_fn(
                 &mut p.pid,
                 self.get_program_cstr().as_ptr(),
                 file_actions.0.as_ptr(),
@@ -652,11 +731,11 @@ impl ExitStatus {
     }
 
     pub fn exit_ok(&self) -> Result<(), ExitStatusError> {
-        // This assumes that WIFEXITED(status) && WEXITSTATUS==0 corresponds to status==0.  This is
+        // This assumes that WIFEXITED(status) && WEXITSTATUS==0 corresponds to status==0. This is
         // true on all actual versions of Unix, is widely assumed, and is specified in SuS
-        // https://pubs.opengroup.org/onlinepubs/9699919799/functions/wait.html .  If it is not
+        // https://pubs.opengroup.org/onlinepubs/9699919799/functions/wait.html. If it is not
         // true for a platform pretending to be Unix, the tests (our doctests, and also
-        // procsss_unix/tests.rs) will spot it.  `ExitStatusError::code` assumes this too.
+        // process_unix/tests.rs) will spot it. `ExitStatusError::code` assumes this too.
         match NonZero_c_int::try_from(self.0) {
             /* was nonzero */ Ok(failure) => Err(ExitStatusError(failure)),
             /* was zero, couldn't convert */ Err(_) => Ok(()),
@@ -695,18 +774,98 @@ impl From<c_int> for ExitStatus {
     }
 }
 
+/// Convert a signal number to a readable, searchable name.
+///
+/// This string should be displayed right after the signal number.
+/// If a signal is unrecognized, it returns the empty string, so that
+/// you just get the number like "0". If it is recognized, you'll get
+/// something like "9 (SIGKILL)".
+fn signal_string(signal: i32) -> &'static str {
+    match signal {
+        libc::SIGHUP => " (SIGHUP)",
+        libc::SIGINT => " (SIGINT)",
+        libc::SIGQUIT => " (SIGQUIT)",
+        libc::SIGILL => " (SIGILL)",
+        libc::SIGTRAP => " (SIGTRAP)",
+        libc::SIGABRT => " (SIGABRT)",
+        libc::SIGBUS => " (SIGBUS)",
+        libc::SIGFPE => " (SIGFPE)",
+        libc::SIGKILL => " (SIGKILL)",
+        libc::SIGUSR1 => " (SIGUSR1)",
+        libc::SIGSEGV => " (SIGSEGV)",
+        libc::SIGUSR2 => " (SIGUSR2)",
+        libc::SIGPIPE => " (SIGPIPE)",
+        libc::SIGALRM => " (SIGALRM)",
+        libc::SIGTERM => " (SIGTERM)",
+        libc::SIGCHLD => " (SIGCHLD)",
+        libc::SIGCONT => " (SIGCONT)",
+        libc::SIGSTOP => " (SIGSTOP)",
+        libc::SIGTSTP => " (SIGTSTP)",
+        libc::SIGTTIN => " (SIGTTIN)",
+        libc::SIGTTOU => " (SIGTTOU)",
+        libc::SIGURG => " (SIGURG)",
+        libc::SIGXCPU => " (SIGXCPU)",
+        libc::SIGXFSZ => " (SIGXFSZ)",
+        libc::SIGVTALRM => " (SIGVTALRM)",
+        libc::SIGPROF => " (SIGPROF)",
+        libc::SIGWINCH => " (SIGWINCH)",
+        #[cfg(not(target_os = "haiku"))]
+        libc::SIGIO => " (SIGIO)",
+        #[cfg(target_os = "haiku")]
+        libc::SIGPOLL => " (SIGPOLL)",
+        libc::SIGSYS => " (SIGSYS)",
+        // For information on Linux signals, run `man 7 signal`
+        #[cfg(all(
+            target_os = "linux",
+            any(
+                target_arch = "x86_64",
+                target_arch = "x86",
+                target_arch = "arm",
+                target_arch = "aarch64"
+            )
+        ))]
+        libc::SIGSTKFLT => " (SIGSTKFLT)",
+        #[cfg(any(target_os = "linux", target_os = "nto"))]
+        libc::SIGPWR => " (SIGPWR)",
+        #[cfg(any(
+            target_os = "macos",
+            target_os = "ios",
+            target_os = "tvos",
+            target_os = "freebsd",
+            target_os = "netbsd",
+            target_os = "openbsd",
+            target_os = "dragonfly",
+            target_os = "nto",
+        ))]
+        libc::SIGEMT => " (SIGEMT)",
+        #[cfg(any(
+            target_os = "macos",
+            target_os = "ios",
+            target_os = "tvos",
+            target_os = "freebsd",
+            target_os = "netbsd",
+            target_os = "openbsd",
+            target_os = "dragonfly"
+        ))]
+        libc::SIGINFO => " (SIGINFO)",
+        _ => "",
+    }
+}
+
 impl fmt::Display for ExitStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(code) = self.code() {
             write!(f, "exit status: {code}")
         } else if let Some(signal) = self.signal() {
+            let signal_string = signal_string(signal);
             if self.core_dumped() {
-                write!(f, "signal: {signal} (core dumped)")
+                write!(f, "signal: {signal}{signal_string} (core dumped)")
             } else {
-                write!(f, "signal: {signal}")
+                write!(f, "signal: {signal}{signal_string}")
             }
         } else if let Some(signal) = self.stopped_signal() {
-            write!(f, "stopped (not terminated) by signal: {signal}")
+            let signal_string = signal_string(signal);
+            write!(f, "stopped (not terminated) by signal: {signal}{signal_string}")
         } else if self.continued() {
             write!(f, "continued (WIFCONTINUED)")
         } else {
@@ -743,14 +902,14 @@ impl crate::os::linux::process::ChildExt for crate::process::Child {
         self.handle
             .pidfd
             .as_ref()
-            .ok_or_else(|| Error::new(ErrorKind::Other, "No pidfd was created."))
+            .ok_or_else(|| Error::new(ErrorKind::Uncategorized, "No pidfd was created."))
     }
 
     fn take_pidfd(&mut self) -> io::Result<PidFd> {
         self.handle
             .pidfd
             .take()
-            .ok_or_else(|| Error::new(ErrorKind::Other, "No pidfd was created."))
+            .ok_or_else(|| Error::new(ErrorKind::Uncategorized, "No pidfd was created."))
     }
 }
 

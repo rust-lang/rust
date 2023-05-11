@@ -21,7 +21,8 @@ use crate::clean;
 /// a heading, edit the listing in `html/render.rs`, function `sidebar_module`. This uses an
 /// ordering based on a helper function inside `item_module`, in the same file.
 #[derive(Copy, PartialEq, Eq, Hash, Clone, Debug, PartialOrd, Ord)]
-crate enum ItemType {
+#[repr(u8)]
+pub(crate) enum ItemType {
     Module = 0,
     ExternCrate = 1,
     Import = 2,
@@ -48,7 +49,6 @@ crate enum ItemType {
     ProcAttribute = 23,
     ProcDerive = 24,
     TraitAlias = 25,
-    Generic = 26,
 }
 
 impl Serialize for ItemType {
@@ -92,7 +92,7 @@ impl<'a> From<&'a clean::Item> for ItemType {
             clean::TyAssocConstItem(..) | clean::AssocConstItem(..) => ItemType::AssocConst,
             clean::TyAssocTypeItem(..) | clean::AssocTypeItem(..) => ItemType::AssocType,
             clean::ForeignTypeItem => ItemType::ForeignType,
-            clean::KeywordItem(..) => ItemType::Keyword,
+            clean::KeywordItem => ItemType::Keyword,
             clean::TraitAliasItem(..) => ItemType::TraitAlias,
             clean::ProcMacroItem(ref mac) => match mac.kind {
                 MacroKind::Bang => ItemType::Macro,
@@ -136,10 +136,11 @@ impl From<DefKind> for ItemType {
             | DefKind::AnonConst
             | DefKind::InlineConst
             | DefKind::OpaqueTy
+            | DefKind::ImplTraitPlaceholder
             | DefKind::Field
             | DefKind::LifetimeParam
             | DefKind::GlobalAsm
-            | DefKind::Impl
+            | DefKind::Impl { .. }
             | DefKind::Closure
             | DefKind::Generator => Self::ForeignType,
         }
@@ -147,7 +148,7 @@ impl From<DefKind> for ItemType {
 }
 
 impl ItemType {
-    crate fn as_str(&self) -> &'static str {
+    pub(crate) fn as_str(&self) -> &'static str {
         match *self {
             ItemType::Module => "mod",
             ItemType::ExternCrate => "externcrate",
@@ -175,8 +176,10 @@ impl ItemType {
             ItemType::ProcAttribute => "attr",
             ItemType::ProcDerive => "derive",
             ItemType::TraitAlias => "traitalias",
-            ItemType::Generic => "generic",
         }
+    }
+    pub(crate) fn is_method(&self) -> bool {
+        matches!(*self, ItemType::Method | ItemType::TyMethod)
     }
 }
 

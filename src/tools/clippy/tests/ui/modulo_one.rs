@@ -1,5 +1,5 @@
 #![warn(clippy::modulo_one)]
-#![allow(clippy::no_effect, clippy::unnecessary_operation)]
+#![allow(clippy::no_effect, clippy::unnecessary_operation, clippy::identity_op)]
 
 static STATIC_ONE: usize = 2 - 1;
 static STATIC_NEG_ONE: i64 = 1 - 2;

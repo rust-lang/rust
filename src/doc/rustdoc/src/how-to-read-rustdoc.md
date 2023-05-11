@@ -43,7 +43,7 @@ including automatic and blanket implementations that `rustdoc` knows about.
 Subheadings, variants, fields, and many other things in this documentation
 are anchors and can be clicked on and deep-linked to,
 which is a great way to communicate exactly what you're talking about.
-The typograpical character "§" appears next to lines with anchors on them
+The typographical character "§" appears next to lines with anchors on them
 when hovered or given keyboard focus.
 
 ## The Navigation Bar
@@ -59,15 +59,8 @@ or the current item whose documentation is being displayed.
 ## The Theme Picker and Search Interface
 
 When viewing `rustdoc`'s output in a browser with JavaScript enabled,
-a dynamic interface appears at the top of the page.
-To the left is the theme picker, denoted with a paint-brush icon,
-and the search interface, help screen, and options appear to the right of that.
-
-### The Theme Picker
-
-Clicking on the theme picker provides a list of themes -
-by default `ayu`, `light`, and `dark` -
-which are available for viewing.
+a dynamic interface appears at the top of the page composed of the search
+interface, help screen, and options.
 
 ### The Search Interface
 
@@ -75,7 +68,7 @@ Typing in the search bar instantly searches the available documentation for
 the string entered with a fuzzy matching algorithm that is tolerant of minor
 typos.
 
-By default, the search results give are "In Names",
+By default, the search results given are "In Names",
 meaning that the fuzzy match is made against the names of items.
 Matching names are shown on the left, and the first few words of their
 descriptions are given on the right.
@@ -87,16 +80,36 @@ functions, and "In Return Types" shows matches in the return types of functions.
 Both are very useful when looking for a function whose name you can't quite
 bring to mind when you know the type you have or want.
 
-When typing in the search bar, you can prefix your search term with a type
-followed by a colon (such as `mod:`) to restrict the results to just that
-kind of item. (The available items are listed in the help popup.)
+Names in the search interface can be prefixed with an item type followed by a
+colon (such as `mod:`) to restrict the results to just that kind of item. Also,
+searching for `println!` will search for a macro named `println`, just like
+searching for `macro:println` does.
+
+Function signature searches can query generics, wrapped in angle brackets, and
+traits are normalized like types in the search engine. For example, a function
+with the signature `fn my_function<I: Iterator<Item=u32>>(input: I) -> usize`
+can be matched with the following queries:
+
+* `Iterator<u32> -> usize`
+* `trait:Iterator<primitive:u32> -> primitive:usize`
+* `Iterator -> usize`
+
+Generics and function parameters are order-agnostic, but sensitive to nesting
+and number of matches. For example, a function with the signature
+`fn read_all(&mut self: impl Read) -> Result<Vec<u8>, Error>`
+will match these queries:
+
+* `Read -> Result<Vec<u8>, Error>`
+* `Read -> Result<Error, Vec>`
+* `Read -> Result<Vec<u8>>`
+
+But it *does not* match `Result<Vec, u8>` or `Result<u8<Vec>>`.
 
 ### Shortcuts
 
 Pressing `S` while focused elsewhere on the page will move focus to the
 search bar, and pressing `?` shows the help screen,
 which includes all these shortcuts and more.
-Pressing `T` focuses the theme picker.
 
 When the search results are focused,
 the left and right arrows move between tabs and the up and down arrows move

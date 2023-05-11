@@ -14,7 +14,7 @@
 //!
 //! ```
 //! fn main() {
-//!     rustc_log::init_rustc_env_logger().unwrap();
+//!     rustc_log::init_env_logger("LOG").unwrap();
 //!
 //!     let edition = rustc_span::edition::Edition::Edition2021;
 //!     rustc_span::create_session_globals_then(edition, || {
@@ -23,9 +23,9 @@
 //! }
 //! ```
 //!
-//! Now `RUSTC_LOG=debug cargo run` will run your minimal main.rs and show
+//! Now `LOG=debug cargo run` will run your minimal main.rs and show
 //! rustc's debug logging. In a workflow like this, one might also add
-//! `std::env::set_var("RUSTC_LOG", "debug")` to the top of main so that `cargo
+//! `std::env::set_var("LOG", "debug")` to the top of main so that `cargo
 //! run` by itself is sufficient to get logs.
 //!
 //! The reason rustc_log is a tiny separate crate, as opposed to exposing the
@@ -38,18 +38,20 @@
 //! debugging, you can make changes inside those crates and quickly run main.rs
 //! to read the debug logs.
 
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+
 use std::env::{self, VarError};
 use std::fmt::{self, Display};
-use std::io;
+use std::io::{self, IsTerminal};
+use tracing_core::{Event, Subscriber};
 use tracing_subscriber::filter::{Directive, EnvFilter, LevelFilter};
+use tracing_subscriber::fmt::{
+    format::{self, FormatEvent, FormatFields},
+    FmtContext,
+};
 use tracing_subscriber::layer::SubscriberExt;
 
-pub fn init_rustc_env_logger() -> Result<(), Error> {
-    init_env_logger("RUSTC_LOG")
-}
-
-/// In contrast to `init_rustc_env_logger` this allows you to choose an env var
-/// other than `RUSTC_LOG`.
 pub fn init_env_logger(env: &str) -> Result<(), Error> {
     let filter = match env::var(env) {
         Ok(env) => EnvFilter::new(env),
@@ -67,27 +69,70 @@ pub fn init_env_logger(env: &str) -> Result<(), Error> {
         Err(VarError::NotUnicode(_value)) => return Err(Error::NonUnicodeColorValue),
     };
 
+    let verbose_entry_exit = match env::var_os(String::from(env) + "_ENTRY_EXIT") {
+        None => false,
+        Some(v) => &v != "0",
+    };
+
     let layer = tracing_tree::HierarchicalLayer::default()
         .with_writer(io::stderr)
         .with_indent_lines(true)
         .with_ansi(color_logs)
         .with_targets(true)
+        .with_verbose_exit(verbose_entry_exit)
+        .with_verbose_entry(verbose_entry_exit)
         .with_indent_amount(2);
-    #[cfg(parallel_compiler)]
+    #[cfg(all(parallel_compiler, debug_assertions))]
     let layer = layer.with_thread_ids(true).with_thread_names(true);
 
     let subscriber = tracing_subscriber::Registry::default().with(filter).with(layer);
-    tracing::subscriber::set_global_default(subscriber).unwrap();
+    match env::var(format!("{env}_BACKTRACE")) {
+        Ok(str) => {
+            let fmt_layer = tracing_subscriber::fmt::layer()
+                .with_writer(io::stderr)
+                .without_time()
+                .event_format(BacktraceFormatter { backtrace_target: str });
+            let subscriber = subscriber.with(fmt_layer);
+            tracing::subscriber::set_global_default(subscriber).unwrap();
+        }
+        Err(_) => {
+            tracing::subscriber::set_global_default(subscriber).unwrap();
+        }
+    };
 
     Ok(())
 }
 
+struct BacktraceFormatter {
+    backtrace_target: String,
+}
+
+impl<S, N> FormatEvent<S, N> for BacktraceFormatter
+where
+    S: Subscriber + for<'a> tracing_subscriber::registry::LookupSpan<'a>,
+    N: for<'a> FormatFields<'a> + 'static,
+{
+    fn format_event(
+        &self,
+        _ctx: &FmtContext<'_, S, N>,
+        mut writer: format::Writer<'_>,
+        event: &Event<'_>,
+    ) -> fmt::Result {
+        let target = event.metadata().target();
+        if !target.contains(&self.backtrace_target) {
+            return Ok(());
+        }
+        let backtrace = std::backtrace::Backtrace::capture();
+        writeln!(writer, "stack backtrace: \n{:?}", backtrace)
+    }
+}
+
 pub fn stdout_isatty() -> bool {
-    atty::is(atty::Stream::Stdout)
+    io::stdout().is_terminal()
 }
 
 pub fn stderr_isatty() -> bool {
-    atty::is(atty::Stream::Stderr)
+    io::stderr().is_terminal()
 }
 
 #[derive(Debug)]
@@ -103,8 +148,7 @@ impl Display for Error {
         match self {
             Error::InvalidColorValue(value) => write!(
                 formatter,
-                "invalid log color value '{}': expected one of always, never, or auto",
-                value,
+                "invalid log color value '{value}': expected one of always, never, or auto",
             ),
             Error::NonUnicodeColorValue => write!(
                 formatter,

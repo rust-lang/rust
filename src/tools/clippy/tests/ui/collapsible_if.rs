@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 #![allow(clippy::assertions_on_constants, clippy::equatable_if_let)]
 
 #[rustfmt::skip]
@@ -152,6 +152,11 @@ fn main() {
 
     // Fix #5962
     if matches!(true, true) {
+        if matches!(true, true) {}
+    }
+
+    // Issue #9375
+    if matches!(true, true) && truth() {
         if matches!(true, true) {}
     }
 

@@ -34,7 +34,7 @@
 //!   marker traits that indicate fundamental properties of types.
 //! * <code>[std::ops]::{[Drop], [Fn], [FnMut], [FnOnce]}</code>, various
 //!   operations for both destructors and overloading `()`.
-//! * <code>[std::mem]::[drop][mem::drop]</code>, a convenience function for explicitly
+//! * <code>[std::mem]::[drop]</code>, a convenience function for explicitly
 //!   dropping a value.
 //! * <code>[std::boxed]::[Box]</code>, a way to allocate values on the heap.
 //! * <code>[std::borrow]::[ToOwned]</code>, the conversion trait that defines
@@ -66,7 +66,6 @@
 //! * <code>[std::convert]::{[TryFrom], [TryInto]}</code>,
 //! * <code>[std::iter]::[FromIterator]</code>.
 //!
-//! [mem::drop]: crate::mem::drop
 //! [std::borrow]: crate::borrow
 //! [std::boxed]: crate::boxed
 //! [std::clone]: crate::clone
@@ -86,9 +85,6 @@
 //! [std::slice]: crate::slice
 //! [std::string]: crate::string
 //! [std::vec]: mod@crate::vec
-//! [TryFrom]: crate::convert::TryFrom
-//! [TryInto]: crate::convert::TryInto
-//! [FromIterator]: crate::iter::FromIterator
 //! [`to_owned`]: crate::borrow::ToOwned::to_owned
 //! [book-closures]: ../../book/ch13-01-closures.html
 //! [book-dtor]: ../../book/ch15-03-drop.html
@@ -131,4 +127,18 @@ pub mod rust_2021 {
     #[stable(feature = "prelude_2021", since = "1.55.0")]
     #[doc(no_inline)]
     pub use core::prelude::rust_2021::*;
+}
+
+/// The 2024 version of the prelude of The Rust Standard Library.
+///
+/// See the [module-level documentation](self) for more.
+#[unstable(feature = "prelude_2024", issue = "none")]
+pub mod rust_2024 {
+    #[unstable(feature = "prelude_2024", issue = "none")]
+    #[doc(no_inline)]
+    pub use super::v1::*;
+
+    #[unstable(feature = "prelude_2024", issue = "none")]
+    #[doc(no_inline)]
+    pub use core::prelude::rust_2024::*;
 }

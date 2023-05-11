@@ -1,0 +1,11 @@
+error: internal compiler error: delayed span bug triggered by #[rustc_error(delay_span_bug_from_inside_query)]
+  --> $DIR/delay_span_bug.rs:12:1
+   |
+LL | fn main() {}
+   | ^^^^^^^^^
+
+error: the compiler unexpectedly panicked. this is a bug.
+
+query stack during panic:
+#0 [trigger_delay_span_bug] triggering a delay span bug
+end of query stack

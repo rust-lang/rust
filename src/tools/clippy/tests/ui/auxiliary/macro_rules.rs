@@ -3,21 +3,6 @@
 //! Used to test that certain lints don't trigger in imported external macros
 
 #[macro_export]
-macro_rules! foofoo {
-    () => {
-        loop {}
-    };
-}
-
-#[macro_export]
-macro_rules! must_use_unit {
-    () => {
-        #[must_use]
-        fn foo() {}
-    };
-}
-
-#[macro_export]
 macro_rules! try_err {
     () => {
         pub fn try_err_fn() -> Result<i32, i32> {
@@ -37,80 +22,9 @@ macro_rules! string_add {
 }
 
 #[macro_export]
-macro_rules! take_external {
-    ($s:expr) => {
-        std::mem::replace($s, Default::default())
-    };
-}
-
-#[macro_export]
-macro_rules! option_env_unwrap_external {
-    ($env: expr) => {
-        option_env!($env).unwrap()
-    };
-    ($env: expr, $message: expr) => {
-        option_env!($env).expect($message)
-    };
-}
-
-#[macro_export]
-macro_rules! ref_arg_binding {
-    () => {
-        let ref _y = 42;
-    };
-}
-
-#[macro_export]
-macro_rules! ref_arg_function {
-    () => {
-        fn fun_example(ref _x: usize) {}
-    };
-}
-
-#[macro_export]
-macro_rules! as_conv_with_arg {
-    (0u32 as u64) => {
-        ()
-    };
-}
-
-#[macro_export]
-macro_rules! as_conv {
-    () => {
-        0u32 as u64
-    };
-}
-
-#[macro_export]
-macro_rules! large_enum_variant {
-    () => {
-        enum LargeEnumInMacro {
-            A(i32),
-            B([i32; 8000]),
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! field_reassign_with_default {
-    () => {
-        #[derive(Default)]
-        struct A {
-            pub i: i32,
-            pub j: i64,
-        }
-        fn lint() {
-            let mut a: A = Default::default();
-            a.i = 42;
-            a;
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! default_numeric_fallback {
-    () => {
-        let x = 22;
+macro_rules! string_lit_as_bytes {
+    ($s:literal) => {
+        const C: &[u8] = $s.as_bytes();
     };
 }
 
@@ -122,8 +36,11 @@ macro_rules! mut_mut {
 }
 
 #[macro_export]
-macro_rules! ptr_as_ptr_cast {
-    ($ptr: ident) => {
-        $ptr as *const i32
+macro_rules! issue_10421 {
+    () => {
+        let mut a = 1;
+        let mut b = 2;
+        a = b;
+        b = a;
     };
 }

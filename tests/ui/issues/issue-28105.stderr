@@ -1,0 +1,15 @@
+error[E0268]: `continue` outside of a loop
+  --> $DIR/issue-28105.rs:4:5
+   |
+LL |     continue
+   |     ^^^^^^^^ cannot `continue` outside of a loop
+
+error[E0268]: `break` outside of a loop or labeled block
+  --> $DIR/issue-28105.rs:6:5
+   |
+LL |     break
+   |     ^^^^^ cannot `break` outside of a loop or labeled block
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0268`.

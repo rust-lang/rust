@@ -5,23 +5,6 @@ macro_rules! forward_ref_unop {
         forward_ref_unop!(impl $imp, $method for $t,
                 #[stable(feature = "rust1", since = "1.0.0")]);
     };
-    (impl const $imp:ident, $method:ident for $t:ty) => {
-        forward_ref_unop!(impl const $imp, $method for $t,
-                #[stable(feature = "rust1", since = "1.0.0")]);
-    };
-    // Equivalent to the non-const version, with the addition of `rustc_const_unstable`
-    (impl const $imp:ident, $method:ident for $t:ty, #[$attr:meta]) => {
-        #[$attr]
-        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
-        impl const $imp for &$t {
-            type Output = <$t as $imp>::Output;
-
-            #[inline]
-            fn $method(self) -> <$t as $imp>::Output {
-                $imp::$method(*self)
-            }
-        }
-    };
     (impl $imp:ident, $method:ident for $t:ty, #[$attr:meta]) => {
         #[$attr]
         impl $imp for &$t {
@@ -41,45 +24,6 @@ macro_rules! forward_ref_binop {
     (impl $imp:ident, $method:ident for $t:ty, $u:ty) => {
         forward_ref_binop!(impl $imp, $method for $t, $u,
                 #[stable(feature = "rust1", since = "1.0.0")]);
-    };
-    (impl const $imp:ident, $method:ident for $t:ty, $u:ty) => {
-        forward_ref_binop!(impl const $imp, $method for $t, $u,
-                #[stable(feature = "rust1", since = "1.0.0")]);
-    };
-    // Equivalent to the non-const version, with the addition of `rustc_const_unstable`
-    (impl const $imp:ident, $method:ident for $t:ty, $u:ty, #[$attr:meta]) => {
-        #[$attr]
-        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
-        impl<'a> const $imp<$u> for &'a $t {
-            type Output = <$t as $imp<$u>>::Output;
-
-            #[inline]
-            fn $method(self, other: $u) -> <$t as $imp<$u>>::Output {
-                $imp::$method(*self, other)
-            }
-        }
-
-        #[$attr]
-        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
-        impl const $imp<&$u> for $t {
-            type Output = <$t as $imp<$u>>::Output;
-
-            #[inline]
-            fn $method(self, other: &$u) -> <$t as $imp<$u>>::Output {
-                $imp::$method(self, *other)
-            }
-        }
-
-        #[$attr]
-        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
-        impl const $imp<&$u> for &$t {
-            type Output = <$t as $imp<$u>>::Output;
-
-            #[inline]
-            fn $method(self, other: &$u) -> <$t as $imp<$u>>::Output {
-                $imp::$method(*self, *other)
-            }
-        }
     };
     (impl $imp:ident, $method:ident for $t:ty, $u:ty, #[$attr:meta]) => {
         #[$attr]
@@ -120,21 +64,6 @@ macro_rules! forward_ref_op_assign {
     (impl $imp:ident, $method:ident for $t:ty, $u:ty) => {
         forward_ref_op_assign!(impl $imp, $method for $t, $u,
                 #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")]);
-    };
-    (impl const $imp:ident, $method:ident for $t:ty, $u:ty) => {
-        forward_ref_op_assign!(impl const $imp, $method for $t, $u,
-                #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")]);
-    };
-    // Equivalent to the non-const version, with the addition of `rustc_const_unstable`
-    (impl const $imp:ident, $method:ident for $t:ty, $u:ty, #[$attr:meta]) => {
-        #[$attr]
-        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
-        impl const $imp<&$u> for $t {
-            #[inline]
-            fn $method(&mut self, other: &$u) {
-                $imp::$method(self, *other);
-            }
-        }
     };
     (impl $imp:ident, $method:ident for $t:ty, $u:ty, #[$attr:meta]) => {
         #[$attr]
@@ -198,7 +127,7 @@ macro_rules! impl_fn_for_zst {
 ///
 /// # Example
 ///
-/// ```
+/// ```ignore(cannot-test-this-because-non-exported-macro)
 /// cfg_if! {
 ///     if #[cfg(unix)] {
 ///         fn foo() { /* unix specific functionality */ }
@@ -227,22 +156,6 @@ macro_rules! cfg_if {
                 (( $i_meta ) ( $( $i_tokens )* )) ,
             )+
             (() ( $( $e_tokens )* )) ,
-        }
-    };
-
-    // match if/else chains lacking a final `else`
-    (
-        if #[cfg( $i_meta:meta )] { $( $i_tokens:tt )* }
-        $(
-            else if #[cfg( $e_meta:meta )] { $( $e_tokens:tt )* }
-        )*
-    ) => {
-        cfg_if! {
-            @__items () ;
-            (( $i_meta ) ( $( $i_tokens )* )) ,
-            $(
-                (( $e_meta ) ( $( $e_tokens )* )) ,
-            )*
         }
     };
 

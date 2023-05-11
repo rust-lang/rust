@@ -1,13 +1,13 @@
 use crate::clean::*;
 
-crate fn strip_item(mut item: Item) -> Item {
+pub(crate) fn strip_item(mut item: Item) -> Item {
     if !matches!(*item.kind, StrippedItem(..)) {
-        item.kind = box StrippedItem(item.kind);
+        item.kind = Box::new(StrippedItem(item.kind));
     }
     item
 }
 
-crate trait DocFolder: Sized {
+pub(crate) trait DocFolder: Sized {
     fn fold_item(&mut self, item: Item) -> Option<Item> {
         Some(self.fold_item_recur(item))
     }
@@ -18,30 +18,15 @@ crate trait DocFolder: Sized {
             StrippedItem(..) => unreachable!(),
             ModuleItem(i) => ModuleItem(self.fold_mod(i)),
             StructItem(mut i) => {
-                let num_fields = i.fields.len();
                 i.fields = i.fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
-                if !i.fields_stripped {
-                    i.fields_stripped =
-                        num_fields != i.fields.len() || i.fields.iter().any(|f| f.is_stripped());
-                }
                 StructItem(i)
             }
             UnionItem(mut i) => {
-                let num_fields = i.fields.len();
                 i.fields = i.fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
-                if !i.fields_stripped {
-                    i.fields_stripped =
-                        num_fields != i.fields.len() || i.fields.iter().any(|f| f.is_stripped());
-                }
                 UnionItem(i)
             }
             EnumItem(mut i) => {
-                let num_variants = i.variants.len();
                 i.variants = i.variants.into_iter().filter_map(|x| self.fold_item(x)).collect();
-                if !i.variants_stripped {
-                    i.variants_stripped = num_variants != i.variants.len()
-                        || i.variants.iter().any(|f| f.is_stripped());
-                }
                 EnumItem(i)
             }
             TraitItem(mut i) => {
@@ -52,22 +37,21 @@ crate trait DocFolder: Sized {
                 i.items = i.items.into_iter().filter_map(|x| self.fold_item(x)).collect();
                 ImplItem(i)
             }
-            VariantItem(i) => match i {
-                Variant::Struct(mut j) => {
-                    let num_fields = j.fields.len();
-                    j.fields = j.fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
-                    if !j.fields_stripped {
-                        j.fields_stripped = num_fields != j.fields.len()
-                            || j.fields.iter().any(|f| f.is_stripped());
+            VariantItem(Variant { kind, discriminant }) => {
+                let kind = match kind {
+                    VariantKind::Struct(mut j) => {
+                        j.fields = j.fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
+                        VariantKind::Struct(j)
                     }
-                    VariantItem(Variant::Struct(j))
-                }
-                Variant::Tuple(fields) => {
-                    let fields = fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
-                    VariantItem(Variant::Tuple(fields))
-                }
-                Variant::CLike => VariantItem(Variant::CLike),
-            },
+                    VariantKind::Tuple(fields) => {
+                        let fields = fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
+                        VariantKind::Tuple(fields)
+                    }
+                    VariantKind::CLike => VariantKind::CLike,
+                };
+
+                VariantItem(Variant { kind, discriminant })
+            }
             ExternCrateItem { src: _ }
             | ImportItem(_)
             | FunctionItem(_)
@@ -89,16 +73,16 @@ crate trait DocFolder: Sized {
             | AssocConstItem(..)
             | TyAssocTypeItem(..)
             | AssocTypeItem(..)
-            | KeywordItem(_) => kind,
+            | KeywordItem => kind,
         }
     }
 
     /// don't override!
     fn fold_item_recur(&mut self, mut item: Item) -> Item {
-        item.kind = box match *item.kind {
-            StrippedItem(box i) => StrippedItem(box self.fold_inner_recur(i)),
+        item.kind = Box::new(match *item.kind {
+            StrippedItem(box i) => StrippedItem(Box::new(self.fold_inner_recur(i))),
             _ => self.fold_inner_recur(*item.kind),
-        };
+        });
         item
     }
 
@@ -114,7 +98,7 @@ crate trait DocFolder: Sized {
 
         let external_traits = { std::mem::take(&mut *c.external_traits.borrow_mut()) };
         for (k, mut v) in external_traits {
-            v.trait_.items = v.trait_.items.into_iter().filter_map(|i| self.fold_item(i)).collect();
+            v.items = v.items.into_iter().filter_map(|i| self.fold_item(i)).collect();
             c.external_traits.borrow_mut().insert(k, v);
         }
 

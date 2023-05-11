@@ -1,0 +1,38 @@
+error: higher kinded lifetime bounds on nested opaque types are not supported yet
+  --> $DIR/issue-88236-2.rs:15:61
+   |
+LL | fn make_impl() -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {}
+   |                                                             ^^
+   |
+note: lifetime declared here
+  --> $DIR/issue-88236-2.rs:15:28
+   |
+LL | fn make_impl() -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {}
+   |                            ^^
+
+error: higher kinded lifetime bounds on nested opaque types are not supported yet
+  --> $DIR/issue-88236-2.rs:18:80
+   |
+LL | fn make_weird_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {
+   |                                                                                ^^
+   |
+note: lifetime declared here
+  --> $DIR/issue-88236-2.rs:18:47
+   |
+LL | fn make_weird_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {
+   |                                               ^^
+
+error: higher kinded lifetime bounds on nested opaque types are not supported yet
+  --> $DIR/issue-88236-2.rs:23:78
+   |
+LL | fn make_bad_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {
+   |                                                                              ^^
+   |
+note: lifetime declared here
+  --> $DIR/issue-88236-2.rs:23:45
+   |
+LL | fn make_bad_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {
+   |                                             ^^
+
+error: aborting due to 3 previous errors
+

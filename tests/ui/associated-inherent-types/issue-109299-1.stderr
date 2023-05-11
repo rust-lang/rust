@@ -1,0 +1,15 @@
+error[E0220]: associated type `Cursor` not found for `Lexer<T>` in the current scope
+  --> $DIR/issue-109299-1.rs:10:40
+   |
+LL | struct Lexer<T>(T);
+   | --------------- associated item `Cursor` not found for this struct
+...
+LL | type X = impl for<T> Fn() -> Lexer<T>::Cursor;
+   |                                        ^^^^^^ associated item not found in `Lexer<T>`
+   |
+   = note: the associated type was found for
+           - `Lexer<i32>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0220`.

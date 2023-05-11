@@ -19,6 +19,9 @@ fn extend_vector() {
     // Extend with mismatching expression should not be warned
     let mut vec3 = Vec::with_capacity(24322);
     vec3.extend(repeat(0).take(2));
+
+    let mut vec4 = Vec::with_capacity(len);
+    vec4.extend(repeat(0).take(vec4.capacity()));
 }
 
 fn mixed_extend_resize_vector() {
@@ -47,6 +50,9 @@ fn resize_vector() {
     // Resize with len expression
     let mut vec3 = Vec::with_capacity(len - 10);
     vec3.resize(len - 10, 0);
+
+    let mut vec4 = Vec::with_capacity(len);
+    vec4.resize(vec4.capacity(), 0);
 
     // Reinitialization should be warned
     vec1 = Vec::with_capacity(10);

@@ -1,9 +1,0 @@
-error[E0109]: type arguments are not allowed for this type
-  --> $DIR/issue-22706.rs:1:29
-   |
-LL | fn is_copy<T: ::std::marker<i32>::Copy>() {}
-   |                             ^^^ type argument not allowed
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0109`.

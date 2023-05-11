@@ -27,6 +27,7 @@ impl FromInner<Wtf8Buf> for Buf {
 }
 
 impl AsInner<Wtf8> for Buf {
+    #[inline]
     fn as_inner(&self) -> &Wtf8 {
         &self.inner
     }
@@ -44,6 +45,7 @@ impl fmt::Display for Buf {
     }
 }
 
+#[repr(transparent)]
 pub struct Slice {
     pub inner: Wtf8,
 }
@@ -163,9 +165,7 @@ impl Slice {
     }
 
     pub fn to_owned(&self) -> Buf {
-        let mut buf = Wtf8Buf::with_capacity(self.inner.len());
-        buf.push_wtf8(&self.inner);
-        Buf { inner: buf }
+        Buf { inner: self.inner.to_owned() }
     }
 
     pub fn clone_into(&self, buf: &mut Buf) {

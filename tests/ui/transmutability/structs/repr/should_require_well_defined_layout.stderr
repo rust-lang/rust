@@ -1,0 +1,267 @@
+error[E0277]: `should_reject_repr_rust::unit::repr_rust` cannot be safely transmuted into `()` in the defining scope of `assert::Context`
+  --> $DIR/should_require_well_defined_layout.rs:28:52
+   |
+LL |         assert::is_maybe_transmutable::<repr_rust, ()>();
+   |                                                    ^^ `should_reject_repr_rust::unit::repr_rust` does not have a well-specified layout
+   |
+note: required by a bound in `is_maybe_transmutable`
+  --> $DIR/should_require_well_defined_layout.rs:13:14
+   |
+LL |       pub fn is_maybe_transmutable<Src, Dst>()
+   |              --------------------- required by a bound in this function
+LL |       where
+LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
+   |  ______________^
+LL | |             Assume {
+LL | |                 alignment: true,
+LL | |                 lifetimes: true,
+...  |
+LL | |             }
+LL | |         }>
+   | |__________^ required by this bound in `is_maybe_transmutable`
+
+error[E0277]: `u128` cannot be safely transmuted into `should_reject_repr_rust::unit::repr_rust` in the defining scope of `assert::Context`
+  --> $DIR/should_require_well_defined_layout.rs:29:47
+   |
+LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
+   |                                               ^^^^^^^^^ `should_reject_repr_rust::unit::repr_rust` does not have a well-specified layout
+   |
+note: required by a bound in `is_maybe_transmutable`
+  --> $DIR/should_require_well_defined_layout.rs:13:14
+   |
+LL |       pub fn is_maybe_transmutable<Src, Dst>()
+   |              --------------------- required by a bound in this function
+LL |       where
+LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
+   |  ______________^
+LL | |             Assume {
+LL | |                 alignment: true,
+LL | |                 lifetimes: true,
+...  |
+LL | |             }
+LL | |         }>
+   | |__________^ required by this bound in `is_maybe_transmutable`
+
+error[E0277]: `should_reject_repr_rust::tuple::repr_rust` cannot be safely transmuted into `()` in the defining scope of `assert::Context`
+  --> $DIR/should_require_well_defined_layout.rs:34:52
+   |
+LL |         assert::is_maybe_transmutable::<repr_rust, ()>();
+   |                                                    ^^ `should_reject_repr_rust::tuple::repr_rust` does not have a well-specified layout
+   |
+note: required by a bound in `is_maybe_transmutable`
+  --> $DIR/should_require_well_defined_layout.rs:13:14
+   |
+LL |       pub fn is_maybe_transmutable<Src, Dst>()
+   |              --------------------- required by a bound in this function
+LL |       where
+LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
+   |  ______________^
+LL | |             Assume {
+LL | |                 alignment: true,
+LL | |                 lifetimes: true,
+...  |
+LL | |             }
+LL | |         }>
+   | |__________^ required by this bound in `is_maybe_transmutable`
+
+error[E0277]: `u128` cannot be safely transmuted into `should_reject_repr_rust::tuple::repr_rust` in the defining scope of `assert::Context`
+  --> $DIR/should_require_well_defined_layout.rs:35:47
+   |
+LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
+   |                                               ^^^^^^^^^ `should_reject_repr_rust::tuple::repr_rust` does not have a well-specified layout
+   |
+note: required by a bound in `is_maybe_transmutable`
+  --> $DIR/should_require_well_defined_layout.rs:13:14
+   |
+LL |       pub fn is_maybe_transmutable<Src, Dst>()
+   |              --------------------- required by a bound in this function
+LL |       where
+LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
+   |  ______________^
+LL | |             Assume {
+LL | |                 alignment: true,
+LL | |                 lifetimes: true,
+...  |
+LL | |             }
+LL | |         }>
+   | |__________^ required by this bound in `is_maybe_transmutable`
+
+error[E0277]: `should_reject_repr_rust::braces::repr_rust` cannot be safely transmuted into `()` in the defining scope of `assert::Context`
+  --> $DIR/should_require_well_defined_layout.rs:40:52
+   |
+LL |         assert::is_maybe_transmutable::<repr_rust, ()>();
+   |                                                    ^^ `should_reject_repr_rust::braces::repr_rust` does not have a well-specified layout
+   |
+note: required by a bound in `is_maybe_transmutable`
+  --> $DIR/should_require_well_defined_layout.rs:13:14
+   |
+LL |       pub fn is_maybe_transmutable<Src, Dst>()
+   |              --------------------- required by a bound in this function
+LL |       where
+LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
+   |  ______________^
+LL | |             Assume {
+LL | |                 alignment: true,
+LL | |                 lifetimes: true,
+...  |
+LL | |             }
+LL | |         }>
+   | |__________^ required by this bound in `is_maybe_transmutable`
+
+error[E0277]: `u128` cannot be safely transmuted into `should_reject_repr_rust::braces::repr_rust` in the defining scope of `assert::Context`
+  --> $DIR/should_require_well_defined_layout.rs:41:47
+   |
+LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
+   |                                               ^^^^^^^^^ `should_reject_repr_rust::braces::repr_rust` does not have a well-specified layout
+   |
+note: required by a bound in `is_maybe_transmutable`
+  --> $DIR/should_require_well_defined_layout.rs:13:14
+   |
+LL |       pub fn is_maybe_transmutable<Src, Dst>()
+   |              --------------------- required by a bound in this function
+LL |       where
+LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
+   |  ______________^
+LL | |             Assume {
+LL | |                 alignment: true,
+LL | |                 lifetimes: true,
+...  |
+LL | |             }
+LL | |         }>
+   | |__________^ required by this bound in `is_maybe_transmutable`
+
+error[E0277]: `aligned::repr_rust` cannot be safely transmuted into `()` in the defining scope of `assert::Context`
+  --> $DIR/should_require_well_defined_layout.rs:46:52
+   |
+LL |         assert::is_maybe_transmutable::<repr_rust, ()>();
+   |                                                    ^^ `aligned::repr_rust` does not have a well-specified layout
+   |
+note: required by a bound in `is_maybe_transmutable`
+  --> $DIR/should_require_well_defined_layout.rs:13:14
+   |
+LL |       pub fn is_maybe_transmutable<Src, Dst>()
+   |              --------------------- required by a bound in this function
+LL |       where
+LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
+   |  ______________^
+LL | |             Assume {
+LL | |                 alignment: true,
+LL | |                 lifetimes: true,
+...  |
+LL | |             }
+LL | |         }>
+   | |__________^ required by this bound in `is_maybe_transmutable`
+
+error[E0277]: `u128` cannot be safely transmuted into `aligned::repr_rust` in the defining scope of `assert::Context`
+  --> $DIR/should_require_well_defined_layout.rs:47:47
+   |
+LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
+   |                                               ^^^^^^^^^ `aligned::repr_rust` does not have a well-specified layout
+   |
+note: required by a bound in `is_maybe_transmutable`
+  --> $DIR/should_require_well_defined_layout.rs:13:14
+   |
+LL |       pub fn is_maybe_transmutable<Src, Dst>()
+   |              --------------------- required by a bound in this function
+LL |       where
+LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
+   |  ______________^
+LL | |             Assume {
+LL | |                 alignment: true,
+LL | |                 lifetimes: true,
+...  |
+LL | |             }
+LL | |         }>
+   | |__________^ required by this bound in `is_maybe_transmutable`
+
+error[E0277]: `packed::repr_rust` cannot be safely transmuted into `()` in the defining scope of `assert::Context`
+  --> $DIR/should_require_well_defined_layout.rs:52:52
+   |
+LL |         assert::is_maybe_transmutable::<repr_rust, ()>();
+   |                                                    ^^ `packed::repr_rust` does not have a well-specified layout
+   |
+note: required by a bound in `is_maybe_transmutable`
+  --> $DIR/should_require_well_defined_layout.rs:13:14
+   |
+LL |       pub fn is_maybe_transmutable<Src, Dst>()
+   |              --------------------- required by a bound in this function
+LL |       where
+LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
+   |  ______________^
+LL | |             Assume {
+LL | |                 alignment: true,
+LL | |                 lifetimes: true,
+...  |
+LL | |             }
+LL | |         }>
+   | |__________^ required by this bound in `is_maybe_transmutable`
+
+error[E0277]: `u128` cannot be safely transmuted into `packed::repr_rust` in the defining scope of `assert::Context`
+  --> $DIR/should_require_well_defined_layout.rs:53:47
+   |
+LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
+   |                                               ^^^^^^^^^ `packed::repr_rust` does not have a well-specified layout
+   |
+note: required by a bound in `is_maybe_transmutable`
+  --> $DIR/should_require_well_defined_layout.rs:13:14
+   |
+LL |       pub fn is_maybe_transmutable<Src, Dst>()
+   |              --------------------- required by a bound in this function
+LL |       where
+LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
+   |  ______________^
+LL | |             Assume {
+LL | |                 alignment: true,
+LL | |                 lifetimes: true,
+...  |
+LL | |             }
+LL | |         }>
+   | |__________^ required by this bound in `is_maybe_transmutable`
+
+error[E0277]: `nested::repr_c` cannot be safely transmuted into `()` in the defining scope of `assert::Context`
+  --> $DIR/should_require_well_defined_layout.rs:59:49
+   |
+LL |         assert::is_maybe_transmutable::<repr_c, ()>();
+   |                                                 ^^ `nested::repr_c` does not have a well-specified layout
+   |
+note: required by a bound in `is_maybe_transmutable`
+  --> $DIR/should_require_well_defined_layout.rs:13:14
+   |
+LL |       pub fn is_maybe_transmutable<Src, Dst>()
+   |              --------------------- required by a bound in this function
+LL |       where
+LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
+   |  ______________^
+LL | |             Assume {
+LL | |                 alignment: true,
+LL | |                 lifetimes: true,
+...  |
+LL | |             }
+LL | |         }>
+   | |__________^ required by this bound in `is_maybe_transmutable`
+
+error[E0277]: `u128` cannot be safely transmuted into `nested::repr_c` in the defining scope of `assert::Context`
+  --> $DIR/should_require_well_defined_layout.rs:60:47
+   |
+LL |         assert::is_maybe_transmutable::<u128, repr_c>();
+   |                                               ^^^^^^ `nested::repr_c` does not have a well-specified layout
+   |
+note: required by a bound in `is_maybe_transmutable`
+  --> $DIR/should_require_well_defined_layout.rs:13:14
+   |
+LL |       pub fn is_maybe_transmutable<Src, Dst>()
+   |              --------------------- required by a bound in this function
+LL |       where
+LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
+   |  ______________^
+LL | |             Assume {
+LL | |                 alignment: true,
+LL | |                 lifetimes: true,
+...  |
+LL | |             }
+LL | |         }>
+   | |__________^ required by this bound in `is_maybe_transmutable`
+
+error: aborting due to 12 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

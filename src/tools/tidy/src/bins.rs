@@ -21,6 +21,7 @@ mod os_impl {
 
 #[cfg(unix)]
 mod os_impl {
+    use crate::walk::{filter_dirs, walk_no_read};
     use std::fs;
     use std::os::unix::prelude::*;
     use std::path::Path;
@@ -56,8 +57,8 @@ mod os_impl {
             match fs::File::create(&path) {
                 Ok(file) => {
                     let exec = is_executable(&path).unwrap_or(false);
-                    std::mem::drop(file);
-                    std::fs::remove_file(&path).expect("Deleted temp file");
+                    drop(file);
+                    fs::remove_file(&path).expect("Deleted temp file");
                     // If the file is executable, then we assume that this
                     // filesystem does not track executability, so skip this check.
                     return if exec { Unsupported } else { Supported };
@@ -96,20 +97,31 @@ mod os_impl {
 
     #[cfg(unix)]
     pub fn check(path: &Path, bad: &mut bool) {
-        crate::walk_no_read(
-            path,
-            &mut |path| crate::filter_dirs(path) || path.ends_with("src/etc"),
+        use std::ffi::OsStr;
+
+        const ALLOWED: &[&str] = &["configure", "x"];
+
+        // FIXME: we don't need to look at all binaries, only files that have been modified in this branch
+        // (e.g. using `git ls-files`).
+        walk_no_read(
+            &[path],
+            |path, _is_dir| filter_dirs(path) || path.ends_with("src/etc"),
             &mut |entry| {
                 let file = entry.path();
-                let filename = file.file_name().unwrap().to_string_lossy();
-                let extensions = [".py", ".sh"];
-                if extensions.iter().any(|e| filename.ends_with(e)) {
+                let extension = file.extension();
+                let scripts = ["py", "sh", "ps1"];
+                if scripts.into_iter().any(|e| extension == Some(OsStr::new(e))) {
                     return;
                 }
 
                 if t!(is_executable(&file), file) {
                     let rel_path = file.strip_prefix(path).unwrap();
                     let git_friendly_path = rel_path.to_str().unwrap().replace("\\", "/");
+
+                    if ALLOWED.contains(&git_friendly_path.as_str()) {
+                        return;
+                    }
+
                     let output = Command::new("git")
                         .arg("ls-files")
                         .arg(&git_friendly_path)

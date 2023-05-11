@@ -5,7 +5,6 @@ use std::io::{Error, ErrorKind, Read};
 use std::path::{Path, PathBuf};
 use std::{env, fs};
 
-use regex::Regex;
 use thiserror::Error;
 
 use crate::config::config_type::ConfigType;
@@ -14,16 +13,20 @@ pub use crate::config::file_lines::{FileLines, FileName, Range};
 #[allow(unreachable_pub)]
 pub use crate::config::lists::*;
 #[allow(unreachable_pub)]
+pub use crate::config::macro_names::{MacroSelector, MacroSelectors};
+#[allow(unreachable_pub)]
 pub use crate::config::options::*;
 
 #[macro_use]
 pub(crate) mod config_type;
 #[macro_use]
+#[allow(unreachable_pub)]
 pub(crate) mod options;
 
 pub(crate) mod file_lines;
-pub(crate) mod license;
+#[allow(unreachable_pub)]
 pub(crate) mod lists;
+pub(crate) mod macro_names;
 
 // This macro defines configuration options used in rustfmt. Each option
 // is defined as follows:
@@ -59,16 +62,18 @@ create_config! {
     // Comments. macros, and strings
     wrap_comments: bool, false, false, "Break comments to fit on the line";
     format_code_in_doc_comments: bool, false, false, "Format the code snippet in doc comments.";
+    doc_comment_code_block_width: usize, 100, false, "Maximum width for code snippets in doc \
+        comments. No effect unless format_code_in_doc_comments = true";
     comment_width: usize, 80, false,
         "Maximum length of comments. No effect unless wrap_comments = true";
     normalize_comments: bool, false, false, "Convert /* */ comments to // comments where possible";
     normalize_doc_attributes: bool, false, false, "Normalize doc attributes as doc comments";
-    license_template_path: String, String::default(), false,
-        "Beginning of file must match license template";
     format_strings: bool, false, false, "Format string literals where necessary";
     format_macro_matchers: bool, false, false,
         "Format the metavariable matching patterns in macros";
     format_macro_bodies: bool, true, false, "Format the bodies of macros";
+    skip_macro_invocations: MacroSelectors, MacroSelectors::default(), false,
+        "Skip formatting the bodies of macros invoked with the following names.";
     hex_literal_case: HexLiteralCase, HexLiteralCase::Preserve, false,
         "Format hexadecimal integer literals";
 
@@ -121,7 +126,9 @@ create_config! {
     force_multiline_blocks: bool, false, false,
         "Force multiline closure bodies and match arms to be wrapped in a block";
     fn_args_layout: Density, Density::Tall, true,
-        "Control the layout of arguments in a function";
+        "(deprecated: use fn_params_layout instead)";
+    fn_params_layout: Density, Density::Tall, true,
+        "Control the layout of parameters in function signatures.";
     brace_style: BraceStyle, BraceStyle::SameLineWhere, false, "Brace style for items";
     control_brace_style: ControlBraceStyle, ControlBraceStyle::AlwaysSameLine, false,
         "Brace style for control flow constructs";
@@ -164,10 +171,6 @@ create_config! {
     error_on_unformatted: bool, false, false,
         "Error if unable to get comments or string literals within max_width, \
          or they are left with trailing whitespaces";
-    report_todo: ReportTactic, ReportTactic::Never, false,
-        "Report all, none or unnumbered occurrences of TODO in source file comments";
-    report_fixme: ReportTactic, ReportTactic::Never, false,
-        "Report all, none or unnumbered occurrences of FIXME in source file comments";
     ignore: IgnoreList, IgnoreList::default(), false,
         "Skip formatting the specified files and directories";
 
@@ -181,7 +184,7 @@ create_config! {
     make_backup: bool, false, false, "Backup changed files";
     print_misformatted_file_names: bool, false, true,
         "Prints the names of mismatched files that were formatted. Prints the names of \
-         files that would be formated when used with `--check` mode. ";
+         files that would be formatted when used with `--check` mode. ";
 }
 
 #[derive(Error, Debug)]
@@ -197,6 +200,7 @@ impl PartialConfig {
         cloned.width_heuristics = None;
         cloned.print_misformatted_file_names = None;
         cloned.merge_imports = None;
+        cloned.fn_args_layout = None;
 
         ::toml::to_string(&cloned).map_err(ToTomlError)
     }
@@ -409,17 +413,25 @@ mod test {
     use super::*;
     use std::str;
 
+    use crate::config::macro_names::MacroName;
     use rustfmt_config_proc_macro::{nightly_only_test, stable_only_test};
 
     #[allow(dead_code)]
     mod mock {
         use super::super::*;
+        use rustfmt_config_proc_macro::config_type;
+
+        #[config_type]
+        pub(crate) enum PartiallyUnstableOption {
+            V1,
+            V2,
+            #[unstable_variant]
+            V3,
+        }
 
         create_config! {
             // Options that are used by the generated functions
             max_width: usize, 100, true, "Maximum width of each line";
-            license_template_path: String, String::default(), false,
-                "Beginning of file must match license template";
             required_version: String, env!("CARGO_PKG_VERSION").to_owned(), false,
                 "Require a specific version of rustfmt.";
             ignore: IgnoreList, IgnoreList::default(), false,
@@ -434,6 +446,12 @@ mod test {
             imports_granularity: ImportGranularity, ImportGranularity::Preserve, false,
                 "Merge imports";
             merge_imports: bool, false, false, "(deprecated: use imports_granularity instead)";
+
+            // fn_args_layout renamed to fn_params_layout
+            fn_args_layout: Density, Density::Tall, true,
+                "(deprecated: use fn_params_layout instead)";
+            fn_params_layout: Density, Density::Tall, true,
+                "Control the layout of parameters in a function signatures.";
 
             // Width Heuristics
             use_small_heuristics: Heuristics, Heuristics::Default, true,
@@ -459,6 +477,63 @@ mod test {
             // Options that are used by the tests
             stable_option: bool, false, true, "A stable option";
             unstable_option: bool, false, false, "An unstable option";
+            partially_unstable_option: PartiallyUnstableOption, PartiallyUnstableOption::V1, true,
+                "A partially unstable option";
+        }
+
+        #[cfg(test)]
+        mod partially_unstable_option {
+            use super::{Config, PartialConfig, PartiallyUnstableOption};
+            use rustfmt_config_proc_macro::{nightly_only_test, stable_only_test};
+            use std::path::Path;
+
+            /// From the config file, we can fill with a stable variant
+            #[test]
+            fn test_from_toml_stable_value() {
+                let toml = r#"
+                    partially_unstable_option = "V2"
+                "#;
+                let partial_config: PartialConfig = toml::from_str(toml).unwrap();
+                let config = Config::default();
+                let config = config.fill_from_parsed_config(partial_config, Path::new(""));
+                assert_eq!(
+                    config.partially_unstable_option(),
+                    PartiallyUnstableOption::V2
+                );
+            }
+
+            /// From the config file, we cannot fill with an unstable variant (stable only)
+            #[stable_only_test]
+            #[test]
+            fn test_from_toml_unstable_value_on_stable() {
+                let toml = r#"
+                    partially_unstable_option = "V3"
+                "#;
+                let partial_config: PartialConfig = toml::from_str(toml).unwrap();
+                let config = Config::default();
+                let config = config.fill_from_parsed_config(partial_config, Path::new(""));
+                assert_eq!(
+                    config.partially_unstable_option(),
+                    // default value from config, i.e. fill failed
+                    PartiallyUnstableOption::V1
+                );
+            }
+
+            /// From the config file, we can fill with an unstable variant (nightly only)
+            #[nightly_only_test]
+            #[test]
+            fn test_from_toml_unstable_value_on_nightly() {
+                let toml = r#"
+                    partially_unstable_option = "V3"
+                "#;
+                let partial_config: PartialConfig = toml::from_str(toml).unwrap();
+                let config = Config::default();
+                let config = config.fill_from_parsed_config(partial_config, Path::new(""));
+                assert_eq!(
+                    config.partially_unstable_option(),
+                    PartiallyUnstableOption::V3
+                );
+            }
         }
     }
 
@@ -497,6 +572,11 @@ mod test {
         assert_eq!(config.was_set().verbose(), false);
     }
 
+    const PRINT_DOCS_STABLE_OPTION: &str = "stable_option <boolean> Default: false";
+    const PRINT_DOCS_UNSTABLE_OPTION: &str = "unstable_option <boolean> Default: false (unstable)";
+    const PRINT_DOCS_PARTIALLY_UNSTABLE_OPTION: &str =
+        "partially_unstable_option [V1|V2|V3 (unstable)] Default: V1";
+
     #[test]
     fn test_print_docs_exclude_unstable() {
         use self::mock::Config;
@@ -505,10 +585,9 @@ mod test {
         Config::print_docs(&mut output, false);
 
         let s = str::from_utf8(&output).unwrap();
-
-        assert_eq!(s.contains("stable_option"), true);
-        assert_eq!(s.contains("unstable_option"), false);
-        assert_eq!(s.contains("(unstable)"), false);
+        assert_eq!(s.contains(PRINT_DOCS_STABLE_OPTION), true);
+        assert_eq!(s.contains(PRINT_DOCS_UNSTABLE_OPTION), false);
+        assert_eq!(s.contains(PRINT_DOCS_PARTIALLY_UNSTABLE_OPTION), true);
     }
 
     #[test]
@@ -519,34 +598,9 @@ mod test {
         Config::print_docs(&mut output, true);
 
         let s = str::from_utf8(&output).unwrap();
-        assert_eq!(s.contains("stable_option"), true);
-        assert_eq!(s.contains("unstable_option"), true);
-        assert_eq!(s.contains("(unstable)"), true);
-    }
-
-    #[test]
-    fn test_empty_string_license_template_path() {
-        let toml = r#"license_template_path = """#;
-        let config = Config::from_toml(toml, Path::new("")).unwrap();
-        assert!(config.license_template.is_none());
-    }
-
-    #[nightly_only_test]
-    #[test]
-    fn test_valid_license_template_path() {
-        let toml = r#"license_template_path = "tests/license-template/lt.txt""#;
-        let config = Config::from_toml(toml, Path::new("")).unwrap();
-        assert!(config.license_template.is_some());
-    }
-
-    #[nightly_only_test]
-    #[test]
-    fn test_override_existing_license_with_no_license() {
-        let toml = r#"license_template_path = "tests/license-template/lt.txt""#;
-        let mut config = Config::from_toml(toml, Path::new("")).unwrap();
-        assert!(config.license_template.is_some());
-        config.override_value("license_template_path", "");
-        assert!(config.license_template.is_none());
+        assert_eq!(s.contains(PRINT_DOCS_STABLE_OPTION), true);
+        assert_eq!(s.contains(PRINT_DOCS_UNSTABLE_OPTION), true);
+        assert_eq!(s.contains(PRINT_DOCS_PARTIALLY_UNSTABLE_OPTION), true);
     }
 
     #[test]
@@ -567,13 +621,14 @@ chain_width = 60
 single_line_if_else_max_width = 50
 wrap_comments = false
 format_code_in_doc_comments = false
+doc_comment_code_block_width = 100
 comment_width = 80
 normalize_comments = false
 normalize_doc_attributes = false
-license_template_path = ""
 format_strings = false
 format_macro_matchers = false
 format_macro_bodies = true
+skip_macro_invocations = []
 hex_literal_case = "Preserve"
 empty_item_single_line = true
 struct_lit_single_line = true
@@ -600,7 +655,7 @@ enum_discrim_align_threshold = 0
 match_arm_blocks = true
 match_arm_leading_pipes = "Never"
 force_multiline_blocks = false
-fn_args_layout = "Tall"
+fn_params_layout = "Tall"
 brace_style = "SameLineWhere"
 control_brace_style = "AlwaysSameLine"
 trailing_semicolon = true
@@ -625,8 +680,6 @@ skip_children = false
 hide_parse_errors = false
 error_on_line_overflow = false
 error_on_unformatted = false
-report_todo = "Never"
-report_fixme = "Never"
 ignore = []
 emit_mode = "Files"
 make_backup = false
@@ -955,5 +1008,46 @@ make_backup = false
             config.override_value("single_line_if_else_max_width", "101");
             assert_eq!(config.single_line_if_else_max_width(), 100);
         }
+    }
+
+    #[cfg(test)]
+    mod partially_unstable_option {
+        use super::mock::{Config, PartiallyUnstableOption};
+        use super::*;
+
+        /// From the command line, we can override with a stable variant.
+        #[test]
+        fn test_override_stable_value() {
+            let mut config = Config::default();
+            config.override_value("partially_unstable_option", "V2");
+            assert_eq!(
+                config.partially_unstable_option(),
+                PartiallyUnstableOption::V2
+            );
+        }
+
+        /// From the command line, we can override with an unstable variant.
+        #[test]
+        fn test_override_unstable_value() {
+            let mut config = Config::default();
+            config.override_value("partially_unstable_option", "V3");
+            assert_eq!(
+                config.partially_unstable_option(),
+                PartiallyUnstableOption::V3
+            );
+        }
+    }
+
+    #[test]
+    fn test_override_skip_macro_invocations() {
+        let mut config = Config::default();
+        config.override_value("skip_macro_invocations", r#"["*", "println"]"#);
+        assert_eq!(
+            config.skip_macro_invocations(),
+            MacroSelectors(vec![
+                MacroSelector::All,
+                MacroSelector::Name(MacroName::new("println".to_owned()))
+            ])
+        );
     }
 }

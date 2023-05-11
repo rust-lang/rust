@@ -1,0 +1,16 @@
+[package]
+name = "rustc_smir"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+rustc_hir = { path = "../rustc_hir" }
+rustc_middle = { path = "../rustc_middle", optional = true }
+rustc_span = { path = "../rustc_span", optional = true }
+tracing = "0.1"
+
+[features]
+default = [
+    "rustc_middle",
+    "rustc_span",
+]

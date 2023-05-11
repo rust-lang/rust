@@ -1,0 +1,11 @@
+error[E0282]: type annotations needed
+  --> $DIR/issue-107745-avoid-expr-from-macro-expansion.rs:17:22
+   |
+LL |     println!("{:?}", []);
+   |                      ^^ cannot infer type
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

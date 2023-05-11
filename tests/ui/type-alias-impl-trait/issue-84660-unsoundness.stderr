@@ -1,0 +1,12 @@
+error[E0119]: conflicting implementations of trait `Trait<Bar, _>`
+  --> $DIR/issue-84660-unsoundness.rs:23:1
+   |
+LL | impl<In, Out> Trait<Bar, In> for Out {
+   | ------------------------------------ first implementation here
+...
+LL | impl<In, Out> Trait<(), In> for Out {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0119`.

@@ -6,14 +6,16 @@
 //
 // For example, `-C target-cpu=cortex-a53`.
 
-use super::{LinkerFlavor, LldFlavor, PanicStrategy, RelocModel, Target, TargetOptions};
+use super::{
+    Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, SanitizerSet, Target, TargetOptions,
+};
 
 pub fn target() -> Target {
     let opts = TargetOptions {
-        linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
+        linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
         linker: Some("rust-lld".into()),
-        features: "+strict-align,+neon,+fp-armv8".into(),
-        executables: true,
+        features: "+v8a,+strict-align,+neon,+fp-armv8".into(),
+        supported_sanitizers: SanitizerSet::KCFI | SanitizerSet::KERNELADDRESS,
         relocation_model: RelocModel::Static,
         disable_redzone: true,
         max_atomic_width: Some(128),

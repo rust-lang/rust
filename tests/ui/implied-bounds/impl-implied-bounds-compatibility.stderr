@@ -1,0 +1,31 @@
+error: impl method assumes more implied bounds than the corresponding trait method
+  --> $DIR/impl-implied-bounds-compatibility.rs:14:35
+   |
+LL |     fn listeners<'b>(&'b self) -> &'a MessageListeners<'b> {
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace this type to make the impl signature compatible: `&'b MessageListeners<'b>`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #105572 <https://github.com/rust-lang/rust/issues/105572>
+note: the lint level is defined here
+  --> $DIR/impl-implied-bounds-compatibility.rs:1:9
+   |
+LL | #![deny(implied_bounds_entailment)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+Future incompatibility report: Future breakage diagnostic:
+error: impl method assumes more implied bounds than the corresponding trait method
+  --> $DIR/impl-implied-bounds-compatibility.rs:14:35
+   |
+LL |     fn listeners<'b>(&'b self) -> &'a MessageListeners<'b> {
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace this type to make the impl signature compatible: `&'b MessageListeners<'b>`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #105572 <https://github.com/rust-lang/rust/issues/105572>
+note: the lint level is defined here
+  --> $DIR/impl-implied-bounds-compatibility.rs:1:9
+   |
+LL | #![deny(implied_bounds_entailment)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+

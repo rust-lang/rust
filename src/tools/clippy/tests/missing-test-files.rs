@@ -17,7 +17,7 @@ fn test_missing_tests() {
             "Didn't see a test file for the following files:\n\n{}\n",
             missing_files
                 .iter()
-                .map(|s| format!("\t{}", s))
+                .map(|s| format!("\t{s}"))
                 .collect::<Vec<_>>()
                 .join("\n")
         );

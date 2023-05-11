@@ -12,7 +12,7 @@ use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
 
-#[allow(clippy::module_name_repetitions)]
+#[expect(clippy::module_name_repetitions)]
 #[derive(Copy, Clone)]
 pub struct UselessVec {
     pub too_large_for_stack: u64,
@@ -28,12 +28,14 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// # fn foo(my_vec: &[u8]) {}
+    /// fn foo(_x: &[u8]) {}
     ///
-    /// // Bad
     /// foo(&vec![1, 2]);
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # fn foo(_x: &[u8]) {}
     /// foo(&[1, 2]);
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -83,7 +85,7 @@ impl UselessVec {
         let snippet = match *vec_args {
             higher::VecArgs::Repeat(elem, len) => {
                 if let Some((Constant::Int(len_constant), _)) = constant(cx, cx.typeck_results(), len) {
-                    #[allow(clippy::cast_possible_truncation)]
+                    #[expect(clippy::cast_possible_truncation)]
                     if len_constant as u64 * size_of(cx, elem) > self.too_large_for_stack {
                         return;
                     }
@@ -110,7 +112,6 @@ impl UselessVec {
             },
             higher::VecArgs::Vec(args) => {
                 if let Some(last) = args.iter().last() {
-                    #[allow(clippy::cast_possible_truncation)]
                     if args.len() as u64 * size_of(cx, last) > self.too_large_for_stack {
                         return;
                     }

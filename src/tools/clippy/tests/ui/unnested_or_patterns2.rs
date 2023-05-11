@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![feature(box_patterns)]
 #![warn(clippy::unnested_or_patterns)]

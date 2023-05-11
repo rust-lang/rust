@@ -23,6 +23,14 @@ struct ArtifactNotification {
     artifact: PathBuf,
 }
 
+#[derive(Deserialize)]
+struct UnusedExternNotification {
+    #[allow(dead_code)]
+    lint_level: String,
+    #[allow(dead_code)]
+    unused_extern_names: Vec<String>,
+}
+
 #[derive(Deserialize, Clone)]
 struct DiagnosticSpan {
     file_name: String,
@@ -111,6 +119,9 @@ pub fn extract_rendered(output: &str) -> String {
                         ))
                     }
                 } else if serde_json::from_str::<ArtifactNotification>(line).is_ok() {
+                    // Ignore the notification.
+                    None
+                } else if serde_json::from_str::<UnusedExternNotification>(line).is_ok() {
                     // Ignore the notification.
                     None
                 } else {

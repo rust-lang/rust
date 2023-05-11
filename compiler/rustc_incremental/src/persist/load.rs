@@ -1,14 +1,15 @@
 //! Code to save/load the dep-graph from files.
 
+use crate::errors;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::memmap::Mmap;
 use rustc_middle::dep_graph::{SerializedDepGraph, WorkProduct, WorkProductId};
-use rustc_middle::ty::OnDiskCache;
-use rustc_serialize::opaque::Decoder;
+use rustc_middle::query::on_disk_cache::OnDiskCache;
+use rustc_serialize::opaque::MemDecoder;
 use rustc_serialize::Decodable;
 use rustc_session::config::IncrementalStateAssertion;
 use rustc_session::Session;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use super::data::*;
 use super::file_format;
@@ -27,11 +28,10 @@ pub enum LoadResult<T> {
     },
     /// The file either didn't exist or was produced by an incompatible compiler version.
     DataOutOfDate,
-    /// An error occurred.
-    Error {
-        #[allow(missing_docs)]
-        message: String,
-    },
+    /// Loading the dep graph failed.
+    LoadDepGraph(PathBuf, std::io::Error),
+    /// Decoding loaded incremental cache failed.
+    DecodeIncrCache(Box<dyn std::any::Any + Send>),
 }
 
 impl<T: Default> LoadResult<T> {
@@ -40,36 +40,31 @@ impl<T: Default> LoadResult<T> {
         // Check for errors when using `-Zassert-incremental-state`
         match (sess.opts.assert_incr_state, &self) {
             (Some(IncrementalStateAssertion::NotLoaded), LoadResult::Ok { .. }) => {
-                sess.fatal(
-                    "We asserted that the incremental cache should not be loaded, \
-                         but it was loaded.",
-                );
+                sess.emit_fatal(errors::AssertNotLoaded);
             }
             (
                 Some(IncrementalStateAssertion::Loaded),
-                LoadResult::Error { .. } | LoadResult::DataOutOfDate,
+                LoadResult::LoadDepGraph(..)
+                | LoadResult::DecodeIncrCache(..)
+                | LoadResult::DataOutOfDate,
             ) => {
-                sess.fatal(
-                    "We asserted that an existing incremental cache directory should \
-                         be successfully loaded, but it was not.",
-                );
+                sess.emit_fatal(errors::AssertLoaded);
             }
             _ => {}
         };
 
         match self {
-            LoadResult::Error { message } => {
-                sess.warn(&message);
+            LoadResult::LoadDepGraph(path, err) => {
+                sess.emit_warning(errors::LoadDepGraph { path, err });
+                Default::default()
+            }
+            LoadResult::DecodeIncrCache(err) => {
+                sess.emit_warning(errors::DecodeIncrCache { err: format!("{err:?}") });
                 Default::default()
             }
             LoadResult::DataOutOfDate => {
                 if let Err(err) = delete_all_session_dir_contents(sess) {
-                    sess.err(&format!(
-                        "Failed to delete invalidated or incompatible \
-                         incremental compilation session directory contents `{}`: {}.",
-                        dep_graph_path(sess).display(),
-                        err
-                    ));
+                    sess.emit_err(errors::DeleteIncompatible { path: dep_graph_path(sess), err });
                 }
                 Default::default()
             }
@@ -90,9 +85,7 @@ fn load_data(
             // compiler version. Neither is an error.
             LoadResult::DataOutOfDate
         }
-        Err(err) => LoadResult::Error {
-            message: format!("could not load dep-graph from `{}`: {}", path.display(), err),
-        },
+        Err(err) => LoadResult::LoadDepGraph(path.to_path_buf(), err),
     }
 }
 
@@ -114,9 +107,9 @@ impl<T> MaybeAsync<LoadResult<T>> {
     pub fn open(self) -> LoadResult<T> {
         match self {
             MaybeAsync::Sync(result) => result,
-            MaybeAsync::Async(handle) => handle.join().unwrap_or_else(|e| LoadResult::Error {
-                message: format!("could not decode incremental cache: {:?}", e),
-            }),
+            MaybeAsync::Async(handle) => {
+                handle.join().unwrap_or_else(|e| LoadResult::DecodeIncrCache(e))
+            }
         }
     }
 }
@@ -141,7 +134,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
     // Calling `sess.incr_comp_session_dir()` will panic if `sess.opts.incremental.is_none()`.
     // Fortunately, we just checked that this isn't the case.
     let path = dep_graph_path(&sess);
-    let report_incremental_info = sess.opts.debugging_opts.incremental_info;
+    let report_incremental_info = sess.opts.unstable_opts.incremental_info;
     let expected_hash = sess.opts.dep_tracking_hash(false);
 
     let mut prev_work_products = FxHashMap::default();
@@ -156,26 +149,18 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
 
         if let LoadResult::Ok { data: (work_products_data, start_pos) } = load_result {
             // Decode the list of work_products
-            let mut work_product_decoder = Decoder::new(&work_products_data[..], start_pos);
+            let mut work_product_decoder = MemDecoder::new(&work_products_data[..], start_pos);
             let work_products: Vec<SerializedWorkProduct> =
                 Decodable::decode(&mut work_product_decoder);
 
             for swp in work_products {
-                let mut all_files_exist = true;
-                if let Some(ref file_name) = swp.work_product.saved_file {
-                    let path = in_incr_comp_dir_sess(sess, file_name);
-                    if !path.exists() {
-                        all_files_exist = false;
-
-                        if sess.opts.debugging_opts.incremental_info {
-                            eprintln!(
-                                "incremental: could not find file for work \
-                                    product: {}",
-                                path.display()
-                            );
-                        }
+                let all_files_exist = swp.work_product.saved_files.iter().all(|(_, path)| {
+                    let exists = in_incr_comp_dir_sess(sess, path).exists();
+                    if !exists && sess.opts.unstable_opts.incremental_info {
+                        eprintln!("incremental: could not find file for work product: {path}",);
                     }
-                }
+                    exists
+                });
 
                 if all_files_exist {
                     debug!("reconcile_work_products: all files for {:?} exist", swp);
@@ -193,9 +178,10 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
 
         match load_data(report_incremental_info, &path, nightly_build) {
             LoadResult::DataOutOfDate => LoadResult::DataOutOfDate,
-            LoadResult::Error { message } => LoadResult::Error { message },
+            LoadResult::LoadDepGraph(path, err) => LoadResult::LoadDepGraph(path, err),
+            LoadResult::DecodeIncrCache(err) => LoadResult::DecodeIncrCache(err),
             LoadResult::Ok { data: (bytes, start_pos) } => {
-                let mut decoder = Decoder::new(&bytes, start_pos);
+                let mut decoder = MemDecoder::new(&bytes, start_pos);
                 let prev_commandline_args_hash = u64::decode(&mut decoder);
 
                 if prev_commandline_args_hash != expected_hash {
@@ -225,7 +211,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
 /// If we are not in incremental compilation mode, returns `None`.
 /// Otherwise, tries to load the query result cache from disk,
 /// creating an empty cache if it could not be loaded.
-pub fn load_query_result_cache<'a, C: OnDiskCache<'a>>(sess: &'a Session) -> Option<C> {
+pub fn load_query_result_cache(sess: &Session) -> Option<OnDiskCache<'_>> {
     if sess.opts.incremental.is_none() {
         return None;
     }
@@ -233,11 +219,13 @@ pub fn load_query_result_cache<'a, C: OnDiskCache<'a>>(sess: &'a Session) -> Opt
     let _prof_timer = sess.prof.generic_activity("incr_comp_load_query_result_cache");
 
     match load_data(
-        sess.opts.debugging_opts.incremental_info,
+        sess.opts.unstable_opts.incremental_info,
         &query_cache_path(sess),
         sess.is_nightly_build(),
     ) {
-        LoadResult::Ok { data: (bytes, start_pos) } => Some(C::new(sess, bytes, start_pos)),
-        _ => Some(C::new_empty(sess.source_map())),
+        LoadResult::Ok { data: (bytes, start_pos) } => {
+            Some(OnDiskCache::new(sess, bytes, start_pos))
+        }
+        _ => Some(OnDiskCache::new_empty(sess.source_map())),
     }
 }

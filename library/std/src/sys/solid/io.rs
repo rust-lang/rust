@@ -75,3 +75,7 @@ impl<'a> IoSliceMut<'a> {
         unsafe { slice::from_raw_parts_mut(self.vec.iov_base as *mut u8, self.vec.iov_len) }
     }
 }
+
+pub fn is_terminal<T>(_: &T) -> bool {
+    false
+}

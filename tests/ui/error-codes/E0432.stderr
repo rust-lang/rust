@@ -1,0 +1,11 @@
+error[E0432]: unresolved import `something`
+  --> $DIR/E0432.rs:1:5
+   |
+LL | use something::Foo;
+   |     ^^^^^^^^^ maybe a missing crate `something`?
+   |
+   = help: consider adding `extern crate something` to use the `something` crate
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0432`.

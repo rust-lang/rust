@@ -2,13 +2,13 @@ use super::BackendTypes;
 use crate::mir::place::PlaceRef;
 use rustc_middle::mir::interpret::{ConstAllocation, Scalar};
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_span::Symbol;
 use rustc_target::abi::{self, Size};
 
 pub trait ConstMethods<'tcx>: BackendTypes {
     // Constant constructors
     fn const_null(&self, t: Self::Type) -> Self::Value;
     fn const_undef(&self, t: Self::Type) -> Self::Value;
+    fn const_poison(&self, t: Self::Type) -> Self::Value;
     fn const_int(&self, t: Self::Type, i: i64) -> Self::Value;
     fn const_uint(&self, t: Self::Type, i: u64) -> Self::Value;
     fn const_uint_big(&self, t: Self::Type, u: u128) -> Self::Value;
@@ -21,7 +21,7 @@ pub trait ConstMethods<'tcx>: BackendTypes {
     fn const_u8(&self, i: u8) -> Self::Value;
     fn const_real(&self, t: Self::Type, val: f64) -> Self::Value;
 
-    fn const_str(&self, s: Symbol) -> (Self::Value, Self::Value);
+    fn const_str(&self, s: &str) -> (Self::Value, Self::Value);
     fn const_struct(&self, elts: &[Self::Value], packed: bool) -> Self::Value;
 
     fn const_to_opt_uint(&self, v: Self::Value) -> Option<u64>;

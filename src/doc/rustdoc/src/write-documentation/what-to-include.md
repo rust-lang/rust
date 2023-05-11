@@ -39,9 +39,7 @@ warning: 1 warning emitted
 As a library author, adding the lint `#![deny(missing_docs)]` is a great way to
 ensure the project does not drift away from being documented well, and
 `#![warn(missing_docs)]` is a good way to move towards comprehensive
-documentation.  In addition to docs, `#![deny(missing_doc_code_examples)]`
-ensures each function contains a usage example.  In our example above, the
-warning is resolved by adding crate level documentation.
+documentation.
 
 There are more lints in the upcoming chapter [Lints][rustdoc-lints].
 
@@ -109,8 +107,9 @@ rustdoc --extend-css custom.css src/lib.rs
 
 A good example of using this feature to create a dark theme is documented [on
 this blog].  Just remember, dark theme is already included in the rustdoc output
-by clicking on the paintbrush.  Adding additional options to the themes are
-as easy as creating a custom theme `.css` file and using the following syntax:
+by clicking on the gear icon in the upper right. Adding additional options to the
+themes are as easy as creating a custom theme `.css` file and using the following
+syntax:
 
 ```bash
 rustdoc --theme awesome.css src/lib.rs

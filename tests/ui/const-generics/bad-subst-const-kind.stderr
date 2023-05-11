@@ -1,0 +1,9 @@
+error[E0308]: mismatched types
+  --> $DIR/bad-subst-const-kind.rs:8:31
+   |
+LL | impl<const N: u64> Q for [u8; N] {
+   |                               ^ expected `usize`, found `u64`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

@@ -3,7 +3,7 @@
 
 use crate::MirPass;
 use rustc_hir::def_id::DefId;
-use rustc_index::vec::IndexVec;
+use rustc_index::IndexSlice;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
 
@@ -11,7 +11,7 @@ pub struct LowerSliceLenCalls;
 
 impl<'tcx> MirPass<'tcx> for LowerSliceLenCalls {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.opts.mir_opt_level() > 0
+        sess.mir_opt_level() > 0
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -26,11 +26,11 @@ pub fn lower_slice_len_calls<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         return;
     };
 
-    let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
-
+    // The one successor remains unchanged, so no need to invalidate
+    let basic_blocks = body.basic_blocks.as_mut_preserves_cfg();
     for block in basic_blocks {
         // lower `<[_]>::len` calls
-        lower_slice_len_call(tcx, block, &*local_decls, slice_len_fn_item_def_id);
+        lower_slice_len_call(tcx, block, &body.local_decls, slice_len_fn_item_def_id);
     }
 }
 
@@ -42,7 +42,7 @@ struct SliceLenPatchInformation<'tcx> {
 fn lower_slice_len_call<'tcx>(
     tcx: TyCtxt<'tcx>,
     block: &mut BasicBlockData<'tcx>,
-    local_decls: &IndexVec<Local, LocalDecl<'tcx>>,
+    local_decls: &IndexSlice<Local, LocalDecl<'tcx>>,
     slice_len_fn_item_def_id: DefId,
 ) {
     let mut patch_found: Option<SliceLenPatchInformation<'_>> = None;
@@ -52,8 +52,8 @@ fn lower_slice_len_call<'tcx>(
         TerminatorKind::Call {
             func,
             args,
-            destination: Some((dest, bb)),
-            cleanup: None,
+            destination,
+            target: Some(bb),
             from_hir_call: true,
             ..
         } => {
@@ -67,13 +67,17 @@ fn lower_slice_len_call<'tcx>(
                 ty::FnDef(fn_def_id, _) if fn_def_id == &slice_len_fn_item_def_id => {
                     // perform modifications
                     // from something like `_5 = core::slice::<impl [u8]>::len(move _6) -> bb1`
-                    // into `_5 = Len(*_6)
+                    // into:
+                    // ```
+                    // _5 = Len(*_6)
                     // goto bb1
+                    // ```
 
                     // make new RValue for Len
                     let deref_arg = tcx.mk_place_deref(arg);
                     let r_value = Rvalue::Len(deref_arg);
-                    let len_statement_kind = StatementKind::Assign(Box::new((*dest, r_value)));
+                    let len_statement_kind =
+                        StatementKind::Assign(Box::new((*destination, r_value)));
                     let add_statement =
                         Statement { kind: len_statement_kind, source_info: terminator.source_info };
 

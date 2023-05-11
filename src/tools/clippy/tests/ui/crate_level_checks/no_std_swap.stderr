@@ -5,8 +5,8 @@ LL | /     a = b;
 LL | |     b = a;
    | |_________^ help: try: `core::mem::swap(&mut a, &mut b)`
    |
-   = note: `-D clippy::almost-swapped` implied by `-D warnings`
    = note: or maybe you should use `core::mem::replace`?
+   = note: `-D clippy::almost-swapped` implied by `-D warnings`
 
 error: aborting due to previous error
 

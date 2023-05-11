@@ -1,0 +1,25 @@
+error: trait implementations cannot be const stable yet
+  --> $DIR/staged-api.rs:19:1
+   |
+LL | / impl const MyTrait for Foo {
+LL | |
+LL | |     fn func() {}
+LL | | }
+   | |_^
+   |
+   = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
+
+error: function has missing const stability attribute
+  --> $DIR/staged-api.rs:42:1
+   |
+LL | / pub const fn const_context_not_const_stable() {
+LL | |
+LL | |     Unstable::func();
+LL | |     // ^ This is okay regardless of whether the `unstable` feature is enabled, as this function is
+...  |
+LL | |     // ^ fails, because the `foo` feature is not active
+LL | | }
+   | |_^
+
+error: aborting due to 2 previous errors
+

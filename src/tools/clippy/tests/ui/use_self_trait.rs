@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![warn(clippy::use_self)]
 #![allow(dead_code)]
@@ -33,7 +33,7 @@ impl SelfTrait for Bad {
     fn nested(_p1: Box<Bad>, _p2: (&u8, &Bad)) {}
 
     fn vals(_: Bad) -> Bad {
-        Bad::default()
+        Bad
     }
 }
 
@@ -47,7 +47,6 @@ impl Mul for Bad {
 
 impl Clone for Bad {
     fn clone(&self) -> Self {
-        // FIXME: applicable here
         Bad
     }
 }
@@ -71,7 +70,7 @@ impl SelfTrait for Good {
     fn nested(_p1: Box<Self>, _p2: (&u8, &Self)) {}
 
     fn vals(_: Self) -> Self {
-        Self::default()
+        Self
     }
 }
 
@@ -109,6 +108,44 @@ impl NameTrait for u8 {
 
     fn vals(_: Self) -> Self {
         Self::default()
+    }
+}
+
+mod impl_in_macro {
+    macro_rules! parse_ip_impl {
+        // minimized from serde=1.0.118
+        ($ty:ty) => {
+            impl FooTrait for $ty {
+                fn new() -> Self {
+                    <$ty>::bar()
+                }
+            }
+        };
+    }
+
+    struct Foo;
+
+    trait FooTrait {
+        fn new() -> Self;
+    }
+
+    impl Foo {
+        fn bar() -> Self {
+            Self
+        }
+    }
+    parse_ip_impl!(Foo); // Should not lint
+}
+
+mod full_path_replacement {
+    trait Error {
+        fn custom<T: std::fmt::Display>(_msg: T) -> Self;
+    }
+
+    impl Error for std::fmt::Error {
+        fn custom<T: std::fmt::Display>(_msg: T) -> Self {
+            std::fmt::Error // Should lint
+        }
     }
 }
 

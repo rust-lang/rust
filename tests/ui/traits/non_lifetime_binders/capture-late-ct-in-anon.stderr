@@ -1,0 +1,19 @@
+warning: the feature `non_lifetime_binders` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/capture-late-ct-in-anon.rs:1:12
+   |
+LL | #![feature(non_lifetime_binders)]
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: cannot capture late-bound const parameter in a constant
+  --> $DIR/capture-late-ct-in-anon.rs:6:30
+   |
+LL |     for<const C: usize> [(); C]: Copy,
+   |         --------------       ^
+   |         |
+   |         parameter defined here
+
+error: aborting due to previous error; 1 warning emitted
+

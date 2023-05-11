@@ -10,7 +10,8 @@
 //! <https://www.cs.princeton.edu/courses/archive/spr03/cs423/download/dominators.pdf>
 
 use super::ControlFlowGraph;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::{Idx, IndexSlice, IndexVec};
+
 use std::cmp::Ordering;
 
 #[cfg(test)]
@@ -22,7 +23,7 @@ struct PreOrderFrame<Iter> {
 }
 
 rustc_index::newtype_index! {
-    struct PreorderIndex { .. }
+    struct PreorderIndex {}
 }
 
 pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
@@ -135,7 +136,50 @@ pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
         // This loop computes the semi[w] for w.
         semi[w] = w;
         for v in graph.predecessors(pre_order_to_real[w]) {
-            let v = real_to_pre_order[v].unwrap();
+            // TL;DR: Reachable vertices may have unreachable predecessors, so ignore any of them.
+            //
+            // Ignore blocks which are not connected to the entry block.
+            //
+            // The algorithm that was used to traverse the graph and build the
+            // `pre_order_to_real` and `real_to_pre_order` vectors does so by
+            // starting from the entry block and following the successors.
+            // Therefore, any blocks not reachable from the entry block will be
+            // set to `None` in the `pre_order_to_real` vector.
+            //
+            // For example, in this graph, A and B should be skipped:
+            //
+            //           ┌─────┐
+            //           │     │
+            //           └──┬──┘
+            //              │
+            //           ┌──▼──┐              ┌─────┐
+            //           │     │              │  A  │
+            //           └──┬──┘              └──┬──┘
+            //              │                    │
+            //      ┌───────┴───────┐            │
+            //      │               │            │
+            //   ┌──▼──┐         ┌──▼──┐      ┌──▼──┐
+            //   │     │         │     │      │  B  │
+            //   └──┬──┘         └──┬──┘      └──┬──┘
+            //      │               └──────┬─────┘
+            //   ┌──▼──┐                   │
+            //   │     │                   │
+            //   └──┬──┘                ┌──▼──┐
+            //      │                   │     │
+            //      │                   └─────┘
+            //   ┌──▼──┐
+            //   │     │
+            //   └──┬──┘
+            //      │
+            //   ┌──▼──┐
+            //   │     │
+            //   └─────┘
+            //
+            // ...this may be the case if a MirPass modifies the CFG to remove
+            // or rearrange certain blocks/edges.
+            let Some(v) = real_to_pre_order[v] else {
+                continue
+            };
 
             // eval returns a vertex x from which semi[x] is minimum among
             // vertices semi[v] +> x *> v.
@@ -213,10 +257,10 @@ pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
 /// where `+>` is a proper ancestor and `*>` is just an ancestor.
 #[inline]
 fn eval(
-    ancestor: &mut IndexVec<PreorderIndex, PreorderIndex>,
+    ancestor: &mut IndexSlice<PreorderIndex, PreorderIndex>,
     lastlinked: Option<PreorderIndex>,
-    semi: &IndexVec<PreorderIndex, PreorderIndex>,
-    label: &mut IndexVec<PreorderIndex, PreorderIndex>,
+    semi: &IndexSlice<PreorderIndex, PreorderIndex>,
+    label: &mut IndexSlice<PreorderIndex, PreorderIndex>,
     node: PreorderIndex,
 ) -> PreorderIndex {
     if is_processed(node, lastlinked) {
@@ -234,10 +278,10 @@ fn is_processed(v: PreorderIndex, lastlinked: Option<PreorderIndex>) -> bool {
 
 #[inline]
 fn compress(
-    ancestor: &mut IndexVec<PreorderIndex, PreorderIndex>,
+    ancestor: &mut IndexSlice<PreorderIndex, PreorderIndex>,
     lastlinked: Option<PreorderIndex>,
-    semi: &IndexVec<PreorderIndex, PreorderIndex>,
-    label: &mut IndexVec<PreorderIndex, PreorderIndex>,
+    semi: &IndexSlice<PreorderIndex, PreorderIndex>,
+    label: &mut IndexSlice<PreorderIndex, PreorderIndex>,
     v: PreorderIndex,
 ) {
     assert!(is_processed(v, lastlinked));
@@ -261,32 +305,35 @@ fn compress(
     }
 }
 
+/// Tracks the list of dominators for each node.
 #[derive(Clone, Debug)]
 pub struct Dominators<N: Idx> {
     post_order_rank: IndexVec<N, usize>,
+    // Even though we track only the immediate dominator of each node, it's
+    // possible to get its full list of dominators by looking up the dominator
+    // of each dominator. (See the `impl Iterator for Iter` definition).
     immediate_dominators: IndexVec<N, Option<N>>,
 }
 
 impl<Node: Idx> Dominators<Node> {
-    pub fn dummy() -> Self {
-        Self { post_order_rank: IndexVec::new(), immediate_dominators: IndexVec::new() }
-    }
-
+    /// Whether the given Node has an immediate dominator.
     pub fn is_reachable(&self, node: Node) -> bool {
         self.immediate_dominators[node].is_some()
     }
 
     pub fn immediate_dominator(&self, node: Node) -> Node {
-        assert!(self.is_reachable(node), "node {:?} is not reachable", node);
+        assert!(self.is_reachable(node), "node {node:?} is not reachable");
         self.immediate_dominators[node].unwrap()
     }
 
+    /// Provides an iterator over each dominator up the CFG, for the given Node.
+    /// See the `impl Iterator for Iter` definition to understand how this works.
     pub fn dominators(&self, node: Node) -> Iter<'_, Node> {
-        assert!(self.is_reachable(node), "node {:?} is not reachable", node);
+        assert!(self.is_reachable(node), "node {node:?} is not reachable");
         Iter { dominators: self, node: Some(node) }
     }
 
-    pub fn is_dominated_by(&self, node: Node, dom: Node) -> bool {
+    pub fn dominates(&self, dom: Node, node: Node) -> bool {
         // FIXME -- could be optimized by using post-order-rank
         self.dominators(node).any(|n| n == dom)
     }
@@ -296,7 +343,7 @@ impl<Node: Idx> Dominators<Node> {
     /// of two unrelated nodes will also be consistent, but otherwise the order has no
     /// meaning.) This method cannot be used to determine if either Node dominates the other.
     pub fn rank_partial_cmp(&self, lhs: Node, rhs: Node) -> Option<Ordering> {
-        self.post_order_rank[lhs].partial_cmp(&self.post_order_rank[rhs])
+        self.post_order_rank[rhs].partial_cmp(&self.post_order_rank[lhs])
     }
 }
 

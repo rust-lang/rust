@@ -1,0 +1,38 @@
+error[E0277]: `T` doesn't implement `Debug`
+  --> $DIR/not_a_defining_use.rs:10:5
+   |
+LL |     (t, 5i8)
+   |     ^^^^^^^^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |
+   = note: required for `(T, i8)` to implement `Debug`
+help: consider restricting type parameter `T`
+   |
+LL | type Two<T: std::fmt::Debug, U> = impl Debug;
+   |           +++++++++++++++++
+
+error[E0277]: the trait bound `U: Bar` is not satisfied
+  --> $DIR/not_a_defining_use.rs:25:5
+   |
+LL |     (t, <U as Bar>::FOO)
+   |     ^^^^^^^^^^^^^^^^^^^^ the trait `Bar` is not implemented for `U`
+   |
+help: consider restricting type parameter `U`
+   |
+LL | type Two<T, U: Bar> = impl Debug;
+   |              +++++
+
+error[E0277]: `T` doesn't implement `Debug`
+  --> $DIR/not_a_defining_use.rs:25:5
+   |
+LL |     (t, <U as Bar>::FOO)
+   |     ^^^^^^^^^^^^^^^^^^^^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |
+   = note: required for `(T, _)` to implement `Debug`
+help: consider restricting type parameter `T`
+   |
+LL | type Two<T: std::fmt::Debug, U> = impl Debug;
+   |           +++++++++++++++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

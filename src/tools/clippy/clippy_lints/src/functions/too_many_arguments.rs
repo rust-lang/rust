@@ -26,9 +26,8 @@ pub(super) fn check_fn(
                     header: hir::FnHeader { abi: Abi::Rust, .. },
                     ..
                 },
-                _,
             )
-            | intravisit::FnKind::ItemFn(_, _, hir::FnHeader { abi: Abi::Rust, .. }, _) => check_arg_number(
+            | intravisit::FnKind::ItemFn(_, _, hir::FnHeader { abi: Abi::Rust, .. }) => check_arg_number(
                 cx,
                 decl,
                 span.with_hi(decl.output.span().hi()),
@@ -60,10 +59,7 @@ fn check_arg_number(cx: &LateContext<'_>, decl: &hir::FnDecl<'_>, fn_span: Span,
             cx,
             TOO_MANY_ARGUMENTS,
             fn_span,
-            &format!(
-                "this function has too many arguments ({}/{})",
-                args, too_many_arguments_threshold
-            ),
+            &format!("this function has too many arguments ({args}/{too_many_arguments_threshold})"),
         );
     }
 }

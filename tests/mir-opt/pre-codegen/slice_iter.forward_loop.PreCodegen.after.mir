@@ -1,0 +1,103 @@
+// MIR for `forward_loop` after PreCodegen
+
+fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
+    debug slice => _1;                   // in scope 0 at $DIR/slice_iter.rs:+0:28: +0:33
+    debug f => _2;                       // in scope 0 at $DIR/slice_iter.rs:+0:44: +0:45
+    let mut _0: ();                      // return place in scope 0 at $DIR/slice_iter.rs:+0:60: +0:60
+    let mut _3: std::slice::Iter<'_, T>; // in scope 0 at $DIR/slice_iter.rs:+1:14: +1:26
+    let mut _4: std::slice::Iter<'_, T>; // in scope 0 at $DIR/slice_iter.rs:+1:14: +1:26
+    let mut _5: std::slice::Iter<'_, T>; // in scope 0 at $DIR/slice_iter.rs:+1:14: +1:26
+    let _6: ();                          // in scope 0 at $DIR/slice_iter.rs:+1:14: +1:26
+    let mut _7: std::option::Option<&T>; // in scope 0 at $DIR/slice_iter.rs:+1:14: +1:26
+    let mut _8: &mut std::slice::Iter<'_, T>; // in scope 0 at $DIR/slice_iter.rs:+1:14: +1:26
+    let mut _9: isize;                   // in scope 0 at $DIR/slice_iter.rs:+1:5: +3:6
+    let mut _11: &impl Fn(&T);           // in scope 0 at $DIR/slice_iter.rs:+2:9: +2:10
+    let mut _12: (&T,);                  // in scope 0 at $DIR/slice_iter.rs:+2:9: +2:13
+    scope 1 {
+        debug iter => _5;                // in scope 1 at $DIR/slice_iter.rs:+1:14: +1:26
+        let _10: &T;                     // in scope 1 at $DIR/slice_iter.rs:+1:9: +1:10
+        scope 2 {
+            debug x => _10;              // in scope 2 at $DIR/slice_iter.rs:+1:9: +1:10
+        }
+    }
+    scope 3 (inlined core::slice::<impl [T]>::iter) { // at $DIR/slice_iter.rs:28:20: 28:26
+        debug self => _1;                // in scope 3 at $SRC_DIR/core/src/slice/mod.rs:LL:COL
+    }
+    scope 4 (inlined <std::slice::Iter<'_, T> as IntoIterator>::into_iter) { // at $DIR/slice_iter.rs:28:14: 28:26
+        debug self => _4;                // in scope 4 at $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+    }
+
+    bb0: {
+        StorageLive(_3);                 // scope 0 at $DIR/slice_iter.rs:+1:14: +1:26
+        StorageLive(_4);                 // scope 0 at $DIR/slice_iter.rs:+1:14: +1:26
+        _4 = std::slice::Iter::<'_, T>::new(_1) -> [return: bb10, unwind: bb8]; // scope 3 at $SRC_DIR/core/src/slice/mod.rs:LL:COL
+                                         // mir::Constant
+                                         // + span: $SRC_DIR/core/src/slice/mod.rs:LL:COL
+                                         // + user_ty: UserType(0)
+                                         // + literal: Const { ty: fn(&[T]) -> std::slice::Iter<'_, T> {std::slice::Iter::<'_, T>::new}, val: Value(<ZST>) }
+    }
+
+    bb1: {
+        StorageLive(_7);                 // scope 1 at $DIR/slice_iter.rs:+1:14: +1:26
+        _8 = &mut _5;                    // scope 1 at $DIR/slice_iter.rs:+1:14: +1:26
+        _7 = <std::slice::Iter<'_, T> as Iterator>::next(_8) -> [return: bb2, unwind: bb8]; // scope 1 at $DIR/slice_iter.rs:+1:14: +1:26
+                                         // mir::Constant
+                                         // + span: $DIR/slice_iter.rs:28:14: 28:26
+                                         // + literal: Const { ty: for<'a> fn(&'a mut std::slice::Iter<'_, T>) -> Option<<std::slice::Iter<'_, T> as Iterator>::Item> {<std::slice::Iter<'_, T> as Iterator>::next}, val: Value(<ZST>) }
+    }
+
+    bb2: {
+        _9 = discriminant(_7);           // scope 1 at $DIR/slice_iter.rs:+1:14: +1:26
+        switchInt(move _9) -> [0: bb5, 1: bb3, otherwise: bb4]; // scope 1 at $DIR/slice_iter.rs:+1:14: +1:26
+    }
+
+    bb3: {
+        _10 = ((_7 as Some).0: &T);      // scope 1 at $DIR/slice_iter.rs:+1:9: +1:10
+        StorageLive(_11);                // scope 2 at $DIR/slice_iter.rs:+2:9: +2:10
+        _11 = &_2;                       // scope 2 at $DIR/slice_iter.rs:+2:9: +2:10
+        StorageLive(_12);                // scope 2 at $DIR/slice_iter.rs:+2:9: +2:13
+        _12 = (_10,);                    // scope 2 at $DIR/slice_iter.rs:+2:9: +2:13
+        _6 = <impl Fn(&T) as Fn<(&T,)>>::call(move _11, move _12) -> [return: bb6, unwind: bb8]; // scope 2 at $DIR/slice_iter.rs:+2:9: +2:13
+                                         // mir::Constant
+                                         // + span: $DIR/slice_iter.rs:29:9: 29:10
+                                         // + literal: Const { ty: for<'a> extern "rust-call" fn(&'a impl Fn(&T), (&T,)) -> <impl Fn(&T) as FnOnce<(&T,)>>::Output {<impl Fn(&T) as Fn<(&T,)>>::call}, val: Value(<ZST>) }
+    }
+
+    bb4: {
+        unreachable;                     // scope 1 at $DIR/slice_iter.rs:+1:14: +1:26
+    }
+
+    bb5: {
+        StorageDead(_7);                 // scope 1 at $DIR/slice_iter.rs:+3:5: +3:6
+        StorageDead(_5);                 // scope 0 at $DIR/slice_iter.rs:+3:5: +3:6
+        StorageDead(_3);                 // scope 0 at $DIR/slice_iter.rs:+3:5: +3:6
+        drop(_2) -> bb7;                 // scope 0 at $DIR/slice_iter.rs:+4:1: +4:2
+    }
+
+    bb6: {
+        StorageDead(_12);                // scope 2 at $DIR/slice_iter.rs:+2:12: +2:13
+        StorageDead(_11);                // scope 2 at $DIR/slice_iter.rs:+2:12: +2:13
+        StorageDead(_7);                 // scope 1 at $DIR/slice_iter.rs:+3:5: +3:6
+        goto -> bb1;                     // scope 1 at $DIR/slice_iter.rs:+1:5: +3:6
+    }
+
+    bb7: {
+        return;                          // scope 0 at $DIR/slice_iter.rs:+4:2: +4:2
+    }
+
+    bb8 (cleanup): {
+        drop(_2) -> [return: bb9, unwind terminate]; // scope 0 at $DIR/slice_iter.rs:+4:1: +4:2
+    }
+
+    bb9 (cleanup): {
+        resume;                          // scope 0 at $DIR/slice_iter.rs:+0:1: +4:2
+    }
+
+    bb10: {
+        _3 = move _4;                    // scope 4 at $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+        StorageDead(_4);                 // scope 0 at $DIR/slice_iter.rs:+1:25: +1:26
+        StorageLive(_5);                 // scope 0 at $DIR/slice_iter.rs:+1:14: +1:26
+        _5 = move _3;                    // scope 0 at $DIR/slice_iter.rs:+1:14: +1:26
+        goto -> bb1;                     // scope 1 at $DIR/slice_iter.rs:+1:5: +3:6
+    }
+}

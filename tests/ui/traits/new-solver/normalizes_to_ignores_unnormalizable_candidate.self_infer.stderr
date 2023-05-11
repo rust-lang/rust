@@ -1,0 +1,14 @@
+error[E0282]: type annotations needed
+  --> $DIR/normalizes_to_ignores_unnormalizable_candidate.rs:36:5
+   |
+LL |     foo(unconstrained())
+   |     ^^^ cannot infer type of the type parameter `T` declared on the function `foo`
+   |
+help: consider specifying the generic argument
+   |
+LL |     foo::<T>(unconstrained())
+   |        +++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

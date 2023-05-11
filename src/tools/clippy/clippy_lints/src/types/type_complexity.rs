@@ -44,7 +44,7 @@ impl<'tcx> Visitor<'tcx> for TypeComplexityVisitor {
     fn visit_ty(&mut self, ty: &'tcx hir::Ty<'_>) {
         let (add_score, sub_nest) = match ty.kind {
             // _, &x and *x have only small overhead; don't mess with nesting level
-            TyKind::Infer | TyKind::Ptr(..) | TyKind::Rptr(..) => (1, 0),
+            TyKind::Infer | TyKind::Ptr(..) | TyKind::Ref(..) => (1, 0),
 
             // the "normal" components of a type: named types, arrays/tuples
             TyKind::Path(..) | TyKind::Slice(..) | TyKind::Tup(..) | TyKind::Array(..) => (10 * self.nest, 1),

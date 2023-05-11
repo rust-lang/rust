@@ -1,0 +1,37 @@
+[package]
+name = "ide-assists"
+version = "0.0.0"
+description = "TBD"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+cov-mark = "2.0.0-pre.1"
+
+itertools = "0.10.5"
+either = "1.7.0"
+smallvec.workspace = true
+
+# local deps
+stdx.workspace = true
+syntax.workspace = true
+text-edit.workspace = true
+profile.workspace = true
+ide-db.workspace = true
+hir.workspace = true
+
+[dev-dependencies]
+expect-test = "1.4.0"
+
+# local deps
+test-utils.workspace = true
+sourcegen.workspace = true
+
+[features]
+in-rust-tree = []

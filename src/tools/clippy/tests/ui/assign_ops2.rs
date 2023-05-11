@@ -1,3 +1,5 @@
+#![allow(clippy::uninlined_format_args)]
+
 #[allow(unused_assignments)]
 #[warn(clippy::misrefactored_assign_op, clippy::assign_op_pattern)]
 fn main() {
@@ -24,7 +26,7 @@ fn main() {
 
 use std::ops::{Mul, MulAssign};
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Wrap(i64);
 
 impl Mul<i64> for Wrap {

@@ -1,9 +1,6 @@
 //! Support code for encoding and decoding types.
 
-/*
-Core encoding and decoding interfaces.
-*/
-
+use std::alloc::Allocator;
 use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
 use std::marker::PhantomData;
@@ -11,165 +8,72 @@ use std::path;
 use std::rc::Rc;
 use std::sync::Arc;
 
+/// A byte that [cannot occur in UTF8 sequences][utf8]. Used to mark the end of a string.
+/// This way we can skip validation and still be relatively sure that deserialization
+/// did not desynchronize.
+///
+/// [utf8]: https://en.wikipedia.org/w/index.php?title=UTF-8&oldid=1058865525#Codepage_layout
+const STR_SENTINEL: u8 = 0xC1;
+
+/// A note about error handling.
+///
+/// Encoders may be fallible, but in practice failure is rare and there are so
+/// many nested calls that typical Rust error handling (via `Result` and `?`)
+/// is pervasive and has non-trivial cost. Instead, impls of this trait must
+/// implement a delayed error handling strategy. If a failure occurs, they
+/// should record this internally, and all subsequent encoding operations can
+/// be processed or ignored, whichever is appropriate. Then they should provide
+/// a `finish` method that finishes up encoding. If the encoder is fallible,
+/// `finish` should return a `Result` that indicates success or failure.
+///
+/// This current does not support `f32` nor `f64`, as they're not needed in any
+/// serialized data structures. That could be changed, but consider whether it
+/// really makes sense to store floating-point values at all.
+/// (If you need it, revert <https://github.com/rust-lang/rust/pull/109984>.)
 pub trait Encoder {
-    type Error;
+    fn emit_usize(&mut self, v: usize);
+    fn emit_u128(&mut self, v: u128);
+    fn emit_u64(&mut self, v: u64);
+    fn emit_u32(&mut self, v: u32);
+    fn emit_u16(&mut self, v: u16);
+    fn emit_u8(&mut self, v: u8);
 
-    // Primitive types:
-    fn emit_unit(&mut self) -> Result<(), Self::Error>;
-    fn emit_usize(&mut self, v: usize) -> Result<(), Self::Error>;
-    fn emit_u128(&mut self, v: u128) -> Result<(), Self::Error>;
-    fn emit_u64(&mut self, v: u64) -> Result<(), Self::Error>;
-    fn emit_u32(&mut self, v: u32) -> Result<(), Self::Error>;
-    fn emit_u16(&mut self, v: u16) -> Result<(), Self::Error>;
-    fn emit_u8(&mut self, v: u8) -> Result<(), Self::Error>;
-    fn emit_isize(&mut self, v: isize) -> Result<(), Self::Error>;
-    fn emit_i128(&mut self, v: i128) -> Result<(), Self::Error>;
-    fn emit_i64(&mut self, v: i64) -> Result<(), Self::Error>;
-    fn emit_i32(&mut self, v: i32) -> Result<(), Self::Error>;
-    fn emit_i16(&mut self, v: i16) -> Result<(), Self::Error>;
-    fn emit_i8(&mut self, v: i8) -> Result<(), Self::Error>;
-    fn emit_bool(&mut self, v: bool) -> Result<(), Self::Error>;
-    fn emit_f64(&mut self, v: f64) -> Result<(), Self::Error>;
-    fn emit_f32(&mut self, v: f32) -> Result<(), Self::Error>;
-    fn emit_char(&mut self, v: char) -> Result<(), Self::Error>;
-    fn emit_str(&mut self, v: &str) -> Result<(), Self::Error>;
-    fn emit_raw_bytes(&mut self, s: &[u8]) -> Result<(), Self::Error>;
+    fn emit_isize(&mut self, v: isize);
+    fn emit_i128(&mut self, v: i128);
+    fn emit_i64(&mut self, v: i64);
+    fn emit_i32(&mut self, v: i32);
+    fn emit_i16(&mut self, v: i16);
 
-    // Compound types:
     #[inline]
-    fn emit_enum<F>(&mut self, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        f(self)
-    }
-
-    fn emit_enum_variant<F>(
-        &mut self,
-        _v_name: &str,
-        v_id: usize,
-        _len: usize,
-        f: F,
-    ) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        self.emit_usize(v_id)?;
-        f(self)
-    }
-
-    // We put the field index in a const generic to allow the emit_usize to be
-    // compiled into a more efficient form. In practice, the variant index is
-    // known at compile-time, and that knowledge allows much more efficient
-    // codegen than we'd otherwise get. LLVM isn't always able to make the
-    // optimization that would otherwise be necessary here, likely due to the
-    // multiple levels of inlining and const-prop that are needed.
-    #[inline]
-    fn emit_fieldless_enum_variant<const ID: usize>(
-        &mut self,
-        _v_name: &str,
-    ) -> Result<(), Self::Error> {
-        self.emit_usize(ID)
+    fn emit_i8(&mut self, v: i8) {
+        self.emit_u8(v as u8);
     }
 
     #[inline]
-    fn emit_enum_variant_arg<F>(&mut self, _first: bool, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        f(self)
+    fn emit_bool(&mut self, v: bool) {
+        self.emit_u8(if v { 1 } else { 0 });
     }
 
     #[inline]
-    fn emit_struct<F>(&mut self, _no_fields: bool, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        f(self)
+    fn emit_char(&mut self, v: char) {
+        self.emit_u32(v as u32);
     }
 
     #[inline]
-    fn emit_struct_field<F>(&mut self, _f_name: &str, _first: bool, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        f(self)
+    fn emit_str(&mut self, v: &str) {
+        self.emit_usize(v.len());
+        self.emit_raw_bytes(v.as_bytes());
+        self.emit_u8(STR_SENTINEL);
     }
 
-    #[inline]
-    fn emit_tuple<F>(&mut self, _len: usize, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        f(self)
-    }
+    fn emit_raw_bytes(&mut self, s: &[u8]);
 
-    #[inline]
-    fn emit_tuple_arg<F>(&mut self, _idx: usize, f: F) -> Result<(), Self::Error>
+    fn emit_enum_variant<F>(&mut self, v_id: usize, f: F)
     where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
+        F: FnOnce(&mut Self),
     {
-        f(self)
-    }
-
-    // Specialized types:
-    fn emit_option<F>(&mut self, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        self.emit_enum(f)
-    }
-
-    #[inline]
-    fn emit_option_none(&mut self) -> Result<(), Self::Error> {
-        self.emit_enum_variant("None", 0, 0, |_| Ok(()))
-    }
-
-    fn emit_option_some<F>(&mut self, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        self.emit_enum_variant("Some", 1, 1, f)
-    }
-
-    fn emit_seq<F>(&mut self, len: usize, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        self.emit_usize(len)?;
-        f(self)
-    }
-
-    #[inline]
-    fn emit_seq_elt<F>(&mut self, _idx: usize, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        f(self)
-    }
-
-    fn emit_map<F>(&mut self, len: usize, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        self.emit_usize(len)?;
-        f(self)
-    }
-
-    #[inline]
-    fn emit_map_elt_key<F>(&mut self, _idx: usize, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        f(self)
-    }
-
-    #[inline]
-    fn emit_map_elt_val<F>(&mut self, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        f(self)
+        self.emit_usize(v_id);
+        f(self);
     }
 }
 
@@ -179,26 +83,58 @@ pub trait Encoder {
 // top-level invocation would also just panic on failure. Switching to
 // infallibility made things faster and lots of code a little simpler and more
 // concise.
+///
+/// This current does not support `f32` nor `f64`, as they're not needed in any
+/// serialized data structures. That could be changed, but consider whether it
+/// really makes sense to store floating-point values at all.
+/// (If you need it, revert <https://github.com/rust-lang/rust/pull/109984>.)
 pub trait Decoder {
-    // Primitive types:
     fn read_usize(&mut self) -> usize;
     fn read_u128(&mut self) -> u128;
     fn read_u64(&mut self) -> u64;
     fn read_u32(&mut self) -> u32;
     fn read_u16(&mut self) -> u16;
     fn read_u8(&mut self) -> u8;
+
     fn read_isize(&mut self) -> isize;
     fn read_i128(&mut self) -> i128;
     fn read_i64(&mut self) -> i64;
     fn read_i32(&mut self) -> i32;
     fn read_i16(&mut self) -> i16;
-    fn read_i8(&mut self) -> i8;
-    fn read_bool(&mut self) -> bool;
-    fn read_f64(&mut self) -> f64;
-    fn read_f32(&mut self) -> f32;
-    fn read_char(&mut self) -> char;
-    fn read_str(&mut self) -> &str;
+
+    #[inline]
+    fn read_i8(&mut self) -> i8 {
+        self.read_u8() as i8
+    }
+
+    #[inline]
+    fn read_bool(&mut self) -> bool {
+        let value = self.read_u8();
+        value != 0
+    }
+
+    #[inline]
+    fn read_char(&mut self) -> char {
+        let bits = self.read_u32();
+        std::char::from_u32(bits).unwrap()
+    }
+
+    #[inline]
+    fn read_str(&mut self) -> &str {
+        let len = self.read_usize();
+        let bytes = self.read_raw_bytes(len + 1);
+        assert!(bytes[len] == STR_SENTINEL);
+        unsafe { std::str::from_utf8_unchecked(&bytes[..len]) }
+    }
+
     fn read_raw_bytes(&mut self, len: usize) -> &[u8];
+
+    // Although there is an `emit_enum_variant` method in `Encoder`, the code
+    // patterns in decoding are different enough to encoding that there is no
+    // need for a corresponding `read_enum_variant` method here.
+
+    fn peek_byte(&self) -> u8;
+    fn position(&self) -> usize;
 }
 
 /// Trait for types that can be serialized
@@ -213,7 +149,7 @@ pub trait Decoder {
 /// * `TyEncodable` should be used for types that are only serialized in crate
 ///   metadata or the incremental cache. This is most types in `rustc_middle`.
 pub trait Encodable<S: Encoder> {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error>;
+    fn encode(&self, s: &mut S);
 }
 
 /// Trait for types that can be deserialized
@@ -235,8 +171,8 @@ macro_rules! direct_serialize_impls {
     ($($ty:ident $emit_method:ident $read_method:ident),*) => {
         $(
             impl<S: Encoder> Encodable<S> for $ty {
-                fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-                    s.$emit_method(*self)
+                fn encode(&self, s: &mut S) {
+                    s.$emit_method(*self);
                 }
             }
 
@@ -256,21 +192,30 @@ direct_serialize_impls! {
     u32 emit_u32 read_u32,
     u64 emit_u64 read_u64,
     u128 emit_u128 read_u128,
+
     isize emit_isize read_isize,
     i8 emit_i8 read_i8,
     i16 emit_i16 read_i16,
     i32 emit_i32 read_i32,
     i64 emit_i64 read_i64,
     i128 emit_i128 read_i128,
-    f32 emit_f32 read_f32,
-    f64 emit_f64 read_f64,
+
     bool emit_bool read_bool,
     char emit_char read_char
 }
 
+impl<S: Encoder, T: ?Sized> Encodable<S> for &T
+where
+    T: Encodable<S>,
+{
+    fn encode(&self, s: &mut S) {
+        (**self).encode(s)
+    }
+}
+
 impl<S: Encoder> Encodable<S> for ! {
-    fn encode(&self, _s: &mut S) -> Result<(), S::Error> {
-        unreachable!()
+    fn encode(&self, _s: &mut S) {
+        unreachable!();
     }
 }
 
@@ -281,8 +226,8 @@ impl<D: Decoder> Decodable<D> for ! {
 }
 
 impl<S: Encoder> Encodable<S> for ::std::num::NonZeroU32 {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_u32(self.get())
+    fn encode(&self, s: &mut S) {
+        s.emit_u32(self.get());
     }
 }
 
@@ -293,20 +238,14 @@ impl<D: Decoder> Decodable<D> for ::std::num::NonZeroU32 {
 }
 
 impl<S: Encoder> Encodable<S> for str {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_str(self)
-    }
-}
-
-impl<S: Encoder> Encodable<S> for &str {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_str(self)
+    fn encode(&self, s: &mut S) {
+        s.emit_str(self);
     }
 }
 
 impl<S: Encoder> Encodable<S> for String {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_str(&self[..])
+    fn encode(&self, s: &mut S) {
+        s.emit_str(&self[..]);
     }
 }
 
@@ -317,9 +256,7 @@ impl<D: Decoder> Decodable<D> for String {
 }
 
 impl<S: Encoder> Encodable<S> for () {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_unit()
-    }
+    fn encode(&self, _s: &mut S) {}
 }
 
 impl<D: Decoder> Decodable<D> for () {
@@ -327,9 +264,7 @@ impl<D: Decoder> Decodable<D> for () {
 }
 
 impl<S: Encoder, T> Encodable<S> for PhantomData<T> {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_unit()
-    }
+    fn encode(&self, _s: &mut S) {}
 }
 
 impl<D: Decoder, T> Decodable<D> for PhantomData<T> {
@@ -338,16 +273,16 @@ impl<D: Decoder, T> Decodable<D> for PhantomData<T> {
     }
 }
 
-impl<D: Decoder, T: Decodable<D>> Decodable<D> for Box<[T]> {
-    fn decode(d: &mut D) -> Box<[T]> {
-        let v: Vec<T> = Decodable::decode(d);
+impl<D: Decoder, A: Allocator + Default, T: Decodable<D>> Decodable<D> for Box<[T], A> {
+    fn decode(d: &mut D) -> Box<[T], A> {
+        let v: Vec<T, A> = Decodable::decode(d);
         v.into_boxed_slice()
     }
 }
 
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for Rc<T> {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        (**self).encode(s)
+    fn encode(&self, s: &mut S) {
+        (**self).encode(s);
     }
 }
 
@@ -358,33 +293,32 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for Rc<T> {
 }
 
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for [T] {
-    default fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_seq(self.len(), |s| {
-            for (i, e) in self.iter().enumerate() {
-                s.emit_seq_elt(i, |s| e.encode(s))?
-            }
-            Ok(())
-        })
+    default fn encode(&self, s: &mut S) {
+        s.emit_usize(self.len());
+        for e in self.iter() {
+            e.encode(s);
+        }
     }
 }
 
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for Vec<T> {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
+    fn encode(&self, s: &mut S) {
         let slice: &[T] = self;
-        slice.encode(s)
+        slice.encode(s);
     }
 }
 
-impl<D: Decoder, T: Decodable<D>> Decodable<D> for Vec<T> {
-    default fn decode(d: &mut D) -> Vec<T> {
+impl<D: Decoder, T: Decodable<D>, A: Allocator + Default> Decodable<D> for Vec<T, A> {
+    default fn decode(d: &mut D) -> Vec<T, A> {
         let len = d.read_usize();
+        let allocator = A::default();
         // SAFETY: we set the capacity in advance, only write elements, and
         // only set the length at the end once the writing has succeeded.
-        let mut vec = Vec::with_capacity(len);
+        let mut vec = Vec::with_capacity_in(len, allocator);
         unsafe {
             let ptr: *mut T = vec.as_mut_ptr();
             for i in 0..len {
-                std::ptr::write(ptr.offset(i as isize), Decodable::decode(d));
+                std::ptr::write(ptr.add(i), Decodable::decode(d));
             }
             vec.set_len(len);
         }
@@ -393,9 +327,9 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for Vec<T> {
 }
 
 impl<S: Encoder, T: Encodable<S>, const N: usize> Encodable<S> for [T; N] {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
+    fn encode(&self, s: &mut S) {
         let slice: &[T] = self;
-        slice.encode(s)
+        slice.encode(s);
     }
 }
 
@@ -415,9 +349,9 @@ impl<'a, S: Encoder, T: Encodable<S>> Encodable<S> for Cow<'a, [T]>
 where
     [T]: ToOwned<Owned = Vec<T>>,
 {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
+    fn encode(&self, s: &mut S) {
         let slice: &[T] = self;
-        slice.encode(s)
+        slice.encode(s);
     }
 }
 
@@ -432,7 +366,7 @@ where
 }
 
 impl<'a, S: Encoder> Encodable<S> for Cow<'a, str> {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
+    fn encode(&self, s: &mut S) {
         let val: &str = self;
         val.encode(s)
     }
@@ -446,11 +380,11 @@ impl<'a, D: Decoder> Decodable<D> for Cow<'a, str> {
 }
 
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for Option<T> {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_option(|s| match *self {
-            None => s.emit_option_none(),
-            Some(ref v) => s.emit_option_some(|s| v.encode(s)),
-        })
+    fn encode(&self, s: &mut S) {
+        match *self {
+            None => s.emit_enum_variant(0, |_| {}),
+            Some(ref v) => s.emit_enum_variant(1, |s| v.encode(s)),
+        }
     }
 }
 
@@ -465,15 +399,11 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for Option<T> {
 }
 
 impl<S: Encoder, T1: Encodable<S>, T2: Encodable<S>> Encodable<S> for Result<T1, T2> {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_enum(|s| match *self {
-            Ok(ref v) => {
-                s.emit_enum_variant("Ok", 0, 1, |s| s.emit_enum_variant_arg(true, |s| v.encode(s)))
-            }
-            Err(ref v) => {
-                s.emit_enum_variant("Err", 1, 1, |s| s.emit_enum_variant_arg(true, |s| v.encode(s)))
-            }
-        })
+    fn encode(&self, s: &mut S) {
+        match *self {
+            Ok(ref v) => s.emit_enum_variant(0, |s| v.encode(s)),
+            Err(ref v) => s.emit_enum_variant(1, |s| v.encode(s)),
+        }
     }
 }
 
@@ -491,19 +421,6 @@ macro_rules! peel {
     ($name:ident, $($other:ident,)*) => (tuple! { $($other,)* })
 }
 
-/// Evaluates to the number of tokens passed to it.
-///
-/// Logarithmic counting: every one or two recursive expansions, the number of
-/// tokens to count is divided by two, instead of being reduced by one.
-/// Therefore, the recursion depth is the binary logarithm of the number of
-/// tokens to count, and the expanded tree is likewise very small.
-macro_rules! count {
-    ()                     => (0usize);
-    ($one:tt)              => (1usize);
-    ($($pairs:tt $_p:tt)*) => (count!($($pairs)*) << 1usize);
-    ($odd:tt $($rest:tt)*) => (count!($($rest)*) | 1usize);
-}
-
 macro_rules! tuple {
     () => ();
     ( $($name:ident,)+ ) => (
@@ -514,14 +431,9 @@ macro_rules! tuple {
         }
         impl<S: Encoder, $($name: Encodable<S>),+> Encodable<S> for ($($name,)+) {
             #[allow(non_snake_case)]
-            fn encode(&self, s: &mut S) -> Result<(), S::Error> {
+            fn encode(&self, s: &mut S) {
                 let ($(ref $name,)+) = *self;
-                let len: usize = count!($($name)+);
-                s.emit_tuple(len, |s| {
-                    let mut i = 0;
-                    $(s.emit_tuple_arg({ i+=1; i-1 }, |s| $name.encode(s))?;)+
-                    Ok(())
-                })
+                $($name.encode(s);)+
             }
         }
         peel! { $($name,)+ }
@@ -531,14 +443,14 @@ macro_rules! tuple {
 tuple! { T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, }
 
 impl<S: Encoder> Encodable<S> for path::Path {
-    fn encode(&self, e: &mut S) -> Result<(), S::Error> {
-        self.to_str().unwrap().encode(e)
+    fn encode(&self, e: &mut S) {
+        self.to_str().unwrap().encode(e);
     }
 }
 
 impl<S: Encoder> Encodable<S> for path::PathBuf {
-    fn encode(&self, e: &mut S) -> Result<(), S::Error> {
-        path::Path::encode(self, e)
+    fn encode(&self, e: &mut S) {
+        path::Path::encode(self, e);
     }
 }
 
@@ -550,8 +462,8 @@ impl<D: Decoder> Decodable<D> for path::PathBuf {
 }
 
 impl<S: Encoder, T: Encodable<S> + Copy> Encodable<S> for Cell<T> {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        self.get().encode(s)
+    fn encode(&self, s: &mut S) {
+        self.get().encode(s);
     }
 }
 
@@ -561,14 +473,9 @@ impl<D: Decoder, T: Decodable<D> + Copy> Decodable<D> for Cell<T> {
     }
 }
 
-// FIXME: #15036
-// Should use `try_borrow`, returning an
-// `encoder.error("attempting to Encode borrowed RefCell")`
-// from `encode` when `try_borrow` returns `None`.
-
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for RefCell<T> {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        self.borrow().encode(s)
+    fn encode(&self, s: &mut S) {
+        self.borrow().encode(s);
     }
 }
 
@@ -579,8 +486,8 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for RefCell<T> {
 }
 
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for Arc<T> {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        (**self).encode(s)
+    fn encode(&self, s: &mut S) {
+        (**self).encode(s);
     }
 }
 
@@ -590,13 +497,15 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for Arc<T> {
     }
 }
 
-impl<S: Encoder, T: ?Sized + Encodable<S>> Encodable<S> for Box<T> {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
+impl<S: Encoder, T: ?Sized + Encodable<S>, A: Allocator + Default> Encodable<S> for Box<T, A> {
+    fn encode(&self, s: &mut S) {
         (**self).encode(s)
     }
 }
-impl<D: Decoder, T: Decodable<D>> Decodable<D> for Box<T> {
-    fn decode(d: &mut D) -> Box<T> {
-        Box::new(Decodable::decode(d))
+
+impl<D: Decoder, A: Allocator + Default, T: Decodable<D>> Decodable<D> for Box<T, A> {
+    fn decode(d: &mut D) -> Box<T, A> {
+        let allocator = A::default();
+        Box::new_in(Decodable::decode(d), allocator)
     }
 }

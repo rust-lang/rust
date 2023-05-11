@@ -11,7 +11,6 @@ use crate::os::windows::io::{OwnedHandle, OwnedSocket};
 use crate::os::windows::raw;
 use crate::ptr;
 use crate::sys;
-use crate::sys::c;
 use crate::sys_common::{self, AsInner, FromInner, IntoInner};
 
 /// Raw HANDLEs.
@@ -32,8 +31,15 @@ pub trait AsRawHandle {
     /// raw handle to the caller, and the handle is only guaranteed
     /// to be valid while the original object has not yet been destroyed.
     ///
+    /// This function may return null, such as when called on [`Stdin`],
+    /// [`Stdout`], or [`Stderr`] when the console is detached.
+    ///
     /// However, borrowing is not strictly required. See [`AsHandle::as_handle`]
     /// for an API which strictly borrows a handle.
+    ///
+    /// [`Stdin`]: io::Stdin
+    /// [`Stdout`]: io::Stdout
+    /// [`Stderr`]: io::Stderr
     #[stable(feature = "rust1", since = "1.0.0")]
     fn as_raw_handle(&self) -> RawHandle;
 }
@@ -97,42 +103,42 @@ impl AsRawHandle for fs::File {
 #[stable(feature = "asraw_stdio", since = "1.21.0")]
 impl AsRawHandle for io::Stdin {
     fn as_raw_handle(&self) -> RawHandle {
-        stdio_handle(unsafe { c::GetStdHandle(c::STD_INPUT_HANDLE) as RawHandle })
+        stdio_handle(unsafe { sys::c::GetStdHandle(sys::c::STD_INPUT_HANDLE) as RawHandle })
     }
 }
 
 #[stable(feature = "asraw_stdio", since = "1.21.0")]
 impl AsRawHandle for io::Stdout {
     fn as_raw_handle(&self) -> RawHandle {
-        stdio_handle(unsafe { c::GetStdHandle(c::STD_OUTPUT_HANDLE) as RawHandle })
+        stdio_handle(unsafe { sys::c::GetStdHandle(sys::c::STD_OUTPUT_HANDLE) as RawHandle })
     }
 }
 
 #[stable(feature = "asraw_stdio", since = "1.21.0")]
 impl AsRawHandle for io::Stderr {
     fn as_raw_handle(&self) -> RawHandle {
-        stdio_handle(unsafe { c::GetStdHandle(c::STD_ERROR_HANDLE) as RawHandle })
+        stdio_handle(unsafe { sys::c::GetStdHandle(sys::c::STD_ERROR_HANDLE) as RawHandle })
     }
 }
 
 #[stable(feature = "asraw_stdio_locks", since = "1.35.0")]
 impl<'a> AsRawHandle for io::StdinLock<'a> {
     fn as_raw_handle(&self) -> RawHandle {
-        stdio_handle(unsafe { c::GetStdHandle(c::STD_INPUT_HANDLE) as RawHandle })
+        stdio_handle(unsafe { sys::c::GetStdHandle(sys::c::STD_INPUT_HANDLE) as RawHandle })
     }
 }
 
 #[stable(feature = "asraw_stdio_locks", since = "1.35.0")]
 impl<'a> AsRawHandle for io::StdoutLock<'a> {
     fn as_raw_handle(&self) -> RawHandle {
-        stdio_handle(unsafe { c::GetStdHandle(c::STD_OUTPUT_HANDLE) as RawHandle })
+        stdio_handle(unsafe { sys::c::GetStdHandle(sys::c::STD_OUTPUT_HANDLE) as RawHandle })
     }
 }
 
 #[stable(feature = "asraw_stdio_locks", since = "1.35.0")]
 impl<'a> AsRawHandle for io::StderrLock<'a> {
     fn as_raw_handle(&self) -> RawHandle {
-        stdio_handle(unsafe { c::GetStdHandle(c::STD_ERROR_HANDLE) as RawHandle })
+        stdio_handle(unsafe { sys::c::GetStdHandle(sys::c::STD_ERROR_HANDLE) as RawHandle })
     }
 }
 
@@ -145,14 +151,14 @@ fn stdio_handle(raw: RawHandle) -> RawHandle {
     // console. In that case, return null to the user, which is consistent
     // with what they'd get in the parent, and which avoids the problem that
     // `INVALID_HANDLE_VALUE` aliases the current process handle.
-    if raw == c::INVALID_HANDLE_VALUE { ptr::null_mut() } else { raw }
+    if raw == sys::c::INVALID_HANDLE_VALUE { ptr::null_mut() } else { raw }
 }
 
 #[stable(feature = "from_raw_os", since = "1.1.0")]
 impl FromRawHandle for fs::File {
     #[inline]
     unsafe fn from_raw_handle(handle: RawHandle) -> fs::File {
-        let handle = handle as c::HANDLE;
+        let handle = handle as sys::c::HANDLE;
         fs::File::from_inner(sys::fs::File::from_inner(FromInner::from_inner(
             OwnedHandle::from_raw_handle(handle),
         )))

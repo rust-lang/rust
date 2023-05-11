@@ -1,0 +1,22 @@
+error[E0425]: cannot find value `u` in this scope
+  --> $DIR/issues-71798.rs:7:24
+   |
+LL |     let _ = test_ref & u;
+   |                        ^ not found in this scope
+
+error[E0277]: `u32` is not a future
+  --> $DIR/issues-71798.rs:1:25
+   |
+LL | fn test_ref(x: &u32) -> impl std::future::Future<Output = u32> + '_ {
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `u32` is not a future
+LL |
+LL |     *x
+   |     -- return type was inferred to be `u32` here
+   |
+   = help: the trait `Future` is not implemented for `u32`
+   = note: u32 must be a future or must implement `IntoFuture` to be awaited
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0425.
+For more information about an error, try `rustc --explain E0277`.

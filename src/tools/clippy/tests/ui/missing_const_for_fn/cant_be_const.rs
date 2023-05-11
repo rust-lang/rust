@@ -2,13 +2,16 @@
 //! compilation error.
 //! The .stderr output of this test should be empty. Otherwise it's a bug somewhere.
 
-// aux-build:helper.rs
+//@aux-build:helper.rs
+//@aux-build:../../auxiliary/proc_macros.rs
 
 #![warn(clippy::missing_const_for_fn)]
 #![feature(start)]
-#![feature(custom_inner_attributes)]
 
 extern crate helper;
+extern crate proc_macros;
+
+use proc_macros::with_span;
 
 struct Game;
 
@@ -111,11 +114,15 @@ fn unstably_const_fn() {
     helper::unstably_const_fn()
 }
 
+#[clippy::msrv = "1.46.0"]
 mod const_fn_stabilized_after_msrv {
-    #![clippy::msrv = "1.46.0"]
-
     // Do not lint this because `u8::is_ascii_digit` is stabilized as a const function in 1.47.0.
     fn const_fn_stabilized_after_msrv(byte: u8) {
         byte.is_ascii_digit();
     }
+}
+
+with_span! {
+    span
+    fn dont_check_in_proc_macro() {}
 }

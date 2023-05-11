@@ -1,0 +1,36 @@
+error[E0373]: closure may outlive the current function, but it borrows `self`, which is owned by the current function
+  --> $DIR/issue-62097.rs:13:13
+   |
+LL |         foo(|| self.bar()).await;
+   |             ^^ ---- `self` is borrowed here
+   |             |
+   |             may outlive borrowed value `self`
+   |
+note: function requires argument type to outlive `'static`
+  --> $DIR/issue-62097.rs:13:9
+   |
+LL |         foo(|| self.bar()).await;
+   |         ^^^^^^^^^^^^^^^^^^
+help: to force the closure to take ownership of `self` (and any other referenced variables), use the `move` keyword
+   |
+LL |         foo(move || self.bar()).await;
+   |             ++++
+
+error[E0521]: borrowed data escapes outside of method
+  --> $DIR/issue-62097.rs:13:9
+   |
+LL |     pub async fn run_dummy_fn(&self) {
+   |                               -----
+   |                               |
+   |                               `self` is a reference that is only valid in the method body
+   |                               let's call the lifetime of this reference `'1`
+LL |         foo(|| self.bar()).await;
+   |         ^^^^^^^^^^^^^^^^^^
+   |         |
+   |         `self` escapes the method body here
+   |         argument requires that `'1` must outlive `'static`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0373, E0521.
+For more information about an error, try `rustc --explain E0373`.

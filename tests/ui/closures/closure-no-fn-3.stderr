@@ -1,0 +1,9 @@
+error[E0605]: non-primitive cast: `[closure@$DIR/closure-no-fn-3.rs:6:28: 6:30]` as `fn() -> u8`
+  --> $DIR/closure-no-fn-3.rs:6:27
+   |
+LL |     let baz: fn() -> u8 = (|| { b }) as fn() -> u8;
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^ invalid cast
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0605`.

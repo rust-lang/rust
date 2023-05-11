@@ -7,9 +7,9 @@ use std::error::Error;
 
 /// A dep-node filter goes from a user-defined string to a query over
 /// nodes. Right now the format is like this:
-///
-///     x & y & z
-///
+/// ```ignore (illustrative)
+/// x & y & z
+/// ```
 /// where the format-string of the dep-node must contain `x`, `y`, and
 /// `z`.
 #[derive(Debug)]
@@ -29,7 +29,7 @@ impl DepNodeFilter {
 
     /// Tests whether `node` meets the filter, returning true if so.
     pub fn test<K: DepKind>(&self, node: &DepNode<K>) -> bool {
-        let debug_str = format!("{:?}", node);
+        let debug_str = format!("{node:?}");
         self.text.split('&').map(|s| s.trim()).all(|f| debug_str.contains(f))
     }
 }
@@ -46,7 +46,7 @@ impl<K: DepKind> EdgeFilter<K> {
     pub fn new(test: &str) -> Result<EdgeFilter<K>, Box<dyn Error>> {
         let parts: Vec<_> = test.split("->").collect();
         if parts.len() != 2 {
-            Err(format!("expected a filter like `a&b -> c&d`, not `{}`", test).into())
+            Err(format!("expected a filter like `a&b -> c&d`, not `{test}`").into())
         } else {
             Ok(EdgeFilter {
                 source: DepNodeFilter::new(parts[0]),

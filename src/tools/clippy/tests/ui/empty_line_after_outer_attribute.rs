@@ -1,4 +1,4 @@
-// aux-build:proc_macro_attr.rs
+//@aux-build:proc_macro_attr.rs
 #![warn(clippy::empty_line_after_outer_attr)]
 #![allow(clippy::assertions_on_constants)]
 #![feature(custom_inner_attributes)]
@@ -109,5 +109,12 @@ pub trait Bazz {
         vec![]
     }
 }
+
+#[derive(Clone, Copy)]
+#[dummy(string = "first line
+
+second line
+")]
+pub struct Args;
 
 fn main() {}

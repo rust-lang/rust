@@ -1,3 +1,3 @@
-// error-pattern: error reading Clippy's configuration file: unknown key `foobar`
+//@error-pattern: unknown field `foobar`, expected one of
 
 fn main() {}

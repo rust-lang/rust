@@ -9,7 +9,6 @@ macro_rules! unimpl {
 
 pub mod net {
     #![allow(warnings)]
-    use crate::convert::TryFrom;
     use crate::fmt;
     use crate::io::{self, IoSlice, IoSliceMut};
     use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
@@ -130,6 +129,7 @@ pub mod net {
     }
 
     impl AsInner<FileDesc> for Socket {
+        #[inline]
         fn as_inner(&self) -> &FileDesc {
             &self.0
         }
@@ -154,6 +154,7 @@ pub mod net {
     }
 
     impl AsRawFd for Socket {
+        #[inline]
         fn as_raw_fd(&self) -> RawFd {
             self.0.as_raw_fd()
         }
@@ -184,6 +185,7 @@ pub mod net {
             unimpl!();
         }
 
+        #[inline]
         pub fn socket(&self) -> &Socket {
             &self.inner
         }
@@ -306,6 +308,7 @@ pub mod net {
             unimpl!();
         }
 
+        #[inline]
         pub fn socket(&self) -> &Socket {
             &self.inner
         }
@@ -372,6 +375,7 @@ pub mod net {
             unimpl!();
         }
 
+        #[inline]
         pub fn socket(&self) -> &Socket {
             &self.inner
         }

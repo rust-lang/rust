@@ -1,7 +1,11 @@
-// run-rustfix
+//@run-rustfix
+//@aux-build:proc_macros.rs
 
-#![allow(unused_variables, dead_code)]
+#![allow(unused_variables, dead_code, clippy::derive_partial_eq_without_eq)]
 #![warn(clippy::equatable_if_let)]
+
+extern crate proc_macros;
+use proc_macros::{external, inline_macros};
 
 use std::cmp::Ordering;
 
@@ -15,6 +19,11 @@ enum Enum {
 
 #[derive(PartialEq)]
 struct Struct {
+    a: i32,
+    b: bool,
+}
+
+struct NoPartialEqStruct {
     a: i32,
     b: bool,
 }
@@ -35,6 +44,7 @@ impl PartialEq for NotStructuralEq {
     }
 }
 
+#[inline_macros]
 fn main() {
     let a = 2;
     let b = 3;
@@ -43,6 +53,7 @@ fn main() {
     let e = Enum::UnitVariant;
     let f = NotPartialEq::A;
     let g = NotStructuralEq::A;
+    let h = NoPartialEqStruct { a: 2, b: false };
 
     // true
 
@@ -66,13 +77,11 @@ fn main() {
     if let NotStructuralEq::A = g {}
     if let Some(NotPartialEq::A) = Some(f) {}
     if let Some(NotStructuralEq::A) = Some(g) {}
+    if let NoPartialEqStruct { a: 2, b: false } = h {}
 
-    macro_rules! m1 {
-        (x) => {
-            "abc"
-        };
-    }
-    if let m1!(x) = "abc" {
+    if let inline!("abc") = "abc" {
         println!("OK");
     }
+
+    external!({ if let 2 = $a {} });
 }

@@ -9,8 +9,8 @@ pub enum AllocatorKind {
 impl AllocatorKind {
     pub fn fn_name(&self, base: Symbol) -> String {
         match *self {
-            AllocatorKind::Global => format!("__rg_{}", base),
-            AllocatorKind::Default => format!("__rdl_{}", base),
+            AllocatorKind::Global => format!("__rg_{base}"),
+            AllocatorKind::Default => format!("__rdl_{base}"),
         }
     }
 }

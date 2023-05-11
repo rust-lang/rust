@@ -5,8 +5,8 @@ use super::CodegenUnitDebugContext;
 
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::layout::{HasParamEnv, LayoutOf};
-use rustc_middle::ty::{self, DefIdTree, Ty};
-use tracing::trace;
+use rustc_middle::ty::{self, Ty};
+use trace;
 
 use crate::common::CodegenCx;
 use crate::llvm;
@@ -46,7 +46,7 @@ pub fn DIB<'a, 'll>(cx: &'a CodegenCx<'ll, '_>) -> &'a DIBuilder<'ll> {
 }
 
 pub fn get_namespace_for_item<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll DIScope {
-    item_namespace(cx, cx.tcx.parent(def_id).expect("get_namespace_for_item: missing parent?"))
+    item_namespace(cx, cx.tcx.parent(def_id))
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -72,7 +72,7 @@ pub(crate) fn fat_pointer_kind<'ll, 'tcx>(
         layout.is_unsized()
     );
 
-    if !layout.is_unsized() {
+    if layout.is_sized() {
         return None;
     }
 

@@ -10,14 +10,12 @@
 //! This target is more or less managed by the Rust and WebAssembly Working
 //! Group nowadays at <https://github.com/rustwasm>.
 
-use super::wasm_base;
-use super::{LinkerFlavor, LldFlavor, Target};
+use super::{wasm_base, Cc, LinkerFlavor, Target};
 use crate::spec::abi::Abi;
 
 pub fn target() -> Target {
     let mut options = wasm_base::options();
     options.os = "unknown".into();
-    options.linker_flavor = LinkerFlavor::Lld(LldFlavor::Wasm);
 
     // This is a default for backwards-compatibility with the original
     // definition of this target oh-so-long-ago. Once the "wasm" ABI is
@@ -29,27 +27,23 @@ pub fn target() -> Target {
     // code on this target due to this ABI mismatch.
     options.default_adjusted_cabi = Some(Abi::Wasm);
 
-    let clang_args = options.pre_link_args.entry(LinkerFlavor::Gcc).or_default();
-
-    // Make sure clang uses LLD as its linker and is configured appropriately
-    // otherwise
-    clang_args.push("--target=wasm32-unknown-unknown".into());
-
-    // For now this target just never has an entry symbol no matter the output
-    // type, so unconditionally pass this.
-    clang_args.push("-Wl,--no-entry".into());
-
-    // Rust really needs a way for users to specify exports and imports in
-    // the source code. --export-dynamic isn't the right tool for this job,
-    // however it does have the side effect of automatically exporting a lot
-    // of symbols, which approximates what people want when compiling for
-    // wasm32-unknown-unknown expect, so use it for now.
-    clang_args.push("-Wl,--export-dynamic".into());
-
-    // Add the flags to wasm-ld's args too.
-    let lld_args = options.pre_link_args.entry(LinkerFlavor::Lld(LldFlavor::Wasm)).or_default();
-    lld_args.push("--no-entry".into());
-    lld_args.push("--export-dynamic".into());
+    options.add_pre_link_args(
+        LinkerFlavor::WasmLld(Cc::No),
+        &[
+            // For now this target just never has an entry symbol no matter the output
+            // type, so unconditionally pass this.
+            "--no-entry",
+        ],
+    );
+    options.add_pre_link_args(
+        LinkerFlavor::WasmLld(Cc::Yes),
+        &[
+            // Make sure clang uses LLD as its linker and is configured appropriately
+            // otherwise
+            "--target=wasm32-unknown-unknown",
+            "-Wl,--no-entry",
+        ],
+    );
 
     Target {
         llvm_target: "wasm32-unknown-unknown".into(),

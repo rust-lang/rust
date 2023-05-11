@@ -1,6 +1,6 @@
 use super::{DirectedGraph, WithNumNodes, WithStartNode, WithSuccessors};
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::IndexVec;
+use rustc_index::{IndexSlice, IndexVec};
 use std::ops::ControlFlow;
 
 #[cfg(test)]
@@ -31,7 +31,7 @@ fn post_order_walk<G: DirectedGraph + WithSuccessors + WithNumNodes>(
     graph: &G,
     node: G::Node,
     result: &mut Vec<G::Node>,
-    visited: &mut IndexVec<G::Node, bool>,
+    visited: &mut IndexSlice<G::Node, bool>,
 ) {
     struct PostOrderFrame<Node, Iter> {
         node: Node,
@@ -317,12 +317,12 @@ where
         _node: G::Node,
         _prior_status: Option<NodeStatus>,
     ) -> ControlFlow<Self::BreakVal> {
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 
     /// Called after all nodes reachable from this one have been examined.
     fn node_settled(&mut self, _node: G::Node) -> ControlFlow<Self::BreakVal> {
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 
     /// Behave as if no edges exist from `source` to `target`.
@@ -346,8 +346,8 @@ where
         prior_status: Option<NodeStatus>,
     ) -> ControlFlow<Self::BreakVal> {
         match prior_status {
-            Some(NodeStatus::Visited) => ControlFlow::BREAK,
-            _ => ControlFlow::CONTINUE,
+            Some(NodeStatus::Visited) => ControlFlow::Break(()),
+            _ => ControlFlow::Continue(()),
         }
     }
 }

@@ -1,4 +1,4 @@
-// run-rustfix
+//@run-rustfix
 
 #![warn(clippy::all)]
 #![warn(clippy::redundant_pattern_matching)]
@@ -63,6 +63,8 @@ fn main() {
     } else {
         3
     };
+
+    if let Some(..) = gen_opt() {}
 }
 
 fn gen_opt() -> Option<()> {

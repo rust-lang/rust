@@ -1,0 +1,210 @@
+// ignore-tidy-tab
+
+const QUERY = [
+    'aaaaaa	b',
+    'a b',
+    'a,b',
+    'a\tb',
+    'a<b c>',
+    'a<b,c>',
+    'a<b\tc>',
+];
+
+const PARSED = [
+    {
+        elems: [
+            {
+                name: 'aaaaaa',
+                fullPath: ['aaaaaa'],
+                pathWithoutLast: [],
+                pathLast: 'aaaaaa',
+                generics: [],
+                typeFilter: -1,
+            },
+            {
+                name: 'b',
+                fullPath: ['b'],
+                pathWithoutLast: [],
+                pathLast: 'b',
+                generics: [],
+                typeFilter: -1,
+            },
+        ],
+        foundElems: 2,
+        original: "aaaaaa	b",
+        returned: [],
+        userQuery: "aaaaaa	b",
+        error: null,
+    },
+    {
+        elems: [
+            {
+                name: 'a',
+                fullPath: ['a'],
+                pathWithoutLast: [],
+                pathLast: 'a',
+                generics: [],
+                typeFilter: -1,
+            },
+            {
+                name: 'b',
+                fullPath: ['b'],
+                pathWithoutLast: [],
+                pathLast: 'b',
+                generics: [],
+                typeFilter: -1,
+            },
+        ],
+        foundElems: 2,
+        original: "a b",
+        returned: [],
+        userQuery: "a b",
+        error: null,
+    },
+    {
+        elems: [
+            {
+                name: 'a',
+                fullPath: ['a'],
+                pathWithoutLast: [],
+                pathLast: 'a',
+                generics: [],
+                typeFilter: -1,
+            },
+            {
+                name: 'b',
+                fullPath: ['b'],
+                pathWithoutLast: [],
+                pathLast: 'b',
+                generics: [],
+                typeFilter: -1,
+            },
+        ],
+        foundElems: 2,
+        original: "a,b",
+        returned: [],
+        userQuery: "a,b",
+        error: null,
+    },
+    {
+        elems: [
+            {
+                name: 'a',
+                fullPath: ['a'],
+                pathWithoutLast: [],
+                pathLast: 'a',
+                generics: [],
+                typeFilter: -1,
+            },
+            {
+                name: 'b',
+                fullPath: ['b'],
+                pathWithoutLast: [],
+                pathLast: 'b',
+                generics: [],
+                typeFilter: -1,
+            },
+        ],
+        foundElems: 2,
+        original: "a\tb",
+        returned: [],
+        userQuery: "a\tb",
+        error: null,
+    },
+    {
+        elems: [
+            {
+                name: 'a',
+                fullPath: ['a'],
+                pathWithoutLast: [],
+                pathLast: 'a',
+                generics: [
+                    {
+                        name: 'b',
+                        fullPath: ['b'],
+                        pathWithoutLast: [],
+                        pathLast: 'b',
+                        generics: [],
+                    },
+                    {
+                        name: 'c',
+                        fullPath: ['c'],
+                        pathWithoutLast: [],
+                        pathLast: 'c',
+                        generics: [],
+                    },
+                ],
+                typeFilter: -1,
+            },
+        ],
+        foundElems: 1,
+        original: "a<b c>",
+        returned: [],
+        userQuery: "a<b c>",
+        error: null,
+    },
+    {
+        elems: [
+            {
+                name: 'a',
+                fullPath: ['a'],
+                pathWithoutLast: [],
+                pathLast: 'a',
+                generics: [
+                    {
+                        name: 'b',
+                        fullPath: ['b'],
+                        pathWithoutLast: [],
+                        pathLast: 'b',
+                        generics: [],
+                    },
+                    {
+                        name: 'c',
+                        fullPath: ['c'],
+                        pathWithoutLast: [],
+                        pathLast: 'c',
+                        generics: [],
+                    },
+                ],
+                typeFilter: -1,
+            },
+        ],
+        foundElems: 1,
+        original: "a<b,c>",
+        returned: [],
+        userQuery: "a<b,c>",
+        error: null,
+    },
+    {
+        elems: [
+            {
+                name: 'a',
+                fullPath: ['a'],
+                pathWithoutLast: [],
+                pathLast: 'a',
+                generics: [
+                    {
+                        name: 'b',
+                        fullPath: ['b'],
+                        pathWithoutLast: [],
+                        pathLast: 'b',
+                        generics: [],
+                    },
+                    {
+                        name: 'c',
+                        fullPath: ['c'],
+                        pathWithoutLast: [],
+                        pathLast: 'c',
+                        generics: [],
+                    },
+                ],
+                typeFilter: -1,
+            },
+        ],
+        foundElems: 1,
+        original: "a<b\tc>",
+        returned: [],
+        userQuery: "a<b\tc>",
+        error: null,
+    },
+];

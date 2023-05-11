@@ -5,8 +5,6 @@
 // Test that we can handle unsized types with an extern type tail part.
 // Regression test for issue #91827.
 
-#![feature(const_ptr_offset_from)]
-#![feature(const_slice_from_raw_parts)]
 #![feature(extern_types)]
 
 use std::ptr::addr_of;
@@ -42,10 +40,7 @@ impl<T, const N: usize> ListImpl<T, N> {
     }
 }
 
-pub static A: ListImpl<u128, 3> = ListImpl {
-    len: 3,
-    data: [5, 6, 7],
-};
+pub static A: ListImpl<u128, 3> = ListImpl { len: 3, data: [5, 6, 7] };
 pub static A_REF: &'static List<u128> = A.as_list();
 pub static A_TAIL_OFFSET: isize = tail_offset(A.as_list());
 

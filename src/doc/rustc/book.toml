@@ -5,3 +5,4 @@ title = "The rustc book"
 
 [output.html]
 git-repository-url = "https://github.com/rust-lang/rust/tree/master/src/doc/rustc"
+edit-url-template = "https://github.com/rust-lang/rust/edit/master/src/doc/rustc/{path}"

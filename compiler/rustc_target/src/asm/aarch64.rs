@@ -1,6 +1,6 @@
 use super::{InlineAsmArch, InlineAsmType};
 use crate::spec::{RelocModel, Target};
-use rustc_data_structures::stable_set::FxHashSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_macros::HashStable_Generic;
 use rustc_span::Symbol;
 use std::fmt;
@@ -74,13 +74,13 @@ impl AArch64InlineAsmRegClass {
 }
 
 pub fn target_reserves_x18(target: &Target) -> bool {
-    target.os == "android" || target.is_like_fuchsia || target.is_like_osx || target.is_like_windows
+    target.os == "android" || target.os == "fuchsia" || target.is_like_osx || target.is_like_windows
 }
 
 fn reserved_x18(
     _arch: InlineAsmArch,
     _reloc_model: RelocModel,
-    _target_features: &FxHashSet<Symbol>,
+    _target_features: &FxIndexSet<Symbol>,
     target: &Target,
     _is_clobber: bool,
 ) -> Result<(), &'static str> {
@@ -195,6 +195,6 @@ impl AArch64InlineAsmReg {
             (modifier.unwrap_or('v'), self as u32 - Self::v0 as u32)
         };
         assert!(index < 32);
-        write!(out, "{}{}", prefix, index)
+        write!(out, "{prefix}{index}")
     }
 }

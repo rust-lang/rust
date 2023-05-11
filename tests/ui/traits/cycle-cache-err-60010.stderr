@@ -1,0 +1,26 @@
+error[E0275]: overflow evaluating the requirement `RootDatabase: RefUnwindSafe`
+  --> $DIR/cycle-cache-err-60010.rs:27:13
+   |
+LL |     _parse: <ParseQuery as Query<RootDatabase>>::Data,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: required for `RootDatabase` to implement `SourceDatabase`
+  --> $DIR/cycle-cache-err-60010.rs:44:9
+   |
+LL | impl<T> SourceDatabase for T
+   |         ^^^^^^^^^^^^^^     ^
+LL | where
+LL |     T: RefUnwindSafe,
+   |        ------------- unsatisfied trait bound introduced here
+note: required for `ParseQuery` to implement `Query<RootDatabase>`
+  --> $DIR/cycle-cache-err-60010.rs:37:10
+   |
+LL | impl<DB> Query<DB> for ParseQuery
+   |          ^^^^^^^^^     ^^^^^^^^^^
+LL | where
+LL |     DB: SourceDatabase,
+   |         -------------- unsatisfied trait bound introduced here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0275`.

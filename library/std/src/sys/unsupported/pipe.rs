@@ -1,4 +1,4 @@
-use crate::io::{self, IoSlice, IoSliceMut};
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 
 pub struct AnonPipe(!);
 
@@ -7,11 +7,19 @@ impl AnonPipe {
         self.0
     }
 
+    pub fn read_buf(&self, _buf: BorrowedCursor<'_>) -> io::Result<()> {
+        self.0
+    }
+
     pub fn read_vectored(&self, _bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.0
     }
 
     pub fn is_read_vectored(&self) -> bool {
+        self.0
+    }
+
+    pub fn read_to_end(&self, _buf: &mut Vec<u8>) -> io::Result<usize> {
         self.0
     }
 

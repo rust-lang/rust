@@ -1,0 +1,21 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/union-ice.rs:14:33
+   |
+LL | const FIELD3: Field3 = unsafe { UNION.field3 };
+   |                                 ^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/union-ice.rs:20:17
+   |
+LL |     b: unsafe { UNION.field3 },
+   |                 ^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/union-ice.rs:33:18
+   |
+LL |         unsafe { UNION.field3 },
+   |                  ^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

@@ -1,0 +1,16 @@
+error: `for<...>` binders on `async` closures are not currently supported
+  --> $DIR/async-closure-with-binder.rs:5:5
+   |
+LL |     for<'a> async || ();
+   |     ^^^^^^^
+
+error: implicit types in closure signatures are forbidden when `for<...>` is present
+  --> $DIR/async-closure-with-binder.rs:5:5
+   |
+LL |     for<'a> async || ();
+   |     -------^^^^^^^^^
+   |     |
+   |     `for<...>` is here
+
+error: aborting due to 2 previous errors
+

@@ -14,6 +14,11 @@ use crate::marker::PhantomData;
 use crate::num::*;
 use crate::ops::{Deref, DerefMut};
 
+#[stable(feature = "core_c_str", since = "1.64.0")]
+pub use self::c_str::{CStr, FromBytesUntilNulError, FromBytesWithNulError};
+
+mod c_str;
+
 macro_rules! type_alias_no_nz {
     {
       $Docfile:tt, $Alias:ident = $Real:ty;
@@ -21,7 +26,7 @@ macro_rules! type_alias_no_nz {
     } => {
         #[doc = include_str!($Docfile)]
         $( $Cfg )*
-        #[unstable(feature = "core_ffi_c", issue = "94501")]
+        #[stable(feature = "core_ffi_c", since = "1.64.0")]
         pub type $Alias = $Real;
     }
 }
@@ -53,29 +58,25 @@ type_alias! { "c_char.md", c_char = c_char_definition::c_char, NonZero_c_char = 
 // is fixed.
 #[cfg(all())]
 #[doc(cfg(all()))] }
+
 type_alias! { "c_schar.md", c_schar = i8, NonZero_c_schar = NonZeroI8; }
 type_alias! { "c_uchar.md", c_uchar = u8, NonZero_c_uchar = NonZeroU8; }
 type_alias! { "c_short.md", c_short = i16, NonZero_c_short = NonZeroI16; }
 type_alias! { "c_ushort.md", c_ushort = u16, NonZero_c_ushort = NonZeroU16; }
-#[cfg(any(target_arch = "avr", target_arch = "msp430"))]
-type_alias! { "c_int.md", c_int = i16, NonZero_c_int = NonZeroI16; }
-#[cfg(not(any(target_arch = "avr", target_arch = "msp430")))]
-type_alias! { "c_int.md", c_int = i32, NonZero_c_int = NonZeroI32; }
-type_alias! { "c_uint.md", c_uint = u32, NonZero_c_uint = NonZeroU32; }
-type_alias! { "c_long.md", c_long = i32, NonZero_c_long = NonZeroI32;
-#[doc(cfg(all()))]
-#[cfg(any(target_pointer_width = "32", windows))] }
-type_alias! { "c_ulong.md", c_ulong = u32, NonZero_c_ulong = NonZeroU32;
-#[doc(cfg(all()))]
-#[cfg(any(target_pointer_width = "32", windows))] }
-type_alias! { "c_long.md", c_long = i64, NonZero_c_long = NonZeroI64;
-#[doc(cfg(all()))]
-#[cfg(all(target_pointer_width = "64", not(windows)))] }
-type_alias! { "c_ulong.md", c_ulong = u64, NonZero_c_ulong = NonZeroU64;
-#[doc(cfg(all()))]
-#[cfg(all(target_pointer_width = "64", not(windows)))] }
+
+type_alias! { "c_int.md", c_int = c_int_definition::c_int, NonZero_c_int = c_int_definition::NonZero_c_int;
+#[doc(cfg(all()))] }
+type_alias! { "c_uint.md", c_uint = c_int_definition::c_uint, NonZero_c_uint = c_int_definition::NonZero_c_uint;
+#[doc(cfg(all()))] }
+
+type_alias! { "c_long.md", c_long = c_long_definition::c_long, NonZero_c_long = c_long_definition::NonZero_c_long;
+#[doc(cfg(all()))] }
+type_alias! { "c_ulong.md", c_ulong = c_long_definition::c_ulong, NonZero_c_ulong = c_long_definition::NonZero_c_ulong;
+#[doc(cfg(all()))] }
+
 type_alias! { "c_longlong.md", c_longlong = i64, NonZero_c_longlong = NonZeroI64; }
 type_alias! { "c_ulonglong.md", c_ulonglong = u64, NonZero_c_ulonglong = NonZeroU64; }
+
 type_alias_no_nz! { "c_float.md", c_float = f32; }
 type_alias_no_nz! { "c_double.md", c_double = f64; }
 
@@ -142,7 +143,12 @@ mod c_char_definition {
                     target_arch = "powerpc"
                 )
             ),
-            all(target_os = "fuchsia", target_arch = "aarch64")
+            all(
+                target_os = "fuchsia",
+                any(target_arch = "aarch64", target_arch = "riscv64")
+            ),
+            all(target_os = "nto", target_arch = "aarch64"),
+            target_os = "horizon"
         ))] {
             pub type c_char = u8;
             pub type NonZero_c_char = crate::num::NonZeroU8;
@@ -150,6 +156,39 @@ mod c_char_definition {
             // On every other target, c_char is signed.
             pub type c_char = i8;
             pub type NonZero_c_char = crate::num::NonZeroI8;
+        }
+    }
+}
+
+mod c_int_definition {
+    cfg_if! {
+        if #[cfg(any(target_arch = "avr", target_arch = "msp430"))] {
+            pub type c_int = i16;
+            pub type NonZero_c_int = crate::num::NonZeroI16;
+            pub type c_uint = u16;
+            pub type NonZero_c_uint = crate::num::NonZeroU16;
+        } else {
+            pub type c_int = i32;
+            pub type NonZero_c_int = crate::num::NonZeroI32;
+            pub type c_uint = u32;
+            pub type NonZero_c_uint = crate::num::NonZeroU32;
+        }
+    }
+}
+
+mod c_long_definition {
+    cfg_if! {
+        if #[cfg(all(target_pointer_width = "64", not(windows)))] {
+            pub type c_long = i64;
+            pub type NonZero_c_long = crate::num::NonZeroI64;
+            pub type c_ulong = u64;
+            pub type NonZero_c_ulong = crate::num::NonZeroU64;
+        } else {
+            // The minimal size of `long` in the C standard is 32 bits
+            pub type c_long = i32;
+            pub type NonZero_c_long = crate::num::NonZeroI32;
+            pub type c_ulong = u32;
+            pub type NonZero_c_ulong = crate::num::NonZeroU32;
         }
     }
 }
@@ -163,6 +202,7 @@ mod c_char_definition {
 //     would be uninhabited and at least dereferencing such pointers would
 //     be UB.
 #[doc = include_str!("c_void.md")]
+#[cfg_attr(not(bootstrap), lang = "c_void")]
 #[repr(u8)]
 #[stable(feature = "core_c_void", since = "1.30.0")]
 pub enum c_void {
@@ -192,11 +232,17 @@ impl fmt::Debug for c_void {
 /// Basic implementation of a `va_list`.
 // The name is WIP, using `VaListImpl` for now.
 #[cfg(any(
-    all(not(target_arch = "aarch64"), not(target_arch = "powerpc"), not(target_arch = "x86_64")),
+    all(
+        not(target_arch = "aarch64"),
+        not(target_arch = "powerpc"),
+        not(target_arch = "s390x"),
+        not(target_arch = "x86_64")
+    ),
     all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios")),
     target_family = "wasm",
     target_arch = "asmjs",
-    windows
+    target_os = "uefi",
+    windows,
 ))]
 #[repr(transparent)]
 #[unstable(
@@ -215,11 +261,17 @@ pub struct VaListImpl<'f> {
 }
 
 #[cfg(any(
-    all(not(target_arch = "aarch64"), not(target_arch = "powerpc"), not(target_arch = "x86_64")),
+    all(
+        not(target_arch = "aarch64"),
+        not(target_arch = "powerpc"),
+        not(target_arch = "s390x"),
+        not(target_arch = "x86_64")
+    ),
     all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios")),
     target_family = "wasm",
     target_arch = "asmjs",
-    windows
+    target_os = "uefi",
+    windows,
 ))]
 #[unstable(
     feature = "c_variadic",
@@ -241,7 +293,8 @@ impl<'f> fmt::Debug for VaListImpl<'f> {
 #[cfg(all(
     target_arch = "aarch64",
     not(any(target_os = "macos", target_os = "ios")),
-    not(windows)
+    not(target_os = "uefi"),
+    not(windows),
 ))]
 #[repr(C)]
 #[derive(Debug)]
@@ -262,7 +315,7 @@ pub struct VaListImpl<'f> {
 }
 
 /// PowerPC ABI implementation of a `va_list`.
-#[cfg(all(target_arch = "powerpc", not(windows)))]
+#[cfg(all(target_arch = "powerpc", not(target_os = "uefi"), not(windows)))]
 #[repr(C)]
 #[derive(Debug)]
 #[unstable(
@@ -281,8 +334,27 @@ pub struct VaListImpl<'f> {
     _marker: PhantomData<&'f mut &'f c_void>,
 }
 
+/// s390x ABI implementation of a `va_list`.
+#[cfg(target_arch = "s390x")]
+#[repr(C)]
+#[derive(Debug)]
+#[unstable(
+    feature = "c_variadic",
+    reason = "the `c_variadic` feature has not been properly tested on \
+              all supported platforms",
+    issue = "44930"
+)]
+#[lang = "va_list"]
+pub struct VaListImpl<'f> {
+    gpr: i64,
+    fpr: i64,
+    overflow_arg_area: *mut c_void,
+    reg_save_area: *mut c_void,
+    _marker: PhantomData<&'f mut &'f c_void>,
+}
+
 /// x86_64 ABI implementation of a `va_list`.
-#[cfg(all(target_arch = "x86_64", not(windows)))]
+#[cfg(all(target_arch = "x86_64", not(target_os = "uefi"), not(windows)))]
 #[repr(C)]
 #[derive(Debug)]
 #[unstable(
@@ -314,21 +386,29 @@ pub struct VaList<'a, 'f: 'a> {
         all(
             not(target_arch = "aarch64"),
             not(target_arch = "powerpc"),
+            not(target_arch = "s390x"),
             not(target_arch = "x86_64")
         ),
         all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios")),
         target_family = "wasm",
         target_arch = "asmjs",
-        windows
+        target_os = "uefi",
+        windows,
     ))]
     inner: VaListImpl<'f>,
 
     #[cfg(all(
-        any(target_arch = "aarch64", target_arch = "powerpc", target_arch = "x86_64"),
+        any(
+            target_arch = "aarch64",
+            target_arch = "powerpc",
+            target_arch = "s390x",
+            target_arch = "x86_64"
+        ),
         any(not(target_arch = "aarch64"), not(any(target_os = "macos", target_os = "ios"))),
         not(target_family = "wasm"),
         not(target_arch = "asmjs"),
-        not(windows)
+        not(target_os = "uefi"),
+        not(windows),
     ))]
     inner: &'a mut VaListImpl<'f>,
 
@@ -336,11 +416,17 @@ pub struct VaList<'a, 'f: 'a> {
 }
 
 #[cfg(any(
-    all(not(target_arch = "aarch64"), not(target_arch = "powerpc"), not(target_arch = "x86_64")),
+    all(
+        not(target_arch = "aarch64"),
+        not(target_arch = "powerpc"),
+        not(target_arch = "s390x"),
+        not(target_arch = "x86_64")
+    ),
     all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios")),
     target_family = "wasm",
     target_arch = "asmjs",
-    windows
+    target_os = "uefi",
+    windows,
 ))]
 #[unstable(
     feature = "c_variadic",
@@ -357,11 +443,17 @@ impl<'f> VaListImpl<'f> {
 }
 
 #[cfg(all(
-    any(target_arch = "aarch64", target_arch = "powerpc", target_arch = "x86_64"),
+    any(
+        target_arch = "aarch64",
+        target_arch = "powerpc",
+        target_arch = "s390x",
+        target_arch = "x86_64"
+    ),
     any(not(target_arch = "aarch64"), not(any(target_os = "macos", target_os = "ios"))),
     not(target_family = "wasm"),
     not(target_arch = "asmjs"),
-    not(windows)
+    not(target_os = "uefi"),
+    not(windows),
 ))]
 #[unstable(
     feature = "c_variadic",
@@ -527,12 +619,15 @@ impl<'f> Drop for VaListImpl<'f> {
 extern "rust-intrinsic" {
     /// Destroy the arglist `ap` after initialization with `va_start` or
     /// `va_copy`.
+    #[rustc_nounwind]
     fn va_end(ap: &mut VaListImpl<'_>);
 
     /// Copies the current location of arglist `src` to the arglist `dst`.
+    #[rustc_nounwind]
     fn va_copy<'f>(dest: *mut VaListImpl<'f>, src: &VaListImpl<'f>);
 
     /// Loads an argument of type `T` from the `va_list` `ap` and increment the
     /// argument `ap` points to.
+    #[rustc_nounwind]
     fn va_arg<T: sealed_trait::VaArgSafe>(ap: &mut VaListImpl<'_>) -> T;
 }

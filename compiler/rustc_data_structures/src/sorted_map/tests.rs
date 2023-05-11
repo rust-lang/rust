@@ -6,7 +6,7 @@ fn test_sorted_index_multi_map() {
     let set: SortedIndexMultiMap<usize, _, _> = entries.iter().copied().collect();
 
     // Insertion order is preserved.
-    assert!(entries.iter().map(|(ref k, ref v)| (k, v)).eq(set.iter()));
+    assert!(entries.iter().map(|(k, v)| (k, v)).eq(set.iter()));
 
     // Indexing
     for (i, expect) in entries.iter().enumerate() {
@@ -16,6 +16,10 @@ fn test_sorted_index_multi_map() {
     // `get_by_key` works.
     assert_eq!(set.get_by_key(3).copied().collect::<Vec<_>>(), vec![0]);
     assert!(set.get_by_key(4).next().is_none());
+
+    // `contains_key` works
+    assert!(set.contains_key(3));
+    assert!(!set.contains_key(4));
 
     // `get_by_key` returns items in insertion order.
     let twos: Vec<_> = set.get_by_key_enumerated(2).collect();

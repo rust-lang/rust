@@ -10,9 +10,9 @@ pub use self::global::GlobalAlloc;
 #[stable(feature = "alloc_layout", since = "1.28.0")]
 pub use self::layout::Layout;
 #[stable(feature = "alloc_layout", since = "1.28.0")]
-#[rustc_deprecated(
+#[deprecated(
     since = "1.52.0",
-    reason = "Name does not follow std convention, use LayoutError",
+    note = "Name does not follow std convention, use LayoutError",
     suggestion = "LayoutError"
 )]
 #[allow(deprecated, deprecated_in_future)]
@@ -21,6 +21,7 @@ pub use self::layout::LayoutErr;
 #[stable(feature = "alloc_layout_error", since = "1.50.0")]
 pub use self::layout::LayoutError;
 
+use crate::error::Error;
 use crate::fmt;
 use crate::ptr::{self, NonNull};
 
@@ -31,6 +32,13 @@ use crate::ptr::{self, NonNull};
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct AllocError;
+
+#[unstable(
+    feature = "allocator_api",
+    reason = "the precise API and guarantees it provides may be tweaked.",
+    issue = "32838"
+)]
+impl Error for AllocError {}
 
 // (we need this for downstream impl of trait Error)
 #[unstable(feature = "allocator_api", issue = "32838")]
@@ -87,10 +95,10 @@ impl fmt::Display for AllocError {
 /// # Safety
 ///
 /// * Memory blocks returned from an allocator must point to valid memory and retain their validity
-///   until the instance and all of its clones are dropped,
+///   until the instance and all of its copies and clones are dropped,
 ///
-/// * cloning or moving the allocator must not invalidate memory blocks returned from this
-///   allocator. A cloned allocator must behave like the same allocator, and
+/// * copying, cloning, or moving the allocator must not invalidate memory blocks returned from this
+///   allocator. A copied or cloned allocator must behave like the same allocator, and
 ///
 /// * any pointer to a memory block which is [*currently allocated*] may be passed to any other
 ///   method of the allocator.
@@ -160,9 +168,9 @@ pub unsafe trait Allocator {
     /// this, the allocator may extend the allocation referenced by `ptr` to fit the new layout.
     ///
     /// If this returns `Ok`, then ownership of the memory block referenced by `ptr` has been
-    /// transferred to this allocator. The memory may or may not have been freed, and should be
-    /// considered unusable unless it was transferred back to the caller again via the return value
-    /// of this method.
+    /// transferred to this allocator. Any access to the old `ptr` is Undefined Behavior, even if the
+    /// allocation was grown in-place. The newly returned pointer is the only valid pointer
+    /// for accessing this memory now.
     ///
     /// If this method returns `Err`, then ownership of the memory block has not been transferred to
     /// this allocator, and the contents of the memory block are unaltered.
@@ -287,9 +295,9 @@ pub unsafe trait Allocator {
     /// this, the allocator may shrink the allocation referenced by `ptr` to fit the new layout.
     ///
     /// If this returns `Ok`, then ownership of the memory block referenced by `ptr` has been
-    /// transferred to this allocator. The memory may or may not have been freed, and should be
-    /// considered unusable unless it was transferred back to the caller again via the return value
-    /// of this method.
+    /// transferred to this allocator. Any access to the old `ptr` is Undefined Behavior, even if the
+    /// allocation was shrunk in-place. The newly returned pointer is the only valid pointer
+    /// for accessing this memory now.
     ///
     /// If this method returns `Err`, then ownership of the memory block has not been transferred to
     /// this allocator, and the contents of the memory block are unaltered.

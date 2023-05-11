@@ -1,11 +1,25 @@
+use crate::errors::{
+    self, MultipleWhereClauses, UnexpectedDefaultValueForLifetimeInGenericParameters,
+    UnexpectedSelfInGenericParameters, WhereClauseBeforeTupleStructBody,
+    WhereClauseBeforeTupleStructBodySugg,
+};
+
 use super::{ForceCollect, Parser, TrailingToken};
 
+use ast::token::Delimiter;
 use rustc_ast::token;
 use rustc_ast::{
-    self as ast, Attribute, GenericBounds, GenericParam, GenericParamKind, WhereClause,
+    self as ast, AttrVec, GenericBounds, GenericParam, GenericParamKind, TyKind, WhereClause,
 };
 use rustc_errors::{Applicability, PResult};
-use rustc_span::symbol::kw;
+use rustc_span::symbol::{kw, Ident};
+use rustc_span::Span;
+use thin_vec::ThinVec;
+
+enum PredicateOrStructBody {
+    Predicate(ast::WherePredicate),
+    StructBody(ThinVec<ast::FieldDef>),
+}
 
 impl<'a> Parser<'a> {
     /// Parses bounds of a lifetime parameter `BOUND + BOUND + BOUND`, possibly with trailing `+`.
@@ -26,31 +40,64 @@ impl<'a> Parser<'a> {
     }
 
     /// Matches `typaram = IDENT (`?` unbound)? optbounds ( EQ ty )?`.
-    fn parse_ty_param(&mut self, preceding_attrs: Vec<Attribute>) -> PResult<'a, GenericParam> {
+    fn parse_ty_param(&mut self, preceding_attrs: AttrVec) -> PResult<'a, GenericParam> {
         let ident = self.parse_ident()?;
 
         // Parse optional colon and param bounds.
+        let mut colon_span = None;
         let bounds = if self.eat(&token::Colon) {
-            self.parse_generic_bounds(Some(self.prev_token.span))?
+            colon_span = Some(self.prev_token.span);
+            // recover from `impl Trait` in type param bound
+            if self.token.is_keyword(kw::Impl) {
+                let impl_span = self.token.span;
+                let snapshot = self.create_snapshot_for_diagnostic();
+                match self.parse_ty() {
+                    Ok(p) => {
+                        if let TyKind::ImplTrait(_, bounds) = &p.kind {
+                            let span = impl_span.to(self.token.span.shrink_to_lo());
+                            let mut err = self.struct_span_err(
+                                span,
+                                "expected trait bound, found `impl Trait` type",
+                            );
+                            err.span_label(span, "not a trait");
+                            if let [bound, ..] = &bounds[..] {
+                                err.span_suggestion_verbose(
+                                    impl_span.until(bound.span()),
+                                    "use the trait bounds directly",
+                                    String::new(),
+                                    Applicability::MachineApplicable,
+                                );
+                            }
+                            err.emit();
+                            return Err(err);
+                        }
+                    }
+                    Err(err) => {
+                        err.cancel();
+                    }
+                }
+                self.restore_snapshot(snapshot);
+            }
+            self.parse_generic_bounds()?
         } else {
             Vec::new()
         };
 
         let default = if self.eat(&token::Eq) { Some(self.parse_ty()?) } else { None };
-
         Ok(GenericParam {
             ident,
             id: ast::DUMMY_NODE_ID,
-            attrs: preceding_attrs.into(),
+            attrs: preceding_attrs,
             bounds,
             kind: GenericParamKind::Type { default },
             is_placeholder: false,
+            colon_span,
         })
     }
 
-    crate fn parse_const_param(
+    pub(crate) fn parse_const_param(
         &mut self,
-        preceding_attrs: Vec<Attribute>,
+        preceding_attrs: AttrVec,
     ) -> PResult<'a, GenericParam> {
         let const_span = self.token.span;
 
@@ -65,17 +112,18 @@ impl<'a> Parser<'a> {
         Ok(GenericParam {
             ident,
             id: ast::DUMMY_NODE_ID,
-            attrs: preceding_attrs.into(),
+            attrs: preceding_attrs,
             bounds: Vec::new(),
             kind: GenericParamKind::Const { ty, kw_span: const_span, default },
             is_placeholder: false,
+            colon_span: None,
         })
     }
 
     /// Parses a (possibly empty) list of lifetime and type parameters, possibly including
     /// a trailing comma and erroneous trailing attributes.
-    pub(super) fn parse_generic_params(&mut self) -> PResult<'a, Vec<ast::GenericParam>> {
-        let mut params = Vec::new();
+    pub(super) fn parse_generic_params(&mut self) -> PResult<'a, ThinVec<ast::GenericParam>> {
+        let mut params = ThinVec::new();
         let mut done = false;
         while !done {
             let attrs = self.parse_outer_attributes()?;
@@ -84,12 +132,9 @@ impl<'a> Parser<'a> {
                     if this.eat_keyword_noexpect(kw::SelfUpper) {
                         // `Self` as a generic param is invalid. Here we emit the diagnostic and continue parsing
                         // as if `Self` never existed.
-                        this.struct_span_err(
-                            this.prev_token.span,
-                            "unexpected keyword `Self` in generic parameters",
-                        )
-                        .note("you cannot use `Self` as a generic parameter because it is reserved for associated items")
-                        .emit();
+                        this.sess.emit_err(UnexpectedSelfInGenericParameters {
+                            span: this.prev_token.span,
+                        });
 
                         this.eat(&token::Comma);
                     }
@@ -97,18 +142,33 @@ impl<'a> Parser<'a> {
                     let param = if this.check_lifetime() {
                         let lifetime = this.expect_lifetime();
                         // Parse lifetime parameter.
-                        let bounds = if this.eat(&token::Colon) {
-                            this.parse_lt_param_bounds()
+                        let (colon_span, bounds) = if this.eat(&token::Colon) {
+                            (Some(this.prev_token.span), this.parse_lt_param_bounds())
                         } else {
-                            Vec::new()
+                            (None, Vec::new())
                         };
+
+                        if this.check_noexpect(&token::Eq)
+                            && this.look_ahead(1, |t| t.is_lifetime())
+                        {
+                            let lo = this.token.span;
+                            // Parse `= 'lifetime`.
+                            this.bump(); // `=`
+                            this.bump(); // `'lifetime`
+                            let span = lo.to(this.prev_token.span);
+                            this.sess.emit_err(
+                                UnexpectedDefaultValueForLifetimeInGenericParameters { span },
+                            );
+                        }
+
                         Some(ast::GenericParam {
                             ident: lifetime.ident,
                             id: lifetime.id,
-                            attrs: attrs.into(),
+                            attrs,
                             bounds,
                             kind: ast::GenericParamKind::Lifetime,
                             is_placeholder: false,
+                            colon_span,
                         })
                     } else if this.check_keyword(kw::Const) {
                         // Parse const parameter.
@@ -121,12 +181,9 @@ impl<'a> Parser<'a> {
                         let snapshot = this.create_snapshot_for_diagnostic();
                         match this.parse_ty_where_predicate() {
                             Ok(where_predicate) => {
-                                this.struct_span_err(
-                                    where_predicate.span(),
-                                    "bounds on associated types do not belong here",
-                                )
-                                .span_label(where_predicate.span(), "belongs in `where` clause")
-                                .emit();
+                                this.sess.emit_err(errors::BadAssocTypeBounds {
+                                    span: where_predicate.span(),
+                                });
                                 // FIXME - try to continue parsing other generics?
                                 return Ok((None, TrailingToken::None));
                             }
@@ -141,22 +198,11 @@ impl<'a> Parser<'a> {
                         // Check for trailing attributes and stop parsing.
                         if !attrs.is_empty() {
                             if !params.is_empty() {
-                                this.struct_span_err(
-                                    attrs[0].span,
-                                    "trailing attribute after generic parameter",
-                                )
-                                .span_label(attrs[0].span, "attributes must go before parameters")
-                                .emit();
+                                this.sess
+                                    .emit_err(errors::AttrAfterGeneric { span: attrs[0].span });
                             } else {
-                                this.struct_span_err(
-                                    attrs[0].span,
-                                    "attribute without generic parameters",
-                                )
-                                .span_label(
-                                    attrs[0].span,
-                                    "attributes are only permitted when preceding parameters",
-                                )
-                                .emit();
+                                this.sess
+                                    .emit_err(errors::AttrWithoutGenerics { span: attrs[0].span });
                             }
                         }
                         return Ok((None, TrailingToken::None));
@@ -192,52 +238,64 @@ impl<'a> Parser<'a> {
             self.expect_gt()?;
             (params, span_lo.to(self.prev_token.span))
         } else {
-            (vec![], self.prev_token.span.shrink_to_hi())
+            (ThinVec::new(), self.prev_token.span.shrink_to_hi())
         };
         Ok(ast::Generics {
             params,
             where_clause: WhereClause {
                 has_where_token: false,
-                predicates: Vec::new(),
+                predicates: ThinVec::new(),
                 span: self.prev_token.span.shrink_to_hi(),
             },
             span,
         })
     }
 
-    /// Parses an optional where-clause and places it in `generics`.
+    /// Parses an optional where-clause.
     ///
     /// ```ignore (only-for-syntax-highlight)
     /// where T : Trait<U, V> + 'b, 'a : 'b
     /// ```
     pub(super) fn parse_where_clause(&mut self) -> PResult<'a, WhereClause> {
+        self.parse_where_clause_common(None).map(|(clause, _)| clause)
+    }
+
+    pub(super) fn parse_struct_where_clause(
+        &mut self,
+        struct_name: Ident,
+        body_insertion_point: Span,
+    ) -> PResult<'a, (WhereClause, Option<ThinVec<ast::FieldDef>>)> {
+        self.parse_where_clause_common(Some((struct_name, body_insertion_point)))
+    }
+
+    fn parse_where_clause_common(
+        &mut self,
+        struct_: Option<(Ident, Span)>,
+    ) -> PResult<'a, (WhereClause, Option<ThinVec<ast::FieldDef>>)> {
         let mut where_clause = WhereClause {
             has_where_token: false,
-            predicates: Vec::new(),
+            predicates: ThinVec::new(),
             span: self.prev_token.span.shrink_to_hi(),
         };
+        let mut tuple_struct_body = None;
 
         if !self.eat_keyword(kw::Where) {
-            return Ok(where_clause);
+            return Ok((where_clause, None));
         }
         where_clause.has_where_token = true;
-        let lo = self.prev_token.span;
+        let where_lo = self.prev_token.span;
 
         // We are considering adding generics to the `where` keyword as an alternative higher-rank
         // parameter syntax (as in `where<'a>` or `where<T>`. To avoid that being a breaking
         // change we parse those generics now, but report an error.
         if self.choose_generics_over_qpath(0) {
             let generics = self.parse_generics()?;
-            self.struct_span_err(
-                generics.span,
-                "generic parameters on `where` clauses are reserved for future use",
-            )
-            .span_label(generics.span, "currently unsupported")
-            .emit();
+            self.sess.emit_err(errors::WhereOnGenerics { span: generics.span });
         }
 
         loop {
-            let lo = self.token.span;
+            let where_sp = where_lo.to(self.prev_token.span);
+            let pred_lo = self.token.span;
             if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
                 let lifetime = self.expect_lifetime();
                 // Bounds starting with a colon are mandatory, but possibly empty.
@@ -245,13 +303,21 @@ impl<'a> Parser<'a> {
                 let bounds = self.parse_lt_param_bounds();
                 where_clause.predicates.push(ast::WherePredicate::RegionPredicate(
                     ast::WhereRegionPredicate {
-                        span: lo.to(self.prev_token.span),
+                        span: pred_lo.to(self.prev_token.span),
                         lifetime,
                         bounds,
                     },
                 ));
             } else if self.check_type() {
-                where_clause.predicates.push(self.parse_ty_where_predicate()?);
+                match self.parse_ty_where_predicate_or_recover_tuple_struct_body(
+                    struct_, pred_lo, where_sp,
+                )? {
+                    PredicateOrStructBody::Predicate(pred) => where_clause.predicates.push(pred),
+                    PredicateOrStructBody::StructBody(body) => {
+                        tuple_struct_body = Some(body);
+                        break;
+                    }
+                }
             } else {
                 break;
             }
@@ -260,23 +326,82 @@ impl<'a> Parser<'a> {
             let ate_comma = self.eat(&token::Comma);
 
             if self.eat_keyword_noexpect(kw::Where) {
-                let msg = "cannot define duplicate `where` clauses on an item";
-                let mut err = self.struct_span_err(self.token.span, msg);
-                err.span_label(lo, "previous `where` clause starts here");
-                err.span_suggestion_verbose(
-                    prev_token.shrink_to_hi().to(self.prev_token.span),
-                    "consider joining the two `where` clauses into one",
-                    ",".to_owned(),
-                    Applicability::MaybeIncorrect,
-                );
-                err.emit();
+                self.sess.emit_err(MultipleWhereClauses {
+                    span: self.token.span,
+                    previous: pred_lo,
+                    between: prev_token.shrink_to_hi().to(self.prev_token.span),
+                });
             } else if !ate_comma {
                 break;
             }
         }
 
-        where_clause.span = lo.to(self.prev_token.span);
-        Ok(where_clause)
+        where_clause.span = where_lo.to(self.prev_token.span);
+        Ok((where_clause, tuple_struct_body))
+    }
+
+    fn parse_ty_where_predicate_or_recover_tuple_struct_body(
+        &mut self,
+        struct_: Option<(Ident, Span)>,
+        pred_lo: Span,
+        where_sp: Span,
+    ) -> PResult<'a, PredicateOrStructBody> {
+        let mut snapshot = None;
+
+        if let Some(struct_) = struct_
+            && self.may_recover()
+            && self.token.kind == token::OpenDelim(Delimiter::Parenthesis)
+        {
+            snapshot = Some((struct_, self.create_snapshot_for_diagnostic()));
+        };
+
+        match self.parse_ty_where_predicate() {
+            Ok(pred) => Ok(PredicateOrStructBody::Predicate(pred)),
+            Err(type_err) => {
+                let Some(((struct_name, body_insertion_point), mut snapshot)) = snapshot else {
+                    return Err(type_err);
+                };
+
+                // Check if we might have encountered an out of place tuple struct body.
+                match snapshot.parse_tuple_struct_body() {
+                    // Since we don't know the exact reason why we failed to parse the
+                    // predicate (we might have stumbled upon something bogus like `(T): ?`),
+                    // employ a simple heuristic to weed out some pathological cases:
+                    // Look for a semicolon (strong indicator) or anything that might mark
+                    // the end of the item (weak indicator) following the body.
+                    Ok(body)
+                        if matches!(snapshot.token.kind, token::Semi | token::Eof)
+                            || snapshot.token.can_begin_item() =>
+                    {
+                        type_err.cancel();
+
+                        let body_sp = pred_lo.to(snapshot.prev_token.span);
+                        let map = self.sess.source_map();
+
+                        self.sess.emit_err(WhereClauseBeforeTupleStructBody {
+                            span: where_sp,
+                            name: struct_name.span,
+                            body: body_sp,
+                            sugg: map.span_to_snippet(body_sp).ok().map(|body| {
+                                WhereClauseBeforeTupleStructBodySugg {
+                                    left: body_insertion_point.shrink_to_hi(),
+                                    snippet: body,
+                                    right: map.end_point(where_sp).to(body_sp),
+                                }
+                            }),
+                        });
+
+                        self.restore_snapshot(snapshot);
+                        Ok(PredicateOrStructBody::StructBody(body))
+                    }
+                    Ok(_) => Err(type_err),
+                    Err(body_err) => {
+                        body_err.cancel();
+                        Err(type_err)
+                    }
+                }
+            }
+        }
     }
 
     fn parse_ty_where_predicate(&mut self) -> PResult<'a, ast::WherePredicate> {
@@ -294,7 +419,7 @@ impl<'a> Parser<'a> {
         // or with mandatory equality sign and the second type.
         let ty = self.parse_ty_for_where_clause()?;
         if self.eat(&token::Colon) {
-            let bounds = self.parse_generic_bounds(Some(self.prev_token.span))?;
+            let bounds = self.parse_generic_bounds()?;
             Ok(ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
                 span: lo.to(self.prev_token.span),
                 bound_generic_params: lifetime_defs,
@@ -309,7 +434,6 @@ impl<'a> Parser<'a> {
                 span: lo.to(self.prev_token.span),
                 lhs_ty: ty,
                 rhs_ty,
-                id: ast::DUMMY_NODE_ID,
             }))
         } else {
             self.maybe_recover_bounds_doubled_colon(&ty)?;

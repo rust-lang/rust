@@ -22,7 +22,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 cx,
                 UNIT_CMP,
                 macro_call.span,
-                &format!("`{}` of unit values detected. This will always {}", macro_name, result),
+                &format!("`{macro_name}` of unit values detected. This will always {result}"),
             );
         }
         return;
@@ -40,9 +40,8 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 UNIT_CMP,
                 expr.span,
                 &format!(
-                    "{}-comparison of unit values detected. This will always be {}",
-                    op.as_str(),
-                    result
+                    "{}-comparison of unit values detected. This will always be {result}",
+                    op.as_str()
                 ),
             );
         }

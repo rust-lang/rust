@@ -1,0 +1,31 @@
+error[E0119]: conflicting implementations of trait `CoerceUnsized<&Wrapper<_>>` for type `&Wrapper<_>`
+  --> $DIR/E0476.rs:9:1
+   |
+LL | impl<'a, 'b, T, S> CoerceUnsized<&'a Wrapper<T>> for &'b Wrapper<S> where S: Unsize<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: conflicting implementation in crate `core`:
+           - impl<'a, 'b, T, U> CoerceUnsized<&'a U> for &'b T
+             where 'b: 'a, T: Unsize<U>, T: ?Sized, U: ?Sized;
+
+error[E0476]: lifetime of the source pointer does not outlive lifetime bound of the object type
+  --> $DIR/E0476.rs:9:1
+   |
+LL | impl<'a, 'b, T, S> CoerceUnsized<&'a Wrapper<T>> for &'b Wrapper<S> where S: Unsize<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: object type is valid for the lifetime `'a` as defined here
+  --> $DIR/E0476.rs:9:6
+   |
+LL | impl<'a, 'b, T, S> CoerceUnsized<&'a Wrapper<T>> for &'b Wrapper<S> where S: Unsize<T> {}
+   |      ^^
+note: source pointer is only valid for the lifetime `'b` as defined here
+  --> $DIR/E0476.rs:9:10
+   |
+LL | impl<'a, 'b, T, S> CoerceUnsized<&'a Wrapper<T>> for &'b Wrapper<S> where S: Unsize<T> {}
+   |          ^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0119, E0476.
+For more information about an error, try `rustc --explain E0119`.

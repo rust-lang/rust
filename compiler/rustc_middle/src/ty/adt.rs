@@ -10,11 +10,11 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::DataTypeKind;
 use rustc_span::symbol::sym;
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{ReprOptions, VariantIdx, FIRST_VARIANT};
 
 use std::cell::RefCell;
 use std::cmp::Ordering;
@@ -22,16 +22,11 @@ use std::hash::{Hash, Hasher};
 use std::ops::Range;
 use std::str;
 
-use super::{
-    Destructor, FieldDef, GenericPredicates, ReprOptions, Ty, TyCtxt, VariantDef, VariantDiscr,
-};
-
-#[derive(Copy, Clone, HashStable, Debug)]
-pub struct AdtSizedConstraint<'tcx>(pub &'tcx [Ty<'tcx>]);
+use super::{Destructor, FieldDef, GenericPredicates, Ty, TyCtxt, VariantDef, VariantDiscr};
 
 bitflags! {
     #[derive(HashStable, TyEncodable, TyDecodable)]
-    pub struct AdtFlags: u32 {
+    pub struct AdtFlags: u16 {
         const NO_ADT_FLAGS        = 0;
         /// Indicates whether the ADT is an enum.
         const IS_ENUM             = 1 << 0;
@@ -52,12 +47,14 @@ bitflags! {
         /// Indicates whether the variant list of this ADT is `#[non_exhaustive]`.
         /// (i.e., this flag is never set unless this ADT is an enum).
         const IS_VARIANT_LIST_NON_EXHAUSTIVE = 1 << 8;
+        /// Indicates whether the type is `UnsafeCell`.
+        const IS_UNSAFE_CELL              = 1 << 9;
     }
 }
 
 /// The definition of a user-defined type, e.g., a `struct`, `enum`, or `union`.
 ///
-/// These are all interned (by `alloc_adt_def`) into the global arena.
+/// These are all interned (by `mk_adt_def`) into the global arena.
 ///
 /// The initialism *ADT* stands for an [*algebraic data type (ADT)*][adt].
 /// This is slightly wrong because `union`s are not ADTs.
@@ -82,7 +79,7 @@ bitflags! {
 ///
 /// is essentially represented with [`Ty`] as the following pseudocode:
 ///
-/// ```
+/// ```ignore (illustrative)
 /// struct S { x }
 /// ```
 ///
@@ -165,28 +162,33 @@ impl<'a> HashStable<StableHashingContext<'a>> for AdtDefData {
 pub struct AdtDef<'tcx>(pub Interned<'tcx, AdtDefData>);
 
 impl<'tcx> AdtDef<'tcx> {
+    #[inline]
     pub fn did(self) -> DefId {
         self.0.0.did
     }
 
-    pub fn variants(self) -> &'tcx IndexVec<VariantIdx, VariantDef> {
+    #[inline]
+    pub fn variants(self) -> &'tcx IndexSlice<VariantIdx, VariantDef> {
         &self.0.0.variants
     }
 
+    #[inline]
     pub fn variant(self, idx: VariantIdx) -> &'tcx VariantDef {
         &self.0.0.variants[idx]
     }
 
+    #[inline]
     pub fn flags(self) -> AdtFlags {
         self.0.0.flags
     }
 
+    #[inline]
     pub fn repr(self) -> ReprOptions {
         self.0.0.repr
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, HashStable, TyEncodable, TyDecodable)]
 pub enum AdtKind {
     Struct,
     Union,
@@ -226,12 +228,11 @@ impl AdtDefData {
             AdtKind::Struct => AdtFlags::IS_STRUCT,
         };
 
-        if kind == AdtKind::Struct && variants[VariantIdx::new(0)].ctor_def_id.is_some() {
+        if kind == AdtKind::Struct && variants[FIRST_VARIANT].ctor.is_some() {
             flags |= AdtFlags::HAS_CTOR;
         }
 
-        let attrs = tcx.get_attrs(did);
-        if tcx.sess.contains_name(&attrs, sym::fundamental) {
+        if tcx.has_attr(did, sym::fundamental) {
             flags |= AdtFlags::IS_FUNDAMENTAL;
         }
         if Some(did) == tcx.lang_items().phantom_data() {
@@ -242,6 +243,9 @@ impl AdtDefData {
         }
         if Some(did) == tcx.lang_items().manually_drop() {
             flags |= AdtFlags::IS_MANUALLY_DROP;
+        }
+        if Some(did) == tcx.lang_items().unsafe_cell_type() {
+            flags |= AdtFlags::IS_UNSAFE_CELL;
         }
 
         AdtDefData { did, variants, flags, repr }
@@ -323,10 +327,16 @@ impl<'tcx> AdtDef<'tcx> {
         self.flags().contains(AdtFlags::IS_PHANTOM_DATA)
     }
 
-    /// Returns `true` if this is Box<T>.
+    /// Returns `true` if this is `Box<T>`.
     #[inline]
     pub fn is_box(self) -> bool {
         self.flags().contains(AdtFlags::IS_BOX)
+    }
+
+    /// Returns `true` if this is `UnsafeCell<T>`.
+    #[inline]
+    pub fn is_unsafe_cell(self) -> bool {
+        self.flags().contains(AdtFlags::IS_UNSAFE_CELL)
     }
 
     /// Returns `true` if this is `ManuallyDrop<T>`.
@@ -347,7 +357,7 @@ impl<'tcx> AdtDef<'tcx> {
     /// Asserts this is a struct or union and returns its unique variant.
     pub fn non_enum_variant(self) -> &'tcx VariantDef {
         assert!(self.is_struct() || self.is_union());
-        &self.variant(VariantIdx::new(0))
+        &self.variant(FIRST_VARIANT)
     }
 
     #[inline]
@@ -374,11 +384,9 @@ impl<'tcx> AdtDef<'tcx> {
         //    Baz = 3,
         // }
         // ```
-        if self
-            .variants()
-            .iter()
-            .any(|v| matches!(v.discr, VariantDiscr::Explicit(_)) && v.ctor_kind != CtorKind::Const)
-        {
+        if self.variants().iter().any(|v| {
+            matches!(v.discr, VariantDiscr::Explicit(_)) && v.ctor_kind() != Some(CtorKind::Const)
+        }) {
             return false;
         }
         self.variants().iter().all(|v| v.fields.is_empty())
@@ -393,11 +401,12 @@ impl<'tcx> AdtDef<'tcx> {
     pub fn variant_with_ctor_id(self, cid: DefId) -> &'tcx VariantDef {
         self.variants()
             .iter()
-            .find(|v| v.ctor_def_id == Some(cid))
+            .find(|v| v.ctor_def_id() == Some(cid))
             .expect("variant_with_ctor_id: unknown variant")
     }
 
     /// Return the index of `VariantDef` given a variant id.
+    #[inline]
     pub fn variant_index_with_id(self, vid: DefId) -> VariantIdx {
         self.variants()
             .iter_enumerated()
@@ -410,7 +419,7 @@ impl<'tcx> AdtDef<'tcx> {
     pub fn variant_index_with_ctor_id(self, cid: DefId) -> VariantIdx {
         self.variants()
             .iter_enumerated()
-            .find(|(_, v)| v.ctor_def_id == Some(cid))
+            .find(|(_, v)| v.ctor_def_id() == Some(cid))
             .expect("variant_index_with_ctor_id: unknown variant")
             .0
     }
@@ -423,7 +432,8 @@ impl<'tcx> AdtDef<'tcx> {
             | Res::Def(DefKind::Union, _)
             | Res::Def(DefKind::TyAlias, _)
             | Res::Def(DefKind::AssocTy, _)
-            | Res::SelfTy { .. }
+            | Res::SelfTyParam { .. }
+            | Res::SelfTyAlias { .. }
             | Res::SelfCtor(..) => self.non_enum_variant(),
             _ => bug!("unexpected res {:?} in variant_of_res", res),
         }
@@ -442,19 +452,15 @@ impl<'tcx> AdtDef<'tcx> {
                     Some(Discr { val: b, ty })
                 } else {
                     info!("invalid enum discriminant: {:#?}", val);
-                    crate::mir::interpret::struct_error(
-                        tcx.at(tcx.def_span(expr_did)),
-                        "constant evaluation of enum discriminant resulted in non-integer",
-                    )
-                    .emit();
+                    tcx.sess.emit_err(crate::error::ConstEvalNonIntError {
+                        span: tcx.def_span(expr_did),
+                    });
                     None
                 }
             }
             Err(err) => {
                 let msg = match err {
-                    ErrorHandled::Reported(_) | ErrorHandled::Linted => {
-                        "enum discriminant evaluation failed"
-                    }
+                    ErrorHandled::Reported(_) => "enum discriminant evaluation failed",
                     ErrorHandled::TooGeneric => "enum discriminant depends on generics",
                 };
                 tcx.sess.delay_span_bug(tcx.def_span(expr_did), msg);
@@ -487,7 +493,7 @@ impl<'tcx> AdtDef<'tcx> {
 
     #[inline]
     pub fn variant_range(self) -> Range<VariantIdx> {
-        VariantIdx::new(0)..VariantIdx::new(self.variants().len())
+        FIRST_VARIANT..self.variants().next_index()
     }
 
     /// Computes the discriminant value used by a specific variant.
@@ -548,7 +554,14 @@ impl<'tcx> AdtDef<'tcx> {
     ///
     /// Due to normalization being eager, this applies even if
     /// the associated type is behind a pointer (e.g., issue #31299).
-    pub fn sized_constraint(self, tcx: TyCtxt<'tcx>) -> &'tcx [Ty<'tcx>] {
-        tcx.adt_sized_constraint(self.did()).0
+    pub fn sized_constraint(self, tcx: TyCtxt<'tcx>) -> ty::EarlyBinder<&'tcx [Ty<'tcx>]> {
+        ty::EarlyBinder(tcx.adt_sized_constraint(self.did()))
     }
+}
+
+#[derive(Clone, Copy, Debug)]
+#[derive(HashStable)]
+pub enum Representability {
+    Representable,
+    Infinite,
 }

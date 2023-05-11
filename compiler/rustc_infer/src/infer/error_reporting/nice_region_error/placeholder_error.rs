@@ -1,18 +1,58 @@
+use crate::errors::{
+    ActualImplExpectedKind, ActualImplExpectedLifetimeKind, ActualImplExplNotes,
+    TraitPlaceholderMismatch, TyOrSig,
+};
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::ValuePairs;
 use crate::infer::{SubregionOrigin, TypeTrace};
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use rustc_data_structures::intern::Interned;
-use rustc_errors::{Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, IntoDiagnosticArg};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::print::{FmtPrinter, Print, RegionHighlightMode};
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, RePlaceholder, ReVar, Region, TyCtxt};
+use rustc_middle::ty::{self, RePlaceholder, Region, TyCtxt};
 
-use std::fmt::{self, Write};
+use std::fmt;
+
+// HACK(eddyb) maybe move this in a more central location.
+#[derive(Copy, Clone)]
+pub struct Highlighted<'tcx, T> {
+    tcx: TyCtxt<'tcx>,
+    highlight: RegionHighlightMode<'tcx>,
+    value: T,
+}
+
+impl<'tcx, T> IntoDiagnosticArg for Highlighted<'tcx, T>
+where
+    T: for<'a> Print<'tcx, FmtPrinter<'a, 'tcx>, Error = fmt::Error, Output = FmtPrinter<'a, 'tcx>>,
+{
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+        rustc_errors::DiagnosticArgValue::Str(self.to_string().into())
+    }
+}
+
+impl<'tcx, T> Highlighted<'tcx, T> {
+    fn map<U>(self, f: impl FnOnce(T) -> U) -> Highlighted<'tcx, U> {
+        Highlighted { tcx: self.tcx, highlight: self.highlight, value: f(self.value) }
+    }
+}
+
+impl<'tcx, T> fmt::Display for Highlighted<'tcx, T>
+where
+    T: for<'a> Print<'tcx, FmtPrinter<'a, 'tcx>, Error = fmt::Error, Output = FmtPrinter<'a, 'tcx>>,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut printer = ty::print::FmtPrinter::new(self.tcx, Namespace::TypeNS);
+        printer.region_highlight_mode = self.highlight;
+
+        let s = self.value.print(printer)?.into_buffer();
+        f.write_str(&s)
+    }
+}
 
 impl<'tcx> NiceRegionError<'_, 'tcx> {
     /// When given a `ConcreteFailure` for a function with arguments containing a named region and
@@ -39,7 +79,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 sup_placeholder @ Region(Interned(RePlaceholder(_), _)),
                 _,
             )) => self.try_report_trait_placeholder_mismatch(
-                Some(self.tcx().mk_region(ReVar(*vid))),
+                Some(self.tcx().mk_re_var(*vid)),
                 cause,
                 Some(*sub_placeholder),
                 Some(*sup_placeholder),
@@ -55,7 +95,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 _,
                 _,
             )) => self.try_report_trait_placeholder_mismatch(
-                Some(self.tcx().mk_region(ReVar(*vid))),
+                Some(self.tcx().mk_re_var(*vid)),
                 cause,
                 Some(*sub_placeholder),
                 None,
@@ -71,7 +111,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 sup_placeholder @ Region(Interned(RePlaceholder(_), _)),
                 _,
             )) => self.try_report_trait_placeholder_mismatch(
-                Some(self.tcx().mk_region(ReVar(*vid))),
+                Some(self.tcx().mk_re_var(*vid)),
                 cause,
                 None,
                 Some(*sup_placeholder),
@@ -87,7 +127,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 sup_placeholder @ Region(Interned(RePlaceholder(_), _)),
                 _,
             )) => self.try_report_trait_placeholder_mismatch(
-                Some(self.tcx().mk_region(ReVar(*vid))),
+                Some(self.tcx().mk_re_var(*vid)),
                 cause,
                 None,
                 Some(*sup_placeholder),
@@ -101,7 +141,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 SubregionOrigin::Subtype(box TypeTrace { cause, values }),
                 sup_placeholder @ Region(Interned(RePlaceholder(_), _)),
             )) => self.try_report_trait_placeholder_mismatch(
-                Some(self.tcx().mk_region(ReVar(*vid))),
+                Some(self.tcx().mk_re_var(*vid)),
                 cause,
                 None,
                 Some(*sup_placeholder),
@@ -204,32 +244,33 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         expected_substs: SubstsRef<'tcx>,
         actual_substs: SubstsRef<'tcx>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let span = cause.span(self.tcx());
-        let msg = format!(
-            "implementation of `{}` is not general enough",
-            self.tcx().def_path_str(trait_def_id),
-        );
-        let mut err = self.tcx().sess.struct_span_err(span, &msg);
+        let span = cause.span();
 
-        let leading_ellipsis = if let ObligationCauseCode::ItemObligation(def_id) = *cause.code() {
-            err.span_label(span, "doesn't satisfy where-clause");
-            err.span_label(
-                self.tcx().def_span(def_id),
-                &format!("due to a where-clause on `{}`...", self.tcx().def_path_str(def_id)),
-            );
-            true
-        } else {
-            err.span_label(span, &msg);
-            false
-        };
+        let (leading_ellipsis, satisfy_span, where_span, dup_span, def_id) =
+            if let ObligationCauseCode::ItemObligation(def_id)
+            | ObligationCauseCode::ExprItemObligation(def_id, ..) = *cause.code()
+            {
+                (
+                    true,
+                    Some(span),
+                    Some(self.tcx().def_span(def_id)),
+                    None,
+                    self.tcx().def_path_str(def_id),
+                )
+            } else {
+                (false, None, None, Some(span), String::new())
+            };
 
-        let expected_trait_ref = self.infcx.resolve_vars_if_possible(ty::TraitRef {
-            def_id: trait_def_id,
-            substs: expected_substs,
-        });
-        let actual_trait_ref = self
-            .infcx
-            .resolve_vars_if_possible(ty::TraitRef { def_id: trait_def_id, substs: actual_substs });
+        let expected_trait_ref = self.cx.resolve_vars_if_possible(ty::TraitRef::new(
+            self.cx.tcx,
+            trait_def_id,
+            expected_substs,
+        ));
+        let actual_trait_ref = self.cx.resolve_vars_if_possible(ty::TraitRef::new(
+            self.cx.tcx,
+            trait_def_id,
+            actual_substs,
+        ));
 
         // Search the expected and actual trait references to see (a)
         // whether the sub/sup placeholders appear in them (sometimes
@@ -283,8 +324,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             ?expected_self_ty_has_vid,
         );
 
-        self.explain_actual_impl_that_was_found(
-            &mut err,
+        let actual_impl_expl_notes = self.explain_actual_impl_that_was_found(
             sub_placeholder,
             sup_placeholder,
             has_sub,
@@ -298,7 +338,15 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             leading_ellipsis,
         );
 
-        err
+        self.tcx().sess.create_err(TraitPlaceholderMismatch {
+            span,
+            satisfy_span,
+            where_span,
+            dup_span,
+            def_id,
+            trait_def_id: self.tcx().def_path_str(trait_def_id),
+            actual_impl_expl_notes,
+        })
     }
 
     /// Add notes with details about the expected and actual trait refs, with attention to cases
@@ -308,7 +356,6 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
     /// due to the number of combinations we have to deal with.
     fn explain_actual_impl_that_was_found(
         &self,
-        err: &mut Diagnostic,
         sub_placeholder: Option<Region<'tcx>>,
         sup_placeholder: Option<Region<'tcx>>,
         has_sub: Option<usize>,
@@ -320,39 +367,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         actual_has_vid: Option<usize>,
         any_self_ty_has_vid: bool,
         leading_ellipsis: bool,
-    ) {
-        // HACK(eddyb) maybe move this in a more central location.
-        #[derive(Copy, Clone)]
-        struct Highlighted<'tcx, T> {
-            tcx: TyCtxt<'tcx>,
-            highlight: RegionHighlightMode<'tcx>,
-            value: T,
-        }
-
-        impl<'tcx, T> Highlighted<'tcx, T> {
-            fn map<U>(self, f: impl FnOnce(T) -> U) -> Highlighted<'tcx, U> {
-                Highlighted { tcx: self.tcx, highlight: self.highlight, value: f(self.value) }
-            }
-        }
-
-        impl<'tcx, T> fmt::Display for Highlighted<'tcx, T>
-        where
-            T: for<'a> Print<
-                'tcx,
-                FmtPrinter<'a, 'tcx>,
-                Error = fmt::Error,
-                Output = FmtPrinter<'a, 'tcx>,
-            >,
-        {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                let mut printer = ty::print::FmtPrinter::new(self.tcx, Namespace::TypeNS);
-                printer.region_highlight_mode = self.highlight;
-
-                let s = self.value.print(printer)?.into_buffer();
-                f.write_str(&s)
-            }
-        }
-
+    ) -> Vec<ActualImplExplNotes<'tcx>> {
         // The weird thing here with the `maybe_highlighting_region` calls and the
         // the match inside is meant to be like this:
         //
@@ -360,7 +375,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         //   in the types are about to print
         // - Meanwhile, the `maybe_highlighting_region` calls set up
         //   highlights so that, if they do appear, we will replace
-        //   them `'0` and whatever.  (This replacement takes place
+        //   them `'0` and whatever. (This replacement takes place
         //   inside the closure given to `maybe_highlighting_region`.)
         //
         // There is some duplication between the calls -- i.e., the
@@ -379,123 +394,110 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         let mut expected_trait_ref = highlight_trait_ref(expected_trait_ref);
         expected_trait_ref.highlight.maybe_highlighting_region(sub_placeholder, has_sub);
         expected_trait_ref.highlight.maybe_highlighting_region(sup_placeholder, has_sup);
-        err.note(&{
-            let passive_voice = match (has_sub, has_sup) {
-                (Some(_), _) | (_, Some(_)) => any_self_ty_has_vid,
-                (None, None) => {
-                    expected_trait_ref.highlight.maybe_highlighting_region(vid, expected_has_vid);
-                    match expected_has_vid {
-                        Some(_) => true,
-                        None => any_self_ty_has_vid,
-                    }
-                }
-            };
 
-            let mut note = if same_self_type {
-                let mut self_ty = expected_trait_ref.map(|tr| tr.self_ty());
-                self_ty.highlight.maybe_highlighting_region(vid, actual_has_vid);
-
-                if self_ty.value.is_closure()
-                    && self
-                        .tcx()
-                        .fn_trait_kind_from_lang_item(expected_trait_ref.value.def_id)
-                        .is_some()
-                {
-                    let closure_sig = self_ty.map(|closure| {
-                        if let ty::Closure(_, substs) = closure.kind() {
-                            self.tcx().signature_unclosure(
-                                substs.as_closure().sig(),
-                                rustc_hir::Unsafety::Normal,
-                            )
-                        } else {
-                            bug!("type is not longer closure");
-                        }
-                    });
-
-                    format!(
-                        "{}closure with signature `{}` must implement `{}`",
-                        if leading_ellipsis { "..." } else { "" },
-                        closure_sig,
-                        expected_trait_ref.map(|tr| tr.print_only_trait_path()),
-                    )
-                } else {
-                    format!(
-                        "{}`{}` must implement `{}`",
-                        if leading_ellipsis { "..." } else { "" },
-                        self_ty,
-                        expected_trait_ref.map(|tr| tr.print_only_trait_path()),
-                    )
-                }
-            } else if passive_voice {
-                format!(
-                    "{}`{}` would have to be implemented for the type `{}`",
-                    if leading_ellipsis { "..." } else { "" },
-                    expected_trait_ref.map(|tr| tr.print_only_trait_path()),
-                    expected_trait_ref.map(|tr| tr.self_ty()),
-                )
-            } else {
-                format!(
-                    "{}`{}` must implement `{}`",
-                    if leading_ellipsis { "..." } else { "" },
-                    expected_trait_ref.map(|tr| tr.self_ty()),
-                    expected_trait_ref.map(|tr| tr.print_only_trait_path()),
-                )
-            };
-
-            match (has_sub, has_sup) {
-                (Some(n1), Some(n2)) => {
-                    let _ = write!(
-                        note,
-                        ", for any two lifetimes `'{}` and `'{}`...",
-                        std::cmp::min(n1, n2),
-                        std::cmp::max(n1, n2),
-                    );
-                }
-                (Some(n), _) | (_, Some(n)) => {
-                    let _ = write!(note, ", for any lifetime `'{}`...", n,);
-                }
-                (None, None) => {
-                    if let Some(n) = expected_has_vid {
-                        let _ = write!(note, ", for some specific lifetime `'{}`...", n,);
-                    }
+        let passive_voice = match (has_sub, has_sup) {
+            (Some(_), _) | (_, Some(_)) => any_self_ty_has_vid,
+            (None, None) => {
+                expected_trait_ref.highlight.maybe_highlighting_region(vid, expected_has_vid);
+                match expected_has_vid {
+                    Some(_) => true,
+                    None => any_self_ty_has_vid,
                 }
             }
+        };
 
-            note
-        });
+        let (kind, ty_or_sig, trait_path) = if same_self_type {
+            let mut self_ty = expected_trait_ref.map(|tr| tr.self_ty());
+            self_ty.highlight.maybe_highlighting_region(vid, actual_has_vid);
+
+            if self_ty.value.is_closure() && self.tcx().is_fn_trait(expected_trait_ref.value.def_id)
+            {
+                let closure_sig = self_ty.map(|closure| {
+                    if let ty::Closure(_, substs) = closure.kind() {
+                        self.tcx().signature_unclosure(
+                            substs.as_closure().sig(),
+                            rustc_hir::Unsafety::Normal,
+                        )
+                    } else {
+                        bug!("type is not longer closure");
+                    }
+                });
+                (
+                    ActualImplExpectedKind::Signature,
+                    TyOrSig::ClosureSig(closure_sig),
+                    expected_trait_ref.map(|tr| tr.print_only_trait_path()),
+                )
+            } else {
+                (
+                    ActualImplExpectedKind::Other,
+                    TyOrSig::Ty(self_ty),
+                    expected_trait_ref.map(|tr| tr.print_only_trait_path()),
+                )
+            }
+        } else if passive_voice {
+            (
+                ActualImplExpectedKind::Passive,
+                TyOrSig::Ty(expected_trait_ref.map(|tr| tr.self_ty())),
+                expected_trait_ref.map(|tr| tr.print_only_trait_path()),
+            )
+        } else {
+            (
+                ActualImplExpectedKind::Other,
+                TyOrSig::Ty(expected_trait_ref.map(|tr| tr.self_ty())),
+                expected_trait_ref.map(|tr| tr.print_only_trait_path()),
+            )
+        };
+
+        let (lt_kind, lifetime_1, lifetime_2) = match (has_sub, has_sup) {
+            (Some(n1), Some(n2)) => {
+                (ActualImplExpectedLifetimeKind::Two, std::cmp::min(n1, n2), std::cmp::max(n1, n2))
+            }
+            (Some(n), _) | (_, Some(n)) => (ActualImplExpectedLifetimeKind::Any, n, 0),
+            (None, None) => {
+                if let Some(n) = expected_has_vid {
+                    (ActualImplExpectedLifetimeKind::Some, n, 0)
+                } else {
+                    (ActualImplExpectedLifetimeKind::Nothing, 0, 0)
+                }
+            }
+        };
+
+        let note_1 = ActualImplExplNotes::new_expected(
+            kind,
+            lt_kind,
+            leading_ellipsis,
+            ty_or_sig,
+            trait_path,
+            lifetime_1,
+            lifetime_2,
+        );
 
         let mut actual_trait_ref = highlight_trait_ref(actual_trait_ref);
         actual_trait_ref.highlight.maybe_highlighting_region(vid, actual_has_vid);
-        err.note(&{
-            let passive_voice = match actual_has_vid {
-                Some(_) => any_self_ty_has_vid,
-                None => true,
-            };
 
-            let mut note = if same_self_type {
-                format!(
-                    "...but it actually implements `{}`",
-                    actual_trait_ref.map(|tr| tr.print_only_trait_path()),
-                )
-            } else if passive_voice {
-                format!(
-                    "...but `{}` is actually implemented for the type `{}`",
-                    actual_trait_ref.map(|tr| tr.print_only_trait_path()),
-                    actual_trait_ref.map(|tr| tr.self_ty()),
-                )
-            } else {
-                format!(
-                    "...but `{}` actually implements `{}`",
-                    actual_trait_ref.map(|tr| tr.self_ty()),
-                    actual_trait_ref.map(|tr| tr.print_only_trait_path()),
-                )
-            };
+        let passive_voice = match actual_has_vid {
+            Some(_) => any_self_ty_has_vid,
+            None => true,
+        };
 
-            if let Some(n) = actual_has_vid {
-                let _ = write!(note, ", for some specific lifetime `'{}`", n);
+        let trait_path = actual_trait_ref.map(|tr| tr.print_only_trait_path());
+        let ty = actual_trait_ref.map(|tr| tr.self_ty()).to_string();
+        let has_lifetime = actual_has_vid.is_some();
+        let lifetime = actual_has_vid.unwrap_or_default();
+
+        let note_2 = if same_self_type {
+            ActualImplExplNotes::ButActuallyImplementsTrait { trait_path, has_lifetime, lifetime }
+        } else if passive_voice {
+            ActualImplExplNotes::ButActuallyImplementedForTy {
+                trait_path,
+                ty,
+                has_lifetime,
+                lifetime,
             }
+        } else {
+            ActualImplExplNotes::ButActuallyTyImplements { trait_path, ty, has_lifetime, lifetime }
+        };
 
-            note
-        });
+        vec![note_1, note_2]
     }
 }

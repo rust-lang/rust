@@ -1,9 +1,0 @@
-error[E0284]: type annotations needed: cannot satisfy `<_ as StreamHasher>::S == <H as StreamHasher>::S`
-  --> $DIR/issue-12028.rs:27:14
-   |
-LL |         self.input_stream(&mut stream);
-   |              ^^^^^^^^^^^^ cannot satisfy `<_ as StreamHasher>::S == <H as StreamHasher>::S`
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0284`.

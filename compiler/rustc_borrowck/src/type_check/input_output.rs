@@ -7,22 +7,58 @@
 //! `RETURN_PLACE` the MIR arguments) are always fully normalized (and
 //! contain revealed `impl Trait` values).
 
-use crate::type_check::constraint_conversion::ConstraintConversion;
-use rustc_index::vec::Idx;
 use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_middle::mir::*;
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
-use rustc_span::DUMMY_SP;
-use rustc_trait_selection::traits::query::type_op::{self, TypeOp};
-use rustc_trait_selection::traits::query::Fallible;
-use type_op::TypeOpOutput;
 
 use crate::universal_regions::UniversalRegions;
 
 use super::{Locations, TypeChecker};
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
+    /// Check explicit closure signature annotation,
+    /// e.g., `|x: FxIndexMap<_, &'static u32>| ...`.
+    #[instrument(skip(self, body), level = "debug")]
+    pub(super) fn check_signature_annotation(&mut self, body: &Body<'tcx>) {
+        let mir_def_id = body.source.def_id().expect_local();
+        if !self.tcx().is_closure(mir_def_id.to_def_id()) {
+            return;
+        }
+        let user_provided_poly_sig = self.tcx().closure_user_provided_sig(mir_def_id);
+
+        // Instantiate the canonicalized variables from user-provided signature
+        // (e.g., the `_` in the code above) with fresh variables.
+        // Then replace the bound items in the fn sig with fresh variables,
+        // so that they represent the view from "inside" the closure.
+        let user_provided_sig = self
+            .instantiate_canonical_with_fresh_inference_vars(body.span, &user_provided_poly_sig);
+        let user_provided_sig = self.infcx.instantiate_binder_with_fresh_vars(
+            body.span,
+            LateBoundRegionConversionTime::FnCall,
+            user_provided_sig,
+        );
+
+        for (&user_ty, arg_decl) in user_provided_sig.inputs().iter().zip(
+            // In MIR, closure args begin with an implicit `self`. Skip it!
+            body.args_iter().skip(1).map(|local| &body.local_decls[local]),
+        ) {
+            self.ascribe_user_type_skip_wf(
+                arg_decl.ty,
+                ty::UserType::Ty(user_ty),
+                arg_decl.source_info.span,
+            );
+        }
+
+        // If the user explicitly annotated the output type, enforce it.
+        let output_decl = &body.local_decls[RETURN_PLACE];
+        self.ascribe_user_type_skip_wf(
+            output_decl.ty,
+            ty::UserType::Ty(user_provided_sig.output()),
+            output_decl.source_info.span,
+        );
+    }
+
     #[instrument(skip(self, body, universal_regions), level = "debug")]
     pub(super) fn equate_inputs_and_outputs(
         &mut self,
@@ -36,43 +72,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         debug!(?normalized_output_ty);
         debug!(?normalized_input_tys);
 
-        let mir_def_id = body.source.def_id().expect_local();
-
-        // If the user explicitly annotated the input types, extract
-        // those.
-        //
-        // e.g., `|x: FxHashMap<_, &'static u32>| ...`
-        let user_provided_sig;
-        if !self.tcx().is_closure(mir_def_id.to_def_id()) {
-            user_provided_sig = None;
-        } else {
-            let typeck_results = self.tcx().typeck(mir_def_id);
-            user_provided_sig = typeck_results.user_provided_sigs.get(&mir_def_id.to_def_id()).map(
-                |user_provided_poly_sig| {
-                    // Instantiate the canonicalized variables from
-                    // user-provided signature (e.g., the `_` in the code
-                    // above) with fresh variables.
-                    let poly_sig = self.instantiate_canonical_with_fresh_inference_vars(
-                        body.span,
-                        &user_provided_poly_sig,
-                    );
-
-                    // Replace the bound items in the fn sig with fresh
-                    // variables, so that they represent the view from
-                    // "inside" the closure.
-                    self.infcx
-                        .replace_bound_vars_with_fresh_vars(
-                            body.span,
-                            LateBoundRegionConversionTime::FnCall,
-                            poly_sig,
-                        )
-                        .0
-                },
-            );
-        }
-
-        debug!(?normalized_input_tys, ?body.local_decls);
-
         // Equate expected input tys with those in the MIR.
         for (argument_index, &normalized_input_ty) in normalized_input_tys.iter().enumerate() {
             if argument_index + 1 >= body.local_decls.len() {
@@ -83,7 +82,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
 
             // In MIR, argument N is stored in local N+1.
-            let local = Local::new(argument_index + 1);
+            let local = Local::from_usize(argument_index + 1);
 
             let mir_input_ty = body.local_decls[local].ty;
 
@@ -93,28 +92,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 mir_input_ty,
                 mir_input_span,
             );
-        }
-
-        if let Some(user_provided_sig) = user_provided_sig {
-            for (argument_index, &user_provided_input_ty) in
-                user_provided_sig.inputs().iter().enumerate()
-            {
-                // In MIR, closures begin an implicit `self`, so
-                // argument N is stored in local N+2.
-                let local = Local::new(argument_index + 2);
-                let mir_input_ty = body.local_decls[local].ty;
-                let mir_input_span = body.local_decls[local].source_info.span;
-
-                // If the user explicitly annotated the input types, enforce those.
-                let user_provided_input_ty =
-                    self.normalize(user_provided_input_ty, Locations::All(mir_input_span));
-
-                self.equate_normalized_input_or_output(
-                    user_provided_input_ty,
-                    mir_input_ty,
-                    mir_input_span,
-                );
-            }
         }
 
         debug!(
@@ -129,7 +106,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if body.yield_ty().is_some() != universal_regions.yield_ty.is_some() {
             self.tcx().sess.delay_span_bug(
                 body.span,
-                &format!(
+                format!(
                     "Expected body to have yield_ty ({:?}) iff we have a UR yield_ty ({:?})",
                     body.yield_ty(),
                     universal_regions.yield_ty,
@@ -162,32 +139,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 terr
             );
         };
-
-        // If the user explicitly annotated the output types, enforce those.
-        // Note that this only happens for closures.
-        if let Some(user_provided_sig) = user_provided_sig {
-            let user_provided_output_ty = user_provided_sig.output();
-            let user_provided_output_ty =
-                self.normalize(user_provided_output_ty, Locations::All(output_span));
-            if let Err(err) = self.eq_types(
-                user_provided_output_ty,
-                mir_output_ty,
-                Locations::All(output_span),
-                ConstraintCategory::BoringNoLocation,
-            ) {
-                span_mirbug!(
-                    self,
-                    Location::START,
-                    "equate_inputs_and_outputs: `{:?}=={:?}` failed with `{:?}`",
-                    mir_output_ty,
-                    user_provided_output_ty,
-                    err
-                );
-            }
-        }
     }
 
-    #[instrument(skip(self, span), level = "debug")]
+    #[instrument(skip(self), level = "debug")]
     fn equate_normalized_input_or_output(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, span: Span) {
         if let Err(_) =
             self.eq_types(a, b, Locations::All(span), ConstraintCategory::BoringNoLocation)
@@ -196,13 +150,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // `rustc_traits::normalize_after_erasing_regions`. Ideally, we'd
             // like to normalize *before* inserting into `local_decls`, but
             // doing so ends up causing some other trouble.
-            let b = match self.normalize_and_add_constraints(b) {
-                Ok(n) => n,
-                Err(_) => {
-                    debug!("equate_inputs_and_outputs: NoSolution");
-                    b
-                }
-            };
+            let b = self.normalize(b, Locations::All(span));
 
             // Note: if we have to introduce new placeholders during normalization above, then we won't have
             // added those universes to the universe info, which we would want in `relate_tys`.
@@ -219,28 +167,5 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 );
             }
         }
-    }
-
-    pub(crate) fn normalize_and_add_constraints(&mut self, t: Ty<'tcx>) -> Fallible<Ty<'tcx>> {
-        let TypeOpOutput { output: norm_ty, constraints, .. } =
-            self.param_env.and(type_op::normalize::Normalize::new(t)).fully_perform(self.infcx)?;
-
-        debug!("{:?} normalized to {:?}", t, norm_ty);
-
-        for data in constraints.into_iter().collect::<Vec<_>>() {
-            ConstraintConversion::new(
-                self.infcx,
-                &self.borrowck_context.universal_regions,
-                &self.region_bound_pairs,
-                Some(self.implicit_region_bound),
-                self.param_env,
-                Locations::All(DUMMY_SP),
-                ConstraintCategory::Internal,
-                &mut self.borrowck_context.constraints,
-            )
-            .convert_all(&*data);
-        }
-
-        Ok(norm_ty)
     }
 }

@@ -1,14 +1,14 @@
-// run-rustfix
+//@run-rustfix
 #![warn(clippy::transmutes_expressible_as_ptr_casts)]
-// These two warnings currrently cover the cases transmutes_expressible_as_ptr_casts
+// These two warnings currently cover the cases transmutes_expressible_as_ptr_casts
 // would otherwise be responsible for
 #![warn(clippy::useless_transmute)]
 #![warn(clippy::transmute_ptr_to_ptr)]
-#![allow(dead_code, unused_unsafe, clippy::borrow_as_ptr)]
+#![allow(unused, clippy::borrow_as_ptr)]
 
 use std::mem::{size_of, transmute};
 
-// rustc_typeck::check::cast contains documentation about when a cast `e as U` is
+// rustc_hir_analysis::check::cast contains documentation about when a cast `e as U` is
 // valid, which we quote from below.
 fn main() {
     // We should see an error message for each transmute, and no error messages for
@@ -51,6 +51,8 @@ fn main() {
     // e is a function pointer type and U is an integer; fptr-addr-cast
     let _usize_from_fn_ptr_transmute = unsafe { foo as usize };
     let _usize_from_fn_ptr = foo as *const usize;
+
+    let _usize_from_ref = unsafe { &1u32 as *const u32 as usize };
 }
 
 // If a ref-to-ptr cast of this form where the pointer type points to a type other
@@ -74,4 +76,10 @@ fn cannot_be_expressed_as_pointer_cast(in_param: Single) -> Pair {
     assert_eq!(size_of::<Single>(), size_of::<Pair>());
 
     unsafe { transmute::<Single, Pair>(in_param) }
+}
+
+fn issue_10449() {
+    fn f() {}
+
+    let _x: u8 = unsafe { *(f as *const u8) };
 }
