@@ -13,12 +13,12 @@ macro_rules! column {() => {}}
 
 fn main() { column!(); }
 "#,
-        expect![[r##"
+        expect![[r#"
 #[rustc_builtin_macro]
 macro_rules! column {() => {}}
 
-fn main() { 0; }
-"##]],
+fn main() { 0 as u32; }
+"#]],
     );
 }
 
@@ -31,12 +31,12 @@ macro_rules! line {() => {}}
 
 fn main() { line!() }
 "#,
-        expect![[r##"
+        expect![[r#"
 #[rustc_builtin_macro]
 macro_rules! line {() => {}}
 
-fn main() { 0 }
-"##]],
+fn main() { 0 as u32 }
+"#]],
     );
 }
 
