@@ -140,6 +140,8 @@ fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> R
             "run".into(), // There is no `cargo miri build` so we just use `cargo miri run`.
         ];
     }
+
+    eprintln!("   Compiler: {}", config.program.display());
     ui_test::run_tests_generic(
         config,
         // The files we're actually interested in (all `.rs` files).
