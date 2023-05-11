@@ -1,5 +1,6 @@
 use colored::*;
 use regex::bytes::Regex;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::{env, process::Command};
 use ui_test::status_emitter::StatusEmitter;
@@ -45,7 +46,13 @@ fn build_so_for_c_ffi_tests() -> PathBuf {
     so_file_path
 }
 
-fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> Result<()> {
+fn run_test_config(
+    args: impl Iterator<Item = String>,
+    target: &str,
+    path: &str,
+    mode: Mode,
+    with_dependencies: bool,
+) -> Config {
     // Miri is rustc-like, so we create a default builder for rustc and modify it
     let mut program = CommandBuilder::rustc();
     program.program = miri_path();
@@ -105,7 +112,7 @@ fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> R
 
     // Handle command-line arguments.
     let mut after_dashdash = false;
-    config.path_filter.extend(std::env::args().skip(1).filter(|arg| {
+    config.path_filter.extend(args.filter(|arg| {
         if after_dashdash {
             // Just propagate everything.
             return true;
@@ -140,6 +147,11 @@ fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> R
             "run".into(), // There is no `cargo miri build` so we just use `cargo miri run`.
         ];
     }
+    config
+}
+
+fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> Result<()> {
+    let config = run_test_config(std::env::args().skip(1), target, path, mode, with_dependencies);
 
     eprintln!("   Compiler: {}", config.program.display());
     ui_test::run_tests_generic(
@@ -226,7 +238,14 @@ fn get_target() -> String {
 
 fn main() -> Result<()> {
     ui_test::color_eyre::install()?;
+
     let target = get_target();
+
+    if let Some(first) = std::env::args().nth(1) {
+        if first == "miri-run-dep-mode" {
+            return run_dep_mode(target);
+        }
+    }
 
     // Add a test env var to do environment communication tests.
     env::set_var("MIRI_ENV_VAR_TEST", "0");
@@ -247,6 +266,21 @@ fn main() -> Result<()> {
         )?;
     }
 
+    Ok(())
+}
+
+fn run_dep_mode(target: String) -> Result<()> {
+    let files = std::env::args().skip_while(|arg| arg != "--").skip(1);
+    for path in files {
+        let mut config = run_test_config(std::iter::empty(), &target, &path, Mode::Yolo, true);
+        config.program.args.remove(0); // remove the `--error-format=json` argument
+        config.program.args.push("--color".into());
+        config.program.args.push("always".into());
+        let output = ui_test::run_file(config, Path::new(&path))?;
+        std::io::stderr().write_all(&output.stderr)?;
+        std::io::stdout().write_all(&output.stdout)?;
+        std::process::exit(output.status.code().unwrap());
+    }
     Ok(())
 }
 
