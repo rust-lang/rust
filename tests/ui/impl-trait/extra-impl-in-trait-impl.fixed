@@ -1,0 +1,19 @@
+// run-rustfix
+
+struct S<T>(T);
+struct S2;
+
+impl<T: Default> Default for S<T> {
+    //~^ ERROR: unexpected `impl` keyword
+    //~| HELP: remove the extra `impl`
+    fn default() -> Self { todo!() }
+}
+
+impl Default for S2 {
+    //~^ ERROR: unexpected `impl` keyword
+    //~| HELP: remove the extra `impl`
+    fn default() -> Self { todo!() }
+}
+
+
+fn main() {}
