@@ -87,18 +87,6 @@ extern "C" {
 
 
 #[no_mangle]
-// CHECK-LABEL: @c_variadic_f(i8 noundef %x, ...)
-pub unsafe extern "C" fn c_variadic_f(x: u8, ...) {
-    // CHECK: musttail call void (i8, ...) @c_variadic_g(i8 noundef %_3, ...)
-    // CHECK: ret void
-    become c_variadic_g(x + 1)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn c_variadic_g(_: u8, ...) {}
-
-
-#[no_mangle]
 /// Does `src + dst` in a recursive way
 // CHECK-LABEL: @flow(
 fn flow(src: u64, dst: u64) -> u64 {

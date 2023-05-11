@@ -1,0 +1,26 @@
+error: tail-calls are not allowed in c-variadic functions
+  --> $DIR/become-c-variadic.rs:5:5
+   |
+LL |     become c_variadic_g(x)
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: c-variadic functions can't be tail-called
+  --> $DIR/become-c-variadic.rs:5:5
+   |
+LL |     become c_variadic_g(x)
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: tail-calls are not allowed in c-variadic functions
+  --> $DIR/become-c-variadic.rs:11:5
+   |
+LL |     become normal(x)
+   |     ^^^^^^^^^^^^^^^^
+
+error: c-variadic functions can't be tail-called
+  --> $DIR/become-c-variadic.rs:16:5
+   |
+LL |     become c_variadic_f(x)
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

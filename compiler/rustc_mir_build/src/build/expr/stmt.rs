@@ -101,9 +101,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ),
             ExprKind::Become { value } => {
                 let v = &this.thir[value];
-                let ExprKind::Scope { region_scope, lint_level, value, .. } = v.kind else { span_bug!(v.span, "what {v:?}") };
+                let ExprKind::Scope { region_scope, lint_level, value, .. } = v.kind
+                    else { span_bug!(v.span, "`thir_check_tail_calls` should have disallowed this {v:?}") };
                 let v = &this.thir[value];
-                let ExprKind::Call { ref args, fun, fn_span, .. } = v.kind else { span_bug!(v.span, "what {v:?}") };
+                let ExprKind::Call { ref args, fun, fn_span, .. } = v.kind
+                    else { span_bug!(v.span, "`thir_check_tail_calls` should have disallowed this {v:?}") };
 
                 this.in_scope((region_scope, source_info), lint_level, |this| {
                     let fun = unpack!(block = this.as_local_operand(block, &this.thir[fun]));

@@ -1,0 +1,8 @@
+error: `become` is not allowed in closures
+  --> $DIR/in-closure.rs:4:8
+   |
+LL |     || become f();
+   |        ^^^^^^^^^^
+
+error: aborting due to previous error
+
