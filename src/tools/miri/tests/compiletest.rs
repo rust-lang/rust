@@ -46,7 +46,7 @@ fn build_so_for_c_ffi_tests() -> PathBuf {
     so_file_path
 }
 
-fn run_test_config(
+fn test_config(
     args: impl Iterator<Item = String>,
     target: &str,
     path: &str,
@@ -151,7 +151,7 @@ fn run_test_config(
 }
 
 fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> Result<()> {
-    let config = run_test_config(std::env::args().skip(1), target, path, mode, with_dependencies);
+    let config = test_config(std::env::args().skip(1), target, path, mode, with_dependencies);
 
     eprintln!("   Compiler: {}", config.program.display());
     ui_test::run_tests_generic(
@@ -272,7 +272,7 @@ fn main() -> Result<()> {
 fn run_dep_mode(target: String) -> Result<()> {
     let files = std::env::args().skip(2);
     for path in files {
-        let mut config = run_test_config(std::iter::empty(), &target, &path, Mode::Yolo, true);
+        let mut config = test_config(std::iter::empty(), &target, &path, Mode::Yolo, true);
         config.program.args.remove(0); // remove the `--error-format=json` argument
         config.program.args.push("--color".into());
         config.program.args.push("always".into());
