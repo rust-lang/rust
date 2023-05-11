@@ -922,7 +922,7 @@ macro_rules! m {
 
 fn bar() -> &'a Baz<u8> {}
 
-fn bar() -> extern "Rust"fn() -> Ret {}
+fn bar() -> extern "Rust" fn() -> Ret {}
 "#]],
     );
 }
@@ -1333,7 +1333,7 @@ macro_rules! matches {
 }
 fn main() {
     match 0 {
-        0|1if true =>true , _=>false
+        0|1 if true =>true , _=>false
     };
 }
  "#]],

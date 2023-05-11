@@ -16,7 +16,7 @@ use hir_expand::name::Name;
 use crate::{
     db::DefDatabase,
     item_scope::BUILTIN_SCOPE,
-    nameres::{BuiltinShadowMode, DefMap},
+    nameres::{sub_namespace_match, BuiltinShadowMode, DefMap, MacroSubNs},
     path::{ModPath, PathKind},
     per_ns::PerNs,
     visibility::{RawVisibility, Visibility},
@@ -58,6 +58,17 @@ impl ResolvePathResult {
     }
 }
 
+impl PerNs {
+    fn filter_macro(mut self, db: &dyn DefDatabase, expected: Option<MacroSubNs>) -> Self {
+        self.macros = self.macros.filter(|&(id, _)| {
+            let this = MacroSubNs::from_id(db, id);
+            sub_namespace_match(Some(this), expected)
+        });
+
+        self
+    }
+}
+
 impl DefMap {
     pub(super) fn resolve_name_in_extern_prelude(
         &self,
@@ -83,7 +94,7 @@ impl DefMap {
         let mut vis = match visibility {
             RawVisibility::Module(path) => {
                 let (result, remaining) =
-                    self.resolve_path(db, original_module, path, BuiltinShadowMode::Module);
+                    self.resolve_path(db, original_module, path, BuiltinShadowMode::Module, None);
                 if remaining.is_some() {
                     return None;
                 }
@@ -124,6 +135,9 @@ impl DefMap {
         mut original_module: LocalModuleId,
         path: &ModPath,
         shadow: BuiltinShadowMode,
+        // Pass `MacroSubNs` if we know we're resolving macro names and which kind of macro we're
+        // resolving them to. Pass `None` otherwise, e.g. when we're resolving import paths.
+        expected_macro_subns: Option<MacroSubNs>,
     ) -> ResolvePathResult {
         let mut result = ResolvePathResult::empty(ReachedFixedPoint::No);
 
@@ -136,6 +150,7 @@ impl DefMap {
                 original_module,
                 path,
                 shadow,
+                expected_macro_subns,
             );
 
             // Merge `new` into `result`.
@@ -169,6 +184,7 @@ impl DefMap {
         original_module: LocalModuleId,
         path: &ModPath,
         shadow: BuiltinShadowMode,
+        expected_macro_subns: Option<MacroSubNs>,
     ) -> ResolvePathResult {
         let graph = db.crate_graph();
         let _cx = stdx::panic_context::enter(format!(
@@ -220,7 +236,13 @@ impl DefMap {
                     if path.segments().len() == 1 { shadow } else { BuiltinShadowMode::Module };
 
                 tracing::debug!("resolving {:?} in module", segment);
-                self.resolve_name_in_module(db, original_module, segment, prefer_module)
+                self.resolve_name_in_module(
+                    db,
+                    original_module,
+                    segment,
+                    prefer_module,
+                    expected_macro_subns,
+                )
             }
             PathKind::Super(lvl) => {
                 let mut module = original_module;
@@ -245,6 +267,7 @@ impl DefMap {
                                     block.parent.local_id,
                                     &new_path,
                                     shadow,
+                                    expected_macro_subns,
                                 );
                             }
                             None => {
@@ -303,7 +326,12 @@ impl DefMap {
                         );
                         tracing::debug!("resolving {:?} in other crate", path);
                         let defp_map = module.def_map(db);
-                        let (def, s) = defp_map.resolve_path(db, module.local_id, &path, shadow);
+                        // Macro sub-namespaces only matter when resolving single-segment paths
+                        // because `macro_use` and other preludes should be taken into account. At
+                        // this point, we know we're resolving a multi-segment path so macro kind
+                        // expectation is discarded.
+                        let (def, s) =
+                            defp_map.resolve_path(db, module.local_id, &path, shadow, None);
                         return ResolvePathResult::with(
                             def,
                             ReachedFixedPoint::Yes,
@@ -381,19 +409,24 @@ impl DefMap {
         module: LocalModuleId,
         name: &Name,
         shadow: BuiltinShadowMode,
+        expected_macro_subns: Option<MacroSubNs>,
     ) -> PerNs {
         // Resolve in:
         //  - legacy scope of macro
         //  - current module / scope
-        //  - extern prelude
+        //  - extern prelude / macro_use prelude
         //  - std prelude
         let from_legacy_macro = self[module]
             .scope
             .get_legacy_macro(name)
             // FIXME: shadowing
             .and_then(|it| it.last())
-            .map_or_else(PerNs::none, |&m| PerNs::macros(m, Visibility::Public));
-        let from_scope = self[module].scope.get(name);
+            .copied()
+            .filter(|&id| {
+                sub_namespace_match(Some(MacroSubNs::from_id(db, id)), expected_macro_subns)
+            })
+            .map_or_else(PerNs::none, |m| PerNs::macros(m, Visibility::Public));
+        let from_scope = self[module].scope.get(name).filter_macro(db, expected_macro_subns);
         let from_builtin = match self.block {
             Some(_) => {
                 // Only resolve to builtins in the root `DefMap`.
@@ -414,9 +447,18 @@ impl DefMap {
                 .get(name)
                 .map_or(PerNs::none(), |&it| PerNs::types(it.into(), Visibility::Public))
         };
+        let macro_use_prelude = || {
+            self.macro_use_prelude
+                .get(name)
+                .map_or(PerNs::none(), |&it| PerNs::macros(it.into(), Visibility::Public))
+        };
         let prelude = || self.resolve_in_prelude(db, name);
 
-        from_legacy_macro.or(from_scope_or_builtin).or_else(extern_prelude).or_else(prelude)
+        from_legacy_macro
+            .or(from_scope_or_builtin)
+            .or_else(extern_prelude)
+            .or_else(macro_use_prelude)
+            .or_else(prelude)
     }
 
     fn resolve_name_in_crate_root_or_extern_prelude(

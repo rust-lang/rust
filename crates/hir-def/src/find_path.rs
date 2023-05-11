@@ -543,6 +543,7 @@ mod tests {
                 module.local_id,
                 &mod_path,
                 crate::item_scope::BuiltinShadowMode::Module,
+                None,
             )
             .0
             .take_types()

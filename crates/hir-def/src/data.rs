@@ -22,7 +22,7 @@ use crate::{
         attr_resolution::ResolvedAttr,
         diagnostics::DefDiagnostic,
         proc_macro::{parse_macro_name_and_helper_attrs, ProcMacroKind},
-        DefMap,
+        DefMap, MacroSubNs,
     },
     type_ref::{TraitRef, TypeBound, TypeRef},
     visibility::RawVisibility,
@@ -673,6 +673,7 @@ impl<'a> AssocItemCollector<'a> {
                             module,
                             &path,
                             crate::item_scope::BuiltinShadowMode::Other,
+                            Some(MacroSubNs::Bang),
                         )
                         .0
                         .take_macros()

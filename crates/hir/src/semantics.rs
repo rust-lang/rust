@@ -10,6 +10,7 @@ use hir_def::{
     hir::Expr,
     lower::LowerCtx,
     macro_id_to_def_id,
+    nameres::MacroSubNs,
     resolver::{self, HasResolver, Resolver, TypeNs},
     type_ref::Mutability,
     AsMacroCall, DefWithBodyId, FieldId, FunctionId, MacroId, TraitId, VariantId,
@@ -616,7 +617,7 @@ impl<'db> SemanticsImpl<'db> {
         let krate = resolver.krate();
         let macro_call_id = macro_call.as_call_id(self.db.upcast(), krate, |path| {
             resolver
-                .resolve_path_as_macro(self.db.upcast(), &path)
+                .resolve_path_as_macro(self.db.upcast(), &path, Some(MacroSubNs::Bang))
                 .map(|it| macro_id_to_def_id(self.db.upcast(), it))
         })?;
         hir_expand::db::expand_speculative(

@@ -135,9 +135,8 @@ fn line_expand(
     _tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
     // dummy implementation for type-checking purposes
-    let line_num = 0;
     let expanded = quote! {
-        #line_num
+        0 as u32
     };
 
     ExpandResult::ok(expanded)
@@ -179,9 +178,8 @@ fn column_expand(
     _tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
     // dummy implementation for type-checking purposes
-    let col_num = 0;
     let expanded = quote! {
-        #col_num
+        0 as u32
     };
 
     ExpandResult::ok(expanded)

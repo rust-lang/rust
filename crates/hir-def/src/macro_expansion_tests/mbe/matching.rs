@@ -73,7 +73,7 @@ fn main() {
 macro_rules! asi { ($($stmt:stmt)*) => ($($stmt)*); }
 
 fn main() {
-    let a = 2let b = 5drop(b-a)println!("{}", a+b)
+    let a = 2 let b = 5 drop(b-a)println!("{}", a+b)
 }
 "#]],
     )

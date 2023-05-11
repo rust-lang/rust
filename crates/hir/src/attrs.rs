@@ -4,7 +4,6 @@ use hir_def::{
     attr::{AttrsWithOwner, Documentation},
     item_scope::ItemInNs,
     path::ModPath,
-    per_ns::PerNs,
     resolver::HasResolver,
     AttrDefId, GenericParamId, ModuleDefId,
 };
@@ -121,6 +120,7 @@ impl HasAttrs for AssocItem {
     }
 }
 
+/// Resolves the item `link` points to in the scope of `def`.
 fn resolve_doc_path(
     db: &dyn HirDatabase,
     def: AttrDefId,
@@ -155,14 +155,14 @@ fn resolve_doc_path(
             .syntax_node()
             .descendants()
             .find_map(ast::Path::cast)?;
-        if ast_path.to_string() != link {
+        if ast_path.syntax().text() != link {
             return None;
         }
         ModPath::from_src(db.upcast(), ast_path, &Hygiene::new_unhygienic())?
     };
 
     let resolved = resolver.resolve_module_path_in_items(db.upcast(), &modpath);
-    let resolved = if resolved == PerNs::none() {
+    let resolved = if resolved.is_none() {
         resolver.resolve_module_path_in_trait_assoc_items(db.upcast(), &modpath)?
     } else {
         resolved

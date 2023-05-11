@@ -37,7 +37,7 @@ use crate::{
     item_scope::BuiltinShadowMode,
     lang_item::LangItem,
     lower::LowerCtx,
-    nameres::DefMap,
+    nameres::{DefMap, MacroSubNs},
     path::{GenericArgs, Path},
     type_ref::{Mutability, Rawness, TypeRef},
     AdtId, BlockId, BlockLoc, ModuleDefId, UnresolvedMacro,
@@ -800,7 +800,13 @@ impl ExprCollector<'_> {
         let module = self.expander.module.local_id;
         let res = self.expander.enter_expand(self.db, mcall, |path| {
             self.def_map
-                .resolve_path(self.db, module, &path, crate::item_scope::BuiltinShadowMode::Other)
+                .resolve_path(
+                    self.db,
+                    module,
+                    &path,
+                    crate::item_scope::BuiltinShadowMode::Other,
+                    Some(MacroSubNs::Bang),
+                )
                 .0
                 .take_macros()
         });
@@ -1056,6 +1062,7 @@ impl ExprCollector<'_> {
                         self.expander.module.local_id,
                         &name.clone().into(),
                         BuiltinShadowMode::Other,
+                        None,
                     );
                     match resolved.take_values() {
                         Some(ModuleDefId::ConstId(_)) => (None, Pat::Path(name.into())),

@@ -44,7 +44,7 @@ use crate::{
         mod_resolution::ModDir,
         path_resolution::ReachedFixedPoint,
         proc_macro::{parse_macro_name_and_helper_attrs, ProcMacroDef, ProcMacroKind},
-        BuiltinShadowMode, DefMap, ModuleData, ModuleOrigin, ResolveMode,
+        BuiltinShadowMode, DefMap, MacroSubNs, ModuleData, ModuleOrigin, ResolveMode,
     },
     path::{ImportAlias, ModPath, PathKind},
     per_ns::PerNs,
@@ -289,80 +289,84 @@ impl DefCollector<'_> {
         let module_id = self.def_map.root;
 
         let attrs = item_tree.top_level_attrs(self.db, self.def_map.krate);
-        if attrs.cfg().map_or(true, |cfg| self.cfg_options.check(&cfg) != Some(false)) {
-            self.inject_prelude(&attrs);
-
-            // Process other crate-level attributes.
-            for attr in &*attrs {
-                let attr_name = match attr.path.as_ident() {
-                    Some(name) => name,
-                    None => continue,
-                };
-
-                if *attr_name == hir_expand::name![recursion_limit] {
-                    if let Some(limit) = attr.string_value() {
-                        if let Ok(limit) = limit.parse() {
-                            self.def_map.recursion_limit = Some(limit);
-                        }
-                    }
-                    continue;
-                }
-
-                if *attr_name == hir_expand::name![crate_type] {
-                    if let Some("proc-macro") = attr.string_value().map(SmolStr::as_str) {
-                        self.is_proc_macro = true;
-                    }
-                    continue;
-                }
-
-                if attr_name.as_text().as_deref() == Some("rustc_coherence_is_core") {
-                    self.def_map.rustc_coherence_is_core = true;
-                    continue;
-                }
-
-                if *attr_name == hir_expand::name![feature] {
-                    let hygiene = &Hygiene::new_unhygienic();
-                    let features = attr
-                        .parse_path_comma_token_tree(self.db.upcast(), hygiene)
-                        .into_iter()
-                        .flatten()
-                        .filter_map(|feat| match feat.segments() {
-                            [name] => Some(name.to_smol_str()),
-                            _ => None,
-                        });
-                    self.def_map.unstable_features.extend(features);
-                }
-
-                let attr_is_register_like = *attr_name == hir_expand::name![register_attr]
-                    || *attr_name == hir_expand::name![register_tool];
-                if !attr_is_register_like {
-                    continue;
-                }
-
-                let registered_name = match attr.single_ident_value() {
-                    Some(ident) => ident.as_name(),
-                    _ => continue,
-                };
-
-                if *attr_name == hir_expand::name![register_attr] {
-                    self.def_map.registered_attrs.push(registered_name.to_smol_str());
-                    cov_mark::hit!(register_attr);
-                } else {
-                    self.def_map.registered_tools.push(registered_name.to_smol_str());
-                    cov_mark::hit!(register_tool);
-                }
+        if let Some(cfg) = attrs.cfg() {
+            if self.cfg_options.check(&cfg) == Some(false) {
+                return;
             }
-
-            ModCollector {
-                def_collector: self,
-                macro_depth: 0,
-                module_id,
-                tree_id: TreeId::new(file_id.into(), None),
-                item_tree: &item_tree,
-                mod_dir: ModDir::root(),
-            }
-            .collect_in_top_module(item_tree.top_level_items());
         }
+
+        self.inject_prelude(&attrs);
+
+        // Process other crate-level attributes.
+        for attr in &*attrs {
+            let attr_name = match attr.path.as_ident() {
+                Some(name) => name,
+                None => continue,
+            };
+
+            if *attr_name == hir_expand::name![recursion_limit] {
+                if let Some(limit) = attr.string_value() {
+                    if let Ok(limit) = limit.parse() {
+                        self.def_map.recursion_limit = Some(limit);
+                    }
+                }
+                continue;
+            }
+
+            if *attr_name == hir_expand::name![crate_type] {
+                if let Some("proc-macro") = attr.string_value().map(SmolStr::as_str) {
+                    self.is_proc_macro = true;
+                }
+                continue;
+            }
+
+            if attr_name.as_text().as_deref() == Some("rustc_coherence_is_core") {
+                self.def_map.rustc_coherence_is_core = true;
+                continue;
+            }
+
+            if *attr_name == hir_expand::name![feature] {
+                let hygiene = &Hygiene::new_unhygienic();
+                let features = attr
+                    .parse_path_comma_token_tree(self.db.upcast(), hygiene)
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|feat| match feat.segments() {
+                        [name] => Some(name.to_smol_str()),
+                        _ => None,
+                    });
+                self.def_map.unstable_features.extend(features);
+            }
+
+            let attr_is_register_like = *attr_name == hir_expand::name![register_attr]
+                || *attr_name == hir_expand::name![register_tool];
+            if !attr_is_register_like {
+                continue;
+            }
+
+            let registered_name = match attr.single_ident_value() {
+                Some(ident) => ident.as_name(),
+                _ => continue,
+            };
+
+            if *attr_name == hir_expand::name![register_attr] {
+                self.def_map.registered_attrs.push(registered_name.to_smol_str());
+                cov_mark::hit!(register_attr);
+            } else {
+                self.def_map.registered_tools.push(registered_name.to_smol_str());
+                cov_mark::hit!(register_tool);
+            }
+        }
+
+        ModCollector {
+            def_collector: self,
+            macro_depth: 0,
+            module_id,
+            tree_id: TreeId::new(file_id.into(), None),
+            item_tree: &item_tree,
+            mod_dir: ModDir::root(),
+        }
+        .collect_in_top_module(item_tree.top_level_items());
     }
 
     fn seed_with_inner(&mut self, tree_id: TreeId) {
@@ -543,33 +547,26 @@ impl DefCollector<'_> {
             Edition::Edition2015 => PathKind::Plain,
             _ => PathKind::Abs,
         };
-        let path =
-            ModPath::from_segments(path_kind, [krate.clone(), name![prelude], edition].into_iter());
-        // Fall back to the older `std::prelude::v1` for compatibility with Rust <1.52.0
-        // FIXME remove this fallback
-        let fallback_path =
-            ModPath::from_segments(path_kind, [krate, name![prelude], name![v1]].into_iter());
+        let path = ModPath::from_segments(path_kind, [krate, name![prelude], edition]);
 
-        for path in &[path, fallback_path] {
-            let (per_ns, _) = self.def_map.resolve_path(
-                self.db,
-                self.def_map.root,
-                path,
-                BuiltinShadowMode::Other,
-            );
+        let (per_ns, _) = self.def_map.resolve_path(
+            self.db,
+            self.def_map.root,
+            &path,
+            BuiltinShadowMode::Other,
+            None,
+        );
 
-            match per_ns.types {
-                Some((ModuleDefId::ModuleId(m), _)) => {
-                    self.def_map.prelude = Some(m);
-                    break;
-                }
-                types => {
-                    tracing::debug!(
-                        "could not resolve prelude path `{}` to module (resolved to {:?})",
-                        path,
-                        types
-                    );
-                }
+        match per_ns.types {
+            Some((ModuleDefId::ModuleId(m), _)) => {
+                self.def_map.prelude = Some(m);
+            }
+            types => {
+                tracing::debug!(
+                    "could not resolve prelude path `{}` to module (resolved to {:?})",
+                    path,
+                    types
+                );
             }
         }
     }
@@ -715,6 +712,7 @@ impl DefCollector<'_> {
     }
 
     /// Import macros from `#[macro_use] extern crate`.
+    // FIXME: Support `#[macro_rules(macro_name, ...)]`.
     fn import_macros_from_extern_crate(
         &mut self,
         current_module_id: LocalModuleId,
@@ -733,7 +731,7 @@ impl DefCollector<'_> {
             }
 
             cov_mark::hit!(macro_rules_from_other_crates_are_visible_with_macro_use);
-            self.import_all_macros_exported(current_module_id, m.krate);
+            self.import_all_macros_exported(m.krate);
         }
     }
 
@@ -742,11 +740,12 @@ impl DefCollector<'_> {
     /// Exported macros are just all macros in the root module scope.
     /// Note that it contains not only all `#[macro_export]` macros, but also all aliases
     /// created by `use` in the root module, ignoring the visibility of `use`.
-    fn import_all_macros_exported(&mut self, current_module_id: LocalModuleId, krate: CrateId) {
+    fn import_all_macros_exported(&mut self, krate: CrateId) {
         let def_map = self.db.crate_def_map(krate);
         for (name, def) in def_map[def_map.root].scope.macros() {
-            // `#[macro_use]` brings macros into legacy scope. Yes, even non-`macro_rules!` macros.
-            self.define_legacy_macro(current_module_id, name.clone(), def);
+            // `#[macro_use]` brings macros into macro_use prelude. Yes, even non-`macro_rules!`
+            // macros.
+            self.def_map.macro_use_prelude.insert(name.clone(), def);
         }
     }
 
@@ -802,6 +801,7 @@ impl DefCollector<'_> {
                 module_id,
                 &import.path,
                 BuiltinShadowMode::Module,
+                None, // An import may resolve to any kind of macro.
             );
 
             let def = res.resolved_def;
@@ -1099,7 +1099,14 @@ impl DefCollector<'_> {
             resolved.push((directive.module_id, directive.depth, directive.container, call_id));
         };
         let mut res = ReachedFixedPoint::Yes;
+        // Retain unresolved macros after this round of resolution.
         macros.retain(|directive| {
+            let subns = match &directive.kind {
+                MacroDirectiveKind::FnLike { .. } => MacroSubNs::Bang,
+                MacroDirectiveKind::Attr { .. } | MacroDirectiveKind::Derive { .. } => {
+                    MacroSubNs::Attr
+                }
+            };
             let resolver = |path| {
                 let resolved_res = self.def_map.resolve_path_fp_with_macro(
                     self.db,
@@ -1107,6 +1114,7 @@ impl DefCollector<'_> {
                     directive.module_id,
                     &path,
                     BuiltinShadowMode::Module,
+                    Some(subns),
                 );
                 resolved_res
                     .resolved_def
@@ -1425,6 +1433,7 @@ impl DefCollector<'_> {
                                 directive.module_id,
                                 &path,
                                 BuiltinShadowMode::Module,
+                                Some(MacroSubNs::Bang),
                             );
                             resolved_res
                                 .resolved_def
@@ -1517,6 +1526,7 @@ impl ModCollector<'_, '_> {
 
     fn collect(&mut self, items: &[ModItem], container: ItemContainerId) {
         let krate = self.def_collector.def_map.krate;
+        let is_crate_root = self.module_id == self.def_collector.def_map.root;
 
         // Note: don't assert that inserted value is fresh: it's simply not true
         // for macros.
@@ -1524,19 +1534,24 @@ impl ModCollector<'_, '_> {
 
         // Prelude module is always considered to be `#[macro_use]`.
         if let Some(prelude_module) = self.def_collector.def_map.prelude {
-            if prelude_module.krate != krate {
+            if prelude_module.krate != krate && is_crate_root {
                 cov_mark::hit!(prelude_is_macro_use);
-                self.def_collector.import_all_macros_exported(self.module_id, prelude_module.krate);
+                self.def_collector.import_all_macros_exported(prelude_module.krate);
             }
         }
 
         // This should be processed eagerly instead of deferred to resolving.
         // `#[macro_use] extern crate` is hoisted to imports macros before collecting
         // any other items.
-        for &item in items {
-            let attrs = self.item_tree.attrs(self.def_collector.db, krate, item.into());
-            if attrs.cfg().map_or(true, |cfg| self.is_cfg_enabled(&cfg)) {
-                if let ModItem::ExternCrate(id) = item {
+        //
+        // If we're not at the crate root, `macro_use`d extern crates are an error so let's just
+        // ignore them.
+        // FIXME: Support `#[macro_rules(macro_name, ...)]`.
+        if is_crate_root {
+            for &item in items {
+                let ModItem::ExternCrate(id) = item else { continue; };
+                let attrs = self.item_tree.attrs(self.def_collector.db, krate, item.into());
+                if attrs.cfg().map_or(true, |cfg| self.is_cfg_enabled(&cfg)) {
                     let import = &self.item_tree[id];
                     let attrs = self.item_tree.attrs(
                         self.def_collector.db,

@@ -17,7 +17,7 @@ use crate::{
     hir::{BindingId, ExprId, LabelId},
     item_scope::{BuiltinShadowMode, BUILTIN_SCOPE},
     lang_item::LangItemTarget,
-    nameres::DefMap,
+    nameres::{DefMap, MacroSubNs},
     path::{ModPath, Path, PathKind},
     per_ns::PerNs,
     visibility::{RawVisibility, Visibility},
@@ -155,7 +155,8 @@ impl Resolver {
         path: &ModPath,
     ) -> Option<PerNs> {
         let (item_map, module) = self.item_scope();
-        let (module_res, idx) = item_map.resolve_path(db, module, path, BuiltinShadowMode::Module);
+        let (module_res, idx) =
+            item_map.resolve_path(db, module, path, BuiltinShadowMode::Module, None);
         match module_res.take_types()? {
             ModuleDefId::TraitId(it) => {
                 let idx = idx?;
@@ -385,9 +386,17 @@ impl Resolver {
         }
     }
 
-    pub fn resolve_path_as_macro(&self, db: &dyn DefDatabase, path: &ModPath) -> Option<MacroId> {
+    pub fn resolve_path_as_macro(
+        &self,
+        db: &dyn DefDatabase,
+        path: &ModPath,
+        expected_macro_kind: Option<MacroSubNs>,
+    ) -> Option<MacroId> {
         let (item_map, module) = self.item_scope();
-        item_map.resolve_path(db, module, path, BuiltinShadowMode::Other).0.take_macros()
+        item_map
+            .resolve_path(db, module, path, BuiltinShadowMode::Other, expected_macro_kind)
+            .0
+            .take_macros()
     }
 
     /// Returns a set of names available in the current scope.
@@ -626,7 +635,8 @@ impl Resolver {
         shadow: BuiltinShadowMode,
     ) -> PerNs {
         let (item_map, module) = self.item_scope();
-        let (module_res, segment_index) = item_map.resolve_path(db, module, path, shadow);
+        // This method resolves `path` just like import paths, so no expected macro subns is given.
+        let (module_res, segment_index) = item_map.resolve_path(db, module, path, shadow, None);
         if segment_index.is_some() {
             return PerNs::none();
         }
