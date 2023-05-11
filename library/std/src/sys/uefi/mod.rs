@@ -29,7 +29,6 @@ pub mod locks;
 pub mod net;
 #[path = "../unsupported/once.rs"]
 pub mod once;
-#[path = "../unsupported/os.rs"]
 pub mod os;
 #[path = "../windows/os_str.rs"]
 pub mod os_str;
@@ -51,6 +50,8 @@ mod helpers;
 
 #[cfg(test)]
 mod tests;
+
+pub type RawOsError = usize;
 
 use crate::cell::Cell;
 use crate::io as std_io;
@@ -110,14 +111,50 @@ pub const fn unsupported_err() -> std_io::Error {
     std_io::const_io_error!(std_io::ErrorKind::Unsupported, "operation not supported on UEFI",)
 }
 
-pub fn decode_error_kind(code: i32) -> crate::io::ErrorKind {
+pub fn decode_error_kind(code: RawOsError) -> crate::io::ErrorKind {
     use crate::io::ErrorKind;
     use r_efi::efi::Status;
 
-    if let Ok(code) = usize::try_from(code) {
-        helpers::status_to_io_error(Status::from_usize(code)).kind()
-    } else {
-        ErrorKind::Uncategorized
+    match r_efi::efi::Status::from_usize(code) {
+        Status::ALREADY_STARTED
+        | Status::COMPROMISED_DATA
+        | Status::CONNECTION_FIN
+        | Status::CRC_ERROR
+        | Status::DEVICE_ERROR
+        | Status::END_OF_MEDIA
+        | Status::HTTP_ERROR
+        | Status::ICMP_ERROR
+        | Status::INCOMPATIBLE_VERSION
+        | Status::LOAD_ERROR
+        | Status::MEDIA_CHANGED
+        | Status::NO_MAPPING
+        | Status::NO_MEDIA
+        | Status::NOT_STARTED
+        | Status::PROTOCOL_ERROR
+        | Status::PROTOCOL_UNREACHABLE
+        | Status::TFTP_ERROR
+        | Status::VOLUME_CORRUPTED => ErrorKind::Other,
+        Status::BAD_BUFFER_SIZE | Status::INVALID_LANGUAGE => ErrorKind::InvalidData,
+        Status::ABORTED => ErrorKind::ConnectionAborted,
+        Status::ACCESS_DENIED => ErrorKind::PermissionDenied,
+        Status::BUFFER_TOO_SMALL => ErrorKind::FileTooLarge,
+        Status::CONNECTION_REFUSED => ErrorKind::ConnectionRefused,
+        Status::CONNECTION_RESET => ErrorKind::ConnectionReset,
+        Status::END_OF_FILE => ErrorKind::UnexpectedEof,
+        Status::HOST_UNREACHABLE => ErrorKind::HostUnreachable,
+        Status::INVALID_PARAMETER => ErrorKind::InvalidInput,
+        Status::IP_ADDRESS_CONFLICT => ErrorKind::AddrInUse,
+        Status::NETWORK_UNREACHABLE => ErrorKind::NetworkUnreachable,
+        Status::NO_RESPONSE => ErrorKind::HostUnreachable,
+        Status::NOT_FOUND => ErrorKind::NotFound,
+        Status::NOT_READY => ErrorKind::ResourceBusy,
+        Status::OUT_OF_RESOURCES => ErrorKind::OutOfMemory,
+        Status::SECURITY_VIOLATION => ErrorKind::PermissionDenied,
+        Status::TIMEOUT => ErrorKind::TimedOut,
+        Status::UNSUPPORTED => ErrorKind::Unsupported,
+        Status::VOLUME_FULL => ErrorKind::StorageFull,
+        Status::WRITE_PROTECTED => ErrorKind::ReadOnlyFilesystem,
+        _ => ErrorKind::Uncategorized,
     }
 }
 
