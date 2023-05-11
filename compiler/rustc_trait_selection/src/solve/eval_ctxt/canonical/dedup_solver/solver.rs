@@ -3,6 +3,9 @@ use rustc_index::{Idx, IndexVec};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 
+#[cfg(test)]
+mod tests;
+
 rustc_index::newtype_index! { pub struct VarIndex {} }
 rustc_index::newtype_index! { pub struct ConstraintIndex {} }
 rustc_index::newtype_index! {
@@ -465,5 +468,3 @@ impl MappingInfo {
         Self { dependencies: FxIndexMap::default(), constraint_mappings: FxIndexMap::default() }
     }
 }
-
-// FIXME: Tests that test the solver on its own have been deleted cuz tidy check won't stop yelling at me - add back later

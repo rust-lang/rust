@@ -94,13 +94,12 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             }
         };
 
-        let mut canonical = Canonicalizer::canonicalize(
+        let canonical = Canonicalizer::canonicalize(
             self.infcx,
             CanonicalizeMode::Response { max_input_universe: self.max_input_universe },
             &mut Default::default(),
             response,
         );
-        dedup_solver::Deduper::dedup(self.infcx.tcx, &mut canonical);
         Ok(canonical)
     }
 
@@ -143,7 +142,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         // Cannot use `take_registered_region_obligations` as we may compute the response
         // inside of a `probe` whenever we have multiple choices inside of the solver.
         let region_obligations = self.infcx.inner.borrow().region_obligations().to_owned();
-        let region_constraints = self.infcx.with_region_constraints(|region_constraints| {
+        let mut region_constraints = self.infcx.with_region_constraints(|region_constraints| {
             make_query_region_constraints(
                 self.tcx(),
                 region_obligations
@@ -152,6 +151,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 region_constraints,
             )
         });
+        dedup_solver::Deduper::dedup(self.infcx, self.max_input_universe, &mut region_constraints);
 
         let mut opaque_types = self.infcx.clone_opaque_types_for_query_response();
         // Only return opaque type keys for newly-defined opaques
