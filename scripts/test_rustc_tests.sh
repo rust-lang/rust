@@ -48,7 +48,6 @@ rm tests/ui/proc-macro/allowed-signatures.rs
 rm tests/ui/sse2.rs # cpuid not supported, so sse2 not detected
 rm tests/ui/intrinsics/const-eval-select-x86_64.rs # requires x86_64 vendor intrinsics
 rm tests/ui/simd/array-type.rs # "Index argument for `simd_insert` is not a constant"
-rm tests/ui/simd/intrinsic/float-math-pass.rs # simd_fcos unimplemented
 
 # exotic linkages
 rm tests/ui/issues/issue-33992.rs # unsupported linkages
