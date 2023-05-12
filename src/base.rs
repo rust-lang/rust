@@ -56,6 +56,7 @@ pub fn global_linkage_to_gcc(linkage: Linkage) -> GlobalKind {
 pub fn linkage_to_gcc(linkage: Linkage) -> FunctionType {
     match linkage {
         Linkage::External => FunctionType::Exported,
+        // TODO(antoyo): set the attribute externally_visible.
         Linkage::AvailableExternally => FunctionType::Extern,
         Linkage::LinkOnceAny => unimplemented!(),
         Linkage::LinkOnceODR => unimplemented!(),
@@ -91,7 +92,6 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: Arc<
     fn module_codegen(tcx: TyCtxt<'_>, (cgu_name, target_info): (Symbol, Arc<TargetInfo>)) -> ModuleCodegen<GccContext> {
         let cgu = tcx.codegen_unit(cgu_name);
         // Instantiate monomorphizations without filling out definitions yet...
-        //let llvm_module = ModuleLlvm::new(tcx, &cgu_name.as_str());
         let context = Context::default();
 
         context.add_command_line_option("-fexceptions");
@@ -152,7 +152,10 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: Arc<
             context.add_command_line_option("-fdump-rtl-all");
         }
         if env::var("CG_GCCJIT_DUMP_TREE_ALL").as_deref() == Ok("1") {
-            context.add_command_line_option("-fdump-tree-all");
+            context.add_command_line_option("-fdump-tree-all-eh");
+        }
+        if env::var("CG_GCCJIT_DUMP_IPA_ALL").as_deref() == Ok("1") {
+            context.add_command_line_option("-fdump-ipa-all-eh");
         }
         if env::var("CG_GCCJIT_DUMP_CODE").as_deref() == Ok("1") {
             context.set_dump_code_on_compile(true);
@@ -166,6 +169,10 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: Arc<
         }
         if env::var("CG_GCCJIT_KEEP_INTERMEDIATES").as_deref() == Ok("1") {
             context.set_keep_intermediates(true);
+        }
+
+        if env::var("CG_GCCJIT_VERBOSE").as_deref() == Ok("1") {
+            context.add_driver_option("-v");
         }
 
         // NOTE: The codegen generates unrechable blocks.
@@ -197,7 +204,9 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: Arc<
         ModuleCodegen {
             name: cgu_name.to_string(),
             module_llvm: GccContext {
-                context
+                context,
+                should_combine_object_files: false,
+                temp_dir: None,
             },
             kind: ModuleKind::Regular,
         }

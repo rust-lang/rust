@@ -2,6 +2,12 @@
  * TODO(antoyo): implement equality in libgccjit based on https://zpz.github.io/blog/overloading-equality-operator-in-cpp-class-hierarchy/ (for type equality?)
  * TODO(antoyo): support #[inline] attributes.
  * TODO(antoyo): support LTO (gcc's equivalent to Full LTO is -flto -flto-partition=one — https://documentation.suse.com/sbp/all/html/SBP-GCC-10/index.html).
+ * For Thin LTO, this might be helpful:
+ * In gcc 4.6 -fwhopr was removed and became default with -flto. The non-whopr path can still be executed via -flto-partition=none.
+ *
+ * Maybe some missing optizations enabled by rustc's LTO is in there: https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html
+ * Like -fipa-icf (should be already enabled) and maybe -fdevirtualize-at-ltrans.
+ * TODO: disable debug info always being emitted. Perhaps this slows down things?
  *
  * TODO(antoyo): remove the patches.
  */
@@ -28,6 +34,7 @@ extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
 extern crate rustc_fluent_macro;
+extern crate rustc_fs_util;
 extern crate rustc_hir;
 extern crate rustc_macros;
 extern crate rustc_metadata;
@@ -35,6 +42,8 @@ extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
+#[macro_use]
+extern crate tracing;
 
 // This prevents duplicating functions and statics that are already part of the host rustc process.
 #[allow(unused_extern_crates)]
@@ -65,22 +74,24 @@ mod type_of;
 use std::any::Any;
 use std::sync::Arc;
 #[cfg(not(feature="master"))]
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::AtomicBool;
+#[cfg(not(feature="master"))]
+use std::sync::atomic::Ordering;
 
-use crate::errors::LTONotSupported;
 use gccjit::{Context, OptimizationLevel};
 #[cfg(feature="master")]
 use gccjit::TargetInfo;
 #[cfg(not(feature="master"))]
 use gccjit::CType;
+use errors::LTONotSupported;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen};
 use rustc_codegen_ssa::base::codegen_crate;
 use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput, ModuleConfig, TargetMachineFactoryFn};
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
 use rustc_codegen_ssa::target_features::supported_target_features;
-use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, ModuleBufferMethods, ThinBufferMethods, WriteBackendMethods};
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, ThinBufferMethods, WriteBackendMethods};
 use rustc_errors::{DiagnosticMessage, ErrorGuaranteed, Handler, SubdiagnosticMessage};
 use rustc_fluent_macro::fluent_messages;
 use rustc_metadata::EncodedMetadata;
@@ -91,8 +102,9 @@ use rustc_session::config::{Lto, OptLevel, OutputFilenames};
 use rustc_session::Session;
 use rustc_span::Symbol;
 use rustc_span::fatal_error::FatalError;
-#[cfg(not(feature="master"))]
 use tempfile::TempDir;
+
+use crate::back::lto::ModuleBuffer;
 
 fluent_messages! { "../messages.ftl" }
 
@@ -136,7 +148,7 @@ impl CodegenBackend for GccCodegenBackend {
     fn init(&self, sess: &Session) {
         #[cfg(feature="master")]
         gccjit::set_global_personality_function_name(b"rust_eh_personality\0");
-        if sess.lto() != Lto::No {
+        if sess.lto() == Lto::Thin {
             sess.emit_warning(LTONotSupported {});
         }
 
@@ -194,7 +206,12 @@ impl ExtraBackendMethods for GccCodegenBackend {
     fn codegen_allocator<'tcx>(&self, tcx: TyCtxt<'tcx>, module_name: &str, kind: AllocatorKind, alloc_error_handler_kind: AllocatorKind) -> Self::Module {
         let mut mods = GccContext {
             context: Context::default(),
+            should_combine_object_files: false,
+            temp_dir: None,
         };
+
+        // TODO(antoyo): only set for x86.
+        mods.context.add_command_line_option("-masm=intel");
         unsafe { allocator::codegen(tcx, &mut mods, module_name, kind, alloc_error_handler_kind); }
         mods
     }
@@ -211,14 +228,6 @@ impl ExtraBackendMethods for GccCodegenBackend {
     }
 }
 
-pub struct ModuleBuffer;
-
-impl ModuleBufferMethods for ModuleBuffer {
-    fn data(&self) -> &[u8] {
-        unimplemented!();
-    }
-}
-
 pub struct ThinBuffer;
 
 impl ThinBufferMethods for ThinBuffer {
@@ -229,6 +238,9 @@ impl ThinBufferMethods for ThinBuffer {
 
 pub struct GccContext {
     context: Context<'static>,
+    should_combine_object_files: bool,
+    // Temporary directory used by LTO. We keep it here so that it's not removed before linking.
+    temp_dir: Option<TempDir>,
 }
 
 unsafe impl Send for GccContext {}
@@ -243,18 +255,8 @@ impl WriteBackendMethods for GccCodegenBackend {
     type ThinData = ();
     type ThinBuffer = ThinBuffer;
 
-    fn run_fat_lto(_cgcx: &CodegenContext<Self>, mut modules: Vec<FatLtoInput<Self>>, _cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>) -> Result<LtoModuleCodegen<Self>, FatalError> {
-        // TODO(antoyo): implement LTO by sending -flto to libgccjit and adding the appropriate gcc linker plugins.
-        // NOTE: implemented elsewhere.
-        // TODO(antoyo): what is implemented elsewhere ^ ?
-        let module =
-            match modules.remove(0) {
-                FatLtoInput::InMemory(module) => module,
-                FatLtoInput::Serialized { .. } => {
-                    unimplemented!();
-                }
-            };
-        Ok(LtoModuleCodegen::Fat { module, _serialized_bitcode: vec![] })
+    fn run_fat_lto(cgcx: &CodegenContext<Self>, modules: Vec<FatLtoInput<Self>>, cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>) -> Result<LtoModuleCodegen<Self>, FatalError> {
+        back::lto::run_fat(cgcx, modules, cached_modules)
     }
 
     fn run_thin_lto(_cgcx: &CodegenContext<Self>, _modules: Vec<(String, Self::ThinBuffer)>, _cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>) -> Result<(Vec<LtoModuleCodegen<Self>>, Vec<WorkProduct>), FatalError> {
