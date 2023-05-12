@@ -47,6 +47,7 @@
 #![allow(named_arguments_used_positionally)]
 #![allow(suspicious_double_ref_op)]
 #![allow(temporary_cstring_as_ptr)]
+#![allow(undropped_manually_drops)]
 #![allow(unknown_lints)]
 #![allow(unused_labels)]
 #![warn(clippy::almost_complete_letter_range)]
@@ -97,6 +98,7 @@
 #![warn(clippy::panic_params)]
 #![warn(clippy::positional_named_format_parameters)]
 #![warn(clippy::temporary_cstring_as_ptr)]
+#![warn(clippy::undropped_manually_drops)]
 #![warn(clippy::unknown_clippy_lints)]
 #![warn(clippy::unused_label)]
 
