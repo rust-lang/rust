@@ -13,5 +13,4 @@ fn non_unsafe_pin_new_unchecked<T>(pointer: &mut T) -> Pin<&mut T> {
 fn main() {
     let mut self_referential = PhantomPinned;
     let _: Pin<&mut PhantomPinned> = non_unsafe_pin_new_unchecked(&mut self_referential);
-    core::mem::forget(self_referential); // move and disable drop glue!
 }

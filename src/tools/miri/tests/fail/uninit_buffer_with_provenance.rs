@@ -2,6 +2,8 @@
 //@normalize-stderr-test: "a[0-9]+" -> "ALLOC"
 #![feature(strict_provenance)]
 
+#![allow(drop_copy)]
+
 // Test printing allocations that contain single-byte provenance.
 
 use std::alloc::{alloc, dealloc, Layout};
