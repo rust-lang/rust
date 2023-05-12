@@ -168,7 +168,8 @@
 /// The Nomicon discusses the need for [drop check in more detail][drop check].
 ///
 /// To reject such code, the "drop check" analysis determines which types and lifetimes need to
-/// still be live when `T` gets dropped:
+/// still be live when `T` gets dropped. The exact details of this analysis are not yet
+/// stably guaranteed and **subject to change**. Currently, the analysis works as follows:
 /// - If `T` has no drop glue, then trivially nothing is required to be live. This is the case if
 ///   neither `T` nor any of its (recursive) fields have a destructor (`impl Drop`). [`PhantomData`]
 ///   and [`ManuallyDrop`] are considered to never have a destructor, no matter their field type.
