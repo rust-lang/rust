@@ -194,7 +194,7 @@ impl<'a> DocFolder for ImplStripper<'a, '_> {
                     })
                 {
                     return None;
-                } else if imp.items.is_empty() && i.doc_value().is_none() {
+                } else if imp.items.is_empty() && i.doc_value().is_empty() {
                     return None;
                 }
             }

@@ -327,9 +327,8 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                     // which should not be indexed. The crate-item itself is
                     // inserted later on when serializing the search-index.
                     if item.item_id.as_def_id().map_or(false, |idx| !idx.is_crate_root()) {
-                        let desc = item.doc_value().map_or_else(String::new, |x| {
-                            short_markdown_summary(x.as_str(), &item.link_names(self.cache))
-                        });
+                        let desc =
+                            short_markdown_summary(&item.doc_value(), &item.link_names(self.cache));
                         let ty = item.type_();
                         if ty != ItemType::StructField
                             || u16::from_str_radix(s.as_str(), 10).is_err()

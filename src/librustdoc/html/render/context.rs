@@ -184,11 +184,8 @@ impl<'tcx> Context<'tcx> {
         };
         title.push_str(" - Rust");
         let tyname = it.type_();
-        let desc = it
-            .doc_value()
-            .as_ref()
-            .map(|doc| plain_text_summary(doc, &it.link_names(&self.cache())));
-        let desc = if let Some(desc) = desc {
+        let desc = plain_text_summary(&it.doc_value(), &it.link_names(&self.cache()));
+        let desc = if !desc.is_empty() {
             desc
         } else if it.is_crate() {
             format!("API documentation for the Rust `{}` crate.", self.shared.layout.krate)
