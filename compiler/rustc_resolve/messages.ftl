@@ -199,6 +199,10 @@ resolve_invalid_asm_sym =
     .label = is a local variable
     .help = `sym` operands must refer to either a function or a static
 
+resolve_lowercase_self =
+    attempt to use a non-constant value in a constant
+    .suggestion = try using `Self`
+
 resolve_trait_impl_duplicate =
     duplicate definitions with name `{$name}`:
     .label = duplicate definition

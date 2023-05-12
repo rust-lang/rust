@@ -15,8 +15,7 @@ use std::ptr;
 
 use crate::errors::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
 use crate::late::{
-    ConstantHasGenerics, ConstantItemKind, HasGenericParams, NoConstantGenericsReason, PathSource,
-    Rib, RibKind,
+    ConstantHasGenerics, HasGenericParams, NoConstantGenericsReason, PathSource, Rib, RibKind,
 };
 use crate::macros::{sub_namespace_match, MacroRulesScope};
 use crate::{errors, AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, Determinacy, Finalize};
@@ -1127,28 +1126,25 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         RibKind::ConstantItem(_, item) => {
                             // Still doesn't deal with upvars
                             if let Some(span) = finalize {
-                                let (span, resolution_error) =
-                                    if let Some((ident, constant_item_kind)) = item {
-                                        let kind_str = match constant_item_kind {
-                                            ConstantItemKind::Const => "const",
-                                            ConstantItemKind::Static => "static",
-                                        };
-                                        (
-                                            span,
-                                            AttemptToUseNonConstantValueInConstant(
-                                                ident, "let", kind_str,
-                                            ),
-                                        )
-                                    } else {
-                                        (
-                                            rib_ident.span,
-                                            AttemptToUseNonConstantValueInConstant(
-                                                original_rib_ident_def,
-                                                "const",
-                                                "let",
-                                            ),
-                                        )
-                                    };
+                                let (span, resolution_error) = match item {
+                                    None if rib_ident.as_str() == "self" => (span, LowercaseSelf),
+                                    None => (
+                                        rib_ident.span,
+                                        AttemptToUseNonConstantValueInConstant(
+                                            original_rib_ident_def,
+                                            "const",
+                                            "let",
+                                        ),
+                                    ),
+                                    Some((ident, kind)) => (
+                                        span,
+                                        AttemptToUseNonConstantValueInConstant(
+                                            ident,
+                                            "let",
+                                            kind.as_str(),
+                                        ),
+                                    ),
+                                };
                                 self.report_error(span, resolution_error);
                             }
                             return Res::Err;

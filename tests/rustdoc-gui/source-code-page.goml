@@ -117,9 +117,8 @@ assert-property: ("#source-sidebar details:first-of-type", {"open": "true"})
 
 // Check the sidebar directory entries have a marker and spacing (desktop).
 store-property: (
-    link_height,
     "#source-sidebar > details:first-of-type.dir-entry[open] > .files > a",
-    "offsetHeight"
+    {"offsetHeight": link_height},
 )
 define-function: (
     "check-sidebar-dir-entry",
@@ -147,16 +146,10 @@ define-function: (
         )
     }
 )
-store-property: (
-    source_sidebar_title_height,
-    "#source-sidebar > .title",
-    "offsetHeight"
-)
-store-property: (
-    source_sidebar_title_y,
-    "#source-sidebar > .title",
-    "offsetTop"
-)
+store-property: ("#source-sidebar > .title", {
+    "offsetHeight": source_sidebar_title_height,
+    "offsetTop": source_sidebar_title_y,
+})
 call-function: ("check-sidebar-dir-entry", {
     "x": 0,
     // border + margin = 6
@@ -182,16 +175,10 @@ assert-property: ("#main-content", {"offsetTop": 76})
 // 21 = 76 - 34 - 21
 
 // Check the sidebar directory entries have a marker and spacing (tablet).
-store-property: (
-    source_sidebar_title_height,
-    "#source-sidebar > .title",
-    "offsetHeight"
-)
-store-property: (
-    source_sidebar_title_y,
-    "#source-sidebar > .title",
-    "offsetTop"
-)
+store-property: ("#source-sidebar > .title", {
+    "offsetHeight": source_sidebar_title_height,
+    "offsetTop": source_sidebar_title_y,
+})
 call-function: ("check-sidebar-dir-entry", {
     "x": 0,
     "y": |source_sidebar_title_y| + |source_sidebar_title_height| + 6,
@@ -202,16 +189,10 @@ set-window-size: (450, 700)
 assert-css: ("nav.sub", {"flex-direction": "column"})
 
 // Check the sidebar directory entries have a marker and spacing (phone).
-store-property: (
-    source_sidebar_title_height,
-    "#source-sidebar > .title",
-    "offsetHeight"
-)
-store-property: (
-    source_sidebar_title_y,
-    "#source-sidebar > .title",
-    "offsetTop"
-)
+store-property: ("#source-sidebar > .title", {
+    "offsetHeight": source_sidebar_title_height,
+    "offsetTop": source_sidebar_title_y,
+})
 call-function: ("check-sidebar-dir-entry", {
     "x": 0,
     "y": |source_sidebar_title_y| + |source_sidebar_title_height| + 6,
@@ -219,5 +200,5 @@ call-function: ("check-sidebar-dir-entry", {
 
 // Now we check that the logo has a bottom margin so it's not stuck to the search input.
 assert-css: (".sub-logo-container > img", {"margin-bottom": "8px"})
-store-property: (logo_height, ".sub-logo-container", "clientHeight")
+store-property: (".sub-logo-container", {"clientHeight": logo_height})
 assert-position: (".search-form", {"y": |logo_height| + 8})
