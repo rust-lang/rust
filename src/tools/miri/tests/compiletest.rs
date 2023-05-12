@@ -1,6 +1,6 @@
 use colored::*;
 use regex::bytes::Regex;
-use std::io::Write;
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::{env, process::Command};
 use ui_test::status_emitter::StatusEmitter;
@@ -46,13 +46,7 @@ fn build_so_for_c_ffi_tests() -> PathBuf {
     so_file_path
 }
 
-fn test_config(
-    args: impl Iterator<Item = String>,
-    target: &str,
-    path: &str,
-    mode: Mode,
-    with_dependencies: bool,
-) -> Config {
+fn test_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) -> Config {
     // Miri is rustc-like, so we create a default builder for rustc and modify it
     let mut program = CommandBuilder::rustc();
     program.program = miri_path();
@@ -110,9 +104,29 @@ fn test_config(
         ..Config::default()
     };
 
+    let use_std = env::var_os("MIRI_NO_STD").is_none();
+
+    if with_dependencies && use_std {
+        config.dependencies_crate_manifest_path =
+            Some(Path::new("test_dependencies").join("Cargo.toml"));
+        config.dependency_builder.args = vec![
+            "run".into(),
+            "--manifest-path".into(),
+            "cargo-miri/Cargo.toml".into(),
+            "--".into(),
+            "miri".into(),
+            "run".into(), // There is no `cargo miri build` so we just use `cargo miri run`.
+        ];
+    }
+    config
+}
+
+fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> Result<()> {
+    let mut config = test_config(target, path, mode, with_dependencies);
+
     // Handle command-line arguments.
     let mut after_dashdash = false;
-    config.path_filter.extend(args.filter(|arg| {
+    config.path_filter.extend(std::env::args().skip(1).filter(|arg| {
         if after_dashdash {
             // Just propagate everything.
             return true;
@@ -132,26 +146,6 @@ fn test_config(
             _ => true,
         }
     }));
-
-    let use_std = env::var_os("MIRI_NO_STD").is_none();
-
-    if with_dependencies && use_std {
-        config.dependencies_crate_manifest_path =
-            Some(Path::new("test_dependencies").join("Cargo.toml"));
-        config.dependency_builder.args = vec![
-            "run".into(),
-            "--manifest-path".into(),
-            "cargo-miri/Cargo.toml".into(),
-            "--".into(),
-            "miri".into(),
-            "run".into(), // There is no `cargo miri build` so we just use `cargo miri run`.
-        ];
-    }
-    config
-}
-
-fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> Result<()> {
-    let config = test_config(std::env::args().skip(1), target, path, mode, with_dependencies);
 
     eprintln!("   Compiler: {}", config.program.display());
     ui_test::run_tests_generic(
@@ -241,9 +235,12 @@ fn main() -> Result<()> {
 
     let target = get_target();
 
-    if let Some(first) = std::env::args().nth(1) {
+    let mut args = std::env::args_os();
+
+    // Skip the program name and check whether this is a `./miri run-dep` invocation
+    if let Some(first) = args.nth(1) {
         if first == "--miri-run-dep-mode" {
-            return run_dep_mode(target);
+            return run_dep_mode(target, args);
         }
     }
 
@@ -269,19 +266,17 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn run_dep_mode(target: String) -> Result<()> {
-    let files = std::env::args().skip(2);
-    for path in files {
-        let mut config = test_config(std::iter::empty(), &target, &path, Mode::Yolo, true);
-        config.program.args.remove(0); // remove the `--error-format=json` argument
-        config.program.args.push("--color".into());
-        config.program.args.push("always".into());
-        let output = ui_test::run_file(config, Path::new(&path))?;
-        std::io::stderr().write_all(&output.stderr)?;
-        std::io::stdout().write_all(&output.stdout)?;
-        std::process::exit(output.status.code().unwrap());
-    }
-    Ok(())
+fn run_dep_mode(target: String, mut args: impl Iterator<Item = OsString>) -> Result<()> {
+    let path = args.next().expect("./miri run-dep must be followed by a file name");
+    let mut config = test_config(&target, "", Mode::Yolo, true);
+    config.program.args.remove(0); // remove the `--error-format=json` argument
+    config.program.args.push("--color".into());
+    config.program.args.push("always".into());
+    let mut cmd = ui_test::test_command(config, Path::new(&path))?;
+    cmd.arg("--");
+    cmd.args(args);
+    println!("{cmd:?}");
+    if cmd.spawn()?.wait()?.success() { Ok(()) } else { std::process::exit(1) }
 }
 
 /// This is a custom renderer for `ui_test` output that does not emit github actions
