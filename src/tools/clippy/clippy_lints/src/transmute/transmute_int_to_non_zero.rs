@@ -16,40 +16,55 @@ pub(super) fn check<'tcx>(
     to_ty: Ty<'tcx>,
     arg: &'tcx Expr<'_>,
 ) -> bool {
-    let (ty::Int(_) | ty::Uint(_), Some(to_ty_adt)) = (&from_ty.kind(), to_ty.ty_adt_def()) else {
-        return false;
-    };
-    let Some(to_type_sym) = cx.tcx.get_diagnostic_name(to_ty_adt.did()) else {
+    let tcx = cx.tcx;
+
+    let (ty::Int(_) | ty::Uint(_), ty::Adt(adt, substs)) = (&from_ty.kind(), to_ty.kind()) else {
         return false;
     };
 
-    if !matches!(
-        to_type_sym,
-        sym::NonZeroU8
-            | sym::NonZeroU16
-            | sym::NonZeroU32
-            | sym::NonZeroU64
-            | sym::NonZeroU128
-            | sym::NonZeroI8
-            | sym::NonZeroI16
-            | sym::NonZeroI32
-            | sym::NonZeroI64
-            | sym::NonZeroI128
-    ) {
+    if !tcx.is_diagnostic_item(sym::NonZero, adt.did()) {
         return false;
-    }
+    };
+
+    // FIXME: This can be simplified once `NonZero<T>` is stable.
+    let coercable_types = [
+        ("NonZeroU8", tcx.types.u8),
+        ("NonZeroU16", tcx.types.u16),
+        ("NonZeroU32", tcx.types.u32),
+        ("NonZeroU64", tcx.types.u64),
+        ("NonZeroU128", tcx.types.u128),
+        ("NonZeroUsize", tcx.types.usize),
+        ("NonZeroI8", tcx.types.i8),
+        ("NonZeroI16", tcx.types.i16),
+        ("NonZeroI32", tcx.types.i32),
+        ("NonZeroI64", tcx.types.i64),
+        ("NonZeroI128", tcx.types.i128),
+        ("NonZeroIsize", tcx.types.isize),
+    ];
+
+    let int_type = substs.type_at(0);
+
+    let Some(nonzero_alias) = coercable_types.iter().find_map(|(nonzero_alias, t)| {
+        if *t == int_type && *t == from_ty {
+            Some(nonzero_alias)
+        } else {
+            None
+        }
+    }) else {
+        return false;
+    };
 
     span_lint_and_then(
         cx,
         TRANSMUTE_INT_TO_NON_ZERO,
         e.span,
-        &format!("transmute from a `{from_ty}` to a `{to_type_sym}`"),
+        &format!("transmute from a `{from_ty}` to a `{nonzero_alias}`"),
         |diag| {
             let arg = sugg::Sugg::hir(cx, arg, "..");
             diag.span_suggestion(
                 e.span,
                 "consider using",
-                format!("{to_type_sym}::{}({arg})", sym::new_unchecked),
+                format!("{nonzero_alias}::{}({arg})", sym::new_unchecked),
                 Applicability::Unspecified,
             );
         },
