@@ -644,6 +644,7 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
             InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::reg) => "r",
             InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::reg_nonzero) => "b",
             InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::freg) => "f",
+            InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::vreg) => "v",
             InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::cr)
             | InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::xer) => {
                 unreachable!("clobber-only")
@@ -817,6 +818,9 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
         InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::reg) => cx.type_i32(),
         InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::reg_nonzero) => cx.type_i32(),
         InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::freg) => cx.type_f64(),
+        InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::vreg) => cx.type_vector(cx.type_i64(), 2),//no clue if this is right :D
+		//All PPC vreg's are 128-bits wide.
+		//Each vreg can hold sixteen 8-bit elements, eight 16-bit elements, or four 32-bit elements.
         InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::cr)
         | InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::xer) => {
             unreachable!("clobber-only")

@@ -886,7 +886,7 @@ impl InlineAsmClobberAbi {
                 "C" | "system" | "efiapi" => Ok(InlineAsmClobberAbi::LoongArch),
                 _ => Err(&["C", "system", "efiapi"]),
             },
-            InlineAsmArch::PowerPC => match name {
+            InlineAsmArch::PowerPC | InlineAsmArch::PowerPC64 => match name {
                 "C" | "system" | "efiapi" => Ok(InlineAsmClobberAbi::PowerPC),
                 _ => Err(&["C", "system", "efiapi"]),
             },
@@ -1051,17 +1051,15 @@ impl InlineAsmClobberAbi {
                 PowerPC PowerPCInlineAsmReg {
                     // ra
                     r0,
-                    //
-                    r3, r4, r5, r6, r7, r8, r9, r10,
-                    //r11, r12,
+                    r3, r4, r5, r6, r7, r8, r9, r10, r11, r12,
                     // float
                     f0, f1, f2, f3, f4, f5, f6, f7, f8, f9,
                     f10, f11, f12, f13,
 
                     // VMX capable only
-                    //v0, v1, v2, v3, v4, v5, v6, v7, v8, v9,
-                    //v10, v11, v12, v13, v14, v15, v16, v17,
-                    //v18, v19,
+                    v0, v1, v2, v3, v4, v5, v6, v7, v8, v9,
+                    v10, v11, v12, v13, v14, v15, v16, v17,
+                    v18, v19,
                 }
             },
         }
