@@ -268,11 +268,13 @@ fn main() -> Result<()> {
 
 fn run_dep_mode(target: String, mut args: impl Iterator<Item = OsString>) -> Result<()> {
     let path = args.next().expect("./miri run-dep must be followed by a file name");
-    let mut config = test_config(&target, "", Mode::Yolo, true);
+    let mut config = test_config(&target, "", Mode::Yolo, /* with dependencies */ true);
     config.program.args.remove(0); // remove the `--error-format=json` argument
     config.program.args.push("--color".into());
     config.program.args.push("always".into());
     let mut cmd = ui_test::test_command(config, Path::new(&path))?;
+    // Separate the arguments to the `cargo miri` invocation from
+    // the arguments to the interpreted prog
     cmd.arg("--");
     cmd.args(args);
     println!("{cmd:?}");
