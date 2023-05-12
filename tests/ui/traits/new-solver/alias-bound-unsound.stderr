@@ -1,0 +1,24 @@
+error[E0277]: the trait bound `<() as Foo>::Item: Copy` is not satisfied
+  --> $DIR/alias-bound-unsound.rs:23:10
+   |
+LL |     drop(<() as Foo>::copy_me(&x));
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `<() as Foo>::Item`
+   |
+note: required by a bound in `Foo::Item`
+  --> $DIR/alias-bound-unsound.rs:10:30
+   |
+LL |     type Item: Copy
+   |          ---- required by a bound in this associated type
+LL |     where
+LL |         <Self as Foo>::Item: Copy;
+   |                              ^^^^ required by this bound in `Foo::Item`
+
+error: the type `<() as Foo>::Item` is not well-formed
+  --> $DIR/alias-bound-unsound.rs:23:10
+   |
+LL |     drop(<() as Foo>::copy_me(&x));
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -225,12 +225,12 @@ assert: "#method\.create_an_iterator_from_read .tooltip:focus"
 
 // Now we check that the focus isn't given back to the wrong item when opening
 // another popover.
-store-window-property: (scroll, "scrollY")
+store-window-property: {"scrollY": scroll}
 click: "#method\.create_an_iterator_from_read .fn"
 // We ensure that the scroll position changed.
 assert-window-property-false: {"scrollY": |scroll|}
 // Store the new position.
-store-window-property: (scroll, "scrollY")
+store-window-property: {"scrollY": scroll}
 click: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"
 wait-for: "//*[@class='tooltip popover']"
 click: "#settings-menu a"
@@ -239,12 +239,12 @@ click: ".search-input"
 assert-window-property-false: {"scrollY": |scroll|}
 
 // Same but with Escape handling.
-store-window-property: (scroll, "scrollY")
+store-window-property: {"scrollY": scroll}
 click: "#method\.create_an_iterator_from_read .fn"
 // We ensure that the scroll position changed.
 assert-window-property-false: {"scrollY": |scroll|}
 // Store the new position.
-store-window-property: (scroll, "scrollY")
+store-window-property: {"scrollY": scroll}
 click: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"
 wait-for: "//*[@class='tooltip popover']"
 click: "#settings-menu a"

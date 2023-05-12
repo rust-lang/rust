@@ -278,9 +278,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
     ) -> bool {
         if let traits::FulfillmentErrorCode::CodeSelectionError(
-            traits::SelectionError::OutputTypeParameterMismatch(_, expected, _),
+            traits::SelectionError::OutputTypeParameterMismatch(box traits::SelectionOutputTypeParameterMismatch{
+                expected_trait_ref, ..
+            }),
         ) = error.code
-            && let ty::Closure(def_id, _) | ty::Generator(def_id, ..) = expected.skip_binder().self_ty().kind()
+            && let ty::Closure(def_id, _) | ty::Generator(def_id, ..) = expected_trait_ref.skip_binder().self_ty().kind()
             && span.overlaps(self.tcx.def_span(*def_id))
         {
             true

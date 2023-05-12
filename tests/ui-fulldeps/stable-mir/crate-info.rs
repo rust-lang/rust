@@ -40,6 +40,7 @@ fn test_stable_mir(tcx: TyCtxt<'_>) {
 
     let bar = get_item(tcx, &items, (DefKind::Fn, "bar")).unwrap();
     let body = bar.body();
+    assert_eq!(body.locals.len(), 2);
     assert_eq!(body.blocks.len(), 1);
     let block = &body.blocks[0];
     assert_eq!(block.statements.len(), 1);
@@ -54,6 +55,7 @@ fn test_stable_mir(tcx: TyCtxt<'_>) {
 
     let foo_bar = get_item(tcx, &items, (DefKind::Fn, "foo_bar")).unwrap();
     let body = foo_bar.body();
+    assert_eq!(body.locals.len(), 7);
     assert_eq!(body.blocks.len(), 4);
     let block = &body.blocks[0];
     match &block.terminator {
@@ -123,7 +125,7 @@ impl Callbacks for SMirCalls {
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
         queries.global_ctxt().unwrap().enter(|tcx| {
-            test_stable_mir(tcx);
+            rustc_smir::rustc_internal::run(tcx, || test_stable_mir(tcx));
         });
         // No need to keep going.
         Compilation::Stop

@@ -10,6 +10,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
+use rustc_middle::traits::SelectionOutputTypeParameterMismatch;
 use rustc_middle::ty::{
     self, Binder, GenericParamDefKind, InternalSubsts, SubstsRef, ToPolyTraitRef, ToPredicate,
     TraitRef, Ty, TyCtxt, TypeVisitableExt,
@@ -811,7 +812,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn confirm_poly_trait_refs(
         &mut self,
         obligation: &TraitObligation<'tcx>,
-        expected_trait_ref: ty::PolyTraitRef<'tcx>,
+        self_ty_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         let obligation_trait_ref = obligation.predicate.to_poly_trait_ref();
         // Normalize the obligation and expected trait refs together, because why not
@@ -822,7 +823,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation.param_env,
                     obligation.cause.clone(),
                     obligation.recursion_depth + 1,
-                    (obligation_trait_ref, expected_trait_ref),
+                    (obligation_trait_ref, self_ty_trait_ref),
                 )
             });
 
@@ -834,7 +835,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 obligations.extend(nested);
                 obligations
             })
-            .map_err(|e| OutputTypeParameterMismatch(expected_trait_ref, obligation_trait_ref, e))
+            .map_err(|terr| {
+                OutputTypeParameterMismatch(Box::new(SelectionOutputTypeParameterMismatch {
+                    expected_trait_ref: obligation_trait_ref,
+                    found_trait_ref: expected_trait_ref,
+                    terr,
+                }))
+            })
     }
 
     fn confirm_trait_upcasting_unsize_candidate(

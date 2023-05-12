@@ -119,7 +119,39 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
     });
 
     let kind = ModuleItem(Module { items, span });
-    Item::from_def_id_and_parts(doc.def_id.to_def_id(), Some(doc.name), kind, cx)
+    generate_item_with_correct_attrs(cx, kind, doc.def_id, doc.name, doc.import_id, doc.renamed)
+}
+
+fn generate_item_with_correct_attrs(
+    cx: &mut DocContext<'_>,
+    kind: ItemKind,
+    local_def_id: LocalDefId,
+    name: Symbol,
+    import_id: Option<LocalDefId>,
+    renamed: Option<Symbol>,
+) -> Item {
+    let def_id = local_def_id.to_def_id();
+    let target_attrs = inline::load_attrs(cx, def_id);
+    let attrs = if let Some(import_id) = import_id {
+        let is_inline = inline::load_attrs(cx, import_id.to_def_id())
+            .lists(sym::doc)
+            .get_word_attr(sym::inline)
+            .is_some();
+        let mut attrs = get_all_import_attributes(cx, import_id, local_def_id, is_inline);
+        add_without_unwanted_attributes(&mut attrs, target_attrs, is_inline, None);
+        attrs
+    } else {
+        // We only keep the item's attributes.
+        target_attrs.iter().map(|attr| (Cow::Borrowed(attr), None)).collect()
+    };
+
+    let cfg = attrs.cfg(cx.tcx, &cx.cache.hidden_cfg);
+    let attrs = Attributes::from_ast_iter(attrs.iter().map(|(attr, did)| (&**attr, *did)), false);
+
+    let name = renamed.or(Some(name));
+    let mut item = Item::from_def_id_and_attrs_and_parts(def_id, name, kind, Box::new(attrs), cfg);
+    item.inline_stmt_id = import_id.map(|local| local.to_def_id());
+    item
 }
 
 fn clean_generic_bound<'tcx>(
@@ -2345,29 +2377,14 @@ fn clean_maybe_renamed_item<'tcx>(
             _ => unreachable!("not yet converted"),
         };
 
-        let target_attrs = inline::load_attrs(cx, def_id);
-        let attrs = if let Some(import_id) = import_id {
-            let is_inline = inline::load_attrs(cx, import_id.to_def_id())
-                .lists(sym::doc)
-                .get_word_attr(sym::inline)
-                .is_some();
-            let mut attrs =
-                get_all_import_attributes(cx, import_id, item.owner_id.def_id, is_inline);
-            add_without_unwanted_attributes(&mut attrs, target_attrs, is_inline, None);
-            attrs
-        } else {
-            // We only keep the item's attributes.
-            target_attrs.iter().map(|attr| (Cow::Borrowed(attr), None)).collect()
-        };
-
-        let cfg = attrs.cfg(cx.tcx, &cx.cache.hidden_cfg);
-        let attrs =
-            Attributes::from_ast_iter(attrs.iter().map(|(attr, did)| (&**attr, *did)), false);
-
-        let mut item =
-            Item::from_def_id_and_attrs_and_parts(def_id, Some(name), kind, Box::new(attrs), cfg);
-        item.inline_stmt_id = import_id.map(|local| local.to_def_id());
-        vec![item]
+        vec![generate_item_with_correct_attrs(
+            cx,
+            kind,
+            item.owner_id.def_id,
+            name,
+            import_id,
+            renamed,
+        )]
     })
 }
 
@@ -2397,14 +2414,15 @@ fn clean_impl<'tcx>(
     }
 
     let for_ = clean_ty(impl_.self_ty, cx);
-    let type_alias = for_.def_id(&cx.cache).and_then(|did| match tcx.def_kind(did) {
-        DefKind::TyAlias => Some(clean_middle_ty(
-            ty::Binder::dummy(tcx.type_of(did).subst_identity()),
-            cx,
-            Some(did),
-        )),
-        _ => None,
-    });
+    let type_alias =
+        for_.def_id(&cx.cache).and_then(|alias_def_id: DefId| match tcx.def_kind(alias_def_id) {
+            DefKind::TyAlias => Some(clean_middle_ty(
+                ty::Binder::dummy(tcx.type_of(def_id).subst_identity()),
+                cx,
+                Some(def_id.to_def_id()),
+            )),
+            _ => None,
+        });
     let mut make_item = |trait_: Option<Path>, for_: Type, items: Vec<Item>| {
         let kind = ImplItem(Box::new(Impl {
             unsafety: impl_.unsafety,

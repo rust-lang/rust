@@ -19,7 +19,7 @@ pub fn expand_concat_idents<'cx>(
     }
 
     let mut res_str = String::new();
-    for (i, e) in tts.into_trees().enumerate() {
+    for (i, e) in tts.trees().enumerate() {
         if i & 1 == 1 {
             match e {
                 TokenTree::Token(Token { kind: token::Comma, .. }, _) => {}

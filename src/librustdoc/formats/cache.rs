@@ -195,7 +195,13 @@ impl Cache {
 impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
     fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
         if item.item_id.is_local() {
-            debug!("folding {} \"{:?}\", id {:?}", item.type_(), item.name, item.item_id);
+            let is_stripped = matches!(*item.kind, clean::ItemKind::StrippedItem(..));
+            debug!(
+                "folding {} (stripped: {is_stripped:?}) \"{:?}\", id {:?}",
+                item.type_(),
+                item.name,
+                item.item_id
+            );
         }
 
         // If this is a stripped module,

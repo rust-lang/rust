@@ -449,6 +449,19 @@ impl<T: ?Sized> NonNull<T> {
         // SAFETY: `self` is a `NonNull` pointer which is necessarily non-null
         unsafe { NonNull::new_unchecked(self.as_ptr() as *mut U) }
     }
+
+    /// See [`pointer::add`] for semantics and safety requirements.
+    #[inline]
+    pub(crate) const unsafe fn add(self, delta: usize) -> Self
+    where
+        T: Sized,
+    {
+        // SAFETY: We require that the delta stays in-bounds of the object, and
+        // thus it cannot become null, as that would require wrapping the
+        // address space, which no legal objects are allowed to do.
+        // And the caller promised the `delta` is sound to add.
+        unsafe { NonNull { pointer: self.pointer.add(delta) } }
+    }
 }
 
 impl<T> NonNull<[T]> {

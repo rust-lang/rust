@@ -394,7 +394,7 @@ impl<'a, 'tcx> visit::Visitor<'a, 'tcx> for IsThirPolymorphic<'a, 'tcx> {
 pub fn thir_abstract_const(
     tcx: TyCtxt<'_>,
     def: LocalDefId,
-) -> Result<Option<ty::Const<'_>>, ErrorGuaranteed> {
+) -> Result<Option<ty::EarlyBinder<ty::Const<'_>>>, ErrorGuaranteed> {
     if !tcx.features().generic_const_exprs {
         return Ok(None);
     }
@@ -420,7 +420,7 @@ pub fn thir_abstract_const(
 
     let root_span = body.exprs[body_id].span;
 
-    Some(recurse_build(tcx, body, body_id, root_span)).transpose()
+    Ok(Some(ty::EarlyBinder(recurse_build(tcx, body, body_id, root_span)?)))
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {

@@ -15,7 +15,7 @@ LL |     format!("{:X}", "3");
              NonZeroI64
              NonZeroI8
              NonZeroIsize
-           and 21 others
+           and 20 others
    = note: required for `&str` to implement `UpperHex`
 note: required by a bound in `core::fmt::rt::Argument::<'a>::new_upper_hex`
   --> $SRC_DIR/core/src/fmt/rt.rs:LL:COL

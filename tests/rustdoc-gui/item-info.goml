@@ -4,8 +4,8 @@ go-to: "file://" + |DOC_PATH| + "/lib2/struct.Foo.html"
 // We set a fixed size so there is no chance of "random" resize.
 set-window-size: (1100, 800)
 // We check that ".item-info" is bigger than its content.
-assert-css: (".item-info", {"width": "840px"})
-assert-css: (".item-info .stab", {"width": "289px"})
+assert-size: (".item-info", {"width": 840})
+assert-size: (".item-info .stab", {"width": 289})
 assert-position: (".item-info .stab", {"x": 245})
 
 // Now we ensure that they're not rendered on the same line.

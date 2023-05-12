@@ -1530,7 +1530,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // variables
         let tcx = self.tcx;
         if substs.has_non_region_infer() {
-            if let Some(ct) = tcx.bound_abstract_const(unevaluated.def)? {
+            if let Some(ct) = tcx.thir_abstract_const(unevaluated.def)? {
                 let ct = tcx.expand_abstract_consts(ct.subst(tcx, substs));
                 if let Err(e) = ct.error_reported() {
                     return Err(ErrorHandled::Reported(e));
