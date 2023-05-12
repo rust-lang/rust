@@ -150,6 +150,15 @@ pub(crate) enum ConstantItemKind {
     Static,
 }
 
+impl ConstantItemKind {
+    pub(crate) fn as_str(&self) -> &'static str {
+        match self {
+            Self::Const => "const",
+            Self::Static => "static",
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 enum RecordPartialRes {
     Yes,
