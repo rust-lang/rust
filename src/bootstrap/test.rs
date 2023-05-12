@@ -613,6 +613,21 @@ impl Step for Miri {
             builder.run(&mut cargo);
         }
 
+        // Run it again for mir-opt-level 4 to catch some miscompilations.
+        if builder.config.test_args().is_empty() {
+            cargo.env("MIRIFLAGS", "-O -Zmir-opt-level=4 -Cdebug-assertions=yes");
+            // Optimizations can change backtraces
+            cargo.env("MIRI_SKIP_UI_CHECKS", "1");
+            // Optimizations can change error locations and remove UB so don't run `fail` tests.
+            cargo.args(&["tests/pass", "tests/panic"]);
+
+            let mut cargo = prepare_cargo_test(cargo, &[], &[], "miri", compiler, target, builder);
+            {
+                let _time = util::timeit(&builder);
+                builder.run(&mut cargo);
+            }
+        }
+
         // # Run `cargo miri test`.
         // This is just a smoke test (Miri's own CI invokes this in a bunch of different ways and ensures
         // that we get the desired output), but that is sufficient to make sure that the libtest harness
@@ -644,8 +659,10 @@ impl Step for Miri {
         cargo.env("RUST_BACKTRACE", "1");
 
         let mut cargo = Command::from(cargo);
-        let _time = util::timeit(&builder);
-        builder.run(&mut cargo);
+        {
+            let _time = util::timeit(&builder);
+            builder.run(&mut cargo);
+        }
     }
 }
 
