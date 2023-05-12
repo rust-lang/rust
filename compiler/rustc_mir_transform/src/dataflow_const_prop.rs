@@ -50,7 +50,7 @@ impl<'tcx> MirPass<'tcx> for DataflowConstProp {
         let place_limit = if tcx.sess.mir_opt_level() < 4 { Some(PLACE_LIMIT) } else { None };
 
         // Decide which places to track during the analysis.
-        let map = Map::from_filter(tcx, body, Ty::is_scalar, place_limit);
+        let map = Map::new(tcx, body, place_limit);
 
         // Perform the actual dataflow analysis.
         let analysis = ConstAnalysis::new(tcx, body, map);

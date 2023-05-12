@@ -626,45 +626,36 @@ pub struct Map {
 }
 
 impl Map {
-    fn new() -> Self {
-        Self {
+    /// Returns a map that only tracks places whose type has scalar layout.
+    ///
+    /// This is currently the only way to create a [`Map`]. The way in which the tracked places are
+    /// chosen is an implementation detail and may not be relied upon (other than that their type
+    /// are scalars).
+    pub fn new<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, value_limit: Option<usize>) -> Self {
+        let mut map = Self {
             locals: IndexVec::new(),
             projections: FxHashMap::default(),
             places: IndexVec::new(),
             value_count: 0,
             inner_values: IndexVec::new(),
             inner_values_buffer: Vec::new(),
-        }
-    }
-
-    /// Returns a map that only tracks places whose type passes the filter.
-    ///
-    /// This is currently the only way to create a [`Map`]. The way in which the tracked places are
-    /// chosen is an implementation detail and may not be relied upon (other than that their type
-    /// passes the filter).
-    pub fn from_filter<'tcx>(
-        tcx: TyCtxt<'tcx>,
-        body: &Body<'tcx>,
-        filter: impl Fn(Ty<'tcx>) -> bool,
-        value_limit: Option<usize>,
-    ) -> Self {
-        let mut map = Self::new();
+        };
         let exclude = excluded_locals(body);
-        map.register_with_filter(tcx, body, filter, exclude, value_limit);
+        map.register(tcx, body, exclude, value_limit);
         debug!("registered {} places ({} nodes in total)", map.value_count, map.places.len());
         map
     }
 
-    /// Register all non-excluded places that pass the filter.
-    fn register_with_filter<'tcx>(
+    /// Register all non-excluded places that have scalar layout.
+    fn register<'tcx>(
         &mut self,
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
-        filter: impl Fn(Ty<'tcx>) -> bool,
         exclude: BitSet<Local>,
         value_limit: Option<usize>,
     ) {
         let mut worklist = VecDeque::with_capacity(value_limit.unwrap_or(body.local_decls.len()));
+        let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
 
         // Start by constructing the places for each bare local.
         self.locals = IndexVec::from_elem(None, &body.local_decls);
@@ -679,7 +670,7 @@ impl Map {
             self.locals[local] = Some(place);
 
             // And push the eventual children places to the worklist.
-            self.register_children(tcx, place, decl.ty, &filter, &mut worklist);
+            self.register_children(tcx, param_env, place, decl.ty, &mut worklist);
         }
 
         // `place.elem1.elem2` with type `ty`.
@@ -702,7 +693,7 @@ impl Map {
             }
 
             // And push the eventual children places to the worklist.
-            self.register_children(tcx, place, ty, &filter, &mut worklist);
+            self.register_children(tcx, param_env, place, ty, &mut worklist);
         }
 
         // Pre-compute the tree of ValueIndex nested in each PlaceIndex.
@@ -732,42 +723,35 @@ impl Map {
     fn register_children<'tcx>(
         &mut self,
         tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         place: PlaceIndex,
         ty: Ty<'tcx>,
-        filter: &impl Fn(Ty<'tcx>) -> bool,
         worklist: &mut VecDeque<(PlaceIndex, Option<TrackElem>, TrackElem, Ty<'tcx>)>,
     ) {
         // Allocate a value slot if it doesn't have one, and the user requested one.
-        if self.places[place].value_index.is_none() && filter(ty) {
+        assert!(self.places[place].value_index.is_none());
+        if tcx.layout_of(param_env.and(ty)).map_or(false, |layout| layout.abi.is_scalar()) {
             self.places[place].value_index = Some(self.value_count.into());
             self.value_count += 1;
         }
 
         // For enums, directly create the `Discriminant`, as that's their main use.
         if ty.is_enum() {
-            let discr_ty = ty.discriminant_ty(tcx);
-            if filter(discr_ty) {
-                let discr = *self
-                    .projections
-                    .entry((place, TrackElem::Discriminant))
-                    .or_insert_with(|| {
-                        // Prepend new child to the linked list.
-                        let next = self.places.push(PlaceInfo::new(Some(TrackElem::Discriminant)));
-                        self.places[next].next_sibling = self.places[place].first_child;
-                        self.places[place].first_child = Some(next);
-                        next
-                    });
+            // Prepend new child to the linked list.
+            let discr = self.places.push(PlaceInfo::new(Some(TrackElem::Discriminant)));
+            self.places[discr].next_sibling = self.places[place].first_child;
+            self.places[place].first_child = Some(discr);
+            let old = self.projections.insert((place, TrackElem::Discriminant), discr);
+            assert!(old.is_none());
 
-                // Allocate a value slot if it doesn't have one.
-                if self.places[discr].value_index.is_none() {
-                    self.places[discr].value_index = Some(self.value_count.into());
-                    self.value_count += 1;
-                }
-            }
+            // Allocate a value slot if it doesn't have one.
+            assert!(self.places[discr].value_index.is_none());
+            self.places[discr].value_index = Some(self.value_count.into());
+            self.value_count += 1;
         }
 
         // Recurse with all fields of this place.
-        iter_fields(ty, tcx, ty::ParamEnv::reveal_all(), |variant, field, ty| {
+        iter_fields(ty, tcx, param_env, |variant, field, ty| {
             worklist.push_back((
                 place,
                 variant.map(TrackElem::Variant),
