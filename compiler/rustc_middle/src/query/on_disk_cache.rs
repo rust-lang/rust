@@ -28,6 +28,8 @@ use std::collections::hash_map::Entry;
 use std::io;
 use std::mem;
 
+use crate::cache::CReaderCacheKey;
+
 const TAG_FILE_FOOTER: u128 = 0xC0FFEE_C0FFEE_C0FFEE_C0FFEE_C0FFEE;
 
 // A normal span encoded with both location information and a `SyntaxContext`
@@ -551,7 +553,7 @@ impl<'a, 'tcx> TyDecoder for CacheDecoder<'a, 'tcx> {
     {
         let tcx = self.tcx;
 
-        let cache_key = ty::CReaderCacheKey { cnum: None, pos: shorthand };
+        let cache_key = CReaderCacheKey { cnum: None, pos: shorthand };
 
         if let Some(&ty) = tcx.ty_rcache.borrow().get(&cache_key) {
             return ty;

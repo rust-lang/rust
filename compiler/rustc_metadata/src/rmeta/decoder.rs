@@ -17,6 +17,7 @@ use rustc_hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE}
 use rustc_hir::definitions::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc_hir::diagnostic_items::DiagnosticItems;
 use rustc_index::{Idx, IndexVec};
+use rustc_middle::cache::CReaderCacheKey;
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
@@ -379,7 +380,7 @@ impl<'a, 'tcx> TyDecoder for DecodeContext<'a, 'tcx> {
     {
         let tcx = self.tcx();
 
-        let key = ty::CReaderCacheKey { cnum: Some(self.cdata().cnum), pos: shorthand };
+        let key = CReaderCacheKey { cnum: Some(self.cdata().cnum), pos: shorthand };
 
         if let Some(&ty) = tcx.ty_rcache.borrow().get(&key) {
             return ty;

@@ -91,6 +91,7 @@ pub mod query;
 pub mod arena;
 #[macro_use]
 pub mod dep_graph;
+pub mod cache;
 pub(crate) mod error;
 pub mod hir;
 pub mod infer;

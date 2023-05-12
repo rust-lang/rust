@@ -57,7 +57,6 @@ pub mod walk;
 
 mod adt;
 mod assoc;
-mod c_reader_cache_key;
 mod closure;
 mod closure_size_profile_data;
 mod coherence;
@@ -104,7 +103,6 @@ pub use self::adt::{
 pub use self::assoc::*;
 pub use self::binding::BindingMode;
 pub use self::binding::BindingMode::*;
-pub use self::c_reader_cache_key::CReaderCacheKey;
 pub use self::closure::{
     is_ancestor_or_same_capture, place_to_string_for_capture, BorrowKind, CaptureInfo,
     CapturedPlace, ClosureKind, ClosureTypeInfo, MinCaptureInformationMap, MinCaptureList,

@@ -5,6 +5,7 @@
 pub mod tls;
 
 use crate::arena::Arena;
+use crate::cache::CReaderCacheKey;
 use crate::dep_graph::{DepGraph, DepKindStruct};
 use crate::infer::canonical::CanonicalVarInfo;
 use crate::lint::struct_lint_level;
@@ -517,8 +518,8 @@ pub struct GlobalCtxt<'tcx> {
     pub(crate) query_kinds: &'tcx [DepKindStruct<'tcx>],
 
     // Internal caches for metadata decoding. No need to track deps on this.
-    pub ty_rcache: Lock<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
-    pub pred_rcache: Lock<FxHashMap<ty::CReaderCacheKey, Predicate<'tcx>>>,
+    pub ty_rcache: Lock<FxHashMap<CReaderCacheKey, Ty<'tcx>>>,
+    pub pred_rcache: Lock<FxHashMap<CReaderCacheKey, Predicate<'tcx>>>,
 
     /// Caches the results of trait selection. This cache is used
     /// for things that do not have to do with the parameters in scope.
