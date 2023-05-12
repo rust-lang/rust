@@ -18,7 +18,7 @@ where
         #![allow(unused_imports, unused_unsafe)]
         #[cfg(target_arch = "aarch64")]
         use core::arch::aarch64::{uint8x8_t, vqtbl1q_u8, vtbl1_u8};
-        #[cfg(all(target_arch = "arm", target_feature = "v7"))]
+        #[cfg(all(target_arch = "arm", target_feature = "v7", target_feature = "neon"))]
         use core::arch::arm::{uint8x8_t, vtbl1_u8};
         #[cfg(target_arch = "wasm32")]
         use core::arch::wasm32 as wasm;
