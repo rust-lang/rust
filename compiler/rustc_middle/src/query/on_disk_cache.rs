@@ -580,6 +580,10 @@ impl<'a, 'tcx> TyDecoder for CacheDecoder<'a, 'tcx> {
         let alloc_decoding_session = self.alloc_decoding_session;
         alloc_decoding_session.decode_alloc_id(self)
     }
+
+    fn decode_adt_def(&mut self) -> ty::AdtDef<'tcx> {
+        self.tcx.mk_adt_def_from_data(Decodable::decode(self))
+    }
 }
 
 rustc_middle::implement_ty_decoder!(CacheDecoder<'a, 'tcx>);
@@ -980,6 +984,10 @@ impl<'a, 'tcx> TyEncoder for CacheEncoder<'a, 'tcx> {
         let (index, _) = self.interpret_allocs.insert_full(*alloc_id);
 
         index.encode(self);
+    }
+
+    fn encode_adt_def(&mut self, adt_def: &ty::AdtDef<'tcx>) {
+        ty::AdtDefData::encode(&adt_def.0.0, self);
     }
 }
 

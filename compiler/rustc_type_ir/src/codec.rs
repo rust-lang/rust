@@ -35,6 +35,8 @@ pub trait TyEncoder: Encoder {
     ) -> &mut FxHashMap<<Self::I as Interner>::PredicateKind, usize>;
 
     fn encode_alloc_id(&mut self, alloc_id: &<Self::I as Interner>::AllocId);
+
+    fn encode_adt_def(&mut self, adt_def: &<Self::I as Interner>::AdtDef);
 }
 
 pub trait TyDecoder: Decoder {
@@ -60,4 +62,6 @@ pub trait TyDecoder: Decoder {
     }
 
     fn decode_alloc_id(&mut self) -> <Self::I as Interner>::AllocId;
+
+    fn decode_adt_def(&mut self) -> <Self::I as Interner>::AdtDef;
 }

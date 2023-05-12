@@ -148,7 +148,7 @@ impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ConstAllocation<'tcx
 
 impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for AdtDef<'tcx> {
     fn encode(&self, e: &mut E) {
-        self.0.0.encode(e)
+        e.encode_adt_def(self)
     }
 }
 
@@ -351,7 +351,7 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ConstAllocation<'tcx
 
 impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for AdtDef<'tcx> {
     fn decode(decoder: &mut D) -> Self {
-        decoder.interner().mk_adt_def_from_data(Decodable::decode(decoder))
+        decoder.decode_adt_def()
     }
 }
 

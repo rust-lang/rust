@@ -410,6 +410,11 @@ impl<'a, 'tcx> TyDecoder for DecodeContext<'a, 'tcx> {
             bug!("Attempting to decode interpret::AllocId without CrateMetadata")
         }
     }
+
+    fn decode_adt_def(&mut self) -> ty::AdtDef<'tcx> {
+        let def_id: DefId = Decodable::decode(self);
+        self.tcx().adt_def(def_id)
+    }
 }
 
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for CrateNum {

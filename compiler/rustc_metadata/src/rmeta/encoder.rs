@@ -356,6 +356,10 @@ impl<'a, 'tcx> TyEncoder for EncodeContext<'a, 'tcx> {
 
         index.encode(self);
     }
+
+    fn encode_adt_def(&mut self, adt_def: &ty::AdtDef<'tcx>) {
+        <DefId as Encodable<Self>>::encode(&adt_def.did(), self);
+    }
 }
 
 // Shorthand for `$self.$tables.$table.set_some($def_id.index, $self.lazy_value($value))`, which would
