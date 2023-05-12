@@ -1376,9 +1376,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             // Therefore, the loop over variants will encode its fields as the adt's children.
         }
 
-        for variant in adt_def.variants().iter() {
+        for (idx, variant) in adt_def.variants().iter_enumerated() {
             let data = VariantData {
                 discr: variant.discr,
+                idx,
                 ctor: variant.ctor.map(|(kind, def_id)| (kind, def_id.index)),
                 is_non_exhaustive: variant.is_field_list_non_exhaustive(),
             };
