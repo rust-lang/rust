@@ -119,7 +119,11 @@ pub(super) fn check_fn<'a, 'tcx>(
         fcx.require_type_is_sized(declared_ret_ty, decl.output.span(), traits::SizedReturnType);
     } else {
         fcx.require_type_is_sized(declared_ret_ty, decl.output.span(), traits::SizedReturnType);
-        fcx.check_return_expr(&body.value, false);
+
+        // `fcx.ret_coercion` is set to `Some` up above
+        let mut ret_coercion = fcx.ret_coercion.as_ref().unwrap().borrow_mut();
+
+        fcx.check_return_expr(&body.value, false, &mut ret_coercion);
     }
 
     // We insert the deferred_generator_interiors entry after visiting the body.

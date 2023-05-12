@@ -2,6 +2,8 @@
 //!
 //! See `mod.rs` for more context on type checking in general.
 
+use std::cell::RefCell;
+
 use crate::cast;
 use crate::coercion::CoerceMany;
 use crate::coercion::DynamicCoerceMany;
@@ -736,84 +738,99 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr_opt: Option<&'tcx hir::Expr<'tcx>>,
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
-        if self.ret_coercion.is_none() {
-            let mut err = ReturnStmtOutsideOfFnBody {
-                span: expr.span,
-                encl_body_span: None,
-                encl_fn_span: None,
-            };
-
-            let encl_item_id = self.tcx.hir().get_parent_item(expr.hir_id);
-
-            if let Some(hir::Node::Item(hir::Item {
-                kind: hir::ItemKind::Fn(..),
-                span: encl_fn_span,
-                ..
-            }))
-            | Some(hir::Node::TraitItem(hir::TraitItem {
-                kind: hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)),
-                span: encl_fn_span,
-                ..
-            }))
-            | Some(hir::Node::ImplItem(hir::ImplItem {
-                kind: hir::ImplItemKind::Fn(..),
-                span: encl_fn_span,
-                ..
-            })) = self.tcx.hir().find_by_def_id(encl_item_id.def_id)
-            {
-                // We are inside a function body, so reporting "return statement
-                // outside of function body" needs an explanation.
-
-                let encl_body_owner_id = self.tcx.hir().enclosing_body_owner(expr.hir_id);
-
-                // If this didn't hold, we would not have to report an error in
-                // the first place.
-                assert_ne!(encl_item_id.def_id, encl_body_owner_id);
-
-                let encl_body_id = self.tcx.hir().body_owned_by(encl_body_owner_id);
-                let encl_body = self.tcx.hir().body(encl_body_id);
-
-                err.encl_body_span = Some(encl_body.value.span);
-                err.encl_fn_span = Some(*encl_fn_span);
-            }
-
-            self.tcx.sess.emit_err(err);
-
-            if let Some(e) = expr_opt {
-                // We still have to type-check `e` (issue #86188), but calling
-                // `check_return_expr` only works inside fn bodies.
-                self.check_expr(e);
-            }
-        } else if let Some(e) = expr_opt {
-            if self.ret_coercion_span.get().is_none() {
-                self.ret_coercion_span.set(Some(e.span));
-            }
-            self.check_return_expr(e, true);
-        } else {
-            let mut coercion = self.ret_coercion.as_ref().unwrap().borrow_mut();
-            if self.ret_coercion_span.get().is_none() {
-                self.ret_coercion_span.set(Some(expr.span));
-            }
-            let cause = self.cause(expr.span, ObligationCauseCode::ReturnNoExpression);
-            if let Some((_, fn_decl, _)) = self.get_fn_decl(expr.hir_id) {
-                coercion.coerce_forced_unit(
-                    self,
-                    &cause,
-                    &mut |db| {
-                        let span = fn_decl.output.span();
-                        if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
-                            db.span_label(
-                                span,
-                                format!("expected `{snippet}` because of this return type"),
-                            );
+        match self.ret_coercion.as_ref().map(RefCell::borrow_mut) {
+            Some(mut ret_coercion) => {
+                match expr_opt {
+                    Some(e) => {
+                        if self.ret_coercion_span.get().is_none() {
+                            self.ret_coercion_span.set(Some(e.span));
                         }
-                    },
-                    true,
-                );
-            } else {
-                coercion.coerce_forced_unit(self, &cause, &mut |_| (), true);
+
+                        self.check_return_expr(e, true, &mut ret_coercion);
+                    }
+                    None => {
+                        let mut coercion = ret_coercion;
+                        if self.ret_coercion_span.get().is_none() {
+                            self.ret_coercion_span.set(Some(expr.span));
+                        }
+                        let cause = self.cause(expr.span, ObligationCauseCode::ReturnNoExpression);
+                        match self.get_fn_decl(expr.hir_id) {
+                            Some((_, fn_decl, _)) => {
+                                coercion.coerce_forced_unit(
+                                self,
+                                &cause,
+                                &mut |db| {
+                                    let span = fn_decl.output.span();
+                                    if let Ok(snippet) =
+                                        self.tcx.sess.source_map().span_to_snippet(span)
+                                    {
+                                        db.span_label(
+                                            span,
+                                            format!("expected `{snippet}` because of this return type"),
+                                        );
+                                    }
+                                },
+                                true,
+                            );
+                            }
+                            None => {
+                                coercion.coerce_forced_unit(self, &cause, &mut |_| (), true);
+                            }
+                        }
+                    }
+                }
+            }
+            None => {
+                let mut err = ReturnStmtOutsideOfFnBody {
+                    span: expr.span,
+                    encl_body_span: None,
+                    encl_fn_span: None,
+                };
+
+                let encl_item_id = self.tcx.hir().get_parent_item(expr.hir_id);
+
+                if let Some(hir::Node::Item(hir::Item {
+                    kind: hir::ItemKind::Fn(..),
+                    span: encl_fn_span,
+                    ..
+                }))
+                | Some(hir::Node::TraitItem(hir::TraitItem {
+                    kind: hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)),
+                    span: encl_fn_span,
+                    ..
+                }))
+                | Some(hir::Node::ImplItem(hir::ImplItem {
+                    kind: hir::ImplItemKind::Fn(..),
+                    span: encl_fn_span,
+                    ..
+                })) = self.tcx.hir().find_by_def_id(encl_item_id.def_id)
+                {
+                    // We are inside a function body, so reporting "return statement
+                    // outside of function body" needs an explanation.
+
+                    let encl_body_owner_id = self.tcx.hir().enclosing_body_owner(expr.hir_id);
+
+                    // If this didn't hold, we would not have to report an error in
+                    // the first place.
+                    assert_ne!(encl_item_id.def_id, encl_body_owner_id);
+
+                    let encl_body_id = self.tcx.hir().body_owned_by(encl_body_owner_id);
+                    let encl_body = self.tcx.hir().body(encl_body_id);
+
+                    err.encl_body_span = Some(encl_body.value.span);
+                    err.encl_fn_span = Some(*encl_fn_span);
+                }
+
+                self.tcx.sess.emit_err(err);
+
+                if let Some(e) = expr_opt {
+                    // We still have to type-check `e` (issue #86188), but calling
+                    // `check_return_expr` only works inside fn bodies.
+                    self.check_expr(e);
+                }
             }
         }
+
         self.tcx.types.never
     }
 
@@ -823,12 +840,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         return_expr: &'tcx hir::Expr<'tcx>,
         explicit_return: bool,
+        ret_coercion: &mut DynamicCoerceMany<'tcx>,
     ) {
-        let ret_coercion = self.ret_coercion.as_ref().unwrap_or_else(|| {
-            span_bug!(return_expr.span, "check_return_expr called outside fn body")
-        });
-
-        let ret_ty = ret_coercion.borrow().expected_ty();
+        let ret_ty = ret_coercion.expected_ty();
         let return_expr_ty = self.check_expr_with_hint(return_expr, ret_ty);
         let mut span = return_expr.span;
         // Use the span of the trailing expression for our cause,
@@ -838,7 +852,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 span = last_expr.span;
             }
         }
-        ret_coercion.borrow_mut().coerce(
+        ret_coercion.coerce(
             self,
             &self.cause(span, ObligationCauseCode::ReturnValue(return_expr.hir_id)),
             return_expr,
@@ -2533,12 +2547,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else if let ty::RawPtr(ty_and_mut) = expr_t.kind()
             && let ty::Adt(adt_def, _) = ty_and_mut.ty.kind()
             && let ExprKind::Field(base_expr, _) = expr.kind
-            && adt_def.variants().len() == 1
-            && adt_def
-                .variants()
-                .iter()
-                .next()
-                .unwrap()
+            && let [only_variant] = &adt_def.variants().raw
+            && only_variant
                 .fields
                 .iter()
                 .any(|f| f.ident(self.tcx) == field)
