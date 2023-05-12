@@ -3,10 +3,11 @@
 use std::{fmt::Display, iter};
 
 use crate::{
-    db::HirDatabase, display::HirDisplay, infer::PointerCast, lang_items::is_box, mapping::ToChalk,
-    CallableDefId, ClosureId, Const, ConstScalar, InferenceResult, Interner, MemoryMap,
-    Substitution, Ty, TyKind,
+    consteval::usize_const, db::HirDatabase, display::HirDisplay, infer::PointerCast,
+    lang_items::is_box, mapping::ToChalk, CallableDefId, ClosureId, Const, ConstScalar,
+    InferenceResult, Interner, MemoryMap, Substitution, Ty, TyKind,
 };
+use base_db::CrateId;
 use chalk_ir::Mutability;
 use hir_def::{
     hir::{BindingId, Expr, ExprId, Ordering, PatId},
@@ -114,8 +115,8 @@ pub enum ProjectionElem<V, T> {
     // FIXME: get rid of this, and use FieldId for tuples and closures
     TupleOrClosureField(usize),
     Index(V),
-    ConstantIndex { offset: u64, min_length: u64, from_end: bool },
-    Subslice { from: u64, to: u64, from_end: bool },
+    ConstantIndex { offset: u64, from_end: bool },
+    Subslice { from: u64, to: u64 },
     //Downcast(Option<Symbol>, VariantIdx),
     OpaqueCast(T),
 }
@@ -126,6 +127,7 @@ impl<V, T> ProjectionElem<V, T> {
         base: Ty,
         db: &dyn HirDatabase,
         closure_field: impl FnOnce(ClosureId, &Substitution, usize) -> Ty,
+        krate: CrateId,
     ) -> Ty {
         match self {
             ProjectionElem::Deref => match &base.data(Interner).kind {
@@ -163,16 +165,34 @@ impl<V, T> ProjectionElem<V, T> {
                     return TyKind::Error.intern(Interner);
                 }
             },
-            ProjectionElem::Index(_) => match &base.data(Interner).kind {
-                TyKind::Array(inner, _) | TyKind::Slice(inner) => inner.clone(),
+            ProjectionElem::ConstantIndex { .. } | ProjectionElem::Index(_) => {
+                match &base.data(Interner).kind {
+                    TyKind::Array(inner, _) | TyKind::Slice(inner) => inner.clone(),
+                    _ => {
+                        never!("Overloaded index is not a projection");
+                        return TyKind::Error.intern(Interner);
+                    }
+                }
+            }
+            &ProjectionElem::Subslice { from, to } => match &base.data(Interner).kind {
+                TyKind::Array(inner, c) => {
+                    let next_c = usize_const(
+                        db,
+                        match try_const_usize(db, c) {
+                            None => None,
+                            Some(x) => x.checked_sub(u128::from(from + to)),
+                        },
+                        krate,
+                    );
+                    TyKind::Array(inner.clone(), next_c).intern(Interner)
+                }
+                TyKind::Slice(_) => base.clone(),
                 _ => {
-                    never!("Overloaded index is not a projection");
+                    never!("Subslice projection should only happen on slice and array");
                     return TyKind::Error.intern(Interner);
                 }
             },
-            ProjectionElem::ConstantIndex { .. }
-            | ProjectionElem::Subslice { .. }
-            | ProjectionElem::OpaqueCast(_) => {
+            ProjectionElem::OpaqueCast(_) => {
                 never!("We don't emit these yet");
                 return TyKind::Error.intern(Interner);
             }
@@ -182,10 +202,22 @@ impl<V, T> ProjectionElem<V, T> {
 
 type PlaceElem = ProjectionElem<LocalId, Ty>;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Place {
     pub local: LocalId,
     pub projection: Vec<PlaceElem>,
+}
+
+impl Place {
+    fn is_parent(&self, child: &Place) -> bool {
+        self.local == child.local && child.projection.starts_with(&self.projection)
+    }
+
+    fn iterate_over_parents(&self) -> impl Iterator<Item = Place> + '_ {
+        (0..self.projection.len())
+            .map(|x| &self.projection[0..x])
+            .map(|x| Place { local: self.local, projection: x.to_vec() })
+    }
 }
 
 impl From<LocalId> for Place {
@@ -941,7 +973,6 @@ pub struct MirBody {
     pub locals: Arena<Local>,
     pub start_block: BasicBlockId,
     pub owner: DefWithBodyId,
-    pub arg_count: usize,
     pub binding_locals: ArenaMap<BindingId, LocalId>,
     pub param_locals: Vec<LocalId>,
     /// This field stores the closures directly owned by this body. It is used
@@ -1027,10 +1058,6 @@ impl MirBody {
             }
         }
     }
-}
-
-fn const_as_usize(c: &Const) -> usize {
-    try_const_usize(c).unwrap() as usize
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]

@@ -324,6 +324,13 @@ pub mod mem {
         }
     }
 }
+
+pub mod ptr {
+    #[lang = "drop_in_place"]
+    pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
+        unsafe { drop_in_place(to_drop) }
+    }
+}
 // endregion:drop
 
 pub mod ops {
@@ -1075,10 +1082,8 @@ pub mod iter {
 
 // region:panic
 mod panic {
-    pub macro panic_2021 {
-        ($($t:tt)+) => (
-            /* Nothing yet */
-        ),
+    pub macro panic_2021($($t:tt)+) {
+        /* Nothing yet */
     }
 }
 // endregion:panic
@@ -1158,8 +1163,8 @@ pub mod prelude {
             ops::Drop,                          // :drop
             ops::{Fn, FnMut, FnOnce},           // :fn
             option::Option::{self, None, Some}, // :option
-            result::Result::{self, Err, Ok},    // :result
             panic,                              // :panic
+            result::Result::{self, Err, Ok},    // :result
         };
     }
 

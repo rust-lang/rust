@@ -17,7 +17,7 @@ impl MirLowerCtx<'_> {
         prev_block: BasicBlockId,
     ) -> Result<Option<(Place, BasicBlockId)>> {
         let ty = self.expr_ty_without_adjust(expr_id);
-        let place = self.temp(ty)?;
+        let place = self.temp(ty, prev_block, expr_id.into())?;
         let Some(current) = self.lower_expr_to_place_without_adjust(expr_id, place.into(), prev_block)? else {
             return Ok(None);
         };
@@ -34,7 +34,7 @@ impl MirLowerCtx<'_> {
             .last()
             .map(|x| x.target.clone())
             .unwrap_or_else(|| self.expr_ty_without_adjust(expr_id));
-        let place = self.temp(ty)?;
+        let place = self.temp(ty, prev_block, expr_id.into())?;
         let Some(current) = self.lower_expr_to_place_with_adjust(expr_id, place.into(), prev_block, adjustments)? else {
             return Ok(None);
         };
@@ -128,12 +128,8 @@ impl MirLowerCtx<'_> {
         match &self.body.exprs[expr_id] {
             Expr::Path(p) => {
                 let resolver = resolver_for_expr(self.db.upcast(), self.owner, expr_id);
-                let Some(pr) = resolver.resolve_path_in_value_ns(self.db.upcast(), p) else {
-                    return Err(MirLowerError::unresolved_path(self.db, p));
-                };
-                let pr = match pr {
-                    ResolveValueResult::ValueNs(v) => v,
-                    ResolveValueResult::Partial(..) => return try_rvalue(self),
+                let Some(pr) = resolver.resolve_path_in_value_ns_fully(self.db.upcast(), p) else {
+                    return try_rvalue(self);
                 };
                 match pr {
                     ValueNs::LocalBinding(pat_id) => {
@@ -143,7 +139,7 @@ impl MirLowerCtx<'_> {
                         let ty = self.expr_ty_without_adjust(expr_id);
                         let ref_ty =
                             TyKind::Ref(Mutability::Not, static_lifetime(), ty).intern(Interner);
-                        let mut temp: Place = self.temp(ref_ty)?.into();
+                        let mut temp: Place = self.temp(ref_ty, current, expr_id.into())?.into();
                         self.push_assignment(
                             current,
                             temp.clone(),
@@ -252,7 +248,8 @@ impl MirLowerCtx<'_> {
                 else {
                     return Ok(None);
                 };
-                let l_index = self.temp(self.expr_ty_after_adjustments(*index))?;
+                let l_index =
+                    self.temp(self.expr_ty_after_adjustments(*index), current, expr_id.into())?;
                 let Some(current) = self.lower_expr_to_place(*index, l_index.into(), current)? else {
                     return Ok(None);
                 };
@@ -273,16 +270,12 @@ impl MirLowerCtx<'_> {
         span: MirSpan,
         index_fn: (FunctionId, Substitution),
     ) -> Result<Option<(Place, BasicBlockId)>> {
-        let (mutability, borrow_kind) = match base_ty.as_reference() {
-            Some((_, _, mutability)) => {
-                (mutability, BorrowKind::Mut { allow_two_phase_borrow: false })
-            }
-            None => (Mutability::Not, BorrowKind::Shared),
+        let mutability = match base_ty.as_reference() {
+            Some((_, _, mutability)) => mutability,
+            None => Mutability::Not,
         };
         let result_ref = TyKind::Ref(mutability, static_lifetime(), result_ty).intern(Interner);
-        let ref_place: Place = self.temp(base_ty)?.into();
-        self.push_assignment(current, ref_place.clone(), Rvalue::Ref(borrow_kind, place), span);
-        let mut result: Place = self.temp(result_ref)?.into();
+        let mut result: Place = self.temp(result_ref, current, span)?.into();
         let index_fn_op = Operand::const_zst(
             TyKind::FnDef(
                 self.db.intern_callable_def(CallableDefId::FunctionId(index_fn.0)).into(),
@@ -290,7 +283,7 @@ impl MirLowerCtx<'_> {
             )
             .intern(Interner),
         );
-        let Some(current) = self.lower_call(index_fn_op, vec![Operand::Copy(ref_place), index_operand], result.clone(), current, false, span)? else {
+        let Some(current) = self.lower_call(index_fn_op, vec![Operand::Copy(place), index_operand], result.clone(), current, false, span)? else {
             return Ok(None);
         };
         result.projection.push(ProjectionElem::Deref);
@@ -318,7 +311,7 @@ impl MirLowerCtx<'_> {
         };
         let ty_ref = TyKind::Ref(chalk_mut, static_lifetime(), source_ty.clone()).intern(Interner);
         let target_ty_ref = TyKind::Ref(chalk_mut, static_lifetime(), target_ty).intern(Interner);
-        let ref_place: Place = self.temp(ty_ref)?.into();
+        let ref_place: Place = self.temp(ty_ref, current, span)?.into();
         self.push_assignment(current, ref_place.clone(), Rvalue::Ref(borrow_kind, place), span);
         let deref_trait = self
             .resolve_lang_item(trait_lang_item)?
@@ -336,7 +329,7 @@ impl MirLowerCtx<'_> {
             )
             .intern(Interner),
         );
-        let mut result: Place = self.temp(target_ty_ref)?.into();
+        let mut result: Place = self.temp(target_ty_ref, current, span)?.into();
         let Some(current) = self.lower_call(deref_fn_op, vec![Operand::Copy(ref_place)], result.clone(), current, false, span)? else {
             return Ok(None);
         };

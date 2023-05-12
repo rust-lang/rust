@@ -379,7 +379,7 @@ impl<'a> InferenceContext<'a> {
         if let &Some(slice_pat_id) = slice {
             let rest_pat_ty = match expected.kind(Interner) {
                 TyKind::Array(_, length) => {
-                    let len = try_const_usize(length);
+                    let len = try_const_usize(self.db, length);
                     let len =
                         len.and_then(|len| len.checked_sub((prefix.len() + suffix.len()) as u128));
                     TyKind::Array(elem_ty.clone(), usize_const(self.db, len, self.resolver.krate()))

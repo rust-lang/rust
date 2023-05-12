@@ -155,8 +155,10 @@ fn ever_initialized_map(body: &MirBody) -> ArenaMap<BasicBlockId, ArenaMap<Local
                 }
                 target.into_iter().chain(cleanup.into_iter()).copied().collect()
             }
-            TerminatorKind::Drop { .. }
-            | TerminatorKind::DropAndReplace { .. }
+            TerminatorKind::Drop { target, unwind, place: _ } => {
+                Some(target).into_iter().chain(unwind.into_iter()).copied().collect()
+            }
+            TerminatorKind::DropAndReplace { .. }
             | TerminatorKind::Assert { .. }
             | TerminatorKind::Yield { .. }
             | TerminatorKind::GeneratorDrop

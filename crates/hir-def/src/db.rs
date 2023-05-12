@@ -16,16 +16,17 @@ use crate::{
         TraitAliasData, TraitData, TypeAliasData,
     },
     generics::GenericParams,
+    hir::ExprId,
     import_map::ImportMap,
     item_tree::{AttrOwner, ItemTree},
     lang_item::{LangItem, LangItemTarget, LangItems},
     nameres::{diagnostics::DefDiagnostic, DefMap},
     visibility::{self, Visibility},
-    AttrDefId, BlockId, BlockLoc, ConstId, ConstLoc, DefWithBodyId, EnumId, EnumLoc, ExternBlockId,
-    ExternBlockLoc, FunctionId, FunctionLoc, GenericDefId, ImplId, ImplLoc, LocalEnumVariantId,
-    LocalFieldId, Macro2Id, Macro2Loc, MacroRulesId, MacroRulesLoc, ProcMacroId, ProcMacroLoc,
-    StaticId, StaticLoc, StructId, StructLoc, TraitAliasId, TraitAliasLoc, TraitId, TraitLoc,
-    TypeAliasId, TypeAliasLoc, UnionId, UnionLoc, VariantId,
+    AnonymousConstId, AttrDefId, BlockId, BlockLoc, ConstId, ConstLoc, DefWithBodyId, EnumId,
+    EnumLoc, ExternBlockId, ExternBlockLoc, FunctionId, FunctionLoc, GenericDefId, ImplId, ImplLoc,
+    LocalEnumVariantId, LocalFieldId, Macro2Id, Macro2Loc, MacroRulesId, MacroRulesLoc,
+    ProcMacroId, ProcMacroLoc, StaticId, StaticLoc, StructId, StructLoc, TraitAliasId,
+    TraitAliasLoc, TraitId, TraitLoc, TypeAliasId, TypeAliasLoc, UnionId, UnionLoc, VariantId,
 };
 
 #[salsa::query_group(InternDatabaseStorage)]
@@ -60,6 +61,8 @@ pub trait InternDatabase: SourceDatabase {
     fn intern_proc_macro(&self, loc: ProcMacroLoc) -> ProcMacroId;
     #[salsa::interned]
     fn intern_macro_rules(&self, loc: MacroRulesLoc) -> MacroRulesId;
+    #[salsa::interned]
+    fn intern_anonymous_const(&self, id: (DefWithBodyId, ExprId)) -> AnonymousConstId;
 }
 
 #[salsa::query_group(DefDatabaseStorage)]

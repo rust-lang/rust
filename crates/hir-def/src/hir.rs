@@ -26,7 +26,7 @@ use crate::{
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinUint},
     path::{GenericArgs, Path},
     type_ref::{Mutability, Rawness, TypeRef},
-    BlockId,
+    AnonymousConstId, BlockId,
 };
 
 pub use syntax::ast::{ArithOp, BinaryOp, CmpOp, LogicOp, Ordering, RangeOp, UnaryOp};
@@ -169,11 +169,7 @@ pub enum Expr {
         statements: Box<[Statement]>,
         tail: Option<ExprId>,
     },
-    Const {
-        id: Option<BlockId>,
-        statements: Box<[Statement]>,
-        tail: Option<ExprId>,
-    },
+    Const(AnonymousConstId),
     Unsafe {
         id: Option<BlockId>,
         statements: Box<[Statement]>,
@@ -355,10 +351,10 @@ impl Expr {
             Expr::Let { expr, .. } => {
                 f(*expr);
             }
+            Expr::Const(_) => (),
             Expr::Block { statements, tail, .. }
             | Expr::Unsafe { statements, tail, .. }
-            | Expr::Async { statements, tail, .. }
-            | Expr::Const { statements, tail, .. } => {
+            | Expr::Async { statements, tail, .. } => {
                 for stmt in statements.iter() {
                     match stmt {
                         Statement::Let { initializer, else_branch, .. } => {

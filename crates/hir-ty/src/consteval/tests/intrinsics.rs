@@ -289,3 +289,31 @@ fn copy() {
         19,
     );
 }
+
+#[test]
+fn ctpop() {
+    check_number(
+        r#"
+        extern "rust-intrinsic" {
+            pub fn ctpop<T: Copy>(x: T) -> T;
+        }
+
+        const GOAL: i64 = ctpop(-29);
+        "#,
+        61,
+    );
+}
+
+#[test]
+fn cttz() {
+    check_number(
+        r#"
+        extern "rust-intrinsic" {
+            pub fn cttz<T: Copy>(x: T) -> T;
+        }
+
+        const GOAL: i64 = cttz(-24);
+        "#,
+        3,
+    );
+}

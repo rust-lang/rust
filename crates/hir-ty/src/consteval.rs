@@ -7,10 +7,11 @@ use hir_def::{
     path::Path,
     resolver::{Resolver, ValueNs},
     type_ref::ConstRef,
-    DefWithBodyId, EnumVariantId,
+    EnumVariantId, GeneralConstId, StaticId,
 };
 use la_arena::{Idx, RawIdx};
 use stdx::never;
+use triomphe::Arc;
 
 use crate::{
     db::HirDatabase, infer::InferenceContext, layout::layout_of_ty, lower::ParamLoweringMode,
@@ -158,13 +159,17 @@ pub fn usize_const(db: &dyn HirDatabase, value: Option<u128>, krate: CrateId) ->
     )
 }
 
-pub fn try_const_usize(c: &Const) -> Option<u128> {
+pub fn try_const_usize(db: &dyn HirDatabase, c: &Const) -> Option<u128> {
     match &c.data(Interner).value {
         chalk_ir::ConstValue::BoundVar(_) => None,
         chalk_ir::ConstValue::InferenceVar(_) => None,
         chalk_ir::ConstValue::Placeholder(_) => None,
         chalk_ir::ConstValue::Concrete(c) => match &c.interned {
             ConstScalar::Bytes(x, _) => Some(u128::from_le_bytes(pad16(&x, false))),
+            ConstScalar::UnevaluatedConst(c, subst) => {
+                let ec = db.const_eval(*c, subst.clone()).ok()?;
+                try_const_usize(db, &ec)
+            }
             _ => None,
         },
     }
@@ -173,8 +178,16 @@ pub fn try_const_usize(c: &Const) -> Option<u128> {
 pub(crate) fn const_eval_recover(
     _: &dyn HirDatabase,
     _: &[String],
-    _: &DefWithBodyId,
+    _: &GeneralConstId,
     _: &Substitution,
+) -> Result<Const, ConstEvalError> {
+    Err(ConstEvalError::MirLowerError(MirLowerError::Loop))
+}
+
+pub(crate) fn const_eval_static_recover(
+    _: &dyn HirDatabase,
+    _: &[String],
+    _: &StaticId,
 ) -> Result<Const, ConstEvalError> {
     Err(ConstEvalError::MirLowerError(MirLowerError::Loop))
 }
@@ -189,11 +202,28 @@ pub(crate) fn const_eval_discriminant_recover(
 
 pub(crate) fn const_eval_query(
     db: &dyn HirDatabase,
-    def: DefWithBodyId,
+    def: GeneralConstId,
     subst: Substitution,
 ) -> Result<Const, ConstEvalError> {
-    let body = db.mir_body(def)?;
-    let c = interpret_mir(db, &body, subst, false)?;
+    let body = match def {
+        GeneralConstId::ConstId(c) => db.mir_body(c.into())?,
+        GeneralConstId::AnonymousConstId(c) => {
+            let (def, root) = db.lookup_intern_anonymous_const(c);
+            let body = db.body(def);
+            let infer = db.infer(def);
+            Arc::new(lower_to_mir(db, def, &body, &infer, root)?)
+        }
+    };
+    let c = interpret_mir(db, &body, subst, false).0?;
+    Ok(c)
+}
+
+pub(crate) fn const_eval_static_query(
+    db: &dyn HirDatabase,
+    def: StaticId,
+) -> Result<Const, ConstEvalError> {
+    let body = db.mir_body(def.into())?;
+    let c = interpret_mir(db, &body, Substitution::empty(Interner), false).0?;
     Ok(c)
 }
 
@@ -216,8 +246,8 @@ pub(crate) fn const_eval_discriminant_variant(
         return Ok(value);
     }
     let mir_body = db.mir_body(def)?;
-    let c = interpret_mir(db, &mir_body, Substitution::empty(Interner), false)?;
-    let c = try_const_usize(&c).unwrap() as i128;
+    let c = interpret_mir(db, &mir_body, Substitution::empty(Interner), false).0?;
+    let c = try_const_usize(db, &c).unwrap() as i128;
     Ok(c)
 }
 
@@ -241,7 +271,7 @@ pub(crate) fn eval_to_const(
     }
     let infer = ctx.clone().resolve_all();
     if let Ok(mir_body) = lower_to_mir(ctx.db, ctx.owner, &ctx.body, &infer, expr) {
-        if let Ok(result) = interpret_mir(db, &mir_body, Substitution::empty(Interner), true) {
+        if let Ok(result) = interpret_mir(db, &mir_body, Substitution::empty(Interner), true).0 {
             return result;
         }
     }

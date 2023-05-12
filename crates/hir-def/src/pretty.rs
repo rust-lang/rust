@@ -12,6 +12,9 @@ use crate::{
 };
 
 pub(crate) fn print_path(path: &Path, buf: &mut dyn Write) -> fmt::Result {
+    if let Path::LangItem(x) = path {
+        return write!(buf, "$lang_item::{x:?}");
+    }
     match path.type_anchor() {
         Some(anchor) => {
             write!(buf, "<")?;

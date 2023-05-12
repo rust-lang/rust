@@ -699,7 +699,7 @@ pub fn lookup_impl_method(
     };
 
     let name = &db.function_data(func).name;
-    lookup_impl_assoc_item_for_trait_ref(trait_ref, db, env, name)
+    let Some((impl_fn, impl_subst)) = lookup_impl_assoc_item_for_trait_ref(trait_ref, db, env, name)
         .and_then(|assoc| {
             if let (AssocItemId::FunctionId(id), subst) = assoc {
                 Some((id, subst))
@@ -707,7 +707,16 @@ pub fn lookup_impl_method(
                 None
             }
         })
-        .unwrap_or((func, fn_subst))
+    else {
+        return (func, fn_subst);
+    };
+    (
+        impl_fn,
+        Substitution::from_iter(
+            Interner,
+            fn_subst.iter(Interner).take(fn_params).chain(impl_subst.iter(Interner)),
+        ),
+    )
 }
 
 fn lookup_impl_assoc_item_for_trait_ref(
