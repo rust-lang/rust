@@ -1853,54 +1853,49 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
             })
         }
 
-        fn render_fields<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
+        fn fields(&self) -> impl Iterator<Item = (&clean::Item, &clean::Type)> {
+            self.s.fields.iter().filter_map(|item| match *item.kind {
+                clean::StructFieldItem(ref ty) => Some((item, ty)),
+                _ => None,
+            })
+        }
+
+        fn should_render_fields(&self) -> bool {
+            matches!(self.s.ctor_kind, None | Some(CtorKind::Fn))
+                && self.fields().peekable().peek().is_some()
+        }
+
+        fn document_non_exhaustive_header(&self) -> &str {
+            document_non_exhaustive_header(self.it)
+        }
+
+        fn document_non_exhaustive(&self) -> impl fmt::Display + 'a {
+            document_non_exhaustive(self.it)
+        }
+
+        fn render_field<'b>(
+            &'b self,
+            index: &'b usize,
+            field: &'b clean::Item,
+            ty: &'b clean::Type,
+        ) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
             display_fn(move |f| {
-                let mut fields = self
-                    .s
-                    .fields
-                    .iter()
-                    .filter_map(|f| match *f.kind {
-                        clean::StructFieldItem(ref ty) => Some((f, ty)),
-                        _ => None,
-                    })
-                    .peekable();
-                if let None | Some(CtorKind::Fn) = self.s.ctor_kind {
-                    if fields.peek().is_some() {
-                        write!(
-                            f,
-                            "<h2 id=\"fields\" class=\"fields small-section-header\">\
-                                {}{}<a href=\"#fields\" class=\"anchor\">§</a>\
-                            </h2>\
-                            {}",
-                            if self.s.ctor_kind.is_none() { "Fields" } else { "Tuple Fields" },
-                            document_non_exhaustive_header(self.it),
-                            document_non_exhaustive(self.it)
-                        )?;
-                        let mut cx = self.cx.borrow_mut();
-                        for (index, (field, ty)) in fields.enumerate() {
-                            let field_name = field
-                                .name
-                                .map_or_else(|| index.to_string(), |sym| sym.as_str().to_string());
-                            let id =
-                                cx.derive_id(format!("{}.{}", ItemType::StructField, field_name));
-                            write!(
-                                f,
-                                "<span id=\"{id}\" class=\"{item_type} small-section-header\">\
-                                    <a href=\"#{id}\" class=\"anchor field\">§</a>\
-                                    <code>{field_name}: {ty}</code>\
-                                </span>",
-                                ty = ty.print(*cx),
-                                item_type = ItemType::StructField,
-                            )?;
-                            write!(
-                                f,
-                                "{doc}",
-                                doc = document(*cx, field, Some(self.it), HeadingOffset::H3),
-                            )?;
-                        }
-                    }
-                }
-                Ok(())
+                let mut cx = self.cx.borrow_mut();
+                let field_name =
+                    field.name.map_or_else(|| index.to_string(), |sym| sym.as_str().to_string());
+                let id = cx.derive_id(format!("{}.{}", ItemType::StructField, field_name));
+                write!(
+                    f,
+                    "<span id=\"{id}\" class=\"{item_type} small-section-header\">\
+                        <a href=\"#{id}\" class=\"anchor field\">§</a>\
+                        <code>{field_name}: {ty}</code>\
+                    </span>",
+                    ty = ty.print(*cx),
+                    item_type = ItemType::StructField,
+                )?;
+
+                let v = document(*cx, field, Some(self.it), HeadingOffset::H3);
+                write!(f, "{v}")
             })
         }
 

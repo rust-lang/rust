@@ -3,6 +3,20 @@
     {{ self.render_struct() | safe }}
 </code></pre>
 {{ self.document() | safe }}
-{{ self.render_fields() | safe }}
+{% if self.should_render_fields() %}
+    <h2 id="fields" class="fields small-section header">
+        {% if self.s.ctor_kind.is_none() %}
+            Fields
+        {% else %}
+            Tuple Fields
+        {% endif %}
+        {{ self.document_non_exhaustive_header() | safe }}
+        <a href="#fields" class="anchor">§</a>
+    </h2>
+    {{ self.document_non_exhaustive() | safe }}
+    {% for (index, (field, ty)) in self.fields().enumerate() %}
+        {{ self.render_field(index, field, ty) | safe }}
+    {% endfor %}
+{% endif %}
 {{ self.render_assoc_items() | safe }}
 {{ self.document_type_layout() | safe }}
