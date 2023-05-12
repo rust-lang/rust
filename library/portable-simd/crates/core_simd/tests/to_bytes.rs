@@ -2,7 +2,7 @@
 #![allow(incomplete_features)]
 #![cfg(feature = "generic_const_exprs")]
 
-use core_simd::Simd;
+use core_simd::simd::Simd;
 
 #[test]
 fn byte_convert() {
