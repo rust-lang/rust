@@ -42,6 +42,8 @@
    40|      2|    println!("used_only_from_bin_crate_generic_function with {:?}", arg);
    41|      2|}
   ------------------
+  | Unexecuted instantiation: used_inline_crate::used_only_from_bin_crate_generic_function::<_>
+  ------------------
   | used_inline_crate::used_only_from_bin_crate_generic_function::<&alloc::vec::Vec<i32>>:
   |   39|      1|pub fn used_only_from_bin_crate_generic_function<T: Debug>(arg: T) {
   |   40|      1|    println!("used_only_from_bin_crate_generic_function with {:?}", arg);
@@ -51,8 +53,6 @@
   |   39|      1|pub fn used_only_from_bin_crate_generic_function<T: Debug>(arg: T) {
   |   40|      1|    println!("used_only_from_bin_crate_generic_function with {:?}", arg);
   |   41|      1|}
-  ------------------
-  | Unexecuted instantiation: used_inline_crate::used_only_from_bin_crate_generic_function::<_>
   ------------------
    42|       |// Expect for above function: `Unexecuted instantiation` (see notes in `used_crate.rs`)
    43|       |
@@ -77,15 +77,15 @@
    51|      3|    println!("used_from_bin_crate_and_lib_crate_generic_function with {:?}", arg);
    52|      3|}
   ------------------
-  | used_inline_crate::used_from_bin_crate_and_lib_crate_generic_function::<alloc::vec::Vec<i32>>:
-  |   50|      1|pub fn used_from_bin_crate_and_lib_crate_generic_function<T: Debug>(arg: T) {
-  |   51|      1|    println!("used_from_bin_crate_and_lib_crate_generic_function with {:?}", arg);
-  |   52|      1|}
-  ------------------
   | used_inline_crate::used_from_bin_crate_and_lib_crate_generic_function::<&str>:
   |   50|      2|pub fn used_from_bin_crate_and_lib_crate_generic_function<T: Debug>(arg: T) {
   |   51|      2|    println!("used_from_bin_crate_and_lib_crate_generic_function with {:?}", arg);
   |   52|      2|}
+  ------------------
+  | used_inline_crate::used_from_bin_crate_and_lib_crate_generic_function::<alloc::vec::Vec<i32>>:
+  |   50|      1|pub fn used_from_bin_crate_and_lib_crate_generic_function<T: Debug>(arg: T) {
+  |   51|      1|    println!("used_from_bin_crate_and_lib_crate_generic_function with {:?}", arg);
+  |   52|      1|}
   ------------------
    53|       |
    54|       |#[inline(always)]
