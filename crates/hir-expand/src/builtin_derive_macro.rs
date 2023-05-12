@@ -519,7 +519,7 @@ fn debug_expand(
                 let for_fields = fields.iter().map(|x| {
                     let x_string = x.to_string();
                     quote! {
-                        .field(#x_string, #x)
+                        .field(#x_string, & #x)
                     }
                 });
                 quote! {
@@ -529,7 +529,7 @@ fn debug_expand(
             VariantShape::Tuple(n) => {
                 let for_fields = tuple_field_iterator(*n).map(|x| {
                     quote! {
-                        .field(#x)
+                        .field( & #x)
                     }
                 });
                 quote! {

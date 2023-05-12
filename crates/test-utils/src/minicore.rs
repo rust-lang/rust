@@ -766,6 +766,38 @@ pub mod fmt {
     pub struct Error;
     pub type Result = Result<(), Error>;
     pub struct Formatter<'a>;
+    pub struct DebugTuple;
+    pub struct DebugStruct;
+    impl Formatter<'_> {
+        pub fn debug_tuple(&mut self, name: &str) -> DebugTuple {
+            DebugTuple
+        }
+
+        pub fn debug_struct(&mut self, name: &str) -> DebugStruct {
+            DebugStruct
+        }
+    }
+
+    impl DebugTuple {
+        pub fn field(&mut self, value: &dyn Debug) -> &mut Self {
+            self
+        }
+
+        pub fn finish(&mut self) -> Result {
+            Ok(())
+        }
+    }
+
+    impl DebugStruct {
+        pub fn field(&mut self, name: &str, value: &dyn Debug) -> &mut Self {
+            self
+        }
+
+        pub fn finish(&mut self) -> Result {
+            Ok(())
+        }
+    }
+
     pub trait Debug {
         fn fmt(&self, f: &mut Formatter<'_>) -> Result;
     }
@@ -777,6 +809,39 @@ pub mod fmt {
     #[rustc_builtin_macro]
     pub macro Debug($item:item) {}
     // endregion:derive
+
+    // region:builtin_impls
+    macro_rules! impl_debug {
+        ($($t:ty)*) => {
+            $(
+                impl const Debug for $t {
+                    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+                        Ok(())
+                    }
+                }
+            )*
+        }
+    }
+
+    impl_debug! {
+        usize u8 u16 u32 u64 u128
+        isize i8 i16 i32 i64 i128
+        f32 f64
+        bool char
+    }
+
+    impl<T: Debug> Debug for [T] {
+        fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+            Ok(())
+        }
+    }
+
+    impl<T: Debug + ?Sized> Debug for &T {
+        fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+            (&**self).fmt(f)
+        }
+    }
+    // endregion:builtin_impls
 }
 // endregion:fmt
 
@@ -1075,10 +1140,8 @@ pub mod iter {
 
 // region:panic
 mod panic {
-    pub macro panic_2021 {
-        ($($t:tt)+) => (
-            /* Nothing yet */
-        ),
+    pub macro panic_2021($($t:tt)+) {
+        /* Nothing yet */
     }
 }
 // endregion:panic
@@ -1158,8 +1221,8 @@ pub mod prelude {
             ops::Drop,                          // :drop
             ops::{Fn, FnMut, FnOnce},           // :fn
             option::Option::{self, None, Some}, // :option
-            result::Result::{self, Err, Ok},    // :result
             panic,                              // :panic
+            result::Result::{self, Err, Ok},    // :result
         };
     }
 
