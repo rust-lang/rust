@@ -2,6 +2,7 @@ error: Undefined Behavior: dereferencing pointer failed: ALLOC has size 9, so po
   --> $DIR/simd-scatter.rs:LL:CC
    |
 LL | /         Simd::from_array([-27, 82, -41, 124]).scatter_select_unchecked(
+LL | |
 LL | |             &mut vec,
 LL | |             Mask::splat(true),
 LL | |             idxs,
