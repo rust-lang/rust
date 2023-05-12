@@ -36,6 +36,14 @@ rm tests/ui/parser/unclosed-delimiter-in-dep.rs # submodule contains //~ERROR
 # FIXME add needs-unwind to this test
 rm -r tests/run-make/libtest-junit
 
+# extra warning about -Cpanic=abort for proc macros
+rm tests/ui/proc-macro/crt-static.rs
+rm tests/ui/proc-macro/proc-macro-deprecated-attr.rs
+rm tests/ui/proc-macro/quote-debug.rs
+rm tests/ui/proc-macro/no-missing-docs.rs
+rm tests/ui/rust-2018/proc-macro-crate-in-paths.rs
+rm tests/ui/proc-macro/allowed-signatures.rs
+
 # vendor intrinsics
 rm tests/ui/sse2.rs # cpuid not supported, so sse2 not detected
 rm tests/ui/intrinsics/const-eval-select-x86_64.rs # requires x86_64 vendor intrinsics
@@ -111,13 +119,6 @@ rm tests/ui/pattern/usefulness/doc-hidden-non-exhaustive.rs # same
 rm tests/ui/suggestions/derive-trait-for-method-call.rs # same
 rm tests/ui/typeck/issue-46112.rs # same
 
-rm tests/ui/proc-macro/crt-static.rs # extra warning about -Cpanic=abort for proc macros
-rm tests/ui/proc-macro/proc-macro-deprecated-attr.rs # same
-rm tests/ui/proc-macro/quote-debug.rs # same
-rm tests/ui/proc-macro/no-missing-docs.rs # same
-rm tests/ui/rust-2018/proc-macro-crate-in-paths.rs # same
-rm tests/ui/proc-macro/allowed-signatures.rs # same
-
 # rustdoc-clif passes extra args, suppressing the help message when no args are passed
 rm -r tests/run-make/issue-88756-default-output
 
@@ -132,9 +133,7 @@ rm -r tests/ui/consts/missing_span_in_backtrace.rs # expects sysroot source to b
 rm tests/incremental/spike-neg1.rs # errors out for some reason
 rm tests/incremental/spike-neg2.rs # same
 
-rm tests/ui/simd/intrinsic/generic-reduction-pass.rs # simd_reduce_add_unordered doesn't accept an accumulator for integer vectors
-
-rm tests/ui/simd/simd-bitmask.rs # crash
+rm tests/ui/simd/simd-bitmask.rs # simd_bitmask doesn't implement [u*; N] return type
 
 rm -r tests/run-make/issue-51671 # wrong filename given in case of --emit=obj
 rm -r tests/run-make/issue-30063 # same

@@ -488,7 +488,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             });
         }
 
-        sym::simd_reduce_add_ordered | sym::simd_reduce_add_unordered => {
+        sym::simd_reduce_add_ordered => {
             intrinsic_args!(fx, args => (v, acc); intrinsic);
             let acc = acc.load_scalar(fx);
 
@@ -507,7 +507,25 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             });
         }
 
-        sym::simd_reduce_mul_ordered | sym::simd_reduce_mul_unordered => {
+        sym::simd_reduce_add_unordered => {
+            intrinsic_args!(fx, args => (v); intrinsic);
+
+            // FIXME there must be no acc param for integer vectors
+            if !v.layout().ty.is_simd() {
+                report_simd_type_validation_error(fx, intrinsic, span, v.layout().ty);
+                return;
+            }
+
+            simd_reduce(fx, v, None, ret, &|fx, lane_ty, a, b| {
+                if lane_ty.is_floating_point() {
+                    fx.bcx.ins().fadd(a, b)
+                } else {
+                    fx.bcx.ins().iadd(a, b)
+                }
+            });
+        }
+
+        sym::simd_reduce_mul_ordered => {
             intrinsic_args!(fx, args => (v, acc); intrinsic);
             let acc = acc.load_scalar(fx);
 
@@ -518,6 +536,24 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             }
 
             simd_reduce(fx, v, Some(acc), ret, &|fx, lane_ty, a, b| {
+                if lane_ty.is_floating_point() {
+                    fx.bcx.ins().fmul(a, b)
+                } else {
+                    fx.bcx.ins().imul(a, b)
+                }
+            });
+        }
+
+        sym::simd_reduce_mul_unordered => {
+            intrinsic_args!(fx, args => (v); intrinsic);
+
+            // FIXME there must be no acc param for integer vectors
+            if !v.layout().ty.is_simd() {
+                report_simd_type_validation_error(fx, intrinsic, span, v.layout().ty);
+                return;
+            }
+
+            simd_reduce(fx, v, None, ret, &|fx, lane_ty, a, b| {
                 if lane_ty.is_floating_point() {
                     fx.bcx.ins().fmul(a, b)
                 } else {
@@ -581,7 +617,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             simd_reduce(fx, v, None, ret, &|fx, _ty, a, b| fx.bcx.ins().bxor(a, b));
         }
 
-        sym::simd_reduce_min => {
+        sym::simd_reduce_min | sym::simd_reduce_min_nanless => {
             intrinsic_args!(fx, args => (v); intrinsic);
 
             if !v.layout().ty.is_simd() {
@@ -600,7 +636,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             });
         }
 
-        sym::simd_reduce_max => {
+        sym::simd_reduce_max | sym::simd_reduce_max_nanless => {
             intrinsic_args!(fx, args => (v); intrinsic);
 
             if !v.layout().ty.is_simd() {
@@ -878,6 +914,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             fx.tcx.sess.span_err(span, format!("Unknown SIMD intrinsic {}", intrinsic));
             // Prevent verifier error
             fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
+            return;
         }
     }
     let ret_block = fx.get_block(target);
