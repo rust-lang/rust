@@ -387,7 +387,7 @@ impl < > core::fmt::Debug for Command< > where {
             Command::Move {
                 x: x, y: y,
             }
-            =>f.debug_struct("Move").field("x", x).field("y", y).finish(), Command::Do(f0, )=>f.debug_tuple("Do").field(f0).finish(), Command::Jump=>f.write_str("Jump"),
+            =>f.debug_struct("Move").field("x", &x).field("y", &y).finish(), Command::Do(f0, )=>f.debug_tuple("Do").field(&f0).finish(), Command::Jump=>f.write_str("Jump"),
         }
     }
 }"#]],

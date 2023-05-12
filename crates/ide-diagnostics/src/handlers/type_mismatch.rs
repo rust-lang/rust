@@ -661,4 +661,24 @@ fn f() {
 "#,
         );
     }
+
+    #[test]
+    fn regression_14768() {
+        check_diagnostics(
+            r#"
+//- minicore: derive, fmt, slice, coerce_unsized, builtin_impls
+use core::fmt::Debug;
+
+#[derive(Debug)]
+struct Foo(u8, u16, [u8]);
+
+#[derive(Debug)]
+struct Bar {
+    f1: u8,
+    f2: &[u16],
+    f3: dyn Debug,
+}
+"#,
+        );
+    }
 }
