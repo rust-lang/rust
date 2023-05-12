@@ -1,0 +1,19 @@
+warning: unexpected `cfg` condition value
+  --> $DIR/order-independant.rs:8:7
+   |
+LL | #[cfg(a)]
+   |       ^- help: specify a config value: `= "b"`
+   |
+   = note: expected values for `a` are: `b`
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition value
+  --> $DIR/order-independant.rs:12:7
+   |
+LL | #[cfg(a = "unk")]
+   |       ^^^^^^^^^
+   |
+   = note: expected values for `a` are: `b`
+
+warning: 2 warnings emitted
+

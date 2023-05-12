@@ -7,55 +7,36 @@
 //!
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
-use crate::{
-    rustc_internal::{crate_item, item_def_id},
-    stable_mir::{self},
-};
-use rustc_middle::ty::{tls::with, TyCtxt};
-use rustc_span::def_id::{CrateNum, LOCAL_CRATE};
+use crate::stable_mir::{self, ty::TyKind, Context};
+use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use tracing::debug;
 
-/// Get information about the local crate.
-pub fn local_crate() -> stable_mir::Crate {
-    with(|tcx| smir_crate(tcx, LOCAL_CRATE))
-}
+impl<'tcx> Context for Tables<'tcx> {
+    fn local_crate(&self) -> stable_mir::Crate {
+        smir_crate(self.tcx, LOCAL_CRATE)
+    }
 
-/// Retrieve a list of all external crates.
-pub fn external_crates() -> Vec<stable_mir::Crate> {
-    with(|tcx| tcx.crates(()).iter().map(|crate_num| smir_crate(tcx, *crate_num)).collect())
-}
+    fn external_crates(&self) -> Vec<stable_mir::Crate> {
+        self.tcx.crates(()).iter().map(|crate_num| smir_crate(self.tcx, *crate_num)).collect()
+    }
 
-/// Find a crate with the given name.
-pub fn find_crate(name: &str) -> Option<stable_mir::Crate> {
-    with(|tcx| {
-        [LOCAL_CRATE].iter().chain(tcx.crates(()).iter()).find_map(|crate_num| {
-            let crate_name = tcx.crate_name(*crate_num).to_string();
-            (name == crate_name).then(|| smir_crate(tcx, *crate_num))
+    fn find_crate(&self, name: &str) -> Option<stable_mir::Crate> {
+        [LOCAL_CRATE].iter().chain(self.tcx.crates(()).iter()).find_map(|crate_num| {
+            let crate_name = self.tcx.crate_name(*crate_num).to_string();
+            (name == crate_name).then(|| smir_crate(self.tcx, *crate_num))
         })
-    })
-}
+    }
 
-/// Retrieve all items of the local crate that have a MIR associated with them.
-pub fn all_local_items() -> stable_mir::CrateItems {
-    with(|tcx| tcx.mir_keys(()).iter().map(|item| crate_item(item.to_def_id())).collect())
-}
-
-pub fn entry_fn() -> Option<stable_mir::CrateItem> {
-    with(|tcx| Some(crate_item(tcx.entry_fn(())?.0)))
-}
-
-/// Build a stable mir crate from a given crate number.
-fn smir_crate(tcx: TyCtxt<'_>, crate_num: CrateNum) -> stable_mir::Crate {
-    let crate_name = tcx.crate_name(crate_num).to_string();
-    let is_local = crate_num == LOCAL_CRATE;
-    debug!(?crate_name, ?crate_num, "smir_crate");
-    stable_mir::Crate { id: crate_num.into(), name: crate_name, is_local }
-}
-
-pub fn mir_body(item: &stable_mir::CrateItem) -> stable_mir::mir::Body {
-    with(|tcx| {
-        let def_id = item_def_id(item);
-        let mir = tcx.optimized_mir(def_id);
+    fn all_local_items(&mut self) -> stable_mir::CrateItems {
+        self.tcx.mir_keys(()).iter().map(|item| self.crate_item(item.to_def_id())).collect()
+    }
+    fn entry_fn(&mut self) -> Option<stable_mir::CrateItem> {
+        Some(self.crate_item(self.tcx.entry_fn(())?.0))
+    }
+    fn mir_body(&mut self, item: &stable_mir::CrateItem) -> stable_mir::mir::Body {
+        let def_id = self.item_def_id(item);
+        let mir = self.tcx.optimized_mir(def_id);
         stable_mir::mir::Body {
             blocks: mir
                 .basic_blocks
@@ -65,8 +46,76 @@ pub fn mir_body(item: &stable_mir::CrateItem) -> stable_mir::mir::Body {
                     statements: block.statements.iter().map(rustc_statement_to_statement).collect(),
                 })
                 .collect(),
+            locals: mir.local_decls.iter().map(|decl| self.intern_ty(decl.ty)).collect(),
         }
-    })
+    }
+
+    fn rustc_tables(&mut self, f: &mut dyn FnMut(&mut Tables<'_>)) {
+        f(self)
+    }
+
+    fn ty_kind(&mut self, ty: crate::stable_mir::ty::Ty) -> TyKind {
+        self.rustc_ty_to_ty(self.types[ty.0])
+    }
+}
+
+pub struct Tables<'tcx> {
+    pub tcx: TyCtxt<'tcx>,
+    pub def_ids: Vec<DefId>,
+    pub types: Vec<Ty<'tcx>>,
+}
+
+impl<'tcx> Tables<'tcx> {
+    fn rustc_ty_to_ty(&mut self, ty: Ty<'tcx>) -> TyKind {
+        match ty.kind() {
+            ty::Bool => TyKind::Bool,
+            ty::Char => todo!(),
+            ty::Int(_) => todo!(),
+            ty::Uint(_) => todo!(),
+            ty::Float(_) => todo!(),
+            ty::Adt(_, _) => todo!(),
+            ty::Foreign(_) => todo!(),
+            ty::Str => todo!(),
+            ty::Array(_, _) => todo!(),
+            ty::Slice(_) => todo!(),
+            ty::RawPtr(_) => todo!(),
+            ty::Ref(_, _, _) => todo!(),
+            ty::FnDef(_, _) => todo!(),
+            ty::FnPtr(_) => todo!(),
+            ty::Placeholder(..) => todo!(),
+            ty::Dynamic(_, _, _) => todo!(),
+            ty::Closure(_, _) => todo!(),
+            ty::Generator(_, _, _) => todo!(),
+            ty::GeneratorWitness(_) => todo!(),
+            ty::GeneratorWitnessMIR(_, _) => todo!(),
+            ty::Never => todo!(),
+            ty::Tuple(fields) => {
+                TyKind::Tuple(fields.iter().map(|ty| self.intern_ty(ty)).collect())
+            }
+            ty::Alias(_, _) => todo!(),
+            ty::Param(_) => todo!(),
+            ty::Bound(_, _) => todo!(),
+            ty::Infer(_) => todo!(),
+            ty::Error(_) => todo!(),
+        }
+    }
+
+    fn intern_ty(&mut self, ty: Ty<'tcx>) -> stable_mir::ty::Ty {
+        if let Some(id) = self.types.iter().position(|&t| t == ty) {
+            return stable_mir::ty::Ty(id);
+        }
+        let id = self.types.len();
+        self.types.push(ty);
+        stable_mir::ty::Ty(id)
+    }
+}
+
+/// Build a stable mir crate from a given crate number.
+fn smir_crate(tcx: TyCtxt<'_>, crate_num: CrateNum) -> stable_mir::Crate {
+    let crate_name = tcx.crate_name(crate_num).to_string();
+    let is_local = crate_num == LOCAL_CRATE;
+    debug!(?crate_name, ?crate_num, "smir_crate");
+    stable_mir::Crate { id: crate_num.into(), name: crate_name, is_local }
 }
 
 fn rustc_statement_to_statement(

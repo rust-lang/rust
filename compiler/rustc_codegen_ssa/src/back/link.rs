@@ -546,10 +546,36 @@ fn link_staticlib<'a>(
 
     ab.build(out_filename);
 
-    if !all_native_libs.is_empty() {
-        if sess.opts.prints.contains(&PrintRequest::NativeStaticLibs) {
-            print_native_static_libs(sess, &all_native_libs);
+    let crates = codegen_results.crate_info.used_crates.iter();
+
+    let fmts = codegen_results
+        .crate_info
+        .dependency_formats
+        .iter()
+        .find_map(|&(ty, ref list)| if ty == CrateType::Staticlib { Some(list) } else { None })
+        .expect("no dependency formats for staticlib");
+
+    let mut all_rust_dylibs = vec![];
+    for &cnum in crates {
+        match fmts.get(cnum.as_usize() - 1) {
+            Some(&Linkage::Dynamic) => {}
+            _ => continue,
         }
+        let crate_name = codegen_results.crate_info.crate_name[&cnum];
+        let used_crate_source = &codegen_results.crate_info.used_crate_source[&cnum];
+        if let Some((path, _)) = &used_crate_source.dylib {
+            all_rust_dylibs.push(&**path);
+        } else {
+            if used_crate_source.rmeta.is_some() {
+                sess.emit_fatal(errors::LinkRlibError::OnlyRmetaFound { crate_name });
+            } else {
+                sess.emit_fatal(errors::LinkRlibError::NotFound { crate_name });
+            }
+        }
+    }
+
+    if sess.opts.prints.contains(&PrintRequest::NativeStaticLibs) {
+        print_native_static_libs(sess, &all_native_libs, &all_rust_dylibs);
     }
 
     Ok(())
@@ -1370,8 +1396,12 @@ enum RlibFlavor {
     StaticlibBase,
 }
 
-fn print_native_static_libs(sess: &Session, all_native_libs: &[NativeLib]) {
-    let lib_args: Vec<_> = all_native_libs
+fn print_native_static_libs(
+    sess: &Session,
+    all_native_libs: &[NativeLib],
+    all_rust_dylibs: &[&Path],
+) {
+    let mut lib_args: Vec<_> = all_native_libs
         .iter()
         .filter(|l| relevant_lib(sess, l))
         .filter_map(|lib| {
@@ -1401,6 +1431,41 @@ fn print_native_static_libs(sess: &Session, all_native_libs: &[NativeLib]) {
             }
         })
         .collect();
+    for path in all_rust_dylibs {
+        // FIXME deduplicate with add_dynamic_crate
+
+        // Just need to tell the linker about where the library lives and
+        // what its name is
+        let parent = path.parent();
+        if let Some(dir) = parent {
+            let dir = fix_windows_verbatim_for_gcc(dir);
+            if sess.target.is_like_msvc {
+                let mut arg = String::from("/LIBPATH:");
+                arg.push_str(&dir.display().to_string());
+                lib_args.push(arg);
+            } else {
+                lib_args.push("-L".to_owned());
+                lib_args.push(dir.display().to_string());
+            }
+        }
+        let stem = path.file_stem().unwrap().to_str().unwrap();
+        // Convert library file-stem into a cc -l argument.
+        let prefix = if stem.starts_with("lib") && !sess.target.is_like_windows { 3 } else { 0 };
+        let lib = &stem[prefix..];
+        let path = parent.unwrap_or_else(|| Path::new(""));
+        if sess.target.is_like_msvc {
+            // When producing a dll, the MSVC linker may not actually emit a
+            // `foo.lib` file if the dll doesn't actually export any symbols, so we
+            // check to see if the file is there and just omit linking to it if it's
+            // not present.
+            let name = format!("{}.dll.lib", lib);
+            if path.join(&name).exists() {
+                lib_args.push(name);
+            }
+        } else {
+            lib_args.push(format!("-l{}", lib));
+        }
+    }
     if !lib_args.is_empty() {
         sess.emit_note(errors::StaticLibraryNativeArtifacts);
         // Prefix for greppability

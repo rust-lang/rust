@@ -251,6 +251,8 @@ enum ResolutionError<'a> {
     TraitImplDuplicate { name: Symbol, trait_item_span: Span, old_span: Span },
     /// Inline asm `sym` operand must refer to a `fn` or `static`.
     InvalidAsmSym,
+    /// `self` used instead of `Self` in a generic parameter
+    LowercaseSelf,
 }
 
 enum VisResolutionError<'a> {

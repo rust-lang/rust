@@ -13,7 +13,7 @@ use crate::iter::{
 use crate::marker::{PhantomData, Send, Sized, Sync};
 use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZeroUsize;
-use crate::ptr::NonNull;
+use crate::ptr::{invalid, invalid_mut, NonNull};
 
 use super::{from_raw_parts, from_raw_parts_mut};
 
@@ -67,9 +67,7 @@ pub struct Iter<'a, T: 'a> {
     ptr: NonNull<T>,
     /// For non-ZSTs, the non-null pointer to the past-the-end element.
     ///
-    /// For ZSTs, this is `ptr.wrapping_byte_add(len)`.
-    ///
-    /// For all types, `ptr == end` tests whether the iterator is empty.
+    /// For ZSTs, this is `ptr::invalid(len)`.
     end: *const T,
     _marker: PhantomData<&'a T>,
 }
@@ -94,8 +92,7 @@ impl<'a, T> Iter<'a, T> {
         unsafe {
             assume(!ptr.is_null());
 
-            let end =
-                if T::IS_ZST { ptr.wrapping_byte_add(slice.len()) } else { ptr.add(slice.len()) };
+            let end = if T::IS_ZST { invalid(slice.len()) } else { ptr.add(slice.len()) };
 
             Self { ptr: NonNull::new_unchecked(ptr as *mut T), end, _marker: PhantomData }
         }
@@ -193,9 +190,7 @@ pub struct IterMut<'a, T: 'a> {
     ptr: NonNull<T>,
     /// For non-ZSTs, the non-null pointer to the past-the-end element.
     ///
-    /// For ZSTs, this is `ptr.wrapping_byte_add(len)`.
-    ///
-    /// For all types, `ptr == end` tests whether the iterator is empty.
+    /// For ZSTs, this is `ptr::invalid_mut(len)`.
     end: *mut T,
     _marker: PhantomData<&'a mut T>,
 }
@@ -235,8 +230,7 @@ impl<'a, T> IterMut<'a, T> {
         unsafe {
             assume(!ptr.is_null());
 
-            let end =
-                if T::IS_ZST { ptr.wrapping_byte_add(slice.len()) } else { ptr.add(slice.len()) };
+            let end = if T::IS_ZST { invalid_mut(slice.len()) } else { ptr.add(slice.len()) };
 
             Self { ptr: NonNull::new_unchecked(ptr), end, _marker: PhantomData }
         }

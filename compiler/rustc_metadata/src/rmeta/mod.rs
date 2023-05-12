@@ -394,7 +394,7 @@ define_tables! {
     mir_for_ctfe: Table<DefIndex, LazyValue<mir::Body<'static>>>,
     mir_generator_witnesses: Table<DefIndex, LazyValue<mir::GeneratorLayout<'static>>>,
     promoted_mir: Table<DefIndex, LazyValue<IndexVec<mir::Promoted, mir::Body<'static>>>>,
-    thir_abstract_const: Table<DefIndex, LazyValue<ty::Const<'static>>>,
+    thir_abstract_const: Table<DefIndex, LazyValue<ty::EarlyBinder<ty::Const<'static>>>>,
     impl_parent: Table<DefIndex, RawDefId>,
     impl_polarity: Table<DefIndex, ty::ImplPolarity>,
     constness: Table<DefIndex, hir::Constness>,

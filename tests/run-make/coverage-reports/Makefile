@@ -138,6 +138,7 @@ endif
 			) \
 		2> "$(TMPDIR)"/show_coverage_stderr.$@.txt \
 		| "$(PYTHON)" $(BASEDIR)/normalize_paths.py \
+		| "$(PYTHON)" $(BASEDIR)/sort_subviews.py \
 		> "$(TMPDIR)"/actual_show_coverage.$@.txt || \
 	( status=$$? ; \
 		>&2 cat "$(TMPDIR)"/show_coverage_stderr.$@.txt ; \
@@ -158,23 +159,15 @@ ifdef RUSTC_BLESS_TEST
 else
 	# Compare the show coverage output (`--bless` refreshes `typical` files).
 	#
-	# FIXME(richkadel): None of the Rust test source samples have the
-	# `// ignore-llvm-cov-show-diffs` anymore. This directive exists to work around a limitation
-	# with `llvm-cov show`. When reporting coverage for multiple instantiations of a generic function,
-	# with different type substitutions, `llvm-cov show` prints these in a non-deterministic order,
-	# breaking the `diff` comparison.
+	# `llvm-cov show` normally prints instantiation groups in an unpredictable
+	# order, but we have used `sort_subviews.py` to sort them, so we can still
+	# check the output directly with `diff`.
 	#
-	# A partial workaround is implemented below, with `diff --ignore-matching-lines=RE`
-	# to ignore each line prefixing each generic instantiation coverage code region.
-	#
-	# This workaround only works if the coverage counts are identical across all reported
-	# instantiations. If there is no way to ensure this, you may need to apply the
-	# `// ignore-llvm-cov-show-diffs` directive, and check for differences using the
-	# `.json` files to validate that results have not changed. (Until then, the JSON
-	# files are redundant, so there is no need to generate `expected_*.json` files or
-	# compare actual JSON results.)
+	# Some of the test cases are currently not working (since #110393) and have
+	# been marked with `// ignore-llvm-cov-show-diffs` so that they don't fail
+	# the build.
 
-	$(DIFF) --ignore-matching-lines='^  \| .*::<.*>.*:$$' --ignore-matching-lines='^  \| <.*>::.*:$$' \
+	$(DIFF) \
 		expected_show_coverage.$@.txt "$(TMPDIR)"/actual_show_coverage.$@.txt || \
 		( grep -q '^\/\/ ignore-llvm-cov-show-diffs' $(SOURCEDIR)/$@.rs && \
 			>&2 echo 'diff failed, but suppressed with `// ignore-llvm-cov-show-diffs` in $(SOURCEDIR)/$@.rs' \

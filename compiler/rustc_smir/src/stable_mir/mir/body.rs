@@ -1,6 +1,9 @@
+use crate::stable_mir::ty::Ty;
+
 #[derive(Clone, Debug)]
 pub struct Body {
     pub blocks: Vec<BasicBlock>,
+    pub locals: Vec<Ty>,
 }
 
 #[derive(Clone, Debug)]

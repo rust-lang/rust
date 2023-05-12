@@ -1,3 +1,6 @@
+// revisions: current next
+//[next] compile-flags: -Ztrait-solver=next
+
 #![feature(dyn_star)]
 #![allow(incomplete_features)]
 

@@ -121,28 +121,28 @@ define-function: (
 
 call-function: ("check-colors", {
     "theme": "light",
-    "color": "rgb(0, 0, 0)",
-    "color_hover": "rgb(0, 0, 0)",
-    "background": "rgb(255, 255, 255)",
-    "background_hover": "rgb(224, 224, 224)",
+    "color": "black",
+    "color_hover": "#000",
+    "background": "#fff",
+    "background_hover": "#e0e0e0",
     "background_toggle": "rgba(0, 0, 0, 0)",
-    "background_toggle_hover": "rgb(224, 224, 224)",
+    "background_toggle_hover": "#e0e0e0",
 })
 call-function: ("check-colors", {
     "theme": "dark",
-    "color": "rgb(221, 221, 221)",
-    "color_hover": "rgb(221, 221, 221)",
-    "background": "rgb(51, 51, 51)",
-    "background_hover": "rgb(68, 68, 68)",
+    "color": "#ddd",
+    "color_hover": "#ddd",
+    "background": "#333",
+    "background_hover": "#444",
     "background_toggle": "rgba(0, 0, 0, 0)",
-    "background_toggle_hover": "rgb(103, 103, 103)",
+    "background_toggle_hover": "#676767",
 })
 call-function: ("check-colors", {
     "theme": "ayu",
-    "color": "rgb(197, 197, 197)",
-    "color_hover": "rgb(255, 180, 76)",
+    "color": "#c5c5c5",
+    "color_hover": "#ffb44c",
     "background": "rgb(20, 25, 31)",
-    "background_hover": "rgb(20, 25, 31)",
+    "background_hover": "#14191f",
     "background_toggle": "rgba(0, 0, 0, 0)",
     "background_toggle_hover": "rgba(70, 70, 70, 0.33)",
 })

@@ -32,9 +32,12 @@
 //! Because of that, we can assume that the only way to change the value behind a tracked place is
 //! by direct assignment.
 
+use std::collections::VecDeque;
 use std::fmt::{Debug, Formatter};
+use std::ops::Range;
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_index::bit_set::BitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
@@ -65,8 +68,8 @@ pub trait ValueAnalysis<'tcx> {
             StatementKind::Assign(box (place, rvalue)) => {
                 self.handle_assign(*place, rvalue, state);
             }
-            StatementKind::SetDiscriminant { box ref place, .. } => {
-                state.flood_discr(place.as_ref(), self.map());
+            StatementKind::SetDiscriminant { box place, variant_index } => {
+                self.handle_set_discriminant(*place, *variant_index, state);
             }
             StatementKind::Intrinsic(box intrinsic) => {
                 self.handle_intrinsic(intrinsic, state);
@@ -74,11 +77,11 @@ pub trait ValueAnalysis<'tcx> {
             StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
                 // StorageLive leaves the local in an uninitialized state.
                 // StorageDead makes it UB to access the local afterwards.
-                state.flood_with(Place::from(*local).as_ref(), self.map(), Self::Value::bottom());
+                state.flood_with(Place::from(*local).as_ref(), self.map(), Self::Value::BOTTOM);
             }
             StatementKind::Deinit(box place) => {
                 // Deinit makes the place uninitialized.
-                state.flood_with(place.as_ref(), self.map(), Self::Value::bottom());
+                state.flood_with(place.as_ref(), self.map(), Self::Value::BOTTOM);
             }
             StatementKind::Retag(..) => {
                 // We don't track references.
@@ -92,6 +95,24 @@ pub trait ValueAnalysis<'tcx> {
         }
     }
 
+    fn handle_set_discriminant(
+        &self,
+        place: Place<'tcx>,
+        variant_index: VariantIdx,
+        state: &mut State<Self::Value>,
+    ) {
+        self.super_set_discriminant(place, variant_index, state)
+    }
+
+    fn super_set_discriminant(
+        &self,
+        place: Place<'tcx>,
+        _variant_index: VariantIdx,
+        state: &mut State<Self::Value>,
+    ) {
+        state.flood_discr(place.as_ref(), self.map());
+    }
+
     fn handle_intrinsic(
         &self,
         intrinsic: &NonDivergingIntrinsic<'tcx>,
@@ -103,16 +124,18 @@ pub trait ValueAnalysis<'tcx> {
     fn super_intrinsic(
         &self,
         intrinsic: &NonDivergingIntrinsic<'tcx>,
-        state: &mut State<Self::Value>,
+        _state: &mut State<Self::Value>,
     ) {
         match intrinsic {
             NonDivergingIntrinsic::Assume(..) => {
                 // Could use this, but ignoring it is sound.
             }
-            NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping { dst, .. }) => {
-                if let Some(place) = dst.place() {
-                    state.flood(place.as_ref(), self.map());
-                }
+            NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping {
+                dst: _,
+                src: _,
+                count: _,
+            }) => {
+                // This statement represents `*dst = *src`, `count` times.
             }
         }
     }
@@ -154,7 +177,7 @@ pub trait ValueAnalysis<'tcx> {
             Rvalue::CopyForDeref(place) => self.handle_operand(&Operand::Copy(*place), state),
             Rvalue::Ref(..) | Rvalue::AddressOf(..) => {
                 // We don't track such places.
-                ValueOrPlace::top()
+                ValueOrPlace::TOP
             }
             Rvalue::Repeat(..)
             | Rvalue::ThreadLocalRef(..)
@@ -168,7 +191,7 @@ pub trait ValueAnalysis<'tcx> {
             | Rvalue::Aggregate(..)
             | Rvalue::ShallowInitBox(..) => {
                 // No modification is possible through these r-values.
-                ValueOrPlace::top()
+                ValueOrPlace::TOP
             }
         }
     }
@@ -196,7 +219,7 @@ pub trait ValueAnalysis<'tcx> {
                 self.map()
                     .find(place.as_ref())
                     .map(ValueOrPlace::Place)
-                    .unwrap_or(ValueOrPlace::top())
+                    .unwrap_or(ValueOrPlace::TOP)
             }
         }
     }
@@ -214,7 +237,7 @@ pub trait ValueAnalysis<'tcx> {
         _constant: &Constant<'tcx>,
         _state: &mut State<Self::Value>,
     ) -> Self::Value {
-        Self::Value::top()
+        Self::Value::TOP
     }
 
     /// The effect of a successful function call return should not be
@@ -229,7 +252,7 @@ pub trait ValueAnalysis<'tcx> {
                 // Effect is applied by `handle_call_return`.
             }
             TerminatorKind::Drop { place, .. } => {
-                state.flood_with(place.as_ref(), self.map(), Self::Value::bottom());
+                state.flood_with(place.as_ref(), self.map(), Self::Value::BOTTOM);
             }
             TerminatorKind::Yield { .. } => {
                 // They would have an effect, but are not allowed in this phase.
@@ -307,7 +330,7 @@ impl<'tcx, T: ValueAnalysis<'tcx>> AnalysisDomain<'tcx> for ValueAnalysisWrapper
     fn initialize_start_block(&self, body: &Body<'tcx>, state: &mut Self::Domain) {
         // The initial state maps all tracked places of argument projections to ⊤ and the rest to ⊥.
         assert!(matches!(state.0, StateData::Unreachable));
-        let values = IndexVec::from_elem_n(T::Value::bottom(), self.0.map().value_count);
+        let values = IndexVec::from_elem_n(T::Value::BOTTOM, self.0.map().value_count);
         *state = State(StateData::Reachable(values));
         for arg in body.args_iter() {
             state.flood(PlaceRef { local: arg, projection: &[] }, self.0.map());
@@ -437,7 +460,7 @@ impl<V: Clone + HasTop + HasBottom> State<V> {
     }
 
     pub fn flood_all(&mut self) {
-        self.flood_all_with(V::top())
+        self.flood_all_with(V::TOP)
     }
 
     pub fn flood_all_with(&mut self, value: V) {
@@ -447,28 +470,24 @@ impl<V: Clone + HasTop + HasBottom> State<V> {
 
     pub fn flood_with(&mut self, place: PlaceRef<'_>, map: &Map, value: V) {
         let StateData::Reachable(values) = &mut self.0 else { return };
-        map.for_each_aliasing_place(place, None, &mut |place| {
-            if let Some(vi) = map.places[place].value_index {
-                values[vi] = value.clone();
-            }
+        map.for_each_aliasing_place(place, None, &mut |vi| {
+            values[vi] = value.clone();
         });
     }
 
     pub fn flood(&mut self, place: PlaceRef<'_>, map: &Map) {
-        self.flood_with(place, map, V::top())
+        self.flood_with(place, map, V::TOP)
     }
 
     pub fn flood_discr_with(&mut self, place: PlaceRef<'_>, map: &Map, value: V) {
         let StateData::Reachable(values) = &mut self.0 else { return };
-        map.for_each_aliasing_place(place, Some(TrackElem::Discriminant), &mut |place| {
-            if let Some(vi) = map.places[place].value_index {
-                values[vi] = value.clone();
-            }
+        map.for_each_aliasing_place(place, Some(TrackElem::Discriminant), &mut |vi| {
+            values[vi] = value.clone();
         });
     }
 
     pub fn flood_discr(&mut self, place: PlaceRef<'_>, map: &Map) {
-        self.flood_discr_with(place, map, V::top())
+        self.flood_discr_with(place, map, V::TOP)
     }
 
     /// Low-level method that assigns to a place.
@@ -538,14 +557,14 @@ impl<V: Clone + HasTop + HasBottom> State<V> {
 
     /// Retrieve the value stored for a place, or ⊤ if it is not tracked.
     pub fn get(&self, place: PlaceRef<'_>, map: &Map) -> V {
-        map.find(place).map(|place| self.get_idx(place, map)).unwrap_or(V::top())
+        map.find(place).map(|place| self.get_idx(place, map)).unwrap_or(V::TOP)
     }
 
     /// Retrieve the value stored for a place, or ⊤ if it is not tracked.
     pub fn get_discr(&self, place: PlaceRef<'_>, map: &Map) -> V {
         match map.find_discr(place) {
             Some(place) => self.get_idx(place, map),
-            None => V::top(),
+            None => V::TOP,
         }
     }
 
@@ -553,11 +572,11 @@ impl<V: Clone + HasTop + HasBottom> State<V> {
     pub fn get_idx(&self, place: PlaceIndex, map: &Map) -> V {
         match &self.0 {
             StateData::Reachable(values) => {
-                map.places[place].value_index.map(|v| values[v].clone()).unwrap_or(V::top())
+                map.places[place].value_index.map(|v| values[v].clone()).unwrap_or(V::TOP)
             }
             StateData::Unreachable => {
                 // Because this is unreachable, we can return any value we want.
-                V::bottom()
+                V::BOTTOM
             }
         }
     }
@@ -588,6 +607,9 @@ pub struct Map {
     projections: FxHashMap<(PlaceIndex, TrackElem), PlaceIndex>,
     places: IndexVec<PlaceIndex, PlaceInfo>,
     value_count: usize,
+    // The Range corresponds to a slice into `inner_values_buffer`.
+    inner_values: IndexVec<PlaceIndex, Range<usize>>,
+    inner_values_buffer: Vec<ValueIndex>,
 }
 
 impl Map {
@@ -597,6 +619,8 @@ impl Map {
             projections: FxHashMap::default(),
             places: IndexVec::new(),
             value_count: 0,
+            inner_values: IndexVec::new(),
+            inner_values_buffer: Vec::new(),
         }
     }
 
@@ -608,12 +632,12 @@ impl Map {
     pub fn from_filter<'tcx>(
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
-        filter: impl FnMut(Ty<'tcx>) -> bool,
-        place_limit: Option<usize>,
+        filter: impl Fn(Ty<'tcx>) -> bool,
+        value_limit: Option<usize>,
     ) -> Self {
         let mut map = Self::new();
         let exclude = excluded_locals(body);
-        map.register_with_filter(tcx, body, filter, exclude, place_limit);
+        map.register_with_filter(tcx, body, filter, exclude, value_limit);
         debug!("registered {} places ({} nodes in total)", map.value_count, map.places.len());
         map
     }
@@ -623,51 +647,90 @@ impl Map {
         &mut self,
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
-        mut filter: impl FnMut(Ty<'tcx>) -> bool,
+        filter: impl Fn(Ty<'tcx>) -> bool,
         exclude: BitSet<Local>,
-        place_limit: Option<usize>,
+        value_limit: Option<usize>,
     ) {
-        // We use this vector as stack, pushing and popping projections.
-        let mut projection = Vec::new();
+        let mut worklist = VecDeque::with_capacity(value_limit.unwrap_or(body.local_decls.len()));
+
+        // Start by constructing the places for each bare local.
+        self.locals = IndexVec::from_elem(None, &body.local_decls);
         for (local, decl) in body.local_decls.iter_enumerated() {
-            if !exclude.contains(local) {
-                self.register_with_filter_rec(
-                    tcx,
-                    local,
-                    &mut projection,
-                    decl.ty,
-                    &mut filter,
-                    place_limit,
-                );
+            if exclude.contains(local) {
+                continue;
+            }
+
+            // Create a place for the local.
+            debug_assert!(self.locals[local].is_none());
+            let place = self.places.push(PlaceInfo::new(None));
+            self.locals[local] = Some(place);
+
+            // And push the eventual children places to the worklist.
+            self.register_children(tcx, place, decl.ty, &filter, &mut worklist);
+        }
+
+        // `place.elem1.elem2` with type `ty`.
+        // `elem1` is either `Some(Variant(i))` or `None`.
+        while let Some((mut place, elem1, elem2, ty)) = worklist.pop_front() {
+            // The user requires a bound on the number of created values.
+            if let Some(value_limit) = value_limit && self.value_count >= value_limit {
+                break
+            }
+
+            // Create a place for this projection.
+            for elem in [elem1, Some(elem2)].into_iter().flatten() {
+                place = *self.projections.entry((place, elem)).or_insert_with(|| {
+                    // Prepend new child to the linked list.
+                    let next = self.places.push(PlaceInfo::new(Some(elem)));
+                    self.places[next].next_sibling = self.places[place].first_child;
+                    self.places[place].first_child = Some(next);
+                    next
+                });
+            }
+
+            // And push the eventual children places to the worklist.
+            self.register_children(tcx, place, ty, &filter, &mut worklist);
+        }
+
+        // Pre-compute the tree of ValueIndex nested in each PlaceIndex.
+        // `inner_values_buffer[inner_values[place]]` is the set of all the values
+        // reachable by projecting `place`.
+        self.inner_values_buffer = Vec::with_capacity(self.value_count);
+        self.inner_values = IndexVec::from_elem(0..0, &self.places);
+        for local in body.local_decls.indices() {
+            if let Some(place) = self.locals[local] {
+                self.cache_preorder_invoke(place);
             }
         }
+
+        // Trim useless places.
+        for opt_place in self.locals.iter_mut() {
+            if let Some(place) = *opt_place && self.inner_values[place].is_empty() {
+                *opt_place = None;
+            }
+        }
+        #[allow(rustc::potential_query_instability)]
+        self.projections.retain(|_, child| !self.inner_values[*child].is_empty());
     }
 
     /// Potentially register the (local, projection) place and its fields, recursively.
     ///
     /// Invariant: The projection must only contain trackable elements.
-    fn register_with_filter_rec<'tcx>(
+    fn register_children<'tcx>(
         &mut self,
         tcx: TyCtxt<'tcx>,
-        local: Local,
-        projection: &mut Vec<PlaceElem<'tcx>>,
+        place: PlaceIndex,
         ty: Ty<'tcx>,
-        filter: &mut impl FnMut(Ty<'tcx>) -> bool,
-        place_limit: Option<usize>,
+        filter: &impl Fn(Ty<'tcx>) -> bool,
+        worklist: &mut VecDeque<(PlaceIndex, Option<TrackElem>, TrackElem, Ty<'tcx>)>,
     ) {
-        if let Some(place_limit) = place_limit && self.value_count >= place_limit {
-            return
-        }
-
-        // We know that the projection only contains trackable elements.
-        let place = self.make_place(local, projection).unwrap();
-
         // Allocate a value slot if it doesn't have one, and the user requested one.
         if self.places[place].value_index.is_none() && filter(ty) {
             self.places[place].value_index = Some(self.value_count.into());
             self.value_count += 1;
         }
 
+        // For enums, directly create the `Discriminant`, as that's their main use.
         if ty.is_enum() {
             let discr_ty = ty.discriminant_ty(tcx);
             if filter(discr_ty) {
@@ -692,46 +755,32 @@ impl Map {
 
         // Recurse with all fields of this place.
         iter_fields(ty, tcx, ty::ParamEnv::reveal_all(), |variant, field, ty| {
-            if let Some(variant) = variant {
-                projection.push(PlaceElem::Downcast(None, variant));
-                let _ = self.make_place(local, projection);
-                projection.push(PlaceElem::Field(field, ty));
-                self.register_with_filter_rec(tcx, local, projection, ty, filter, place_limit);
-                projection.pop();
-                projection.pop();
-                return;
-            }
-            projection.push(PlaceElem::Field(field, ty));
-            self.register_with_filter_rec(tcx, local, projection, ty, filter, place_limit);
-            projection.pop();
+            worklist.push_back((
+                place,
+                variant.map(TrackElem::Variant),
+                TrackElem::Field(field),
+                ty,
+            ))
         });
     }
 
-    /// Tries to add the place to the map, without allocating a value slot.
-    ///
-    /// Can fail if the projection contains non-trackable elements.
-    fn make_place<'tcx>(
-        &mut self,
-        local: Local,
-        projection: &[PlaceElem<'tcx>],
-    ) -> Result<PlaceIndex, ()> {
-        // Get the base index of the local.
-        let mut index =
-            *self.locals.get_or_insert_with(local, || self.places.push(PlaceInfo::new(None)));
-
-        // Apply the projection.
-        for &elem in projection {
-            let elem = elem.try_into()?;
-            index = *self.projections.entry((index, elem)).or_insert_with(|| {
-                // Prepend new child to the linked list.
-                let next = self.places.push(PlaceInfo::new(Some(elem)));
-                self.places[next].next_sibling = self.places[index].first_child;
-                self.places[index].first_child = Some(next);
-                next
-            });
+    /// Precompute the list of values inside `root` and store it inside
+    /// as a slice within `inner_values_buffer`.
+    fn cache_preorder_invoke(&mut self, root: PlaceIndex) {
+        let start = self.inner_values_buffer.len();
+        if let Some(vi) = self.places[root].value_index {
+            self.inner_values_buffer.push(vi);
         }
 
-        Ok(index)
+        // We manually iterate instead of using `children` as we need to mutate `self`.
+        let mut next_child = self.places[root].first_child;
+        while let Some(child) = next_child {
+            ensure_sufficient_stack(|| self.cache_preorder_invoke(child));
+            next_child = self.places[child].next_sibling;
+        }
+
+        let end = self.inner_values_buffer.len();
+        self.inner_values[root] = start..end;
     }
 
     /// Returns the number of tracked places, i.e., those for which a value can be stored.
@@ -750,7 +799,7 @@ impl Map {
         place: PlaceRef<'_>,
         extra: impl IntoIterator<Item = TrackElem>,
     ) -> Option<PlaceIndex> {
-        let mut index = *self.locals.get(place.local)?.as_ref()?;
+        let mut index = *self.locals[place.local].as_ref()?;
 
         for &elem in place.projection {
             index = self.apply(index, elem.try_into().ok()?)?;
@@ -784,17 +833,17 @@ impl Map {
     ///
     /// `tail_elem` allows to support discriminants that are not a place in MIR, but that we track
     /// as such.
-    pub fn for_each_aliasing_place(
+    fn for_each_aliasing_place(
         &self,
         place: PlaceRef<'_>,
         tail_elem: Option<TrackElem>,
-        f: &mut impl FnMut(PlaceIndex),
+        f: &mut impl FnMut(ValueIndex),
     ) {
-        if place.is_indirect() {
+        if place.has_deref() {
             // We do not track indirect places.
             return;
         }
-        let Some(&Some(mut index)) = self.locals.get(place.local) else {
+        let Some(mut index) = self.locals[place.local] else {
             // The local is not tracked at all, so it does not alias anything.
             return;
         };
@@ -805,7 +854,9 @@ impl Map {
             .chain(tail_elem.map(Ok).into_iter());
         for elem in elems {
             // A field aliases the parent place.
-            f(index);
+            if let Some(vi) = self.places[index].value_index {
+                f(vi);
+            }
 
             let Ok(elem) = elem else { return };
             let sub = self.apply(index, elem);
@@ -819,7 +870,7 @@ impl Map {
                 return;
             }
         }
-        self.preorder_invoke(index, f);
+        self.for_each_value_inside(index, f);
     }
 
     /// Invoke the given function on all the descendants of the given place, except one branch.
@@ -827,7 +878,7 @@ impl Map {
         &self,
         parent: PlaceIndex,
         preserved_child: Option<PlaceIndex>,
-        f: &mut impl FnMut(PlaceIndex),
+        f: &mut impl FnMut(ValueIndex),
     ) {
         for sibling in self.children(parent) {
             let elem = self.places[sibling].proj_elem;
@@ -837,16 +888,17 @@ impl Map {
                 // Only invalidate the other variants, the current one is fine.
                 && Some(sibling) != preserved_child
             {
-                self.preorder_invoke(sibling, f);
+                self.for_each_value_inside(sibling, f);
             }
         }
     }
 
-    /// Invoke a function on the given place and all descendants.
-    fn preorder_invoke(&self, root: PlaceIndex, f: &mut impl FnMut(PlaceIndex)) {
-        f(root);
-        for child in self.children(root) {
-            self.preorder_invoke(child, f);
+    /// Invoke a function on each value in the given place and all descendants.
+    fn for_each_value_inside(&self, root: PlaceIndex, f: &mut impl FnMut(ValueIndex)) {
+        let range = self.inner_values[root].clone();
+        let values = &self.inner_values_buffer[range];
+        for &v in values {
+            f(v)
         }
     }
 }
@@ -909,9 +961,7 @@ pub enum ValueOrPlace<V> {
 }
 
 impl<V: HasTop> ValueOrPlace<V> {
-    pub fn top() -> Self {
-        ValueOrPlace::Value(V::top())
-    }
+    pub const TOP: Self = ValueOrPlace::Value(V::TOP);
 }
 
 /// The set of projection elements that can be used by a tracked place.

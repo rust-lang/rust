@@ -4,7 +4,12 @@ error: struct `Foo` is never constructed
 LL | struct Foo;
    |        ^^^
    |
-   = note: `-D dead-code` implied by `-D unused`
+note: the lint level is defined here
+  --> $DIR/deny_lint.rs:LL:CC
+   |
+LL | #![deny(warnings, unused)]
+   |                   ^^^^^^
+   = note: `#[deny(dead_code)]` implied by `#[deny(unused)]`
 
 error: miri cannot be run on programs that fail compilation
 

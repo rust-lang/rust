@@ -150,6 +150,15 @@ pub(crate) enum ConstantItemKind {
     Static,
 }
 
+impl ConstantItemKind {
+    pub(crate) fn as_str(&self) -> &'static str {
+        match self {
+            Self::Const => "const",
+            Self::Static => "static",
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 enum RecordPartialRes {
     Yes,
@@ -1482,7 +1491,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             if let Some(&(_, res)) = rib.bindings.get(&normalized_ident) {
                 self.record_lifetime_res(lifetime.id, res, LifetimeElisionCandidate::Named);
 
-                if let LifetimeRes::Param { param, .. } = res {
+                if let LifetimeRes::Param { param, binder } = res {
                     match self.lifetime_uses.entry(param) {
                         Entry::Vacant(v) => {
                             debug!("First use of {:?} at {:?}", res, ident.span);
@@ -1496,10 +1505,16 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                                     LifetimeRibKind::Item
                                     | LifetimeRibKind::AnonymousReportError
                                     | LifetimeRibKind::ElisionFailure => Some(LifetimeUseSet::Many),
-                                    // An anonymous lifetime is legal here, go ahead.
-                                    LifetimeRibKind::AnonymousCreateParameter { .. } => {
-                                        Some(LifetimeUseSet::One { use_span: ident.span, use_ctxt })
-                                    }
+                                    // An anonymous lifetime is legal here, and bound to the right
+                                    // place, go ahead.
+                                    LifetimeRibKind::AnonymousCreateParameter {
+                                        binder: anon_binder,
+                                        ..
+                                    } => Some(if binder == anon_binder {
+                                        LifetimeUseSet::One { use_span: ident.span, use_ctxt }
+                                    } else {
+                                        LifetimeUseSet::Many
+                                    }),
                                     // Only report if eliding the lifetime would have the same
                                     // semantics.
                                     LifetimeRibKind::Elided(r) => Some(if res == r {

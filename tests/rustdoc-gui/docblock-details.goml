@@ -9,7 +9,7 @@ reload:
 assert-text: (".top-doc .docblock > h3", "Hello")
 assert-css: (
     ".top-doc .docblock > h3",
-    {"border-bottom": "1px solid rgb(210, 210, 210)"},
+    {"border-bottom": "1px solid #d2d2d2"},
 )
 // We now check that the `<summary>` doesn't have a bottom border and has the correct display.
 assert-css: (

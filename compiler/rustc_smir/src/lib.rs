@@ -11,6 +11,8 @@
     test(attr(allow(unused_variables), deny(warnings)))
 )]
 #![cfg_attr(not(feature = "default"), feature(rustc_private))]
+#![feature(local_key_cell_methods)]
+#![feature(ptr_metadata)]
 
 pub mod rustc_internal;
 pub mod stable_mir;
