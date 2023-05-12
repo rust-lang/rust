@@ -15,7 +15,8 @@
     </h2>
     {{ self.document_non_exhaustive() | safe }}
     {% for (index, (field, ty)) in self.fields().enumerate() %}
-        {{ self.render_field(index, field, ty) | safe }}
+        {{ self.render_field_in_span(index, field, ty) | safe }}
+        {{ self.document_field(field) | safe }}
     {% endfor %}
 {% endif %}
 {{ self.render_assoc_items() | safe }}

@@ -1873,7 +1873,7 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
             document_non_exhaustive(self.it)
         }
 
-        fn render_field<'b>(
+        fn render_field_in_span<'b>(
             &'b self,
             index: &'b usize,
             field: &'b clean::Item,
@@ -1884,16 +1884,24 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
                 let field_name =
                     field.name.map_or_else(|| index.to_string(), |sym| sym.as_str().to_string());
                 let id = cx.derive_id(format!("{}.{}", ItemType::StructField, field_name));
+                let ty = ty.print(*cx);
                 write!(
                     f,
                     "<span id=\"{id}\" class=\"{item_type} small-section-header\">\
                         <a href=\"#{id}\" class=\"anchor field\">§</a>\
                         <code>{field_name}: {ty}</code>\
                     </span>",
-                    ty = ty.print(*cx),
                     item_type = ItemType::StructField,
-                )?;
+                )
+            })
+        }
 
+        fn document_field<'b>(
+            &'b self,
+            field: &'b clean::Item,
+        ) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
+            display_fn(move |f| {
+                let mut cx = self.cx.borrow_mut();
                 let v = document(*cx, field, Some(self.it), HeadingOffset::H3);
                 write!(f, "{v}")
             })
