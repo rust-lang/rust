@@ -19,7 +19,10 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
         }
 
         // Used by `_mm_movemask_epi8` and `_mm256_movemask_epi8`
-        "llvm.x86.sse2.pmovmskb.128" | "llvm.x86.avx2.pmovmskb" | "llvm.x86.sse2.movmsk.pd" => {
+        "llvm.x86.sse2.pmovmskb.128"
+        | "llvm.x86.avx2.pmovmskb"
+        | "llvm.x86.sse.movmsk.ps"
+        | "llvm.x86.sse2.movmsk.pd" => {
             intrinsic_args!(fx, args => (a); intrinsic);
 
             let (lane_count, lane_ty) = a.layout().ty.simd_size_and_type(fx.tcx);
