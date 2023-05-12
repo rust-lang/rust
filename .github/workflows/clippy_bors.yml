@@ -27,7 +27,7 @@ jobs:
         github_token: "${{ secrets.github_token }}"
 
     - name: Checkout
-      uses: actions/checkout@v3.0.2
+      uses: actions/checkout@v3
       with:
         ref: ${{ github.ref }}
 
@@ -83,7 +83,7 @@ jobs:
         github_token: "${{ secrets.github_token }}"
 
     - name: Checkout
-      uses: actions/checkout@v3.0.2
+      uses: actions/checkout@v3
 
     - name: Install toolchain
       run: rustup show active-toolchain
@@ -149,7 +149,7 @@ jobs:
         github_token: "${{ secrets.github_token }}"
 
     - name: Checkout
-      uses: actions/checkout@v3.0.2
+      uses: actions/checkout@v3
 
     - name: Install toolchain
       run: rustup show active-toolchain
@@ -173,7 +173,7 @@ jobs:
         github_token: "${{ secrets.github_token }}"
 
     - name: Checkout
-      uses: actions/checkout@v3.0.2
+      uses: actions/checkout@v3
 
     - name: Install toolchain
       run: rustup show active-toolchain
@@ -233,7 +233,7 @@ jobs:
         github_token: "${{ secrets.github_token }}"
 
     - name: Checkout
-      uses: actions/checkout@v3.0.2
+      uses: actions/checkout@v3
 
     - name: Install toolchain
       run: rustup show active-toolchain

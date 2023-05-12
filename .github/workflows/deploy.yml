@@ -21,10 +21,10 @@ jobs:
     steps:
     # Setup
     - name: Checkout
-      uses: actions/checkout@v3.0.2
+      uses: actions/checkout@v3
 
     - name: Checkout
-      uses: actions/checkout@v3.0.2
+      uses: actions/checkout@v3
       with:
         ref: ${{ env.TARGET_BRANCH }}
         path: 'out'
