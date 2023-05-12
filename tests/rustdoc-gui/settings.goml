@@ -10,7 +10,7 @@ wait-for: "#settings"
 assert-css: ("#settings", {"display": "block"})
 
 // Store the line margin to compare with the settings.html later.
-store-css: (setting_line_margin, ".setting-line", "margin")
+store-css: (".setting-line", {"margin": setting_line_margin})
 
 // Let's close it by clicking on the same button.
 click: "#settings-menu"
