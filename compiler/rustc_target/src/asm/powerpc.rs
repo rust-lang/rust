@@ -8,7 +8,7 @@ def_reg_class! {
         reg,
         reg_nonzero,
         freg,
-		vreg,
+        vreg,
         cr,
         xer,
     }
@@ -48,7 +48,7 @@ impl PowerPCInlineAsmRegClass {
                 }
             }
             Self::freg => types! { _: F32, F64; },
-			Self::vreg => todo!(),//not quite sure :)
+            Self::vreg => todo!(), //not quite sure :)
             Self::cr | Self::xer => &[],
         }
     }
