@@ -85,7 +85,9 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let ssa = SsaLocals::new(body);
 
     let mut replacer = compute_replacement(tcx, body, &ssa);
-    debug!(?replacer.targets, ?replacer.allowed_replacements, ?replacer.storage_to_remove);
+    debug!(?replacer.targets);
+    debug!(?replacer.allowed_replacements);
+    debug!(?replacer.storage_to_remove);
 
     replacer.visit_body_preserves_cfg(body);
 
@@ -190,8 +192,11 @@ fn compute_replacement<'tcx>(
             continue;
         }
 
+        // Whether the current local is subject to the uniqueness rule.
+        let needs_unique = ty.is_mutable_ptr();
+
         // If this a mutable reference that we cannot fully replace, mark it as unknown.
-        if ty.is_mutable_ptr() && !fully_replacable_locals.contains(local) {
+        if needs_unique && !fully_replacable_locals.contains(local) {
             debug!("not fully replaceable");
             continue;
         }
@@ -203,13 +208,14 @@ fn compute_replacement<'tcx>(
             // have been visited before.
             Rvalue::Use(Operand::Copy(place) | Operand::Move(place))
             | Rvalue::CopyForDeref(place) => {
-                if let Some(rhs) = place.as_local() {
+                if let Some(rhs) = place.as_local() && ssa.is_ssa(rhs) {
                     let target = targets[rhs];
-                    if matches!(target, Value::Pointer(..)) {
+                    // Only see through immutable reference and pointers, as we do not know yet if
+                    // mutable references are fully replaced.
+                    if !needs_unique && matches!(target, Value::Pointer(..)) {
                         targets[local] = target;
-                    } else if ssa.is_ssa(rhs) {
-                        let refmut = body.local_decls[rhs].ty.is_mutable_ptr();
-                        targets[local] = Value::Pointer(tcx.mk_place_deref(rhs.into()), refmut);
+                    } else {
+                        targets[local] = Value::Pointer(tcx.mk_place_deref(rhs.into()), needs_unique);
                     }
                 }
             }
@@ -217,10 +223,10 @@ fn compute_replacement<'tcx>(
                 let mut place = *place;
                 // Try to see through `place` in order to collapse reborrow chains.
                 if place.projection.first() == Some(&PlaceElem::Deref)
-                    && let Value::Pointer(target, refmut) = targets[place.local]
+                    && let Value::Pointer(target, inner_needs_unique) = targets[place.local]
                     // Only see through immutable reference and pointers, as we do not know yet if
                     // mutable references are fully replaced.
-                    && !refmut
+                    && !inner_needs_unique
                     // Only collapse chain if the pointee is definitely live.
                     && can_perform_opt(target, location)
                 {
@@ -228,7 +234,7 @@ fn compute_replacement<'tcx>(
                 }
                 assert_ne!(place.local, local);
                 if is_constant_place(place) {
-                    targets[local] = Value::Pointer(place, ty.is_mutable_ptr());
+                    targets[local] = Value::Pointer(place, needs_unique);
                 }
             }
             // We do not know what to do, so keep as not-a-pointer.
@@ -276,16 +282,35 @@ fn compute_replacement<'tcx>(
                 return;
             }
 
-            if let Value::Pointer(target, refmut) = self.targets[place.local]
-                && place.projection.first() == Some(&PlaceElem::Deref)
-            {
-                let perform_opt = (self.can_perform_opt)(target, loc);
-                if perform_opt {
-                    self.allowed_replacements.insert((target.local, loc));
-                } else if refmut {
-                    // This mutable reference is not fully replacable, so drop it.
-                    self.targets[place.local] = Value::Unknown;
+            if place.projection.first() != Some(&PlaceElem::Deref) {
+                // This is not a dereference, nothing to do.
+                return;
+            }
+
+            let mut place = place.as_ref();
+            loop {
+                if let Value::Pointer(target, needs_unique) = self.targets[place.local] {
+                    let perform_opt = (self.can_perform_opt)(target, loc);
+                    debug!(?place, ?target, ?needs_unique, ?perform_opt);
+
+                    // This a reborrow chain, recursively allow the replacement.
+                    //
+                    // This also allows to detect cases where `target.local` is not replacable,
+                    // and mark it as such.
+                    if let &[PlaceElem::Deref] = &target.projection[..] {
+                        assert!(perform_opt);
+                        self.allowed_replacements.insert((target.local, loc));
+                        place.local = target.local;
+                        continue;
+                    } else if perform_opt {
+                        self.allowed_replacements.insert((target.local, loc));
+                    } else if needs_unique {
+                        // This mutable reference is not fully replacable, so drop it.
+                        self.targets[place.local] = Value::Unknown;
+                    }
                 }
+
+                break;
             }
         }
     }
@@ -326,18 +351,23 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
     }
 
     fn visit_place(&mut self, place: &mut Place<'tcx>, ctxt: PlaceContext, loc: Location) {
-        if let Value::Pointer(target, _) = self.targets[place.local]
-            && place.projection.first() == Some(&PlaceElem::Deref)
-        {
-            let perform_opt = matches!(ctxt, PlaceContext::NonUse(_))
-                || self.allowed_replacements.contains(&(target.local, loc));
+        if place.projection.first() != Some(&PlaceElem::Deref) {
+            return;
+        }
 
-            if perform_opt {
-                *place = target.project_deeper(&place.projection[1..], self.tcx);
-                self.any_replacement = true;
+        loop {
+            if let Value::Pointer(target, _) = self.targets[place.local] {
+                let perform_opt = matches!(ctxt, PlaceContext::NonUse(_))
+                    || self.allowed_replacements.contains(&(target.local, loc));
+
+                if perform_opt {
+                    *place = target.project_deeper(&place.projection[1..], self.tcx);
+                    self.any_replacement = true;
+                    continue;
+                }
             }
-        } else {
-            self.super_place(place, ctxt, loc);
+
+            break;
         }
     }
 
