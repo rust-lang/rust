@@ -29,25 +29,14 @@ impl DeduceReadOnly {
 }
 
 impl<'tcx> Visitor<'tcx> for DeduceReadOnly {
-    fn visit_local(&mut self, local: Local, mut context: PlaceContext, _: Location) {
+    fn visit_local(&mut self, local: Local, context: PlaceContext, _location: Location) {
         // We're only interested in arguments.
         if local == RETURN_PLACE || local.index() > self.mutable_args.domain_size() {
             return;
         }
 
-        // Replace place contexts that are moves with copies. This is safe in all cases except
-        // function argument position, which we already handled in `visit_terminator()` by using the
-        // ArgumentChecker. See the comment in that method for more details.
-        //
-        // In the future, we might want to move this out into a separate pass, but for now let's
-        // just do it on the fly because that's faster.
-        if matches!(context, PlaceContext::NonMutatingUse(NonMutatingUseContext::Move)) {
-            context = PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy);
-        }
-
         match context {
-            PlaceContext::MutatingUse(..)
-            | PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) => {
+            PlaceContext::MutatingUse(..) => {
                 // This is a mutation, so mark it as such.
                 self.mutable_args.insert(local.index() - 1);
             }
