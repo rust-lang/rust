@@ -1,8 +1,12 @@
 use rustc_hir::{Arm, Expr, ExprKind, Node};
+use rustc_middle::ty;
 use rustc_span::sym;
 
 use crate::{
-    lints::{DropCopyDiag, DropRefDiag, ForgetCopyDiag, ForgetRefDiag},
+    lints::{
+        DropCopyDiag, DropRefDiag, ForgetCopyDiag, ForgetRefDiag, UndroppedManuallyDropsDiag,
+        UndroppedManuallyDropsSuggestion,
+    },
     LateContext, LateLintPass, LintContext,
 };
 
@@ -109,7 +113,29 @@ declare_lint! {
     "calls to `std::mem::forget` with a value that implements Copy"
 }
 
-declare_lint_pass!(DropForgetUseless => [DROPPING_REFERENCES, FORGETTING_REFERENCES, DROPPING_COPY_TYPES, FORGETTING_COPY_TYPES]);
+declare_lint! {
+    /// The `undropped_manually_drops` lint check for calls to `std::mem::drop` with
+    /// a value of `std::mem::ManuallyDrop` which doesn't drop.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// struct S;
+    /// drop(std::mem::ManuallyDrop::new(S));
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// `ManuallyDrop` does not drop it's inner value so calling `std::mem::drop` will
+    /// not drop the inner value of the `ManuallyDrop` either.
+    pub UNDROPPED_MANUALLY_DROPS,
+    Deny,
+    "calls to `std::mem::drop` with `std::mem::ManuallyDrop` instead of it's inner value"
+}
+
+declare_lint_pass!(DropForgetUseless => [DROPPING_REFERENCES, FORGETTING_REFERENCES, DROPPING_COPY_TYPES, FORGETTING_COPY_TYPES, UNDROPPED_MANUALLY_DROPS]);
 
 impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
@@ -133,6 +159,20 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
                 }
                 sym::mem_forget if is_copy => {
                     cx.emit_spanned_lint(FORGETTING_COPY_TYPES, expr.span, ForgetCopyDiag { arg_ty, label: arg.span });
+                }
+                sym::mem_drop if let ty::Adt(adt, _) = arg_ty.kind() && adt.is_manually_drop() => {
+                    cx.emit_spanned_lint(
+                        UNDROPPED_MANUALLY_DROPS,
+                        expr.span,
+                        UndroppedManuallyDropsDiag {
+                            arg_ty,
+                            label: arg.span,
+                            suggestion: UndroppedManuallyDropsSuggestion {
+                                start_span: arg.span.shrink_to_lo(),
+                                end_span: arg.span.shrink_to_hi()
+                            }
+                        }
+                    );
                 }
                 _ => return,
             };
