@@ -207,6 +207,7 @@ fn declare_unused_fn<'tcx>(cx: &CodegenCx<'_, 'tcx>, def_id: DefId) -> Instance<
             )),
             ty::List::empty(),
         ),
+        None,
     );
 
     llvm::set_linkage(llfn, llvm::Linkage::PrivateLinkage);
