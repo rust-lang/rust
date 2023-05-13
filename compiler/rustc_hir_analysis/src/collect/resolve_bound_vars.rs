@@ -526,7 +526,8 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 });
             }
             hir::ItemKind::OpaqueTy(hir::OpaqueTy {
-                origin: hir::OpaqueTyOrigin::TyAlias, ..
+                origin: hir::OpaqueTyOrigin::TyAlias { .. },
+                ..
             }) => {
                 // Opaque types are visited when we visit the
                 // `TyKind::OpaqueDef`, so that they have the lifetimes from
@@ -707,7 +708,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 let opaque_ty = self.tcx.hir().item(item_id);
                 match &opaque_ty.kind {
                     hir::ItemKind::OpaqueTy(hir::OpaqueTy {
-                        origin: hir::OpaqueTyOrigin::TyAlias,
+                        origin: hir::OpaqueTyOrigin::TyAlias { .. },
                         ..
                     }) => {
                         intravisit::walk_ty(self, ty);

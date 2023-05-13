@@ -265,7 +265,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
 
         // Only check this for TAIT. RPIT already supports `tests/ui/impl-trait/nested-return-type2.rs`
         // on stable and we'd break that.
-        let OpaqueTyOrigin::TyAlias = origin else {
+        let OpaqueTyOrigin::TyAlias { .. } = origin else {
             return definition_ty;
         };
         let def_id = opaque_type_key.def_id;
@@ -360,7 +360,7 @@ fn check_opaque_type_parameter_valid(
         // which would error here on all of the `'static` args.
         OpaqueTyOrigin::FnReturn(..) | OpaqueTyOrigin::AsyncFn(..) => return Ok(()),
         // Check these
-        OpaqueTyOrigin::TyAlias => {}
+        OpaqueTyOrigin::TyAlias { .. } => {}
     }
     let opaque_generics = tcx.generics_of(opaque_type_key.def_id);
     let mut seen_params: FxIndexMap<_, Vec<_>> = FxIndexMap::default();

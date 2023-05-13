@@ -305,7 +305,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             );
                             this.arena.alloc(this.ty(span, hir::TyKind::Err(guar)))
                         }
-                        Some(ty) => this.lower_ty(ty, &ImplTraitContext::TypeAliasesOpaqueTy),
+                        Some(ty) => this.lower_ty(
+                            ty,
+                            &ImplTraitContext::TypeAliasesOpaqueTy { in_assoc_ty: false },
+                        ),
                     },
                 );
                 hir::ItemKind::TyAlias(ty, generics)
@@ -852,7 +855,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             hir::ImplItemKind::Type(ty)
                         }
                         Some(ty) => {
-                            let ty = this.lower_ty(ty, &ImplTraitContext::TypeAliasesOpaqueTy);
+                            let ty = this.lower_ty(
+                                ty,
+                                &ImplTraitContext::TypeAliasesOpaqueTy { in_assoc_ty: true },
+                            );
                             hir::ImplItemKind::Type(ty)
                         }
                     },
