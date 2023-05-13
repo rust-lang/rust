@@ -212,7 +212,6 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::instant_subtraction::UNCHECKED_DURATION_SUBTRACTION_INFO,
     crate::int_plus_one::INT_PLUS_ONE_INFO,
     crate::invalid_upcast_comparisons::INVALID_UPCAST_COMPARISONS_INFO,
-    crate::invalid_utf8_in_unchecked::INVALID_UTF8_IN_UNCHECKED_INFO,
     crate::items_after_statements::ITEMS_AFTER_STATEMENTS_INFO,
     crate::items_after_test_module::ITEMS_AFTER_TEST_MODULE_INFO,
     crate::iter_not_returning_iterator::ITER_NOT_RETURNING_ITERATOR_INFO,
