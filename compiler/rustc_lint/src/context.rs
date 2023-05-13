@@ -49,9 +49,9 @@ use std::cell::Cell;
 use std::iter;
 use std::slice;
 
-type EarlyLintPassFactory = dyn Fn() -> EarlyLintPassObject + sync::Send + sync::Sync;
+type EarlyLintPassFactory = dyn Fn() -> EarlyLintPassObject + sync::DynSend + sync::DynSync;
 type LateLintPassFactory =
-    dyn for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx> + sync::Send + sync::Sync;
+    dyn for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx> + sync::DynSend + sync::DynSync;
 
 /// Information about the registered lints.
 ///
@@ -169,7 +169,7 @@ impl LintStore {
 
     pub fn register_early_pass(
         &mut self,
-        pass: impl Fn() -> EarlyLintPassObject + 'static + sync::Send + sync::Sync,
+        pass: impl Fn() -> EarlyLintPassObject + 'static + sync::DynSend + sync::DynSync,
     ) {
         self.early_passes.push(Box::new(pass));
     }
@@ -182,7 +182,7 @@ impl LintStore {
     /// * See [rust-clippy#5518](https://github.com/rust-lang/rust-clippy/pull/5518)
     pub fn register_pre_expansion_pass(
         &mut self,
-        pass: impl Fn() -> EarlyLintPassObject + 'static + sync::Send + sync::Sync,
+        pass: impl Fn() -> EarlyLintPassObject + 'static + sync::DynSend + sync::DynSync,
     ) {
         self.pre_expansion_passes.push(Box::new(pass));
     }
@@ -191,8 +191,8 @@ impl LintStore {
         &mut self,
         pass: impl for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx>
         + 'static
-        + sync::Send
-        + sync::Sync,
+        + sync::DynSend
+        + sync::DynSync,
     ) {
         self.late_passes.push(Box::new(pass));
     }
@@ -201,8 +201,8 @@ impl LintStore {
         &mut self,
         pass: impl for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx>
         + 'static
-        + sync::Send
-        + sync::Sync,
+        + sync::DynSend
+        + sync::DynSync,
     ) {
         self.late_module_passes.push(Box::new(pass));
     }

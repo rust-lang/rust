@@ -22,6 +22,7 @@ use rustc_target::spec::Target;
 
 pub use rustc_data_structures::sync::MetadataRef;
 
+use rustc_data_structures::sync::{DynSend, DynSync};
 use std::any::Any;
 
 pub trait BackendTypes {
@@ -117,7 +118,9 @@ pub trait CodegenBackend {
     ) -> Result<(), ErrorGuaranteed>;
 }
 
-pub trait ExtraBackendMethods: CodegenBackend + WriteBackendMethods + Sized + Send + Sync {
+pub trait ExtraBackendMethods:
+    CodegenBackend + WriteBackendMethods + Sized + Send + Sync + DynSend + DynSync
+{
     fn codegen_allocator<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
