@@ -4,6 +4,7 @@
 
 use std::intrinsics::mir::*;
 
+#[derive(Copy, Clone)]
 enum E {
     V1(i32),
     V2(i32)
@@ -19,6 +20,17 @@ fn simple() {
 fn constant() {
     const C: E = E::V1(0);
     let e = C;
+    let x = match e { E::V1(x) => x, E::V2(x) => x };
+}
+
+// EMIT_MIR enum.statics.DataflowConstProp.diff
+fn statics() {
+    static C: E = E::V1(0);
+    let e = C;
+    let x = match e { E::V1(x) => x, E::V2(x) => x };
+
+    static RC: &E = &E::V2(4);
+    let e = RC;
     let x = match e { E::V1(x) => x, E::V2(x) => x };
 }
 
@@ -71,6 +83,7 @@ fn multiple(x: bool, i: u8) {
 fn main() {
     simple();
     constant();
+    statics();
     mutate_discriminant();
     multiple(false, 5);
 }

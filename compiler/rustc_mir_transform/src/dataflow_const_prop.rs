@@ -6,7 +6,7 @@ use rustc_const_eval::const_eval::CheckAlignment;
 use rustc_const_eval::interpret::{ImmTy, Immediate, InterpCx, OpTy, Projectable};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
-use rustc_middle::mir::interpret::{ConstValue, Scalar};
+use rustc_middle::mir::interpret::{AllocId, ConstAllocation, ConstValue, InterpResult, Scalar};
 use rustc_middle::mir::visit::{MutVisitor, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::TyAndLayout;
@@ -15,6 +15,7 @@ use rustc_mir_dataflow::value_analysis::{
     Map, PlaceIndex, State, TrackElem, ValueAnalysis, ValueAnalysisWrapper, ValueOrPlace,
 };
 use rustc_mir_dataflow::{lattice::FlatSet, Analysis, Results, ResultsVisitor};
+use rustc_span::def_id::DefId;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{Align, FieldIdx, VariantIdx};
 
@@ -78,7 +79,7 @@ struct ConstAnalysis<'a, 'tcx> {
 }
 
 impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
-    type Value = FlatSet<ScalarInt>;
+    type Value = FlatSet<Scalar>;
 
     const NAME: &'static str = "ConstAnalysis";
 
@@ -182,7 +183,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                     if let Some(overflow_target) = overflow_target {
                         let overflow = match overflow {
                             FlatSet::Top => FlatSet::Top,
-                            FlatSet::Elem(overflow) => FlatSet::Elem(overflow.into()),
+                            FlatSet::Elem(overflow) => FlatSet::Elem(Scalar::from_bool(overflow)),
                             FlatSet::Bottom => FlatSet::Bottom,
                         };
                         // We have flooded `target` earlier.
@@ -204,7 +205,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                     && let ty::Array(_, len) = operand_ty.ty.kind()
                     && let Some(len) = ConstantKind::Ty(*len).eval(self.tcx, self.param_env).try_to_scalar_int()
                 {
-                    state.insert_value_idx(target_len, FlatSet::Elem(len), self.map());
+                    state.insert_value_idx(target_len, FlatSet::Elem(len.into()), self.map());
                 }
             }
             _ => self.super_assign(target, rvalue, state),
@@ -222,7 +223,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                 if let ty::Array(_, len) = place_ty.ty.kind() {
                     ConstantKind::Ty(*len)
                         .eval(self.tcx, self.param_env)
-                        .try_to_scalar_int()
+                        .try_to_scalar()
                         .map_or(FlatSet::Top, FlatSet::Elem)
                 } else if let [ProjectionElem::Deref] = place.projection[..] {
                     state.get_len(place.local.into(), self.map())
@@ -281,7 +282,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                         .bytes(),
                     _ => return ValueOrPlace::Value(FlatSet::Top),
                 };
-                ScalarInt::try_from_target_usize(val, self.tcx).map_or(FlatSet::Top, FlatSet::Elem)
+                FlatSet::Elem(Scalar::from_target_usize(val, &self.tcx))
             }
             Rvalue::Discriminant(place) => state.get_discr(place.as_ref(), self.map()),
             _ => return self.super_rvalue(rvalue, state),
@@ -297,7 +298,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
         constant
             .literal
             .eval(self.tcx, self.param_env)
-            .try_to_scalar_int()
+            .try_to_scalar()
             .map_or(FlatSet::Top, FlatSet::Elem)
     }
 
@@ -339,14 +340,21 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
     /// The caller must have flooded `place`.
     fn assign_operand(
         &self,
-        state: &mut State<FlatSet<ScalarInt>>,
+        state: &mut State<FlatSet<Scalar>>,
         place: PlaceIndex,
         operand: &Operand<'tcx>,
     ) {
         match operand {
             Operand::Copy(rhs) | Operand::Move(rhs) => {
                 if let Some(rhs) = self.map.find(rhs.as_ref()) {
-                    state.insert_place_idx(place, rhs, &self.map)
+                    state.insert_place_idx(place, rhs, &self.map);
+                } else if rhs.projection.first() == Some(&PlaceElem::Deref)
+                    && let FlatSet::Elem(pointer) = state.get(rhs.local.into(), &self.map)
+                    && let rhs_ty = self.local_decls[rhs.local].ty
+                    && let Ok(rhs_layout) = self.tcx.layout_of(self.param_env.and(rhs_ty))
+                {
+                    let op = ImmTy::from_scalar(pointer, rhs_layout).into();
+                    self.assign_constant(state, place, op, &rhs.projection);
                 }
             }
             Operand::Constant(box constant) => {
@@ -363,7 +371,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
     #[instrument(level = "trace", skip(self, state))]
     fn assign_constant(
         &self,
-        state: &mut State<FlatSet<ScalarInt>>,
+        state: &mut State<FlatSet<Scalar>>,
         place: PlaceIndex,
         mut operand: OpTy<'tcx>,
         projection: &[PlaceElem<'tcx>],
@@ -371,7 +379,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
         for &(mut proj_elem) in projection {
             if let PlaceElem::Index(index) = proj_elem {
                 if let FlatSet::Elem(index) = state.get(index.into(), &self.map)
-                    && let Ok(offset) = index.try_to_target_usize(self.tcx)
+                    && let Ok(offset) = index.to_target_usize(&self.tcx)
                     && let Some(min_length) = offset.checked_add(1)
                 {
                     proj_elem = PlaceElem::ConstantIndex { offset, min_length, from_end: false };
@@ -406,7 +414,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             &mut |place, op| {
                 if let Ok(imm) = self.ecx.read_immediate_raw(op)
                     && let Some(imm) = imm.right()
-                    && let Immediate::Scalar(Scalar::Int(scalar)) = *imm
+                    && let Immediate::Scalar(scalar) = *imm
                 {
                     state.insert_value_idx(place, FlatSet::Elem(scalar), &self.map);
                 }
@@ -418,11 +426,11 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
 
     fn binary_op(
         &self,
-        state: &mut State<FlatSet<ScalarInt>>,
+        state: &mut State<FlatSet<Scalar>>,
         op: BinOp,
         left: &Operand<'tcx>,
         right: &Operand<'tcx>,
-    ) -> (FlatSet<ScalarInt>, FlatSet<bool>) {
+    ) -> (FlatSet<Scalar>, FlatSet<bool>) {
         let left = self.eval_operand(left, state);
         let right = self.eval_operand(right, state);
 
@@ -431,9 +439,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             // Both sides are known, do the actual computation.
             (FlatSet::Elem(left), FlatSet::Elem(right)) => {
                 match self.ecx.overflowing_binary_op(op, &left, &right) {
-                    Ok((Scalar::Int(val), overflow, _)) => {
-                        (FlatSet::Elem(val), FlatSet::Elem(overflow))
-                    }
+                    Ok((val, overflow, _)) => (FlatSet::Elem(val), FlatSet::Elem(overflow)),
                     _ => (FlatSet::Top, FlatSet::Top),
                 }
             }
@@ -445,9 +451,6 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 }
 
                 let arg_scalar = const_arg.to_scalar();
-                let Ok(arg_scalar) = arg_scalar.try_to_int() else {
-                    return (FlatSet::Top, FlatSet::Top);
-                };
                 let Ok(arg_value) = arg_scalar.to_bits(layout.size) else {
                     return (FlatSet::Top, FlatSet::Top);
                 };
@@ -473,7 +476,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
     fn eval_operand(
         &self,
         op: &Operand<'tcx>,
-        state: &mut State<FlatSet<ScalarInt>>,
+        state: &mut State<FlatSet<Scalar>>,
     ) -> FlatSet<ImmTy<'tcx>> {
         let value = match self.handle_operand(op, state) {
             ValueOrPlace::Value(value) => value,
@@ -492,24 +495,24 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
         }
     }
 
-    fn eval_discriminant(&self, enum_ty: Ty<'tcx>, variant_index: VariantIdx) -> Option<ScalarInt> {
+    fn eval_discriminant(&self, enum_ty: Ty<'tcx>, variant_index: VariantIdx) -> Option<Scalar> {
         if !enum_ty.is_enum() {
             return None;
         }
         let discr = enum_ty.discriminant_for_variant(self.tcx, variant_index)?;
         let discr_layout = self.tcx.layout_of(self.param_env.and(discr.ty)).ok()?;
-        let discr_value = ScalarInt::try_from_uint(discr.val, discr_layout.size)?;
+        let discr_value = Scalar::try_from_uint(discr.val, discr_layout.size)?;
         Some(discr_value)
     }
 
-    fn wrap_immediate(&self, imm: Immediate) -> FlatSet<ScalarInt> {
+    fn wrap_immediate(&self, imm: Immediate) -> FlatSet<Scalar> {
         match imm {
-            Immediate::Scalar(Scalar::Int(scalar)) => FlatSet::Elem(scalar),
+            Immediate::Scalar(scalar) => FlatSet::Elem(scalar),
             _ => FlatSet::Top,
         }
     }
 
-    fn wrap_immty(&self, val: ImmTy<'tcx>) -> FlatSet<ScalarInt> {
+    fn wrap_immty(&self, val: ImmTy<'tcx>) -> FlatSet<Scalar> {
         self.wrap_immediate(*val)
     }
 }
@@ -550,7 +553,7 @@ impl<'mir, 'tcx>
     ResultsVisitor<'mir, 'tcx, Results<'tcx, ValueAnalysisWrapper<ConstAnalysis<'_, 'tcx>>>>
     for CollectAndPatch<'tcx, '_>
 {
-    type FlowState = State<FlatSet<ScalarInt>>;
+    type FlowState = State<FlatSet<Scalar>>;
 
     fn visit_statement_before_primary_effect(
         &mut self,
@@ -580,14 +583,10 @@ impl<'mir, 'tcx>
                 // Don't overwrite the assignment if it already uses a constant (to keep the span).
             }
             StatementKind::Assign(box (place, _)) => {
-                match state.get(place.as_ref(), &results.analysis.0.map) {
-                    FlatSet::Top => (),
-                    FlatSet::Elem(value) => {
-                        self.assignments.insert(location, value);
-                    }
-                    FlatSet::Bottom => {
-                        // This assignment is either unreachable, or an uninitialized value is assigned.
-                    }
+                if let FlatSet::Elem(Scalar::Int(value)) =
+                    state.get(place.as_ref(), &results.analysis.0.map)
+                {
+                    self.assignments.insert(location, value);
                 }
             }
             _ => (),
@@ -657,7 +656,7 @@ impl<'tcx> MutVisitor<'tcx> for CollectAndPatch<'tcx, '_> {
 }
 
 struct OperandCollector<'tcx, 'map, 'locals, 'a> {
-    state: &'a State<FlatSet<ScalarInt>>,
+    state: &'a State<FlatSet<Scalar>>,
     visitor: &'a mut CollectAndPatch<'tcx, 'locals>,
     map: &'map Map,
 }
@@ -665,7 +664,7 @@ struct OperandCollector<'tcx, 'map, 'locals, 'a> {
 impl<'tcx> Visitor<'tcx> for OperandCollector<'tcx, '_, '_, '_> {
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
         if let Some(place) = operand.place() {
-            if let FlatSet::Elem(value) = self.state.get(place.as_ref(), self.map) {
+            if let FlatSet::Elem(Scalar::Int(value)) = self.state.get(place.as_ref(), self.map) {
                 self.visitor.before_effect.insert((location, place), value);
             } else if !place.projection.is_empty() {
                 // Try to propagate into `Index` projections.
@@ -676,7 +675,7 @@ impl<'tcx> Visitor<'tcx> for OperandCollector<'tcx, '_, '_, '_> {
 
     fn visit_local(&mut self, local: Local, ctxt: PlaceContext, location: Location) {
         if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy | NonMutatingUseContext::Move) = ctxt
-            && let FlatSet::Elem(value) = self.state.get(local.into(), self.map)
+            && let FlatSet::Elem(Scalar::Int(value)) = self.state.get(local.into(), self.map)
         {
             self.visitor.before_effect.insert((location, local.into()), value);
         }
@@ -684,6 +683,34 @@ impl<'tcx> Visitor<'tcx> for OperandCollector<'tcx, '_, '_, '_> {
 }
 
 struct DummyMachine;
+
+/// Macro for machine-specific `InterpError` without allocation.
+/// (These will never be shown to the user, but they help diagnose ICEs.)
+macro_rules! throw_machine_stop_str {
+    ($($tt:tt)*) => {{
+        // We make a new local type for it. The type itself does not carry any information,
+        // but its vtable (for the `MachineStopType` trait) does.
+        #[derive(Debug)]
+        struct Zst;
+        // Printing this type shows the desired string.
+        impl std::fmt::Display for Zst {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, $($tt)*)
+            }
+        }
+        impl rustc_middle::mir::interpret::MachineStopType for Zst {
+            fn diagnostic_message(&self) -> rustc_errors::DiagnosticMessage {
+                self.to_string().into()
+            }
+
+            fn add_args(
+                self: Box<Self>,
+                _: &mut dyn FnMut(std::borrow::Cow<'static, str>, rustc_errors::DiagnosticArgValue<'static>),
+            ) {}
+        }
+        throw_machine_stop!(Zst)
+    }};
+}
 
 impl<'mir, 'tcx: 'mir> rustc_const_eval::interpret::Machine<'mir, 'tcx> for DummyMachine {
     rustc_const_eval::interpret::compile_time_machine!(<'mir, 'tcx>);
@@ -712,6 +739,27 @@ impl<'mir, 'tcx: 'mir> rustc_const_eval::interpret::Machine<'mir, 'tcx> for Dumm
         _check: CheckAlignment,
     ) -> interpret::InterpResult<'tcx, ()> {
         unimplemented!()
+    }
+
+    fn before_access_global(
+        _tcx: TyCtxt<'tcx>,
+        _machine: &Self,
+        _alloc_id: AllocId,
+        alloc: ConstAllocation<'tcx>,
+        _static_def_id: Option<DefId>,
+        is_write: bool,
+    ) -> InterpResult<'tcx> {
+        if is_write {
+            throw_machine_stop_str!("can't write to global");
+        }
+
+        // If the static allocation is mutable, then we can't const prop it as its content
+        // might be different at runtime.
+        if alloc.inner().mutability.is_mut() {
+            throw_machine_stop_str!("can't access mutable globals in ConstProp");
+        }
+
+        Ok(())
     }
 
     fn find_mir_or_eval_fn(

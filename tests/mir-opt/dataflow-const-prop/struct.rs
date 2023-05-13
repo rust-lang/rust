@@ -1,7 +1,9 @@
 // unit-test: DataflowConstProp
 
+#[derive(Copy, Clone)]
 struct S(i32);
 
+#[derive(Copy, Clone)]
 struct BigStruct(S, u8, f32, S);
 
 // EMIT_MIR struct.main.DataflowConstProp.diff
@@ -13,4 +15,7 @@ fn main() {
 
     const VAL: BigStruct = BigStruct(S(1), 5, 7., S(13));
     let BigStruct(a, b, c, d) = VAL;
+
+    static STAT: &BigStruct = &BigStruct(S(1), 5, 7., S(13));
+    let BigStruct(a, b, c, d) = *STAT;
 }

@@ -8,6 +8,12 @@
       let mut _5: i32;
       let mut _6: i32;
       let mut _11: BigStruct;
+      let mut _16: &&BigStruct;
+      let mut _17: &BigStruct;
+      let mut _18: &BigStruct;
+      let mut _19: &BigStruct;
+      let mut _20: &BigStruct;
+      let mut _21: &BigStruct;
       scope 1 {
           debug s => _1;
           let _2: i32;
@@ -25,6 +31,16 @@
                       debug b => _8;
                       debug c => _9;
                       debug d => _10;
+                      let _12: S;
+                      let _13: u8;
+                      let _14: f32;
+                      let _15: S;
+                      scope 5 {
+                          debug a => _12;
+                          debug b => _13;
+                          debug c => _14;
+                          debug d => _15;
+                      }
                   }
               }
           }
@@ -55,7 +71,7 @@
           StorageLive(_11);
           _11 = const _;
           StorageLive(_7);
--         _7 = move (_11.0: S);
+-         _7 = (_11.0: S);
 +         _7 = const S(1_i32);
           StorageLive(_8);
 -         _8 = (_11.1: u8);
@@ -64,10 +80,30 @@
 -         _9 = (_11.2: f32);
 +         _9 = const 7f32;
           StorageLive(_10);
--         _10 = move (_11.3: S);
+-         _10 = (_11.3: S);
 +         _10 = const S(13_i32);
           StorageDead(_11);
+          StorageLive(_16);
+          _16 = const {alloc1: &&BigStruct};
+          _17 = deref_copy (*_16);
+          StorageLive(_12);
+          _18 = deref_copy (*_16);
+          _12 = ((*_18).0: S);
+          StorageLive(_13);
+          _19 = deref_copy (*_16);
+          _13 = ((*_19).1: u8);
+          StorageLive(_14);
+          _20 = deref_copy (*_16);
+          _14 = ((*_20).2: f32);
+          StorageLive(_15);
+          _21 = deref_copy (*_16);
+          _15 = ((*_21).3: S);
+          StorageDead(_16);
           _0 = const ();
+          StorageDead(_15);
+          StorageDead(_14);
+          StorageDead(_13);
+          StorageDead(_12);
           StorageDead(_10);
           StorageDead(_9);
           StorageDead(_8);
@@ -77,5 +113,13 @@
           StorageDead(_1);
           return;
       }
+  }
+  
+  alloc1 (static: STAT, size: 8, align: 8) {
+      ╾───────alloc15───────╼                         │ ╾──────╼
+  }
+  
+  alloc15 (size: 16, align: 4) {
+      01 00 00 00 00 00 e0 40 0d 00 00 00 05 __ __ __ │ .......@.....░░░
   }
   
