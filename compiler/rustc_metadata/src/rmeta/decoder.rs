@@ -1472,28 +1472,30 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     ..
                 } = source_file_to_import;
 
-                // If this file is under $sysroot/lib/rustlib/src/ but has not been remapped
-                // during rust bootstrapping by `remap-debuginfo = true`, and the user
-                // wish to simulate that behaviour by -Z simulate-remapped-rust-src-base,
+                // If this file is under $sysroot/lib/rustlib/src/
+                // and the user wish to simulate remapping with -Z simulate-remapped-rust-src-base,
                 // then we change `name` to a similar state as if the rust was bootstrapped
                 // with `remap-debuginfo = true`.
                 // This is useful for testing so that tests about the effects of
                 // `try_to_translate_virtual_to_real` don't have to worry about how the
                 // compiler is bootstrapped.
                 if let Some(virtual_dir) = &sess.opts.unstable_opts.simulate_remapped_rust_src_base
-                {
-                    if let Some(real_dir) = &sess.opts.real_rust_source_base_dir {
-                        for subdir in ["library", "compiler"] {
-                            if let rustc_span::FileName::Real(ref mut old_name) = name {
-                                if let rustc_span::RealFileName::LocalPath(local) = old_name {
-                                    if let Ok(rest) = local.strip_prefix(real_dir.join(subdir)) {
-                                        *old_name = rustc_span::RealFileName::Remapped {
-                                            local_path: None,
-                                            virtual_name: virtual_dir.join(subdir).join(rest),
-                                        };
-                                    }
-                                }
-                            }
+                && let Some(real_dir) = &sess.opts.real_rust_source_base_dir
+                && let rustc_span::FileName::Real(ref mut old_name) = name {
+                    let relative_path = match old_name {
+                        rustc_span::RealFileName::LocalPath(local) => local.strip_prefix(real_dir).ok(),
+                        rustc_span::RealFileName::Remapped { virtual_name, .. } => {
+                            option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR").and_then(|virtual_dir| virtual_name.strip_prefix(virtual_dir).ok())
+                        }
+                    };
+                    debug!(?relative_path, ?virtual_dir, "simulate_remapped_rust_src_base");
+                    for subdir in ["library", "compiler"] {
+                        if let Some(rest) = relative_path.and_then(|p| p.strip_prefix(subdir).ok()) {
+                            *old_name = rustc_span::RealFileName::Remapped {
+                                local_path: None, // FIXME: maybe we should preserve this?
+                                virtual_name: virtual_dir.join(subdir).join(rest),
+                            };
+                            break;
                         }
                     }
                 }
