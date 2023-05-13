@@ -196,7 +196,7 @@ impl GlobalState {
         let (change, changed_files) = {
             let mut change = Change::new();
             let (vfs, line_endings_map) = &mut *self.vfs.write();
-            let mut changed_files = vfs.take_changes();
+            let changed_files = vfs.take_changes();
             if changed_files.is_empty() {
                 return false;
             }
@@ -204,7 +204,7 @@ impl GlobalState {
             // We need to fix up the changed events a bit. If we have a create or modify for a file
             // id that is followed by a delete we actually skip observing the file text from the
             // earlier event, to avoid problems later on.
-            for changed_file in &changed_files {
+            for changed_file in changed_files {
                 use vfs::ChangeKind::*;
 
                 file_changes
@@ -240,14 +240,13 @@ impl GlobalState {
                     ));
             }
 
-            changed_files.extend(
-                file_changes
-                    .into_iter()
-                    .filter(|(_, (change_kind, just_created))| {
-                        !matches!((change_kind, just_created), (vfs::ChangeKind::Delete, true))
-                    })
-                    .map(|(file_id, (change_kind, _))| vfs::ChangedFile { file_id, change_kind }),
-            );
+            let changed_files: Vec<_> = file_changes
+                .into_iter()
+                .filter(|(_, (change_kind, just_created))| {
+                    !matches!((change_kind, just_created), (vfs::ChangeKind::Delete, true))
+                })
+                .map(|(file_id, (change_kind, _))| vfs::ChangedFile { file_id, change_kind })
+                .collect();
 
             // A file was added or deleted
             let mut has_structure_changes = false;
