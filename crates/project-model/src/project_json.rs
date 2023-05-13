@@ -98,24 +98,23 @@ impl ProjectJson {
     /// * `data` - The parsed contents of `rust-project.json`, or project json that's passed via
     ///            configuration.
     pub fn new(base: &AbsPath, data: ProjectJsonData) -> ProjectJson {
-        let absolutize =
-            |p| AbsPathBuf::try_from(p).unwrap_or_else(|path| base.join(&path)).normalize();
+        let absolutize_on_base = |p| base.absolutize(p);
         ProjectJson {
-            sysroot: data.sysroot.map(absolutize),
-            sysroot_src: data.sysroot_src.map(absolutize),
+            sysroot: data.sysroot.map(absolutize_on_base),
+            sysroot_src: data.sysroot_src.map(absolutize_on_base),
             project_root: base.to_path_buf(),
             crates: data
                 .crates
                 .into_iter()
                 .map(|crate_data| {
-                    let root_module = absolutize(crate_data.root_module);
+                    let root_module = absolutize_on_base(crate_data.root_module);
                     let is_workspace_member = crate_data
                         .is_workspace_member
                         .unwrap_or_else(|| root_module.starts_with(base));
                     let (include, exclude) = match crate_data.source {
                         Some(src) => {
                             let absolutize = |dirs: Vec<PathBuf>| {
-                                dirs.into_iter().map(absolutize).collect::<Vec<_>>()
+                                dirs.into_iter().map(absolutize_on_base).collect::<Vec<_>>()
                             };
                             (absolutize(src.include_dirs), absolutize(src.exclude_dirs))
                         }
@@ -142,7 +141,9 @@ impl ProjectJson {
                         cfg: crate_data.cfg,
                         target: crate_data.target,
                         env: crate_data.env,
-                        proc_macro_dylib_path: crate_data.proc_macro_dylib_path.map(absolutize),
+                        proc_macro_dylib_path: crate_data
+                            .proc_macro_dylib_path
+                            .map(absolutize_on_base),
                         is_workspace_member,
                         include,
                         exclude,

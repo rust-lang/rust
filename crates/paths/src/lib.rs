@@ -140,6 +140,11 @@ impl AbsPath {
         self.0.parent().map(AbsPath::assert)
     }
 
+    /// Equivalent of [`Path::join`] for `AbsPath` with an additional normalize step afterwards.
+    pub fn absolutize(&self, path: impl AsRef<Path>) -> AbsPathBuf {
+        self.join(path).normalize()
+    }
+
     /// Equivalent of [`Path::join`] for `AbsPath`.
     pub fn join(&self, path: impl AsRef<Path>) -> AbsPathBuf {
         self.as_ref().join(path).try_into().unwrap()
