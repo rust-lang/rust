@@ -90,32 +90,34 @@ pub enum AdjustmentHintsMode {
     PreferPostfix,
 }
 
-// FIXME: Clean up this mess, the kinds are mainly used for setting different rendering properties in the lsp layer
-// We should probably turns this into such a property holding struct. Or clean this up in some other form.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum InlayKind {
+    Adjustment,
     BindingMode,
     Chaining,
     ClosingBrace,
-    ClosureReturnType,
-    GenericParamList,
-    Adjustment,
-    AdjustmentPostfix,
-    Lifetime,
     ClosureCapture,
+    Discriminant,
+    GenericParamList,
+    Lifetime,
     Parameter,
     Type,
-    Discriminant,
-    OpeningParenthesis,
-    ClosingParenthesis,
+}
+
+#[derive(Debug)]
+pub enum InlayHintPosition {
+    Before,
+    After,
 }
 
 #[derive(Debug)]
 pub struct InlayHint {
     /// The text range this inlay hint applies to.
     pub range: TextRange,
-    /// The kind of this inlay hint. This is used to determine side and padding of the hint for
-    /// rendering purposes.
+    pub position: InlayHintPosition,
+    pub pad_left: bool,
+    pub pad_right: bool,
+    /// The kind of this inlay hint.
     pub kind: InlayKind,
     /// The actual label to show in the inlay hint.
     pub label: InlayHintLabel,
@@ -124,20 +126,26 @@ pub struct InlayHint {
 }
 
 impl InlayHint {
-    fn closing_paren(range: TextRange) -> InlayHint {
+    fn closing_paren_after(kind: InlayKind, range: TextRange) -> InlayHint {
         InlayHint {
             range,
-            kind: InlayKind::ClosingParenthesis,
+            kind,
             label: InlayHintLabel::from(")"),
             text_edit: None,
+            position: InlayHintPosition::After,
+            pad_left: false,
+            pad_right: false,
         }
     }
-    fn opening_paren(range: TextRange) -> InlayHint {
+    fn opening_paren_before(kind: InlayKind, range: TextRange) -> InlayHint {
         InlayHint {
             range,
-            kind: InlayKind::OpeningParenthesis,
+            kind,
             label: InlayHintLabel::from("("),
             text_edit: None,
+            position: InlayHintPosition::Before,
+            pad_left: false,
+            pad_right: false,
         }
     }
 }
@@ -303,13 +311,13 @@ impl InlayHintLabelBuilder<'_> {
 fn label_of_ty(
     famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    ty: hir::Type,
+    ty: &hir::Type,
 ) -> Option<InlayHintLabel> {
     fn rec(
         sema: &Semantics<'_, RootDatabase>,
         famous_defs: &FamousDefs<'_, '_>,
         mut max_length: Option<usize>,
-        ty: hir::Type,
+        ty: &hir::Type,
         label_builder: &mut InlayHintLabelBuilder<'_>,
         config: &InlayHintsConfig,
     ) -> Result<(), HirDisplayError> {
@@ -342,7 +350,7 @@ fn label_of_ty(
                 label_builder.write_str(LABEL_ITEM)?;
                 label_builder.end_location_link();
                 label_builder.write_str(LABEL_MIDDLE2)?;
-                rec(sema, famous_defs, max_length, ty, label_builder, config)?;
+                rec(sema, famous_defs, max_length, &ty, label_builder, config)?;
                 label_builder.write_str(LABEL_END)?;
                 Ok(())
             }
@@ -574,7 +582,8 @@ mod tests {
         let inlay_hints = analysis.inlay_hints(&config, file_id, None).unwrap();
         let actual = inlay_hints
             .into_iter()
-            .map(|it| (it.range, it.label.to_string()))
+            // FIXME: We trim the start because some inlay produces leading whitespace which is not properly supported by our annotation extraction
+            .map(|it| (it.range, it.label.to_string().trim_start().to_owned()))
             .sorted_by_key(|(range, _)| range.start())
             .collect::<Vec<_>>();
         expected.sort_by_key(|(range, _)| range.start());

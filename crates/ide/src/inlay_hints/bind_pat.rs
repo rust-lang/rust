@@ -14,7 +14,7 @@ use syntax::{
 
 use crate::{
     inlay_hints::{closure_has_block_body, label_of_ty, ty_to_text_edit},
-    InlayHint, InlayHintsConfig, InlayKind,
+    InlayHint, InlayHintPosition, InlayHintsConfig, InlayKind,
 };
 
 pub(super) fn hints(
@@ -36,7 +36,7 @@ pub(super) fn hints(
         return None;
     }
 
-    let label = label_of_ty(famous_defs, config, ty.clone())?;
+    let mut label = label_of_ty(famous_defs, config, &ty)?;
 
     if config.hide_named_constructor_hints
         && is_named_constructor(sema, pat, &label.to_string()).is_some()
@@ -44,31 +44,46 @@ pub(super) fn hints(
         return None;
     }
 
-    let type_annotation_is_valid = desc_pat
-        .syntax()
-        .parent()
-        .map(|it| ast::LetStmt::can_cast(it.kind()) || ast::Param::can_cast(it.kind()))
-        .unwrap_or(false);
-    let text_edit = if type_annotation_is_valid {
+    let type_ascriptable = desc_pat.syntax().parent().and_then(|it| {
+        ast::LetStmt::cast(it.clone())
+            .map(|it| it.colon_token())
+            .or_else(|| ast::Param::cast(it).map(|it| it.colon_token()))
+    });
+    let text_edit = if let Some(colon_token) = &type_ascriptable {
         ty_to_text_edit(
             sema,
             desc_pat.syntax(),
             &ty,
-            pat.syntax().text_range().end(),
-            String::from(": "),
+            colon_token
+                .as_ref()
+                .map_or_else(|| pat.syntax().text_range(), |t| t.text_range())
+                .end(),
+            if colon_token.is_some() { String::new() } else { String::from(": ") },
         )
     } else {
         None
     };
 
+    let has_colon = matches!(type_ascriptable, Some(Some(_))) && !config.render_colons;
+    if !has_colon {
+        label.prepend_str(": ");
+    }
+
+    let text_range = match pat.name() {
+        Some(name) => name.syntax().text_range(),
+        None => pat.syntax().text_range(),
+    };
     acc.push(InlayHint {
-        range: match pat.name() {
-            Some(name) => name.syntax().text_range(),
-            None => pat.syntax().text_range(),
+        range: match type_ascriptable {
+            Some(Some(t)) => text_range.cover(t.text_range()),
+            _ => text_range,
         },
         kind: InlayKind::Type,
         label,
         text_edit,
+        position: InlayHintPosition::Before,
+        pad_left: !has_colon,
+        pad_right: false,
     });
 
     Some(())
@@ -218,7 +233,7 @@ mod tests {
 fn foo(a: i32, b: i32) -> i32 { a + b }
 fn main() {
     let _x = foo(4, 4);
-      //^^ i32
+      //^^ : i32
 }"#,
         );
     }
@@ -230,17 +245,17 @@ fn main() {
 //- minicore: option
 fn main() {
     let ref foo @ bar @ ref mut baz = 0;
-          //^^^ &i32
-                //^^^ i32
-                              //^^^ &mut i32
+          //^^^ : &i32
+                //^^^ : i32
+                              //^^^ : &mut i32
     let [x @ ..] = [0];
-       //^ [i32; 1]
+       //^ : [i32; 1]
     if let x @ Some(_) = Some(0) {}
-         //^ Option<i32>
+         //^ : Option<i32>
     let foo @ (bar, baz) = (3, 3);
-      //^^^ (i32, i32)
-             //^^^ i32
-                  //^^^ i32
+      //^^^ : (i32, i32)
+             //^^^ : i32
+                  //^^^ : i32
 }"#,
         );
     }
@@ -253,11 +268,11 @@ struct Test<K, T = u8> { k: K, t: T }
 
 fn main() {
     let zz = Test { t: 23u8, k: 33 };
-      //^^ Test<i32>
+      //^^ : Test<i32>
     let zz_ref = &zz;
-      //^^^^^^ &Test<i32>
+      //^^^^^^ : &Test<i32>
     let test = || zz;
-      //^^^^ impl FnOnce() -> Test<i32>
+      //^^^^ : impl FnOnce() -> Test<i32>
 }"#,
         );
     }
@@ -285,10 +300,10 @@ impl<T> Iterator for SomeIter<T> {
 
 fn main() {
     let mut some_iter = SomeIter::new();
-          //^^^^^^^^^ SomeIter<Take<Repeat<i32>>>
+          //^^^^^^^^^ : SomeIter<Take<Repeat<i32>>>
       some_iter.push(iter::repeat(2).take(2));
     let iter_of_iters = some_iter.take(2);
-      //^^^^^^^^^^^^^ impl Iterator<Item = impl Iterator<Item = i32>>
+      //^^^^^^^^^^^^^ : impl Iterator<Item = impl Iterator<Item = i32>>
 }
 "#,
         );
@@ -347,7 +362,7 @@ fn main(a: SliceIter<'_, Container>) {
 
             pub fn quux<T: Foo>() -> T::Bar {
                 let y = Default::default();
-                  //^ <T as Foo>::Bar
+                  //^ : <T as Foo>::Bar
 
                 y
             }
@@ -371,21 +386,21 @@ fn foo7() -> *const (impl Fn(f64, f64) -> u32 + Sized) { loop {} }
 
 fn main() {
     let foo = foo();
-     // ^^^ impl Fn()
+     // ^^^ : impl Fn()
     let foo = foo1();
-     // ^^^ impl Fn(f64)
+     // ^^^ : impl Fn(f64)
     let foo = foo2();
-     // ^^^ impl Fn(f64, f64)
+     // ^^^ : impl Fn(f64, f64)
     let foo = foo3();
-     // ^^^ impl Fn(f64, f64) -> u32
+     // ^^^ : impl Fn(f64, f64) -> u32
     let foo = foo4();
-     // ^^^ &dyn Fn(f64, f64) -> u32
+     // ^^^ : &dyn Fn(f64, f64) -> u32
     let foo = foo5();
-     // ^^^ &dyn Fn(&dyn Fn(f64, f64) -> u32, f64) -> u32
+     // ^^^ : &dyn Fn(&dyn Fn(f64, f64) -> u32, f64) -> u32
     let foo = foo6();
-     // ^^^ impl Fn(f64, f64) -> u32
+     // ^^^ : impl Fn(f64, f64) -> u32
     let foo = foo7();
-     // ^^^ *const impl Fn(f64, f64) -> u32
+     // ^^^ : *const impl Fn(f64, f64) -> u32
 }
 "#,
         )
@@ -408,9 +423,9 @@ fn main() {
             let foo = foo();
             let foo = foo1();
             let foo = foo2();
-             // ^^^ impl Fn(f64, f64)
+             // ^^^ : impl Fn(f64, f64)
             let foo = foo3();
-             // ^^^ impl Fn(f64, f64) -> u32
+             // ^^^ : impl Fn(f64, f64) -> u32
             let foo = foo4();
             let foo = foo5();
             let foo = foo6();
@@ -451,25 +466,25 @@ fn foo10() -> *const (impl Fn() + Sized + ?Sized) { loop {} }
 
 fn main() {
     let foo = foo1();
-    //  ^^^ *const impl Fn()
+    //  ^^^ : *const impl Fn()
     let foo = foo2();
-    //  ^^^ *const impl Fn()
+    //  ^^^ : *const impl Fn()
     let foo = foo3();
-    //  ^^^ *const (impl Fn() + ?Sized)
+    //  ^^^ : *const (impl Fn() + ?Sized)
     let foo = foo4();
-    //  ^^^ *const impl Fn()
+    //  ^^^ : *const impl Fn()
     let foo = foo5();
-    //  ^^^ *const (impl Fn() + ?Sized)
+    //  ^^^ : *const (impl Fn() + ?Sized)
     let foo = foo6();
-    //  ^^^ *const (impl Fn() + Trait)
+    //  ^^^ : *const (impl Fn() + Trait)
     let foo = foo7();
-    //  ^^^ *const (impl Fn() + Trait)
+    //  ^^^ : *const (impl Fn() + Trait)
     let foo = foo8();
-    //  ^^^ *const (impl Fn() + Trait + ?Sized)
+    //  ^^^ : *const (impl Fn() + Trait + ?Sized)
     let foo = foo9();
-    //  ^^^ *const (impl Fn() -> u8 + ?Sized)
+    //  ^^^ : *const (impl Fn() -> u8 + ?Sized)
     let foo = foo10();
-    //  ^^^ *const impl Fn()
+    //  ^^^ : *const impl Fn()
 }
 "#,
         )
@@ -520,24 +535,24 @@ fn main() {
     struct InnerStruct {}
 
     let test = 54;
-      //^^^^ i32
+      //^^^^ : i32
     let test: i32 = 33;
     let mut test = 33;
-          //^^^^ i32
+          //^^^^ : i32
     let _ = 22;
     let test = "test";
-      //^^^^ &str
+      //^^^^ : &str
     let test = InnerStruct {};
-      //^^^^ InnerStruct
+      //^^^^ : InnerStruct
 
     let test = unresolved();
 
     let test = (42, 'a');
-      //^^^^ (i32, char)
-    let (a,    (b,     (c,)) = (2, (3, (9.2,));
-       //^ i32  ^ i32   ^ f64
+      //^^^^ : (i32, char)
+    let (a,      (b,       (c,)) = (2, (3, (9.2,));
+       //^ : i32  ^ : i32   ^ : f64
     let &x = &92;
-       //^ i32
+       //^ : i32
 }"#,
         );
     }
@@ -551,22 +566,22 @@ struct Test { a: Option<u32>, b: u8 }
 
 fn main() {
     let test = Some(Test { a: Some(3), b: 1 });
-      //^^^^ Option<Test>
+      //^^^^ : Option<Test>
     if let None = &test {};
     if let test = &test {};
-         //^^^^ &Option<Test>
+         //^^^^ : &Option<Test>
     if let Some(test) = &test {};
-              //^^^^ &Test
-    if let Some(Test { a,             b }) = &test {};
-                     //^ &Option<u32> ^ &u8
-    if let Some(Test { a: x,             b: y }) = &test {};
-                        //^ &Option<u32>    ^ &u8
-    if let Some(Test { a: Some(x),  b: y }) = &test {};
-                             //^ &u32  ^ &u8
+              //^^^^ : &Test
+    if let Some(Test { a,               b }) = &test {};
+                     //^ : &Option<u32> ^ : &u8
+    if let Some(Test { a: x,               b: y }) = &test {};
+                        //^ : &Option<u32>    ^ : &u8
+    if let Some(Test { a: Some(x),    b: y }) = &test {};
+                             //^ : &u32  ^ : &u8
     if let Some(Test { a: None,  b: y }) = &test {};
-                                  //^ &u8
+                                  //^ : &u8
     if let Some(Test { b: y, .. }) = &test {};
-                        //^ &u8
+                        //^ : &u8
     if test == None {}
 }"#,
         );
@@ -581,9 +596,9 @@ struct Test { a: Option<u32>, b: u8 }
 
 fn main() {
     let test = Some(Test { a: Some(3), b: 1 });
-      //^^^^ Option<Test>
-    while let Some(Test { a: Some(x),  b: y }) = &test {};
-                                //^ &u32  ^ &u8
+      //^^^^ : Option<Test>
+    while let Some(Test { a: Some(x),    b: y }) = &test {};
+                                //^ : &u32  ^ : &u8
 }"#,
         );
     }
@@ -599,9 +614,9 @@ fn main() {
     match Some(Test { a: Some(3), b: 1 }) {
         None => (),
         test => (),
-      //^^^^ Option<Test>
-        Some(Test { a: Some(x), b: y }) => (),
-                          //^ u32  ^ u8
+      //^^^^ : Option<Test>
+        Some(Test { a: Some(x),   b: y }) => (),
+                          //^ : u32  ^ : u8
         _ => {}
     }
 }"#,
@@ -633,12 +648,12 @@ impl<T> Iterator for IntoIter<T> {
 
 fn main() {
     let mut data = Vec::new();
-          //^^^^ Vec<&str>
+          //^^^^ : Vec<&str>
     data.push("foo");
     for i in data {
-      //^ &str
+      //^ : &str
       let z = i;
-        //^ &str
+        //^ : &str
     }
 }
 "#,
@@ -663,11 +678,11 @@ auto trait Sync {}
 fn main() {
     // The block expression wrapping disables the constructor hint hiding logic
     let _v = { Vec::<Box<&(dyn Display + Sync)>>::new() };
-      //^^ Vec<Box<&(dyn Display + Sync)>>
+      //^^ : Vec<Box<&(dyn Display + Sync)>>
     let _v = { Vec::<Box<*const (dyn Display + Sync)>>::new() };
-      //^^ Vec<Box<*const (dyn Display + Sync)>>
+      //^^ : Vec<Box<*const (dyn Display + Sync)>>
     let _v = { Vec::<Box<dyn Display + Sync>>::new() };
-      //^^ Vec<Box<dyn Display + Sync>>
+      //^^ : Vec<Box<dyn Display + Sync>>
 }
 "#,
         );
@@ -691,14 +706,14 @@ impl Iterator for MyIter {
 
 fn main() {
     let _x = MyIter;
-      //^^ MyIter
+      //^^ : MyIter
     let _x = iter::repeat(0);
-      //^^ impl Iterator<Item = i32>
+      //^^ : impl Iterator<Item = i32>
     fn generic<T: Clone>(t: T) {
         let _x = iter::repeat(t);
-          //^^ impl Iterator<Item = T>
+          //^^ : impl Iterator<Item = T>
         let _chained = iter::repeat(t).take(10);
-          //^^^^^^^^ impl Iterator<Item = T>
+          //^^^^^^^^ : impl Iterator<Item = T>
     }
 }
 "#,
@@ -762,20 +777,20 @@ fn main() {
     let tuple_struct = TupleStruct();
 
     let generic0 = Generic::new();
-    //  ^^^^^^^^ Generic<i32>
+    //  ^^^^^^^^ : Generic<i32>
     let generic1 = Generic(0);
-    //  ^^^^^^^^ Generic<i32>
+    //  ^^^^^^^^ : Generic<i32>
     let generic2 = Generic::<i32>::new();
     let generic3 = <Generic<i32>>::new();
     let generic4 = Generic::<i32>(0);
 
 
     let option = Some(0);
-    //  ^^^^^^ Option<i32>
+    //  ^^^^^^ : Option<i32>
     let func = times2;
-    //  ^^^^ fn times2(i32) -> i32
+    //  ^^^^ : fn times2(i32) -> i32
     let closure = |x: i32| x * 2;
-    //  ^^^^^^^ impl Fn(i32) -> i32
+    //  ^^^^^^^ : impl Fn(i32) -> i32
 }
 
 fn fallible() -> ControlFlow<()> {
@@ -813,69 +828,22 @@ impl Generic<i32> {
 
 fn main() {
     let strukt = Struct::new();
-     // ^^^^^^ Struct
+     // ^^^^^^ : Struct
     let tuple_struct = TupleStruct();
-     // ^^^^^^^^^^^^ TupleStruct
+     // ^^^^^^^^^^^^ : TupleStruct
     let generic0 = Generic::new();
-     // ^^^^^^^^ Generic<i32>
+     // ^^^^^^^^ : Generic<i32>
     let generic1 = Generic::<i32>::new();
-     // ^^^^^^^^ Generic<i32>
+     // ^^^^^^^^ : Generic<i32>
     let generic2 = <Generic<i32>>::new();
-     // ^^^^^^^^ Generic<i32>
+     // ^^^^^^^^ : Generic<i32>
 }
 
 fn fallible() -> ControlFlow<()> {
     let strukt = Struct::try_new()?;
-     // ^^^^^^ Struct
+     // ^^^^^^ : Struct
 }
 "#,
-        );
-    }
-
-    #[test]
-    fn closures() {
-        check(
-            r#"
-fn main() {
-    let mut start = 0;
-          //^^^^^ i32
-    (0..2).for_each(|increment      | { start += increment; });
-                   //^^^^^^^^^ i32
-
-    let multiply =
-      //^^^^^^^^ impl Fn(i32, i32) -> i32
-      | a,     b| a * b
-      //^ i32  ^ i32
-
-    ;
-
-    let _: i32 = multiply(1,  2);
-                        //^ a ^ b
-    let multiply_ref = &multiply;
-      //^^^^^^^^^^^^ &impl Fn(i32, i32) -> i32
-
-    let return_42 = || 42;
-      //^^^^^^^^^ impl Fn() -> i32
-      || { 42 };
-    //^^ i32
-}"#,
-        );
-    }
-
-    #[test]
-    fn return_type_hints_for_closure_without_block() {
-        check_with_config(
-            InlayHintsConfig {
-                closure_return_type_hints: ClosureReturnTypeHints::Always,
-                ..DISABLED_CONFIG
-            },
-            r#"
-fn main() {
-    let a = || { 0 };
-          //^^ i32
-    let b = || 0;
-          //^^ i32
-}"#,
         );
     }
 
@@ -887,15 +855,15 @@ fn main() {
 //- minicore: fn
 fn main() {
     let x = || 2;
-      //^ impl Fn() -> i32
+      //^ : impl Fn() -> i32
     let y = |t: i32| x() + t;
-      //^ impl Fn(i32) -> i32
+      //^ : impl Fn(i32) -> i32
     let mut t = 5;
-          //^ i32
+          //^ : i32
     let z = |k: i32| { t += k; };
-      //^ impl FnMut(i32)
+      //^ : impl FnMut(i32)
     let p = (y, z);
-      //^ (impl Fn(i32) -> i32, impl FnMut(i32))
+      //^ : (impl Fn(i32) -> i32, impl FnMut(i32))
 }
             "#,
         );
@@ -909,15 +877,15 @@ fn main() {
 //- minicore: fn
 fn main() {
     let x = || 2;
-      //^ || -> i32
+      //^ : || -> i32
     let y = |t: i32| x() + t;
-      //^ |i32| -> i32
+      //^ : |i32| -> i32
     let mut t = 5;
-          //^ i32
+          //^ : i32
     let z = |k: i32| { t += k; };
-      //^ |i32| -> ()
+      //^ : |i32| -> ()
     let p = (y, z);
-      //^ (|i32| -> i32, |i32| -> ())
+      //^ : (|i32| -> i32, |i32| -> ())
 }
             "#,
         );
@@ -931,15 +899,15 @@ fn main() {
 //- minicore: fn
 fn main() {
     let x = || 2;
-      //^ {closure#0}
+      //^ : {closure#0}
     let y = |t: i32| x() + t;
-      //^ {closure#1}
+      //^ : {closure#1}
     let mut t = 5;
-          //^ i32
+          //^ : i32
     let z = |k: i32| { t += k; };
-      //^ {closure#2}
+      //^ : {closure#2}
     let p = (y, z);
-      //^ ({closure#1}, {closure#2})
+      //^ : ({closure#1}, {closure#2})
 }
             "#,
         );
@@ -953,15 +921,15 @@ fn main() {
 //- minicore: fn
 fn main() {
     let x = || 2;
-      //^ …
+      //^ : …
     let y = |t: i32| x() + t;
-      //^ …
+      //^ : …
     let mut t = 5;
-          //^ i32
+          //^ : i32
     let z = |k: i32| { t += k; };
-      //^ …
+      //^ : …
     let p = (y, z);
-      //^ (…, …)
+      //^ : (…, …)
 }
             "#,
         );
@@ -981,24 +949,24 @@ fn main() {
     let multiple_2 = |x: i32| { x * 2 };
 
     let multiple_2 = |x: i32| x * 2;
-    //  ^^^^^^^^^^ impl Fn(i32) -> i32
+    //  ^^^^^^^^^^ : impl Fn(i32) -> i32
 
     let (not) = (|x: bool| { !x });
-    //   ^^^ impl Fn(bool) -> bool
+    //   ^^^ : impl Fn(bool) -> bool
 
     let (is_zero, _b) = (|x: usize| { x == 0 }, false);
-    //   ^^^^^^^ impl Fn(usize) -> bool
-    //            ^^ bool
+    //   ^^^^^^^ : impl Fn(usize) -> bool
+    //            ^^ : bool
 
     let plus_one = |x| { x + 1 };
-    //              ^ u8
+    //              ^ : u8
     foo(plus_one);
 
     let add_mul = bar(|x: u8| { x + 1 });
-    //  ^^^^^^^ impl FnOnce(u8) -> u8 + ?Sized
+    //  ^^^^^^^ : impl FnOnce(u8) -> u8 + ?Sized
 
     let closure = if let Some(6) = add_mul(2).checked_sub(1) {
-    //  ^^^^^^^ fn(i32) -> i32
+    //  ^^^^^^^ : fn(i32) -> i32
         |x: i32| { x * 2 }
     } else {
         |x: i32| { x * 3 }
@@ -1025,11 +993,11 @@ struct VeryLongOuterName<T>(T);
 
 fn main() {
     let a = Smol(0u32);
-      //^ Smol<u32>
+      //^ : Smol<u32>
     let b = VeryLongOuterName(0usize);
-      //^ VeryLongOuterName<…>
+      //^ : VeryLongOuterName<…>
     let c = Smol(Smol(0u32))
-      //^ Smol<Smol<…>>
+      //^ : Smol<Smol<…>>
 }"#,
         );
     }

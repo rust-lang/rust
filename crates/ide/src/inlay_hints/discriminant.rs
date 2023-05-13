@@ -9,7 +9,8 @@ use ide_db::{base_db::FileId, famous_defs::FamousDefs, RootDatabase};
 use syntax::ast::{self, AstNode, HasName};
 
 use crate::{
-    DiscriminantHints, InlayHint, InlayHintLabel, InlayHintsConfig, InlayKind, InlayTooltip,
+    DiscriminantHints, InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, InlayKind,
+    InlayTooltip,
 };
 
 pub(super) fn enum_hints(
@@ -41,10 +42,11 @@ fn variant_hints(
     sema: &Semantics<'_, RootDatabase>,
     variant: &ast::Variant,
 ) -> Option<()> {
-    if variant.eq_token().is_some() {
+    if variant.expr().is_some() {
         return None;
     }
 
+    let eq_token = variant.eq_token();
     let name = variant.name()?;
 
     let descended = sema.descend_node_into_attributes(variant.clone()).pop();
@@ -52,30 +54,39 @@ fn variant_hints(
     let v = sema.to_def(desc_pat)?;
     let d = v.eval(sema.db);
 
+    let range = match variant.field_list() {
+        Some(field_list) => name.syntax().text_range().cover(field_list.syntax().text_range()),
+        None => name.syntax().text_range(),
+    };
+    let eq_ = if eq_token.is_none() { " =" } else { "" };
+    let label = InlayHintLabel::simple(
+        match d {
+            Ok(x) => {
+                if x >= 10 {
+                    format!("{eq_} {x} ({x:#X})")
+                } else {
+                    format!("{eq_} {x}")
+                }
+            }
+            Err(_) => format!("{eq_} ?"),
+        },
+        Some(InlayTooltip::String(match &d {
+            Ok(_) => "enum variant discriminant".into(),
+            Err(e) => format!("{e:?}").into(),
+        })),
+        None,
+    );
     acc.push(InlayHint {
-        range: match variant.field_list() {
-            Some(field_list) => name.syntax().text_range().cover(field_list.syntax().text_range()),
-            None => name.syntax().text_range(),
+        range: match eq_token {
+            Some(t) => range.cover(t.text_range()),
+            _ => range,
         },
         kind: InlayKind::Discriminant,
-        label: InlayHintLabel::simple(
-            match d {
-                Ok(x) => {
-                    if x >= 10 {
-                        format!("{x} ({x:#X})")
-                    } else {
-                        format!("{x}")
-                    }
-                }
-                Err(_) => "?".into(),
-            },
-            Some(InlayTooltip::String(match &d {
-                Ok(_) => "enum variant discriminant".into(),
-                Err(e) => format!("{e:?}").into(),
-            })),
-            None,
-        ),
+        label,
         text_edit: None,
+        position: InlayHintPosition::After,
+        pad_left: false,
+        pad_right: false,
     });
 
     Some(())
@@ -113,14 +124,14 @@ mod tests {
             r#"
 enum Enum {
   Variant,
-//^^^^^^^0
+//^^^^^^^ = 0$
   Variant1,
-//^^^^^^^^1
+//^^^^^^^^ = 1$
   Variant2,
-//^^^^^^^^2
+//^^^^^^^^ = 2$
   Variant5 = 5,
   Variant6,
-//^^^^^^^^6
+//^^^^^^^^ = 6$
 }
 "#,
         );
@@ -128,14 +139,14 @@ enum Enum {
             r#"
 enum Enum {
   Variant,
-//^^^^^^^0
+//^^^^^^^ = 0
   Variant1,
-//^^^^^^^^1
+//^^^^^^^^ = 1
   Variant2,
-//^^^^^^^^2
+//^^^^^^^^ = 2
   Variant5 = 5,
   Variant6,
-//^^^^^^^^6
+//^^^^^^^^ = 6
 }
 "#,
         );
@@ -147,16 +158,16 @@ enum Enum {
             r#"
 enum Enum {
     Variant(),
-  //^^^^^^^^^0
+  //^^^^^^^^^ = 0
     Variant1,
-  //^^^^^^^^1
+  //^^^^^^^^ = 1
     Variant2 {},
-  //^^^^^^^^^^^2
+  //^^^^^^^^^^^ = 2
     Variant3,
-  //^^^^^^^^3
+  //^^^^^^^^ = 3
     Variant5 = 5,
     Variant6,
-  //^^^^^^^^6
+  //^^^^^^^^ = 6
 }
 "#,
         );
@@ -180,16 +191,16 @@ enum Enum {
             r#"
 enum Enum {
     Variant(),
-  //^^^^^^^^^0
+  //^^^^^^^^^ = 0
     Variant1,
-  //^^^^^^^^1
+  //^^^^^^^^ = 1
     Variant2 {},
-  //^^^^^^^^^^^2
+  //^^^^^^^^^^^ = 2
     Variant3,
-  //^^^^^^^^3
+  //^^^^^^^^ = 3
     Variant5 = 5,
     Variant6,
-  //^^^^^^^^6
+  //^^^^^^^^ = 6
 }
 "#,
         );

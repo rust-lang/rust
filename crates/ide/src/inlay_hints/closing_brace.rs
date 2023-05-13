@@ -10,7 +10,7 @@ use syntax::{
     match_ast, SyntaxKind, SyntaxNode, T,
 };
 
-use crate::{FileId, InlayHint, InlayHintLabel, InlayHintsConfig, InlayKind};
+use crate::{FileId, InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, InlayKind};
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
@@ -113,6 +113,9 @@ pub(super) fn hints(
         kind: InlayKind::ClosingBrace,
         label: InlayHintLabel::simple(label, None, linked_location),
         text_edit: None,
+        position: InlayHintPosition::After,
+        pad_left: true,
+        pad_right: false,
     });
 
     None
