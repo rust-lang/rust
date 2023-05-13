@@ -746,6 +746,7 @@ fn semantic_token_type_and_modifiers(
             HlMod::Injected => semantic_tokens::INJECTED,
             HlMod::IntraDocLink => semantic_tokens::INTRA_DOC_LINK,
             HlMod::Library => semantic_tokens::LIBRARY,
+            HlMod::Macro => semantic_tokens::MACRO_MODIFIER,
             HlMod::Mutable => semantic_tokens::MUTABLE,
             HlMod::Public => semantic_tokens::PUBLIC,
             HlMod::Reference => semantic_tokens::REFERENCE,

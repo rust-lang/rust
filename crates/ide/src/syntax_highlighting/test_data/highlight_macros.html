@@ -42,21 +42,21 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 
 .unresolved_reference { color: #FC5555; text-decoration: wavy underline; }
 </style>
-<pre><code><span class="module crate_root library">proc_macros</span><span class="operator">::</span><span class="macro library">mirror</span><span class="macro_bang">!</span> <span class="brace">{</span>
-    <span class="brace">{</span>
-        <span class="comma">,</span><span class="builtin_type">i32</span> <span class="colon">:</span><span class="field declaration public">x</span> <span class="keyword">pub</span>
-        <span class="comma">,</span><span class="builtin_type">i32</span> <span class="colon">:</span><span class="field declaration public">y</span> <span class="keyword">pub</span>
-    <span class="brace">}</span> <span class="struct declaration">Foo</span> <span class="keyword">struct</span>
-<span class="brace">}</span>
+<pre><code><span class="module crate_root library">proc_macros</span><span class="operator">::</span><span class="macro library">mirror</span><span class="macro_bang">!</span> <span class="brace macro">{</span>
+    <span class="brace macro">{</span>
+        <span class="comma macro">,</span><span class="builtin_type macro">i32</span> <span class="colon macro">:</span><span class="field declaration macro public">x</span> <span class="keyword macro">pub</span>
+        <span class="comma macro">,</span><span class="builtin_type macro">i32</span> <span class="colon macro">:</span><span class="field declaration macro public">y</span> <span class="keyword macro">pub</span>
+    <span class="brace macro">}</span> <span class="struct declaration macro">Foo</span> <span class="keyword macro">struct</span>
+<span class="brace macro">}</span>
 <span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration">def_fn</span> <span class="brace">{</span>
     <span class="parenthesis">(</span><span class="punctuation">$</span><span class="parenthesis">(</span><span class="punctuation">$</span>tt<span class="colon">:</span>tt<span class="parenthesis">)</span><span class="punctuation">*</span><span class="parenthesis">)</span> <span class="operator">=</span><span class="angle">&gt;</span> <span class="brace">{</span><span class="punctuation">$</span><span class="parenthesis">(</span><span class="punctuation">$</span>tt<span class="parenthesis">)</span><span class="punctuation">*</span><span class="brace">}</span>
 <span class="brace">}</span>
 
-<span class="macro">def_fn</span><span class="macro_bang">!</span> <span class="brace">{</span>
-    <span class="keyword">fn</span> <span class="function declaration">bar</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="operator">-</span><span class="operator">&gt;</span> <span class="builtin_type">u32</span> <span class="brace">{</span>
-        <span class="numeric_literal">100</span>
-    <span class="brace">}</span>
-<span class="brace">}</span>
+<span class="macro">def_fn</span><span class="macro_bang">!</span> <span class="brace macro">{</span>
+    <span class="keyword macro">fn</span> <span class="function declaration macro">bar</span><span class="parenthesis macro">(</span><span class="parenthesis macro">)</span> <span class="operator macro">-</span><span class="operator macro">&gt;</span> <span class="builtin_type macro">u32</span> <span class="brace macro">{</span>
+        <span class="numeric_literal macro">100</span>
+    <span class="brace macro">}</span>
+<span class="brace macro">}</span>
 
 <span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration">dont_color_me_braces</span> <span class="brace">{</span>
     <span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="operator">=</span><span class="angle">&gt;</span> <span class="brace">{</span><span class="numeric_literal">0</span><span class="brace">}</span>
@@ -90,7 +90,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="brace">}</span>
 
 <span class="keyword">fn</span> <span class="function declaration">main</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
-    <span class="unresolved_reference">println</span><span class="macro_bang">!</span><span class="parenthesis">(</span><span class="string_literal">"Hello, {}!"</span><span class="comma">,</span> <span class="numeric_literal">92</span><span class="parenthesis">)</span><span class="semicolon">;</span>
-    <span class="macro">dont_color_me_braces</span><span class="macro_bang">!</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
-    <span class="macro">noop</span><span class="macro_bang">!</span><span class="parenthesis">(</span><span class="macro">noop</span><span class="macro_bang">!</span><span class="parenthesis">(</span><span class="numeric_literal">1</span><span class="parenthesis">)</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+    <span class="unresolved_reference">println</span><span class="macro_bang">!</span><span class="parenthesis macro">(</span><span class="string_literal macro">"Hello, {}!"</span><span class="comma macro">,</span> <span class="numeric_literal macro">92</span><span class="parenthesis macro">)</span><span class="semicolon">;</span>
+    <span class="macro">dont_color_me_braces</span><span class="macro_bang">!</span><span class="parenthesis macro">(</span><span class="parenthesis macro">)</span><span class="semicolon">;</span>
+    <span class="macro">noop</span><span class="macro_bang">!</span><span class="parenthesis macro">(</span><span class="macro macro">noop</span><span class="macro_bang macro">!</span><span class="parenthesis macro">(</span><span class="numeric_literal macro">1</span><span class="parenthesis macro">)</span><span class="parenthesis macro">)</span><span class="semicolon">;</span>
 <span class="brace">}</span></code></pre>
