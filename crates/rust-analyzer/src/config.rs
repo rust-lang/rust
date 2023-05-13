@@ -150,6 +150,10 @@ config_data! {
         ///
         /// Set to `"all"` to pass `--all-features` to Cargo.
         check_features | checkOnSave_features: Option<CargoFeaturesDef>  = "null",
+        /// List of `cargo check` (or other command specified in `check.command`) diagnostics to ignore.
+        ///
+        /// For example for `cargo check`: `dead_code`, `unused_imports`, `unused_variables`,...
+        check_ignore: FxHashSet<String> = "[]",
         /// Specifies the working directory for running checks.
         /// - "workspace": run checks for workspaces in the corresponding workspaces' root directories.
         // FIXME: Ideally we would support this in some way
@@ -1098,6 +1102,7 @@ impl Config {
             remap_prefix: self.data.diagnostics_remapPrefix.clone(),
             warnings_as_info: self.data.diagnostics_warningsAsInfo.clone(),
             warnings_as_hint: self.data.diagnostics_warningsAsHint.clone(),
+            check_ignore: self.data.check_ignore.clone(),
         }
     }
 
