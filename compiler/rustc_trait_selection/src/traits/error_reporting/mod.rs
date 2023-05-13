@@ -797,9 +797,17 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             err.span_label(span, explanation);
                         }
 
-                        if let ObligationCauseCode::ObjectCastObligation(concrete_ty, obj_ty) = obligation.cause.code().peel_derives() &&
-                            Some(trait_ref.def_id()) == self.tcx.lang_items().sized_trait() {
-                            self.suggest_borrowing_for_object_cast(&mut err, &root_obligation, *concrete_ty, *obj_ty);
+                        if let ObligationCauseCode::Coercion { source, target } =
+                            *obligation.cause.code().peel_derives()
+                        {
+                            if Some(trait_ref.def_id()) == self.tcx.lang_items().sized_trait() {
+                                self.suggest_borrowing_for_object_cast(
+                                    &mut err,
+                                    &root_obligation,
+                                    source,
+                                    target,
+                                );
+                            }
                         }
 
                         let UnsatisfiedConst(unsatisfied_const) = self
@@ -1510,7 +1518,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         | ObligationCauseCode::BindingObligation(_, _)
                         | ObligationCauseCode::ExprItemObligation(..)
                         | ObligationCauseCode::ExprBindingObligation(..)
-                        | ObligationCauseCode::ObjectCastObligation(..)
+                        | ObligationCauseCode::Coercion { .. }
                         | ObligationCauseCode::OpaqueType
                 );
 

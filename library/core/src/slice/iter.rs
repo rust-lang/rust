@@ -90,8 +90,6 @@ impl<'a, T> Iter<'a, T> {
         let ptr = slice.as_ptr();
         // SAFETY: Similar to `IterMut::new`.
         unsafe {
-            assume(!ptr.is_null());
-
             let end = if T::IS_ZST { invalid(slice.len()) } else { ptr.add(slice.len()) };
 
             Self { ptr: NonNull::new_unchecked(ptr as *mut T), end, _marker: PhantomData }
@@ -228,8 +226,6 @@ impl<'a, T> IterMut<'a, T> {
         // See the `next_unchecked!` and `is_empty!` macros as well as the
         // `post_inc_start` method for more information.
         unsafe {
-            assume(!ptr.is_null());
-
             let end = if T::IS_ZST { invalid_mut(slice.len()) } else { ptr.add(slice.len()) };
 
             Self { ptr: NonNull::new_unchecked(ptr), end, _marker: PhantomData }

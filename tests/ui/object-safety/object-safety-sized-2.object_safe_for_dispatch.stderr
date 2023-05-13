@@ -11,8 +11,7 @@ LL | trait Bar
    |       --- this trait cannot be made into an object...
 LL |     where Self : Sized
    |                  ^^^^^ ...because it requires `Self: Sized`
-   = note: required for `&T` to implement `CoerceUnsized<&dyn Bar>`
-   = note: required by cast to type `&dyn Bar`
+   = note: required for the cast from `&T` to `&dyn Bar`
 
 error: aborting due to previous error
 

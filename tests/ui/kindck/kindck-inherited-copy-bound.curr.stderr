@@ -46,8 +46,7 @@ LL | trait Foo : Copy {
    |       ---   ^^^^ ...because it requires `Self: Sized`
    |       |
    |       this trait cannot be made into an object...
-   = note: required for `&Box<{integer}>` to implement `CoerceUnsized<&dyn Foo>`
-   = note: required by cast to type `&dyn Foo`
+   = note: required for the cast from `&Box<{integer}>` to `&dyn Foo`
 
 error: aborting due to 3 previous errors
 

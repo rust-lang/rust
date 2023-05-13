@@ -1210,7 +1210,7 @@ impl File {
                 // Redox doesn't appear to support `UTIME_OMIT`.
                 // ESP-IDF and HorizonOS do not support `futimens` at all and the behavior for those OS is therefore
                 // the same as for Redox.
-                drop(times);
+                let _ = times;
                 Err(io::const_io_error!(
                     io::ErrorKind::Unsupported,
                     "setting file times not supported",

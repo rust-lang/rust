@@ -12,8 +12,7 @@ LL | trait Bar {
 LL |     fn bar<T>(&self, t: T);
    |        ^^^ ...because method `bar` has generic type parameters
    = help: consider moving `bar` to another trait
-   = note: required for `&T` to implement `CoerceUnsized<&dyn Bar>`
-   = note: required by cast to type `&dyn Bar`
+   = note: required for the cast from `&T` to `&dyn Bar`
 
 error[E0038]: the trait `Bar` cannot be made into an object
   --> $DIR/object-safety-generics.rs:26:5
@@ -29,8 +28,7 @@ LL | trait Bar {
 LL |     fn bar<T>(&self, t: T);
    |        ^^^ ...because method `bar` has generic type parameters
    = help: consider moving `bar` to another trait
-   = note: required for `&T` to implement `CoerceUnsized<&dyn Bar>`
-   = note: required by cast to type `&dyn Bar`
+   = note: required for the cast from `&T` to `&dyn Bar`
 
 error: aborting due to 2 previous errors
 

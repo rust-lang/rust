@@ -1,5 +1,5 @@
 warning: unused extern crate
-  --> $DIR/remove-extern-crate.rs:9:1
+  --> $DIR/remove-extern-crate.rs:10:1
    |
 LL | extern crate core;
    | ^^^^^^^^^^^^^^^^^^ help: remove it
@@ -12,7 +12,7 @@ LL | #![warn(rust_2018_idioms)]
    = note: `#[warn(unused_extern_crates)]` implied by `#[warn(rust_2018_idioms)]`
 
 warning: `extern crate` is not idiomatic in the new edition
-  --> $DIR/remove-extern-crate.rs:33:5
+  --> $DIR/remove-extern-crate.rs:34:5
    |
 LL |     extern crate core;
    |     ^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL |     use core;
    |     ~~~
 
 warning: `extern crate` is not idiomatic in the new edition
-  --> $DIR/remove-extern-crate.rs:43:5
+  --> $DIR/remove-extern-crate.rs:44:5
    |
 LL |     pub extern crate core;
    |     ^^^^^^^^^^^^^^^^^^^^^^

@@ -1,5 +1,8 @@
 // run-pass
+
 #![allow(dead_code)]
+#![allow(drop_copy)]
+
 // "guessing" in trait selection can affect `copy_or_move`. Check that this
 // is correctly handled. I am not sure what is the "correct" behaviour,
 // but we should at least not ICE.

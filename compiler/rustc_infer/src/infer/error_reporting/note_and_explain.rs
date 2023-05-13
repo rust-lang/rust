@@ -2,6 +2,7 @@ use super::TypeErrCtxt;
 use rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
 use rustc_errors::{pluralize, Diagnostic, MultiSpan};
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::print::Printer;
@@ -254,6 +255,15 @@ impl<T> Trait<T> for X {
                                 "for more information, visit \
                                 https://doc.rust-lang.org/book/ch19-03-advanced-traits.html",
                             );
+                        }
+                    }
+                    (ty::Alias(ty::Opaque, alias), _) | (_, ty::Alias(ty::Opaque, alias)) if alias.def_id.is_local() && matches!(tcx.def_kind(body_owner_def_id), DefKind::AssocFn | DefKind::AssocConst) => {
+                        if tcx.is_type_alias_impl_trait(alias.def_id) {
+                            if !tcx.opaque_types_defined_by(body_owner_def_id.expect_local()).contains(&alias.def_id.expect_local()) {
+                                diag.span_note(tcx.def_span(body_owner_def_id), "\
+                                    this item must have the opaque type in its signature \
+                                    in order to be able to register hidden types");
+                            }
                         }
                     }
                     (ty::FnPtr(_), ty::FnDef(def, _))

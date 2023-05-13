@@ -6,7 +6,7 @@ use rustc_errors::{struct_span_err, DelayDm};
 use rustc_errors::{Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_middle::ty::subst::InternalSubsts;
-use rustc_middle::ty::util::IgnoreRegions;
+use rustc_middle::ty::util::CheckRegions;
 use rustc_middle::ty::{
     self, AliasKind, ImplPolarity, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
     TypeVisitor,
@@ -507,7 +507,7 @@ fn lint_auto_trait_impl<'tcx>(
     // Impls which completely cover a given root type are fine as they
     // disable auto impls entirely. So only lint if the substs
     // are not a permutation of the identity substs.
-    let Err(arg) = tcx.uses_unique_generic_params(substs, IgnoreRegions::Yes) else {
+    let Err(arg) = tcx.uses_unique_generic_params(substs, CheckRegions::No) else {
         // ok
         return;
     };

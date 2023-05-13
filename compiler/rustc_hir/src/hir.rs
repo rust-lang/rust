@@ -2662,7 +2662,10 @@ pub enum OpaqueTyOrigin {
     /// `async fn`
     AsyncFn(LocalDefId),
     /// type aliases: `type Foo = impl Trait;`
-    TyAlias,
+    TyAlias {
+        /// associated types in impl blocks for traits.
+        in_assoc_ty: bool,
+    },
 }
 
 /// The various kinds of types recognized by the compiler.
