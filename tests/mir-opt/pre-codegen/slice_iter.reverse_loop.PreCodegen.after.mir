@@ -19,39 +19,104 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         scope 2 {
             debug x => _10;              // in scope 2 at $DIR/slice_iter.rs:+1:9: +1:10
         }
-        scope 7 (inlined <Rev<std::slice::Iter<'_, T>> as Iterator>::next) { // at $DIR/slice_iter.rs:35:14: 35:32
-            debug self => _8;            // in scope 7 at $SRC_DIR/core/src/iter/adapters/rev.rs:LL:COL
-            let mut _13: &mut std::slice::Iter<'_, T>; // in scope 7 at $SRC_DIR/core/src/iter/adapters/rev.rs:LL:COL
+        scope 25 (inlined <Rev<std::slice::Iter<'_, T>> as Iterator>::next) { // at $DIR/slice_iter.rs:35:14: 35:32
+            debug self => _8;            // in scope 25 at $SRC_DIR/core/src/iter/adapters/rev.rs:LL:COL
+            let mut _25: &mut std::slice::Iter<'_, T>; // in scope 25 at $SRC_DIR/core/src/iter/adapters/rev.rs:LL:COL
         }
     }
     scope 3 (inlined core::slice::<impl [T]>::iter) { // at $DIR/slice_iter.rs:35:20: 35:26
         debug self => _1;                // in scope 3 at $SRC_DIR/core/src/slice/mod.rs:LL:COL
-    }
-    scope 4 (inlined <std::slice::Iter<'_, T> as Iterator>::rev) { // at $DIR/slice_iter.rs:35:27: 35:32
-        debug self => _4;                // in scope 4 at $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-        scope 5 (inlined Rev::<std::slice::Iter<'_, T>>::new) { // at $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-            debug iter => _4;            // in scope 5 at $SRC_DIR/core/src/iter/adapters/rev.rs:LL:COL
+        scope 4 (inlined std::slice::Iter::<'_, T>::new) { // at $SRC_DIR/core/src/slice/mod.rs:LL:COL
+            debug slice => _1;           // in scope 4 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+            let _13: *const T;           // in scope 4 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+            let mut _15: bool;           // in scope 4 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+            let mut _16: usize;          // in scope 4 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+            let mut _17: usize;          // in scope 4 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+            let mut _18: std::ptr::NonNull<T>; // in scope 4 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+            let mut _19: *mut T;         // in scope 4 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+            let mut _20: *const T;       // in scope 4 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+            scope 5 {
+                debug ptr => _13;        // in scope 5 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+                scope 6 {
+                    let _14: *const T;   // in scope 6 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+                    scope 7 {
+                        debug end => _14; // in scope 7 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+                        scope 13 (inlined NonNull::<T>::new_unchecked) { // at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+                            debug ptr => _19; // in scope 13 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
+                            let mut _22: *const T; // in scope 13 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
+                            let mut _23: *mut T; // in scope 13 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                            scope 14 {
+                                scope 15 (inlined NonNull::<T>::new_unchecked::runtime::<T>) { // at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                                    debug ptr => _23; // in scope 15 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                                    scope 16 (inlined ptr::mut_ptr::<impl *mut T>::is_null) { // at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
+                                        debug self => _23; // in scope 16 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
+                                        let mut _24: *mut u8; // in scope 16 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
+                                        scope 17 {
+                                            scope 18 (inlined ptr::mut_ptr::<impl *mut T>::is_null::runtime_impl) { // at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
+                                                debug ptr => _24; // in scope 18 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
+                                                scope 19 (inlined ptr::mut_ptr::<impl *mut u8>::addr) { // at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
+                                                    debug self => _24; // in scope 19 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
+                                                    scope 20 {
+                                                        scope 21 (inlined ptr::mut_ptr::<impl *mut u8>::cast::<()>) { // at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
+                                                            debug self => _24; // in scope 21 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    scope 9 (inlined invalid::<T>) { // at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+                        debug addr => _16; // in scope 9 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+                        scope 10 {
+                        }
+                    }
+                    scope 11 (inlined ptr::const_ptr::<impl *const T>::add) { // at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+                        debug self => _13; // in scope 11 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+                        debug count => _17; // in scope 11 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+                        scope 12 {
+                        }
+                    }
+                }
+            }
+            scope 8 (inlined core::slice::<impl [T]>::as_ptr) { // at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+                debug self => _1;        // in scope 8 at $SRC_DIR/core/src/slice/mod.rs:LL:COL
+                let mut _21: *const [T]; // in scope 8 at $SRC_DIR/core/src/slice/mod.rs:LL:COL
+            }
         }
     }
-    scope 6 (inlined <Rev<std::slice::Iter<'_, T>> as IntoIterator>::into_iter) { // at $DIR/slice_iter.rs:35:14: 35:32
-        debug self => _3;                // in scope 6 at $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+    scope 22 (inlined <std::slice::Iter<'_, T> as Iterator>::rev) { // at $DIR/slice_iter.rs:35:27: 35:32
+        debug self => _4;                // in scope 22 at $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+        scope 23 (inlined Rev::<std::slice::Iter<'_, T>>::new) { // at $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+            debug iter => _4;            // in scope 23 at $SRC_DIR/core/src/iter/adapters/rev.rs:LL:COL
+        }
+    }
+    scope 24 (inlined <Rev<std::slice::Iter<'_, T>> as IntoIterator>::into_iter) { // at $DIR/slice_iter.rs:35:14: 35:32
+        debug self => _3;                // in scope 24 at $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
     }
 
     bb0: {
         StorageLive(_4);                 // scope 0 at $DIR/slice_iter.rs:+1:14: +1:26
-        _4 = std::slice::Iter::<'_, T>::new(_1) -> [return: bb9, unwind: bb7]; // scope 3 at $SRC_DIR/core/src/slice/mod.rs:LL:COL
-                                         // mir::Constant
-                                         // + span: $SRC_DIR/core/src/slice/mod.rs:LL:COL
-                                         // + user_ty: UserType(0)
-                                         // + literal: Const { ty: fn(&[T]) -> std::slice::Iter<'_, T> {std::slice::Iter::<'_, T>::new}, val: Value(<ZST>) }
+        StorageLive(_13);                // scope 3 at $SRC_DIR/core/src/slice/mod.rs:LL:COL
+        StorageLive(_21);                // scope 8 at $SRC_DIR/core/src/slice/mod.rs:LL:COL
+        _21 = &raw const (*_1);          // scope 8 at $SRC_DIR/core/src/slice/mod.rs:LL:COL
+        _13 = move _21 as *const T (PtrToPtr); // scope 8 at $SRC_DIR/core/src/slice/mod.rs:LL:COL
+        StorageDead(_21);                // scope 8 at $SRC_DIR/core/src/slice/mod.rs:LL:COL
+        StorageLive(_14);                // scope 6 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+        StorageLive(_15);                // scope 6 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+        _15 = const _;                   // scope 6 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+        switchInt(move _15) -> [0: bb10, otherwise: bb9]; // scope 6 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
     }
 
     bb1: {
         StorageLive(_7);                 // scope 1 at $DIR/slice_iter.rs:+1:14: +1:32
         _8 = &mut _5;                    // scope 1 at $DIR/slice_iter.rs:+1:14: +1:32
-        StorageLive(_13);                // scope 7 at $SRC_DIR/core/src/iter/adapters/rev.rs:LL:COL
-        _13 = &mut ((*_8).0: std::slice::Iter<'_, T>); // scope 7 at $SRC_DIR/core/src/iter/adapters/rev.rs:LL:COL
-        _7 = <std::slice::Iter<'_, T> as DoubleEndedIterator>::next_back(move _13) -> [return: bb10, unwind: bb7]; // scope 7 at $SRC_DIR/core/src/iter/adapters/rev.rs:LL:COL
+        StorageLive(_25);                // scope 25 at $SRC_DIR/core/src/iter/adapters/rev.rs:LL:COL
+        _25 = &mut ((*_8).0: std::slice::Iter<'_, T>); // scope 25 at $SRC_DIR/core/src/iter/adapters/rev.rs:LL:COL
+        _7 = <std::slice::Iter<'_, T> as DoubleEndedIterator>::next_back(move _25) -> [return: bb12, unwind: bb7]; // scope 25 at $SRC_DIR/core/src/iter/adapters/rev.rs:LL:COL
                                          // mir::Constant
                                          // + span: $SRC_DIR/core/src/iter/adapters/rev.rs:LL:COL
                                          // + literal: Const { ty: for<'a> fn(&'a mut std::slice::Iter<'_, T>) -> Option<<std::slice::Iter<'_, T> as Iterator>::Item> {<std::slice::Iter<'_, T> as DoubleEndedIterator>::next_back}, val: Value(<ZST>) }
@@ -99,15 +164,56 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     }
 
     bb9: {
-        _3 = Rev::<std::slice::Iter<'_, T>> { iter: move _4 }; // scope 5 at $SRC_DIR/core/src/iter/adapters/rev.rs:LL:COL
+        StorageLive(_16);                // scope 6 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+        _16 = Len((*_1));                // scope 6 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+        _14 = _16 as *const T (Transmute); // scope 10 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+        StorageDead(_16);                // scope 6 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+        goto -> bb11;                    // scope 6 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+    }
+
+    bb10: {
+        StorageLive(_17);                // scope 6 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+        _17 = Len((*_1));                // scope 6 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+        _14 = Offset(_13, _17);          // scope 12 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+        StorageDead(_17);                // scope 6 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+        goto -> bb11;                    // scope 6 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+    }
+
+    bb11: {
+        StorageDead(_15);                // scope 6 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+        StorageLive(_18);                // scope 7 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+        StorageLive(_19);                // scope 7 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+        _19 = _13 as *mut T (PtrToPtr);  // scope 7 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+        StorageLive(_22);                // scope 7 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+        StorageLive(_23);                // scope 7 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+        StorageLive(_24);                // scope 7 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+        _22 = _19 as *const T (Pointer(MutToConstPointer)); // scope 14 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
+        _18 = NonNull::<T> { pointer: _22 }; // scope 14 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
+        StorageDead(_24);                // scope 7 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+        StorageDead(_23);                // scope 7 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+        StorageDead(_22);                // scope 7 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+        StorageDead(_19);                // scope 7 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+        StorageLive(_20);                // scope 7 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+        _20 = _14;                       // scope 7 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+        _4 = std::slice::Iter::<'_, T> { ptr: move _18, end: move _20, _marker: const ZeroSized: PhantomData<&T> }; // scope 7 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+                                         // mir::Constant
+                                         // + span: no-location
+                                         // + literal: Const { ty: PhantomData<&T>, val: Value(<ZST>) }
+                                         // adt
+                                         // + user_ty: UserType(1)
+        StorageDead(_20);                // scope 7 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+        StorageDead(_18);                // scope 7 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+        StorageDead(_14);                // scope 6 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
+        StorageDead(_13);                // scope 3 at $SRC_DIR/core/src/slice/mod.rs:LL:COL
+        _3 = Rev::<std::slice::Iter<'_, T>> { iter: move _4 }; // scope 23 at $SRC_DIR/core/src/iter/adapters/rev.rs:LL:COL
         StorageDead(_4);                 // scope 0 at $DIR/slice_iter.rs:+1:31: +1:32
         StorageLive(_5);                 // scope 0 at $DIR/slice_iter.rs:+1:14: +1:32
         _5 = move _3;                    // scope 0 at $DIR/slice_iter.rs:+1:14: +1:32
         goto -> bb1;                     // scope 1 at $DIR/slice_iter.rs:+1:5: +3:6
     }
 
-    bb10: {
-        StorageDead(_13);                // scope 7 at $SRC_DIR/core/src/iter/adapters/rev.rs:LL:COL
+    bb12: {
+        StorageDead(_25);                // scope 25 at $SRC_DIR/core/src/iter/adapters/rev.rs:LL:COL
         _9 = discriminant(_7);           // scope 1 at $DIR/slice_iter.rs:+1:14: +1:32
         switchInt(move _9) -> [0: bb4, 1: bb2, otherwise: bb3]; // scope 1 at $DIR/slice_iter.rs:+1:14: +1:32
     }
