@@ -1,7 +1,6 @@
 use super::{c, fill_utf16_buf, to_u16s};
 use crate::ffi::{OsStr, OsString};
 use crate::io;
-use crate::mem;
 use crate::path::{Path, PathBuf, Prefix};
 use crate::ptr;
 
@@ -10,16 +9,6 @@ mod tests;
 
 pub const MAIN_SEP_STR: &str = "\\";
 pub const MAIN_SEP: char = '\\';
-
-/// # Safety
-///
-/// `bytes` must be a valid wtf8 encoded slice
-#[inline]
-unsafe fn bytes_as_os_str(bytes: &[u8]) -> &OsStr {
-    // &OsStr is layout compatible with &Slice, which is compatible with &Wtf8,
-    // which is compatible with &[u8].
-    mem::transmute(bytes)
-}
 
 #[inline]
 pub fn is_sep_byte(b: u8) -> bool {
@@ -101,7 +90,7 @@ impl<'a> PrefixParserSlice<'a, '_> {
         // &[u8] and back. This is safe to do because (1) we only look at ASCII
         // contents of the encoding and (2) new &OsStr values are produced only
         // from ASCII-bounded slices of existing &OsStr values.
-        unsafe { bytes_as_os_str(&self.path.as_os_str_bytes()[self.index..]) }
+        unsafe { OsStr::from_os_str_bytes_unchecked(&self.path.as_os_str_bytes()[self.index..]) }
     }
 }
 
@@ -210,7 +199,12 @@ fn parse_next_component(path: &OsStr, verbatim: bool) -> (&OsStr, &OsStr) {
             // is encoded in a single byte, therefore `bytes[separator_start]` and
             // `bytes[separator_end]` must be code point boundaries and thus
             // `bytes[..separator_start]` and `bytes[separator_end..]` are valid wtf8 slices.
-            unsafe { (bytes_as_os_str(component), bytes_as_os_str(path)) }
+            unsafe {
+                (
+                    OsStr::from_os_str_bytes_unchecked(component),
+                    OsStr::from_os_str_bytes_unchecked(path),
+                )
+            }
         }
         None => (path, OsStr::new("")),
     }
