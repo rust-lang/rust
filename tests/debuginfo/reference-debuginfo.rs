@@ -52,6 +52,9 @@
 // gdb-command:print *f64_ref
 // gdb-check:$14 = 3.5
 
+// gdb-command:print *f64_double_ref
+// gdb-check:$15 = 3.5
+
 
 // === LLDB TESTS ==================================================================================
 
@@ -112,6 +115,10 @@
 // lldbg-check:[...]$12 = 3.5
 // lldbr-check:(f64) *f64_ref = 3.5
 
+// lldb-command:print *f64_double_ref
+// lldbg-check:[...]$13 = 3.5
+// lldbr-check:(f64) **f64_double_ref = 3.5
+
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
@@ -158,6 +165,7 @@ fn main() {
 
     let f64_val: f64 = 3.5;
     let f64_ref: &f64 = &f64_val;
+    let f64_double_ref: &f64 = &f64_ref;
 
     zzz(); // #break
 }

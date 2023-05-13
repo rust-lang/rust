@@ -546,6 +546,8 @@ fn debuginfo() {
     // on the slice length.
     if let [_, ref constant_index, subslice @ .., ref constant_index_from_end] = &[6; 10][..] {
     }
+
+    let multiple_borrow = &&&mut T(6).0;
 }
 
 fn many_debuginfo() {
