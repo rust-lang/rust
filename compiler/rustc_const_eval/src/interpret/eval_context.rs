@@ -445,9 +445,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     #[inline(always)]
     pub fn cur_span(&self) -> Span {
-        // This deliberately does *not* honor `requires_caller_location` since it is used for much
-        // more than just panics.
-        self.stack().last().map_or(self.tcx.span, |f| f.current_span())
+        M::cur_span(self)
     }
 
     #[inline(always)]

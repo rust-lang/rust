@@ -11,6 +11,7 @@ use rustc_middle::mir;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
+use rustc_span::Span;
 use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi as CallAbi;
 
@@ -439,6 +440,15 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         frame: Frame<'mir, 'tcx, Self::Provenance>,
     ) -> InterpResult<'tcx, Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>>;
+
+    fn cur_span(ecx: &InterpCx<'mir, 'tcx, Self>) -> Span
+    where
+        'tcx: 'mir,
+    {
+        // This deliberately does *not* honor `requires_caller_location` since it is used for much
+        // more than just panics.
+        Self::stack(ecx).last().map_or(ecx.tcx.span, |f| f.current_span())
+    }
 
     /// Borrow the current thread's stack.
     fn stack<'a>(

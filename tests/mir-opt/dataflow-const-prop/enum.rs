@@ -15,6 +15,13 @@ fn simple() {
     let x = match e { E::V1(x) => x, E::V2(x) => x };
 }
 
+// EMIT_MIR enum.constant.DataflowConstProp.diff
+fn constant() {
+    const C: E = E::V1(0);
+    let e = C;
+    let x = match e { E::V1(x) => x, E::V2(x) => x };
+}
+
 #[rustc_layout_scalar_valid_range_start(1)]
 #[rustc_nonnull_optimization_guaranteed]
 struct NonZeroUsize(usize);
@@ -63,6 +70,7 @@ fn multiple(x: bool, i: u8) {
 
 fn main() {
     simple();
+    constant();
     mutate_discriminant();
     multiple(false, 5);
 }
