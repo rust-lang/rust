@@ -140,6 +140,11 @@ impl AbsPath {
         self.0.parent().map(AbsPath::assert)
     }
 
+    /// Equivalent of [`Path::join`] for `AbsPath` with an additional normalize step afterwards.
+    pub fn absolutize(&self, path: impl AsRef<Path>) -> AbsPathBuf {
+        self.join(path).normalize()
+    }
+
     /// Equivalent of [`Path::join`] for `AbsPath`.
     pub fn join(&self, path: impl AsRef<Path>) -> AbsPathBuf {
         self.as_ref().join(path).try_into().unwrap()
@@ -166,9 +171,8 @@ impl AbsPath {
         AbsPathBuf::try_from(self.0.to_path_buf()).unwrap()
     }
 
-    /// Equivalent of [`Path::canonicalize`] for `AbsPath`.
-    pub fn canonicalize(&self) -> Result<AbsPathBuf, std::io::Error> {
-        Ok(self.as_ref().canonicalize()?.try_into().unwrap())
+    pub fn canonicalize(&self) -> ! {
+        panic!("We explicitly do not provide canonicalization API, as that is almost always a wrong solution, see #14430")
     }
 
     /// Equivalent of [`Path::strip_prefix`] for `AbsPath`.

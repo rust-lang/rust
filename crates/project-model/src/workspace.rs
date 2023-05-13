@@ -179,7 +179,6 @@ impl ProjectWorkspace {
         };
         let res = match manifest {
             ProjectManifest::ProjectJson(project_json) => {
-                let project_json = project_json.canonicalize()?;
                 let file = fs::read_to_string(&project_json).with_context(|| {
                     format!("Failed to read json file {}", project_json.display())
                 })?;
