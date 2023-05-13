@@ -18,6 +18,31 @@
 //!
 //! By opportunity, this pass simplifies some `Rvalue`s based on the accumulated knowledge.
 //!
+//! # Operational semantic
+//!
+//! Operationally, this pass attempts to prove bitwise equality between locals. Given this MIR:
+//! ```ignore (MIR)
+//! _a = some value // has VnIndex i
+//! // some MIR
+//! _b = some other value // also has VnIndex i
+//! ```
+//!
+//! We consider it to be replacable by:
+//! ```ignore (MIR)
+//! _a = some value // has VnIndex i
+//! // some MIR
+//! _c = some other value // also has VnIndex i
+//! assume(_a bitwise equal to _c) // follows from having the same VnIndex
+//! _b = _a // follows from the `assume`
+//! ```
+//!
+//! Which is simplifiable to:
+//! ```ignore (MIR)
+//! _a = some value // has VnIndex i
+//! // some MIR
+//! _b = _a
+//! ```
+//!
 //! # Handling of references
 //!
 //! We handle references by assigning a different "provenance" index to each Ref/AddressOf rvalue.
