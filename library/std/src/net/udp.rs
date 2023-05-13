@@ -90,6 +90,15 @@ impl UdpSocket {
     /// ];
     /// let socket = UdpSocket::bind(&addrs[..]).expect("couldn't bind to address");
     /// ```
+    ///
+    /// Creates a UDP socket bound to a port assigned by the operating system
+    /// at `127.0.0.1`.
+    ///
+    /// ```no_run
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:0").unwrap();
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn bind<A: ToSocketAddrs>(addr: A) -> io::Result<UdpSocket> {
         super::each_addr(addr, net_imp::UdpSocket::bind).map(UdpSocket)
