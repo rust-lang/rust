@@ -113,30 +113,17 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     };
     let metadata = get_cargo_metadata();
     let mut cmd = cargo();
-    cmd.arg(cargo_cmd);
-
-    // Forward all arguments before `--` other than `--target-dir` and its value to Cargo.
-    // (We want to *change* the target-dir value, so we must not forward it.)
-    let mut target_dir = None;
-    for arg in ArgSplitFlagValue::from_string_iter(&mut args, "--target-dir") {
-        match arg {
-            Ok(value) => {
-                if target_dir.is_some() {
-                    show_error!("`--target-dir` is provided more than once");
-                }
-                target_dir = Some(value.into());
-            }
-            Err(arg) => {
-                cmd.arg(arg);
-            }
-        }
+    cmd.arg(&cargo_cmd);
+    // In nextest we have to also forward the main `verb`.
+    if cargo_cmd == "nextest" {
+        cmd.arg(
+            args.next()
+                .unwrap_or_else(|| show_error!("`cargo miri nextest` expects a verb (e.g. `run`)")),
+        );
     }
-    // Detect the target directory if it's not specified via `--target-dir`.
-    // (`cargo metadata` does not support `--target-dir`, that's why we have to handle this ourselves.)
-    let target_dir = target_dir.get_or_insert_with(|| metadata.target_directory.clone());
-    // Set `--target-dir` to `miri` inside the original target directory.
-    target_dir.push("miri");
-    cmd.arg("--target-dir").arg(target_dir);
+    // We set the following flags *before* forwarding more arguments.
+    // This is needed to fix <https://github.com/rust-lang/miri/issues/2829>: cargo will stop
+    // interpreting things as flags when it sees the first positional argument.
 
     // Make sure the build target is explicitly set.
     // This is needed to make the `target.runner` settings do something,
@@ -154,8 +141,23 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     cmd.arg("--config")
         .arg(format!("target.'cfg(all())'.runner=[{cargo_miri_path_for_toml}, 'runner']"));
 
-    // Forward all further arguments after `--` to cargo.
-    cmd.arg("--").args(args);
+    // Set `--target-dir` to `miri` inside the original target directory.
+    let mut target_dir = match get_arg_flag_value("--target-dir") {
+        Some(dir) => PathBuf::from(dir),
+        None => metadata.target_directory.clone().into_std_path_buf(),
+    };
+    target_dir.push("miri");
+    cmd.arg("--target-dir").arg(target_dir);
+
+    // *After* we set all the flags that need setting, forward everything else. Make sure to skip
+    // `--target-dir` (which would otherwise be set twice).
+    for arg in
+        ArgSplitFlagValue::from_string_iter(&mut args, "--target-dir").filter_map(Result::err)
+    {
+        cmd.arg(arg);
+    }
+    // Forward all further arguments (not consumed by `ArgSplitFlagValue`) to cargo.
+    cmd.args(args);
 
     // Set `RUSTC_WRAPPER` to ourselves.  Cargo will prepend that binary to its usual invocation,
     // i.e., the first argument is `rustc` -- which is what we use in `main` to distinguish
