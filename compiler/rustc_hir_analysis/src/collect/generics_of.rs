@@ -159,7 +159,10 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 }
                 Some(fn_def_id.to_def_id())
             }
-            ItemKind::OpaqueTy(hir::OpaqueTy { origin: hir::OpaqueTyOrigin::TyAlias, .. }) => {
+            ItemKind::OpaqueTy(hir::OpaqueTy {
+                origin: hir::OpaqueTyOrigin::TyAlias { .. },
+                ..
+            }) => {
                 let parent_id = tcx.hir().get_parent_item(hir_id);
                 assert_ne!(parent_id, hir::CRATE_OWNER_ID);
                 debug!("generics_of: parent of opaque ty {:?} is {:?}", def_id, parent_id);

@@ -43,7 +43,7 @@ note: expected this to be `Bar`
    |
 LL |     type A = usize;
    |              ^^^^^
-   = note: required for the cast from `isize` to the object type `dyn Foo<A = Bar>`
+   = note: required for the cast from `&isize` to `&dyn Foo<A = Bar>`
 
 error: aborting due to 3 previous errors
 

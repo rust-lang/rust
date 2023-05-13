@@ -1442,8 +1442,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         err: &mut Diagnostic,
         obligation: &PredicateObligation<'tcx>,
         self_ty: Ty<'tcx>,
-        object_ty: Ty<'tcx>,
+        target_ty: Ty<'tcx>,
     ) {
+        let ty::Ref(_, object_ty, hir::Mutability::Not) = target_ty.kind() else { return; };
         let ty::Dynamic(predicates, _, ty::Dyn) = object_ty.kind() else { return; };
         let self_ref_ty = self.tcx.mk_imm_ref(self.tcx.lifetimes.re_erased, self_ty);
 
@@ -1458,7 +1459,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         err.span_suggestion(
             obligation.cause.span.shrink_to_lo(),
             format!(
-                "consider borrowing the value, since `&{self_ty}` can be coerced into `{object_ty}`"
+                "consider borrowing the value, since `&{self_ty}` can be coerced into `{target_ty}`"
             ),
             "&",
             Applicability::MaybeIncorrect,
@@ -2851,29 +2852,26 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     err.span_note(tcx.def_span(item_def_id), descr);
                 }
             }
-            ObligationCauseCode::ObjectCastObligation(concrete_ty, object_ty) => {
-                let (concrete_ty, concrete_file) =
-                    self.tcx.short_ty_string(self.resolve_vars_if_possible(concrete_ty));
-                let (object_ty, object_file) =
-                    self.tcx.short_ty_string(self.resolve_vars_if_possible(object_ty));
+            ObligationCauseCode::Coercion { source, target } => {
+                let (source, source_file) =
+                    self.tcx.short_ty_string(self.resolve_vars_if_possible(source));
+                let (target, target_file) =
+                    self.tcx.short_ty_string(self.resolve_vars_if_possible(target));
                 err.note(with_forced_trimmed_paths!(format!(
-                    "required for the cast from `{concrete_ty}` to the object type `{object_ty}`",
+                    "required for the cast from `{source}` to `{target}`",
                 )));
-                if let Some(file) = concrete_file {
+                if let Some(file) = source_file {
                     err.note(format!(
-                        "the full name for the casted type has been written to '{}'",
+                        "the full name for the source type has been written to '{}'",
                         file.display(),
                     ));
                 }
-                if let Some(file) = object_file {
+                if let Some(file) = target_file {
                     err.note(format!(
-                        "the full name for the object type has been written to '{}'",
+                        "the full name for the target type has been written to '{}'",
                         file.display(),
                     ));
                 }
-            }
-            ObligationCauseCode::Coercion { source: _, target } => {
-                err.note(format!("required by cast to type `{}`", self.ty_to_string(target)));
             }
             ObligationCauseCode::RepeatElementCopy { is_const_fn } => {
                 err.note(

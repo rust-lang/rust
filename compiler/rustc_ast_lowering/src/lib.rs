@@ -247,7 +247,7 @@ enum ImplTraitContext {
         in_trait: bool,
     },
     /// Impl trait in type aliases.
-    TypeAliasesOpaqueTy,
+    TypeAliasesOpaqueTy { in_assoc_ty: bool },
     /// `impl Trait` is unstably accepted in this position.
     FeatureGated(ImplTraitPosition, Symbol),
     /// `impl Trait` is not accepted in this position.
@@ -1407,14 +1407,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             *in_trait,
                             itctx,
                         ),
-                    ImplTraitContext::TypeAliasesOpaqueTy => self.lower_opaque_impl_trait(
-                        span,
-                        hir::OpaqueTyOrigin::TyAlias,
-                        *def_node_id,
-                        bounds,
-                        false,
-                        itctx,
-                    ),
+                    &ImplTraitContext::TypeAliasesOpaqueTy { in_assoc_ty } => self
+                        .lower_opaque_impl_trait(
+                            span,
+                            hir::OpaqueTyOrigin::TyAlias { in_assoc_ty },
+                            *def_node_id,
+                            bounds,
+                            false,
+                            itctx,
+                        ),
                     ImplTraitContext::Universal => {
                         let span = t.span;
                         self.create_def(
@@ -1534,13 +1535,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // If this came from a TAIT (as opposed to a function that returns an RPIT), we only want
         // to capture the lifetimes that appear in the bounds. So visit the bounds to find out
         // exactly which ones those are.
-        let lifetimes_to_remap = if origin == hir::OpaqueTyOrigin::TyAlias {
-            // in a TAIT like `type Foo<'a> = impl Foo<'a>`, we don't keep all the lifetime parameters
-            Vec::new()
-        } else {
-            // in fn return position, like the `fn test<'a>() -> impl Debug + 'a` example,
-            // we only keep the lifetimes that appear in the `impl Debug` itself:
-            lifetime_collector::lifetimes_in_bounds(&self.resolver, bounds)
+        let lifetimes_to_remap = match origin {
+            hir::OpaqueTyOrigin::TyAlias { .. } => {
+                // in a TAIT like `type Foo<'a> = impl Foo<'a>`, we don't keep all the lifetime parameters
+                Vec::new()
+            }
+            hir::OpaqueTyOrigin::AsyncFn(..) | hir::OpaqueTyOrigin::FnReturn(..) => {
+                // in fn return position, like the `fn test<'a>() -> impl Debug + 'a` example,
+                // we only keep the lifetimes that appear in the `impl Debug` itself:
+                lifetime_collector::lifetimes_in_bounds(&self.resolver, bounds)
+            }
         };
         debug!(?lifetimes_to_remap);
 

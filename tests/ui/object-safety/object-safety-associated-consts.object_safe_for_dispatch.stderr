@@ -12,8 +12,7 @@ LL | trait Bar {
 LL |     const X: usize;
    |           ^ ...because it contains this associated `const`
    = help: consider moving `X` to another trait
-   = note: required for `&T` to implement `CoerceUnsized<&dyn Bar>`
-   = note: required by cast to type `&dyn Bar`
+   = note: required for the cast from `&T` to `&dyn Bar`
 
 error: aborting due to previous error
 

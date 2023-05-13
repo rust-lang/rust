@@ -55,3 +55,11 @@ ty_utils_multiple_array_fields_simd_type = monomorphising SIMD type `{$ty}` with
 ty_utils_oversized_simd_type = monomorphising SIMD type `{$ty}` of length greater than {$max_lanes}
 
 ty_utils_non_primitive_simd_type = monomorphising SIMD type `{$ty}` with a non-primitive-scalar (integer/float/pointer) element type `{$e_ty}`
+
+ty_utils_impl_trait_duplicate_arg = non-defining opaque type use in defining scope
+    .label = generic argument `{$arg}` used twice
+    .note = for this opaque type
+
+ty_utils_impl_trait_not_param = non-defining opaque type use in defining scope
+    .label = argument `{$arg}` is not a generic parameter
+    .note = for this opaque type

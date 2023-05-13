@@ -856,7 +856,12 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         ty::EarlyBinder(&*output)
     }
 
-    fn get_variant(self, kind: &DefKind, index: DefIndex, parent_did: DefId) -> ty::VariantDef {
+    fn get_variant(
+        self,
+        kind: DefKind,
+        index: DefIndex,
+        parent_did: DefId,
+    ) -> (VariantIdx, ty::VariantDef) {
         let adt_kind = match kind {
             DefKind::Variant => ty::AdtKind::Enum,
             DefKind::Struct => ty::AdtKind::Struct,
@@ -870,22 +875,25 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             if adt_kind == ty::AdtKind::Enum { Some(self.local_def_id(index)) } else { None };
         let ctor = data.ctor.map(|(kind, index)| (kind, self.local_def_id(index)));
 
-        ty::VariantDef::new(
-            self.item_name(index),
-            variant_did,
-            ctor,
-            data.discr,
-            self.get_associated_item_or_field_def_ids(index)
-                .map(|did| ty::FieldDef {
-                    did,
-                    name: self.item_name(did.index),
-                    vis: self.get_visibility(did.index),
-                })
-                .collect(),
-            adt_kind,
-            parent_did,
-            false,
-            data.is_non_exhaustive,
+        (
+            data.idx,
+            ty::VariantDef::new(
+                self.item_name(index),
+                variant_did,
+                ctor,
+                data.discr,
+                self.get_associated_item_or_field_def_ids(index)
+                    .map(|did| ty::FieldDef {
+                        did,
+                        name: self.item_name(did.index),
+                        vis: self.get_visibility(did.index),
+                    })
+                    .collect(),
+                adt_kind,
+                parent_did,
+                false,
+                data.is_non_exhaustive,
+            ),
         )
     }
 
@@ -901,7 +909,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         };
         let repr = self.root.tables.repr_options.get(self, item_id).unwrap().decode(self);
 
-        let variants = if let ty::AdtKind::Enum = adt_kind {
+        let mut variants: Vec<_> = if let ty::AdtKind::Enum = adt_kind {
             self.root
                 .tables
                 .module_children_non_reexports
@@ -912,15 +920,22 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     let kind = self.def_kind(index);
                     match kind {
                         DefKind::Ctor(..) => None,
-                        _ => Some(self.get_variant(&kind, index, did)),
+                        _ => Some(self.get_variant(kind, index, did)),
                     }
                 })
                 .collect()
         } else {
-            std::iter::once(self.get_variant(&kind, item_id, did)).collect()
+            std::iter::once(self.get_variant(kind, item_id, did)).collect()
         };
 
-        tcx.mk_adt_def(did, adt_kind, variants, repr)
+        variants.sort_by_key(|(idx, _)| *idx);
+
+        tcx.mk_adt_def(
+            did,
+            adt_kind,
+            variants.into_iter().map(|(_, variant)| variant).collect(),
+            repr,
+        )
     }
 
     fn get_visibility(self, id: DefIndex) -> Visibility<DefId> {
