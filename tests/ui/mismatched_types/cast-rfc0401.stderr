@@ -220,11 +220,7 @@ LL |     let _ = fat_v as *const dyn Foo;
    |             ^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[u8]`
-   = note: required for the cast from `[u8]` to the object type `dyn Foo`
-help: consider borrowing the value, since `&[u8]` can be coerced into `dyn Foo`
-   |
-LL |     let _ = &fat_v as *const dyn Foo;
-   |             +
+   = note: required for the cast from `*const [u8]` to `*const dyn Foo`
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/cast-rfc0401.rs:62:13
@@ -233,11 +229,7 @@ LL |     let _ = a as *const dyn Foo;
    |             ^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`
-   = note: required for the cast from `str` to the object type `dyn Foo`
-help: consider borrowing the value, since `&str` can be coerced into `dyn Foo`
-   |
-LL |     let _ = &a as *const dyn Foo;
-   |             +
+   = note: required for the cast from `*const str` to `*const dyn Foo`
 
 error[E0606]: casting `&{float}` as `f32` is invalid
   --> $DIR/cast-rfc0401.rs:71:30
