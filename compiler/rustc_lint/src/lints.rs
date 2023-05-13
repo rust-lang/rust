@@ -701,12 +701,21 @@ pub struct ForgetCopyDiag<'a> {
 
 // invalid_from_utf8.rs
 #[derive(LintDiagnostic)]
-#[diag(lint_invalid_from_utf8_unchecked)]
-pub struct InvalidFromUtf8UncheckedDiag {
-    pub method: String,
-    pub valid_up_to: usize,
-    #[label]
-    pub label: Span,
+pub enum InvalidFromUtf8Diag {
+    #[diag(lint_invalid_from_utf8_unchecked)]
+    Unchecked {
+        method: String,
+        valid_up_to: usize,
+        #[label]
+        label: Span,
+    },
+    #[diag(lint_invalid_from_utf8_checked)]
+    Checked {
+        method: String,
+        valid_up_to: usize,
+        #[label]
+        label: Span,
+    },
 }
 
 // hidden_unicode_codepoints.rs

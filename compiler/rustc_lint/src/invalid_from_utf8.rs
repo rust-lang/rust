@@ -5,7 +5,7 @@ use rustc_hir::{Expr, ExprKind};
 use rustc_span::source_map::Spanned;
 use rustc_span::sym;
 
-use crate::lints::InvalidFromUtf8UncheckedDiag;
+use crate::lints::InvalidFromUtf8Diag;
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
@@ -33,7 +33,30 @@ declare_lint! {
     "using a non UTF-8 literal in `std::str::from_utf8_unchecked`"
 }
 
-declare_lint_pass!(InvalidFromUtf8 => [INVALID_FROM_UTF8_UNCHECKED]);
+declare_lint! {
+    /// The `invalid_from_utf8` lint checks for calls to
+    /// `std::str::from_utf8` and `std::str::from_utf8_mut`
+    /// with an invalid UTF-8 literal.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// # #[allow(unused)]
+    /// std::str::from_utf8(b"Ru\x82st");
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Trying to create such a `str` would always return an error as per documentation
+    /// for `std::str::from_utf8` and `std::str::from_utf8_mut`.
+    pub INVALID_FROM_UTF8,
+    Warn,
+    "using a non UTF-8 literal in `std::str::from_utf8`"
+}
+
+declare_lint_pass!(InvalidFromUtf8 => [INVALID_FROM_UTF8_UNCHECKED, INVALID_FROM_UTF8]);
 
 impl<'tcx> LateLintPass<'tcx> for InvalidFromUtf8 {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
@@ -41,15 +64,25 @@ impl<'tcx> LateLintPass<'tcx> for InvalidFromUtf8 {
             && let ExprKind::Path(ref qpath) = path.kind
             && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
             && let Some(diag_item) = cx.tcx.get_diagnostic_name(def_id)
-            && [sym::str_from_utf8_unchecked, sym::str_from_utf8_unchecked_mut].contains(&diag_item)
+            && [sym::str_from_utf8, sym::str_from_utf8_mut,
+                sym::str_from_utf8_unchecked, sym::str_from_utf8_unchecked_mut].contains(&diag_item)
         {
             let lint = |utf8_error: Utf8Error| {
+                let label = arg.span;
                 let method = diag_item.as_str().strip_prefix("str_").unwrap();
-                cx.emit_spanned_lint(INVALID_FROM_UTF8_UNCHECKED, expr.span, InvalidFromUtf8UncheckedDiag {
-                    method: format!("std::str::{method}"),
-                    valid_up_to: utf8_error.valid_up_to(),
-                    label: arg.span,
-                })
+                let method = format!("std::str::{method}");
+                let valid_up_to = utf8_error.valid_up_to();
+                let is_unchecked_variant = diag_item.as_str().contains("unchecked");
+
+                cx.emit_spanned_lint(
+                    if is_unchecked_variant { INVALID_FROM_UTF8_UNCHECKED } else { INVALID_FROM_UTF8 },
+                    expr.span,
+                    if is_unchecked_variant {
+                        InvalidFromUtf8Diag::Unchecked { method,  valid_up_to, label }
+                    } else {
+                        InvalidFromUtf8Diag::Checked { method,  valid_up_to, label }
+                    }
+                )
             };
 
             match &arg.kind {
