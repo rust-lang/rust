@@ -4,8 +4,8 @@ use std::fmt;
 
 use either::Either;
 use hir::{
-    AssocItem, Documentation, FieldSource, HasAttrs, HasContainer, HasSource, HirDisplay, InFile,
-    LocalSource, ModuleSource,
+    symbols::FileSymbol, AssocItem, Documentation, FieldSource, HasAttrs, HasContainer, HasSource,
+    HirDisplay, InFile, LocalSource, ModuleSource,
 };
 use ide_db::{
     base_db::{FileId, FileRange},
@@ -155,6 +155,36 @@ impl NavigationTarget {
             description: None,
             docs: None,
         }
+    }
+}
+
+impl TryToNav for FileSymbol {
+    fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
+        let full_range = self.loc.original_range(db);
+        let name_range = self.loc.original_name_range(db)?;
+
+        Some(NavigationTarget {
+            file_id: full_range.file_id,
+            name: self.name.clone(),
+            kind: Some(hir::ModuleDefId::from(self.def).into()),
+            full_range: full_range.range,
+            focus_range: Some(name_range.range),
+            container_name: self.container_name.clone(),
+            description: match self.def {
+                hir::ModuleDef::Module(it) => Some(it.display(db).to_string()),
+                hir::ModuleDef::Function(it) => Some(it.display(db).to_string()),
+                hir::ModuleDef::Adt(it) => Some(it.display(db).to_string()),
+                hir::ModuleDef::Variant(it) => Some(it.display(db).to_string()),
+                hir::ModuleDef::Const(it) => Some(it.display(db).to_string()),
+                hir::ModuleDef::Static(it) => Some(it.display(db).to_string()),
+                hir::ModuleDef::Trait(it) => Some(it.display(db).to_string()),
+                hir::ModuleDef::TraitAlias(it) => Some(it.display(db).to_string()),
+                hir::ModuleDef::TypeAlias(it) => Some(it.display(db).to_string()),
+                hir::ModuleDef::Macro(it) => Some(it.display(db).to_string()),
+                hir::ModuleDef::BuiltinType(_) => None,
+            },
+            docs: None,
+        })
     }
 }
 
