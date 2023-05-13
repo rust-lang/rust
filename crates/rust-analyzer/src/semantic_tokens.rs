@@ -141,6 +141,7 @@ define_semantic_token_modifiers![
         (INJECTED, "injected"),
         (INTRA_DOC_LINK, "intraDocLink"),
         (LIBRARY, "library"),
+        (MACRO_MODIFIER, "macro"),
         (MUTABLE, "mutable"),
         (PUBLIC, "public"),
         (REFERENCE, "reference"),

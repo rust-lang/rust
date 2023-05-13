@@ -166,6 +166,7 @@ pub struct HighlightConfig {
 // injected:: Emitted for doc-string injected highlighting like rust source blocks in documentation.
 // intraDocLink:: Emitted for intra doc links in doc-strings.
 // library:: Emitted for items that are defined outside of the current crate.
+// macro::  Emitted for tokens inside macro calls.
 // mutable:: Emitted for mutable locals and statics as well as functions taking `&mut self`.
 // public:: Emitted for items that are from the current crate and are `pub`.
 // reference:: Emitted for locals behind a reference and functions taking `self` by reference.
@@ -240,6 +241,7 @@ fn traverse(
     let mut current_macro: Option<ast::Macro> = None;
     let mut macro_highlighter = MacroHighlighter::default();
     let mut inside_attribute = false;
+    let mut inside_macro_call = false;
 
     // Walk all nodes, keeping track of whether we are inside a macro or not.
     // If in macro, expand it first and highlight the expanded code.
@@ -270,46 +272,50 @@ fn traverse(
                 inside_attribute = false
             }
 
-            Enter(NodeOrToken::Node(node)) if ast::Item::can_cast(node.kind()) => {
-                match ast::Item::cast(node.clone()) {
-                    Some(ast::Item::MacroRules(mac)) => {
-                        macro_highlighter.init();
-                        current_macro = Some(mac.into());
-                        continue;
-                    }
-                    Some(ast::Item::MacroDef(mac)) => {
-                        macro_highlighter.init();
-                        current_macro = Some(mac.into());
-                        continue;
-                    }
-                    Some(item) => {
-                        if matches!(node.kind(), FN | CONST | STATIC) {
-                            bindings_shadow_count.clear();
+            Enter(NodeOrToken::Node(node)) => match ast::Item::cast(node.clone()) {
+                Some(item) => {
+                    match item {
+                        ast::Item::MacroRules(mac) => {
+                            macro_highlighter.init();
+                            current_macro = Some(mac.into());
+                            continue;
                         }
+                        ast::Item::MacroDef(mac) => {
+                            macro_highlighter.init();
+                            current_macro = Some(mac.into());
+                            continue;
+                        }
+                        ast::Item::Fn(_) | ast::Item::Const(_) | ast::Item::Static(_) => {
+                            bindings_shadow_count.clear()
+                        }
+                        ast::Item::MacroCall(_) => {
+                            inside_macro_call = true;
+                        }
+                        _ => (),
+                    }
 
-                        if attr_or_derive_item.is_none() {
-                            if sema.is_attr_macro_call(&item) {
-                                attr_or_derive_item = Some(AttrOrDerive::Attr(item));
-                            } else {
-                                let adt = match item {
-                                    ast::Item::Enum(it) => Some(ast::Adt::Enum(it)),
-                                    ast::Item::Struct(it) => Some(ast::Adt::Struct(it)),
-                                    ast::Item::Union(it) => Some(ast::Adt::Union(it)),
-                                    _ => None,
-                                };
-                                match adt {
-                                    Some(adt) if sema.is_derive_annotated(&adt) => {
-                                        attr_or_derive_item =
-                                            Some(AttrOrDerive::Derive(ast::Item::from(adt)));
-                                    }
-                                    _ => (),
+                    if attr_or_derive_item.is_none() {
+                        if sema.is_attr_macro_call(&item) {
+                            attr_or_derive_item = Some(AttrOrDerive::Attr(item));
+                        } else {
+                            let adt = match item {
+                                ast::Item::Enum(it) => Some(ast::Adt::Enum(it)),
+                                ast::Item::Struct(it) => Some(ast::Adt::Struct(it)),
+                                ast::Item::Union(it) => Some(ast::Adt::Union(it)),
+                                _ => None,
+                            };
+                            match adt {
+                                Some(adt) if sema.is_derive_annotated(&adt) => {
+                                    attr_or_derive_item =
+                                        Some(AttrOrDerive::Derive(ast::Item::from(adt)));
                                 }
+                                _ => (),
                             }
                         }
                     }
-                    _ => (),
                 }
-            }
+                _ => (),
+            },
             Leave(NodeOrToken::Node(node)) if ast::Item::can_cast(node.kind()) => {
                 match ast::Item::cast(node.clone()) {
                     Some(ast::Item::MacroRules(mac)) => {
@@ -326,6 +332,9 @@ fn traverse(
                         if attr_or_derive_item.as_ref().map_or(false, |it| *it.item() == item) =>
                     {
                         attr_or_derive_item = None;
+                    }
+                    Some(ast::Item::MacroCall(_)) => {
+                        inside_macro_call = false;
                     }
                     _ => (),
                 }
@@ -475,6 +484,9 @@ fn traverse(
 
             if inside_attribute {
                 highlight |= HlMod::Attribute
+            }
+            if inside_macro_call && tt_level > 0 {
+                highlight |= HlMod::Macro
             }
 
             hl.add(HlRange { range, highlight, binding_hash });
