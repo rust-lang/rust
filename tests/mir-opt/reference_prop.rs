@@ -548,6 +548,18 @@ fn debuginfo() {
     }
 }
 
+fn many_debuginfo() {
+    let a = 0;
+
+    // Verify that we do not ICE on deeply nested borrows.
+    let many_borrow =
+        &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+        &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+        &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+        &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+        &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&a;
+}
+
 fn main() {
     let mut x = 5_usize;
     let mut y = 7_usize;
@@ -562,6 +574,7 @@ fn main() {
     mut_raw_then_mut_shr();
     unique_with_copies();
     debuginfo();
+    many_debuginfo();
 }
 
 // EMIT_MIR reference_prop.reference_propagation.ReferencePropagation.diff
