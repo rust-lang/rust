@@ -5,6 +5,7 @@
 // compile-flags:--extern remove_extern_crate
 
 #![warn(rust_2018_idioms)]
+#![allow(drop_copy)]
 
 extern crate core; //~ WARNING unused extern crate
 // Shouldn't suggest changing to `use`, as `another_name`

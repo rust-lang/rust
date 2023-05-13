@@ -721,7 +721,7 @@ pub(super) fn type_param_predicates(
                 | ItemKind::TyAlias(_, generics)
                 | ItemKind::OpaqueTy(OpaqueTy {
                     generics,
-                    origin: hir::OpaqueTyOrigin::TyAlias,
+                    origin: hir::OpaqueTyOrigin::TyAlias { .. },
                     ..
                 })
                 | ItemKind::Enum(_, generics)

@@ -3,6 +3,8 @@
 // check-pass
 
 #![allow(irrefutable_let_patterns)]
+#![allow(drop_copy)]
+#![allow(drop_ref)]
 
 fn main() {
     // A regression test for a mistake we made at one point:

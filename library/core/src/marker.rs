@@ -766,16 +766,11 @@ impl<T: ?Sized> !Sync for *mut T {}
 ///
 /// ## Ownership and the drop check
 ///
-/// Adding a field of type `PhantomData<T>` indicates that your
-/// type owns data of type `T`. This in turn implies that when your
-/// type is dropped, it may drop one or more instances of the type
-/// `T`. This has bearing on the Rust compiler's [drop check]
-/// analysis.
+/// The exact interaction of `PhantomData` with drop check **may change in the future**.
 ///
-/// If your struct does not in fact *own* the data of type `T`, it is
-/// better to use a reference type, like `PhantomData<&'a T>`
-/// (ideally) or `PhantomData<*const T>` (if no lifetime applies), so
-/// as not to indicate ownership.
+/// Currently, adding a field of type `PhantomData<T>` indicates that your type *owns* data of type
+/// `T` in very rare circumstances. This in turn has effects on the Rust compiler's [drop check]
+/// analysis. For the exact rules, see the [drop check] documentation.
 ///
 /// ## Layout
 ///
@@ -783,7 +778,7 @@ impl<T: ?Sized> !Sync for *mut T {}
 /// * `size_of::<PhantomData<T>>() == 0`
 /// * `align_of::<PhantomData<T>>() == 1`
 ///
-/// [drop check]: ../../nomicon/dropck.html
+/// [drop check]: Drop#drop-check
 #[lang = "phantom_data"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct PhantomData<T: ?Sized>;

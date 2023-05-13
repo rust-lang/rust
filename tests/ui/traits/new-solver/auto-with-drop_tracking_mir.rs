@@ -14,6 +14,7 @@ async fn foo() {
     #[cfg(fail)]
     let x = &NotSync;
     bar().await;
+    #[allow(drop_ref)]
     drop(x);
 }
 

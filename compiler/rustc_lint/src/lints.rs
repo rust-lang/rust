@@ -662,6 +662,43 @@ pub struct ForLoopsOverFalliblesSuggestion<'a> {
     pub end_span: Span,
 }
 
+// drop_ref.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_drop_ref)]
+#[note]
+pub struct DropRefDiag<'a> {
+    pub arg_ty: Ty<'a>,
+    #[label]
+    pub label: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_drop_copy)]
+#[note]
+pub struct DropCopyDiag<'a> {
+    pub arg_ty: Ty<'a>,
+    #[label]
+    pub label: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_forget_ref)]
+#[note]
+pub struct ForgetRefDiag<'a> {
+    pub arg_ty: Ty<'a>,
+    #[label]
+    pub label: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_forget_copy)]
+#[note]
+pub struct ForgetCopyDiag<'a> {
+    pub arg_ty: Ty<'a>,
+    #[label]
+    pub label: Span,
+}
+
 // hidden_unicode_codepoints.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_hidden_unicode_codepoints)]

@@ -18,7 +18,7 @@ LL |         writer.my_write(valref)
    |                         ^^^^^^ the trait `MyDisplay` is not implemented for `T`
    |
    = help: the trait `MyDisplay` is implemented for `&'a mut T`
-   = note: required for the cast from `T` to the object type `dyn MyDisplay`
+   = note: required for the cast from `&mut T` to `&dyn MyDisplay`
 
 error: aborting due to 2 previous errors
 

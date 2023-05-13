@@ -4,6 +4,7 @@
 //[nomiropt]compile-flags: -Z mir-opt-level=0
 
 #![feature(generators, generator_trait)]
+#![allow(drop_copy)]
 
 use std::ops::Generator;
 use std::pin::Pin;

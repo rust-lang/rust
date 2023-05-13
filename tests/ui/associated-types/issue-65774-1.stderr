@@ -25,7 +25,7 @@ LL | impl<'a, T: MyDisplay> MyDisplay for &'a mut T { }
    |             ---------  ^^^^^^^^^     ^^^^^^^^^
    |             |
    |             unsatisfied trait bound introduced here
-   = note: required for the cast from `&mut T` to the object type `dyn MyDisplay`
+   = note: required for the cast from `&&mut T` to `&dyn MyDisplay`
 
 error: aborting due to 2 previous errors
 

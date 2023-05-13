@@ -149,7 +149,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     // no one encounters it in practice.
                     // It does occur however in `fn fut() -> impl Future<Output = i32> { async { 42 } }`,
                     // where it is of no concern, so we only check for TAITs.
-                    if let Some(OpaqueTyOrigin::TyAlias) =
+                    if let Some(OpaqueTyOrigin::TyAlias { .. }) =
                         b_def_id.as_local().and_then(|b_def_id| self.opaque_type_origin(b_def_id))
                     {
                         self.tcx.sess.emit_err(OpaqueHiddenTypeDiag {
@@ -381,8 +381,12 @@ impl<'tcx> InferCtxt<'tcx> {
             // Anonymous `impl Trait`
             hir::OpaqueTyOrigin::FnReturn(parent) => parent == parent_def_id,
             // Named `type Foo = impl Bar;`
-            hir::OpaqueTyOrigin::TyAlias => {
-                may_define_opaque_type(self.tcx, parent_def_id, opaque_hir_id)
+            hir::OpaqueTyOrigin::TyAlias { in_assoc_ty } => {
+                if in_assoc_ty {
+                    self.tcx.opaque_types_defined_by(parent_def_id).contains(&def_id)
+                } else {
+                    may_define_opaque_type(self.tcx, parent_def_id, opaque_hir_id)
+                }
             }
         };
         in_definition_scope.then_some(origin)

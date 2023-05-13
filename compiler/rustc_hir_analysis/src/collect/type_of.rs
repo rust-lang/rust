@@ -426,9 +426,10 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
                     let substs = InternalSubsts::identity_for_item(tcx, def_id);
                     tcx.mk_adt(def, substs)
                 }
-                ItemKind::OpaqueTy(OpaqueTy { origin: hir::OpaqueTyOrigin::TyAlias, .. }) => {
-                    find_opaque_ty_constraints_for_tait(tcx, def_id)
-                }
+                ItemKind::OpaqueTy(OpaqueTy {
+                    origin: hir::OpaqueTyOrigin::TyAlias { .. },
+                    ..
+                }) => find_opaque_ty_constraints_for_tait(tcx, def_id),
                 // Opaque types desugared from `impl Trait`.
                 ItemKind::OpaqueTy(OpaqueTy {
                     origin:

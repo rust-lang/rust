@@ -12,7 +12,7 @@ note: required because it appears within the type `B`
    |
 LL | struct B {
    |        ^
-   = note: required for the cast from `B` to the object type `dyn Foo + Send`
+   = note: required for the cast from `Box<B>` to `Box<dyn Foo + Send>`
 
 error: aborting due to previous error
 
