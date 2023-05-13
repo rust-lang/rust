@@ -745,6 +745,9 @@ LLVMRustOptimize(
         if (InstrProfileOutput) {
           Options.InstrProfileOutput = InstrProfileOutput;
         }
+        // cargo run tests in multhreading mode by default
+        // so use atomics for coverage counters
+        Options.Atomic = true;
         MPM.addPass(InstrProfiling(Options, false));
       }
     );
