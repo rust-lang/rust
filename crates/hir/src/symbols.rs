@@ -1,12 +1,15 @@
 //! File symbol extraction.
 
+use base_db::FileRange;
 use hir_def::{
-    AdtId, AssocItemId, DefWithBodyId, HasModule, ImplId, MacroId, ModuleDefId, ModuleId, TraitId,
+    src::HasSource, AdtId, AssocItemId, DefWithBodyId, HasModule, ImplId, Lookup, MacroId,
+    ModuleDefId, ModuleId, TraitId,
 };
+use hir_expand::{HirFileId, InFile};
 use hir_ty::db::HirDatabase;
-use syntax::SmolStr;
+use syntax::{ast::HasName, AstNode, SmolStr, SyntaxNode, SyntaxNodePtr};
 
-use crate::{Module, ModuleDef};
+use crate::{Module, ModuleDef, Semantics};
 
 /// The actual data that is stored in the index. It should be as compact as
 /// possible.
@@ -15,6 +18,45 @@ pub struct FileSymbol {
     // even though name can be derived from the def, we store it for efficiency
     pub name: SmolStr,
     pub def: ModuleDef,
+    pub loc: DeclarationLocation,
+    pub container_name: Option<SmolStr>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct DeclarationLocation {
+    /// The file id for both the `ptr` and `name_ptr`.
+    pub hir_file_id: HirFileId,
+    /// This points to the whole syntax node of the declaration.
+    pub ptr: SyntaxNodePtr,
+    /// This points to the [`syntax::ast::Name`] identifier of the declaration.
+    pub name_ptr: SyntaxNodePtr,
+}
+
+impl DeclarationLocation {
+    pub fn syntax<DB: HirDatabase>(&self, sema: &Semantics<'_, DB>) -> SyntaxNode {
+        let root = sema.parse_or_expand(self.hir_file_id);
+        self.ptr.to_node(&root)
+    }
+
+    pub fn original_range(&self, db: &dyn HirDatabase) -> FileRange {
+        let node = resolve_node(db, self.hir_file_id, &self.ptr);
+        node.as_ref().original_file_range(db.upcast())
+    }
+
+    pub fn original_name_range(&self, db: &dyn HirDatabase) -> Option<FileRange> {
+        let node = resolve_node(db, self.hir_file_id, &self.name_ptr);
+        node.as_ref().original_file_range_opt(db.upcast())
+    }
+}
+
+fn resolve_node(
+    db: &dyn HirDatabase,
+    file_id: HirFileId,
+    ptr: &SyntaxNodePtr,
+) -> InFile<SyntaxNode> {
+    let root = db.parse_or_expand(file_id);
+    let node = ptr.to_node(&root);
+    InFile::new(file_id, node)
 }
 
 /// Represents an outstanding module that the symbol collector must collect symbols from.
@@ -193,17 +235,52 @@ impl<'a> SymbolCollector<'a> {
         }
     }
 
-    fn push_decl(&mut self, id: impl Into<ModuleDefId>) {
-        let def = ModuleDef::from(id.into());
-        if let Some(name) = def.name(self.db) {
-            self.symbols.push(FileSymbol { name: name.to_smol_str(), def });
-        }
+    fn push_decl<L>(&mut self, id: L)
+    where
+        L: Lookup + Into<ModuleDefId>,
+        <L as Lookup>::Data: HasSource,
+        <<L as Lookup>::Data as HasSource>::Value: HasName,
+    {
+        self.push_file_symbol(|s| {
+            let loc = id.lookup(s.db.upcast());
+            let source = loc.source(s.db.upcast());
+            let name_node = source.value.name()?;
+            Some(FileSymbol {
+                name: name_node.text().into(),
+                def: ModuleDef::from(id.into()),
+                container_name: s.current_container_name.clone(),
+                loc: DeclarationLocation {
+                    hir_file_id: source.file_id,
+                    ptr: SyntaxNodePtr::new(source.value.syntax()),
+                    name_ptr: SyntaxNodePtr::new(name_node.syntax()),
+                },
+            })
+        })
     }
 
     fn push_module(&mut self, module_id: ModuleId) {
-        let def = Module::from(module_id);
-        if let Some(name) = def.name(self.db) {
-            self.symbols.push(FileSymbol { name: name.to_smol_str(), def: ModuleDef::Module(def) });
+        self.push_file_symbol(|s| {
+            let def_map = module_id.def_map(s.db.upcast());
+            let module_data = &def_map[module_id.local_id];
+            let declaration = module_data.origin.declaration()?;
+            let module = declaration.to_node(s.db.upcast());
+            let name_node = module.name()?;
+            Some(FileSymbol {
+                name: name_node.text().into(),
+                def: ModuleDef::Module(module_id.into()),
+                container_name: s.current_container_name.clone(),
+                loc: DeclarationLocation {
+                    hir_file_id: declaration.file_id,
+                    ptr: SyntaxNodePtr::new(module.syntax()),
+                    name_ptr: SyntaxNodePtr::new(name_node.syntax()),
+                },
+            })
+        })
+    }
+
+    fn push_file_symbol(&mut self, f: impl FnOnce(&Self) -> Option<FileSymbol>) {
+        if let Some(file_symbol) = f(self) {
+            self.symbols.push(file_symbol);
         }
     }
 }
