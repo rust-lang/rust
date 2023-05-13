@@ -59,7 +59,11 @@ impl ResolvePathResult {
 }
 
 impl PerNs {
-    fn filter_macro(mut self, db: &dyn DefDatabase, expected: Option<MacroSubNs>) -> Self {
+    pub(super) fn filter_macro(
+        mut self,
+        db: &dyn DefDatabase,
+        expected: Option<MacroSubNs>,
+    ) -> Self {
         self.macros = self.macros.filter(|&(id, _)| {
             let this = MacroSubNs::from_id(db, id);
             sub_namespace_match(Some(this), expected)

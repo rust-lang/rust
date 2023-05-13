@@ -44,7 +44,8 @@ use crate::{
         mod_resolution::ModDir,
         path_resolution::ReachedFixedPoint,
         proc_macro::{parse_macro_name_and_helper_attrs, ProcMacroDef, ProcMacroKind},
-        BuiltinShadowMode, DefMap, MacroSubNs, ModuleData, ModuleOrigin, ResolveMode,
+        sub_namespace_match, BuiltinShadowMode, DefMap, MacroSubNs, ModuleData, ModuleOrigin,
+        ResolveMode,
     },
     path::{ImportAlias, ModPath, PathKind},
     per_ns::PerNs,
@@ -2141,26 +2142,34 @@ impl ModCollector<'_, '_> {
 
     fn collect_macro_call(&mut self, mac: &MacroCall, container: ItemContainerId) {
         let ast_id = AstIdWithPath::new(self.file_id(), mac.ast_id, ModPath::clone(&mac.path));
+        let db = self.def_collector.db;
 
-        // Case 1: try to resolve in legacy scope and expand macro_rules
+        // FIXME: Immediately expanding in "Case 1" is insufficient since "Case 2" may also define
+        // new legacy macros that create textual scopes. We need a way to resolve names in textual
+        // scopes without eager expansion.
+
+        // Case 1: try to resolve macro calls with single-segment name and expand macro_rules
         if let Ok(res) = macro_call_as_call_id(
-            self.def_collector.db.upcast(),
+            db.upcast(),
             &ast_id,
             mac.expand_to,
             self.def_collector.def_map.krate,
             |path| {
                 path.as_ident().and_then(|name| {
-                    self.def_collector.def_map.with_ancestor_maps(
-                        self.def_collector.db,
-                        self.module_id,
-                        &mut |map, module| {
-                            map[module]
-                                .scope
-                                .get_legacy_macro(name)
-                                .and_then(|it| it.last())
-                                .map(|&it| macro_id_to_def_id(self.def_collector.db, it))
-                        },
-                    )
+                    let def_map = &self.def_collector.def_map;
+                    def_map
+                        .with_ancestor_maps(db, self.module_id, &mut |map, module| {
+                            map[module].scope.get_legacy_macro(name)?.last().copied()
+                        })
+                        .or_else(|| def_map[self.module_id].scope.get(name).take_macros())
+                        .or_else(|| def_map.macro_use_prelude.get(name).copied())
+                        .filter(|&id| {
+                            sub_namespace_match(
+                                Some(MacroSubNs::from_id(db, id)),
+                                Some(MacroSubNs::Bang),
+                            )
+                        })
+                        .map(|it| macro_id_to_def_id(self.def_collector.db, it))
                 })
             },
         ) {

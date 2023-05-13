@@ -1273,6 +1273,39 @@ pub mod prelude {
 }
 
 #[test]
+fn macro_use_prelude_is_eagerly_expanded() {
+    // See FIXME in `ModCollector::collect_macro_call()`.
+    check(
+        r#"
+//- /main.rs crate:main deps:lib
+#[macro_use]
+extern crate lib;
+mk_foo!();
+mod a {
+    foo!();
+}
+//- /lib.rs crate:lib
+#[macro_export]
+macro_rules! mk_foo {
+    () => {
+        macro_rules! foo {
+            () => { struct Ok; }
+        }
+    }
+}
+    "#,
+        expect![[r#"
+        crate
+        a: t
+        lib: t
+
+        crate::a
+        Ok: t v
+    "#]],
+    );
+}
+
+#[test]
 fn macro_sub_namespace() {
     let map = compute_crate_def_map(
         r#"
