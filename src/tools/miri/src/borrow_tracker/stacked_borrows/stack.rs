@@ -83,7 +83,7 @@ impl Stack {
         self.borrows.truncate(write_idx);
 
         #[cfg(not(feature = "stack-cache"))]
-        drop(first_removed); // This is only needed for the stack-cache
+        let _unused = first_removed; // This is only needed for the stack-cache
 
         #[cfg(feature = "stack-cache")]
         if let Some(first_removed) = first_removed {

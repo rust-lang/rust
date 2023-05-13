@@ -5123,9 +5123,9 @@ checksum = "9e79c4d996edb816c91e4308506774452e55e95c3c9de07b6729e17e15a5ef81"
 
 [[package]]
 name = "ui_test"
-version = "0.9.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "95033b0e41b8018013d99a6f1486c1ae5bd080378ced60c5f797e93842423b33"
+checksum = "191a442639ea102fa62671026047e51d574bfda44b7fdf32151d7314624c1cd2"
 dependencies = [
  "bstr 1.3.0",
  "cargo-platform",

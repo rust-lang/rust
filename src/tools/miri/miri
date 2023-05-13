@@ -306,7 +306,7 @@ test|bless)
     # Only in root project as `cargo-miri` has no tests.
     $CARGO test $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml "$@"
     ;;
-run)
+run|run-dep)
     # Scan for "--target" to overwrite the "MIRI_TEST_TARGET" env var so
     # that we set the MIRI_SYSROOT up the right way.
     FOUND_TARGET_OPT=0
@@ -323,11 +323,17 @@ run)
         # Make sure Miri actually uses this target.
         MIRIFLAGS="$MIRIFLAGS --target $MIRI_TEST_TARGET"
     fi
+
     # First build and get a sysroot.
     $CARGO build $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml
     find_sysroot
     # Then run the actual command.
-    exec $CARGO run $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml -- $MIRIFLAGS "$@"
+    
+    if [ "$COMMAND" = "run-dep" ]; then
+        exec $CARGO test --test compiletest $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml -- --miri-run-dep-mode $MIRIFLAGS "$@"
+    else
+        exec $CARGO run $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml -- $MIRIFLAGS "$@"
+    fi
     ;;
 fmt)
     find "$MIRIDIR" -not \( -name target -prune \) -name '*.rs' \
