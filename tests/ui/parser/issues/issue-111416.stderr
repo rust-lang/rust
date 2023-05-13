@@ -1,5 +1,5 @@
 error: invalid `struct` delimiters or `fn` call arguments
-  --> $DIR/issue-111416.rs:3:14
+  --> $DIR/issue-111416.rs:2:14
    |
 LL |     let my = monad_bind(mx, T: Try);
    |              ^^^^^^^^^^^^^^^^^^^^^^

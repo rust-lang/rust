@@ -1181,12 +1181,9 @@ impl<'a> Parser<'a> {
                         let close_paren = self.prev_token.span;
                         let span = lo.to(close_paren);
                         // filter shorthand fields
-                        let fields: Vec<_> = fields
-                            .into_iter()
-                            .filter_map(
-                                |field| if !field.is_shorthand { Some(field) } else { None },
-                            )
-                            .collect();
+                        let fields: Vec<_> =
+                            fields.into_iter().filter(|field| !field.is_shorthand).collect();
+
                         if !fields.is_empty() &&
                             // `token.kind` should not be compared here.
                             // This is because the `snapshot.token.kind` is treated as the same as
