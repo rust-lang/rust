@@ -246,7 +246,7 @@ fn patch_path_prefix(path: PathBuf) -> PathBuf {
                         format!("{}:", d.to_ascii_uppercase() as char)
                     }
                     Prefix::VerbatimDisk(d) => {
-                        format!(r"\\?\{}:\", d.to_ascii_uppercase() as char)
+                        format!(r"\\?\{}:", d.to_ascii_uppercase() as char)
                     }
                     _ => return path,
                 };
