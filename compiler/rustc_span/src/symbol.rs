@@ -1454,6 +1454,8 @@ symbols! {
         stop_after_dataflow,
         store,
         str,
+        str_from_utf8_unchecked,
+        str_from_utf8_unchecked_mut,
         str_split_whitespace,
         str_trim,
         str_trim_end,

@@ -60,6 +60,7 @@ mod expect;
 mod for_loops_over_fallibles;
 pub mod hidden_unicode_codepoints;
 mod internal;
+mod invalid_from_utf8;
 mod late;
 mod let_underscore;
 mod levels;
@@ -102,6 +103,7 @@ use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
 use for_loops_over_fallibles::*;
 use hidden_unicode_codepoints::*;
 use internal::*;
+use invalid_from_utf8::*;
 use let_underscore::*;
 use map_unit_fn::*;
 use methods::*;
@@ -207,6 +209,7 @@ late_lint_methods!(
             HardwiredLints: HardwiredLints,
             ImproperCTypesDeclarations: ImproperCTypesDeclarations,
             ImproperCTypesDefinitions: ImproperCTypesDefinitions,
+            InvalidFromUtf8: InvalidFromUtf8,
             VariantSizeDifferences: VariantSizeDifferences,
             BoxPointers: BoxPointers,
             PathStatements: PathStatements,
