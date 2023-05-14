@@ -13,7 +13,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{
     error_code, pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder,
-    ErrorGuaranteed, MultiSpan, Style,
+    ErrorGuaranteed, MultiSpan, Style, SuggestionStyle,
 };
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -27,6 +27,7 @@ use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk, LateBoundRegionConversionTime};
 use rustc_middle::hir::map;
+use rustc_middle::query::Key;
 use rustc_middle::ty::error::TypeError::{self, Sorts};
 use rustc_middle::ty::{
     self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind,
@@ -357,6 +358,15 @@ pub trait TypeErrCtxtExt<'tcx> {
         err: &mut Diagnostic,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     );
+
+    fn suggest_option_method_if_applicable(
+        &self,
+        failed_pred: ty::Predicate<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+    );
+
     fn note_function_argument_obligation(
         &self,
         body_id: LocalDefId,
@@ -3660,15 +3670,92 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 err.replace_span_with(path.ident.span, true);
             }
         }
-        if let Some(Node::Expr(hir::Expr {
-            kind:
-                hir::ExprKind::Call(hir::Expr { span, .. }, _)
-                | hir::ExprKind::MethodCall(hir::PathSegment { ident: Ident { span, .. }, .. }, ..),
-            ..
-        })) = hir.find(call_hir_id)
+
+        if let Some(Node::Expr(expr)) = hir.find(call_hir_id) {
+            if let hir::ExprKind::Call(hir::Expr { span, .. }, _)
+            | hir::ExprKind::MethodCall(
+                hir::PathSegment { ident: Ident { span, .. }, .. },
+                ..,
+            ) = expr.kind
+            {
+                if Some(*span) != err.span.primary_span() {
+                    err.span_label(*span, "required by a bound introduced by this call");
+                }
+            }
+
+            if let hir::ExprKind::MethodCall(_, expr, ..) = expr.kind {
+                self.suggest_option_method_if_applicable(failed_pred, param_env, err, expr);
+            }
+        }
+    }
+
+    fn suggest_option_method_if_applicable(
+        &self,
+        failed_pred: ty::Predicate<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+    ) {
+        let tcx = self.tcx;
+        let infcx = self.infcx;
+        let Some(typeck_results) = self.typeck_results.as_ref() else { return };
+
+        // Make sure we're dealing with the `Option` type.
+        let Some(ty_adt_did) = typeck_results.expr_ty_adjusted(expr).ty_adt_id() else { return };
+        if !tcx.is_diagnostic_item(sym::Option, ty_adt_did) {
+            return;
+        }
+
+        // Given the predicate `fn(&T): FnOnce<(U,)>`, extract `fn(&T)` and `(U,)`,
+        // then suggest `Option::as_deref(_mut)` if `U` can deref to `T`
+        if let ty::PredicateKind::Clause(ty::Clause::Trait(ty::TraitPredicate { trait_ref, .. }))
+            = failed_pred.kind().skip_binder()
+            && tcx.is_fn_trait(trait_ref.def_id)
+            && let [self_ty, found_ty] = trait_ref.substs.as_slice()
+            && let Some(fn_ty) = self_ty.as_type().filter(|ty| ty.is_fn())
+            && let fn_sig @ ty::FnSig {
+                abi: abi::Abi::Rust,
+                c_variadic: false,
+                unsafety: hir::Unsafety::Normal,
+                ..
+            } = fn_ty.fn_sig(tcx).skip_binder()
+
+            // Extract first param of fn sig with peeled refs, e.g. `fn(&T)` -> `T`
+            && let Some(&ty::Ref(_, target_ty, needs_mut)) = fn_sig.inputs().first().map(|t| t.kind())
+            && !target_ty.has_escaping_bound_vars()
+
+            // Extract first tuple element out of fn trait, e.g. `FnOnce<(U,)>` -> `U`
+            && let Some(ty::Tuple(tys)) = found_ty.as_type().map(Ty::kind)
+            && let &[found_ty] = tys.as_slice()
+            && !found_ty.has_escaping_bound_vars()
+
+            // Extract `<U as Deref>::Target` assoc type and check that it is `T`
+            && let Some(deref_target_did) = tcx.lang_items().deref_target()
+            && let projection = tcx.mk_projection(deref_target_did, tcx.mk_substs(&[ty::GenericArg::from(found_ty)]))
+            && let Ok(deref_target) = tcx.try_normalize_erasing_regions(param_env, projection)
+            && deref_target == target_ty
         {
-            if Some(*span) != err.span.primary_span() {
-                err.span_label(*span, "required by a bound introduced by this call");
+            let help = if let hir::Mutability::Mut = needs_mut
+                && let Some(deref_mut_did) = tcx.lang_items().deref_mut_trait()
+                && infcx
+                    .type_implements_trait(deref_mut_did, iter::once(found_ty), param_env)
+                    .must_apply_modulo_regions()
+            {
+                Some(("call `Option::as_deref_mut()` first", ".as_deref_mut()"))
+            } else if let hir::Mutability::Not = needs_mut {
+                Some(("call `Option::as_deref()` first", ".as_deref()"))
+            } else {
+                None
+            };
+
+            if let Some((msg, sugg)) = help {
+                err.span_suggestion_with_style(
+                    expr.span.shrink_to_hi(),
+                    msg,
+                    sugg,
+                    Applicability::MaybeIncorrect,
+                    SuggestionStyle::ShowAlways
+                );
             }
         }
     }
