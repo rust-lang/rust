@@ -1,7 +1,9 @@
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::ty;
-use rustc_middle::ty::{Const, Region, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::{
+    Const, GenericArg, Region, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+};
 
 pub struct DedupWalker<'me, 'tcx> {
     infcx: &'me InferCtxt<'tcx>,
@@ -11,14 +13,8 @@ pub struct DedupWalker<'me, 'tcx> {
     vars_present: Vec<usize>,
 }
 pub struct DedupableIndexer<'tcx> {
-    vars: FxIndexSet<DedupVar<'tcx>>,
+    vars: FxIndexSet<GenericArg<'tcx>>,
     pub unremovable_vars: FxIndexSet<usize>,
-}
-#[derive(Hash, PartialEq, Eq)]
-enum DedupVar<'tcx> {
-    Region(Region<'tcx>),
-    Ty(Ty<'tcx>),
-    Const(Const<'tcx>),
 }
 
 impl<'me, 'tcx> DedupWalker<'me, 'tcx> {
@@ -38,7 +34,7 @@ impl<'tcx> DedupableIndexer<'tcx> {
     pub fn new() -> Self {
         Self { vars: FxIndexSet::default(), unremovable_vars: FxIndexSet::default() }
     }
-    fn lookup(&mut self, var: DedupVar<'tcx>) -> usize {
+    fn lookup(&mut self, var: GenericArg<'tcx>) -> usize {
         self.vars.get_index_of(&var).unwrap_or_else(|| self.vars.insert_full(var).0)
     }
     fn add_unremovable_var(&mut self, var: usize) {
@@ -63,7 +59,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for DedupWalker<'_, 'tcx> {
             ty::ReVar(..) | ty::RePlaceholder(..) => self.infcx.universe_of_region(region),
             _ => return region,
         };
-        let var_id = self.var_indexer.lookup(DedupVar::Region(region));
+        let var_id = self.var_indexer.lookup(GenericArg::from(region));
         self.vars_present.push(var_id);
         if self.max_nameable_universe.can_name(universe) {
             self.var_indexer.add_unremovable_var(var_id);
@@ -90,7 +86,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for DedupWalker<'_, 'tcx> {
             }
             _ => return ty,
         };
-        let var_id = self.var_indexer.lookup(DedupVar::Ty(ty));
+        let var_id = self.var_indexer.lookup(GenericArg::from(ty));
         self.vars_present.push(var_id);
         if self.max_nameable_universe.can_name(universe) {
             self.var_indexer.add_unremovable_var(var_id);
@@ -112,7 +108,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for DedupWalker<'_, 'tcx> {
             _ => None,
         };
         let new_const_kind = if let Some(uni) = universe {
-            let var_id = self.var_indexer.lookup(DedupVar::Const(ct));
+            let var_id = self.var_indexer.lookup(GenericArg::from(ct));
             self.vars_present.push(var_id);
             if self.max_nameable_universe.can_name(uni) {
                 self.var_indexer.add_unremovable_var(var_id);

@@ -18,11 +18,16 @@ rustc_index::newtype_index! { pub struct MappingIndex {} }
 #[derive(Debug)]
 pub struct DedupSolver {
     /// The variables present in each constraint - the inner vec contains the variables, in the order
-    /// that they appear in the constraint
+    /// that they appear in the constraint. See solver/tests.rs for examples on how constraints are lowered to this format
     constraint_vars: IndexVec<ConstraintIndex, Vec<VarIndex>>,
-    /// The categories that constraints can be partitioned into - the inner vec contains all the constraints
-    /// that are in the same category
+    /// The cliques that constraints are partitioned into. These are determined as follows: imagine a graph where
+    /// each constraint is a vertex, and an edge exists between a pair of constraints if there is a many-to-one mapping of
+    /// variables that perfectly maps one constraint onto the other. The constraint cliques are just cliques within this graph.
+    /// By nature of this problem, it is impossible for a constraint to be in two cliques
     constraint_cliques: IndexVec<CliqueIndex, Vec<ConstraintIndex>>,
+    /// A set of variables we cannot remove, i.e. they belong to a universe that the caller can name. We keep track of these
+    /// to determine if there's a variable that we **can** remove that behaves like one of these, where in that case we just
+    /// remove the unremovable var and keep the removable ones
     unremovable_vars: FxIndexSet<VarIndex>,
 
     /// The below are internal variables used in the solving process:
@@ -37,14 +42,13 @@ pub struct DedupSolver {
 #[derive(Debug)]
 pub struct DedupResult {
     pub removed_constraints: FxIndexSet<ConstraintIndex>,
-    pub removed_vars: FxIndexSet<VarIndex>,
 }
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 struct Mapping(BTreeMap<VarIndex, VarIndex>);
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct MappingInfo {
     dependencies: FxIndexMap<ConstraintIndex, FxIndexSet<MappingIndex>>,
-    constraint_mappings: FxIndexMap<ConstraintIndex, ConstraintIndex>,
+    eliminated_constraints: FxIndexSet<ConstraintIndex>,
 }
 #[derive(Debug, PartialEq, Eq)]
 enum MapEvalErr {
@@ -71,14 +75,7 @@ impl DedupSolver {
         deduper.compute_mappings();
         deduper.resolve_dependencies();
 
-        let mut removed_vars = FxIndexSet::default();
-        for (from, to) in deduper.applied_mappings.borrow().0.iter() {
-            if *from == *to {
-                continue;
-            }
-            removed_vars.insert(*from);
-        }
-        DedupResult { removed_constraints: deduper.removed_constraints.into_inner(), removed_vars }
+        DedupResult { removed_constraints: deduper.removed_constraints.into_inner() }
     }
     fn refine_cliques(&mut self) {
         // Refine categories based on shape
@@ -150,7 +147,8 @@ impl DedupSolver {
             }
         }
     }
-    /// Returns the "shape" of a constraint - related to the idea of de bruijn indices
+    /// Returns the "shape" of a constraint, which captures information about the location(s) and
+    /// multiplicity of variables in the constraint, irrespective of the actual variable indices
     /// For example, a constraint involving the vars [1, 1, 2, 3] has a shape of [0, 0, 1, 2],
     /// and a constraint involving vars [3, 4] has a shape of [0, 1]
     /// It takes a mutable reference to the vars because it also removes duplicates from
@@ -176,6 +174,7 @@ impl DedupSolver {
 
     /// Computes the set of all possible mappings
     /// If a mapping has no dependencies, then it's eagerly taken, to increase performance
+    /// If a mapping has dependencies, then it's added to `self.mappings`
     /// Deduplication can be done greedily because if two constraints can be merged, then they're
     /// equivalent in every way, including in relations to other constraints
     fn compute_mappings(&mut self) {
@@ -191,6 +190,7 @@ impl DedupSolver {
                     .skip(n + 1)
                     .filter(|x| !self.removed_constraints.borrow().contains(*x))
                 {
+                    // Maps constraint_1 to constraint_2
                     let forward = Mapping::map_constraints(
                         &self.constraint_vars[*constraint_1],
                         &self.constraint_vars[*constraint_2],
@@ -198,6 +198,7 @@ impl DedupSolver {
                     if invalid_maps.contains(&forward) || self.mappings.contains_key(&forward) {
                         continue;
                     }
+                    // Maps constraint_2 to constraint_1
                     let reverse = Mapping::map_constraints(
                         &self.constraint_vars[*constraint_2],
                         &self.constraint_vars[*constraint_1],
@@ -206,6 +207,13 @@ impl DedupSolver {
                         continue;
                     }
 
+                    // if constraint_1 and constraint_2 can be merged, this relation should be
+                    // bidirectional, i.e. we can merge 1 into 2 or 2 into 1
+                    // For example, if a clique contains constraints [1, 2] and [11, 12] and another
+                    // clique contains constraint [1], then we **cannot** merge vars 1 and 11 - the
+                    // reverse direction (merging 11 into 1) works (if we map 11 to 1 and 12 to 2),
+                    // but the forward direction (merging 1 into 11) doesn't work, as this would
+                    // map the constraint [1] into [11], which is a constraint that doesn't exist
                     let (eval_forward, eval_reverse) =
                         (self.eval_mapping(&forward), self.eval_mapping(&reverse));
                     if eval_forward == Err(MapEvalErr::Conflicts)
@@ -229,57 +237,6 @@ impl DedupSolver {
             }
         }
         self.resolve_dependencies_to_mapping();
-    }
-    /// Currently, dependencies are in the form FxIndexMap<A, EmptyFxIndexSet>,
-    /// where A is a constraint that must be mapped by another mapping. We must
-    /// populate the EmptyFxIndexSet with a set of mappings that can map A without
-    /// conflicting with the current mapping
-    fn resolve_dependencies_to_mapping(&mut self) {
-        self.mappings.retain(|mapping, mapping_info| {
-            if self.applied_mappings.borrow().conflicts_with(mapping) {
-                return false;
-            }
-            mapping_info
-                .dependencies
-                .retain(|dependency, _| !self.removed_constraints.borrow().contains(dependency));
-            true
-        });
-        // A map from a constraint to the mappings that will eliminate it
-        let mut constraint_mappings: FxIndexMap<ConstraintIndex, FxIndexSet<MappingIndex>> =
-            FxIndexMap::default();
-        for (indx, (_, mapping_info)) in self.mappings.iter().enumerate() {
-            for (from_constraint, _) in mapping_info.constraint_mappings.iter() {
-                constraint_mappings
-                    .entry(*from_constraint)
-                    .or_insert_with(FxIndexSet::default)
-                    .insert(MappingIndex::new(indx));
-            }
-        }
-        for indx in (0..self.mappings.len()).map(MappingIndex::new) {
-            let mapping = self.get_mapping(indx);
-            let input_dependencies = &self.get_mapping_info(indx).dependencies;
-            let mut dependencies = IndexVec::new();
-            for (dependency, _) in input_dependencies.iter() {
-                let mut resolve_options = FxIndexSet::default();
-                if let Some(resolve_mappings) = constraint_mappings.get(dependency) {
-                    resolve_options.extend(
-                        resolve_mappings
-                            .iter()
-                            .filter(|x| !mapping.conflicts_with(&self.get_mapping(**x)))
-                            .cloned(),
-                    )
-                }
-                // Don't duplicate dependency groups
-                if dependencies.iter().any(|x| x == &resolve_options) {
-                    continue;
-                }
-                dependencies.push(resolve_options);
-            }
-            // After this point, the actual constraints that a dependency maps
-            // stops mattering - all that matters is that the dependency *exists*
-            self.mappings.get_index_mut(indx.index()).unwrap().1.dependencies =
-                dependencies.into_iter_enumerated().collect();
-        }
     }
     /// Evaluates the mapping. Can return None if the mapping is invalid (i.e. it maps
     /// some constraints onto a constraint that doesn't exist, or conflicts with the
@@ -307,12 +264,14 @@ impl DedupSolver {
                     }
                     found_non_conflicting = true;
                     // Only maps a subset of variables in constraint_1
-                    if !mapping.maps_fully(vars_1, vars_2) {
+                    if !mapping.contains_fully(&trial_mapping) {
+                        // The input mapping can be applied only if there's another mapping that
+                        // maps every variable in constraint_1 (and doesn't conflict with the input mapping)
                         info.dependencies.insert(*constraint_1, FxIndexSet::default());
                         continue;
                     }
                     if *constraint_1 != *constraint_2 {
-                        info.constraint_mappings.insert(*constraint_1, *constraint_2);
+                        info.eliminated_constraints.insert(*constraint_1);
                     }
                 }
                 if !found_non_conflicting {
@@ -320,15 +279,69 @@ impl DedupSolver {
                 }
             }
         }
-        for fully_mapped in info.constraint_mappings.keys() {
-            info.dependencies.remove(fully_mapped);
-        }
         if maps_unremovable_var {
             return Err(MapEvalErr::Unremovable);
         }
         Ok(info)
     }
+    /// Currently, dependencies are in the form FxIndexMap<ConstraintIndex, Empty FxIndexSet>,
+    /// where ConstraintIndex is the constraint we must *also* map in order to apply this mapping.
+    /// We must populate the Empty FxIndexSet with a set of mappings that can map the constraint without
+    /// conflicting with the current mapping
+    fn resolve_dependencies_to_mapping(&mut self) {
+        self.mappings.retain(|mapping, mapping_info| {
+            // Remove mappings that conflict with already-applied mappings
+            if self.applied_mappings.borrow().conflicts_with(mapping) {
+                return false;
+            }
+            // If a constraint has already been removed by a pre-existing mapping, this current
+            // mapping's dependency on this constraint has been resolved
+            mapping_info
+                .dependencies
+                .retain(|dependency, _| !self.removed_constraints.borrow().contains(dependency));
+            true
+        });
+        // A map from a constraint to the mappings that will eliminate it (i.e. map it fully)
+        let mut constraint_mappings: FxIndexMap<ConstraintIndex, FxIndexSet<MappingIndex>> =
+            FxIndexMap::default();
+        for (indx, (_, mapping_info)) in self.mappings.iter().enumerate() {
+            for eliminated_constraint in mapping_info.eliminated_constraints.iter() {
+                constraint_mappings
+                    .entry(*eliminated_constraint)
+                    .or_insert_with(FxIndexSet::default)
+                    .insert(MappingIndex::new(indx));
+            }
+        }
+        for indx in (0..self.mappings.len()).map(MappingIndex::new) {
+            let mapping = self.get_mapping(indx);
+            let input_dependencies = &self.get_mapping_info(indx).dependencies;
+            let mut dependencies = IndexVec::new();
+            for (dependency, _) in input_dependencies.iter() {
+                // The set of mappings that can resolve this dependency
+                let mut resolve_options = FxIndexSet::default();
+                if let Some(resolve_mappings) = constraint_mappings.get(dependency) {
+                    resolve_options.extend(
+                        resolve_mappings
+                            .iter()
+                            .filter(|x| !mapping.conflicts_with(&self.get_mapping(**x)))
+                            .cloned(),
+                    )
+                }
+                // Don't duplicate dependency groups
+                if dependencies.iter().any(|x| x == &resolve_options) {
+                    continue;
+                }
+                dependencies.push(resolve_options);
+            }
+            // After this point, the actual constraints that a dependency maps
+            // stops mattering - all that matters is that the dependency *exists*
+            self.mappings.get_index_mut(indx.index()).unwrap().1.dependencies =
+                dependencies.into_iter_enumerated().collect();
+        }
+    }
 
+    /// Resolves dependencies on mappings - i.e. we find a set of mappings that mutually satisfy each other's
+    /// dependencies, and don't conflict
     fn resolve_dependencies(&mut self) {
         let mut used_mappings = FxIndexSet::default();
         for indx in (0..self.mappings.len()).map(MappingIndex::new) {
@@ -359,8 +372,12 @@ impl DedupSolver {
             }
         }
     }
-    // There's quite a few heuristics that will probably yield *significant* speedups
-    // I'll look into that later, if the rest of this approach is sound
+    /// Performs a depth-first search on the dependencies graph of mappings. Each call to this functino
+    /// takes in 3 arguments - the mappings that are already presumed to be part of the set of mappings
+    /// that should be applied together, these mappings aggregated into a single mapping, and a `from` set,
+    /// i.e. a set of mappings that we just added, and thus might have unresolved dependencies
+    /// There's quite a few heuristics that will probably yield *significant* speedups
+    /// I'll look into that later, if the rest of this approach is sound
     fn dfs_search(
         &self,
         mut used_mappings: FxIndexSet<MappingIndex>,
@@ -379,16 +396,22 @@ impl DedupSolver {
         }
         used_mappings.extend(from.iter());
 
-        let choices: Vec<&FxIndexSet<MappingIndex>> =
+        // For each unresolved dependency, we have a set of Mappings that can resolve it
+        let unresolved_dependencies: Vec<&FxIndexSet<MappingIndex>> =
             from.iter().flat_map(|x| self.get_mapping_info(*x).dependencies.values()).collect();
-        if choices.is_empty() {
+        if unresolved_dependencies.is_empty() {
             return Some(used_mappings);
         }
-        let mut choice_indices = vec![0; choices.len()];
-        while *choice_indices.last().unwrap() < choices.last().unwrap().len() {
-            let choice: FxIndexSet<MappingIndex> = choice_indices
+        // For each unresolved dependency, we have an index denoting the index in the FxIndexSet that
+        // we will try applying next
+        // Essentially, we just sweep through all the combinations exhaustively, e.g. if we have 3
+        // unresolved dependencies, each with 3 options, we would go "[0, 0, 0]", "[1, 0, 0]", "[2, 0, 0]",
+        // "[0, 1, 0]", "[1, 1, 0]", "[2, 1, 0]", so on and so forth until we find one that succeeds
+        let mut trial_indices = vec![0; unresolved_dependencies.len()];
+        while *trial_indices.last().unwrap() < unresolved_dependencies.last().unwrap().len() {
+            let choice: FxIndexSet<MappingIndex> = trial_indices
                 .iter()
-                .zip(&choices)
+                .zip(&unresolved_dependencies)
                 .map(|(x, y)| *y.get_index(*x).unwrap())
                 .collect();
             let search_result =
@@ -397,7 +420,9 @@ impl DedupSolver {
                 return search_result;
             }
 
-            for (val, limit) in choice_indices.iter_mut().zip(choices.iter().map(|x| x.len())) {
+            for (val, limit) in
+                trial_indices.iter_mut().zip(unresolved_dependencies.iter().map(|x| x.len()))
+            {
                 *val += 1;
                 if *val >= limit {
                     *val = 0;
@@ -421,7 +446,7 @@ impl DedupSolver {
         if self.applied_mappings.borrow().conflicts_with(mapping) {
             return false;
         }
-        self.removed_constraints.borrow_mut().extend(info.constraint_mappings.keys());
+        self.removed_constraints.borrow_mut().extend(info.eliminated_constraints.iter());
         self.applied_mappings.borrow_mut().0.extend(&mapping.0);
         true
     }
@@ -443,11 +468,8 @@ impl Mapping {
     fn affects_constraint(&self, constraint: &[VarIndex]) -> bool {
         constraint.iter().any(|x| self.maps_var(*x).unwrap_or(*x) != *x)
     }
-    fn maps_fully(&self, from: &[VarIndex], to: &[VarIndex]) -> bool {
-        if from.len() != to.len() {
-            return false;
-        }
-        from.iter().zip(to).all(|(x, y)| self.maps_var(*x).unwrap_or(*x) == *y)
+    fn contains_fully(&self, other: &Self) -> bool {
+        other.0.iter().all(|(from, to)| self.maps_var(*from) == Some(*to))
     }
     fn conflicts_with(&self, other: &Self) -> bool {
         for (from_a, to_a) in self.0.iter() {
@@ -465,6 +487,6 @@ impl Mapping {
 }
 impl MappingInfo {
     fn new() -> Self {
-        Self { dependencies: FxIndexMap::default(), constraint_mappings: FxIndexMap::default() }
+        Self { dependencies: FxIndexMap::default(), eliminated_constraints: FxIndexSet::default() }
     }
 }

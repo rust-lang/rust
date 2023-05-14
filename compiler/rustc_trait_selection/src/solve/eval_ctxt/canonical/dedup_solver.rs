@@ -1,3 +1,8 @@
+#![allow(unused_imports)]
+#![allow(unused_variables)]
+#![allow(dead_code)]
+#![allow(unreachable_code)]
+
 use crate::infer::canonical::QueryRegionConstraints;
 use crate::infer::region_constraints::MemberConstraint;
 use rustc_infer::infer::InferCtxt;
