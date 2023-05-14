@@ -260,6 +260,72 @@ mod priv_mod {
 }
 
 #[test]
+fn macro_use_filter() {
+    check(
+        r#"
+//- /main.rs crate:main deps:empty,multiple,all
+#[macro_use()]
+extern crate empty;
+
+foo_not_imported!();
+
+#[macro_use(bar1)]
+#[macro_use()]
+#[macro_use(bar2, bar3)]
+extern crate multiple;
+
+bar1!();
+bar2!();
+bar3!();
+bar_not_imported!();
+
+#[macro_use(baz1)]
+#[macro_use]
+#[macro_use(baz2)]
+extern crate all;
+
+baz1!();
+baz2!();
+baz3!();
+
+//- /empty.rs crate:empty
+#[macro_export]
+macro_rules! foo_not_imported { () => { struct NotOkFoo; } }
+
+//- /multiple.rs crate:multiple
+#[macro_export]
+macro_rules! bar1 { () => { struct OkBar1; } }
+#[macro_export]
+macro_rules! bar2 { () => { struct OkBar2; } }
+#[macro_export]
+macro_rules! bar3 { () => { struct OkBar3; } }
+#[macro_export]
+macro_rules! bar_not_imported { () => { struct NotOkBar; } }
+
+//- /all.rs crate:all
+#[macro_export]
+macro_rules! baz1 { () => { struct OkBaz1; } }
+#[macro_export]
+macro_rules! baz2 { () => { struct OkBaz2; } }
+#[macro_export]
+macro_rules! baz3 { () => { struct OkBaz3; } }
+"#,
+        expect![[r#"
+            crate
+            OkBar1: t v
+            OkBar2: t v
+            OkBar3: t v
+            OkBaz1: t v
+            OkBaz2: t v
+            OkBaz3: t v
+            all: t
+            empty: t
+            multiple: t
+        "#]],
+    );
+}
+
+#[test]
 fn prelude_is_macro_use() {
     cov_mark::check!(prelude_is_macro_use);
     check(
