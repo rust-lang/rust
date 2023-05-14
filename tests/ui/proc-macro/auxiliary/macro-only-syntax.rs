@@ -10,7 +10,7 @@
 // lossy string reparse hack (https://github.com/rust-lang/rust/issues/43081).
 
 #![crate_type = "proc-macro"]
-#![feature(proc_macro_span)]
+#![feature(proc_macro_span, proc_macro_span_shrink)]
 
 extern crate proc_macro;
 use proc_macro::{token_stream, Delimiter, TokenStream, TokenTree};
@@ -81,7 +81,7 @@ fn expect_brace(tokens: &mut token_stream::IntoIter) -> token_stream::IntoIter {
 
 fn check_useful_span(token: TokenTree, expected_filename: &str) {
     let span = token.span();
-    assert!(span.start().column < span.end().column);
+    assert!(span.column() < span.end().column());
 
     let source_path = span.source_file().path();
     let filename = source_path.components().last().unwrap();
