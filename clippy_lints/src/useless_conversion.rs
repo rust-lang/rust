@@ -5,7 +5,8 @@ use clippy_utils::ty::{is_copy, is_type_diagnostic_item, same_type_and_consts};
 use clippy_utils::{get_parent_expr, is_trait_method, match_def_path, path_to_local, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{BindingAnnotation, Expr, ExprKind, HirId, MatchSource, Node, PatKind};
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::{BindingAnnotation, Expr, ExprKind, HirId, MatchSource, Node, PatKind, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -138,6 +139,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                 if_chain! {
                     if let ExprKind::Path(ref qpath) = path.kind;
                     if let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id();
+                    if !is_ty_alias(qpath);
                     then {
                         let a = cx.typeck_results().expr_ty(e);
                         let b = cx.typeck_results().expr_ty(arg);
@@ -193,5 +195,14 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
         if Some(&e.hir_id) == self.try_desugar_arm.last() {
             self.try_desugar_arm.pop();
         }
+    }
+}
+
+/// `cx.qpath_res` seems to return `AssocFn` so we do this instead
+fn is_ty_alias(qpath: &QPath<'_>) -> bool {
+    match *qpath {
+        QPath::Resolved(_, path) => matches!(path.res, Res::Def(DefKind::TyAlias, ..)),
+        QPath::TypeRelative(ty, _) if let TyKind::Path(qpath) = ty.kind => is_ty_alias(&qpath),
+        _ => false,
     }
 }
