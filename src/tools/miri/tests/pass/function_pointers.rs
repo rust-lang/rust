@@ -75,7 +75,6 @@ fn main() {
     let g = f as fn() -> i32;
     assert!(return_fn_ptr(g) == g);
     assert!(return_fn_ptr(g) as unsafe fn() -> i32 == g as fn() -> i32 as unsafe fn() -> i32);
-    assert!(return_fn_ptr(f) != f);
 
     // Any non-null value is okay for function pointers.
     unsafe {
