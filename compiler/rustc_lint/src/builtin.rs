@@ -611,7 +611,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
 
 declare_lint! {
     /// The `missing_copy_implementations` lint detects potentially-forgotten
-    /// implementations of [`Copy`].
+    /// implementations of [`Copy`] for public types.
     ///
     /// [`Copy`]: https://doc.rust-lang.org/std/marker/trait.Copy.html
     ///
@@ -729,7 +729,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
 
 declare_lint! {
     /// The `missing_debug_implementations` lint detects missing
-    /// implementations of [`fmt::Debug`].
+    /// implementations of [`fmt::Debug`] for public types.
     ///
     /// [`fmt::Debug`]: https://doc.rust-lang.org/std/fmt/trait.Debug.html
     ///
