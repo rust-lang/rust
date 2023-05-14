@@ -26,7 +26,9 @@ pub macro panic_2015 {
         $crate::rt::panic_display(&$arg)
     }),
     ($fmt:expr, $($arg:tt)+) => ({
-        $crate::rt::panic_fmt($crate::const_format_args!($fmt, $($arg)+))
+        // Semicolon to prevent temporaries inside the formatting machinery from
+        // being considered alive in the caller after the panic_fmt call.
+        $crate::rt::panic_fmt($crate::const_format_args!($fmt, $($arg)+));
     }),
 }
 
