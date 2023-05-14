@@ -1710,10 +1710,11 @@ impl Config {
                 && source_version.minor == rustc_version.minor + 1))
         {
             let prev_version = format!("{}.{}.x", source_version.major, source_version.minor - 1);
-            panic!(
+            eprintln!(
                 "Unexpected rustc version: {}, we should use {}/{} to build source with {}",
                 rustc_version, prev_version, source_version, source_version
             );
+            crate::detail_exit(1);
         }
     }
 
