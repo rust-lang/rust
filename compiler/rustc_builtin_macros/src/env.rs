@@ -63,7 +63,8 @@ pub fn expand_env<'cx>(
         Some(exprs) => exprs.into_iter(),
     };
 
-    let Some((var, _style)) = expr_to_string(cx, exprs.next().unwrap(), "expected string literal") else {
+    let var_expr = exprs.next().unwrap();
+    let Some((var, _)) = expr_to_string(cx, var_expr.clone(), "expected string literal") else {
         return DummyResult::any(sp);
     };
 
@@ -71,7 +72,7 @@ pub fn expand_env<'cx>(
         None => None,
         Some(second) => match expr_to_string(cx, second, "expected string literal") {
             None => return DummyResult::any(sp),
-            Some((s, _style)) => Some(s),
+            Some((s, _)) => Some(s),
         },
     };
 
@@ -80,10 +81,15 @@ pub fn expand_env<'cx>(
     cx.sess.parse_sess.env_depinfo.borrow_mut().insert((var, value));
     let e = match value {
         None => {
+            // Use the string literal in the code in the diagnostic to avoid confusing diagnostics,
+            // e.g. when the literal contains escape sequences.
+            let ast::ExprKind::Lit(ast::token::Lit { kind: ast::token::LitKind::Str, symbol: original_var, ..}) = &var_expr.kind else {
+                unreachable!("`expr_to_string` ensures this is a string lit")
+            };
             cx.emit_err(errors::EnvNotDefined {
                 span: sp,
                 msg: custom_msg,
-                var,
+                var: *original_var,
                 help: custom_msg.is_none().then(|| help_for_missing_env_var(var.as_str())),
             });
             return DummyResult::any(sp);
