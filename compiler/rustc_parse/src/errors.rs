@@ -1520,6 +1520,16 @@ pub(crate) struct ExpectedTraitInTraitImplFoundType {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_extra_impl_keyword_in_trait_impl)]
+pub(crate) struct ExtraImplKeywordInTraitImpl {
+    #[primary_span]
+    #[suggestion(code = "", applicability = "maybe-incorrect")]
+    pub extra_impl_kw: Span,
+    #[note]
+    pub impl_trait_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_bounds_not_allowed_on_trait_aliases)]
 pub(crate) struct BoundsNotAllowedOnTraitAliases {
     #[primary_span]
