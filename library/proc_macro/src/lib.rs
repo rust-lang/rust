@@ -505,6 +505,22 @@ impl Span {
         Span(self.0.end())
     }
 
+    /// The one-indexed line of the source file where the span starts.
+    ///
+    /// To obtain the line of the span's end, use `span.end().line()`.
+    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    pub fn line(&self) -> usize {
+        self.0.line()
+    }
+
+    /// The one-indexed column of the source file where the span starts.
+    ///
+    /// To obtain the column of the span's end, use `span.end().column()`.
+    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    pub fn column(&self) -> usize {
+        self.0.column()
+    }
+
     /// Creates a new span encompassing `self` and `other`.
     ///
     /// Returns `None` if `self` and `other` are from different files.

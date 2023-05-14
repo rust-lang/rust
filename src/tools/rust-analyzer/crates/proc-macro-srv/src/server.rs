@@ -329,6 +329,16 @@ impl server::Span for RustAnalyzer {
     fn start(&mut self, _self_: Self::Span) -> Self::Span {
         tt::TokenId::unspecified()
     }
+
+    fn line(&mut self, _span: Self::Span) -> usize {
+        // FIXME handle line
+        0
+    }
+
+    fn column(&mut self, _span: Self::Span) -> usize {
+        // FIXME handle column
+        0
+    }
 }
 
 impl server::Symbol for RustAnalyzer {
