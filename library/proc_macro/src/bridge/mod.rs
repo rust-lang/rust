@@ -95,8 +95,8 @@ macro_rules! with_api {
                 fn parent($self: $S::Span) -> Option<$S::Span>;
                 fn source($self: $S::Span) -> $S::Span;
                 fn byte_range($self: $S::Span) -> Range<usize>;
-                fn before($self: $S::Span) -> $S::Span;
-                fn after($self: $S::Span) -> $S::Span;
+                fn start($self: $S::Span) -> $S::Span;
+                fn end($self: $S::Span) -> $S::Span;
                 fn join($self: $S::Span, other: $S::Span) -> Option<$S::Span>;
                 fn subspan($self: $S::Span, start: Bound<usize>, end: Bound<usize>) -> Option<$S::Span>;
                 fn resolved_at($self: $S::Span, at: $S::Span) -> $S::Span;

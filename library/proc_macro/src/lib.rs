@@ -495,14 +495,14 @@ impl Span {
 
     /// Creates an empty span pointing to directly before this span.
     #[unstable(feature = "proc_macro_span_shrink", issue = "87552")]
-    pub fn before(&self) -> Span {
-        Span(self.0.before())
+    pub fn start(&self) -> Span {
+        Span(self.0.start())
     }
 
     /// Creates an empty span pointing to directly after this span.
     #[unstable(feature = "proc_macro_span_shrink", issue = "87552")]
-    pub fn after(&self) -> Span {
-        Span(self.0.after())
+    pub fn end(&self) -> Span {
+        Span(self.0.end())
     }
 
     /// Creates a new span encompassing `self` and `other`.

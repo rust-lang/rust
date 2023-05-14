@@ -648,11 +648,11 @@ impl server::Span for Rustc<'_, '_> {
 
         Range { start: relative_start_pos.0 as usize, end: relative_end_pos.0 as usize }
     }
-    fn before(&mut self, span: Self::Span) -> Self::Span {
+    fn start(&mut self, span: Self::Span) -> Self::Span {
         span.shrink_to_lo()
     }
 
-    fn after(&mut self, span: Self::Span) -> Self::Span {
+    fn end(&mut self, span: Self::Span) -> Self::Span {
         span.shrink_to_hi()
     }
 
