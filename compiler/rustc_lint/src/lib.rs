@@ -50,6 +50,7 @@ extern crate tracing;
 
 mod array_into_iter;
 pub mod builtin;
+mod cast_ref_to_mut;
 mod context;
 mod deref_into_dyn_supertrait;
 mod drop_forget_useless;
@@ -97,6 +98,7 @@ use rustc_span::Span;
 
 use array_into_iter::ArrayIntoIter;
 use builtin::*;
+use cast_ref_to_mut::*;
 use deref_into_dyn_supertrait::*;
 use drop_forget_useless::*;
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
@@ -214,6 +216,7 @@ late_lint_methods!(
             BoxPointers: BoxPointers,
             PathStatements: PathStatements,
             LetUnderscore: LetUnderscore,
+            CastRefToMut: CastRefToMut,
             // Depends on referenced function signatures in expressions
             UnusedResults: UnusedResults,
             NonUpperCaseGlobals: NonUpperCaseGlobals,
