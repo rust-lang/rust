@@ -200,7 +200,6 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                             return;
                         }
                     }
-    
                     // Ignore if it is from a procedural macro...
                     if is_from_proc_macro(cx, init) {
                         return;
