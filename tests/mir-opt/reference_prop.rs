@@ -33,16 +33,16 @@ fn reference_propagation<'a, T: Copy>(single: &'a T, mut multiple: &'a T) {
         let b = &a;
         let d = &b;
         let c = *b; // `b` is immutably borrowed, we know its value, but do not propagate it
-        opaque(());
+        opaque(d); // prevent `d` from being removed.
     }
 
     // Propagation through a borrowed reference.
     {
         let a = 5_usize;
         let mut b = &a;
-        let d = &mut b;
+        let d = &raw mut b;
         let c = *b; // `b` is mutably borrowed, we cannot know its value.
-        opaque(());
+        opaque(d); // prevent `d` from being removed.
     }
 
     // Propagation through an escaping borrow.
@@ -80,6 +80,24 @@ fn reference_propagation<'a, T: Copy>(single: &'a T, mut multiple: &'a T) {
         let b = *a; // This should not be optimized.
         opaque(());
     }
+
+    // Fixed-point propagation through a borrowed reference.
+    {
+        let a = 5_usize;
+        let b = &a;
+        let d = &b; // first round promotes debuginfo for `d`
+        let c = *b; // second round propagates this dereference
+        opaque(());
+    }
+
+    // Fixed-point propagation through a borrowed reference.
+    {
+        let a = 5_usize;
+        let mut b = &a;
+        let d = &mut b; // first round promotes debuginfo for `d`
+        let c = *b; // second round propagates this dereference
+        opaque(());
+    }
 }
 
 fn reference_propagation_mut<'a, T: Copy>(single: &'a mut T, mut multiple: &'a mut T) {
@@ -108,16 +126,16 @@ fn reference_propagation_mut<'a, T: Copy>(single: &'a mut T, mut multiple: &'a m
         let b = &mut a;
         let d = &b;
         let c = *b; // `b` is immutably borrowed, we know its value, but cannot be removed.
-        opaque(());
+        opaque(d); // prevent `d` from being removed.
     }
 
     // Propagation through a borrowed reference.
     {
         let mut a = 5_usize;
         let mut b = &mut a;
-        let d = &mut b;
+        let d = &raw mut b;
         let c = *b; // `b` is mutably borrowed, we cannot know its value.
-        opaque(());
+        opaque(d); // prevent `d` from being removed.
     }
 
     // Propagation through an escaping borrow.
@@ -155,6 +173,24 @@ fn reference_propagation_mut<'a, T: Copy>(single: &'a mut T, mut multiple: &'a m
         let b = *a; // This should not be optimized.
         opaque(());
     }
+
+    // Fixed-point propagation through a borrowed reference.
+    {
+        let mut a = 5_usize;
+        let b = &mut a;
+        let d = &b; // first round promotes debuginfo for `d`
+        let c = *b; // second round propagates this dereference
+        opaque(());
+    }
+
+    // Fixed-point propagation through a borrowed reference.
+    {
+        let mut a = 5_usize;
+        let mut b = &mut a;
+        let d = &mut b; // first round promotes debuginfo for `d`
+        let c = *b; // second round propagates this dereference
+        opaque(());
+    }
 }
 
 fn reference_propagation_const_ptr<T: Copy>(single: *const T, mut multiple: *const T) {
@@ -183,16 +219,16 @@ fn reference_propagation_const_ptr<T: Copy>(single: *const T, mut multiple: *con
         let b = &raw const a;
         let d = &b;
         let c = *b; // `b` is immutably borrowed, we know its value, but cannot be removed.
-        opaque(());
+        opaque(d); // prevent `d` from being removed.
     }
 
     // Propagation through a borrowed reference.
     unsafe {
         let a = 5_usize;
         let mut b = &raw const a;
-        let d = &mut b;
+        let d = &raw mut b;
         let c = *b; // `b` is mutably borrowed, we cannot know its value.
-        opaque(());
+        opaque(d); // prevent `d` from being removed.
     }
 
     // Propagation through an escaping borrow.
@@ -239,6 +275,24 @@ fn reference_propagation_const_ptr<T: Copy>(single: *const T, mut multiple: *con
         let e = *c;
         opaque(());
     }
+
+    // Fixed-point propagation through a borrowed reference.
+    unsafe {
+        let a = 5_usize;
+        let b = &raw const a;
+        let d = &b; // first round promotes debuginfo for `d`
+        let c = *b; // second round propagates this dereference
+        opaque(());
+    }
+
+    // Fixed-point propagation through a borrowed reference.
+    unsafe {
+        let a = 5_usize;
+        let mut b = &raw const a;
+        let d = &mut b; // first round promotes debuginfo for `d`
+        let c = *b; // second round propagates this dereference
+        opaque(());
+    }
 }
 
 fn reference_propagation_mut_ptr<T: Copy>(single: *mut T, mut multiple: *mut T) {
@@ -267,16 +321,16 @@ fn reference_propagation_mut_ptr<T: Copy>(single: *mut T, mut multiple: *mut T) 
         let b = &raw mut a;
         let d = &b;
         let c = *b; // `b` is immutably borrowed, we know its value, but cannot be removed.
-        opaque(());
+        opaque(d); // prevent `d` from being removed.
     }
 
     // Propagation through a borrowed reference.
     unsafe {
         let mut a = 5_usize;
         let mut b = &raw mut a;
-        let d = &mut b;
+        let d = &raw mut b;
         let c = *b; // `b` is mutably borrowed, we cannot know its value.
-        opaque(());
+        opaque(d); // prevent `d` from being removed.
     }
 
     // Propagation through an escaping borrow.
@@ -312,6 +366,24 @@ fn reference_propagation_mut_ptr<T: Copy>(single: *mut T, mut multiple: *mut T) 
         let a = &raw mut *multiple;
         multiple = &raw mut *single;
         let b = *a; // This should not be optimized.
+        opaque(());
+    }
+
+    // Fixed-point propagation through a borrowed reference.
+    unsafe {
+        let mut a = 5_usize;
+        let b = &raw mut a;
+        let d = &b; // first round promotes debuginfo for `d`
+        let c = *b; // second round propagates this dereference
+        opaque(());
+    }
+
+    // Fixed-point propagation through a borrowed reference.
+    unsafe {
+        let mut a = 5_usize;
+        let mut b = &raw mut a;
+        let d = &mut b; // first round promotes debuginfo for `d`
+        let c = *b; // second round propagates this dereference
         opaque(());
     }
 }
@@ -456,6 +528,40 @@ fn unique_with_copies() {
     unsafe { opaque(*y) };
 }
 
+fn debuginfo() {
+    struct T(u8);
+
+    let ref_mut_u8 = &mut 5_u8;
+    let field = &T(0).0;
+
+    // Verify that we don't emit `&*` in debuginfo.
+    let reborrow = &*ref_mut_u8;
+
+    match Some(0) {
+        None => {}
+        Some(ref variant_field) => {}
+    }
+
+    // `constant_index_from_end` and `subslice` should not be promoted, as their value depends
+    // on the slice length.
+    if let [_, ref constant_index, subslice @ .., ref constant_index_from_end] = &[6; 10][..] {
+    }
+
+    let multiple_borrow = &&&mut T(6).0;
+}
+
+fn many_debuginfo() {
+    let a = 0;
+
+    // Verify that we do not ICE on deeply nested borrows.
+    let many_borrow =
+        &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+        &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+        &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+        &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+        &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&a;
+}
+
 fn main() {
     let mut x = 5_usize;
     let mut y = 7_usize;
@@ -469,6 +575,8 @@ fn main() {
     maybe_dead(true);
     mut_raw_then_mut_shr();
     unique_with_copies();
+    debuginfo();
+    many_debuginfo();
 }
 
 // EMIT_MIR reference_prop.reference_propagation.ReferencePropagation.diff
@@ -481,3 +589,4 @@ fn main() {
 // EMIT_MIR reference_prop.maybe_dead.ReferencePropagation.diff
 // EMIT_MIR reference_prop.mut_raw_then_mut_shr.ReferencePropagation.diff
 // EMIT_MIR reference_prop.unique_with_copies.ReferencePropagation.diff
+// EMIT_MIR reference_prop.debuginfo.ReferencePropagation.diff
