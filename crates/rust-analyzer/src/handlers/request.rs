@@ -520,7 +520,10 @@ pub(crate) fn handle_workspace_symbol(
 
             #[allow(deprecated)]
             let info = SymbolInformation {
-                name: nav.name.to_string(),
+                name: match nav.alias {
+                    Some(ref alias) => format!("{} (alias {})", alias, nav.name),
+                    None => format!("{}", nav.name),
+                },
                 kind: nav
                     .kind
                     .map(to_proto::symbol_kind)
