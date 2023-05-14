@@ -304,14 +304,6 @@ impl server::Span for RustAnalyzer {
         // FIXME handle span
         Range { start: 0, end: 0 }
     }
-    fn start(&mut self, _span: Self::Span) -> LineColumn {
-        // FIXME handle span
-        LineColumn { line: 0, column: 0 }
-    }
-    fn end(&mut self, _span: Self::Span) -> LineColumn {
-        // FIXME handle span
-        LineColumn { line: 0, column: 0 }
-    }
     fn join(&mut self, first: Self::Span, _second: Self::Span) -> Option<Self::Span> {
         // Just return the first span again, because some macros will unwrap the result.
         Some(first)

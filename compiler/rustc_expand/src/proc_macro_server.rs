@@ -2,7 +2,7 @@ use crate::base::ExtCtxt;
 use pm::bridge::{
     server, DelimSpan, Diagnostic, ExpnGlobals, Group, Ident, LitKind, Literal, Punct, TokenTree,
 };
-use pm::{Delimiter, Level, LineColumn};
+use pm::{Delimiter, Level};
 use rustc_ast as ast;
 use rustc_ast::token;
 use rustc_ast::tokenstream::{self, Spacing::*, TokenStream};
@@ -648,17 +648,6 @@ impl server::Span for Rustc<'_, '_> {
 
         Range { start: relative_start_pos.0 as usize, end: relative_end_pos.0 as usize }
     }
-
-    fn start(&mut self, span: Self::Span) -> LineColumn {
-        let loc = self.sess().source_map().lookup_char_pos(span.lo());
-        LineColumn { line: loc.line, column: loc.col.to_usize() }
-    }
-
-    fn end(&mut self, span: Self::Span) -> LineColumn {
-        let loc = self.sess().source_map().lookup_char_pos(span.hi());
-        LineColumn { line: loc.line, column: loc.col.to_usize() }
-    }
-
     fn before(&mut self, span: Self::Span) -> Self::Span {
         span.shrink_to_lo()
     }
