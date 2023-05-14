@@ -322,11 +322,11 @@ impl server::Span for RustAnalyzer {
         tt::TokenId::unspecified()
     }
 
-    fn after(&mut self, _self_: Self::Span) -> Self::Span {
+    fn end(&mut self, _self_: Self::Span) -> Self::Span {
         tt::TokenId::unspecified()
     }
 
-    fn before(&mut self, _self_: Self::Span) -> Self::Span {
+    fn start(&mut self, _self_: Self::Span) -> Self::Span {
         tt::TokenId::unspecified()
     }
 }
