@@ -1162,6 +1162,70 @@ mod sealed {
     impl_abss! { vec_abss_i16, i16x8 }
     impl_abss! { vec_abss_i32, i32x4 }
 
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vspltb, IMM4 = 15))]
+    unsafe fn vspltb<const IMM4: u32>(a: vector_signed_char) -> vector_signed_char {
+        static_assert_uimm_bits!(IMM4, 4);
+        let b = u8x16::splat(IMM4 as u8);
+        vec_perm(a, a, transmute(b))
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vsplth, IMM3 = 7))]
+    unsafe fn vsplth<const IMM3: u32>(a: vector_signed_short) -> vector_signed_short {
+        static_assert_uimm_bits!(IMM3, 3);
+        let b0 = IMM3 as u8 * 2;
+        let b1 = b0 + 1;
+        let b = u8x16::new(
+            b0, b1, b0, b1, b0, b1, b0, b1, b0, b1, b0, b1, b0, b1, b0, b1,
+        );
+        vec_perm(a, a, transmute(b))
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(all(test, not(target_feature = "vsx")), assert_instr(vspltw, IMM2 = 3))]
+    #[cfg_attr(all(test, target_feature = "vsx"), assert_instr(xxspltw, IMM2 = 3))]
+    unsafe fn vspltw<const IMM2: u32>(a: vector_signed_int) -> vector_signed_int {
+        static_assert_uimm_bits!(IMM2, 2);
+        let b0 = IMM2 as u8 * 4;
+        let b1 = b0 + 1;
+        let b2 = b0 + 2;
+        let b3 = b0 + 3;
+        let b = u8x16::new(
+            b0, b1, b2, b3, b0, b1, b2, b3, b0, b1, b2, b3, b0, b1, b2, b3,
+        );
+        vec_perm(a, a, transmute(b))
+    }
+
+    pub trait VectorSplat {
+        unsafe fn vec_splat<const IMM: u32>(self) -> Self;
+    }
+
+    macro_rules! impl_vec_splat {
+        ($ty:ty, $fun:ident) => {
+            impl VectorSplat for $ty {
+                #[inline]
+                #[target_feature(enable = "altivec")]
+                unsafe fn vec_splat<const IMM: u32>(self) -> Self {
+                    transmute($fun::<IMM>(transmute(self)))
+                }
+            }
+        };
+    }
+
+    impl_vec_splat! { vector_signed_char, vspltb }
+    impl_vec_splat! { vector_unsigned_char, vspltb }
+    impl_vec_splat! { vector_bool_char, vspltb }
+    impl_vec_splat! { vector_signed_short, vsplth }
+    impl_vec_splat! { vector_unsigned_short, vsplth }
+    impl_vec_splat! { vector_bool_short, vsplth }
+    impl_vec_splat! { vector_signed_int, vspltw }
+    impl_vec_splat! { vector_unsigned_int, vspltw }
+    impl_vec_splat! { vector_bool_int, vspltw }
+
     macro_rules! splat {
         ($name:ident, $v:ident, $r:ident [$instr:ident, $doc:literal]) => {
             #[doc = $doc]
@@ -2604,6 +2668,16 @@ where
     T: sealed::VectorAbss,
 {
     a.vec_abss()
+}
+
+/// Vector Splat
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_splat<T, const IMM: u32>(a: T) -> T
+where
+    T: sealed::VectorSplat,
+{
+    a.vec_splat::<IMM>()
 }
 
 splat! { vec_splat_u8, u8, u8x16 [vspltisb, "Vector Splat to Unsigned Byte"] }
