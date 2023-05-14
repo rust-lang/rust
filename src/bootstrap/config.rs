@@ -1684,6 +1684,10 @@ impl Config {
     }
 
     fn check_build_rustc_version(&self) {
+        if self.dry_run() {
+            return;
+        }
+
         // check rustc version is same or lower with 1 apart from the building one
         let mut cmd = Command::new(&self.initial_rustc);
         cmd.arg("--version");
