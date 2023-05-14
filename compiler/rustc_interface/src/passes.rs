@@ -691,6 +691,8 @@ pub fn create_global_ctxt<'tcx>(
         callback(sess, &mut local_providers, &mut extern_providers);
     }
 
+    let incremental = dep_graph.is_fully_enabled();
+
     sess.time("setup_global_ctxt", || {
         gcx_cell.get_or_init(move || {
             TyCtxt::create_global_ctxt(
@@ -705,6 +707,7 @@ pub fn create_global_ctxt<'tcx>(
                     local_providers,
                     extern_providers,
                     query_result_on_disk_cache,
+                    incremental,
                 ),
             )
         })

@@ -34,7 +34,8 @@ use rustc_middle::ty::TyCtxt;
 use rustc_query_system::dep_graph::SerializedDepNodeIndex;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
-    get_query, HashResult, QueryCache, QueryConfig, QueryInfo, QueryMap, QueryMode, QueryState,
+    get_query_incr, get_query_non_incr, HashResult, QueryCache, QueryConfig, QueryInfo, QueryMap,
+    QueryMode, QueryState,
 };
 use rustc_query_system::HandleCycleError;
 use rustc_query_system::Value;
@@ -203,6 +204,7 @@ pub fn query_system<'tcx>(
     local_providers: Providers,
     extern_providers: ExternProviders,
     on_disk_cache: Option<OnDiskCache<'tcx>>,
+    incremental: bool,
 ) -> QuerySystem<'tcx> {
     QuerySystem {
         states: Default::default(),
@@ -211,7 +213,7 @@ pub fn query_system<'tcx>(
         dynamic_queries: dynamic_queries(),
         on_disk_cache,
         fns: QuerySystemFns {
-            engine: engine(),
+            engine: engine(incremental),
             local_providers,
             extern_providers,
             query_structs: make_dep_kind_array!(query_structs).to_vec(),

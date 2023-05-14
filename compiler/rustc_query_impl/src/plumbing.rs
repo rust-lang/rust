@@ -494,7 +494,7 @@ macro_rules! define_queries {
     (
      $($(#[$attr:meta])*
         [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,)*) => {
-        mod get_query {
+        mod get_query_incr {
             use super::*;
 
             $(
@@ -506,7 +506,7 @@ macro_rules! define_queries {
                     key: query_keys::$name<'tcx>,
                     mode: QueryMode,
                 ) -> Option<Erase<query_values::$name<'tcx>>> {
-                    get_query(
+                    get_query_incr(
                         queries::$name::config(tcx),
                         QueryCtxt::new(tcx),
                         span,
@@ -517,9 +517,37 @@ macro_rules! define_queries {
             )*
         }
 
-        pub(crate) fn engine() -> QueryEngine {
-            QueryEngine {
-                $($name: get_query::$name,)*
+        mod get_query_non_incr {
+            use super::*;
+
+            $(
+                #[inline(always)]
+                #[tracing::instrument(level = "trace", skip(tcx))]
+                pub(super) fn $name<'tcx>(
+                    tcx: TyCtxt<'tcx>,
+                    span: Span,
+                    key: query_keys::$name<'tcx>,
+                    __mode: QueryMode,
+                ) -> Option<Erase<query_values::$name<'tcx>>> {
+                    Some(get_query_non_incr(
+                        queries::$name::config(tcx),
+                        QueryCtxt::new(tcx),
+                        span,
+                        key,
+                    ))
+                }
+            )*
+        }
+
+        pub(crate) fn engine(incremental: bool) -> QueryEngine {
+            if incremental {
+                QueryEngine {
+                    $($name: get_query_incr::$name,)*
+                }
+            } else {
+                QueryEngine {
+                    $($name: get_query_non_incr::$name,)*
+                }
             }
         }
 
