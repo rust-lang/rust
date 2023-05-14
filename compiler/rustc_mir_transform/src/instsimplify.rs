@@ -5,7 +5,6 @@ use crate::MirPass;
 use rustc_hir::Mutability;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::ValidityRequirement;
-use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, ParamEnv, SubstsRef, Ty, TyCtxt};
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::FieldIdx;
@@ -160,18 +159,6 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
                     // (If `CastKind::Transmute` ever becomes *not* UB for mismatched sizes,
                     // then the width check is necessary for big-endian correctness.)
                     *kind = CastKind::IntToInt;
-                    return;
-                }
-
-                // Transmuting a fieldless enum to its repr is a discriminant read
-                if let ty::Adt(adt_def, ..) = operand_ty.kind()
-                    && adt_def.is_enum()
-                    && adt_def.is_payloadfree()
-                    && let Some(place) = operand.place()
-                    && let Some(repr_int) = adt_def.repr().int
-                    && repr_int.to_ty(self.tcx) == *cast_ty
-                {
-                    *rvalue = Rvalue::Discriminant(place);
                     return;
                 }
 
