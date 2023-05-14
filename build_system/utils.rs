@@ -162,8 +162,7 @@ pub(crate) fn hyperfine_command(
     warmup: u64,
     runs: u64,
     prepare: Option<&str>,
-    a: &str,
-    b: &str,
+    cmds: &[&str],
 ) -> Command {
     let mut bench = Command::new("hyperfine");
 
@@ -179,7 +178,7 @@ pub(crate) fn hyperfine_command(
         bench.arg("--prepare").arg(prepare);
     }
 
-    bench.arg(a).arg(b);
+    bench.args(cmds);
 
     bench
 }
