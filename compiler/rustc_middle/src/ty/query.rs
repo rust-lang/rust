@@ -43,6 +43,7 @@ use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::util::AlwaysRequiresDrop;
 use crate::ty::GeneratorDiagnosticData;
 use crate::ty::{self, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt, UnusedGenericParams};
+use field_offset::FieldOffset;
 use measureme::StringId;
 use rustc_arena::TypedArena;
 use rustc_ast as ast;
@@ -66,9 +67,12 @@ use rustc_hir::hir_id::OwnerId;
 use rustc_hir::lang_items::{LangItem, LanguageItems};
 use rustc_hir::{Crate, ItemLocalId, TraitCandidate};
 use rustc_index::IndexVec;
+use rustc_query_system::dep_graph::DepNodeIndex;
+use rustc_query_system::dep_graph::SerializedDepNodeIndex;
 use rustc_query_system::ich::StableHashingContext;
 pub(crate) use rustc_query_system::query::QueryJobId;
 use rustc_query_system::query::*;
+use rustc_query_system::HandleCycleError;
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
 use rustc_session::cstore::{CrateDepKind, CrateSource};
 use rustc_session::cstore::{ExternCrate, ForeignModule, LinkagePreference, NativeLib};
@@ -78,8 +82,6 @@ use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi;
 use rustc_target::spec::PanicStrategy;
-
-use std::marker::PhantomData;
 use std::mem;
 use std::ops::Deref;
 use std::path::PathBuf;
@@ -103,6 +105,31 @@ pub struct QueryStruct<'tcx> {
         Option<fn(TyCtxt<'tcx>, &mut CacheEncoder<'_, 'tcx>, &mut EncodedDepNodeIndex)>,
 }
 
+pub struct DynamicQuery<'tcx, C: QueryCache> {
+    pub name: &'static str,
+    pub eval_always: bool,
+    pub dep_kind: rustc_middle::dep_graph::DepKind,
+    pub handle_cycle_error: HandleCycleError,
+    pub query_state: FieldOffset<QueryStates<'tcx>, QueryState<C::Key, crate::dep_graph::DepKind>>,
+    pub query_cache: FieldOffset<QueryCaches<'tcx>, C>,
+    pub cache_on_disk: fn(tcx: TyCtxt<'tcx>, key: &C::Key) -> bool,
+    pub execute_query: fn(tcx: TyCtxt<'tcx>, k: C::Key) -> C::Value,
+    pub compute: fn(tcx: TyCtxt<'tcx>, key: C::Key) -> C::Value,
+    pub can_load_from_disk: bool,
+    pub try_load_from_disk: fn(
+        tcx: TyCtxt<'tcx>,
+        key: &C::Key,
+        prev_index: SerializedDepNodeIndex,
+        index: DepNodeIndex,
+    ) -> Option<C::Value>,
+    pub loadable_from_disk:
+        fn(tcx: TyCtxt<'tcx>, key: &C::Key, index: SerializedDepNodeIndex) -> bool,
+    pub hash_result: HashResult<C::Value>,
+    pub value_from_cycle_error:
+        fn(tcx: TyCtxt<'tcx>, cycle: &[QueryInfo<crate::dep_graph::DepKind>]) -> C::Value,
+    pub format_value: fn(&C::Value) -> String,
+}
+
 pub struct QuerySystemFns<'tcx> {
     pub engine: QueryEngine,
     pub local_providers: Providers,
@@ -120,6 +147,7 @@ pub struct QuerySystem<'tcx> {
     pub states: QueryStates<'tcx>,
     pub arenas: QueryArenas<'tcx>,
     pub caches: QueryCaches<'tcx>,
+    pub dynamic_queries: DynamicQueries<'tcx>,
 
     /// This provides access to the incremental compilation on-disk cache for query results.
     /// Do not access this directly. It is only meant to be used by
@@ -130,23 +158,6 @@ pub struct QuerySystem<'tcx> {
     pub fns: QuerySystemFns<'tcx>,
 
     pub jobs: AtomicU64,
-
-    // Since we erase query value types we tell the typesystem about them with `PhantomData`.
-    _phantom_values: QueryPhantomValues<'tcx>,
-}
-
-impl<'tcx> QuerySystem<'tcx> {
-    pub fn new(fns: QuerySystemFns<'tcx>, on_disk_cache: Option<OnDiskCache<'tcx>>) -> Self {
-        QuerySystem {
-            states: Default::default(),
-            arenas: Default::default(),
-            caches: Default::default(),
-            on_disk_cache,
-            fns,
-            jobs: AtomicU64::new(1),
-            _phantom_values: Default::default(),
-        }
-    }
 }
 
 #[derive(Copy, Clone)]
@@ -428,11 +439,6 @@ macro_rules! define_callbacks {
         }
 
         #[derive(Default)]
-        pub struct QueryPhantomValues<'tcx> {
-            $($(#[$attr])* pub $name: PhantomData<query_values::$name<'tcx>>,)*
-        }
-
-        #[derive(Default)]
         pub struct QueryCaches<'tcx> {
             $($(#[$attr])* pub $name: query_storage::$name<'tcx>,)*
         }
@@ -488,6 +494,12 @@ macro_rules! define_callbacks {
                     key.into_query_param(),
                 ))
             })*
+        }
+
+        pub struct DynamicQueries<'tcx> {
+            $(
+                pub $name: DynamicQuery<'tcx, query_storage::$name<'tcx>>,
+            )*
         }
 
         #[derive(Default)]

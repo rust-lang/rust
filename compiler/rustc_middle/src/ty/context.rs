@@ -14,14 +14,12 @@ use crate::middle::resolve_bound_vars;
 use crate::middle::stability;
 use crate::mir::interpret::{self, Allocation, ConstAllocation};
 use crate::mir::{Body, Local, Place, PlaceElem, ProjectionKind, Promoted};
-use crate::query::on_disk_cache::OnDiskCache;
 use crate::query::LocalCrate;
 use crate::thir::Thir;
 use crate::traits;
 use crate::traits::solve;
 use crate::traits::solve::{ExternalConstraints, ExternalConstraintsData};
 use crate::ty::query::QuerySystem;
-use crate::ty::query::QuerySystemFns;
 use crate::ty::query::{self, TyCtxtAt};
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Const, ConstData, FloatTy, FloatVar, FloatVid,
@@ -653,9 +651,8 @@ impl<'tcx> TyCtxt<'tcx> {
         hir_arena: &'tcx WorkerLocal<hir::Arena<'tcx>>,
         untracked: Untracked,
         dep_graph: DepGraph,
-        on_disk_cache: Option<OnDiskCache<'tcx>>,
         query_kinds: &'tcx [DepKindStruct<'tcx>],
-        query_system_fns: QuerySystemFns<'tcx>,
+        query_system: QuerySystem<'tcx>,
     ) -> GlobalCtxt<'tcx> {
         let data_layout = s.target.parse_data_layout().unwrap_or_else(|err| {
             s.emit_fatal(err);
@@ -677,7 +674,7 @@ impl<'tcx> TyCtxt<'tcx> {
             lifetimes: common_lifetimes,
             consts: common_consts,
             untracked,
-            query_system: QuerySystem::new(query_system_fns, on_disk_cache),
+            query_system,
             query_kinds,
             ty_rcache: Default::default(),
             pred_rcache: Default::default(),

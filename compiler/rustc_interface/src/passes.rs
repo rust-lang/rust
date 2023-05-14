@@ -700,9 +700,12 @@ pub fn create_global_ctxt<'tcx>(
                 hir_arena,
                 untracked,
                 dep_graph,
-                query_result_on_disk_cache,
                 rustc_query_impl::query_callbacks(arena),
-                rustc_query_impl::query_system_fns(local_providers, extern_providers),
+                rustc_query_impl::query_system(
+                    local_providers,
+                    extern_providers,
+                    query_result_on_disk_cache,
+                ),
             )
         })
     })
