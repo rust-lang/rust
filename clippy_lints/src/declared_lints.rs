@@ -491,7 +491,6 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::operators::FLOAT_EQUALITY_WITHOUT_ABS_INFO,
     crate::operators::IDENTITY_OP_INFO,
     crate::operators::INEFFECTIVE_BIT_MASK_INFO,
-    crate::operators::INTEGER_ARITHMETIC_INFO,
     crate::operators::INTEGER_DIVISION_INFO,
     crate::operators::MISREFACTORED_ASSIGN_OP_INFO,
     crate::operators::MODULO_ARITHMETIC_INFO,
