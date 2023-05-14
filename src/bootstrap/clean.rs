@@ -15,14 +15,14 @@ use crate::util::t;
 use crate::{Build, Compiler, Mode, Subcommand};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct CleanAll {}
+pub struct CleanAll;
 
 impl Step for CleanAll {
     const DEFAULT: bool = true;
     type Output = ();
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(CleanAll {})
+        run.builder.ensure(CleanAll)
     }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
@@ -32,6 +32,26 @@ impl Step for CleanAll {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.never() // handled by DEFAULT
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct CleanBootstrap;
+
+impl Step for CleanBootstrap {
+    type Output = ();
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        rm_rf(&builder.out.join("bootstrap"));
+        rm_rf(&builder.out.join("rustfmt.stamp"));
+    }
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/bootstrap").alias("bootstrap")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(CleanBootstrap)
     }
 }
 
@@ -92,8 +112,6 @@ fn clean_default(build: &Build, all: bool) {
     } else {
         rm_rf(&build.out.join("tmp"));
         rm_rf(&build.out.join("dist"));
-        rm_rf(&build.out.join("bootstrap"));
-        rm_rf(&build.out.join("rustfmt.stamp"));
 
         for host in &build.hosts {
             let entries = match build.out.join(host.triple).read_dir() {

@@ -841,7 +841,9 @@ impl<'a> Builder<'a> {
                 run::GenerateWindowsSys,
             ),
             Kind::Setup => describe!(setup::Profile, setup::Hook, setup::Link, setup::Vscode),
-            Kind::Clean => describe!(clean::CleanAll, clean::Rustc, clean::Std),
+            Kind::Clean => {
+                describe!(clean::CleanAll, clean::CleanBootstrap, clean::Rustc, clean::Std)
+            }
             // special-cased in Build::build()
             Kind::Format | Kind::Suggest => vec![],
         }
