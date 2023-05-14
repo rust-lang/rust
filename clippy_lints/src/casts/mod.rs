@@ -9,7 +9,6 @@ mod cast_possible_truncation;
 mod cast_possible_wrap;
 mod cast_precision_loss;
 mod cast_ptr_alignment;
-mod cast_ref_to_mut;
 mod cast_sign_loss;
 mod cast_slice_different_sizes;
 mod cast_slice_from_raw_parts;
@@ -332,41 +331,6 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for casts of `&T` to `&mut T` anywhere in the code.
-    ///
-    /// ### Why is this bad?
-    /// It’s basically guaranteed to be undefined behavior.
-    /// `UnsafeCell` is the only way to obtain aliasable data that is considered
-    /// mutable.
-    ///
-    /// ### Example
-    /// ```rust,ignore
-    /// fn x(r: &i32) {
-    ///     unsafe {
-    ///         *(r as *const _ as *mut _) += 1;
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// Instead consider using interior mutability types.
-    ///
-    /// ```rust
-    /// use std::cell::UnsafeCell;
-    ///
-    /// fn x(r: &UnsafeCell<i32>) {
-    ///     unsafe {
-    ///         *r.get() += 1;
-    ///     }
-    /// }
-    /// ```
-    #[clippy::version = "1.33.0"]
-    pub CAST_REF_TO_MUT,
-    correctness,
-    "a cast of reference to a mutable pointer"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for expressions where a character literal is cast
     /// to `u8` and suggests using a byte literal instead.
     ///
@@ -680,7 +644,6 @@ impl_lint_pass!(Casts => [
     CAST_POSSIBLE_TRUNCATION,
     CAST_POSSIBLE_WRAP,
     CAST_LOSSLESS,
-    CAST_REF_TO_MUT,
     CAST_PTR_ALIGNMENT,
     CAST_SLICE_DIFFERENT_SIZES,
     UNNECESSARY_CAST,
@@ -747,7 +710,6 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             }
         }
 
-        cast_ref_to_mut::check(cx, expr);
         cast_ptr_alignment::check(cx, expr);
         char_lit_as_u8::check(cx, expr);
         ptr_as_ptr::check(cx, expr, &self.msrv);
