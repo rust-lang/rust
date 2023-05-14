@@ -2066,3 +2066,22 @@ fn type_error() {
         |e| matches!(e, ConstEvalError::MirLowerError(MirLowerError::TypeMismatch(_))),
     );
 }
+
+#[test]
+fn unsized_local() {
+    check_fail(
+        r#"
+    //- minicore: coerce_unsized, index, slice
+    const fn x() -> SomeUnknownTypeThatDereferenceToSlice {
+        SomeUnknownTypeThatDereferenceToSlice
+    }
+
+    const GOAL: u16 = {
+        let y = x();
+        let z: &[u16] = &y;
+        z[1]
+    };
+    "#,
+        |e| matches!(e, ConstEvalError::MirLowerError(MirLowerError::UnsizedTemporary(_))),
+    );
+}
