@@ -1020,7 +1020,6 @@ impl Config {
             config.download_beta_toolchain();
             config.out.join(config.build.triple).join("stage0/bin/rustc")
         });
-        config.check_build_rustc_version();
 
         config.initial_cargo = build
             .cargo
@@ -1683,7 +1682,7 @@ impl Config {
         self.rust_codegen_backends.get(0).cloned()
     }
 
-    fn check_build_rustc_version(&self) {
+    pub fn check_build_rustc_version(&self) {
         if self.dry_run() {
             return;
         }
