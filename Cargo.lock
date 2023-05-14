@@ -723,6 +723,7 @@ dependencies = [
 name = "compiletest"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
  "build_helper",
  "colored",
  "diff",
