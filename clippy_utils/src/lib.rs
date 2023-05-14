@@ -1,5 +1,6 @@
 #![feature(array_chunks)]
 #![feature(box_patterns)]
+#![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(lint_reasons)]
 #![feature(never_type)]
@@ -280,6 +281,15 @@ pub fn is_unit_expr(expr: &Expr<'_>) -> bool {
 /// Checks if given pattern is a wildcard (`_`)
 pub fn is_wild(pat: &Pat<'_>) -> bool {
     matches!(pat.kind, PatKind::Wild)
+}
+
+/// Checks if the given `QPath` belongs to a type alias.
+pub fn is_ty_alias(qpath: &QPath<'_>) -> bool {
+    match *qpath {
+        QPath::Resolved(_, path) => matches!(path.res, Res::Def(DefKind::TyAlias, ..)),
+        QPath::TypeRelative(ty, _) if let TyKind::Path(qpath) = ty.kind => { is_ty_alias(&qpath) },
+        _ => false,
+    }
 }
 
 /// Checks if the method call given in `expr` belongs to the given trait.
