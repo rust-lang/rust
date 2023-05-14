@@ -75,6 +75,7 @@ pub enum MirLowerError {
     RecordLiteralWithoutPath,
     UnresolvedMethod(String),
     UnresolvedField,
+    UnsizedTemporary(Ty),
     MissingFunctionDefinition,
     TypeMismatch(TypeMismatch),
     /// This should be never happen. Type mismatch should catch everything.
@@ -108,6 +109,7 @@ impl MirLowerError {
                 }
             }
             MirLowerError::LayoutError(_)
+            | MirLowerError::UnsizedTemporary(_)
             | MirLowerError::IncompleteExpr
             | MirLowerError::UnaccessableLocal
             | MirLowerError::TraitFunctionDefinition(_, _)
@@ -199,7 +201,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
 
     fn temp(&mut self, ty: Ty) -> Result<LocalId> {
         if matches!(ty.kind(Interner), TyKind::Slice(_) | TyKind::Dyn(_)) {
-            implementation_error!("unsized temporaries");
+            return Err(MirLowerError::UnsizedTemporary(ty));
         }
         Ok(self.result.locals.alloc(Local { ty }))
     }

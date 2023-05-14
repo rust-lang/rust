@@ -2,7 +2,6 @@
 //! errors.
 
 use std::{
-    collections::HashMap,
     env,
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -16,7 +15,7 @@ use hir_def::{
     hir::{ExprId, PatId},
     FunctionId,
 };
-use hir_ty::{Interner, TyExt, TypeFlags};
+use hir_ty::{Interner, Substitution, TyExt, TypeFlags};
 use ide::{Analysis, AnalysisHost, LineCol, RootDatabase};
 use ide_db::base_db::{
     salsa::{self, debug::DebugQueryTable, ParallelDatabase},
@@ -122,14 +121,19 @@ impl flags::AnalysisStats {
         eprint!("  crates: {num_crates}");
         let mut num_decls = 0;
         let mut funcs = Vec::new();
+        let mut adts = Vec::new();
+        let mut consts = Vec::new();
         while let Some(module) = visit_queue.pop() {
             if visited_modules.insert(module) {
                 visit_queue.extend(module.children(db));
 
                 for decl in module.declarations(db) {
                     num_decls += 1;
-                    if let ModuleDef::Function(f) = decl {
-                        funcs.push(f);
+                    match decl {
+                        ModuleDef::Function(f) => funcs.push(f),
+                        ModuleDef::Adt(a) => adts.push(a),
+                        ModuleDef::Const(c) => consts.push(c),
+                        _ => (),
                     }
                 }
 
@@ -154,9 +158,12 @@ impl flags::AnalysisStats {
             self.run_inference(&host, db, &vfs, &funcs, verbosity);
         }
 
-        if self.mir_stats {
-            self.lower_mir(db, &funcs);
+        if !self.skip_mir_stats {
+            self.run_mir_lowering(db, &funcs, verbosity);
         }
+
+        self.run_data_layout(db, &adts, verbosity);
+        self.run_const_eval(db, &consts, verbosity);
 
         let total_span = analysis_sw.elapsed();
         eprintln!("{:<20} {total_span}", "Total:");
@@ -193,22 +200,88 @@ impl flags::AnalysisStats {
         Ok(())
     }
 
-    fn lower_mir(&self, db: &RootDatabase, funcs: &[Function]) {
-        let all = funcs.len();
+    fn run_data_layout(&self, db: &RootDatabase, adts: &[hir::Adt], verbosity: Verbosity) {
+        let mut sw = self.stop_watch();
+        let mut all = 0;
         let mut fail = 0;
-        let mut h: HashMap<String, usize> = HashMap::new();
-        for f in funcs {
-            let f = FunctionId::from(*f);
-            let Err(e) = db.mir_body(f.into()) else {
+        for &a in adts {
+            if db.generic_params(a.into()).iter().next().is_some() {
+                // Data types with generics don't have layout.
+                continue;
+            }
+            all += 1;
+            let Err(e) = db.layout_of_adt(hir_def::AdtId::from(a).into(), Substitution::empty(Interner)) else {
                 continue;
             };
-            let es = format!("{:?}", e);
-            *h.entry(es).or_default() += 1;
+            if verbosity.is_spammy() {
+                let full_name = a
+                    .module(db)
+                    .path_to_root(db)
+                    .into_iter()
+                    .rev()
+                    .filter_map(|it| it.name(db))
+                    .chain(Some(a.name(db)))
+                    .join("::");
+                println!("Data layout for {full_name} failed due {e:?}");
+            }
             fail += 1;
         }
-        let h = h.into_iter().sorted_by_key(|x| x.1).collect::<Vec<_>>();
-        eprintln!("Mir failed reasons: {:#?}", h);
+        eprintln!("{:<20} {}", "Data layouts:", sw.elapsed());
+        eprintln!("Failed data layouts: {fail} ({}%)", fail * 100 / all);
+        report_metric("failed data layouts", fail, "#");
+    }
+
+    fn run_const_eval(&self, db: &RootDatabase, consts: &[hir::Const], verbosity: Verbosity) {
+        let mut sw = self.stop_watch();
+        let mut all = 0;
+        let mut fail = 0;
+        for &c in consts {
+            all += 1;
+            let Err(e) = c.render_eval(db) else {
+                continue;
+            };
+            if verbosity.is_spammy() {
+                let full_name = c
+                    .module(db)
+                    .path_to_root(db)
+                    .into_iter()
+                    .rev()
+                    .filter_map(|it| it.name(db))
+                    .chain(c.name(db))
+                    .join("::");
+                println!("Const eval for {full_name} failed due {e:?}");
+            }
+            fail += 1;
+        }
+        eprintln!("{:<20} {}", "Const evaluation:", sw.elapsed());
+        eprintln!("Failed const evals: {fail} ({}%)", fail * 100 / all);
+        report_metric("failed const evals", fail, "#");
+    }
+
+    fn run_mir_lowering(&self, db: &RootDatabase, funcs: &[Function], verbosity: Verbosity) {
+        let mut sw = self.stop_watch();
+        let all = funcs.len() as u64;
+        let mut fail = 0;
+        for f in funcs {
+            let Err(e) = db.mir_body(FunctionId::from(*f).into()) else {
+                continue;
+            };
+            if verbosity.is_spammy() {
+                let full_name = f
+                    .module(db)
+                    .path_to_root(db)
+                    .into_iter()
+                    .rev()
+                    .filter_map(|it| it.name(db))
+                    .chain(Some(f.name(db)))
+                    .join("::");
+                println!("Mir body for {full_name} failed due {e:?}");
+            }
+            fail += 1;
+        }
+        eprintln!("{:<20} {}", "MIR lowering:", sw.elapsed());
         eprintln!("Mir failed bodies: {fail} ({}%)", fail * 100 / all);
+        report_metric("mir failed bodies", fail, "#");
     }
 
     fn run_inference(
