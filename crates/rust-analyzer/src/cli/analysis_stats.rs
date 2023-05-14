@@ -201,6 +201,7 @@ impl flags::AnalysisStats {
     }
 
     fn run_data_layout(&self, db: &RootDatabase, adts: &[hir::Adt], verbosity: Verbosity) {
+        let mut sw = self.stop_watch();
         let mut all = 0;
         let mut fail = 0;
         for &a in adts {
@@ -225,11 +226,13 @@ impl flags::AnalysisStats {
             }
             fail += 1;
         }
+        eprintln!("{:<20} {}", "Data layouts:", sw.elapsed());
         eprintln!("Failed data layouts: {fail} ({}%)", fail * 100 / all);
         report_metric("failed data layouts", fail, "#");
     }
 
     fn run_const_eval(&self, db: &RootDatabase, consts: &[hir::Const], verbosity: Verbosity) {
+        let mut sw = self.stop_watch();
         let mut all = 0;
         let mut fail = 0;
         for &c in consts {
@@ -250,11 +253,13 @@ impl flags::AnalysisStats {
             }
             fail += 1;
         }
+        eprintln!("{:<20} {}", "Const evaluation:", sw.elapsed());
         eprintln!("Failed const evals: {fail} ({}%)", fail * 100 / all);
         report_metric("failed const evals", fail, "#");
     }
 
     fn run_mir_lowering(&self, db: &RootDatabase, funcs: &[Function], verbosity: Verbosity) {
+        let mut sw = self.stop_watch();
         let all = funcs.len() as u64;
         let mut fail = 0;
         for f in funcs {
@@ -274,6 +279,7 @@ impl flags::AnalysisStats {
             }
             fail += 1;
         }
+        eprintln!("{:<20} {}", "MIR lowering:", sw.elapsed());
         eprintln!("Mir failed bodies: {fail} ({}%)", fail * 100 / all);
         report_metric("mir failed bodies", fail, "#");
     }
