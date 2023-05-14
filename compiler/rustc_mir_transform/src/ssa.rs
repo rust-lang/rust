@@ -267,11 +267,6 @@ fn compute_copy_classes(ssa: &mut SsaVisitor, body: &Body<'_>) -> IndexVec<Local
     for &local in &ssa.assignment_order {
         debug!(?local);
 
-        if local == RETURN_PLACE {
-            // `_0` is special, we cannot rename it.
-            continue;
-        }
-
         // This is not SSA: mark that we don't know the value.
         debug!(assignments = ?ssa.assignments[local]);
         let Set1::One(LocationExtended::Plain(loc)) = ssa.assignments[local] else { continue };
@@ -290,7 +285,23 @@ fn compute_copy_classes(ssa: &mut SsaVisitor, body: &Body<'_>) -> IndexVec<Local
 
         // We visit in `assignment_order`, ie. reverse post-order, so `rhs` has been
         // visited before `local`, and we just have to copy the representing local.
-        copies[local] = copies[rhs];
+        let head = copies[rhs];
+
+        if local == RETURN_PLACE {
+            // `_0` is special, we cannot rename it. Instead, rename the class of `rhs` to
+            // `RETURN_PLACE`. This is only possible if the class head is a temporary, not an
+            // argument.
+            if body.local_kind(head) != LocalKind::Temp {
+                continue;
+            }
+            for h in copies.iter_mut() {
+                if *h == head {
+                    *h = RETURN_PLACE;
+                }
+            }
+        } else {
+            copies[local] = head;
+        }
         ssa.direct_uses[rhs] -= 1;
     }
 
@@ -302,6 +313,7 @@ fn compute_copy_classes(ssa: &mut SsaVisitor, body: &Body<'_>) -> IndexVec<Local
     for &head in copies.iter() {
         assert_eq!(copies[head], head);
     }
+    debug_assert_eq!(copies[RETURN_PLACE], RETURN_PLACE);
 
     copies
 }
