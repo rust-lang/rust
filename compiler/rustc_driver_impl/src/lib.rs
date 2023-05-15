@@ -280,7 +280,7 @@ fn run_compiler(
     // the compiler with @empty_file as argv[0] and no more arguments.
     let at_args = at_args.get(1..).unwrap_or_default();
 
-    let args = args::arg_expand_all(&early_error_handler, at_args);
+    let args = args::arg_expand_all(&early_error_handler, at_args)?;
 
     let Some(matches) = handle_options(&early_error_handler, &args) else { return Ok(()) };
 

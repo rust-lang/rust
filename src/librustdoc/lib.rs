@@ -715,7 +715,7 @@ fn main_args(handler: &mut EarlyErrorHandler, at_args: &[String]) -> MainResult 
     // the compiler with @empty_file as argv[0] and no more arguments.
     let at_args = at_args.get(1..).unwrap_or_default();
 
-    let args = rustc_driver::args::arg_expand_all(handler, at_args);
+    let args = rustc_driver::args::arg_expand_all(handler, at_args)?;
 
     let mut options = getopts::Options::new();
     for option in opts() {
