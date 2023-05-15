@@ -21,13 +21,10 @@ fn unions(u: U) -> i32 {
 #[custom_mir(dialect = "analysis", phase = "post-cleanup")]
 fn tuples(i: (u32, i32)) -> (u32, i32) {
     mir!(
-        // FIXME(JakobDegen): This is necessary because we can't give type hints for `RET`
-        let temp: (u32, i32);
+        type RET = (u32, i32);
         {
-            temp.0 = i.0;
-            temp.1 = i.1;
-
-            RET = temp;
+            RET.0 = i.0;
+            RET.1 = i.1;
             Return()
         }
     )
