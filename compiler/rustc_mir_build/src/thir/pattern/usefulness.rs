@@ -322,7 +322,6 @@ use rustc_span::{Span, DUMMY_SP};
 
 use smallvec::{smallvec, SmallVec};
 use std::fmt;
-use std::iter::once;
 
 pub(crate) struct MatchCheckCtxt<'p, 'tcx> {
     pub(crate) tcx: TyCtxt<'tcx>,
@@ -563,21 +562,21 @@ enum Usefulness<'p, 'tcx> {
     NoWitnesses { useful: bool },
     /// Carries a list of witnesses of non-exhaustiveness. If empty, indicates that the whole
     /// pattern is unreachable.
-    WithWitnesses(Vec<Witness<'p, 'tcx>>),
+    WithWitnesses(WitnessMatrix<'p, 'tcx>),
 }
 
 impl<'p, 'tcx> Usefulness<'p, 'tcx> {
     fn new_useful(preference: ArmType) -> Self {
         match preference {
             // A single (empty) witness of reachability.
-            FakeExtraWildcard => WithWitnesses(vec![Witness(vec![])]),
+            FakeExtraWildcard => WithWitnesses(WitnessMatrix::new_unit()),
             RealArm => NoWitnesses { useful: true },
         }
     }
 
     fn new_not_useful(preference: ArmType) -> Self {
         match preference {
-            FakeExtraWildcard => WithWitnesses(vec![]),
+            FakeExtraWildcard => WithWitnesses(WitnessMatrix::new_empty()),
             RealArm => NoWitnesses { useful: false },
         }
     }
@@ -613,62 +612,9 @@ impl<'p, 'tcx> Usefulness<'p, 'tcx> {
     ) -> Self {
         match self {
             NoWitnesses { .. } => self,
-            WithWitnesses(ref witnesses) if witnesses.is_empty() => self,
-            WithWitnesses(witnesses) => {
-                let new_witnesses = if let Constructor::Missing { .. } = ctor {
-                    // We got the special `Missing` constructor, so each of the missing constructors
-                    // gives a new pattern that is not caught by the match. We list those patterns.
-                    let new_patterns = if pcx.is_non_exhaustive {
-                        // Here we don't want the user to try to list all variants, we want them to add
-                        // a wildcard, so we only suggest that.
-                        vec![DeconstructedPat::wildcard(pcx.ty, pcx.span)]
-                    } else {
-                        let mut split_wildcard = SplitWildcard::new(pcx);
-                        split_wildcard.split(pcx, matrix.heads().map(DeconstructedPat::ctor));
-
-                        // This lets us know if we skipped any variants because they are marked
-                        // `doc(hidden)` or they are unstable feature gate (only stdlib types).
-                        let mut hide_variant_show_wild = false;
-                        // Construct for each missing constructor a "wild" version of this
-                        // constructor, that matches everything that can be built with
-                        // it. For example, if `ctor` is a `Constructor::Variant` for
-                        // `Option::Some`, we get the pattern `Some(_)`.
-                        let mut new: Vec<DeconstructedPat<'_, '_>> = split_wildcard
-                            .iter_missing(pcx)
-                            .filter_map(|missing_ctor| {
-                                // Check if this variant is marked `doc(hidden)`
-                                if missing_ctor.is_doc_hidden_variant(pcx)
-                                    || missing_ctor.is_unstable_variant(pcx)
-                                {
-                                    hide_variant_show_wild = true;
-                                    return None;
-                                }
-                                Some(DeconstructedPat::wild_from_ctor(pcx, missing_ctor.clone()))
-                            })
-                            .collect();
-
-                        if hide_variant_show_wild {
-                            new.push(DeconstructedPat::wildcard(pcx.ty, pcx.span));
-                        }
-
-                        new
-                    };
-
-                    witnesses
-                        .into_iter()
-                        .flat_map(|witness| {
-                            new_patterns.iter().map(move |pat| {
-                                Witness(witness.0.iter().chain(once(pat)).cloned().collect())
-                            })
-                        })
-                        .collect()
-                } else {
-                    witnesses
-                        .into_iter()
-                        .map(|witness| witness.apply_constructor(pcx, &ctor))
-                        .collect()
-                };
-                WithWitnesses(new_witnesses)
+            WithWitnesses(mut witnesses) => {
+                witnesses.apply_constructor(pcx, matrix, ctor);
+                WithWitnesses(witnesses)
             }
         }
     }
@@ -680,16 +626,14 @@ enum ArmType {
     RealArm,
 }
 
-/// A witness of non-exhaustiveness for error reporting, represented
-/// as a list of patterns (in reverse order of construction) with
-/// wildcards inside to represent elements that can take any inhabitant
-/// of the type as a value.
+/// A partially-constructed witness of non-exhaustiveness for error reporting, represented as a list
+/// of patterns (in reverse order of construction). This is very similar to `PatStack`, with two
+/// differences: the patterns are stored in the opposite order for historical reasons, and where the
+/// API of `PatStack` is oriented towards deconstructing it by peeling layers off, this is oriented
+/// towards reconstructing by rewrapping layers.
 ///
-/// A witness against a list of patterns should have the same types
-/// and length as the pattern matched against. Because Rust `match`
-/// is always against a single pattern, at the end the witness will
-/// have length 1, but in the middle of the algorithm, it can contain
-/// multiple patterns.
+/// This should have the same length and types as the `PatStack`s and `Matrix` it is constructed
+/// nearby of. At the end of the algorithm this will have length 1 and represent and actual pattern.
 ///
 /// For example, if we are constructing a witness for the match against
 ///
@@ -705,50 +649,143 @@ enum ArmType {
 ///
 /// We'll perform the following steps:
 /// 1. Start with an empty witness
-///     `Witness(vec![])`
+///     `WitnessStack(vec![])`
 /// 2. Push a witness `true` against the `false`
-///     `Witness(vec![true])`
+///     `WitnessStack(vec![true])`
 /// 3. Push a witness `Some(_)` against the `None`
-///     `Witness(vec![true, Some(_)])`
+///     `WitnessStack(vec![true, Some(_)])`
 /// 4. Apply the `Pair` constructor to the witnesses
-///     `Witness(vec![Pair(Some(_), true)])`
+///     `WitnessStack(vec![Pair(Some(_), true)])`
 ///
 /// The final `Pair(Some(_), true)` is then the resulting witness.
-#[derive(Debug)]
-pub(crate) struct Witness<'p, 'tcx>(Vec<DeconstructedPat<'p, 'tcx>>);
+#[derive(Debug, Clone)]
+struct WitnessStack<'p, 'tcx>(Vec<DeconstructedPat<'p, 'tcx>>);
 
-impl<'p, 'tcx> Witness<'p, 'tcx> {
+impl<'p, 'tcx> WitnessStack<'p, 'tcx> {
     /// Asserts that the witness contains a single pattern, and returns it.
     fn single_pattern(self) -> DeconstructedPat<'p, 'tcx> {
         assert_eq!(self.0.len(), 1);
         self.0.into_iter().next().unwrap()
     }
 
-    /// Constructs a partial witness for a pattern given a list of
-    /// patterns expanded by the specialization step.
+    /// Reverses specialization. Given a witness obtained after specialization, this constructs a
+    /// new witness valid for before specialization. Examples:
     ///
-    /// When a pattern P is discovered to be useful, this function is used bottom-up
-    /// to reconstruct a complete witness, e.g., a pattern P' that covers a subset
-    /// of values, V, where each value in that set is not covered by any previously
-    /// used patterns and is covered by the pattern P'. Examples:
+    /// ctor: tuple of 2 elements
+    /// pats: [false, "foo", _, true]
+    /// result: [(false, "foo"), _, true]
     ///
-    /// left_ty: tuple of 3 elements
-    /// pats: [10, 20, _]           => (10, 20, _)
-    ///
-    /// left_ty: struct X { a: (bool, &'static str), b: usize}
-    /// pats: [(false, "foo"), 42]  => X { a: (false, "foo"), b: 42 }
-    fn apply_constructor(mut self, pcx: &PatCtxt<'_, 'p, 'tcx>, ctor: &Constructor<'tcx>) -> Self {
-        let pat = {
-            let len = self.0.len();
-            let arity = ctor.arity(pcx);
+    /// ctor: Enum::Variant { a: (bool, &'static str), b: usize}
+    /// pats: [(false, "foo"), _, true]
+    /// result: [Enum::Variant { a: (false, "foo"), b: _ }, true]
+    fn apply_constructor(&mut self, pcx: &PatCtxt<'_, 'p, 'tcx>, ctor: &Constructor<'tcx>) {
+        let len = self.0.len();
+        let arity = ctor.arity(pcx);
+        let fields = {
             let pats = self.0.drain((len - arity)..).rev();
-            let fields = Fields::from_iter(pcx.cx, pats);
-            DeconstructedPat::new(ctor.clone(), fields, pcx.ty, pcx.span)
+            Fields::from_iter(pcx.cx, pats)
         };
+        let pat = DeconstructedPat::new(ctor.clone(), fields, pcx.ty, pcx.span);
 
         self.0.push(pat);
+    }
 
-        self
+    /// Reverses specialization by the `Missing` constructor by pushing a whole new pattern.
+    fn push_pattern(&mut self, pat: DeconstructedPat<'p, 'tcx>) {
+        self.0.push(pat);
+    }
+}
+
+/// Represents a set of partially-constructed witnesses of non-exhaustiveness for error reporting.
+/// This has similar invariants as `Matrix` does.
+/// Throughout the exhaustiveness phase of the algorithm, `is_useful` maintains the invariant that
+/// the union of the `Matrix` and the `WitnessMatrix` together matches the type exhaustively. By the
+/// end of the algorithm, this has a single column, which contains the patterns that are missing for
+/// the match to be exhaustive.
+#[derive(Debug, Clone)]
+pub struct WitnessMatrix<'p, 'tcx>(Vec<WitnessStack<'p, 'tcx>>);
+
+impl<'p, 'tcx> WitnessMatrix<'p, 'tcx> {
+    /// New matrix with no rows.
+    fn new_empty() -> Self {
+        WitnessMatrix(vec![])
+    }
+    /// New matrix with one row and no columns.
+    fn new_unit() -> Self {
+        WitnessMatrix(vec![WitnessStack(vec![])])
+    }
+
+    /// Whether this has any rows.
+    fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+    /// Asserts that there is a single column and returns the patterns in it.
+    fn single_column(self) -> Vec<DeconstructedPat<'p, 'tcx>> {
+        self.0.into_iter().map(|w| w.single_pattern()).collect()
+    }
+
+    /// Reverses specialization by the `Missing` constructor. This constructs a "wild" version of
+    /// `ctor`, that matches everything that can be built with it. For example, if `ctor` is a
+    /// `Constructor::Variant` for `Option::Some`, we get the pattern `Some(_)`. We push repeated
+    /// copies of that pattern to all rows.
+    fn push_wild_ctor(&mut self, pcx: &PatCtxt<'_, 'p, 'tcx>, ctor: Constructor<'tcx>) {
+        let pat = DeconstructedPat::wild_from_ctor(pcx, ctor);
+        for witness in self.0.iter_mut() {
+            witness.push_pattern(pat.clone())
+        }
+    }
+
+    /// Reverses specialization by `ctor`.
+    fn apply_constructor(
+        &mut self,
+        pcx: &PatCtxt<'_, 'p, 'tcx>,
+        matrix: &Matrix<'p, 'tcx>, // used to compute missing ctors
+        ctor: &Constructor<'tcx>,
+    ) {
+        if self.is_empty() {
+            return;
+        }
+        if !matches!(ctor, Constructor::Missing { .. }) {
+            for witness in self.0.iter_mut() {
+                witness.apply_constructor(pcx, ctor)
+            }
+        } else if pcx.is_non_exhaustive {
+            // Here we don't want the user to try to list all variants, we want them to add a
+            // wildcard, so we only suggest that.
+            self.push_wild_ctor(pcx, Constructor::Wildcard);
+        } else {
+            // We got the special `Missing` constructor, so each of the missing constructors gives a
+            // new pattern that is not caught by the match. We list those patterns and push them
+            // onto our current witnesses.
+            let old_witnesses = std::mem::replace(self, Self::new_empty());
+
+            let mut split_wildcard = SplitWildcard::new(pcx);
+            split_wildcard.split(pcx, matrix.heads().map(DeconstructedPat::ctor));
+
+            // Skip any variants that are `doc(hidden)` or behind an unstable feature gate.
+            // We replace them with a wildcard.
+            let mut skipped_any_variant = false;
+            for missing_ctor in split_wildcard.iter_missing(pcx) {
+                if missing_ctor.is_doc_hidden_variant(pcx) || missing_ctor.is_unstable_variant(pcx)
+                {
+                    skipped_any_variant = true;
+                } else {
+                    let mut witnesses_with_missing_ctor = old_witnesses.clone();
+                    witnesses_with_missing_ctor.push_wild_ctor(pcx, missing_ctor.clone());
+                    self.extend(witnesses_with_missing_ctor)
+                }
+            }
+            if skipped_any_variant {
+                let mut witnesses_with_wildcard = old_witnesses;
+                witnesses_with_wildcard.push_wild_ctor(pcx, Constructor::Wildcard);
+                self.extend(witnesses_with_wildcard)
+            }
+        }
+    }
+
+    /// Merges the rows of two witness matrices. Their column types must match.
+    fn extend(&mut self, other: Self) {
+        self.0.extend(other.0)
     }
 }
 
@@ -1038,7 +1075,7 @@ pub(crate) fn compute_match_usefulness<'p, 'tcx>(
     let v = PatStack::from_pattern(wild_pattern);
     let usefulness = is_useful(cx, &matrix, &v, FakeExtraWildcard, lint_root, false, true);
     let non_exhaustiveness_witnesses: Vec<_> = match usefulness {
-        WithWitnesses(pats) => pats.into_iter().map(|w| w.single_pattern()).collect(),
+        WithWitnesses(pats) => pats.single_column(),
         NoWitnesses { .. } => bug!(),
     };
 
