@@ -261,7 +261,6 @@ fn verify_all_signatures() {
                 "_mm_setr_pi16",
                 "_mm_setr_pi32",
                 "_mm_setr_pi8",
-                "ud2",
                 "_mm_min_epi8",
                 "_mm_min_epi32",
                 "_xbegin",
@@ -332,11 +331,7 @@ fn verify_all_signatures() {
             "__cpuid" |
             "__get_cpuid_max" |
             // Not listed with intel, but manually verified
-            "cmpxchg16b" |
-            // The UD2 intrinsic is not defined by Intel, but it was agreed on
-            // in the RFC Issue 2512:
-            // https://github.com/rust-lang/rfcs/issues/2512
-            "ud2"
+            "cmpxchg16b"
                 => continue,
             // Intel requires the mask argument for _mm_shuffle_ps to be an
             // unsigned integer, but all other _mm_shuffle_.. intrinsics

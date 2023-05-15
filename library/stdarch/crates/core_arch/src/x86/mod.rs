@@ -804,13 +804,6 @@ pub use self::adx::*;
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
-/// Generates the trap instruction `UD2`
-#[cfg_attr(test, assert_instr(ud2))]
-#[inline]
-pub unsafe fn ud2() -> ! {
-    intrinsics::abort()
-}
-
 mod avx512f;
 pub use self::avx512f::*;
 
