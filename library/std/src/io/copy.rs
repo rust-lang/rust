@@ -10,7 +10,7 @@ use crate::mem::MaybeUninit;
 /// On success, the total number of bytes that were copied from
 /// `reader` to `writer` is returned.
 ///
-/// If you’re wanting to copy the contents of one file to another and you’re
+/// If you want to copy the contents of one file to another and you’re
 /// working with filesystem paths, see the [`fs::copy`] function.
 ///
 /// [`fs::copy`]: crate::fs::copy
