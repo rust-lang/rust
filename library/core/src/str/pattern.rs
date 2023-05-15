@@ -791,8 +791,8 @@ pub struct CharArrayRefSearcher<'a, 'b, const N: usize>(
 /// # Examples
 ///
 /// ```
-/// assert_eq!("Hello world".find(['l', 'l']), Some(2));
-/// assert_eq!("Hello world".find(['l', 'l']), Some(2));
+/// assert_eq!("Hello world".find(['o', 'l']), Some(2));
+/// assert_eq!("Hello world".find(['h', 'w']), Some(6));
 /// ```
 impl<'a, const N: usize> Pattern<'a> for [char; N] {
     pattern_methods!(CharArraySearcher<'a, N>, MultiCharEqPattern, CharArraySearcher);
@@ -811,8 +811,8 @@ unsafe impl<'a, const N: usize> ReverseSearcher<'a> for CharArraySearcher<'a, N>
 /// # Examples
 ///
 /// ```
-/// assert_eq!("Hello world".find(&['l', 'l']), Some(2));
-/// assert_eq!("Hello world".find(&['l', 'l']), Some(2));
+/// assert_eq!("Hello world".find(&['o', 'l']), Some(2));
+/// assert_eq!("Hello world".find(&['h', 'w']), Some(6));
 /// ```
 impl<'a, 'b, const N: usize> Pattern<'a> for &'b [char; N] {
     pattern_methods!(CharArrayRefSearcher<'a, 'b, N>, MultiCharEqPattern, CharArrayRefSearcher);
