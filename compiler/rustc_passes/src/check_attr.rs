@@ -2266,6 +2266,26 @@ impl CheckAttrVisitor<'_> {
     }
 }
 
+pub(crate) fn inherits_doc_hidden(tcx: TyCtxt<'_>, mut def_id: LocalDefId) -> bool {
+    let hir = tcx.hir();
+    while let Some(id) = tcx.opt_local_parent(def_id) {
+        def_id = id;
+        if tcx.is_doc_hidden(def_id.to_def_id()) {
+            return true;
+        } else if let Some(node) = hir.find_by_def_id(def_id) &&
+            matches!(
+                node,
+                hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(_), .. }),
+            )
+        {
+            // `impl` blocks stand a bit on their own: unless they have `#[doc(hidden)]` directly
+            // on them, they don't inherit it from the parent context.
+            return false;
+        }
+    }
+    false
+}
+
 impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
@@ -2273,7 +2293,10 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         self.tcx.hir()
     }
 
+    #[allow(rustc::diagnostic_outside_of_impl, rustc::untranslatable_diagnostic)]
     fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
+        use rustc_hir::def::{DefKind, Res};
+
         // Historically we've run more checks on non-exported than exported macros,
         // so this lets us continue to run them while maintaining backwards compatibility.
         // In the long run, the checks should be harmonized.
@@ -2282,6 +2305,27 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
             if macro_def.macro_rules && !self.tcx.has_attr(def_id, sym::macro_export) {
                 check_non_exported_macro_for_invalid_attrs(self.tcx, item);
             }
+        }
+
+        match item.kind {
+            hir::ItemKind::Use(_, hir::UseKind::ListStem) => {}
+            hir::ItemKind::Use(path, _) => {
+                for &res in &path.res {
+                    if let Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) = res {
+                        continue;
+                    }
+
+                    if let Some(def_id) = res.opt_def_id() &&
+                        !self.tcx.is_doc_hidden(item.owner_id.def_id) &&
+                        self.tcx.is_doc_hidden(def_id) &&
+                        self.tcx.effective_visibilities(()).is_reachable(item.owner_id.def_id) &&
+                        !inherits_doc_hidden(self.tcx, item.owner_id.def_id)
+                    {
+                        self.tcx.sess.span_err(item.span, "Re-exporting `#[doc(hidden)]` item");
+                    }
+                }
+            }
+            _ => {}
         }
 
         let target = Target::from_item(item);
