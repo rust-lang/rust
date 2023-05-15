@@ -152,7 +152,7 @@ pub extern "C" fn f_scalar_stack_1(
 ) {
 }
 
-// CHECK: define void @f_scalar_stack_2({{%Large\*|ptr}} {{.*}}sret{{.*}} %0, i64 noundef %a, i128 %1, i128 %2, i64 noundef %d, i8 noundef zeroext %e, i8 noundef %f, i8 noundef %g)
+// CHECK: define void @f_scalar_stack_2({{%Large\*|ptr}} {{.*}}sret{{.*}} %_0, i64 noundef %a, i128 %0, i128 %1, i64 noundef %d, i8 noundef zeroext %e, i8 noundef %f, i8 noundef %g)
 #[no_mangle]
 pub extern "C" fn f_scalar_stack_2(
     a: u64,

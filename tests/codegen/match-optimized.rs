@@ -20,13 +20,13 @@ pub fn exhaustive_match(e: E) -> u8 {
 // CHECK-NEXT: unreachable
 //
 // CHECK: [[A]]:
-// CHECK-NEXT: store i8 0, {{i8\*|ptr}} %1, align 1
+// CHECK-NEXT: store i8 0, {{i8\*|ptr}} %_0, align 1
 // CHECK-NEXT: br label %[[EXIT:[a-zA-Z0-9_]+]]
 // CHECK: [[B]]:
-// CHECK-NEXT: store i8 1, {{i8\*|ptr}} %1, align 1
+// CHECK-NEXT: store i8 1, {{i8\*|ptr}} %_0, align 1
 // CHECK-NEXT: br label %[[EXIT]]
 // CHECK: [[C]]:
-// CHECK-NEXT: store i8 2, {{i8\*|ptr}} %1, align 1
+// CHECK-NEXT: store i8 2, {{i8\*|ptr}} %_0, align 1
 // CHECK-NEXT: br label %[[EXIT]]
     match e {
         E::A => 0,
