@@ -5,7 +5,7 @@ use syntax::{
     Direction, NodeOrToken, SyntaxKind, T,
 };
 
-use crate::{FileId, InlayHint, InlayHintsConfig, InlayKind};
+use crate::{FileId, InlayHint, InlayHintPosition, InlayHintsConfig, InlayKind};
 
 use super::label_of_ty;
 
@@ -60,8 +60,11 @@ pub(super) fn hints(
             acc.push(InlayHint {
                 range: expr.syntax().text_range(),
                 kind: InlayKind::Chaining,
-                label: label_of_ty(famous_defs, config, ty)?,
+                label: label_of_ty(famous_defs, config, &ty)?,
                 text_edit: None,
+                position: InlayHintPosition::After,
+                pad_left: true,
+                pad_right: false,
             });
         }
     }
@@ -104,6 +107,9 @@ fn main() {
                 [
                     InlayHint {
                         range: 147..172,
+                        position: After,
+                        pad_left: true,
+                        pad_right: false,
                         kind: Chaining,
                         label: [
                             "",
@@ -125,6 +131,9 @@ fn main() {
                     },
                     InlayHint {
                         range: 147..154,
+                        position: After,
+                        pad_left: true,
+                        pad_right: false,
                         kind: Chaining,
                         label: [
                             "",
@@ -191,6 +200,9 @@ fn main() {
                 [
                     InlayHint {
                         range: 143..190,
+                        position: After,
+                        pad_left: true,
+                        pad_right: false,
                         kind: Chaining,
                         label: [
                             "",
@@ -212,6 +224,9 @@ fn main() {
                     },
                     InlayHint {
                         range: 143..179,
+                        position: After,
+                        pad_left: true,
+                        pad_right: false,
                         kind: Chaining,
                         label: [
                             "",
@@ -262,6 +277,9 @@ fn main() {
                 [
                     InlayHint {
                         range: 143..190,
+                        position: After,
+                        pad_left: true,
+                        pad_right: false,
                         kind: Chaining,
                         label: [
                             "",
@@ -283,6 +301,9 @@ fn main() {
                     },
                     InlayHint {
                         range: 143..179,
+                        position: After,
+                        pad_left: true,
+                        pad_right: false,
                         kind: Chaining,
                         label: [
                             "",
@@ -334,6 +355,9 @@ fn main() {
                 [
                     InlayHint {
                         range: 246..283,
+                        position: After,
+                        pad_left: true,
+                        pad_right: false,
                         kind: Chaining,
                         label: [
                             "",
@@ -368,6 +392,9 @@ fn main() {
                     },
                     InlayHint {
                         range: 246..265,
+                        position: After,
+                        pad_left: true,
+                        pad_right: false,
                         kind: Chaining,
                         label: [
                             "",
@@ -434,6 +461,9 @@ fn main() {
                 [
                     InlayHint {
                         range: 174..241,
+                        position: After,
+                        pad_left: true,
+                        pad_right: false,
                         kind: Chaining,
                         label: [
                             "impl ",
@@ -468,6 +498,9 @@ fn main() {
                     },
                     InlayHint {
                         range: 174..224,
+                        position: After,
+                        pad_left: true,
+                        pad_right: false,
                         kind: Chaining,
                         label: [
                             "impl ",
@@ -502,6 +535,9 @@ fn main() {
                     },
                     InlayHint {
                         range: 174..206,
+                        position: After,
+                        pad_left: true,
+                        pad_right: false,
                         kind: Chaining,
                         label: [
                             "impl ",
@@ -536,6 +572,9 @@ fn main() {
                     },
                     InlayHint {
                         range: 174..189,
+                        position: After,
+                        pad_left: true,
+                        pad_right: false,
                         kind: Chaining,
                         label: [
                             "&mut ",
@@ -586,9 +625,12 @@ fn main() {
                 [
                     InlayHint {
                         range: 124..130,
+                        position: Before,
+                        pad_left: true,
+                        pad_right: false,
                         kind: Type,
                         label: [
-                            "",
+                            ": ",
                             InlayHintLabelPart {
                                 text: "Struct",
                                 linked_location: Some(
@@ -616,6 +658,9 @@ fn main() {
                     },
                     InlayHint {
                         range: 145..185,
+                        position: After,
+                        pad_left: true,
+                        pad_right: false,
                         kind: Chaining,
                         label: [
                             "",
@@ -637,6 +682,9 @@ fn main() {
                     },
                     InlayHint {
                         range: 145..168,
+                        position: After,
+                        pad_left: true,
+                        pad_right: false,
                         kind: Chaining,
                         label: [
                             "",
@@ -658,6 +706,9 @@ fn main() {
                     },
                     InlayHint {
                         range: 222..228,
+                        position: Before,
+                        pad_left: false,
+                        pad_right: true,
                         kind: Parameter,
                         label: [
                             InlayHintLabelPart {

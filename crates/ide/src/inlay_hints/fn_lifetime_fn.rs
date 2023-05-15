@@ -10,7 +10,7 @@ use syntax::{
     SyntaxToken,
 };
 
-use crate::{InlayHint, InlayHintsConfig, InlayKind, LifetimeElisionHints};
+use crate::{InlayHint, InlayHintPosition, InlayHintsConfig, InlayKind, LifetimeElisionHints};
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
@@ -26,6 +26,9 @@ pub(super) fn hints(
         kind: InlayKind::Lifetime,
         label: label.into(),
         text_edit: None,
+        position: InlayHintPosition::After,
+        pad_left: false,
+        pad_right: true,
     };
 
     let param_list = func.param_list()?;
@@ -191,6 +194,9 @@ pub(super) fn hints(
                 )
                 .into(),
                 text_edit: None,
+                position: InlayHintPosition::After,
+                pad_left: false,
+                pad_right: true,
             });
         }
         (None, allocated_lifetimes) => acc.push(InlayHint {
@@ -198,6 +204,9 @@ pub(super) fn hints(
             kind: InlayKind::GenericParamList,
             label: format!("<{}>", allocated_lifetimes.iter().format(", "),).into(),
             text_edit: None,
+            position: InlayHintPosition::After,
+            pad_left: false,
+            pad_right: false,
         }),
     }
     Some(())

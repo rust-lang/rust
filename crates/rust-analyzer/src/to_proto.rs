@@ -434,87 +434,21 @@ pub(crate) fn signature_help(
 pub(crate) fn inlay_hint(
     snap: &GlobalStateSnapshot,
     line_index: &LineIndex,
-    render_colons: bool,
-    mut inlay_hint: InlayHint,
+    inlay_hint: InlayHint,
 ) -> Cancellable<lsp_types::InlayHint> {
-    match inlay_hint.kind {
-        InlayKind::Parameter if render_colons => inlay_hint.label.append_str(":"),
-        InlayKind::Type if render_colons => inlay_hint.label.prepend_str(": "),
-        InlayKind::ClosureReturnType => inlay_hint.label.prepend_str(" -> "),
-        InlayKind::Discriminant => inlay_hint.label.prepend_str(" = "),
-        _ => {}
-    }
-
     let (label, tooltip) = inlay_hint_label(snap, inlay_hint.label)?;
 
     Ok(lsp_types::InlayHint {
-        position: match inlay_hint.kind {
-            // before annotated thing
-            InlayKind::OpeningParenthesis
-            | InlayKind::Parameter
-            | InlayKind::Adjustment
-            | InlayKind::BindingMode => position(line_index, inlay_hint.range.start()),
-            // after annotated thing
-            InlayKind::ClosureReturnType
-            | InlayKind::ClosureCapture
-            | InlayKind::Type
-            | InlayKind::Discriminant
-            | InlayKind::Chaining
-            | InlayKind::GenericParamList
-            | InlayKind::ClosingParenthesis
-            | InlayKind::AdjustmentPostfix
-            | InlayKind::Lifetime
-            | InlayKind::ClosingBrace => position(line_index, inlay_hint.range.end()),
+        position: match inlay_hint.position {
+            ide::InlayHintPosition::Before => position(line_index, inlay_hint.range.start()),
+            ide::InlayHintPosition::After => position(line_index, inlay_hint.range.end()),
         },
-        padding_left: Some(match inlay_hint.kind {
-            InlayKind::Type => !render_colons,
-            InlayKind::Chaining | InlayKind::ClosingBrace => true,
-            InlayKind::ClosingParenthesis
-            | InlayKind::ClosureCapture
-            | InlayKind::Discriminant
-            | InlayKind::OpeningParenthesis
-            | InlayKind::BindingMode
-            | InlayKind::ClosureReturnType
-            | InlayKind::GenericParamList
-            | InlayKind::Adjustment
-            | InlayKind::AdjustmentPostfix
-            | InlayKind::Lifetime
-            | InlayKind::Parameter => false,
-        }),
-        padding_right: Some(match inlay_hint.kind {
-            InlayKind::ClosingParenthesis
-            | InlayKind::OpeningParenthesis
-            | InlayKind::Chaining
-            | InlayKind::ClosureReturnType
-            | InlayKind::GenericParamList
-            | InlayKind::Adjustment
-            | InlayKind::AdjustmentPostfix
-            | InlayKind::Type
-            | InlayKind::Discriminant
-            | InlayKind::ClosingBrace => false,
-            InlayKind::ClosureCapture => {
-                matches!(&label, lsp_types::InlayHintLabel::String(s) if s == ")")
-            }
-            InlayKind::BindingMode => {
-                matches!(&label, lsp_types::InlayHintLabel::String(s) if s != "&")
-            }
-            InlayKind::Parameter | InlayKind::Lifetime => true,
-        }),
+        padding_left: Some(inlay_hint.pad_left),
+        padding_right: Some(inlay_hint.pad_right),
         kind: match inlay_hint.kind {
             InlayKind::Parameter => Some(lsp_types::InlayHintKind::PARAMETER),
-            InlayKind::ClosureReturnType | InlayKind::Type | InlayKind::Chaining => {
-                Some(lsp_types::InlayHintKind::TYPE)
-            }
-            InlayKind::ClosingParenthesis
-            | InlayKind::ClosureCapture
-            | InlayKind::Discriminant
-            | InlayKind::OpeningParenthesis
-            | InlayKind::BindingMode
-            | InlayKind::GenericParamList
-            | InlayKind::Lifetime
-            | InlayKind::Adjustment
-            | InlayKind::AdjustmentPostfix
-            | InlayKind::ClosingBrace => None,
+            InlayKind::Type | InlayKind::Chaining => Some(lsp_types::InlayHintKind::TYPE),
+            _ => None,
         },
         text_edits: inlay_hint.text_edit.map(|it| text_edit_vec(line_index, it)),
         data: None,

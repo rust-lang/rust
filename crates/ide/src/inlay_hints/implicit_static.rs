@@ -8,7 +8,7 @@ use syntax::{
     SyntaxKind,
 };
 
-use crate::{InlayHint, InlayHintsConfig, InlayKind, LifetimeElisionHints};
+use crate::{InlayHint, InlayHintPosition, InlayHintsConfig, InlayKind, LifetimeElisionHints};
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
@@ -35,6 +35,9 @@ pub(super) fn hints(
                 kind: InlayKind::Lifetime,
                 label: "'static".to_owned().into(),
                 text_edit: None,
+                position: InlayHintPosition::After,
+                pad_left: false,
+                pad_right: true,
             });
         }
     }

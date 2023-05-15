@@ -3,6 +3,7 @@
 //! let _: u32  = /* <never-to-any> */ loop {};
 //! let _: &u32 = /* &* */ &mut 0;
 //! ```
+use either::Either;
 use hir::{
     Adjust, Adjustment, AutoBorrow, HirDisplay, Mutability, OverloadedDeref, PointerCast, Safety,
     Semantics,
@@ -16,8 +17,8 @@ use syntax::{
 };
 
 use crate::{
-    AdjustmentHints, AdjustmentHintsMode, InlayHint, InlayHintLabel, InlayHintsConfig, InlayKind,
-    InlayTooltip,
+    AdjustmentHints, AdjustmentHintsMode, InlayHint, InlayHintLabel, InlayHintPosition,
+    InlayHintsConfig, InlayKind, InlayTooltip,
 };
 
 pub(super) fn hints(
@@ -63,22 +64,26 @@ pub(super) fn hints(
         mode_and_needs_parens_for_adjustment_hints(expr, config.adjustment_hints_mode);
 
     if needs_outer_parens {
-        acc.push(InlayHint::opening_paren(expr.syntax().text_range()));
+        acc.push(InlayHint::opening_paren_before(
+            InlayKind::Adjustment,
+            expr.syntax().text_range(),
+        ));
     }
 
     if postfix && needs_inner_parens {
-        acc.push(InlayHint::opening_paren(expr.syntax().text_range()));
-        acc.push(InlayHint::closing_paren(expr.syntax().text_range()));
+        acc.push(InlayHint::opening_paren_before(
+            InlayKind::Adjustment,
+            expr.syntax().text_range(),
+        ));
+        acc.push(InlayHint::closing_paren_after(InlayKind::Adjustment, expr.syntax().text_range()));
     }
 
-    let (mut tmp0, mut tmp1);
-    let iter: &mut dyn Iterator<Item = _> = if postfix {
-        tmp0 = adjustments.into_iter();
-        &mut tmp0
+    let mut iter = if postfix {
+        Either::Left(adjustments.into_iter())
     } else {
-        tmp1 = adjustments.into_iter().rev();
-        &mut tmp1
+        Either::Right(adjustments.into_iter().rev())
     };
+    let iter: &mut dyn Iterator<Item = _> = iter.as_mut().either(|it| it as _, |it| it as _);
 
     for Adjustment { source, target, kind } in iter {
         if source == target {
@@ -134,7 +139,10 @@ pub(super) fn hints(
         };
         acc.push(InlayHint {
             range: expr.syntax().text_range(),
-            kind: if postfix { InlayKind::AdjustmentPostfix } else { InlayKind::Adjustment },
+            pad_left: false,
+            pad_right: false,
+            position: if postfix { InlayHintPosition::After } else { InlayHintPosition::Before },
+            kind: InlayKind::Adjustment,
             label: InlayHintLabel::simple(
                 if postfix { format!(".{}", text.trim_end()) } else { text.to_owned() },
                 Some(InlayTooltip::Markdown(format!(
@@ -148,11 +156,14 @@ pub(super) fn hints(
         });
     }
     if !postfix && needs_inner_parens {
-        acc.push(InlayHint::opening_paren(expr.syntax().text_range()));
-        acc.push(InlayHint::closing_paren(expr.syntax().text_range()));
+        acc.push(InlayHint::opening_paren_before(
+            InlayKind::Adjustment,
+            expr.syntax().text_range(),
+        ));
+        acc.push(InlayHint::closing_paren_after(InlayKind::Adjustment, expr.syntax().text_range()));
     }
     if needs_outer_parens {
-        acc.push(InlayHint::closing_paren(expr.syntax().text_range()));
+        acc.push(InlayHint::closing_paren_after(InlayKind::Adjustment, expr.syntax().text_range()));
     }
     Some(())
 }

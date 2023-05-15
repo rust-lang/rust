@@ -5,7 +5,7 @@ use ide_db::{base_db::FileId, famous_defs::FamousDefs};
 use syntax::ast::{self, AstNode};
 use text_edit::{TextRange, TextSize};
 
-use crate::{InlayHint, InlayHintLabel, InlayHintsConfig, InlayKind};
+use crate::{InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, InlayKind};
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
@@ -35,6 +35,9 @@ pub(super) fn hints(
                 kind: InlayKind::ClosureCapture,
                 label: InlayHintLabel::simple("move", None, None),
                 text_edit: None,
+                position: InlayHintPosition::After,
+                pad_left: false,
+                pad_right: false,
             });
             range
         }
@@ -44,6 +47,9 @@ pub(super) fn hints(
         kind: InlayKind::ClosureCapture,
         label: InlayHintLabel::from("("),
         text_edit: None,
+        position: InlayHintPosition::After,
+        pad_left: false,
+        pad_right: false,
     });
     let last = captures.len() - 1;
     for (idx, capture) in captures.into_iter().enumerate() {
@@ -71,6 +77,9 @@ pub(super) fn hints(
                 source.name().and_then(|name| sema.original_range_opt(name.syntax())),
             ),
             text_edit: None,
+            position: InlayHintPosition::After,
+            pad_left: false,
+            pad_right: false,
         });
 
         if idx != last {
@@ -79,6 +88,9 @@ pub(super) fn hints(
                 kind: InlayKind::ClosureCapture,
                 label: InlayHintLabel::simple(", ", None, None),
                 text_edit: None,
+                position: InlayHintPosition::After,
+                pad_left: false,
+                pad_right: false,
             });
         }
     }
@@ -87,6 +99,9 @@ pub(super) fn hints(
         kind: InlayKind::ClosureCapture,
         label: InlayHintLabel::from(")"),
         text_edit: None,
+        position: InlayHintPosition::After,
+        pad_left: false,
+        pad_right: true,
     });
 
     Some(())
