@@ -1,9 +1,5 @@
 use syntax::{
-    ast::{
-        self,
-        make::{self, impl_trait_type},
-        HasGenericParams, HasName, HasTypeBounds,
-    },
+    ast::{self, make::impl_trait_type, HasGenericParams, HasName, HasTypeBounds},
     ted, AstNode,
 };
 
@@ -27,7 +23,7 @@ pub(crate) fn replace_named_generic_with_impl(
     // finds `<P: AsRef<Path>>`
     let type_param = ctx.find_node_at_offset::<ast::TypeParam>()?;
 
-    // The list of type bounds / traits for generic name `P`
+    // The list of type bounds / traits: `AsRef<Path>`
     let type_bound_list = type_param.type_bound_list()?;
 
     // returns `P`
@@ -67,24 +63,26 @@ pub(crate) fn replace_named_generic_with_impl(
             let type_param = edit.make_mut(type_param);
             let fn_ = edit.make_mut(fn_);
 
-            // Replace generic type in `<P: AsRef<Path>>` to `<P>`
-            let new_ty = make::ty(&type_param_name.to_string()).clone_for_update();
-            ted::replace(type_param.syntax(), new_ty.syntax());
+            // get all params
+            let param_types = params
+                .iter()
+                .filter_map(|param| match param.ty() {
+                    Some(ast::Type::PathType(param_type)) => Some(edit.make_mut(param_type)),
+                    _ => None,
+                })
+                .collect::<Vec<_>>();
 
             if let Some(generic_params) = fn_.generic_param_list() {
+                generic_params.remove_generic_param(ast::GenericParam::TypeParam(type_param));
                 if generic_params.generic_params().count() == 0 {
                     ted::remove(generic_params.syntax());
                 }
             }
 
-            // Replace generic type parameter: `foo(p: P)` -> `foo(p: impl AsRef<Path>)`
-            let new_bounds = impl_trait_type(type_bound_list).clone_for_update();
-
-            for param in params {
-                if let Some(ast::Type::PathType(param_type)) = param.ty() {
-                    let param_type = edit.make_mut(param_type).clone_for_update();
-                    ted::replace(param_type.syntax(), new_bounds.syntax());
-                }
+            // get type bounds in signature type: `P` -> `impl AsRef<Path>`
+            let new_bounds = impl_trait_type(type_bound_list);
+            for param_type in param_types.iter().rev() {
+                ted::replace(param_type.syntax(), new_bounds.clone_for_update().syntax());
             }
         },
     )

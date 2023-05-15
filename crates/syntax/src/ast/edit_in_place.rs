@@ -236,6 +236,21 @@ impl ast::GenericParamList {
         }
     }
 
+    /// Removes the existing generic param
+    pub fn remove_generic_param(&self, generic_param: ast::GenericParam) {
+        if let Some(previous) = generic_param.syntax().prev_sibling() {
+            if let Some(next_token) = previous.next_sibling_or_token() {
+                ted::remove_all(next_token..=generic_param.syntax().clone().into());
+            }
+        } else if let Some(next) = generic_param.syntax().next_sibling() {
+            if let Some(next_token) = next.prev_sibling_or_token() {
+                ted::remove_all(generic_param.syntax().clone().into()..=next_token);
+            }
+        } else {
+            ted::remove(generic_param.syntax());
+        }
+    }
+
     /// Constructs a matching [`ast::GenericArgList`]
     pub fn to_generic_args(&self) -> ast::GenericArgList {
         let args = self.generic_params().filter_map(|param| match param {
