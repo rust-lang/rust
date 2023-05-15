@@ -3221,6 +3221,20 @@ impl Closure {
             .collect()
     }
 
+    pub fn capture_types(&self, db: &dyn HirDatabase) -> Vec<Type> {
+        let owner = db.lookup_intern_closure((self.id).into()).0;
+        let infer = &db.infer(owner);
+        let (captures, _) = infer.closure_info(&self.id);
+        captures
+            .iter()
+            .cloned()
+            .map(|capture| Type {
+                env: db.trait_environment_for_body(owner),
+                ty: capture.ty(&self.subst),
+            })
+            .collect()
+    }
+
     pub fn fn_trait(&self, db: &dyn HirDatabase) -> FnTrait {
         let owner = db.lookup_intern_closure((self.id).into()).0;
         let infer = &db.infer(owner);

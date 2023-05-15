@@ -35,11 +35,11 @@ pub(super) fn type_info_of(
     _config: &HoverConfig,
     expr_or_pat: &Either<ast::Expr, ast::Pat>,
 ) -> Option<HoverResult> {
-    let TypeInfo { original, adjusted } = match expr_or_pat {
+    let ty_info = match expr_or_pat {
         Either::Left(expr) => sema.type_of_expr(expr)?,
         Either::Right(pat) => sema.type_of_pat(pat)?,
     };
-    type_info(sema, _config, original, adjusted)
+    type_info(sema, _config, ty_info)
 }
 
 pub(super) fn closure_expr(
@@ -47,7 +47,16 @@ pub(super) fn closure_expr(
     config: &HoverConfig,
     c: ast::ClosureExpr,
 ) -> Option<HoverResult> {
-    let ty = &sema.type_of_expr(&c.into())?.original;
+    let ty = sema.type_of_expr(&c.into())?;
+    closure_ty(sema, config, &ty.original)
+}
+
+fn closure_ty(
+    sema: &Semantics<'_, RootDatabase>,
+    config: &HoverConfig,
+    ty: &hir::Type,
+) -> Option<HoverResult> {
+    let c = ty.as_closure()?;
     let layout = if config.memory_layout {
         ty.layout(sema.db)
             .map(|x| format!(" // size = {}, align = {}", x.size.bytes(), x.align.abi.bytes()))
@@ -55,12 +64,10 @@ pub(super) fn closure_expr(
     } else {
         String::default()
     };
-    let c = ty.as_closure()?;
-    let mut captures = c
-        .captured_items(sema.db)
+    let mut captures_rendered = c.captured_items(sema.db)
         .into_iter()
         .map(|it| {
-            let borrow_kind=   match it.kind() {
+            let borrow_kind = match it.kind() {
                 CaptureKind::SharedRef => "immutable borrow",
                 CaptureKind::UniqueSharedRef => "unique immutable borrow ([read more](https://doc.rust-lang.org/stable/reference/types/closure.html#unique-immutable-borrows-in-captures))",
                 CaptureKind::MutableRef => "mutable borrow",
@@ -69,16 +76,28 @@ pub(super) fn closure_expr(
             format!("* `{}` by {}", it.display_place(sema.db), borrow_kind)
         })
         .join("\n");
-    if captures.trim().is_empty() {
-        captures = "This closure captures nothing".to_string();
+    if captures_rendered.trim().is_empty() {
+        captures_rendered = "This closure captures nothing".to_string();
     }
+    let mut targets: Vec<hir::ModuleDef> = Vec::new();
+    let mut push_new_def = |item: hir::ModuleDef| {
+        if !targets.contains(&item) {
+            targets.push(item);
+        }
+    };
+    walk_and_push_ty(sema.db, ty, &mut push_new_def);
+    c.capture_types(sema.db).into_iter().for_each(|ty| {
+        walk_and_push_ty(sema.db, &ty, &mut push_new_def);
+    });
+
     let mut res = HoverResult::default();
+    res.actions.push(HoverAction::goto_type_from_targets(sema.db, targets));
     res.markup = format!(
         "```rust\n{}{}\n{}\n```\n\n## Captures\n{}",
         c.display_with_id(sema.db),
         layout,
         c.display_with_impl(sema.db),
-        captures,
+        captures_rendered,
     )
     .into();
     Some(res)
@@ -522,10 +541,12 @@ pub(super) fn definition(
 
 fn type_info(
     sema: &Semantics<'_, RootDatabase>,
-    _config: &HoverConfig,
-    original: hir::Type,
-    adjusted: Option<hir::Type>,
+    config: &HoverConfig,
+    TypeInfo { original, adjusted }: TypeInfo,
 ) -> Option<HoverResult> {
+    if let Some(res) = closure_ty(sema, config, &original) {
+        return Some(res);
+    }
     let mut res = HoverResult::default();
     let mut targets: Vec<hir::ModuleDef> = Vec::new();
     let mut push_new_def = |item: hir::ModuleDef| {

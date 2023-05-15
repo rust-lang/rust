@@ -54,9 +54,10 @@ pub(crate) fn highlight_related(
 
     let token = pick_best_token(syntax.token_at_offset(offset), |kind| match kind {
         T![?] => 4, // prefer `?` when the cursor is sandwiched like in `await$0?`
-        T![->] | T![|] => 3,
-        kind if kind.is_keyword() => 2,
-        IDENT | INT_NUMBER => 1,
+        T![->] => 4,
+        kind if kind.is_keyword() => 3,
+        IDENT | INT_NUMBER => 2,
+        T![|] => 1,
         _ => 0,
     })?;
     // most if not all of these should be re-implemented with information seeded from hir

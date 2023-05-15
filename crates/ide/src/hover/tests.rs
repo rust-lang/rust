@@ -114,6 +114,15 @@ fn check_hover_range(ra_fixture: &str, expect: Expect) {
     expect.assert_eq(hover.info.markup.as_str())
 }
 
+fn check_hover_range_actions(ra_fixture: &str, expect: Expect) {
+    let (analysis, range) = fixture::range(ra_fixture);
+    let hover = analysis
+        .hover(&HoverConfig { links_in_hover: true, ..HOVER_BASE_CONFIG }, range)
+        .unwrap()
+        .unwrap();
+    expect.assert_debug_eq(&hover.info.actions);
+}
+
 fn check_hover_range_no_results(ra_fixture: &str) {
     let (analysis, range) = fixture::range(ra_fixture);
     let hover = analysis.hover(&HOVER_BASE_CONFIG, range).unwrap();
@@ -290,6 +299,72 @@ fn main() {
             ## Captures
             * `x.f1` by move
             * `(*x.f2.0.0).f` by mutable borrow
+        "#]],
+    );
+}
+
+#[test]
+fn hover_ranged_closure() {
+    check_hover_range(
+        r#"
+struct S;
+struct S2;
+fn main() {
+    let x = &S;
+    let y = $0|| {x; S2}$0;
+}
+"#,
+        expect![[r#"
+            ```rust
+            {closure#0} // size = 8, align = 8
+            impl FnOnce() -> S2
+            ```
+
+            ## Captures
+            * `x` by move"#]],
+    );
+    check_hover_range_actions(
+        r#"
+struct S;
+struct S2;
+fn main() {
+    let x = &S;
+    let y = $0|| {x; S2}$0;
+}
+"#,
+        expect![[r#"
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "test::S2",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 10..20,
+                                focus_range: 17..19,
+                                name: "S2",
+                                kind: Struct,
+                                description: "struct S2",
+                            },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "test::S",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 0..9,
+                                focus_range: 7..8,
+                                name: "S",
+                                kind: Struct,
+                                description: "struct S",
+                            },
+                        },
+                    ],
+                ),
+            ]
         "#]],
     );
 }
