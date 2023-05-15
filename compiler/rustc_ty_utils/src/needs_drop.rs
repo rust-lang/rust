@@ -2,6 +2,7 @@
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefId;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::util::{needs_drop_components, AlwaysRequiresDrop};
 use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt};
@@ -323,8 +324,8 @@ fn adt_significant_drop_tys(
     .map(|components| tcx.mk_type_list(&components))
 }
 
-pub(crate) fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers {
+pub(crate) fn provide(providers: &mut Providers) {
+    *providers = Providers {
         needs_drop_raw,
         has_significant_drop_raw,
         adt_drop_tys,

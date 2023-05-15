@@ -253,7 +253,7 @@ fn add_query_desc_cached_impl(
         quote! {
             #[allow(unused_variables, unused_braces, rustc::pass_by_value)]
             #[inline]
-            pub fn #name<'tcx>(#tcx: TyCtxt<'tcx>, #key: &crate::ty::query::query_keys::#name<'tcx>) -> bool {
+            pub fn #name<'tcx>(#tcx: TyCtxt<'tcx>, #key: &crate::query::query_keys::#name<'tcx>) -> bool {
                 #expr
             }
         }
@@ -262,7 +262,7 @@ fn add_query_desc_cached_impl(
             // we're taking `key` by reference, but some rustc types usually prefer being passed by value
             #[allow(rustc::pass_by_value)]
             #[inline]
-            pub fn #name<'tcx>(_: TyCtxt<'tcx>, _: &crate::ty::query::query_keys::#name<'tcx>) -> bool {
+            pub fn #name<'tcx>(_: TyCtxt<'tcx>, _: &crate::query::query_keys::#name<'tcx>) -> bool {
                 false
             }
         }
@@ -273,7 +273,7 @@ fn add_query_desc_cached_impl(
 
     let desc = quote! {
         #[allow(unused_variables)]
-        pub fn #name<'tcx>(tcx: TyCtxt<'tcx>, key: crate::ty::query::query_keys::#name<'tcx>) -> String {
+        pub fn #name<'tcx>(tcx: TyCtxt<'tcx>, key: crate::query::query_keys::#name<'tcx>) -> String {
             let (#tcx, #key) = (tcx, key);
             ::rustc_middle::ty::print::with_no_trimmed_paths!(
                 format!(#desc)

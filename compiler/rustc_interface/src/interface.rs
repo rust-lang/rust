@@ -9,6 +9,7 @@ use rustc_data_structures::OnDrop;
 use rustc_errors::registry::Registry;
 use rustc_errors::{ErrorGuaranteed, Handler};
 use rustc_lint::LintStore;
+use rustc_middle::query::{ExternProviders, Providers};
 use rustc_middle::{bug, ty};
 use rustc_parse::maybe_new_parser_from_source_str;
 use rustc_query_impl::QueryCtxt;
@@ -37,8 +38,7 @@ pub struct Compiler {
     pub(crate) sess: Lrc<Session>,
     codegen_backend: Lrc<Box<dyn CodegenBackend>>,
     pub(crate) register_lints: Option<Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>>,
-    pub(crate) override_queries:
-        Option<fn(&Session, &mut ty::query::Providers, &mut ty::query::ExternProviders)>,
+    pub(crate) override_queries: Option<fn(&Session, &mut Providers, &mut ExternProviders)>,
 }
 
 impl Compiler {
@@ -275,8 +275,7 @@ pub struct Config {
     /// the list of queries.
     ///
     /// The second parameter is local providers and the third parameter is external providers.
-    pub override_queries:
-        Option<fn(&Session, &mut ty::query::Providers, &mut ty::query::ExternProviders)>,
+    pub override_queries: Option<fn(&Session, &mut Providers, &mut ExternProviders)>,
 
     /// This is a callback from the driver that is called to create a codegen backend.
     pub make_codegen_backend:

@@ -23,7 +23,7 @@ mod type_op;
 
 pub use type_op::{type_op_ascribe_user_type_with_span, type_op_prove_predicate_with_cause};
 
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
 
 pub fn provide(p: &mut Providers) {
     dropck_outlives::provide(p);

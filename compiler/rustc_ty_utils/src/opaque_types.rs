@@ -1,6 +1,7 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::{def::DefKind, def_id::LocalDefId};
+use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{CheckRegions, NotUniqueParam};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
@@ -192,6 +193,6 @@ fn opaque_types_defined_by<'tcx>(tcx: TyCtxt<'tcx>, item: LocalDefId) -> &'tcx [
     }
 }
 
-pub(super) fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers { opaque_types_defined_by, ..*providers };
+pub(super) fn provide(providers: &mut Providers) {
+    *providers = Providers { opaque_types_defined_by, ..*providers };
 }

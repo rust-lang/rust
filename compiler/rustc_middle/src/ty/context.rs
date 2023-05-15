@@ -15,6 +15,7 @@ use crate::middle::stability;
 use crate::mir::interpret::{self, Allocation, ConstAllocation};
 use crate::mir::{Body, Local, Place, PlaceElem, ProjectionKind, Promoted};
 use crate::query::LocalCrate;
+use crate::query::Providers;
 use crate::thir::Thir;
 use crate::traits;
 use crate::traits::solve;
@@ -2454,7 +2455,7 @@ pub struct DeducedParamAttrs {
     pub read_only: bool,
 }
 
-pub fn provide(providers: &mut ty::query::Providers) {
+pub fn provide(providers: &mut Providers) {
     providers.maybe_unused_trait_imports =
         |tcx, ()| &tcx.resolutions(()).maybe_unused_trait_imports;
     providers.names_imported_by_glob_use = |tcx, id| {
