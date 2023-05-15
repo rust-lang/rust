@@ -126,6 +126,14 @@ LL | |         }
 LL | |     }
    | |_____^
 
+error: sub-expression diverges
+  --> $DIR/never_loop.rs:247:17
+   |
+LL |                 break 'a;
+   |                 ^^^^^^^^
+   |
+   = note: `-D clippy::diverging-sub-expression` implied by `-D warnings`
+
 error: this loop never actually loops
   --> $DIR/never_loop.rs:278:13
    |
@@ -139,5 +147,5 @@ help: if you need the first element of the iterator, try writing
 LL |             if let Some(_) = (0..20).next() {
    |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-error: aborting due to 12 previous errors
+error: aborting due to 13 previous errors
 

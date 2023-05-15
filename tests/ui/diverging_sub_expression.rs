@@ -22,6 +22,7 @@ fn main() {
 }
 
 #[allow(dead_code, unused_variables)]
+#[rustfmt::skip]
 fn foobar() {
     loop {
         let x = match 5 {
