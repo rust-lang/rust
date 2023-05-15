@@ -1,17 +1,20 @@
 use super::*;
 
+// Quick type conversion function to make tests more compact - nothing important to see here
 fn constraint_vars(input: Vec<Vec<usize>>) -> IndexVec<ConstraintIndex, Vec<VarIndex>> {
     input
         .into_iter()
         .map(|constraint| constraint.into_iter().map(|x| VarIndex::new(x)).collect())
         .collect()
 }
+// Quick type conversion function to make tests more compact - nothing important to see here
 fn constraint_cliques(input: Vec<Vec<usize>>) -> IndexVec<CliqueIndex, Vec<ConstraintIndex>> {
     input
         .into_iter()
         .map(|clique| clique.into_iter().map(|x| ConstraintIndex::new(x)).collect())
         .collect()
 }
+// Quick type conversion function to make tests more compact - nothing important to see here
 fn constraint_set<const N: usize>(input: [usize; N]) -> FxIndexSet<ConstraintIndex> {
     FxIndexSet::from_iter(input.into_iter().map(|x| ConstraintIndex::new(x)))
 }
