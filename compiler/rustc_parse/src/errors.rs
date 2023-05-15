@@ -1763,13 +1763,6 @@ pub struct InvalidDigitLiteral {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_empty_exponent_float)]
-pub struct EmptyExponentFloat {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(parse_float_literal_unsupported_base)]
 pub struct FloatLiteralUnsupportedBase {
     #[primary_span]

@@ -479,11 +479,7 @@ impl<'a> StringReader<'a> {
                     (token::Integer, self.symbol_from_to(start, end))
                 }
             }
-            rustc_lexer::LiteralKind::Float { base, empty_exponent } => {
-                if empty_exponent {
-                    let span = self.mk_sp(start, self.pos);
-                    self.sess.emit_err(errors::EmptyExponentFloat { span });
-                }
+            rustc_lexer::LiteralKind::Float { base } => {
                 let base = match base {
                     Base::Hexadecimal => Some("hexadecimal"),
                     Base::Octal => Some("octal"),

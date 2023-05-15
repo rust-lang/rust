@@ -55,6 +55,12 @@ impl<'a> Cursor<'a> {
         iter.next().unwrap_or(EOF_CHAR)
     }
 
+    /// Allows peeking an unbounded number of symbols from the input stream
+    /// without consuming them.
+    pub(crate) fn all(&self) -> Chars<'a> {
+        self.chars.clone()
+    }
+
     /// Checks if there is nothing more to consume.
     pub(crate) fn is_eof(&self) -> bool {
         self.chars.as_str().is_empty()

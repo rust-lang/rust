@@ -25,6 +25,8 @@ fn main() {
     0b101suffix; //~ ERROR invalid suffix `suffix` for number literal
     1.0suffix; //~ ERROR invalid suffix `suffix` for float literal
     1.0e10suffix; //~ ERROR invalid suffix `suffix` for float literal
+
+    1234eee //~ ERROR invalid suffix `eee` for number literal
 }
 
 #[rustc_dummy = "string"suffix]

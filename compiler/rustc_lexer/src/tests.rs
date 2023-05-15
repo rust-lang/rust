@@ -283,9 +283,9 @@ br###"raw"###suffix
             Token { kind: Whitespace, len: 1 }
             Token { kind: Literal { kind: Int { base: Hexadecimal, empty_int: false }, suffix_start: 5 }, len: 5 }
             Token { kind: Whitespace, len: 1 }
-            Token { kind: Literal { kind: Float { base: Decimal, empty_exponent: false }, suffix_start: 3 }, len: 3 }
+            Token { kind: Literal { kind: Float { base: Decimal }, suffix_start: 3 }, len: 3 }
             Token { kind: Whitespace, len: 1 }
-            Token { kind: Literal { kind: Float { base: Decimal, empty_exponent: false }, suffix_start: 6 }, len: 6 }
+            Token { kind: Literal { kind: Float { base: Decimal }, suffix_start: 6 }, len: 6 }
             Token { kind: Whitespace, len: 1 }
             Token { kind: Literal { kind: Int { base: Decimal, empty_int: false }, suffix_start: 1 }, len: 3 }
             Token { kind: Whitespace, len: 1 }

@@ -7,12 +7,6 @@ fn main() {
     s.1.; //~ ERROR unexpected token: `;`
     s.1.1;
     s.1.1e1; //~ ERROR no field `1e1` on type `(u8, u8)`
-    { s.1e+; } //~ ERROR unexpected token: `1e+`
-               //~| ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `1e+`
-               //~| ERROR expected at least one digit in exponent
-    { s.1e-; } //~ ERROR unexpected token: `1e-`
-               //~| ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `1e-`
-               //~| ERROR expected at least one digit in exponent
     { s.1e+1; } //~ ERROR unexpected token: `1e+1`
                 //~| ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `1e+1`
     { s.1e-1; } //~ ERROR unexpected token: `1e-1`
@@ -45,12 +39,6 @@ fn main() {
     s.1.1f32; //~ ERROR suffixes on a tuple index are invalid
     s.1.1e1f32; //~ ERROR no field `1e1` on type `(u8, u8)`
                 //~| ERROR suffixes on a tuple index are invalid
-    { s.1e+f32; } //~ ERROR unexpected token: `1e+f32`
-                  //~| ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `1e+f32`
-                  //~| ERROR expected at least one digit in exponent
-    { s.1e-f32; } //~ ERROR unexpected token: `1e-f32`
-                  //~| ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `1e-f32`
-                  //~| ERROR expected at least one digit in exponent
     { s.1e+1f32; } //~ ERROR unexpected token: `1e+1f32`
                    //~| ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `1e+1f32`
     { s.1e-1f32; } //~ ERROR unexpected token: `1e-1f32`
