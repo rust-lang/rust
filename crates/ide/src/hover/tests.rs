@@ -307,11 +307,12 @@ fn main() {
 fn hover_ranged_closure() {
     check_hover_range(
         r#"
+//- minicore: fn
 struct S;
 struct S2;
 fn main() {
     let x = &S;
-    let y = $0|| {x; S2}$0;
+    let y = ($0|| {x; S2}$0).call();
 }
 "#,
         expect![[r#"
@@ -319,17 +320,19 @@ fn main() {
             {closure#0} // size = 8, align = 8
             impl FnOnce() -> S2
             ```
+            Coerced to: &impl FnOnce() -> S2
 
             ## Captures
             * `x` by move"#]],
     );
     check_hover_range_actions(
         r#"
+//- minicore: fn
 struct S;
 struct S2;
 fn main() {
     let x = &S;
-    let y = $0|| {x; S2}$0;
+    let y = ($0|| {x; S2}$0).call();
 }
 "#,
         expect![[r#"
