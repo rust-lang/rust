@@ -1237,12 +1237,6 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         // Cleanup is always the cold path.
         attrs.push(llvm::AttributeKind::Cold.create_attr(self.llcx));
 
-        // LLVM 14 contains fixes for catastrophic inlining behavior, without which
-        // inlining drop glue can lead to exponential size blowup, see #41696 and #92110.
-        if llvm_util::get_version() < (14, 0, 0) {
-            attrs.push(llvm::AttributeKind::NoInline.create_attr(self.llcx));
-        }
-
         attributes::apply_to_callsite(llret, llvm::AttributePlace::Function, &attrs);
     }
 }
