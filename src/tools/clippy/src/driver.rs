@@ -209,7 +209,7 @@ pub fn main() {
     });
 
     exit(rustc_driver::catch_with_exit_code(move || {
-        let mut orig_args: Vec<String> = env::args().collect();
+        let mut orig_args: Vec<String> = rustc_driver::args::raw_args(&handler)?;
         let has_sysroot_arg = arg_value(&orig_args, "--sysroot", |_| true).is_some();
 
         let sys_root_env = std::env::var("SYSROOT").ok();
