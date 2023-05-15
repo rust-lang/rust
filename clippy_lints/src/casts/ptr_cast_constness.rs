@@ -21,8 +21,8 @@ pub(super) fn check(
         if msrv.meets(RustcVersion::new(1,65,0));
         if let ty::RawPtr(TypeAndMut { mutbl: from_mutbl, .. }) = cast_from.kind();
         if let ty::RawPtr(TypeAndMut { mutbl: to_mutbl, .. }) = cast_to.kind();
-        if !matches!((from_mutbl, to_mutbl),
-            (Mutability::Not, Mutability::Not) | (Mutability::Mut, Mutability::Mut));
+        if matches!((from_mutbl, to_mutbl),
+            (Mutability::Not, Mutability::Mut) | (Mutability::Mut, Mutability::Not));
         then {
             let sugg = Sugg::hir(cx, cast_expr, "_");
             let constness = match *to_mutbl {
