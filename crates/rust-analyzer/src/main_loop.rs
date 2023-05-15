@@ -764,15 +764,55 @@ impl GlobalState {
 
         let snapshot = self.snapshot();
         self.task_pool.handle.spawn(move || {
+            let _p = profile::span("publish_diagnostics");
             let diagnostics = subscriptions
                 .into_iter()
                 .filter_map(|file_id| {
-                    crate::handlers::publish_diagnostics(&snapshot, file_id)
-                        .ok()
-                        .map(|diags| (file_id, diags))
+                    let line_index = snapshot.file_line_index(file_id).ok()?;
+                    Some((
+                        file_id,
+                        line_index,
+                        snapshot
+                            .analysis
+                            .diagnostics(
+                                &snapshot.config.diagnostics(),
+                                ide::AssistResolveStrategy::None,
+                                file_id,
+                            )
+                            .ok()?,
+                    ))
                 })
-                .collect::<Vec<_>>();
-            Task::Diagnostics(diagnostics)
-        })
+                .map(|(file_id, line_index, it)| {
+                    (
+                        file_id,
+                        it.into_iter()
+                            .map(move |d| lsp_types::Diagnostic {
+                                range: crate::to_proto::range(&line_index, d.range),
+                                severity: Some(crate::to_proto::diagnostic_severity(d.severity)),
+                                code: Some(lsp_types::NumberOrString::String(
+                                    d.code.as_str().to_string(),
+                                )),
+                                code_description: Some(lsp_types::CodeDescription {
+                                    href: lsp_types::Url::parse(&format!(
+                                        "https://rust-analyzer.github.io/manual.html#{}",
+                                        d.code.as_str()
+                                    ))
+                                    .unwrap(),
+                                }),
+                                source: Some("rust-analyzer".to_string()),
+                                message: d.message,
+                                related_information: None,
+                                tags: if d.unused {
+                                    Some(vec![lsp_types::DiagnosticTag::UNNECESSARY])
+                                } else {
+                                    None
+                                },
+                                data: None,
+                            })
+                            .collect::<Vec<_>>(),
+                    )
+                });
+            Task::Diagnostics(diagnostics.collect())
+        });
     }
 }
