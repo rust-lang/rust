@@ -337,13 +337,16 @@ pub(super) fn path_type_(p: &mut Parser<'_>, allow_bounds: bool) {
 
 /// This turns a parsed PATH_TYPE or FOR_TYPE optionally into a DYN_TRAIT_TYPE
 /// with a TYPE_BOUND_LIST
-fn opt_type_bounds_as_dyn_trait_type(p: &mut Parser<'_>, type_marker: CompletedMarker) {
+pub(super) fn opt_type_bounds_as_dyn_trait_type(
+    p: &mut Parser<'_>,
+    type_marker: CompletedMarker,
+) -> CompletedMarker {
     assert!(matches!(
         type_marker.kind(),
         SyntaxKind::PATH_TYPE | SyntaxKind::FOR_TYPE | SyntaxKind::MACRO_TYPE
     ));
     if !p.at(T![+]) {
-        return;
+        return type_marker;
     }
 
     // First create a TYPE_BOUND from the completed PATH_TYPE
@@ -360,5 +363,5 @@ fn opt_type_bounds_as_dyn_trait_type(p: &mut Parser<'_>, type_marker: CompletedM
     let m = generic_params::bounds_without_colon_m(p, m);
 
     // Finally precede everything with DYN_TRAIT_TYPE
-    m.precede(p).complete(p, DYN_TRAIT_TYPE);
+    m.precede(p).complete(p, DYN_TRAIT_TYPE)
 }

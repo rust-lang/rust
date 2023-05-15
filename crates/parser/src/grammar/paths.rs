@@ -136,6 +136,7 @@ fn opt_path_type_args(p: &mut Parser<'_>, mode: Mode) {
         Mode::Type => {
             // test typepathfn_with_coloncolon
             // type F = Start::(Middle) -> (Middle)::End;
+            // type GenericArg = S<Start(Middle)::End>;
             if p.at(T![::]) && p.nth_at(2, T!['(']) {
                 p.bump(T![::]);
             }
