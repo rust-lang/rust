@@ -169,16 +169,16 @@ pub unsafe fn check_bool_from_ordering(x: std::cmp::Ordering) -> bool {
 // CHECK-LABEL: @check_bool_to_ordering(
 #[no_mangle]
 pub unsafe fn check_bool_to_ordering(x: bool) -> std::cmp::Ordering {
-    // CHECK: %0 = zext i1 %x to i8
-    // OPT: %1 = icmp ule i8 %0, 1
-    // OPT: call void @llvm.assume(i1 %1)
-    // OPT: %2 = icmp uge i8 %0, -1
-    // OPT: %3 = icmp ule i8 %0, 1
-    // OPT: %4 = or i1 %2, %3
-    // OPT: call void @llvm.assume(i1 %4)
+    // CHECK: %_0 = zext i1 %x to i8
+    // OPT: %0 = icmp ule i8 %_0, 1
+    // OPT: call void @llvm.assume(i1 %0)
+    // OPT: %1 = icmp uge i8 %_0, -1
+    // OPT: %2 = icmp ule i8 %_0, 1
+    // OPT: %3 = or i1 %1, %2
+    // OPT: call void @llvm.assume(i1 %3)
     // DBG-NOT: icmp
     // DBG-NOT: assume
-    // CHECK: ret i8 %0
+    // CHECK: ret i8 %_0
 
     transmute(x)
 }
