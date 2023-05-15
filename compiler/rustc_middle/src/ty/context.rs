@@ -732,17 +732,13 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Like [TyCtxt::ty_error] but for constants, with current `ErrorGuaranteed`
     #[track_caller]
-    pub fn const_error_with_guaranteed(
-        self,
-        ty: Ty<'tcx>,
-        reported: ErrorGuaranteed,
-    ) -> Const<'tcx> {
+    pub fn const_error(self, ty: Ty<'tcx>, reported: ErrorGuaranteed) -> Const<'tcx> {
         self.mk_const(ty::ConstKind::Error(reported), ty)
     }
 
     /// Like [TyCtxt::ty_error] but for constants.
     #[track_caller]
-    pub fn const_error(self, ty: Ty<'tcx>) -> Const<'tcx> {
+    pub fn const_error_misc(self, ty: Ty<'tcx>) -> Const<'tcx> {
         self.const_error_with_message(
             ty,
             DUMMY_SP,

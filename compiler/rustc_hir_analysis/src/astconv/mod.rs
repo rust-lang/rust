@@ -464,7 +464,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             self.astconv.ct_infer(ty, Some(param), inf.span).into()
                         } else {
                             self.inferred_params.push(inf.span);
-                            tcx.const_error(ty).into()
+                            tcx.const_error_misc(ty).into()
                         }
                     }
                     _ => unreachable!(),
@@ -518,7 +518,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             .no_bound_vars()
                             .expect("const parameter types cannot be generic");
                         if let Err(guar) = ty.error_reported() {
-                            return tcx.const_error_with_guaranteed(ty, guar).into();
+                            return tcx.const_error(ty, guar).into();
                         }
                         if !infer_args && has_default {
                             tcx.const_param_default(param.def_id).subst(tcx, substs.unwrap()).into()
@@ -527,7 +527,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 self.astconv.ct_infer(ty, Some(param), self.span).into()
                             } else {
                                 // We've already errored above about the mismatch.
-                                tcx.const_error(ty).into()
+                                tcx.const_error_misc(ty).into()
                             }
                         }
                     }
@@ -1387,7 +1387,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         term = match def_kind {
                             hir::def::DefKind::AssocTy => tcx.ty_error(reported).into(),
                             hir::def::DefKind::AssocConst => tcx
-                                .const_error_with_guaranteed(
+                                .const_error(
                                     tcx.type_of(assoc_item_def_id)
                                         .subst(tcx, projection_ty.skip_binder().substs),
                                     reported,

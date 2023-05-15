@@ -209,11 +209,11 @@ impl<'tcx> InferCtxt<'tcx> {
             // HACK: equating both sides with `[const error]` eagerly prevents us
             // from leaving unconstrained inference vars during things like impl
             // matching in the solver.
-            let a_error = self.tcx.const_error_with_guaranteed(a.ty(), guar);
+            let a_error = self.tcx.const_error(a.ty(), guar);
             if let ty::ConstKind::Infer(InferConst::Var(vid)) = a.kind() {
                 return self.unify_const_variable(vid, a_error);
             }
-            let b_error = self.tcx.const_error_with_guaranteed(b.ty(), guar);
+            let b_error = self.tcx.const_error(b.ty(), guar);
             if let ty::ConstKind::Infer(InferConst::Var(vid)) = b.kind() {
                 return self.unify_const_variable(vid, b_error);
             }
