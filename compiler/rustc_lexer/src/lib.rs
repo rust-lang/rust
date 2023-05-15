@@ -582,34 +582,34 @@ impl Cursor<'_> {
         let mut base = Base::Decimal;
         if first_digit == '0' {
             // Attempt to parse encoding base.
-            let has_digits = match self.first() {
+            match self.first() {
                 'b' => {
                     base = Base::Binary;
                     self.bump();
-                    self.eat_decimal_digits()
+                    if !self.eat_decimal_digits() {
+                        return Int { base, empty_int: true };
+                    }
                 }
                 'o' => {
                     base = Base::Octal;
                     self.bump();
-                    self.eat_decimal_digits()
+                    if !self.eat_decimal_digits() {
+                        return Int { base, empty_int: true };
+                    }
                 }
                 'x' => {
                     base = Base::Hexadecimal;
                     self.bump();
-                    self.eat_hexadecimal_digits()
+                    if !self.eat_hexadecimal_digits() {
+                        return Int { base, empty_int: true };
+                    }
                 }
                 // Not a base prefix.
                 '0'..='9' | '_' | '.' | 'e' | 'E' => {
                     self.eat_decimal_digits();
-                    true
                 }
                 // Just a 0.
                 _ => return Int { base, empty_int: false },
-            };
-            // Base prefix was provided, but there were no digits
-            // after it, e.g. "0x".
-            if !has_digits {
-                return Int { base, empty_int: true };
             }
         } else {
             // No base prefix, parse number in the usual way.
