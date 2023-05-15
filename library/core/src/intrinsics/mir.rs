@@ -279,6 +279,7 @@ define!("mir_storage_dead", fn StorageDead<T>(local: T));
 define!("mir_deinit", fn Deinit<T>(place: T));
 define!("mir_checked", fn Checked<T>(binop: T) -> (T, bool));
 define!("mir_len", fn Len<T>(place: T) -> usize);
+define!("mir_copy_for_deref", fn CopyForDeref<T>(place: T) -> T);
 define!("mir_retag", fn Retag<T>(place: T));
 define!("mir_move", fn Move<T>(place: T) -> T);
 define!("mir_static", fn Static<T>(s: T) -> &'static T);
