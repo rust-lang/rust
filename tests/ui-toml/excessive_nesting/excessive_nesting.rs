@@ -1,4 +1,7 @@
 //@aux-build:macro_rules.rs
+//@revisions: below default
+//@[below] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/excessive_nesting/below
+//@[default] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/excessive_nesting/default
 #![rustfmt::skip]
 #![feature(custom_inner_attributes)]
 #![allow(unused)]
@@ -86,6 +89,9 @@ trait Lol {
         }
     }
 }
+
+#[allow(clippy::excessive_nesting)]
+fn l() {{{{{{{{{}}}}}}}}}
 
 use a::{b::{c::{d::{e::{f::{}}}}}}; // should not lint
 

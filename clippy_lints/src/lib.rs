@@ -1012,6 +1012,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(move || {
         Box::new(excessive_nesting::ExcessiveNesting {
             excessive_nesting_threshold,
+            nodes: rustc_ast::node_id::NodeSet::new(),
         })
     });
     store.register_late_pass(|_| Box::new(items_after_test_module::ItemsAfterTestModule));
