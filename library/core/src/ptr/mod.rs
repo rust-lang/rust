@@ -404,6 +404,7 @@ pub use non_null::NonNull;
 
 mod unique;
 #[unstable(feature = "ptr_internals", issue = "none")]
+#[doc(hidden)]
 pub use unique::Unique;
 
 mod const_ptr;

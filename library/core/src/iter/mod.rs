@@ -401,6 +401,7 @@ pub use self::sources::{once_with, OnceWith};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::sources::{repeat, Repeat};
 #[unstable(feature = "iter_repeat_n", issue = "104434")]
+#[doc(hidden)] // waiting on ACP#120 to decide whether to expose publicly
 pub use self::sources::{repeat_n, RepeatN};
 #[stable(feature = "iterator_repeat_with", since = "1.28.0")]
 pub use self::sources::{repeat_with, RepeatWith};
@@ -439,8 +440,10 @@ pub use self::adapters::SourceIter;
 #[stable(feature = "iterator_step_by", since = "1.28.0")]
 pub use self::adapters::StepBy;
 #[unstable(feature = "trusted_random_access", issue = "none")]
+#[doc(hidden)]
 pub use self::adapters::TrustedRandomAccess;
 #[unstable(feature = "trusted_random_access", issue = "none")]
+#[doc(hidden)]
 pub use self::adapters::TrustedRandomAccessNoCoerce;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::adapters::{

@@ -34,8 +34,10 @@ pub use self::decode::{DecodeUtf16, DecodeUtf16Error};
 
 // perma-unstable re-exports
 #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
+#[doc(hidden)]
 pub use self::methods::encode_utf16_raw;
 #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
+#[doc(hidden)]
 pub use self::methods::encode_utf8_raw;
 
 use crate::error::Error;
