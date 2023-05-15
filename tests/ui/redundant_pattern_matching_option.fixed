@@ -92,15 +92,14 @@ fn issue7921() {
 
 fn issue10726() {
     let x = Some(42);
-    let y = None::<()>;
 
     x.is_some();
 
     x.is_none();
 
-    y.is_some();
+    x.is_none();
 
-    y.is_none();
+    x.is_some();
 
     // Don't lint
     match x {

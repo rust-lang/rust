@@ -107,7 +107,6 @@ fn issue7921() {
 
 fn issue10726() {
     let x = Some(42);
-    let y = None::<()>;
 
     match x {
         Some(_) => true,
@@ -119,14 +118,14 @@ fn issue10726() {
         _ => false,
     };
 
-    match y {
-        Some(_) => true,
-        _ => false,
+    match x {
+        Some(_) => false,
+        _ => true,
     };
 
-    match y {
-        None => true,
-        _ => false,
+    match x {
+        None => false,
+        _ => true,
     };
 
     // Don't lint
