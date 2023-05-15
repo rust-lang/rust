@@ -2,7 +2,7 @@ use super::*;
 
 use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::{self, Body, Coverage, CoverageInfo};
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::DefId;
 

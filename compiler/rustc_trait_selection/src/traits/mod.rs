@@ -26,6 +26,7 @@ use crate::infer::{InferCtxt, TyCtxtInferExt};
 use crate::traits::error_reporting::TypeErrCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_errors::ErrorGuaranteed;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeSuperVisitable};
@@ -498,10 +499,10 @@ fn is_impossible_method(tcx: TyCtxt<'_>, (impl_def_id, trait_item_def_id): (DefI
     false
 }
 
-pub fn provide(providers: &mut ty::query::Providers) {
+pub fn provide(providers: &mut Providers) {
     object_safety::provide(providers);
     vtable::provide(providers);
-    *providers = ty::query::Providers {
+    *providers = Providers {
         specialization_graph_of: specialize::specialization_graph_provider,
         specializes: specialize::specializes,
         subst_and_check_impossible_predicates,

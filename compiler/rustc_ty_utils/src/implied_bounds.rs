@@ -1,8 +1,9 @@
 use rustc_hir::{def::DefKind, def_id::DefId};
+use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
-pub fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers { assumed_wf_types, ..*providers };
+pub fn provide(providers: &mut Providers) {
+    *providers = Providers { assumed_wf_types, ..*providers };
 }
 
 fn assumed_wf_types(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::List<Ty<'_>> {

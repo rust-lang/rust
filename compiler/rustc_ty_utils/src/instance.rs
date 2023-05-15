@@ -1,6 +1,7 @@
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_middle::query::Providers;
 use rustc_middle::traits::CodegenObligationError;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Instance, TyCtxt, TypeVisitableExt};
@@ -319,6 +320,6 @@ fn resolve_associated_item<'tcx>(
     })
 }
 
-pub fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers { resolve_instance, ..*providers };
+pub fn provide(providers: &mut Providers) {
+    *providers = Providers { resolve_instance, ..*providers };
 }

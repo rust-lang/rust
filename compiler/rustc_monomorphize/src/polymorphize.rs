@@ -11,9 +11,9 @@ use rustc_middle::mir::{
     visit::{TyContext, Visitor},
     Constant, ConstantKind, Local, LocalDecl, Location,
 };
+use rustc_middle::query::Providers;
 use rustc_middle::ty::{
     self,
-    query::Providers,
     subst::SubstsRef,
     visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor},
     Const, Ty, TyCtxt, UnusedGenericParams,

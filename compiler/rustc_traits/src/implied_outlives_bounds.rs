@@ -6,7 +6,7 @@ use rustc_infer::infer::canonical::{self, Canonical};
 use rustc_infer::infer::outlives::components::{push_outlives_components, Component};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::query::OutlivesBound;
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::source_map::DUMMY_SP;

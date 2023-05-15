@@ -2,6 +2,7 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::{
     self, Binder, EarlyBinder, ImplTraitInTraitData, Predicate, PredicateKind, ToPredicate, Ty,
     TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
@@ -566,8 +567,8 @@ fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> BitSet<u32
     unsizing_params
 }
 
-pub fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers {
+pub fn provide(providers: &mut Providers) {
+    *providers = Providers {
         asyncness,
         adt_sized_constraint,
         param_env,

@@ -1,91 +1,26 @@
-#![allow(unused_parens)]
-
 use crate::dep_graph;
 use crate::dep_graph::DepKind;
-use crate::infer::canonical::{self, Canonical};
-use crate::lint::LintExpectation;
-use crate::metadata::ModChild;
-use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
-use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
-use crate::middle::lib_features::LibFeatures;
-use crate::middle::privacy::EffectiveVisibilities;
-use crate::middle::resolve_bound_vars::{ObjectLifetimeDefault, ResolveBoundVars, ResolvedArg};
-use crate::middle::stability::{self, DeprecationEntry};
-use crate::mir;
-use crate::mir::interpret::GlobalId;
-use crate::mir::interpret::{
-    ConstValue, EvalToAllocationRawResult, EvalToConstValueResult, EvalToValTreeResult,
-};
-use crate::mir::interpret::{LitToConstError, LitToConstInput};
-use crate::mir::mono::CodegenUnit;
-
-use crate::query::erase::{erase, restore, Erase};
 use crate::query::on_disk_cache::CacheEncoder;
 use crate::query::on_disk_cache::EncodedDepNodeIndex;
 use crate::query::on_disk_cache::OnDiskCache;
-use crate::query::{AsLocalKey, Key};
-use crate::thir;
-use crate::traits::query::{
-    CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
-    CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
-    CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal, NoSolution,
+use crate::query::{
+    DynamicQueries, ExternProviders, Providers, QueryArenas, QueryCaches, QueryEngine, QueryStates,
 };
-use crate::traits::query::{
-    DropckConstraint, DropckOutlivesResult, MethodAutoderefStepsResult, NormalizationResult,
-    OutlivesBound,
-};
-use crate::traits::specialization_graph;
-use crate::traits::{self, ImplSource};
-use crate::ty::context::TyCtxtFeed;
-use crate::ty::fast_reject::SimplifiedType;
-use crate::ty::layout::ValidityRequirement;
-use crate::ty::subst::{GenericArg, SubstsRef};
-use crate::ty::util::AlwaysRequiresDrop;
-use crate::ty::GeneratorDiagnosticData;
-use crate::ty::{self, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt, UnusedGenericParams};
+use crate::ty::TyCtxt;
 use field_offset::FieldOffset;
 use measureme::StringId;
-use rustc_arena::TypedArena;
-use rustc_ast as ast;
-use rustc_ast::expand::allocator::AllocatorKind;
-use rustc_attr as attr;
-use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
-use rustc_data_structures::steal::Steal;
-use rustc_data_structures::svh::Svh;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::AtomicU64;
-use rustc_data_structures::sync::Lrc;
-use rustc_data_structures::sync::WorkerLocal;
-use rustc_data_structures::unord::UnordSet;
-use rustc_errors::ErrorGuaranteed;
-use rustc_hir as hir;
-use rustc_hir::def::{DefKind, DocLinkResMap};
-use rustc_hir::def_id::{
-    CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId, LocalDefIdMap, LocalDefIdSet,
-};
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::hir_id::OwnerId;
-use rustc_hir::lang_items::{LangItem, LanguageItems};
-use rustc_hir::{Crate, ItemLocalId, TraitCandidate};
-use rustc_index::IndexVec;
 use rustc_query_system::dep_graph::DepNodeIndex;
 use rustc_query_system::dep_graph::SerializedDepNodeIndex;
-use rustc_query_system::ich::StableHashingContext;
 pub(crate) use rustc_query_system::query::QueryJobId;
 use rustc_query_system::query::*;
 use rustc_query_system::HandleCycleError;
-use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
-use rustc_session::cstore::{CrateDepKind, CrateSource};
-use rustc_session::cstore::{ExternCrate, ForeignModule, LinkagePreference, NativeLib};
-use rustc_session::lint::LintExpectationId;
-use rustc_session::Limits;
-use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
-use rustc_target::abi;
-use rustc_target::spec::PanicStrategy;
-use std::mem;
 use std::ops::Deref;
-use std::path::PathBuf;
-use std::sync::Arc;
 
 pub struct QueryKeyStringCache {
     pub def_id_cache: FxHashMap<DefId, StringId>,
@@ -214,7 +149,7 @@ impl<'tcx> TyCtxt<'tcx> {
 }
 
 #[inline]
-fn query_get_at<'tcx, Cache>(
+pub fn query_get_at<'tcx, Cache>(
     tcx: TyCtxt<'tcx>,
     execute_query: fn(TyCtxt<'tcx>, Span, Cache::Key, QueryMode) -> Option<Cache::Value>,
     query_cache: &Cache,
@@ -232,7 +167,7 @@ where
 }
 
 #[inline]
-fn query_ensure<'tcx, Cache>(
+pub fn query_ensure<'tcx, Cache>(
     tcx: TyCtxt<'tcx>,
     execute_query: fn(TyCtxt<'tcx>, Span, Cache::Key, QueryMode) -> Option<Cache::Value>,
     query_cache: &Cache,
@@ -638,9 +573,6 @@ macro_rules! define_feedable {
 // (error) value if the query resulted in a query cycle.
 // Queries marked with `fatal_cycle` do not need the latter implementation,
 // as they will raise an fatal error on query cycles instead.
-
-rustc_query_append! { define_callbacks! }
-rustc_feedable_queries! { define_feedable! }
 
 mod sealed {
     use super::{DefId, LocalDefId, OwnerId};

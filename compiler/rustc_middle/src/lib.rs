@@ -85,12 +85,7 @@ mod tests;
 mod macros;
 
 #[macro_use]
-pub mod query;
-
-#[macro_use]
 pub mod arena;
-#[macro_use]
-pub mod dep_graph;
 pub(crate) mod error;
 pub mod hir;
 pub mod infer;
@@ -100,9 +95,15 @@ pub mod middle;
 pub mod mir;
 pub mod thir;
 pub mod traits;
+#[macro_use]
 pub mod ty;
 pub mod util;
 mod values;
+
+#[macro_use]
+pub mod query;
+#[macro_use]
+pub mod dep_graph;
 
 // Allows macros to refer to this crate as `::rustc_middle`
 extern crate self as rustc_middle;

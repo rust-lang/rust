@@ -1,5 +1,5 @@
 use rustc_hir::lang_items::LangItem;
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
 use rustc_infer::infer::TyCtxtInferExt;
