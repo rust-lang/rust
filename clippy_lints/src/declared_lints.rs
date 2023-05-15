@@ -277,6 +277,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::manual_let_else::MANUAL_LET_ELSE_INFO,
     crate::manual_main_separator_str::MANUAL_MAIN_SEPARATOR_STR_INFO,
     crate::manual_non_exhaustive::MANUAL_NON_EXHAUSTIVE_INFO,
+    crate::manual_partial_ord_impl::MANUAL_PARTIAL_ORD_IMPL_INFO,
     crate::manual_range_patterns::MANUAL_RANGE_PATTERNS_INFO,
     crate::manual_rem_euclid::MANUAL_REM_EUCLID_INFO,
     crate::manual_retain::MANUAL_RETAIN_INFO,

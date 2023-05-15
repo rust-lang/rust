@@ -188,6 +188,7 @@ mod manual_is_ascii_check;
 mod manual_let_else;
 mod manual_main_separator_str;
 mod manual_non_exhaustive;
+mod manual_partial_ord_impl;
 mod manual_range_patterns;
 mod manual_rem_euclid;
 mod manual_retain;
