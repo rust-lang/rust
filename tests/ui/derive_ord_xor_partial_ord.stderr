@@ -1,11 +1,11 @@
 error: you are deriving `Ord` but have implemented `PartialOrd` explicitly
-  --> $DIR/derive_ord_xor_partial_ord.rs:21:10
+  --> $DIR/derive_ord_xor_partial_ord.rs:22:10
    |
 LL | #[derive(Ord, PartialEq, Eq)]
    |          ^^^
    |
 note: `PartialOrd` implemented here
-  --> $DIR/derive_ord_xor_partial_ord.rs:24:1
+  --> $DIR/derive_ord_xor_partial_ord.rs:25:1
    |
 LL | impl PartialOrd for DeriveOrd {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -13,20 +13,20 @@ LL | impl PartialOrd for DeriveOrd {
    = note: this error originates in the derive macro `Ord` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: you are deriving `Ord` but have implemented `PartialOrd` explicitly
-  --> $DIR/derive_ord_xor_partial_ord.rs:30:10
+  --> $DIR/derive_ord_xor_partial_ord.rs:31:10
    |
 LL | #[derive(Ord, PartialEq, Eq)]
    |          ^^^
    |
 note: `PartialOrd` implemented here
-  --> $DIR/derive_ord_xor_partial_ord.rs:33:1
+  --> $DIR/derive_ord_xor_partial_ord.rs:34:1
    |
 LL | impl PartialOrd<DeriveOrdWithExplicitTypeVariable> for DeriveOrdWithExplicitTypeVariable {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the derive macro `Ord` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: you are implementing `Ord` explicitly but have derived `PartialOrd`
-  --> $DIR/derive_ord_xor_partial_ord.rs:42:1
+  --> $DIR/derive_ord_xor_partial_ord.rs:43:1
    |
 LL | / impl std::cmp::Ord for DerivePartialOrd {
 LL | |     fn cmp(&self, other: &Self) -> Ordering {
@@ -36,14 +36,14 @@ LL | | }
    | |_^
    |
 note: `PartialOrd` implemented here
-  --> $DIR/derive_ord_xor_partial_ord.rs:39:10
+  --> $DIR/derive_ord_xor_partial_ord.rs:40:10
    |
 LL | #[derive(PartialOrd, PartialEq, Eq)]
    |          ^^^^^^^^^^
    = note: this error originates in the derive macro `PartialOrd` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: you are implementing `Ord` explicitly but have derived `PartialOrd`
-  --> $DIR/derive_ord_xor_partial_ord.rs:62:5
+  --> $DIR/derive_ord_xor_partial_ord.rs:63:5
    |
 LL | /     impl Ord for DerivePartialOrdInUseOrd {
 LL | |         fn cmp(&self, other: &Self) -> Ordering {
@@ -53,7 +53,7 @@ LL | |     }
    | |_____^
    |
 note: `PartialOrd` implemented here
-  --> $DIR/derive_ord_xor_partial_ord.rs:59:14
+  --> $DIR/derive_ord_xor_partial_ord.rs:60:14
    |
 LL |     #[derive(PartialOrd, PartialEq, Eq)]
    |              ^^^^^^^^^^

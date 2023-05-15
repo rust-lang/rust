@@ -1,5 +1,6 @@
 #![warn(clippy::derive_ord_xor_partial_ord)]
 #![allow(clippy::unnecessary_wraps)]
+#![allow(clippy::needless_partial_ord_impl)]
 
 use std::cmp::Ordering;
 

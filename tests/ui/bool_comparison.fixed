@@ -2,6 +2,7 @@
 
 #![allow(clippy::needless_if)]
 #![warn(clippy::bool_comparison)]
+#![allow(clippy::needless_partial_ord_impl)]
 
 fn main() {
     let x = true;

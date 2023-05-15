@@ -1,0 +1,28 @@
+error: manual implementation of `PartialOrd` when `Ord` is already implemented
+  --> $DIR/needless_partial_ord_impl.rs:18:1
+   |
+LL | /  impl PartialOrd for A {
+LL | |      fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+   | | _____________________________________________________________-
+LL | ||         todo!();
+LL | ||     }
+   | ||_____- help: change this to: `{ Some(self.cmp(self)) }`
+LL | |  }
+   | |__^
+   |
+   = note: `#[deny(clippy::needless_partial_ord_impl)]` on by default
+
+error: manual implementation of `PartialOrd` when `Ord` is already implemented
+  --> $DIR/needless_partial_ord_impl.rs:52:1
+   |
+LL | /  impl PartialOrd for C {
+LL | |      fn partial_cmp(&self, _: &Self) -> Option<Ordering> {
+   | | _________________________________________________________-
+LL | ||         todo!();
+LL | ||     }
+   | ||_____- help: change this to: `{ Some(self.cmp(self)) }`
+LL | |  }
+   | |__^
+
+error: aborting due to 2 previous errors
+

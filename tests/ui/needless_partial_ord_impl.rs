@@ -1,5 +1,5 @@
+//@run-rustfix
 #![allow(unused)]
-#![warn(clippy::manual_partial_ord_impl)]
 #![no_main]
 
 use std::cmp::Ordering;
@@ -38,7 +38,7 @@ impl PartialOrd for B {
     }
 }
 
-// lint, but we cannot give a suggestion since &Self is not named
+// lint, but we can't give a suggestion since &Self is not named
 
 #[derive(Eq, PartialEq)]
 struct C(u32);
@@ -55,3 +55,35 @@ impl PartialOrd for C {
     }
 }
 
+// do not lint derived
+
+#[derive(Eq, Ord, PartialEq, PartialOrd)]
+struct D(u32);
+
+// do not lint if ord is not manually implemented
+
+#[derive(Eq, PartialEq)]
+struct E(u32);
+
+impl PartialOrd for E {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        todo!();
+    }
+}
+
+// do not lint since ord has more restrictive bounds
+
+#[derive(Eq, PartialEq)]
+struct Uwu<A>(A);
+
+impl<A: std::fmt::Debug + Ord + PartialOrd> Ord for Uwu<A> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        todo!();
+    }
+}
+
+impl<A: Ord + PartialOrd> PartialOrd for Uwu<A> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        todo!();
+    }
+}
