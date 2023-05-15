@@ -4457,6 +4457,28 @@ impl Iterator for RawIterHashInner {
     }
 }
 
+pub(crate) struct RawExtractIf<'a, T, A: Allocator> {
+    pub iter: RawIter<T>,
+    pub table: &'a mut RawTable<T, A>,
+}
+
+impl<T, A: Allocator> RawExtractIf<'_, T, A> {
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub(crate) fn next<F>(&mut self, mut f: F) -> Option<T>
+    where
+        F: FnMut(&mut T) -> bool,
+    {
+        unsafe {
+            for item in &mut self.iter {
+                if f(item.as_mut()) {
+                    return Some(self.table.remove(item).0);
+                }
+            }
+        }
+        None
+    }
+}
+
 #[cfg(test)]
 mod test_map {
     use super::*;
