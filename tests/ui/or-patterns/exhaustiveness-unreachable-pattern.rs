@@ -1,6 +1,7 @@
 #![deny(unreachable_patterns)]
 
 // We wrap patterns in a tuple because top-level or-patterns were special-cased.
+#[rustfmt::skip]
 fn main() {
     match (0u8,) {
         (1 | 2,) => {}
@@ -71,6 +72,11 @@ fn main() {
             | 0 //~ ERROR unreachable
         , 0
             | 0] => {} //~ ERROR unreachable
+        _ => {}
+    }
+    match (true, 0) {
+        (true, 0 | 0) => {} //~ ERROR unreachable
+        (_, 0 | 0) => {} //~ ERROR unreachable
         _ => {}
     }
     match &[][..] {
@@ -148,5 +154,9 @@ fn main() {
         (false
             | true, //~ ERROR unreachable
             false | true) => {}
+    }
+    match (true, true) {
+        (x, y)
+            | (y, x) => {} //~ ERROR unreachable
     }
 }
