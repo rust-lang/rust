@@ -1,4 +1,4 @@
-use crate::leb128::{self, largest_max_leb128_len};
+use crate::leb128;
 use crate::serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::fs::File;
 use std::io::{self, Write};
@@ -13,6 +13,9 @@ use std::ptr;
 // -----------------------------------------------------------------------------
 
 pub type FileEncodeResult = Result<usize, io::Error>;
+
+/// The size of the buffer in `FileEncoder`.
+const BUF_SIZE: usize = 8192;
 
 /// `FileEncoder` encodes data to file via fixed-size buffer.
 ///
@@ -35,26 +38,12 @@ pub struct FileEncoder {
 
 impl FileEncoder {
     pub fn new<P: AsRef<Path>>(path: P) -> io::Result<Self> {
-        const DEFAULT_BUF_SIZE: usize = 8192;
-        FileEncoder::with_capacity(path, DEFAULT_BUF_SIZE)
-    }
-
-    pub fn with_capacity<P: AsRef<Path>>(path: P, capacity: usize) -> io::Result<Self> {
-        // Require capacity at least as large as the largest LEB128 encoding
-        // here, so that we don't have to check or handle this on every write.
-        assert!(capacity >= largest_max_leb128_len());
-
-        // Require capacity small enough such that some capacity checks can be
-        // done using guaranteed non-overflowing add rather than sub, which
-        // shaves an instruction off those code paths (on x86 at least).
-        assert!(capacity <= usize::MAX - largest_max_leb128_len());
-
         // Create the file for reading and writing, because some encoders do both
         // (e.g. the metadata encoder when -Zmeta-stats is enabled)
         let file = File::options().read(true).write(true).create(true).truncate(true).open(path)?;
 
         Ok(FileEncoder {
-            buf: Box::new_uninit_slice(capacity),
+            buf: Box::new_uninit_slice(BUF_SIZE),
             buffered: 0,
             flushed: 0,
             file,
@@ -160,18 +149,10 @@ impl FileEncoder {
     }
 
     #[inline]
-    fn capacity(&self) -> usize {
-        self.buf.len()
-    }
-
-    #[inline]
     fn write_one(&mut self, value: u8) {
-        // We ensure this during `FileEncoder` construction.
-        debug_assert!(self.capacity() >= 1);
-
         let mut buffered = self.buffered;
 
-        if std::intrinsics::unlikely(buffered >= self.capacity()) {
+        if std::intrinsics::unlikely(buffered + 1 > BUF_SIZE) {
             self.flush();
             buffered = 0;
         }
@@ -187,13 +168,12 @@ impl FileEncoder {
 
     #[inline]
     fn write_all(&mut self, buf: &[u8]) {
-        let capacity = self.capacity();
         let buf_len = buf.len();
 
-        if std::intrinsics::likely(buf_len <= capacity) {
+        if std::intrinsics::likely(buf_len <= BUF_SIZE) {
             let mut buffered = self.buffered;
 
-            if std::intrinsics::unlikely(buf_len > capacity - buffered) {
+            if std::intrinsics::unlikely(buffered + buf_len > BUF_SIZE) {
                 self.flush();
                 buffered = 0;
             }
@@ -271,13 +251,11 @@ macro_rules! write_leb128 {
         fn $this_fn(&mut self, v: $int_ty) {
             const MAX_ENCODED_LEN: usize = $crate::leb128::max_leb128_len::<$int_ty>();
 
-            // We ensure this during `FileEncoder` construction.
-            debug_assert!(self.capacity() >= MAX_ENCODED_LEN);
-
             let mut buffered = self.buffered;
 
-            // This can't overflow. See assertion in `FileEncoder::with_capacity`.
-            if std::intrinsics::unlikely(buffered + MAX_ENCODED_LEN > self.capacity()) {
+            // This can't overflow because BUF_SIZE and MAX_ENCODED_LEN are both
+            // quite small.
+            if std::intrinsics::unlikely(buffered + MAX_ENCODED_LEN > BUF_SIZE) {
                 self.flush();
                 buffered = 0;
             }
