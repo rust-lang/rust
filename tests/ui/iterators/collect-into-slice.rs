@@ -14,4 +14,10 @@ fn main() {
     //~| NOTE doesn't have a size known at compile-time
     //~| NOTE doesn't have a size known at compile-time
     process_slice(&some_generated_vec);
+
+    let some_generated_vec = (0..10).collect();
+    //~^ ERROR a slice of type `&[i32]` cannot be built since we need to store the elements somewhere
+    //~| NOTE try explicitly collecting into a `Vec<{integer}>`
+    //~| NOTE required by a bound in `collect`
+    process_slice(some_generated_vec);
 }
