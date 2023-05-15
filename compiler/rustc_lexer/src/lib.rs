@@ -604,10 +604,14 @@ impl Cursor<'_> {
                         return Int { base, empty_int: true };
                     }
                 }
-                // Not a base prefix.
-                '0'..='9' | '_' | '.' | 'e' | 'E' => {
+                // Not a base prefix; consume additional digits.
+                '0'..='9' | '_' => {
                     self.eat_decimal_digits();
                 }
+
+                // Also not a base prefix; nothing more to do here.
+                '.' | 'e' | 'E' => {}
+
                 // Just a 0.
                 _ => return Int { base, empty_int: false },
             }
