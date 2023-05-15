@@ -71,6 +71,7 @@ pub use crate::concat_bytes;
 // Do not `doc(inline)` these `doc(hidden)` items.
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow(deprecated)]
+#[doc(hidden)]
 pub use crate::macros::builtin::{RustcDecodable, RustcEncodable};
 
 // Do not `doc(no_inline)` so that they become doc items on their own

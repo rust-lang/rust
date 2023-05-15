@@ -17,6 +17,7 @@ pub use self::{
 };
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
+#[doc(hidden)]
 pub use self::marker::InPlaceIterable;
 #[unstable(feature = "trusted_step", issue = "85731")]
 pub use self::marker::TrustedStep;
