@@ -695,7 +695,7 @@ impl<T: ?Sized> !Sync for *mut T {}
 /// }
 /// ```
 ///
-/// This also in turn requires the annotation `T: 'a`, indicating
+/// This also in turn infers the lifetime bound `T: 'a`, indicating
 /// that any references in `T` are valid over the lifetime `'a`.
 ///
 /// When initializing a `Slice` you simply provide the value
