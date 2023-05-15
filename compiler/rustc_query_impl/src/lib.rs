@@ -25,11 +25,11 @@ use rustc_middle::dep_graph::{self, DepKind, DepKindStruct};
 use rustc_middle::query::erase::{erase, restore, Erase};
 use rustc_middle::query::on_disk_cache::OnDiskCache;
 use rustc_middle::query::AsLocalKey;
-use rustc_middle::ty::query::{
+use rustc_middle::query::{
     query_keys, query_provided, query_provided_to_value, query_storage, query_values,
-    DynamicQueries, DynamicQuery, ExternProviders, Providers, QueryCaches, QueryEngine,
-    QueryStates, QuerySystem, QuerySystemFns,
+    DynamicQueries, ExternProviders, Providers, QueryCaches, QueryEngine, QueryStates,
 };
+use rustc_middle::ty::query::{DynamicQuery, QuerySystem, QuerySystemFns};
 use rustc_middle::ty::TyCtxt;
 use rustc_query_system::dep_graph::SerializedDepNodeIndex;
 use rustc_query_system::ich::StableHashingContext;

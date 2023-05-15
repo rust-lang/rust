@@ -78,7 +78,7 @@ use rustc_errors::{pluralize, struct_span_err, Diagnostic, DiagnosticBuilder};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_index::bit_set::BitSet;
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{InternalSubsts, SubstsRef};
 use rustc_session::parse::feature_err;

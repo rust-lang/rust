@@ -43,6 +43,7 @@
 //! This code should only compile in modules where the uninhabitedness of `Foo`
 //! is visible.
 
+use crate::query::Providers;
 use crate::ty::context::TyCtxt;
 use crate::ty::{self, DefId, Ty, VariantDef, Visibility};
 
@@ -52,9 +53,8 @@ pub mod inhabited_predicate;
 
 pub use inhabited_predicate::InhabitedPredicate;
 
-pub(crate) fn provide(providers: &mut ty::query::Providers) {
-    *providers =
-        ty::query::Providers { inhabited_predicate_adt, inhabited_predicate_type, ..*providers };
+pub(crate) fn provide(providers: &mut Providers) {
+    *providers = Providers { inhabited_predicate_adt, inhabited_predicate_type, ..*providers };
 }
 
 /// Returns an `InhabitedPredicate` that is generic over type parameters and

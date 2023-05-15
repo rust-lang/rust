@@ -12,7 +12,7 @@ use rustc_infer::infer::outlives::env::{OutlivesEnvironment, RegionBoundPairs};
 use rustc_infer::infer::outlives::obligations::TypeOutlives;
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
 use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
     self, AdtKind, GenericParamDefKind, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,

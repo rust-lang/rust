@@ -11,7 +11,7 @@
 
 use crate::bug;
 use crate::error::LimitInvalid;
-use crate::ty;
+use crate::query::Providers;
 use rustc_ast::Attribute;
 use rustc_session::Session;
 use rustc_session::{Limit, Limits};
@@ -19,7 +19,7 @@ use rustc_span::symbol::{sym, Symbol};
 
 use std::num::IntErrorKind;
 
-pub fn provide(providers: &mut ty::query::Providers) {
+pub fn provide(providers: &mut Providers) {
     providers.limits = |tcx, ()| Limits {
         recursion_limit: get_recursion_limit(tcx.hir().krate_attrs(), tcx.sess),
         move_size_limit: get_limit(

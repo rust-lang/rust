@@ -19,9 +19,9 @@ use rustc_hir::{
 use rustc_hir::{MethodKind, Target, Unsafety};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
+use rustc_middle::query::Providers;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::builtin::{
     CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, INVALID_MACRO_EXPORT_ARGUMENTS,

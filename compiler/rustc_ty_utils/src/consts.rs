@@ -2,6 +2,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
+use rustc_middle::query::Providers;
 use rustc_middle::thir::visit;
 use rustc_middle::thir::visit::Visitor;
 use rustc_middle::ty::abstract_const::CastKind;
@@ -421,6 +422,6 @@ pub fn thir_abstract_const(
     Ok(Some(ty::EarlyBinder(recurse_build(tcx, body, body_id, root_span)?)))
 }
 
-pub fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers { destructure_const, thir_abstract_const, ..*providers };
+pub fn provide(providers: &mut Providers) {
+    *providers = Providers { destructure_const, thir_abstract_const, ..*providers };
 }

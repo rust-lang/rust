@@ -1,4 +1,5 @@
 use crate::mir::interpret::{AllocRange, GlobalAlloc, Pointer, Provenance, Scalar};
+use crate::query::Providers;
 use crate::ty::query::IntoQueryParam;
 use crate::ty::{
     self, ConstInt, ParamConst, ScalarInt, Term, TermKind, Ty, TyCtxt, TypeFoldable,
@@ -3054,8 +3055,8 @@ fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> FxHashMap<DefId, Symbol> {
     map
 }
 
-pub fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers { trimmed_def_paths, ..*providers };
+pub fn provide(providers: &mut Providers) {
+    *providers = Providers { trimmed_def_paths, ..*providers };
 }
 
 #[derive(Default)]

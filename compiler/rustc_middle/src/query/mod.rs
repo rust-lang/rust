@@ -4,8 +4,89 @@
 //! ["Queries: demand-driven compilation"](https://rustc-dev-guide.rust-lang.org/query.html).
 //! This chapter includes instructions for adding new queries.
 
-use crate::ty::{self, print::describe_as_module, TyCtxt};
+#![allow(unused_parens)]
+
+use crate::dep_graph;
+use crate::dep_graph::DepKind;
+use crate::infer::canonical::{self, Canonical};
+use crate::lint::LintExpectation;
+use crate::metadata::ModChild;
+use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
+use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
+use crate::middle::lib_features::LibFeatures;
+use crate::middle::privacy::EffectiveVisibilities;
+use crate::middle::resolve_bound_vars::{ObjectLifetimeDefault, ResolveBoundVars, ResolvedArg};
+use crate::middle::stability::{self, DeprecationEntry};
+use crate::mir;
+use crate::mir::interpret::GlobalId;
+use crate::mir::interpret::{
+    ConstValue, EvalToAllocationRawResult, EvalToConstValueResult, EvalToValTreeResult,
+};
+use crate::mir::interpret::{LitToConstError, LitToConstInput};
+use crate::mir::mono::CodegenUnit;
+use crate::query::erase::{erase, restore, Erase};
+use crate::thir;
+use crate::traits::query::{
+    CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
+    CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
+    CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal, NoSolution,
+};
+use crate::traits::query::{
+    DropckConstraint, DropckOutlivesResult, MethodAutoderefStepsResult, NormalizationResult,
+    OutlivesBound,
+};
+use crate::traits::specialization_graph;
+use crate::traits::{self, ImplSource};
+use crate::ty::fast_reject::SimplifiedType;
+use crate::ty::layout::ValidityRequirement;
+use crate::ty::query::{
+    query_ensure, query_get_at, DynamicQuery, IntoQueryParam, TyCtxtAt, TyCtxtEnsure,
+    TyCtxtEnsureWithValue,
+};
+use crate::ty::subst::{GenericArg, SubstsRef};
+use crate::ty::util::AlwaysRequiresDrop;
+use crate::ty::GeneratorDiagnosticData;
+use crate::ty::TyCtxtFeed;
+use crate::ty::{
+    self, print::describe_as_module, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt,
+    UnusedGenericParams,
+};
+use rustc_arena::TypedArena;
+use rustc_ast as ast;
+use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_attr as attr;
+use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
+use rustc_data_structures::steal::Steal;
+use rustc_data_structures::svh::Svh;
+use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::WorkerLocal;
+use rustc_data_structures::unord::UnordSet;
+use rustc_errors::ErrorGuaranteed;
+use rustc_hir as hir;
+use rustc_hir::def::{DefKind, DocLinkResMap};
+use rustc_hir::def_id::{
+    CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId, LocalDefIdMap, LocalDefIdSet,
+};
+use rustc_hir::lang_items::{LangItem, LanguageItems};
+use rustc_hir::{Crate, ItemLocalId, TraitCandidate};
+use rustc_index::IndexVec;
+use rustc_query_system::ich::StableHashingContext;
+use rustc_query_system::query::{try_get_cached, CacheSelector, QueryCache, QueryMode, QueryState};
+use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
+use rustc_session::cstore::{CrateDepKind, CrateSource};
+use rustc_session::cstore::{ExternCrate, ForeignModule, LinkagePreference, NativeLib};
+use rustc_session::lint::LintExpectationId;
+use rustc_session::Limits;
 use rustc_span::def_id::LOCAL_CRATE;
+use rustc_span::symbol::Symbol;
+use rustc_span::{Span, DUMMY_SP};
+use rustc_target::abi;
+use rustc_target::spec::PanicStrategy;
+use std::mem;
+use std::ops::Deref;
+use std::path::PathBuf;
+use std::sync::Arc;
 
 pub mod erase;
 mod keys;
@@ -2102,3 +2183,6 @@ rustc_queries! {
         desc { "check whether two const param are definitely not equal to eachother"}
     }
 }
+
+rustc_query_append! { define_callbacks! }
+rustc_feedable_queries! { define_feedable! }

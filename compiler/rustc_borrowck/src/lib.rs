@@ -35,7 +35,7 @@ use rustc_middle::mir::{
 use rustc_middle::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
 use rustc_middle::mir::{InlineAsmOperand, Terminator, TerminatorKind};
 use rustc_middle::mir::{ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, CapturedPlace, ParamEnv, RegionVid, TyCtxt};
 use rustc_session::lint::builtin::UNUSED_MUT;
 use rustc_span::{Span, Symbol};

@@ -5,6 +5,7 @@ use crate::{mir, ty};
 
 use std::fmt::Write;
 
+use crate::query::Providers;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, LangItem};
@@ -457,6 +458,6 @@ impl BorrowKind {
     }
 }
 
-pub fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers { closure_typeinfo, ..*providers }
+pub fn provide(providers: &mut Providers) {
+    *providers = Providers { closure_typeinfo, ..*providers }
 }

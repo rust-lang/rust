@@ -3,6 +3,7 @@ use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::{GeneratorLayout, GeneratorSavedLocal};
+use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{
     IntegerExt, LayoutCx, LayoutError, LayoutOf, TyAndLayout, MAX_SIMD_LANES,
 };
@@ -22,8 +23,8 @@ use crate::errors::{
 };
 use crate::layout_sanity_check::sanity_check_layout;
 
-pub fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers { layout_of, ..*providers };
+pub fn provide(providers: &mut Providers) {
+    *providers = Providers { layout_of, ..*providers };
 }
 
 #[instrument(skip(tcx, query), level = "debug")]

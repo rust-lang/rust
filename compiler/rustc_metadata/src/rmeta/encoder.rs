@@ -25,10 +25,10 @@ use rustc_middle::middle::exported_symbols::{
 };
 use rustc_middle::mir::interpret;
 use rustc_middle::query::LocalCrate;
+use rustc_middle::query::Providers;
 use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, SimplifiedType, TreatParams};
-use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, SymbolName, Ty, TyCtxt};
 use rustc_middle::util::common::to_readable_str;
 use rustc_serialize::{opaque, Decodable, Decoder, Encodable, Encoder};

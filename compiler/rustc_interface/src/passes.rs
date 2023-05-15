@@ -17,7 +17,7 @@ use rustc_lint::{unerased_lint_store, BufferedEarlyLint, EarlyCheckNode, LintSto
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
-use rustc_middle::ty::query::{ExternProviders, Providers};
+use rustc_middle::query::{ExternProviders, Providers};
 use rustc_middle::ty::{self, GlobalCtxt, RegisteredTools, TyCtxt};
 use rustc_mir_build as mir_build;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str, validate_attr};

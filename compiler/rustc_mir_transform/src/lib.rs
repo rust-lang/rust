@@ -34,7 +34,7 @@ use rustc_middle::mir::{
     MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue, SourceInfo,
     Statement, StatementKind, TerminatorKind, START_BLOCK,
 };
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_span::sym;
 use rustc_trait_selection::traits;
