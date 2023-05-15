@@ -143,6 +143,11 @@ cfg_if! {
                 self.0.set(val);
                 result
             }
+            pub fn fetch_and(&self, val: bool, _: Ordering) -> bool {
+                let result = self.0.get() & val;
+                self.0.set(val);
+                result
+            }
         }
 
         impl<T: Copy + PartialEq> Atomic<T> {

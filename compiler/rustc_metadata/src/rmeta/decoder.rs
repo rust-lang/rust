@@ -8,7 +8,7 @@ use rustc_ast as ast;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::{AppendOnlyVec, Lock, Lrc, OnceCell};
+use rustc_data_structures::sync::{AppendOnlyVec, AtomicBool, Lock, Lrc, OnceCell};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, DeriveProcMacro};
@@ -38,6 +38,7 @@ use proc_macro::bridge::client::ProcMacro;
 use std::iter::TrustedLen;
 use std::num::NonZeroUsize;
 use std::path::Path;
+use std::sync::atomic::Ordering;
 use std::{io, iter, mem};
 
 pub(super) use cstore_impl::provide;
@@ -109,9 +110,10 @@ pub(crate) struct CrateMetadata {
     dep_kind: Lock<CrateDepKind>,
     /// Filesystem location of this crate.
     source: Lrc<CrateSource>,
-    /// Whether or not this crate should be consider a private dependency
-    /// for purposes of the 'exported_private_dependencies' lint
-    private_dep: bool,
+    /// Whether or not this crate should be consider a private dependency.
+    /// Used by the 'exported_private_dependencies' lint, and for determining
+    /// whether to emit suggestions that reference this crate.
+    private_dep: AtomicBool,
     /// The hash for the host proc macro. Used to support `-Z dual-proc-macro`.
     host_hash: Option<Svh>,
 
@@ -692,12 +694,13 @@ impl MetadataBlob {
         writeln!(out, "=External Dependencies=")?;
 
         for (i, dep) in root.crate_deps.decode(self).enumerate() {
-            let CrateDep { name, extra_filename, hash, host_hash, kind } = dep;
+            let CrateDep { name, extra_filename, hash, host_hash, kind, is_private } = dep;
             let number = i + 1;
 
             writeln!(
                 out,
-                "{number} {name}{extra_filename} hash {hash} host_hash {host_hash:?} kind {kind:?}"
+                "{number} {name}{extra_filename} hash {hash} host_hash {host_hash:?} kind {kind:?} {privacy}",
+                privacy = if is_private { "private" } else { "public" }
             )?;
         }
         write!(out, "\n")?;
@@ -1627,7 +1630,7 @@ impl CrateMetadata {
             dependencies,
             dep_kind: Lock::new(dep_kind),
             source: Lrc::new(source),
-            private_dep,
+            private_dep: AtomicBool::new(private_dep),
             host_hash,
             extern_crate: Lock::new(None),
             hygiene_context: Default::default(),
@@ -1673,6 +1676,10 @@ impl CrateMetadata {
 
     pub(crate) fn update_dep_kind(&self, f: impl FnOnce(CrateDepKind) -> CrateDepKind) {
         self.dep_kind.with_lock(|dep_kind| *dep_kind = f(*dep_kind))
+    }
+
+    pub(crate) fn update_and_private_dep(&self, private_dep: bool) {
+        self.private_dep.fetch_and(private_dep, Ordering::SeqCst);
     }
 
     pub(crate) fn required_panic_strategy(&self) -> Option<PanicStrategy> {
