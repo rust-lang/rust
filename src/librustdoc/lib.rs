@@ -175,19 +175,15 @@ pub fn main() {
     init_logging(&handler);
     rustc_driver::init_env_logger(&handler, "RUSTDOC_LOG");
 
-    let exit_code = rustc_driver::catch_with_exit_code(|| match get_args(&handler) {
-        Some(args) => main_args(&mut handler, &args),
-        _ =>
-        {
-            #[allow(deprecated)]
-            Err(ErrorGuaranteed::unchecked_claim_error_was_emitted())
-        }
+    let exit_code = rustc_driver::catch_with_exit_code(|| {
+        let at_args = rustc_driver::args::raw_args(&handler)?;
+        main_args(&mut handler, &at_args)
     });
     process::exit(exit_code);
 }
 
 fn init_logging(handler: &EarlyErrorHandler) {
-    let color_logs = match std::env::var("RUSTDOC_LOG_COLOR").as_deref() {
+    let color_logs = match env::var("RUSTDOC_LOG_COLOR").as_deref() {
         Ok("always") => true,
         Ok("never") => false,
         Ok("auto") | Err(VarError::NotPresent) => io::stdout().is_terminal(),
@@ -215,19 +211,6 @@ fn init_logging(handler: &EarlyErrorHandler) {
     use tracing_subscriber::layer::SubscriberExt;
     let subscriber = tracing_subscriber::Registry::default().with(filter).with(layer);
     tracing::subscriber::set_global_default(subscriber).unwrap();
-}
-
-fn get_args(handler: &EarlyErrorHandler) -> Option<Vec<String>> {
-    env::args_os()
-        .enumerate()
-        .map(|(i, arg)| {
-            arg.into_string()
-                .map_err(|arg| {
-                    handler.early_warn(format!("Argument {i} is not valid Unicode: {arg:?}"));
-                })
-                .ok()
-        })
-        .collect()
 }
 
 fn opts() -> Vec<RustcOptGroup> {

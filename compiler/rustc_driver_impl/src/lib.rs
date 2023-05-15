@@ -1565,17 +1565,8 @@ pub fn main() -> ! {
     signal_handler::install();
     let mut callbacks = TimePassesCallbacks::default();
     install_ice_hook(DEFAULT_BUG_REPORT_URL, |_| ());
-    let exit_code = catch_with_exit_code(|| {
-        let args = env::args_os()
-            .enumerate()
-            .map(|(i, arg)| {
-                arg.into_string().unwrap_or_else(|arg| {
-                    handler.early_error(format!("argument {i} is not valid Unicode: {arg:?}"))
-                })
-            })
-            .collect::<Vec<_>>();
-        RunCompiler::new(&args, &mut callbacks).run()
-    });
+    let exit_code =
+        catch_with_exit_code(|| RunCompiler::new(&args::raw_args(&handler)?, &mut callbacks).run());
 
     if let Some(format) = callbacks.time_passes {
         let end_rss = get_resident_set_size();
