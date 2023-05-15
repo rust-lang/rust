@@ -164,7 +164,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 if let Some(root) = post_contract_node.get(&bb) {
                     break *root;
                 }
-                let parent = doms.immediate_dominator(bb);
+                let parent = doms.immediate_dominator(bb).unwrap();
                 dom_path.push(bb);
                 if !self.body.basic_blocks[parent].is_cleanup {
                     break bb;
