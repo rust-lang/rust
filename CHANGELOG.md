@@ -4948,6 +4948,7 @@ Released 2018-09-13
 [`println_empty_string`]: https://rust-lang.github.io/rust-clippy/master/index.html#println_empty_string
 [`ptr_arg`]: https://rust-lang.github.io/rust-clippy/master/index.html#ptr_arg
 [`ptr_as_ptr`]: https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr
+[`ptr_cast_constness`]: https://rust-lang.github.io/rust-clippy/master/index.html#ptr_cast_constness
 [`ptr_eq`]: https://rust-lang.github.io/rust-clippy/master/index.html#ptr_eq
 [`ptr_offset_with_cast`]: https://rust-lang.github.io/rust-clippy/master/index.html#ptr_offset_with_cast
 [`pub_enum_variant_names`]: https://rust-lang.github.io/rust-clippy/master/index.html#pub_enum_variant_names
