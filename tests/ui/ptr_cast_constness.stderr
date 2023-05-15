@@ -19,18 +19,6 @@ LL |     let _ = mut_ptr as *const i32;
    |             ^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast_const`, a safer alternative: `mut_ptr.cast_const()`
 
 error: `as` casting between raw pointers while changing its constness
-  --> $DIR/ptr_cast_constness.rs:44:13
-   |
-LL |     let _ = ptr as *mut i32;
-   |             ^^^^^^^^^^^^^^^ help: try `pointer::cast_mut`, a safer alternative: `ptr.cast_mut()`
-
-error: `as` casting between raw pointers while changing its constness
-  --> $DIR/ptr_cast_constness.rs:45:13
-   |
-LL |     let _ = mut_ptr as *const i32;
-   |             ^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast_const`, a safer alternative: `mut_ptr.cast_const()`
-
-error: `as` casting between raw pointers while changing its constness
   --> $DIR/ptr_cast_constness.rs:53:13
    |
 LL |     let _ = ptr as *mut i32;
@@ -42,5 +30,5 @@ error: `as` casting between raw pointers while changing its constness
 LL |     let _ = mut_ptr as *const i32;
    |             ^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast_const`, a safer alternative: `mut_ptr.cast_const()`
 
-error: aborting due to 7 previous errors
+error: aborting due to 5 previous errors
 

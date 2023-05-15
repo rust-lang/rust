@@ -41,8 +41,8 @@ fn _msrv_1_37() {
     let mut_ptr: *mut u32 = &mut 42_u32;
 
     // `pointer::cast_const` and `pointer::cast_mut` were stabilized in 1.65. Do not lint this
-    let _ = ptr.cast_mut();
-    let _ = mut_ptr.cast_const();
+    let _ = ptr as *mut i32;
+    let _ = mut_ptr as *const i32;
 }
 
 #[clippy::msrv = "1.65"]

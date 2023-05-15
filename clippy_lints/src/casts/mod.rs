@@ -752,7 +752,7 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
                 return;
             }
             cast_slice_from_raw_parts::check(cx, expr, cast_expr, cast_to, &self.msrv);
-            ptr_cast_constness::check(cx, expr, cast_expr, cast_from, cast_to);
+            ptr_cast_constness::check(cx, expr, cast_expr, cast_from, cast_to, &self.msrv);
             as_ptr_cast_mut::check(cx, expr, cast_expr, cast_to);
             fn_to_numeric_cast_any::check(cx, expr, cast_expr, cast_from, cast_to);
             fn_to_numeric_cast::check(cx, expr, cast_expr, cast_from, cast_to);
