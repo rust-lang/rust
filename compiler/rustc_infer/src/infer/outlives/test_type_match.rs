@@ -187,7 +187,7 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
         } else if pattern == value {
             Ok(pattern)
         } else {
-            relate::super_relate_tys(self, pattern, value)
+            relate::structurally_relate_tys(self, pattern, value)
         }
     }
 
@@ -201,7 +201,7 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
         if pattern == value {
             Ok(pattern)
         } else {
-            relate::super_relate_consts(self, pattern, value)
+            relate::structurally_relate_consts(self, pattern, value)
         }
     }
 

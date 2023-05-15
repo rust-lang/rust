@@ -1,7 +1,7 @@
 use crate::infer::DefineOpaqueTypes;
 use crate::traits::PredicateObligations;
 
-use super::combine::{CombineFields, ObligationEmittingRelation, RelationDir};
+use super::combine::{CombineFields, ObligationEmittingRelation};
 use super::Subtype;
 
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
@@ -88,11 +88,11 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
             }
 
             (&ty::Infer(TyVar(a_id)), _) => {
-                self.fields.instantiate(b, RelationDir::EqTo, a_id, self.a_is_expected)?;
+                self.fields.instantiate(b, ty::Invariant, a_id, self.a_is_expected)?;
             }
 
             (_, &ty::Infer(TyVar(b_id))) => {
-                self.fields.instantiate(a, RelationDir::EqTo, b_id, self.a_is_expected)?;
+                self.fields.instantiate(a, ty::Invariant, b_id, self.a_is_expected)?;
             }
 
             (

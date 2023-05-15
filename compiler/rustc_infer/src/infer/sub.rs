@@ -1,4 +1,4 @@
-use super::combine::{CombineFields, RelationDir};
+use super::combine::CombineFields;
 use super::{DefineOpaqueTypes, ObligationEmittingRelation, SubregionOrigin};
 
 use crate::traits::{Obligation, PredicateObligations};
@@ -108,11 +108,11 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
                 Ok(a)
             }
             (&ty::Infer(TyVar(a_id)), _) => {
-                self.fields.instantiate(b, RelationDir::SupertypeOf, a_id, !self.a_is_expected)?;
+                self.fields.instantiate(b, ty::Contravariant, a_id, !self.a_is_expected)?;
                 Ok(a)
             }
             (_, &ty::Infer(TyVar(b_id))) => {
-                self.fields.instantiate(a, RelationDir::SubtypeOf, b_id, self.a_is_expected)?;
+                self.fields.instantiate(a, ty::Covariant, b_id, self.a_is_expected)?;
                 Ok(a)
             }
 
