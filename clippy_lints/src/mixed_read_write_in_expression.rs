@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_note};
 use clippy_utils::{get_parent_expr, path_to_local, path_to_local_id};
 use if_chain::if_chain;
-use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir::intravisit::{walk_block, walk_expr, Visitor};
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, Guard, HirId, Local, Node, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
@@ -155,6 +155,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
                     self.report_diverging_sub_expr(e);
                 }
             },
+            ExprKind::Block(block, ..) => walk_block(self, block),
             _ => {
                 // do not lint expressions referencing objects of type `!`, as that required a
                 // diverging expression
@@ -162,9 +163,6 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
             },
         }
         self.maybe_walk_expr(e);
-    }
-    fn visit_block(&mut self, _: &'tcx Block<'_>) {
-        // don't continue over blocks, LateLintPass already does that
     }
 }
 

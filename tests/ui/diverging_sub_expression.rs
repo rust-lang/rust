@@ -1,5 +1,6 @@
 #![warn(clippy::diverging_sub_expression)]
 #![allow(clippy::match_same_arms, clippy::overly_complex_bool_expr)]
+#![allow(clippy::nonminimal_bool)]
 #[allow(clippy::empty_loop)]
 fn diverge() -> ! {
     loop {}
@@ -35,6 +36,9 @@ fn foobar() {
                 99 => return,
                 _ => true || panic!("boo"),
             },
+            // lint blocks as well
+            15 => true || { return; },
+            16 => false || { return; },
             _ => true || break,
         };
     }
