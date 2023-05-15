@@ -295,9 +295,12 @@ impl Completions {
             Visible::Editable => true,
             Visible::No => return,
         };
+        let doc_aliases = ctx.doc_aliases(&func);
         self.add(
             render_fn(
-                RenderContext::new(ctx).private_editable(is_private_editable),
+                RenderContext::new(ctx)
+                    .private_editable(is_private_editable)
+                    .doc_aliases(doc_aliases),
                 path_ctx,
                 local_name,
                 func,
@@ -322,9 +325,12 @@ impl Completions {
             Visible::Editable => true,
             Visible::No => return,
         };
+        let doc_aliases = ctx.doc_aliases(&func);
         self.add(
             render_method(
-                RenderContext::new(ctx).private_editable(is_private_editable),
+                RenderContext::new(ctx)
+                    .private_editable(is_private_editable)
+                    .doc_aliases(doc_aliases),
                 dot_access,
                 receiver,
                 local_name,
@@ -349,10 +355,12 @@ impl Completions {
             Visible::Editable => true,
             Visible::No => return,
         };
+        let doc_aliases = ctx.doc_aliases(&func);
         self.add(
             render_method(
                 RenderContext::new(ctx)
                     .private_editable(is_private_editable)
+                    .doc_aliases(doc_aliases)
                     .import_to_add(Some(import)),
                 dot_access,
                 None,

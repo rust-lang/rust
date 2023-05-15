@@ -1107,6 +1107,62 @@ fn here_we_go() {
 }
 
 #[test]
+fn completes_struct_fn_name_via_doc_alias_in_fn_body() {
+    check(
+        r#"
+struct Foo;
+impl Foo {
+    #[doc(alias = "qux")]
+    fn bar() -> u8 { 1 }
+}
+
+fn here_we_go() {
+    Foo::q$0
+}
+"#,
+        expect![[r#"
+            fn bar() (alias qux) fn() -> u8
+        "#]],
+    );
+}
+
+#[test]
+fn completes_method_name_via_doc_alias_in_fn_body() {
+    check(
+        r#"
+struct Foo {
+    bar: u8
+}
+impl Foo {
+    #[doc(alias = "qux")]
+    fn baz(&self) -> u8 {
+        self.bar
+    }
+}
+
+fn here_we_go() {
+    let foo = Foo { field: 42 };
+    foo.q$0
+}
+"#,
+        expect![[r#"
+            fd bar               u8
+            me baz() (alias qux) fn(&self) -> u8
+            sn box               Box::new(expr)
+            sn call              function(expr)
+            sn dbg               dbg!(expr)
+            sn dbgr              dbg!(&expr)
+            sn let               let
+            sn letm              let mut
+            sn match             match expr {}
+            sn ref               &expr
+            sn refm              &mut expr
+            sn unsafe            unsafe {}
+        "#]],
+    );
+}
+
+#[test]
 fn completes_fn_name_via_doc_alias_in_fn_body() {
     check(
         r#"
