@@ -38,18 +38,18 @@ pub fn layout_of_adt_query(
             .map(|(fd, _)| layout_of_ty(db, &field_ty(db, def, fd, &subst), cx.krate))
             .collect::<Result<Vec<_>, _>>()
     };
-    let (variants, is_enum, is_union, repr) = match def {
+    let (variants, repr) = match def {
         AdtId::StructId(s) => {
             let data = db.struct_data(s);
             let mut r = SmallVec::<[_; 1]>::new();
             r.push(handle_variant(s.into(), &data.variant_data)?);
-            (r, false, false, data.repr.unwrap_or_default())
+            (r, data.repr.unwrap_or_default())
         }
         AdtId::UnionId(id) => {
             let data = db.union_data(id);
             let mut r = SmallVec::new();
             r.push(handle_variant(id.into(), &data.variant_data)?);
-            (r, false, true, data.repr.unwrap_or_default())
+            (r, data.repr.unwrap_or_default())
         }
         AdtId::EnumId(e) => {
             let data = db.enum_data(e);
@@ -63,19 +63,19 @@ pub fn layout_of_adt_query(
                     )
                 })
                 .collect::<Result<SmallVec<_>, _>>()?;
-            (r, true, false, data.repr.unwrap_or_default())
+            (r, data.repr.unwrap_or_default())
         }
     };
     let variants =
         variants.iter().map(|x| x.iter().collect::<Vec<_>>()).collect::<SmallVec<[_; 1]>>();
     let variants = variants.iter().map(|x| x.iter().collect()).collect();
-    if is_union {
+    if matches!(def, AdtId::UnionId(..)) {
         cx.layout_of_union(&repr, &variants).ok_or(LayoutError::Unknown)
     } else {
         cx.layout_of_struct_or_enum(
             &repr,
             &variants,
-            is_enum,
+            matches!(def, AdtId::EnumId(..)),
             is_unsafe_cell(db, def),
             layout_scalar_valid_range(db, def),
             |min, max| repr_discr(&dl, &repr, min, max).unwrap_or((Integer::I8, false)),
@@ -95,7 +95,7 @@ pub fn layout_of_adt_query(
             //     .iter_enumerated()
             //     .any(|(i, v)| v.discr != ty::VariantDiscr::Relative(i.as_u32()))
             repr.inhibit_enum_layout_opt(),
-            !is_enum
+            !matches!(def, AdtId::EnumId(..))
                 && variants
                     .iter()
                     .next()
