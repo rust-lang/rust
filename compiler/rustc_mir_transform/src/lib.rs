@@ -90,6 +90,7 @@ mod remove_storage_markers;
 mod remove_uninit_drops;
 mod remove_unneeded_drops;
 mod remove_zsts;
+mod replicate_branches;
 mod required_consts;
 mod reveal_all;
 mod separate_const_switch;
@@ -554,7 +555,8 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &remove_unneeded_drops::RemoveUnneededDrops,
             &sroa::ScalarReplacementOfAggregates,
             &match_branches::MatchBranchSimplification,
-            // inst combine is after MatchBranchSimplification to clean up Ne(_1, false)
+            // inst simplify is after MatchBranchSimplification to clean up Ne(_1, false)
+            &replicate_branches::ReplicateBranches,
             &multiple_return_terminators::MultipleReturnTerminators,
             &instsimplify::InstSimplify,
             &separate_const_switch::SeparateConstSwitch,

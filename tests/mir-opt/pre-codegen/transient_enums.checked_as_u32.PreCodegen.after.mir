@@ -29,35 +29,39 @@ fn checked_as_u32(_1: u64) -> Option<u32> {
         _4 = const 4294967295_u64;       // scope 2 at $SRC_DIR/core/src/convert/num.rs:LL:COL
         _3 = Gt(_1, move _4);            // scope 2 at $SRC_DIR/core/src/convert/num.rs:LL:COL
         StorageDead(_4);                 // scope 2 at $SRC_DIR/core/src/convert/num.rs:LL:COL
-        switchInt(move _3) -> [0: bb2, otherwise: bb1]; // scope 2 at $SRC_DIR/core/src/convert/num.rs:LL:COL
+        switchInt(move _3) -> [0: bb3, otherwise: bb2]; // scope 2 at $SRC_DIR/core/src/convert/num.rs:LL:COL
     }
 
     bb1: {
+        StorageDead(_7);                 // scope 0 at $DIR/transient_enums.rs:+1:18: +1:22
+        StorageDead(_2);                 // scope 0 at $DIR/transient_enums.rs:+1:21: +1:22
+        return;                          // scope 0 at $DIR/transient_enums.rs:+2:2: +2:2
+    }
+
+    bb2: {
         _2 = Result::<u32, TryFromIntError>::Err(const TryFromIntError(())); // scope 2 at $SRC_DIR/core/src/convert/num.rs:LL:COL
                                          // mir::Constant
                                          // + span: no-location
                                          // + literal: Const { ty: TryFromIntError, val: Value(<ZST>) }
-        goto -> bb3;                     // scope 2 at $SRC_DIR/core/src/convert/num.rs:LL:COL
-    }
-
-    bb2: {
-        StorageLive(_5);                 // scope 2 at $SRC_DIR/core/src/convert/num.rs:LL:COL
-        _5 = _1 as u32 (IntToInt);       // scope 2 at $SRC_DIR/core/src/convert/num.rs:LL:COL
-        _2 = Result::<u32, TryFromIntError>::Ok(move _5); // scope 2 at $SRC_DIR/core/src/convert/num.rs:LL:COL
-        StorageDead(_5);                 // scope 2 at $SRC_DIR/core/src/convert/num.rs:LL:COL
-        goto -> bb3;                     // scope 2 at $SRC_DIR/core/src/convert/num.rs:LL:COL
-    }
-
-    bb3: {
         StorageDead(_3);                 // scope 2 at $SRC_DIR/core/src/convert/num.rs:LL:COL
         StorageLive(_7);                 // scope 0 at $DIR/transient_enums.rs:+1:18: +1:22
         _6 = discriminant(_2);           // scope 3 at $SRC_DIR/core/src/result.rs:LL:COL
         switchInt(move _6) -> [0: bb6, 1: bb4, otherwise: bb5]; // scope 3 at $SRC_DIR/core/src/result.rs:LL:COL
     }
 
+    bb3: {
+        StorageLive(_5);                 // scope 2 at $SRC_DIR/core/src/convert/num.rs:LL:COL
+        _5 = _1 as u32 (IntToInt);       // scope 2 at $SRC_DIR/core/src/convert/num.rs:LL:COL
+        _2 = Result::<u32, TryFromIntError>::Ok(move _5); // scope 2 at $SRC_DIR/core/src/convert/num.rs:LL:COL
+        StorageDead(_5);                 // scope 2 at $SRC_DIR/core/src/convert/num.rs:LL:COL
+        StorageDead(_3);                 // scope 2 at $SRC_DIR/core/src/convert/num.rs:LL:COL
+        StorageLive(_7);                 // scope 0 at $DIR/transient_enums.rs:+1:18: +1:22
+        goto -> bb6;                     // scope 3 at $SRC_DIR/core/src/result.rs:LL:COL
+    }
+
     bb4: {
         _0 = Option::<u32>::None;        // scope 3 at $SRC_DIR/core/src/result.rs:LL:COL
-        goto -> bb7;                     // scope 3 at $SRC_DIR/core/src/result.rs:LL:COL
+        goto -> bb1;                     // scope 3 at $SRC_DIR/core/src/result.rs:LL:COL
     }
 
     bb5: {
@@ -67,12 +71,6 @@ fn checked_as_u32(_1: u64) -> Option<u32> {
     bb6: {
         _7 = move ((_2 as Ok).0: u32);   // scope 3 at $SRC_DIR/core/src/result.rs:LL:COL
         _0 = Option::<u32>::Some(move _7); // scope 4 at $SRC_DIR/core/src/result.rs:LL:COL
-        goto -> bb7;                     // scope 3 at $SRC_DIR/core/src/result.rs:LL:COL
-    }
-
-    bb7: {
-        StorageDead(_7);                 // scope 0 at $DIR/transient_enums.rs:+1:18: +1:22
-        StorageDead(_2);                 // scope 0 at $DIR/transient_enums.rs:+1:21: +1:22
-        return;                          // scope 0 at $DIR/transient_enums.rs:+2:2: +2:2
+        goto -> bb1;                     // scope 3 at $SRC_DIR/core/src/result.rs:LL:COL
     }
 }
