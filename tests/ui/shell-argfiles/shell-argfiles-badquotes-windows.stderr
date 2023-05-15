@@ -1,2 +1,2 @@
-error: Failed to load argument file: Invalid shell-style arguments in $DIR/shell-argfiles-badquotes.args
+error: failed to load argument file: invalid shell-style arguments in $DIR/shell-argfiles-badquotes.args
 
