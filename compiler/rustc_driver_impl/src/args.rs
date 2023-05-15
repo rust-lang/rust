@@ -1,7 +1,4 @@
-use std::error;
-use std::fmt;
-use std::fs;
-use std::io;
+use std::{env, error, fmt, fs, io};
 
 use rustc_session::EarlyDiagCtxt;
 use rustc_span::ErrorGuaranteed;
@@ -113,6 +110,29 @@ pub fn arg_expand_all(
         }
     }
     result.map(|()| expander.finish())
+}
+
+/// Gets the raw unprocessed command-line arguments as Unicode strings, without doing any further
+/// processing (e.g., without `@file` expansion).
+///
+/// This function is identical to [`env::args()`] except that it emits an error when it encounters
+/// non-Unicode arguments instead of panicking.
+pub fn raw_args(early_dcx: &EarlyDiagCtxt) -> Result<Vec<String>, ErrorGuaranteed> {
+    let mut res = Ok(Vec::new());
+    for (i, arg) in env::args_os().enumerate() {
+        match arg.into_string() {
+            Ok(arg) => {
+                if let Ok(args) = &mut res {
+                    args.push(arg);
+                }
+            }
+            Err(arg) => {
+                res =
+                    Err(early_dcx.early_err(format!("argument {i} is not valid Unicode: {arg:?}")))
+            }
+        }
+    }
+    res
 }
 
 #[derive(Debug)]
