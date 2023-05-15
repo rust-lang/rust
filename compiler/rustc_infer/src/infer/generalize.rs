@@ -10,6 +10,9 @@ use crate::infer::nll_relate::TypeRelatingDelegate;
 use crate::infer::type_variable::TypeVariableValue;
 use crate::infer::{InferCtxt, RegionVariableOrigin};
 
+/// Attempts to generalize `term` for the type variable `for_vid`.
+/// This checks for cycles -- that is, whether the type `term`
+/// references `for_vid`.
 pub(super) fn generalize<'tcx, D: GeneralizerDelegate<'tcx>, T: Into<Term<'tcx>> + Relate<'tcx>>(
     infcx: &InferCtxt<'tcx>,
     delegate: &mut D,

@@ -48,13 +48,6 @@ pub struct CombineFields<'infcx, 'tcx> {
     pub define_opaque_types: DefineOpaqueTypes,
 }
 
-#[derive(Copy, Clone, Debug)]
-pub enum RelationDir {
-    SubtypeOf,
-    SupertypeOf,
-    EqTo,
-}
-
 impl<'tcx> InferCtxt<'tcx> {
     pub fn super_combine_tys<R>(
         &self,
@@ -378,12 +371,10 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
     pub fn instantiate(
         &mut self,
         a_ty: Ty<'tcx>,
-        dir: RelationDir,
+        ambient_variance: ty::Variance,
         b_vid: ty::TyVid,
         a_is_expected: bool,
     ) -> RelateResult<'tcx, ()> {
-        use self::RelationDir::*;
-
         // Get the actual variable that b_vid has been inferred to
         debug_assert!(self.infcx.inner.borrow_mut().type_variables().probe(b_vid).is_unknown());
 
@@ -398,7 +389,18 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         // `'?2` and `?3` are fresh region/type inference
         // variables. (Down below, we will relate `a_ty <: b_ty`,
         // adding constraints like `'x: '?2` and `?1 <: ?3`.)
-        let Generalization { value: b_ty, needs_wf } = self.generalize(a_ty, b_vid, dir)?;
+        let Generalization { value: b_ty, needs_wf } = generalize::generalize(
+            self.infcx,
+            &mut CombineDelegate {
+                infcx: self.infcx,
+                param_env: self.param_env,
+                span: self.trace.span(),
+            },
+            a_ty,
+            b_vid,
+            ambient_variance,
+        )?;
+
         debug!(?b_ty);
         self.infcx.inner.borrow_mut().type_variables().instantiate(b_vid, b_ty);
 
@@ -417,60 +419,21 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         // relations wind up attributed to the same spans. We need
         // to associate causes/spans with each of the relations in
         // the stack to get this right.
-        match dir {
-            EqTo => self.equate(a_is_expected).relate(a_ty, b_ty),
-            SubtypeOf => self.sub(a_is_expected).relate(a_ty, b_ty),
-            SupertypeOf => self.sub(a_is_expected).relate_with_variance(
+        match ambient_variance {
+            ty::Variance::Invariant => self.equate(a_is_expected).relate(a_ty, b_ty),
+            ty::Variance::Covariant => self.sub(a_is_expected).relate(a_ty, b_ty),
+            ty::Variance::Contravariant => self.sub(a_is_expected).relate_with_variance(
                 ty::Contravariant,
                 ty::VarianceDiagInfo::default(),
                 a_ty,
                 b_ty,
             ),
+            ty::Variance::Bivariant => {
+                unreachable!("no code should be generalizing bivariantly (currently)")
+            }
         }?;
 
         Ok(())
-    }
-
-    /// Attempts to generalize `ty` for the type variable `for_vid`.
-    /// This checks for cycle -- that is, whether the type `ty`
-    /// references `for_vid`. The `dir` is the "direction" for which we
-    /// a performing the generalization (i.e., are we producing a type
-    /// that can be used as a supertype etc).
-    ///
-    /// Preconditions:
-    ///
-    /// - `for_vid` is a "root vid"
-    #[instrument(skip(self), level = "trace", ret)]
-    fn generalize(
-        &mut self,
-        ty: Ty<'tcx>,
-        for_vid: ty::TyVid,
-        dir: RelationDir,
-    ) -> RelateResult<'tcx, Generalization<Ty<'tcx>>> {
-        // Determine the ambient variance within which `ty` appears.
-        // The surrounding equation is:
-        //
-        //     ty [op] ty2
-        //
-        // where `op` is either `==`, `<:`, or `:>`. This maps quite
-        // naturally.
-        let ambient_variance = match dir {
-            RelationDir::EqTo => ty::Invariant,
-            RelationDir::SubtypeOf => ty::Covariant,
-            RelationDir::SupertypeOf => ty::Contravariant,
-        };
-
-        generalize::generalize(
-            self.infcx,
-            &mut CombineDelegate {
-                infcx: self.infcx,
-                param_env: self.param_env,
-                span: self.trace.span(),
-            },
-            ty,
-            for_vid,
-            ambient_variance,
-        )
     }
 
     pub fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
