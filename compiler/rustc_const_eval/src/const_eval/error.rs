@@ -169,14 +169,14 @@ impl<'tcx> ConstEvalErr<'tcx> {
                 // See <https://github.com/rust-lang/rust/pull/63152>.
                 let mut err = struct_error(tcx, &self.error.to_string());
                 self.decorate(&mut err, decorate);
-                ErrorHandled::Reported(err.emit())
+                ErrorHandled::Reported(err.emit().into())
             }
             _ => {
                 // Report as hard error.
                 let mut err = struct_error(tcx, message);
                 err.span_label(self.span, self.error.to_string());
                 self.decorate(&mut err, decorate);
-                ErrorHandled::Reported(err.emit())
+                ErrorHandled::Reported(err.emit().into())
             }
         }
     }

@@ -61,7 +61,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 self.const_eval_global_id(param_env, cid, span)
             }
             Ok(None) => Err(ErrorHandled::TooGeneric),
-            Err(error_reported) => Err(ErrorHandled::Reported(error_reported)),
+            Err(err) => Err(ErrorHandled::Reported(err.into())),
         }
     }
 
@@ -110,7 +110,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 })
             }
             Ok(None) => Err(ErrorHandled::TooGeneric),
-            Err(error_reported) => Err(ErrorHandled::Reported(error_reported)),
+            Err(err) => Err(ErrorHandled::Reported(err.into())),
         }
     }
 
