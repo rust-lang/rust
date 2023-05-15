@@ -13,8 +13,8 @@ use enums::{
     EmptyNonExhaustiveEnum, NestedNonExhaustive, NonExhaustiveEnum, NonExhaustiveSingleVariant,
     VariantNonExhaustive,
 };
-use unstable::{UnstableEnum, OnlyUnstableEnum, UnstableStruct, OnlyUnstableStruct};
 use structs::{FunctionalRecord, MixedVisFields, NestedStruct, NormalStruct};
+use unstable::{OnlyUnstableEnum, OnlyUnstableStruct, UnstableEnum, UnstableStruct};
 
 #[non_exhaustive]
 #[derive(Default)]
@@ -127,11 +127,22 @@ fn main() {
         _ => {}
     }
 
+    // No variants are mentioned
     #[deny(non_exhaustive_omitted_patterns)]
     match NonExhaustiveSingleVariant::A(true) {
         _ => {}
     }
     //~^^ some variants are not matched explicitly
+    #[deny(non_exhaustive_omitted_patterns)]
+    match Some(NonExhaustiveSingleVariant::A(true)) {
+        Some(_) => {}
+        None => {}
+    }
+    #[deny(non_exhaustive_omitted_patterns)]
+    match Some(&NonExhaustiveSingleVariant::A(true)) {
+        Some(_) => {}
+        None => {}
+    }
 
     // Ok: we don't lint on `if let` expressions
     #[deny(non_exhaustive_omitted_patterns)]
@@ -202,6 +213,25 @@ fn main() {
         _ => {}
     }
     //~^^ some variants are not matched explicitly
+
+    #[deny(non_exhaustive_omitted_patterns)]
+    match (true, &non_enum) {
+        (true, NonExhaustiveEnum::Unit) => {}
+        _ => {}
+    }
+
+    #[deny(non_exhaustive_omitted_patterns)]
+    match (&non_enum, true) {
+        (NonExhaustiveEnum::Unit, true) => {}
+        _ => {}
+    }
+    //~^^ some variants are not matched explicitly
+
+    #[deny(non_exhaustive_omitted_patterns)]
+    match Some(&non_enum) {
+        Some(NonExhaustiveEnum::Unit | NonExhaustiveEnum::Tuple(_)) => {}
+        _ => {}
+    }
 }
 
 #[deny(non_exhaustive_omitted_patterns)]
