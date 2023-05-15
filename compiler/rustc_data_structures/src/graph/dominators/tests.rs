@@ -8,7 +8,7 @@ fn diamond() {
 
     let dominators = dominators(&graph);
     let immediate_dominators = &dominators.immediate_dominators;
-    assert_eq!(immediate_dominators[0], Some(0));
+    assert_eq!(immediate_dominators[0], None);
     assert_eq!(immediate_dominators[1], Some(0));
     assert_eq!(immediate_dominators[2], Some(0));
     assert_eq!(immediate_dominators[3], Some(0));
@@ -30,7 +30,7 @@ fn paper() {
     assert_eq!(immediate_dominators[3], Some(6));
     assert_eq!(immediate_dominators[4], Some(6));
     assert_eq!(immediate_dominators[5], Some(6));
-    assert_eq!(immediate_dominators[6], Some(6));
+    assert_eq!(immediate_dominators[6], None);
 }
 
 #[test]
@@ -42,4 +42,14 @@ fn paper_slt() {
     );
 
     dominators(&graph);
+}
+
+#[test]
+fn immediate_dominator() {
+    let graph = TestGraph::new(1, &[(1, 2), (2, 3)]);
+    let dominators = dominators(&graph);
+    assert_eq!(dominators.immediate_dominator(0), None);
+    assert_eq!(dominators.immediate_dominator(1), None);
+    assert_eq!(dominators.immediate_dominator(2), Some(1));
+    assert_eq!(dominators.immediate_dominator(3), Some(2));
 }
