@@ -12,10 +12,9 @@ extern crate rustc_middle;
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_fluent_macro::fluent_messages;
 use rustc_hir::lang_items::LangItem;
-use rustc_middle::query::Providers;
+use rustc_middle::query::{Providers, TyCtxtAt};
 use rustc_middle::traits;
 use rustc_middle::ty::adjustment::CustomCoerceUnsized;
-use rustc_middle::ty::query::TyCtxtAt;
 use rustc_middle::ty::{self, Ty};
 
 mod collector;

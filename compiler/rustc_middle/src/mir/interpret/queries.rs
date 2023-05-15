@@ -1,9 +1,10 @@
 use super::{ErrorHandled, EvalToConstValueResult, EvalToValTreeResult, GlobalId};
 
 use crate::mir;
+use crate::query::{TyCtxtAt, TyCtxtEnsure};
 use crate::ty::subst::InternalSubsts;
 use crate::ty::visit::TypeVisitableExt;
-use crate::ty::{self, query::TyCtxtAt, query::TyCtxtEnsure, TyCtxt};
+use crate::ty::{self, TyCtxt};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_session::lint;

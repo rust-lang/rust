@@ -1,7 +1,8 @@
 use super::{AllocId, AllocRange, ConstAlloc, Pointer, Scalar};
 
 use crate::mir::interpret::ConstValue;
-use crate::ty::{layout, query::TyCtxtAt, tls, Ty, ValTree};
+use crate::query::TyCtxtAt;
+use crate::ty::{layout, tls, Ty, ValTree};
 
 use rustc_data_structures::sync::Lock;
 use rustc_errors::{pluralize, struct_span_err, DiagnosticBuilder, ErrorGuaranteed};
