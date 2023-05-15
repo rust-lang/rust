@@ -29,7 +29,6 @@ pub enum ArgPrep {
 }
 
 #[derive(Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
 struct JsonIntrinsic {
     #[serde(rename = "SIMD_ISA")]
     simd_isa: String,
