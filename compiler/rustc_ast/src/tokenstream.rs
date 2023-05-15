@@ -551,6 +551,10 @@ impl TokenStream {
             vec_mut.extend(stream_iter);
         }
     }
+
+    pub fn chunks(&self, chunk_size: usize) -> core::slice::Chunks<'_, TokenTree> {
+        self.0.chunks(chunk_size)
+    }
 }
 
 /// By-reference iterator over a [`TokenStream`], that produces `&TokenTree`
