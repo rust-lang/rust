@@ -15,7 +15,7 @@ pub enum Enum0 {
 // CHECK-NEXT: start:
 // CHECK-NEXT: %1 = icmp eq i8 %0, 2
 // CHECK-NEXT: %2 = and i8 %0, 1
-// CHECK-NEXT: %.0 = select i1 %1, i8 13, i8 %2
+// CHECK-NEXT: %_0.0 = select i1 %1, i8 13, i8 %2
 #[no_mangle]
 pub fn match0(e: Enum0) -> u8 {
     use Enum0::*;
