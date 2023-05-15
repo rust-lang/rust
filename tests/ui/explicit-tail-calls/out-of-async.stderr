@@ -1,0 +1,40 @@
+error: mismatched function ABIs
+  --> $DIR/out-of-async.rs:5:5
+   |
+LL |     become b();
+   |     ^^^^^^^^^^
+   |
+   = note: `become` requires caller and callee to have the same ABI
+   = note: caller ABI is `"rust-call"`, while callee ABI is `"Rust"`
+
+error: mismatched signatures
+  --> $DIR/out-of-async.rs:5:5
+   |
+LL |     become b();
+   |     ^^^^^^^^^^
+   |
+   = note: `become` requires caller and callee to have matching signatures
+   = note: caller signature: `extern "rust-call" fn(ResumeTy)`
+   = note: callee signature: `fn()`
+
+error: mismatched function ABIs
+  --> $DIR/out-of-async.rs:14:9
+   |
+LL |         become b();
+   |         ^^^^^^^^^^
+   |
+   = note: `become` requires caller and callee to have the same ABI
+   = note: caller ABI is `"rust-call"`, while callee ABI is `"Rust"`
+
+error: mismatched signatures
+  --> $DIR/out-of-async.rs:14:9
+   |
+LL |         become b();
+   |         ^^^^^^^^^^
+   |
+   = note: `become` requires caller and callee to have matching signatures
+   = note: caller signature: `extern "rust-call" fn(ResumeTy)`
+   = note: callee signature: `fn()`
+
+error: aborting due to 4 previous errors
+

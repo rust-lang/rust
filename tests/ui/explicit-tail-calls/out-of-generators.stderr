@@ -1,0 +1,11 @@
+error: mismatched function ABIs
+  --> $DIR/out-of-generators.rs:7:9
+   |
+LL |         become f()
+   |         ^^^^^^^^^^
+   |
+   = note: `become` requires caller and callee to have the same ABI
+   = note: caller ABI is `"rust-call"`, while callee ABI is `"Rust"`
+
+error: aborting due to previous error
+
