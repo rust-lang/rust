@@ -23,10 +23,29 @@ fn main() {
 }
 
 fn issue9914() {
+    macro_rules! foo {
+        ($x:expr) => {
+            $x;
+        };
+    }
+    macro_rules! foo2 {
+        ($x:expr) => {
+            $x;
+        };
+    }
+    macro_rules! expand_to_dbg {
+        () => {
+            dbg!();
+        };
+    }
+
     dbg!();
     #[allow(clippy::let_unit_value)]
     let _ = dbg!();
     bar(dbg!());
+    foo!(dbg!());
+    foo2!(foo!(dbg!()));
+    expand_to_dbg!();
 }
 
 mod issue7274 {

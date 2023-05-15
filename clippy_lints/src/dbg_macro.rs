@@ -3,10 +3,10 @@ use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{is_in_cfg_test, is_in_test_function};
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, Node, Stmt, StmtKind};
+use rustc_hir::{Expr, ExprKind, Node};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{sym, Span};
+use rustc_span::{sym, BytePos, Pos, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -31,9 +31,29 @@ declare_clippy_lint! {
     "`dbg!` macro is intended as a debugging tool"
 }
 
-fn span_including_semi(cx: &LateContext<'_>, span: Span) -> Span {
-    let span = cx.sess().source_map().span_extend_to_next_char(span, ';', true);
-    span.with_hi(span.hi() + rustc_span::BytePos(1))
+/// Gets the span of the statement up to the next semicolon, if and only if the next
+/// non-whitespace character actually is a semicolon.
+/// E.g.
+/// ```rust,ignore
+/// 
+///    dbg!();
+///    ^^^^^^^  this span is returned
+///
+///   foo!(dbg!());
+///             no span is returned
+/// ```
+fn span_including_semi(cx: &LateContext<'_>, span: Span) -> Option<Span> {
+    let sm = cx.sess().source_map();
+    let sf = sm.lookup_source_file(span.hi());
+    let src = sf.src.as_ref()?.get(span.hi().to_usize()..)?;
+    let first_non_whitespace = src.find(|c: char| !c.is_whitespace())?;
+
+    if src.as_bytes()[first_non_whitespace] == b';' {
+        let hi = span.hi() + BytePos::from_usize(first_non_whitespace + 1);
+        Some(span.with_hi(hi))
+    } else {
+        None
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -62,16 +82,17 @@ impl LateLintPass<'_> for DbgMacro {
             let mut applicability = Applicability::MachineApplicable;
 
             let (sugg_span, suggestion) = match expr.peel_drop_temps().kind {
-                ExprKind::Block(..) => match cx.tcx.hir().find_parent(expr.hir_id) {
-                    // dbg!() as a standalone statement, suggest removing the whole statement entirely
-                    Some(Node::Stmt(
-                        stmt @ Stmt {
-                            kind: StmtKind::Semi(_),
-                            ..
-                        },
-                    )) => (span_including_semi(cx, stmt.span.source_callsite()), String::new()),
-                    // empty dbg!() in arbitrary position (e.g. `foo(dbg!())`), suggest replacing with `foo(())`
-                    _ => (macro_call.span, String::from("()")),
+                // dbg!()
+                ExprKind::Block(..) => {
+                    // If the `dbg!` macro is a "free" statement and not contained within other expressions,
+                    // remove the whole statement.
+                    if let Some(Node::Stmt(stmt)) = cx.tcx.hir().find_parent(expr.hir_id)
+                        && let Some(span) = span_including_semi(cx, stmt.span.source_callsite())
+                    {
+                        (span, String::new())
+                    } else {
+                        (macro_call.span, String::from("()"))
+                    }
                 },
                 // dbg!(1)
                 ExprKind::Match(val, ..) => (
