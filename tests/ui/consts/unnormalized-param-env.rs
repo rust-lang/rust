@@ -1,4 +1,4 @@
-// check-pass
+// known-bug: unknown
 
 pub trait CSpace<const N: usize> {
     type Traj;

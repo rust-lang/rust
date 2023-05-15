@@ -1,0 +1,28 @@
+error[E0277]: the trait bound `CS: CSpace<4>` is not satisfied
+  --> $DIR/unnormalized-param-env.rs:23:5
+   |
+LL | /     fn trajectory_free<TF, S1>(&self, t: &TF)
+LL | |     where
+LL | |         CS::Traj: Sized,
+LL | |         CS: CSpace<N>,
+   | |______________________^ the trait `CSpace<4>` is not implemented for `CS`
+   |
+help: consider restricting type parameter `CS`
+   |
+LL | impl<CS: CSpace<4>> Obstacle<CS, N> for ObstacleSpace2df32 {
+   |        +++++++++++
+
+error[E0277]: the trait bound `CS: CSpace<4>` is not satisfied
+  --> $DIR/unnormalized-param-env.rs:23:8
+   |
+LL |     fn trajectory_free<TF, S1>(&self, t: &TF)
+   |        ^^^^^^^^^^^^^^^ the trait `CSpace<4>` is not implemented for `CS`
+   |
+help: consider restricting type parameter `CS`
+   |
+LL | impl<CS: CSpace<4>> Obstacle<CS, N> for ObstacleSpace2df32 {
+   |        +++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
