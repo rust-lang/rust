@@ -20,6 +20,7 @@
 #![feature(min_specialization)]
 #![feature(rustc_attrs)]
 #![feature(let_chains)]
+#![feature(round_char_boundary)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 
