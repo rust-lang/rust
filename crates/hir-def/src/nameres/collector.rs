@@ -35,8 +35,8 @@ use crate::{
     derive_macro_as_call_id,
     item_scope::{ImportType, PerNsGlobImports},
     item_tree::{
-        self, Fields, FileItemTreeId, ImportKind, ItemTree, ItemTreeId, ItemTreeNode, MacroCall,
-        MacroDef, MacroRules, Mod, ModItem, ModKind, TreeId,
+        self, ExternCrate, Fields, FileItemTreeId, ImportKind, ItemTree, ItemTreeId, ItemTreeNode,
+        MacroCall, MacroDef, MacroRules, Mod, ModItem, ModKind, TreeId,
     },
     macro_call_as_call_id, macro_id_to_def_id,
     nameres::{
@@ -712,41 +712,28 @@ impl DefCollector<'_> {
         );
     }
 
-    /// Import macros from `#[macro_use] extern crate`.
-    // FIXME: Support `#[macro_rules(macro_name, ...)]`.
-    fn import_macros_from_extern_crate(
-        &mut self,
-        current_module_id: LocalModuleId,
-        extern_crate: &item_tree::ExternCrate,
-    ) {
-        tracing::debug!(
-            "importing macros from extern crate: {:?} ({:?})",
-            extern_crate,
-            self.def_map.edition,
-        );
-
-        if let Some(m) = self.resolve_extern_crate(&extern_crate.name) {
-            if m == self.def_map.module_id(current_module_id) {
-                cov_mark::hit!(ignore_macro_use_extern_crate_self);
-                return;
-            }
-
-            cov_mark::hit!(macro_rules_from_other_crates_are_visible_with_macro_use);
-            self.import_all_macros_exported(m.krate);
-        }
-    }
-
-    /// Import all exported macros from another crate
+    /// Import exported macros from another crate. `names`, if `Some(_)`, specifies the name of
+    /// macros to be imported. Otherwise this method imports all exported macros.
     ///
     /// Exported macros are just all macros in the root module scope.
     /// Note that it contains not only all `#[macro_export]` macros, but also all aliases
     /// created by `use` in the root module, ignoring the visibility of `use`.
-    fn import_all_macros_exported(&mut self, krate: CrateId) {
+    fn import_macros_from_extern_crate(&mut self, krate: CrateId, names: Option<Vec<Name>>) {
         let def_map = self.db.crate_def_map(krate);
-        for (name, def) in def_map[def_map.root].scope.macros() {
-            // `#[macro_use]` brings macros into macro_use prelude. Yes, even non-`macro_rules!`
-            // macros.
-            self.def_map.macro_use_prelude.insert(name.clone(), def);
+        // `#[macro_use]` brings macros into macro_use prelude. Yes, even non-`macro_rules!`
+        // macros.
+        let root_scope = &def_map[def_map.root].scope;
+        if let Some(names) = names {
+            for name in names {
+                // FIXME: Report diagnostic on 404.
+                if let Some(def) = root_scope.get(&name).take_macros() {
+                    self.def_map.macro_use_prelude.insert(name, def);
+                }
+            }
+        } else {
+            for (name, def) in root_scope.macros() {
+                self.def_map.macro_use_prelude.insert(name.clone(), def);
+            }
         }
     }
 
@@ -1537,7 +1524,7 @@ impl ModCollector<'_, '_> {
         if let Some(prelude_module) = self.def_collector.def_map.prelude {
             if prelude_module.krate != krate && is_crate_root {
                 cov_mark::hit!(prelude_is_macro_use);
-                self.def_collector.import_all_macros_exported(prelude_module.krate);
+                self.def_collector.import_macros_from_extern_crate(prelude_module.krate, None);
             }
         }
 
@@ -1547,21 +1534,10 @@ impl ModCollector<'_, '_> {
         //
         // If we're not at the crate root, `macro_use`d extern crates are an error so let's just
         // ignore them.
-        // FIXME: Support `#[macro_rules(macro_name, ...)]`.
         if is_crate_root {
             for &item in items {
-                let ModItem::ExternCrate(id) = item else { continue; };
-                let attrs = self.item_tree.attrs(self.def_collector.db, krate, item.into());
-                if attrs.cfg().map_or(true, |cfg| self.is_cfg_enabled(&cfg)) {
-                    let import = &self.item_tree[id];
-                    let attrs = self.item_tree.attrs(
-                        self.def_collector.db,
-                        krate,
-                        ModItem::from(id).into(),
-                    );
-                    if attrs.by_key("macro_use").exists() {
-                        self.def_collector.import_macros_from_extern_crate(self.module_id, import);
-                    }
+                if let ModItem::ExternCrate(id) = item {
+                    self.process_macro_use_extern_crate(id);
                 }
             }
         }
@@ -1786,6 +1762,52 @@ impl ModCollector<'_, '_> {
                 }
             }
         }
+    }
+
+    fn process_macro_use_extern_crate(&mut self, extern_crate: FileItemTreeId<ExternCrate>) {
+        let db = self.def_collector.db;
+        let attrs = self.item_tree.attrs(
+            db,
+            self.def_collector.def_map.krate,
+            ModItem::from(extern_crate).into(),
+        );
+        if let Some(cfg) = attrs.cfg() {
+            if !self.is_cfg_enabled(&cfg) {
+                return;
+            }
+        }
+
+        let target_crate =
+            match self.def_collector.resolve_extern_crate(&self.item_tree[extern_crate].name) {
+                Some(m) => {
+                    if m == self.def_collector.def_map.module_id(self.module_id) {
+                        cov_mark::hit!(ignore_macro_use_extern_crate_self);
+                        return;
+                    }
+                    m.krate
+                }
+                None => return,
+            };
+
+        cov_mark::hit!(macro_rules_from_other_crates_are_visible_with_macro_use);
+
+        let mut single_imports = Vec::new();
+        let hygiene = Hygiene::new_unhygienic();
+        for attr in attrs.by_key("macro_use").attrs() {
+            let Some(paths) = attr.parse_path_comma_token_tree(db.upcast(), &hygiene) else {
+                // `#[macro_use]` (without any paths) found, forget collected names and just import
+                // all visible macros.
+                self.def_collector.import_macros_from_extern_crate(target_crate, None);
+                return;
+            };
+            for path in paths {
+                if let Some(name) = path.as_ident() {
+                    single_imports.push(name.clone());
+                }
+            }
+        }
+
+        self.def_collector.import_macros_from_extern_crate(target_crate, Some(single_imports));
     }
 
     fn collect_module(&mut self, module_id: FileItemTreeId<Mod>, attrs: &Attrs) {
