@@ -1075,6 +1075,10 @@ impl Enum {
         db.enum_data(self.id).variants.iter().map(|(id, _)| Variant { parent: self, id }).collect()
     }
 
+    pub fn repr(self, db: &dyn HirDatabase) -> Option<ReprOptions> {
+        db.enum_data(self.id).repr
+    }
+
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         Type::from_def(db, self.id)
     }
@@ -1112,6 +1116,7 @@ impl Enum {
         )
     }
 
+    /// Returns true if at least one variant of this enum is a non-unit variant.
     pub fn is_data_carrying(self, db: &dyn HirDatabase) -> bool {
         self.variants(db).iter().any(|v| !matches!(v.kind(db), StructKind::Unit))
     }
