@@ -288,6 +288,22 @@
 //!
 //! The details are not necessary to understand this file, so we explain them in
 //! [`super::deconstruct_pat`]. Splitting is done by the [`Constructor::split`] function.
+//!
+//! # Constants in patterns
+//!
+//! There are two kinds of constants in patterns:
+//!
+//! * literals (`1`, `true`, `"foo"`)
+//! * named or inline consts (`FOO`, `const { 5 + 6 }`)
+//!
+//! The latter are converted into other patterns with literals at the leaves. For example
+//! `const_to_pat(const { [1, 2, 3] })` becomes an `Array(vec![Const(1), Const(2), Const(3)])`
+//! pattern. This gets problematic when comparing the constant via `==` would behave differently
+//! from matching on the constant converted to a pattern. Situations like that can occur, when
+//! the user implements `PartialEq` manually, and thus could make `==` behave arbitrarily different.
+//! In order to honor the `==` implementation, constants of types that implement `PartialEq` manually
+//! stay as a full constant and become an `Opaque` pattern. These `Opaque` patterns do not participate
+//! in exhaustiveness, specialization or overlap checking.
 
 use self::ArmType::*;
 use self::Usefulness::*;
