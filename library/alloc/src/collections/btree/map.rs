@@ -3021,7 +3021,7 @@ impl<'a, K, V, A> CursorMut<'a, K, V, A> {
         })
     }
 
-    /// Returns a mutable reference to the of the element that the cursor is
+    /// Returns a mutable reference to the key of the element that the cursor is
     /// currently pointing to.
     ///
     /// This returns `None` if the cursor is currently pointing to the
