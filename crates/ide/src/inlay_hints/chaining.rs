@@ -625,8 +625,8 @@ fn main() {
                 [
                     InlayHint {
                         range: 124..130,
-                        position: Before,
-                        pad_left: true,
+                        position: After,
+                        pad_left: false,
                         pad_right: false,
                         kind: Type,
                         label: [
