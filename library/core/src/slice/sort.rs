@@ -1085,12 +1085,12 @@ where
 
             // SAFETY: left and right must be valid and part of v same for out.
             unsafe {
-                let to_copy = if is_less(&*right, &**left) {
-                    get_and_increment(&mut right)
-                } else {
-                    get_and_increment(left)
-                };
-                ptr::copy_nonoverlapping(to_copy, get_and_increment(out), 1);
+                let is_l = is_less(&*right, &**left);
+                let to_copy = if is_l { right } else { *left };
+                ptr::copy_nonoverlapping(to_copy, *out, 1);
+                *out = out.add(1);
+                right = right.add(is_l as usize);
+                *left = left.add(!is_l as usize);
             }
         }
     } else {
@@ -1113,31 +1113,17 @@ where
 
             // SAFETY: left and right must be valid and part of v same for out.
             unsafe {
-                let to_copy = if is_less(&*right.sub(1), &*left.sub(1)) {
-                    decrement_and_get(left)
-                } else {
-                    decrement_and_get(right)
-                };
-                ptr::copy_nonoverlapping(to_copy, decrement_and_get(&mut out), 1);
+                let is_l = is_less(&*right.sub(1), &*left.sub(1));
+                *left = left.sub(is_l as usize);
+                *right = right.sub(!is_l as usize);
+                let to_copy = if is_l { *left } else { *right };
+                out = out.sub(1);
+                ptr::copy_nonoverlapping(to_copy, out, 1);
             }
         }
     }
     // Finally, `hole` gets dropped. If the shorter run was not fully consumed, whatever remains of
     // it will now be copied into the hole in `v`.
-
-    unsafe fn get_and_increment<T>(ptr: &mut *mut T) -> *mut T {
-        let old = *ptr;
-
-        // SAFETY: ptr.add(1) must still be a valid pointer and part of `v`.
-        *ptr = unsafe { ptr.add(1) };
-        old
-    }
-
-    unsafe fn decrement_and_get<T>(ptr: &mut *mut T) -> *mut T {
-        // SAFETY: ptr.sub(1) must still be a valid pointer and part of `v`.
-        *ptr = unsafe { ptr.sub(1) };
-        *ptr
-    }
 
     // When dropped, copies the range `start..end` into `dest..`.
     struct MergeHole<T> {
