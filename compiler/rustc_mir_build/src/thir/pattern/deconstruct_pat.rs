@@ -1596,7 +1596,6 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
         self.collect_unreachable_spans(&mut spans);
         spans
     }
-
     fn collect_unreachable_spans(&self, spans: &mut Vec<Span>) {
         // We don't look at subpatterns if we already reported the whole pattern as unreachable.
         if !self.is_reachable() {

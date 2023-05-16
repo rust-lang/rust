@@ -973,7 +973,7 @@ pub(crate) fn compute_match_usefulness<'p, 'tcx>(
         .map(|arm| {
             debug!(?arm);
             let v = PatStack::from_pattern(arm.pat);
-            is_useful(cx, &matrix, &v, RealArm, arm.hir_id, arm.has_guard, true);
+            is_useful(cx, &matrix, &v, RealArm, lint_root, arm.has_guard, true);
             if !arm.has_guard {
                 matrix.push(v);
             }
