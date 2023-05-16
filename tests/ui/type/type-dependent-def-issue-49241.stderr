@@ -6,12 +6,6 @@ LL |     const l: usize = v.count();
    |     |
    |     help: consider using `let` instead of `const`: `let l`
 
-note: erroneous constant used
-  --> $DIR/type-dependent-def-issue-49241.rs:4:18
-   |
-LL |     let s: [u32; l] = v.into_iter().collect();
-   |                  ^
-
 error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0435`.
