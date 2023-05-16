@@ -681,4 +681,18 @@ struct Bar {
 "#,
         );
     }
+
+    #[test]
+    fn return_no_value() {
+        check_diagnostics(
+            r#"
+fn f() -> i32 {
+    return;
+ // ^^^^^^ error: expected i32, found ()
+    0
+}
+fn g() { return; }
+"#,
+        );
+    }
 }
