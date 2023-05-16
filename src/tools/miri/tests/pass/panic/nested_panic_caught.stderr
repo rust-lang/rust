@@ -1,0 +1,4 @@
+thread 'main' panicked at 'once', $DIR/nested_panic_caught.rs:LL:CC
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+thread 'main' panicked at 'twice', $DIR/nested_panic_caught.rs:LL:CC
+stack backtrace:
