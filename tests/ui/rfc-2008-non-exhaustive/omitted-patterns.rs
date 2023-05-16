@@ -56,17 +56,17 @@ fn main() {
     let non_enum = NonExhaustiveEnum::Unit;
 
     match non_enum {
+        //~^ some variants are not matched explicitly
         NonExhaustiveEnum::Unit => {}
         NonExhaustiveEnum::Tuple(_) => {}
         _ => {}
     }
-    //~^^ some variants are not matched explicitly
 
     match non_enum {
+        //~^ some variants are not matched explicitly
         NonExhaustiveEnum::Unit | NonExhaustiveEnum::Struct { .. } => {}
         _ => {}
     }
-    //~^^ some variants are not matched explicitly
 
     let x = 5;
     match non_enum {
@@ -75,7 +75,6 @@ fn main() {
         NonExhaustiveEnum::Struct { .. } => {}
         _ => {}
     }
-    //~^^ some variants are not matched explicitly
 
     // Ok: all covered and not `unreachable-patterns`
     match non_enum {
@@ -86,13 +85,12 @@ fn main() {
     }
 
     match NestedNonExhaustive::B {
+        //~^ some variants are not matched explicitly
         NestedNonExhaustive::A(NonExhaustiveEnum::Unit) => {}
         NestedNonExhaustive::A(_) => {}
         NestedNonExhaustive::B => {}
         _ => {}
     }
-    //~^^ some variants are not matched explicitly
-    //~^^^^^ some variants are not matched explicitly
 
     match VariantNonExhaustive::Baz(1, 2) {
         VariantNonExhaustive::Baz(_, _) => {}
@@ -119,11 +117,10 @@ fn main() {
         _ => {}
     }
 
-    // No variants are mentioned
+    // Don't lint if no variant is mentioned, because we can't do it consistently.
     match NonExhaustiveSingleVariant::A(true) {
         _ => {}
     }
-    //~^^ some variants are not matched explicitly
     match Some(NonExhaustiveSingleVariant::A(true)) {
         Some(_) => {}
         None => {}
@@ -137,11 +134,11 @@ fn main() {
     if let NonExhaustiveEnum::Tuple(_) = non_enum {}
 
     match UnstableEnum::Stable {
+        //~^ some variants are not matched explicitly
         UnstableEnum::Stable => {}
         UnstableEnum::Stable2 => {}
         _ => {}
     }
-    //~^^ some variants are not matched explicitly
 
     // Ok: the feature is on and all variants are matched
     match UnstableEnum::Stable {
@@ -159,10 +156,10 @@ fn main() {
     }
 
     match OnlyUnstableEnum::Unstable {
+        //~^ some variants are not matched explicitly
         OnlyUnstableEnum::Unstable => {}
         _ => {}
     }
-    //~^^ some variants are not matched explicitly
 
     let OnlyUnstableStruct { unstable, .. } = OnlyUnstableStruct::new();
     //~^ some fields are not explicitly listed
@@ -183,26 +180,32 @@ fn main() {
     let local_refutable @ NonExhaustiveEnum::Unit = NonExhaustiveEnum::Unit;
     //~^ refutable pattern in local binding
 
-    // Check that matching on a reference results in a correctly spanned diagnostic
+    // Check that matching on a reference results in a correct diagnostic
     match &non_enum {
+        //~^ some variants are not matched explicitly
+        //~| pattern `&NonExhaustiveEnum::Struct { .. }` not covered
         NonExhaustiveEnum::Unit => {}
         NonExhaustiveEnum::Tuple(_) => {}
         _ => {}
     }
-    //~^^ some variants are not matched explicitly
 
     match (true, &non_enum) {
+        //~^ some variants are not matched explicitly
+        //~| patterns `(_, &NonExhaustiveEnum::Tuple(_))` and `(_, &NonExhaustiveEnum::Struct { .. })` not covered
         (true, NonExhaustiveEnum::Unit) => {}
         _ => {}
     }
 
     match (&non_enum, true) {
+        //~^ some variants are not matched explicitly
+        //~| patterns `(&NonExhaustiveEnum::Tuple(_), _)` and `(&NonExhaustiveEnum::Struct { .. }, _)` not covered
         (NonExhaustiveEnum::Unit, true) => {}
         _ => {}
     }
-    //~^^ some variants are not matched explicitly
 
     match Some(&non_enum) {
+        //~^ some variants are not matched explicitly
+        //~| pattern `Some(&NonExhaustiveEnum::Struct { .. })` not covered
         Some(NonExhaustiveEnum::Unit | NonExhaustiveEnum::Tuple(_)) => {}
         _ => {}
     }

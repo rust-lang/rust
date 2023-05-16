@@ -13,10 +13,10 @@ LL |     #[warn(non_exhaustive_omitted_patterns)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: some variants are not matched explicitly
-  --> $DIR/stable-omitted-patterns.rs:23:9
+  --> $DIR/stable-omitted-patterns.rs:21:11
    |
-LL |         _ => {}
-   |         ^ pattern `UnstableEnum::Stable2` not covered
+LL |     match UnstableEnum::Stable {
+   |           ^^^^^^^^^^^^^^^^^^^^ pattern `UnstableEnum::Stable2` not covered
    |
    = help: ensure that all variants are matched explicitly by adding the suggested match arms
    = note: the matched value is of type `UnstableEnum` and the `non_exhaustive_omitted_patterns` attribute was found
