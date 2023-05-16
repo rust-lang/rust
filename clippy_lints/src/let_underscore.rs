@@ -192,18 +192,18 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
             if local.pat.default_binding_modes && local.ty.is_none() {
                 // When `default_binding_modes` is true, the `let` keyword is present.
 
-				if let Some(init) = local.init {
-                    // Ignore function calls that return impl traits...
-                    if matches!(init.kind, ExprKind::Call(_, _) | ExprKind::MethodCall(_, _, _, _)) {
-                        let expr_ty = cx.typeck_results().expr_ty(init);
-                        if expr_ty.is_impl_trait() {
-                            return;
-                        }
-                    }
-                    // Ignore if it is from a procedural macro...
-                    if is_from_proc_macro(cx, init) {
-                        return;
-                    }
+				// Ignore function calls that return impl traits...
+				if let Some(init) = local.init &&
+				matches!(init.kind, ExprKind::Call(_, _) | ExprKind::MethodCall(_, _, _, _)) {
+					let expr_ty = cx.typeck_results().expr_ty(init);
+					if expr_ty.is_impl_trait() {
+						return;
+					}
+				}
+
+                // Ignore if it is from a procedural macro...
+                if is_from_proc_macro(cx, init) {
+                    return;
                 }
 
 				span_lint_and_help(
