@@ -227,7 +227,7 @@ impl flags::AnalysisStats {
             fail += 1;
         }
         eprintln!("{:<20} {}", "Data layouts:", sw.elapsed());
-        eprintln!("Failed data layouts: {fail} ({}%)", fail * 100 / all);
+        eprintln!("Failed data layouts: {fail} ({}%)", percentage(fail, all));
         report_metric("failed data layouts", fail, "#");
     }
 
@@ -254,7 +254,7 @@ impl flags::AnalysisStats {
             fail += 1;
         }
         eprintln!("{:<20} {}", "Const evaluation:", sw.elapsed());
-        eprintln!("Failed const evals: {fail} ({}%)", fail * 100 / all);
+        eprintln!("Failed const evals: {fail} ({}%)", percentage(fail, all));
         report_metric("failed const evals", fail, "#");
     }
 
@@ -280,7 +280,7 @@ impl flags::AnalysisStats {
             fail += 1;
         }
         eprintln!("{:<20} {}", "MIR lowering:", sw.elapsed());
-        eprintln!("Mir failed bodies: {fail} ({}%)", fail * 100 / all);
+        eprintln!("Mir failed bodies: {fail} ({}%)", percentage(fail, all));
         report_metric("mir failed bodies", fail, "#");
     }
 
