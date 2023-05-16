@@ -1,7 +1,7 @@
 fn and_chain() {
     let z;
     if true && { z = 3; true} && z == 3 {}
-    //~^ ERROR E0381
+    // no longer ERROR E0381
 }
 
 fn and_chain_2() {

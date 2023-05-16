@@ -12,16 +12,17 @@
           StorageLive(_3);                 // scope 0 at $DIR/if_condition_int.rs:+1:8: +1:9
           _3 = _1;                         // scope 0 at $DIR/if_condition_int.rs:+1:8: +1:9
           _2 = Eq(move _3, const -42f32);  // scope 0 at $DIR/if_condition_int.rs:+1:8: +1:18
-          StorageDead(_3);                 // scope 0 at $DIR/if_condition_int.rs:+1:17: +1:18
           switchInt(move _2) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/if_condition_int.rs:+1:8: +1:18
       }
   
       bb1: {
+          StorageDead(_3);                 // scope 0 at $DIR/if_condition_int.rs:+1:17: +1:18
           _0 = const 0_i32;                // scope 0 at $DIR/if_condition_int.rs:+1:21: +1:22
           goto -> bb3;                     // scope 0 at $DIR/if_condition_int.rs:+1:5: +1:35
       }
   
       bb2: {
+          StorageDead(_3);                 // scope 0 at $DIR/if_condition_int.rs:+1:17: +1:18
           _0 = const 1_i32;                // scope 0 at $DIR/if_condition_int.rs:+1:32: +1:33
           goto -> bb3;                     // scope 0 at $DIR/if_condition_int.rs:+1:5: +1:35
       }

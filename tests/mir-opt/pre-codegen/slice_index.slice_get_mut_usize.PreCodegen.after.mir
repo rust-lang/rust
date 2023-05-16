@@ -64,11 +64,11 @@ fn slice_get_mut_usize(_1: &mut [u32], _2: usize) -> Option<&mut u32> {
         _4 = Len((*_5));                 // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
         StorageDead(_5);                 // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
         _3 = Lt(_2, move _4);            // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
-        StorageDead(_4);                 // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
         switchInt(move _3) -> [0: bb2, otherwise: bb1]; // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
     }
 
     bb1: {
+        StorageDead(_4);                 // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
         StorageLive(_7);                 // scope 3 at $SRC_DIR/core/src/slice/index.rs:LL:COL
         StorageLive(_8);                 // scope 3 at $SRC_DIR/core/src/slice/index.rs:LL:COL
         _8 = &raw mut (*_1);             // scope 3 at $SRC_DIR/core/src/slice/index.rs:LL:COL
@@ -90,6 +90,7 @@ fn slice_get_mut_usize(_1: &mut [u32], _2: usize) -> Option<&mut u32> {
     }
 
     bb2: {
+        StorageDead(_4);                 // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
         _0 = const Option::<&mut u32>::None; // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
                                          // mir::Constant
                                          // + span: no-location

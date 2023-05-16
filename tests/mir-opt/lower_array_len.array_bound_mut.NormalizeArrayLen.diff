@@ -35,12 +35,12 @@
       bb1: {
           StorageDead(_6);                 // scope 0 at $DIR/lower_array_len.rs:+1:26: +1:27
           _3 = Lt(move _4, move _5);       // scope 0 at $DIR/lower_array_len.rs:+1:8: +1:27
-          StorageDead(_5);                 // scope 0 at $DIR/lower_array_len.rs:+1:26: +1:27
-          StorageDead(_4);                 // scope 0 at $DIR/lower_array_len.rs:+1:26: +1:27
           switchInt(move _3) -> [0: bb4, otherwise: bb2]; // scope 0 at $DIR/lower_array_len.rs:+1:8: +1:27
       }
   
       bb2: {
+          StorageDead(_5);                 // scope 0 at $DIR/lower_array_len.rs:+1:26: +1:27
+          StorageDead(_4);                 // scope 0 at $DIR/lower_array_len.rs:+1:26: +1:27
           StorageLive(_8);                 // scope 0 at $DIR/lower_array_len.rs:+2:15: +2:20
           _8 = _1;                         // scope 0 at $DIR/lower_array_len.rs:+2:15: +2:20
           _9 = Len((*_2));                 // scope 0 at $DIR/lower_array_len.rs:+2:9: +2:21
@@ -55,6 +55,8 @@
       }
   
       bb4: {
+          StorageDead(_5);                 // scope 0 at $DIR/lower_array_len.rs:+1:26: +1:27
+          StorageDead(_4);                 // scope 0 at $DIR/lower_array_len.rs:+1:26: +1:27
           StorageLive(_11);                // scope 0 at $DIR/lower_array_len.rs:+4:15: +4:16
           _11 = const 0_usize;             // scope 0 at $DIR/lower_array_len.rs:+4:15: +4:16
           _12 = Len((*_2));                // scope 0 at $DIR/lower_array_len.rs:+4:9: +4:17

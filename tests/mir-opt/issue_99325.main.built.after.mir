@@ -108,11 +108,11 @@ fn main() -> () {
         StorageDead(_13);                // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageDead(_12);                // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _10 = Not(move _11);             // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_11);                // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         switchInt(move _10) -> [0: bb4, otherwise: bb3]; // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     }
 
     bb3: {
+        StorageDead(_11);                // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageLive(_15);                // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _15 = core::panicking::AssertKind::Eq; // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         FakeRead(ForLet(None), _15);     // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -156,6 +156,7 @@ fn main() -> () {
     }
 
     bb7: {
+        StorageDead(_11);                // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _1 = const ();                   // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         goto -> bb8;                     // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     }
@@ -217,11 +218,11 @@ fn main() -> () {
         StorageDead(_34);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageDead(_33);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _31 = Not(move _32);             // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_32);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         switchInt(move _31) -> [0: bb13, otherwise: bb12]; // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     }
 
     bb12: {
+        StorageDead(_32);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageLive(_36);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _36 = core::panicking::AssertKind::Eq; // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         FakeRead(ForLet(None), _36);     // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -265,6 +266,7 @@ fn main() -> () {
     }
 
     bb16: {
+        StorageDead(_32);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _23 = const ();                  // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         goto -> bb17;                    // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     }
