@@ -62,21 +62,13 @@ struct ConstToPat<'tcx> {
     treat_byte_string_as_slice: bool,
 }
 
-mod fallback_to_const_ref {
-    #[derive(Debug)]
-    /// This error type signals that we encountered a non-struct-eq situation behind a reference.
-    /// We bubble this up in order to get back to the reference destructuring and make that emit
-    /// a const pattern instead of a deref pattern. This allows us to simply call `PartialEq::eq`
-    /// on such patterns (since that function takes a reference) and not have to jump through any
-    /// hoops to get a reference to the value.
-    pub(super) struct FallbackToConstRef(());
-
-    pub(super) fn fallback_to_const_ref(c2p: &super::ConstToPat<'_>) -> FallbackToConstRef {
-        assert!(c2p.behind_reference.get());
-        FallbackToConstRef(())
-    }
-}
-use fallback_to_const_ref::{fallback_to_const_ref, FallbackToConstRef};
+/// This error type signals that we encountered a non-struct-eq situation.
+/// We bubble this up in order to get back to the reference destructuring and make that emit
+/// a const pattern instead of a deref pattern. This allows us to simply call `PartialEq::eq`
+/// on such patterns (since that function takes a reference) and not have to jump through any
+/// hoops to get a reference to the value.
+#[derive(Debug)]
+struct FallbackToConstRef;
 
 impl<'tcx> ConstToPat<'tcx> {
     fn new(
@@ -236,13 +228,13 @@ impl<'tcx> ConstToPat<'tcx> {
 
         let kind = match cv.ty().kind() {
             ty::Float(_) => {
-                    tcx.emit_spanned_lint(
-                        lint::builtin::ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
-                        id,
-                        span,
-                        FloatPattern,
-                    );
-                PatKind::Constant { value: cv }
+                tcx.emit_spanned_lint(
+                    lint::builtin::ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
+                    id,
+                    span,
+                    FloatPattern,
+                );
+                return Err(FallbackToConstRef);
             }
             ty::Adt(adt_def, _) if adt_def.is_union() => {
                 // Matching on union fields is unsafe, we can't hide it in constants
@@ -289,7 +281,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 // Since we are behind a reference, we can just bubble the error up so we get a
                 // constant at reference type, making it easy to let the fallback call
                 // `PartialEq::eq` on it.
-                return Err(fallback_to_const_ref(self));
+                return Err(FallbackToConstRef);
             }
             ty::Adt(adt_def, _) if !self.type_marked_structural(cv.ty()) => {
                 debug!(
@@ -393,11 +385,11 @@ impl<'tcx> ConstToPat<'tcx> {
                     self.behind_reference.set(old);
                     val
                 }
-                // Backwards compatibility hack: support references to non-structural types.
-                // We'll lower
-                // this pattern to a `PartialEq::eq` comparison and `PartialEq::eq` takes a
-                // reference. This makes the rest of the matching logic simpler as it doesn't have
-                // to figure out how to get a reference again.
+                // Backwards compatibility hack: support references to non-structural types,
+                // but hard error if we aren't behind a double reference. We could just use
+                // the fallback code path below, but that would allow *more* of this fishy
+                // code to compile, as then it only goes through the future incompat lint
+                // instead of a hard error.
                 ty::Adt(_, _) if !self.type_marked_structural(*pointee_ty) => {
                     if self.behind_reference.get() {
                         if !self.saw_const_match_error.get()
@@ -411,7 +403,7 @@ impl<'tcx> ConstToPat<'tcx> {
                                 IndirectStructuralMatch { non_sm_ty: *pointee_ty },
                             );
                         }
-                        PatKind::Constant { value: cv }
+                        return Err(FallbackToConstRef);
                     } else {
                         if !self.saw_const_match_error.get() {
                             self.saw_const_match_error.set(true);
@@ -435,16 +427,9 @@ impl<'tcx> ConstToPat<'tcx> {
                         PatKind::Wild
                     } else {
                         let old = self.behind_reference.replace(true);
-                        // In case there are structural-match violations somewhere in this subpattern,
-                        // we fall back to a const pattern. If we do not do this, we may end up with
-                        // a !structural-match constant that is not of reference type, which makes it
-                        // very hard to invoke `PartialEq::eq` on it as a fallback.
-                        let val = match self.recur(tcx.deref_mir_constant(self.param_env.and(cv)), false) {
-                            Ok(subpattern) => PatKind::Deref { subpattern },
-                            Err(_) => PatKind::Constant { value: cv },
-                        };
+                        let subpattern = self.recur(tcx.deref_mir_constant(self.param_env.and(cv)), false)?;
                         self.behind_reference.set(old);
-                        val
+                        PatKind::Deref { subpattern }
                     }
                 }
             },
@@ -452,7 +437,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 PatKind::Constant { value: cv }
             }
             ty::RawPtr(pointee) if pointee.ty.is_sized(tcx, param_env) => {
-                PatKind::Constant { value: cv }
+                return Err(FallbackToConstRef);
             }
             // FIXME: these can have very surprising behaviour where optimization levels or other
             // compilation choices change the runtime behaviour of the match.
@@ -469,7 +454,7 @@ impl<'tcx> ConstToPat<'tcx> {
                         PointerPattern
                     );
                 }
-                PatKind::Constant { value: cv }
+                return Err(FallbackToConstRef);
             }
             _ => {
                 self.saw_const_match_error.set(true);
