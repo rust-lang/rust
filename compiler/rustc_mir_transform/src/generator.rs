@@ -1954,11 +1954,12 @@ fn check_must_not_suspend_def(
             hir_id,
             data.source_span,
             errors::MustNotSupend {
+                tcx,
                 yield_sp: data.yield_span,
                 reason,
                 src_sp: data.source_span,
                 pre: data.descr_pre,
-                def_path: tcx.def_path_str(def_id),
+                def_id,
                 post: data.descr_post,
             },
         );
