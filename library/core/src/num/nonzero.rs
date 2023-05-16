@@ -756,8 +756,6 @@ macro_rules! nonzero_signed_operations {
                 /// # Example
                 ///
                 /// ```
-                /// #![feature(nonzero_negation_ops)]
-                ///
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
@@ -771,7 +769,8 @@ macro_rules! nonzero_signed_operations {
                 /// ```
                 #[must_use]
                 #[inline]
-                #[unstable(feature = "nonzero_negation_ops", issue = "102443")]
+                #[stable(feature = "nonzero_negation_ops", since = "CURRENT_RUSTC_VERSION")]
+                #[rustc_const_stable(feature = "nonzero_negation_ops", since = "CURRENT_RUSTC_VERSION")]
                 pub const fn is_positive(self) -> bool {
                     self.get().is_positive()
                 }
@@ -782,8 +781,6 @@ macro_rules! nonzero_signed_operations {
                 /// # Example
                 ///
                 /// ```
-                /// #![feature(nonzero_negation_ops)]
-                ///
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
@@ -797,7 +794,8 @@ macro_rules! nonzero_signed_operations {
                 /// ```
                 #[must_use]
                 #[inline]
-                #[unstable(feature = "nonzero_negation_ops", issue = "102443")]
+                #[stable(feature = "nonzero_negation_ops", since = "CURRENT_RUSTC_VERSION")]
+                #[rustc_const_stable(feature = "nonzero_negation_ops", since = "CURRENT_RUSTC_VERSION")]
                 pub const fn is_negative(self) -> bool {
                     self.get().is_negative()
                 }
@@ -807,8 +805,6 @@ macro_rules! nonzero_signed_operations {
                 /// # Example
                 ///
                 /// ```
-                /// #![feature(nonzero_negation_ops)]
-                ///
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
@@ -823,7 +819,8 @@ macro_rules! nonzero_signed_operations {
                 /// # }
                 /// ```
                 #[inline]
-                #[unstable(feature = "nonzero_negation_ops", issue = "102443")]
+                #[stable(feature = "nonzero_negation_ops", since = "CURRENT_RUSTC_VERSION")]
+                #[rustc_const_stable(feature = "nonzero_negation_ops", since = "CURRENT_RUSTC_VERSION")]
                 pub const fn checked_neg(self) -> Option<$Ty> {
                     if let Some(result) = self.get().checked_neg() {
                         // SAFETY: negation of nonzero cannot yield zero values.
@@ -840,8 +837,6 @@ macro_rules! nonzero_signed_operations {
                 /// # Example
                 ///
                 /// ```
-                /// #![feature(nonzero_negation_ops)]
-                ///
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
@@ -856,7 +851,8 @@ macro_rules! nonzero_signed_operations {
                 /// # }
                 /// ```
                 #[inline]
-                #[unstable(feature = "nonzero_negation_ops", issue = "102443")]
+                #[stable(feature = "nonzero_negation_ops", since = "CURRENT_RUSTC_VERSION")]
+                #[rustc_const_stable(feature = "nonzero_negation_ops", since = "CURRENT_RUSTC_VERSION")]
                 pub const fn overflowing_neg(self) -> ($Ty, bool) {
                     let (result, overflow) = self.get().overflowing_neg();
                     // SAFETY: negation of nonzero cannot yield zero values.
@@ -869,8 +865,6 @@ macro_rules! nonzero_signed_operations {
                 /// # Example
                 ///
                 /// ```
-                /// #![feature(nonzero_negation_ops)]
-                ///
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
@@ -890,7 +884,8 @@ macro_rules! nonzero_signed_operations {
                 /// # }
                 /// ```
                 #[inline]
-                #[unstable(feature = "nonzero_negation_ops", issue = "102443")]
+                #[stable(feature = "nonzero_negation_ops", since = "CURRENT_RUSTC_VERSION")]
+                #[rustc_const_stable(feature = "nonzero_negation_ops", since = "CURRENT_RUSTC_VERSION")]
                 pub const fn saturating_neg(self) -> $Ty {
                     if let Some(result) = self.checked_neg() {
                         return result;
@@ -907,8 +902,6 @@ macro_rules! nonzero_signed_operations {
                 /// # Example
                 ///
                 /// ```
-                /// #![feature(nonzero_negation_ops)]
-                ///
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
@@ -923,7 +916,8 @@ macro_rules! nonzero_signed_operations {
                 /// # }
                 /// ```
                 #[inline]
-                #[unstable(feature = "nonzero_negation_ops", issue = "102443")]
+                #[stable(feature = "nonzero_negation_ops", since = "CURRENT_RUSTC_VERSION")]
+                #[rustc_const_stable(feature = "nonzero_negation_ops", since = "CURRENT_RUSTC_VERSION")]
                 pub const fn wrapping_neg(self) -> $Ty {
                     let result = self.get().wrapping_neg();
                     // SAFETY: negation of nonzero cannot yield zero values.
