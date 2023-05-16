@@ -643,9 +643,8 @@ pub(super) enum Constructor<'tcx> {
     /// for those types for which we cannot list constructors explicitly, like `f64` and `str`.
     NonExhaustive,
     /// Stands for constructors that are not seen in the matrix, as explained in the documentation
-    /// for [`SplitWildcard`]. The carried `bool` is used for the `non_exhaustive_omitted_patterns`
-    /// lint.
-    Missing { nonexhaustive_enum_missing_real_variants: bool },
+    /// for [`SplitWildcard`].
+    Missing,
     /// Wildcard pattern.
     Wildcard,
     /// Or-pattern.
@@ -1053,6 +1052,16 @@ impl<'tcx> SplitWildcard<'tcx> {
         self.all_ctors.iter().filter(move |ctor| !ctor.is_covered_by_any(pcx, &self.matrix_ctors))
     }
 
+    /// Iterate over the constructors for this type that are present in the matrix. This has the
+    /// effect of deduplicating present constructors.
+    /// WARNING: this omits special constructors like `Wildcard` and `Opaque`.
+    pub(super) fn iter_present<'a, 'p>(
+        &'a self,
+        pcx: &'a PatCtxt<'a, 'p, 'tcx>,
+    ) -> impl Iterator<Item = &'a Constructor<'tcx>> + Captures<'p> {
+        self.all_ctors.iter().filter(move |ctor| ctor.is_covered_by_any(pcx, &self.matrix_ctors))
+    }
+
     /// Return the set of constructors resulting from splitting the wildcard. As explained at the
     /// top of the file, if any constructors are missing we can ignore the present ones.
     fn into_ctors(self, pcx: &PatCtxt<'_, '_, 'tcx>) -> SmallVec<[Constructor<'tcx>; 1]> {
@@ -1086,15 +1095,7 @@ impl<'tcx> SplitWildcard<'tcx> {
             // sometimes prefer reporting the list of constructors instead of just `_`.
             let report_when_all_missing = pcx.is_top_level && !IntRange::is_integral(pcx.ty);
             let ctor = if !self.matrix_ctors.is_empty() || report_when_all_missing {
-                if pcx.is_non_exhaustive {
-                    Missing {
-                        nonexhaustive_enum_missing_real_variants: self
-                            .iter_missing(pcx)
-                            .any(|c| !(c.is_non_exhaustive() || c.is_unstable_variant(pcx))),
-                    }
-                } else {
-                    Missing { nonexhaustive_enum_missing_real_variants: false }
-                }
+                Missing
             } else {
                 Wildcard
             };
@@ -1240,9 +1241,10 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
 
 /// Values and patterns can be represented as a constructor applied to some fields. This represents
 /// a pattern in this form.
-/// This also keeps track of whether the pattern has been found reachable during analysis. For this
-/// reason we should be careful not to clone patterns for which we care about that. Use
-/// `clone_and_forget_reachability` if you're sure.
+/// This also uses interior mutability to keep track of whether the pattern has been found reachable
+/// during analysis. For this reason we should be careful not to clone patterns for which we care
+/// about that.
+#[derive(Clone)]
 pub(crate) struct DeconstructedPat<'p, 'tcx> {
     ctor: Constructor<'tcx>,
     fields: Fields<'p, 'tcx>,
@@ -1271,12 +1273,6 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
     pub(super) fn wild_from_ctor(pcx: &PatCtxt<'_, 'p, 'tcx>, ctor: Constructor<'tcx>) -> Self {
         let fields = Fields::wildcards(pcx, &ctor);
         DeconstructedPat::new(ctor, fields, pcx.ty, pcx.span)
-    }
-
-    /// Clone this value. This method emphasizes that cloning loses reachability information and
-    /// should be done carefully.
-    pub(super) fn clone_and_forget_reachability(&self) -> Self {
-        DeconstructedPat::new(self.ctor.clone(), self.fields, self.ty, self.span)
     }
 
     pub(crate) fn from_pat(cx: &MatchCheckCtxt<'p, 'tcx>, pat: &Pat<'tcx>) -> Self {
@@ -1521,6 +1517,13 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
 
     pub(super) fn is_or_pat(&self) -> bool {
         matches!(self.ctor, Or)
+    }
+    pub(super) fn flatten_or_pat(&'p self) -> SmallVec<[&'p Self; 1]> {
+        if self.is_or_pat() {
+            self.iter_fields().flat_map(|p| p.flatten_or_pat()).collect()
+        } else {
+            smallvec![self]
+        }
     }
 
     pub(super) fn ctor(&self) -> &Constructor<'tcx> {
