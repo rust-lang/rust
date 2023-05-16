@@ -767,7 +767,7 @@ impl<'tcx> Constructor<'tcx> {
             Wildcard => {
                 let mut split_wildcard = SplitWildcard::new(pcx);
                 split_wildcard.split(pcx, ctors);
-                split_wildcard.into_ctors(pcx)
+                split_wildcard.to_ctors(pcx)
             }
             // Fast-track if the range is trivial. In particular, we don't do the overlapping
             // ranges check.
@@ -1064,7 +1064,7 @@ impl<'tcx> SplitWildcard<'tcx> {
 
     /// Return the set of constructors resulting from splitting the wildcard. As explained at the
     /// top of the file, if any constructors are missing we can ignore the present ones.
-    fn into_ctors(self, pcx: &PatCtxt<'_, '_, 'tcx>) -> SmallVec<[Constructor<'tcx>; 1]> {
+    pub(super) fn to_ctors(&self, pcx: &PatCtxt<'_, '_, 'tcx>) -> SmallVec<[Constructor<'tcx>; 1]> {
         if self.any_missing(pcx) {
             // Some constructors are missing, thus we can specialize with the special `Missing`
             // constructor, which stands for those constructors that are not seen in the matrix,
@@ -1103,7 +1103,7 @@ impl<'tcx> SplitWildcard<'tcx> {
         }
 
         // All the constructors are present in the matrix, so we just go through them all.
-        self.all_ctors
+        self.all_ctors.clone()
     }
 }
 
