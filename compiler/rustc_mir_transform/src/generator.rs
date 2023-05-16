@@ -1397,7 +1397,7 @@ fn create_cases<'tcx>(
 pub(crate) fn mir_generator_witnesses<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-) -> GeneratorLayout<'tcx> {
+) -> Option<GeneratorLayout<'tcx>> {
     assert!(tcx.sess.opts.unstable_opts.drop_tracking_mir);
 
     let (body, _) = tcx.mir_promoted(def_id);
@@ -1410,6 +1410,7 @@ pub(crate) fn mir_generator_witnesses<'tcx>(
     // Get the interior types and substs which typeck computed
     let movable = match *gen_ty.kind() {
         ty::Generator(_, _, movability) => movability == hir::Movability::Movable,
+        ty::Error(_) => return None,
         _ => span_bug!(body.span, "unexpected generator type {}", gen_ty),
     };
 
@@ -1425,7 +1426,7 @@ pub(crate) fn mir_generator_witnesses<'tcx>(
 
     check_suspend_tys(tcx, &generator_layout, &body);
 
-    generator_layout
+    Some(generator_layout)
 }
 
 impl<'tcx> MirPass<'tcx> for StateTransform {

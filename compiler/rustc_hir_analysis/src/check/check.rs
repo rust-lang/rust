@@ -1514,8 +1514,8 @@ fn opaque_type_cycle_error(
                     }
                     if tcx.sess.opts.unstable_opts.drop_tracking_mir
                         && let DefKind::Generator = tcx.def_kind(closure_def_id)
+                        && let Some(generator_layout) = tcx.mir_generator_witnesses(closure_def_id)
                     {
-                        let generator_layout = tcx.mir_generator_witnesses(closure_def_id);
                         for interior_ty in &generator_layout.field_tys {
                             label_match(interior_ty.ty, interior_ty.source_info.span);
                         }
