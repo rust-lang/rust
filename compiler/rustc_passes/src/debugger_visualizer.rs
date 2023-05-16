@@ -6,8 +6,8 @@ use rustc_data_structures::sync::Lrc;
 use rustc_expand::base::resolve_path;
 use rustc_hir as hir;
 use rustc_hir::HirId;
+use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::TyCtxt;
-use rustc_middle::{query::LocalCrate, ty::query::Providers};
 use rustc_span::{sym, DebuggerVisualizerFile, DebuggerVisualizerType};
 
 use crate::errors::DebugVisualizerUnreadable;

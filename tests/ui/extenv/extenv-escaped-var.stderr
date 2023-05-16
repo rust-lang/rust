@@ -1,0 +1,11 @@
+error: environment variable `\t` not defined at compile time
+  --> $DIR/extenv-escaped-var.rs:2:5
+   |
+LL |     env!("\t");
+   |     ^^^^^^^^^^
+   |
+   = help: use `std::env::var("\t")` to read the variable at run time
+   = note: this error originates in the macro `env` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+

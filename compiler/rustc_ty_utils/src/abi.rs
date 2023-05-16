@@ -1,5 +1,6 @@
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{
     fn_can_unwind, FnAbiError, HasParamEnv, HasTyCtxt, LayoutCx, LayoutOf, TyAndLayout,
 };
@@ -14,8 +15,8 @@ use rustc_target::spec::abi::Abi as SpecAbi;
 
 use std::iter;
 
-pub fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers { fn_abi_of_fn_ptr, fn_abi_of_instance, ..*providers };
+pub fn provide(providers: &mut Providers) {
+    *providers = Providers { fn_abi_of_fn_ptr, fn_abi_of_instance, ..*providers };
 }
 
 // NOTE(eddyb) this is private to avoid using it from outside of

@@ -16,6 +16,7 @@ use crate::traits::{self, Obligation, ObligationCause};
 use rustc_errors::{DelayDm, FatalError, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::subst::{GenericArg, InternalSubsts};
 use rustc_middle::ty::{
     self, EarlyBinder, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
@@ -947,7 +948,6 @@ pub fn contains_illegal_impl_trait_in_trait<'tcx>(
     })
 }
 
-pub fn provide(providers: &mut ty::query::Providers) {
-    *providers =
-        ty::query::Providers { object_safety_violations, check_is_object_safe, ..*providers };
+pub fn provide(providers: &mut Providers) {
+    *providers = Providers { object_safety_violations, check_is_object_safe, ..*providers };
 }

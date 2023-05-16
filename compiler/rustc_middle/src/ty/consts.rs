@@ -142,9 +142,7 @@ impl<'tcx> Const<'tcx> {
                         ty::ConstKind::Bound(debruijn, ty::BoundVar::from_u32(index)),
                         param_ty,
                     )),
-                    Some(rbv::ResolvedArg::Error(guar)) => {
-                        Some(tcx.const_error_with_guaranteed(param_ty, guar))
-                    }
+                    Some(rbv::ResolvedArg::Error(guar)) => Some(tcx.const_error(param_ty, guar)),
                     arg => bug!("unexpected bound var resolution for {:?}: {arg:?}", expr.hir_id),
                 }
             }
@@ -228,7 +226,7 @@ impl<'tcx> Const<'tcx> {
         if let Some(val) = self.kind().try_eval_for_typeck(tcx, param_env) {
             match val {
                 Ok(val) => tcx.mk_const(val, self.ty()),
-                Err(guar) => tcx.const_error_with_guaranteed(self.ty(), guar),
+                Err(guar) => tcx.const_error(self.ty(), guar),
             }
         } else {
             // Either the constant isn't evaluatable or ValTree creation failed.

@@ -1,4 +1,0 @@
-#![crate_type = "lib"]
-
-#[path = "issue-3136-a.rs"]
-pub mod issue_3136_a;

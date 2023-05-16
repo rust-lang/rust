@@ -8,7 +8,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
@@ -173,16 +173,13 @@ const X86_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("avx512dq", Some(sym::avx512_target_feature)),
     ("avx512er", Some(sym::avx512_target_feature)),
     ("avx512f", Some(sym::avx512_target_feature)),
-    ("avx512gfni", Some(sym::avx512_target_feature)),
     ("avx512ifma", Some(sym::avx512_target_feature)),
     ("avx512pf", Some(sym::avx512_target_feature)),
-    ("avx512vaes", Some(sym::avx512_target_feature)),
     ("avx512vbmi", Some(sym::avx512_target_feature)),
     ("avx512vbmi2", Some(sym::avx512_target_feature)),
     ("avx512vl", Some(sym::avx512_target_feature)),
     ("avx512vnni", Some(sym::avx512_target_feature)),
     ("avx512vp2intersect", Some(sym::avx512_target_feature)),
-    ("avx512vpclmulqdq", Some(sym::avx512_target_feature)),
     ("avx512vpopcntdq", Some(sym::avx512_target_feature)),
     ("bmi1", None),
     ("bmi2", None),

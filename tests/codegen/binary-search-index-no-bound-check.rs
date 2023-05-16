@@ -9,7 +9,9 @@
 #[no_mangle]
 pub fn binary_search_index_no_bounds_check(s: &[u8]) -> u8 {
     // CHECK-NOT: panic
-    // CHECK-NOT: slice_index_len_fail
+    // CHECK-NOT: slice_start_index_len_fail
+    // CHECK-NOT: slice_end_index_len_fail
+    // CHECK-NOT: panic_bounds_check
     if let Ok(idx) = s.binary_search(&b'\\') {
         s[idx]
     } else {

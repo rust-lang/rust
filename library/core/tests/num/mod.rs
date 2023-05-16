@@ -724,7 +724,7 @@ assume_usize_width! {
 }
 
 macro_rules! test_float {
-    ($modname: ident, $fty: ty, $inf: expr, $neginf: expr, $nan: expr) => {
+    ($modname: ident, $fty: ty, $inf: expr, $neginf: expr, $nan: expr, $min: expr, $max: expr, $min_pos: expr) => {
         mod $modname {
             #[test]
             fn min() {
@@ -845,6 +845,38 @@ macro_rules! test_float {
                 assert!(($nan as $fty).maximum($nan).is_nan());
             }
             #[test]
+            fn midpoint() {
+                assert_eq!((0.5 as $fty).midpoint(0.5), 0.5);
+                assert_eq!((0.5 as $fty).midpoint(2.5), 1.5);
+                assert_eq!((3.0 as $fty).midpoint(4.0), 3.5);
+                assert_eq!((-3.0 as $fty).midpoint(4.0), 0.5);
+                assert_eq!((3.0 as $fty).midpoint(-4.0), -0.5);
+                assert_eq!((-3.0 as $fty).midpoint(-4.0), -3.5);
+                assert_eq!((0.0 as $fty).midpoint(0.0), 0.0);
+                assert_eq!((-0.0 as $fty).midpoint(-0.0), -0.0);
+                assert_eq!((-5.0 as $fty).midpoint(5.0), 0.0);
+                assert_eq!(($max as $fty).midpoint($min), 0.0);
+                assert_eq!(($min as $fty).midpoint($max), -0.0);
+                assert_eq!(($max as $fty).midpoint($min_pos), $max / 2.);
+                assert_eq!((-$max as $fty).midpoint($min_pos), -$max / 2.);
+                assert_eq!(($max as $fty).midpoint(-$min_pos), $max / 2.);
+                assert_eq!((-$max as $fty).midpoint(-$min_pos), -$max / 2.);
+                assert_eq!(($min_pos as $fty).midpoint($max), $max / 2.);
+                assert_eq!(($min_pos as $fty).midpoint(-$max), -$max / 2.);
+                assert_eq!((-$min_pos as $fty).midpoint($max), $max / 2.);
+                assert_eq!((-$min_pos as $fty).midpoint(-$max), -$max / 2.);
+                assert_eq!(($max as $fty).midpoint($max), $max);
+                assert_eq!(($min_pos as $fty).midpoint($min_pos), $min_pos);
+                assert_eq!((-$min_pos as $fty).midpoint(-$min_pos), -$min_pos);
+                assert_eq!(($max as $fty).midpoint(5.0), $max / 2.0 + 2.5);
+                assert_eq!(($max as $fty).midpoint(-5.0), $max / 2.0 - 2.5);
+                assert_eq!(($inf as $fty).midpoint($inf), $inf);
+                assert_eq!(($neginf as $fty).midpoint($neginf), $neginf);
+                assert!(($nan as $fty).midpoint(1.0).is_nan());
+                assert!((1.0 as $fty).midpoint($nan).is_nan());
+                assert!(($nan as $fty).midpoint($nan).is_nan());
+            }
+            #[test]
             fn rem_euclid() {
                 let a: $fty = 42.0;
                 assert!($inf.rem_euclid(a).is_nan());
@@ -867,5 +899,23 @@ macro_rules! test_float {
     };
 }
 
-test_float!(f32, f32, f32::INFINITY, f32::NEG_INFINITY, f32::NAN);
-test_float!(f64, f64, f64::INFINITY, f64::NEG_INFINITY, f64::NAN);
+test_float!(
+    f32,
+    f32,
+    f32::INFINITY,
+    f32::NEG_INFINITY,
+    f32::NAN,
+    f32::MIN,
+    f32::MAX,
+    f32::MIN_POSITIVE
+);
+test_float!(
+    f64,
+    f64,
+    f64::INFINITY,
+    f64::NEG_INFINITY,
+    f64::NAN,
+    f64::MIN,
+    f64::MAX,
+    f64::MIN_POSITIVE
+);

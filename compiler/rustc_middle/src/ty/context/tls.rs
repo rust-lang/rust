@@ -94,8 +94,8 @@ where
         f(None)
     } else {
         // We could get an `ImplicitCtxt` pointer from another thread.
-        // Ensure that `ImplicitCtxt` is `Sync`.
-        sync::assert_sync::<ImplicitCtxt<'_, '_>>();
+        // Ensure that `ImplicitCtxt` is `DynSync`.
+        sync::assert_dyn_sync::<ImplicitCtxt<'_, '_>>();
 
         unsafe { f(Some(downcast(context))) }
     }

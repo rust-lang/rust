@@ -24,6 +24,7 @@ pub use crate::flags::Subcommand;
 use crate::flags::{Color, Flags, Warnings};
 use crate::util::{exe, output, t};
 use once_cell::sync::OnceCell;
+use semver::Version;
 use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
 
@@ -1019,6 +1020,7 @@ impl Config {
             config.download_beta_toolchain();
             config.out.join(config.build.triple).join("stage0/bin/rustc")
         });
+
         config.initial_cargo = build
             .cargo
             .map(|cargo| {
@@ -1678,6 +1680,42 @@ impl Config {
 
     pub fn default_codegen_backend(&self) -> Option<Interned<String>> {
         self.rust_codegen_backends.get(0).cloned()
+    }
+
+    pub fn check_build_rustc_version(&self) {
+        if self.dry_run() {
+            return;
+        }
+
+        // check rustc version is same or lower with 1 apart from the building one
+        let mut cmd = Command::new(&self.initial_rustc);
+        cmd.arg("--version");
+        let rustc_output = output(&mut cmd)
+            .lines()
+            .next()
+            .unwrap()
+            .split(' ')
+            .nth(1)
+            .unwrap()
+            .split('-')
+            .next()
+            .unwrap()
+            .to_owned();
+        let rustc_version = Version::parse(&rustc_output.trim()).unwrap();
+        let source_version =
+            Version::parse(&fs::read_to_string(self.src.join("src/version")).unwrap().trim())
+                .unwrap();
+        if !(source_version == rustc_version
+            || (source_version.major == rustc_version.major
+                && source_version.minor == rustc_version.minor + 1))
+        {
+            let prev_version = format!("{}.{}.x", source_version.major, source_version.minor - 1);
+            eprintln!(
+                "Unexpected rustc version: {}, we should use {}/{} to build source with {}",
+                rustc_version, prev_version, source_version, source_version
+            );
+            crate::detail_exit(1);
+        }
     }
 
     /// Returns the commit to download, or `None` if we shouldn't download CI artifacts.

@@ -603,10 +603,24 @@ impl<'a> Parser<'a> {
                 let path = match ty_first.kind {
                     // This notably includes paths passed through `ty` macro fragments (#46438).
                     TyKind::Path(None, path) => path,
-                    _ => {
-                        self.sess.emit_err(errors::ExpectedTraitInTraitImplFoundType {
-                            span: ty_first.span,
-                        });
+                    other => {
+                        if let TyKind::ImplTrait(_, bounds) = other
+                            && let [bound] = bounds.as_slice()
+                        {
+                            // Suggest removing extra `impl` keyword:
+                            // `impl<T: Default> impl Default for Wrapper<T>`
+                            //                   ^^^^^
+                            let extra_impl_kw = ty_first.span.until(bound.span());
+                            self.sess
+                                .emit_err(errors::ExtraImplKeywordInTraitImpl {
+                                    extra_impl_kw,
+                                    impl_trait_span: ty_first.span
+                                });
+                        } else {
+                            self.sess.emit_err(errors::ExpectedTraitInTraitImplFoundType {
+                                span: ty_first.span,
+                            });
+                        }
                         err_path(ty_first.span)
                     }
                 };
