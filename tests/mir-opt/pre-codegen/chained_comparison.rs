@@ -11,7 +11,6 @@ pub struct Blueprint {
     pub storage: u32,
 }
 
-// Equivalent of #[derive(PartialEq)]
 pub fn naive(a: &Blueprint, b: &Blueprint) -> bool {
     (a.fuel_tank_size == b.fuel_tank_size)
         && (a.payload == b.payload)
@@ -20,7 +19,6 @@ pub fn naive(a: &Blueprint, b: &Blueprint) -> bool {
         && (a.storage == b.storage)
 }
 
-// Optimizes good but changes semantics
 pub fn bitand(a: &Blueprint, b: &Blueprint) -> bool {
     (a.fuel_tank_size == b.fuel_tank_size)
         & (a.payload == b.payload)
@@ -29,7 +27,6 @@ pub fn bitand(a: &Blueprint, b: &Blueprint) -> bool {
         & (a.storage == b.storage)
 }
 
-// Optimizes good and have same semantics as PartialEq
 pub fn returning(a: &Blueprint, b: &Blueprint) -> bool {
     if a.fuel_tank_size != b.fuel_tank_size {
         return false;
