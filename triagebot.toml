@@ -512,6 +512,7 @@ compiler-team = [
 ]
 compiler-team-contributors = [
     "@compiler-errors",
+    "@eholk",
     "@jackh726",
     "@TaKO8Ki",
     "@WaffleLapkin",
@@ -532,6 +533,7 @@ bootstrap = [
     "@Mark-Simulacrum",
     "@albertlarsan68",
     "@ozkanonur",
+    "@clubby789",
 ]
 infra-ci = [
     "@Mark-Simulacrum",

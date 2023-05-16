@@ -120,8 +120,8 @@ use crate::ty::{self, Instance, Ty, TyCtxt};
 pub use self::error::{
     struct_error, CheckInAllocMsg, ErrorHandled, EvalToAllocationRawResult, EvalToConstValueResult,
     EvalToValTreeResult, InterpError, InterpErrorInfo, InterpResult, InvalidProgramInfo,
-    MachineStopType, ResourceExhaustionInfo, ScalarSizeMismatch, UndefinedBehaviorInfo,
-    UninitBytesAccess, UnsupportedOpInfo,
+    MachineStopType, ReportedErrorInfo, ResourceExhaustionInfo, ScalarSizeMismatch,
+    UndefinedBehaviorInfo, UninitBytesAccess, UnsupportedOpInfo,
 };
 
 pub use self::value::{get_slice_bytes, ConstAlloc, ConstValue, Scalar};

@@ -801,7 +801,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                                             span: tcx.def_span(unevaluated.def),
                                             unevaluated: unevaluated,
                                         });
-                                    Err(ErrorHandled::Reported(reported))
+                                    Err(ErrorHandled::Reported(reported.into()))
                                 }
                                 Err(err) => Err(err),
                             }
