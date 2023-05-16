@@ -453,6 +453,8 @@ impl<'a> Parser<'a> {
         //     `<` (LIFETIME|IDENT) `:` - generic parameter with bounds
         //     `<` (LIFETIME|IDENT) `=` - generic parameter with a default
         //     `<` const                - generic const parameter
+        //     `<` IDENT `?`            - RECOVERY for `impl<T ?Bound` missing a `:`, meant to
+        //                                avoid the `T?` to `Option<T>` recovery for types.
         // The only truly ambiguous case is
         //     `<` IDENT `>` `::` IDENT ...
         // we disambiguate it in favor of generics (`impl<T> ::absolute::Path<T> { ... }`)
@@ -463,6 +465,9 @@ impl<'a> Parser<'a> {
                 || self.look_ahead(start + 1, |t| t.is_lifetime() || t.is_ident())
                     && self.look_ahead(start + 2, |t| {
                         matches!(t.kind, token::Gt | token::Comma | token::Colon | token::Eq)
+                        // Recovery-only branch -- this could be removed,
+                        // since it only affects diagnostics currently.
+                            || matches!(t.kind, token::Question)
                     })
                 || self.is_keyword_ahead(start + 1, &[kw::Const]))
     }
