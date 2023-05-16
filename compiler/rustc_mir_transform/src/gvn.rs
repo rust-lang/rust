@@ -99,6 +99,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt, TypeAndMut};
 use rustc_span::def_id::DefId;
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{self, Abi, Size, VariantIdx, FIRST_VARIANT};
+use smallvec::SmallVec;
 use std::borrow::Cow;
 
 use crate::dataflow_const_prop::DummyMachine;
@@ -241,13 +242,15 @@ struct VnState<'body, 'tcx> {
     /// Locals that are assigned that value.
     // This vector does not hold all the values of `VnIndex` that we create.
     // It stops at the largest value created in the first phase of collecting assignments.
-    rev_locals: IndexVec<VnIndex, Vec<Local>>,
+    rev_locals: IndexVec<VnIndex, SmallVec<[Local; 1]>>,
     values: FxIndexSet<Value<'tcx>>,
     /// Values evaluated as constants if possible.
     evaluated: IndexVec<VnIndex, Option<OpTy<'tcx>>>,
     /// Counter to generate different values.
     /// This is an option to stop creating opaques during replacement.
     next_opaque: Option<usize>,
+    /// Cache the value of the `unsized_locals` features, to avoid fetching it repeatedly in a loop.
+    feature_unsized_locals: bool,
     ssa: &'body SsaLocals,
     dominators: &'body Dominators<BasicBlock>,
     reused_locals: BitSet<Local>,
@@ -271,6 +274,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             values: FxIndexSet::default(),
             evaluated: IndexVec::new(),
             next_opaque: Some(0),
+            feature_unsized_locals: tcx.features().unsized_locals,
             ssa,
             dominators,
             reused_locals: BitSet::new_empty(local_decls.len()),
@@ -318,10 +322,10 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         self.locals[local] = Some(value);
 
         // Only register the value if its type is `Sized`, as we will emit copies of it.
-        let is_sized = !self.tcx.features().unsized_locals
+        let is_sized = !self.feature_unsized_locals
             || self.local_decls[local].ty.is_sized(self.tcx, self.param_env);
         if is_sized {
-            self.rev_locals.ensure_contains_elem(value, Vec::new);
+            self.rev_locals.ensure_contains_elem(value, SmallVec::new);
             self.rev_locals[value].push(local);
         }
     }
