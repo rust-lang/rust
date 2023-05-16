@@ -1708,7 +1708,9 @@ impl<'tcx> Region<'tcx> {
             ty::ReErased => {
                 flags = flags | TypeFlags::HAS_RE_ERASED;
             }
-            ty::ReError(_) => {}
+            ty::ReError(_) => {
+                flags = flags | TypeFlags::HAS_FREE_REGIONS;
+            }
         }
 
         debug!("type_flags({:?}) = {:?}", self, flags);
