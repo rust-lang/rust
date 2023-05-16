@@ -124,10 +124,24 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             };
 
             if !assoc_def.item.defaultness(tcx).has_value() {
-                tcx.sess.delay_span_bug(
+                let guar = tcx.sess.delay_span_bug(
                     tcx.def_span(assoc_def.item.def_id),
                     "missing value for assoc item in impl",
                 );
+                let error_term = match assoc_def.item.kind {
+                    ty::AssocKind::Const => tcx
+                        .const_error(
+                            tcx.type_of(goal.predicate.def_id())
+                                .subst(tcx, goal.predicate.projection_ty.substs),
+                            guar,
+                        )
+                        .into(),
+                    ty::AssocKind::Type => tcx.ty_error(guar).into(),
+                    ty::AssocKind::Fn => unreachable!(),
+                };
+                ecx.eq(goal.param_env, goal.predicate.term, error_term)
+                    .expect("expected goal term to be fully unconstrained");
+                return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
             }
 
             // Getting the right substitutions here is complex, e.g. given:
