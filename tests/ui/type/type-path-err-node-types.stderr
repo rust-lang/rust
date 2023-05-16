@@ -1,9 +1,3 @@
-error[E0433]: failed to resolve: use of undeclared type `NonExistent`
-  --> $DIR/type-path-err-node-types.rs:15:5
-   |
-LL |     NonExistent::Assoc::<u8>;
-   |     ^^^^^^^^^^^ use of undeclared type `NonExistent`
-
 error[E0412]: cannot find type `Nonexistent` in this scope
   --> $DIR/type-path-err-node-types.rs:7:12
    |
@@ -21,6 +15,12 @@ error[E0425]: cannot find value `nonexistent` in this scope
    |
 LL |     nonexistent.nonexistent::<u8>();
    |     ^^^^^^^^^^^ not found in this scope
+
+error[E0433]: failed to resolve: use of undeclared type `NonExistent`
+  --> $DIR/type-path-err-node-types.rs:15:5
+   |
+LL |     NonExistent::Assoc::<u8>;
+   |     ^^^^^^^^^^^ use of undeclared type `NonExistent`
 
 error[E0282]: type annotations needed
   --> $DIR/type-path-err-node-types.rs:23:14
