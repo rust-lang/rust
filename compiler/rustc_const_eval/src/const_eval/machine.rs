@@ -382,7 +382,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                         rustc_span::DUMMY_SP,
                         "This is likely a const item that is missing from its impl",
                     );
-                    throw_inval!(AlreadyReported(guar));
+                    throw_inval!(AlreadyReported(guar.into()));
                 } else {
                     // `find_mir_or_eval_fn` checks that this is a const fn before even calling us,
                     // so this should be unreachable.

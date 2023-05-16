@@ -16,12 +16,6 @@ LL -     const M: usize = (f64::from(N) * std::f64::LOG10_2) as usize;
 LL +     const M: usize = (f64::from(N) * LOG10_2) as usize;
    |
 
-note: erroneous constant used
-  --> $DIR/issue-50599.rs:4:29
-   |
-LL |     let mut digits = [0u32; M];
-   |                             ^
-
 error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0425`.

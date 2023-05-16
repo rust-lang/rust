@@ -15,15 +15,49 @@ use std::{any::Any, backtrace::Backtrace, fmt};
 pub enum ErrorHandled {
     /// Already reported an error for this evaluation, and the compilation is
     /// *guaranteed* to fail. Warnings/lints *must not* produce `Reported`.
-    Reported(ErrorGuaranteed),
+    Reported(ReportedErrorInfo),
     /// Don't emit an error, the evaluation failed because the MIR was generic
     /// and the substs didn't fully monomorphize it.
     TooGeneric,
 }
 
 impl From<ErrorGuaranteed> for ErrorHandled {
-    fn from(err: ErrorGuaranteed) -> ErrorHandled {
-        ErrorHandled::Reported(err)
+    #[inline]
+    fn from(error: ErrorGuaranteed) -> ErrorHandled {
+        ErrorHandled::Reported(error.into())
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+pub struct ReportedErrorInfo {
+    error: ErrorGuaranteed,
+    is_tainted_by_errors: bool,
+}
+
+impl ReportedErrorInfo {
+    #[inline]
+    pub fn tainted_by_errors(error: ErrorGuaranteed) -> ReportedErrorInfo {
+        ReportedErrorInfo { is_tainted_by_errors: true, error }
+    }
+
+    /// Returns true if evaluation failed because MIR was tainted by errors.
+    #[inline]
+    pub fn is_tainted_by_errors(self) -> bool {
+        self.is_tainted_by_errors
+    }
+}
+
+impl From<ErrorGuaranteed> for ReportedErrorInfo {
+    #[inline]
+    fn from(error: ErrorGuaranteed) -> ReportedErrorInfo {
+        ReportedErrorInfo { is_tainted_by_errors: false, error }
+    }
+}
+
+impl Into<ErrorGuaranteed> for ReportedErrorInfo {
+    #[inline]
+    fn into(self) -> ErrorGuaranteed {
+        self.error
     }
 }
 
@@ -89,7 +123,7 @@ fn print_backtrace(backtrace: &Backtrace) {
 
 impl From<ErrorGuaranteed> for InterpErrorInfo<'_> {
     fn from(err: ErrorGuaranteed) -> Self {
-        InterpError::InvalidProgram(InvalidProgramInfo::AlreadyReported(err)).into()
+        InterpError::InvalidProgram(InvalidProgramInfo::AlreadyReported(err.into())).into()
     }
 }
 
@@ -125,7 +159,7 @@ pub enum InvalidProgramInfo<'tcx> {
     /// Resolution can fail if we are in a too generic context.
     TooGeneric,
     /// Abort in case errors are already reported.
-    AlreadyReported(ErrorGuaranteed),
+    AlreadyReported(ReportedErrorInfo),
     /// An error occurred during layout computation.
     Layout(layout::LayoutError<'tcx>),
     /// An error occurred during FnAbi computation: the passed --target lacks FFI support
@@ -144,7 +178,7 @@ impl fmt::Display for InvalidProgramInfo<'_> {
         use InvalidProgramInfo::*;
         match self {
             TooGeneric => write!(f, "encountered overly generic constant"),
-            AlreadyReported(ErrorGuaranteed { .. }) => {
+            AlreadyReported(_) => {
                 write!(
                     f,
                     "an error has already been reported elsewhere (this should not usually be printed)"

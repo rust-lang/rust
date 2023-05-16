@@ -245,7 +245,7 @@ impl<'tcx> ConstKind<'tcx> {
                         // can leak through `val` into the const we return.
                         Ok(val) => Some(Ok(EvalResult::ValTree(val?))),
                         Err(ErrorHandled::TooGeneric) => None,
-                        Err(ErrorHandled::Reported(e)) => Some(Err(e)),
+                        Err(ErrorHandled::Reported(e)) => Some(Err(e.into())),
                     }
                 }
                 EvalMode::Mir => {
@@ -256,7 +256,7 @@ impl<'tcx> ConstKind<'tcx> {
                         // can leak through `val` into the const we return.
                         Ok(val) => Some(Ok(EvalResult::ConstVal(val))),
                         Err(ErrorHandled::TooGeneric) => None,
-                        Err(ErrorHandled::Reported(e)) => Some(Err(e)),
+                        Err(ErrorHandled::Reported(e)) => Some(Err(e.into())),
                     }
                 }
             }
