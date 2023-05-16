@@ -188,8 +188,28 @@ pub trait Write {
     /// assert_eq!(&buf, "world");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn write_fmt(mut self: &mut Self, args: Arguments<'_>) -> Result {
-        write(&mut self, args)
+    fn write_fmt(&mut self, args: Arguments<'_>) -> Result {
+        // We use a specialization for `Sized` types to avoid an indirection
+        // through `&mut self`
+        trait SpecWriteFmt {
+            fn spec_write_fmt(self, args: Arguments<'_>) -> Result;
+        }
+
+        impl<W: Write + ?Sized> SpecWriteFmt for &mut W {
+            #[inline]
+            default fn spec_write_fmt(mut self, args: Arguments<'_>) -> Result {
+                write(&mut self, args)
+            }
+        }
+
+        impl<W: Write> SpecWriteFmt for &mut W {
+            #[inline]
+            fn spec_write_fmt(self, args: Arguments<'_>) -> Result {
+                write(self, args)
+            }
+        }
+
+        self.spec_write_fmt(args)
     }
 }
 
