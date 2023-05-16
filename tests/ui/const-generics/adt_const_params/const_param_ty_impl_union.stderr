@@ -1,0 +1,8 @@
+error: this trait cannot be derived for unions
+  --> $DIR/const_param_ty_impl_union.rs:18:10
+   |
+LL | #[derive(std::marker::ConstParamTy)]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

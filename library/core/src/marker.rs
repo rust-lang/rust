@@ -991,6 +991,14 @@ pub trait PointerLike {}
 #[rustc_on_unimplemented(message = "`{Self}` can't be used as a const parameter type")]
 pub trait ConstParamTy: StructuralEq {}
 
+/// Derive macro generating an impl of the trait `Copy`.
+#[rustc_builtin_macro]
+#[unstable(feature = "adt_const_params", issue = "95174")]
+#[cfg(not(bootstrap))]
+pub macro ConstParamTy($item:item) {
+    /* compiler built-in */
+}
+
 // FIXME(generic_const_parameter_types): handle `ty::FnDef`/`ty::Closure`
 // FIXME(generic_const_parameter_types): handle `ty::Tuple`
 marker_impls! {

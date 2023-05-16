@@ -164,6 +164,7 @@ symbols! {
         Capture,
         Center,
         Clone,
+        ConstParamTy,
         Context,
         Continue,
         Copy,
