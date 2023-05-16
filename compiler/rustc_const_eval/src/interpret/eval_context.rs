@@ -7,7 +7,7 @@ use either::{Either, Left, Right};
 use rustc_hir::{self as hir, def_id::DefId, definitions::DefPathData};
 use rustc_index::IndexVec;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{ErrorHandled, InterpError};
+use rustc_middle::mir::interpret::{ErrorHandled, InterpError, ReportedErrorInfo};
 use rustc_middle::ty::layout::{
     self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOf, LayoutOfHelpers,
     TyAndLayout,
@@ -470,7 +470,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
         // do not continue if typeck errors occurred (can only occur in local crate)
         if let Some(err) = body.tainted_by_errors {
-            throw_inval!(AlreadyReported(err));
+            throw_inval!(AlreadyReported(ReportedErrorInfo::tainted_by_errors(err)));
         }
         Ok(body)
     }
@@ -517,7 +517,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Ok(None) => throw_inval!(TooGeneric),
 
             // FIXME(eddyb) this could be a bit more specific than `AlreadyReported`.
-            Err(error_reported) => throw_inval!(AlreadyReported(error_reported)),
+            Err(error_reported) => throw_inval!(AlreadyReported(error_reported.into())),
         }
     }
 
@@ -905,7 +905,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         query(self.tcx.at(span.unwrap_or_else(|| self.cur_span()))).map_err(|err| {
             match err {
                 ErrorHandled::Reported(err) => {
-                    if let Some(span) = span {
+                    if !err.is_tainted_by_errors() && let Some(span) = span {
                         // To make it easier to figure out where this error comes from, also add a note at the current location.
                         self.tcx.sess.span_note_without_error(span, "erroneous constant used");
                     }
