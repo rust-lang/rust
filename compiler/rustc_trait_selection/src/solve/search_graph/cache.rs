@@ -11,7 +11,7 @@
 use super::StackDepth;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::IndexVec;
-use rustc_middle::traits::solve::{CanonicalGoal, QueryResult};
+use rustc_middle::traits::solve::{CanonicalInput, QueryResult};
 
 rustc_index::newtype_index! {
     pub struct EntryIndex {}
@@ -34,7 +34,7 @@ pub(super) struct ProvisionalEntry<'tcx> {
 
     // The goal for this entry. Should always be equal to the corresponding goal
     // in the lookup table.
-    pub(super) goal: CanonicalGoal<'tcx>,
+    pub(super) input: CanonicalInput<'tcx>,
 }
 
 pub(super) struct ProvisionalCache<'tcx> {
@@ -42,7 +42,7 @@ pub(super) struct ProvisionalCache<'tcx> {
     // FIXME: This is only used to quickly check whether a given goal
     // is in the cache. We should experiment with using something like
     // `SsoHashSet` here because in most cases there are only a few entries.
-    pub(super) lookup_table: FxHashMap<CanonicalGoal<'tcx>, EntryIndex>,
+    pub(super) lookup_table: FxHashMap<CanonicalInput<'tcx>, EntryIndex>,
 }
 
 impl<'tcx> ProvisionalCache<'tcx> {

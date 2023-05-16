@@ -9,7 +9,10 @@ use rustc_infer::infer::{
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
-use rustc_middle::traits::solve::{CanonicalGoal, Certainty, MaybeCause, QueryResult};
+use rustc_middle::traits::solve::{
+    CanonicalInput, Certainty, MaybeCause, PredefinedOpaques, PredefinedOpaquesData, QueryResult,
+};
+use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
     TypeVisitor,
@@ -44,6 +47,9 @@ pub struct EvalCtxt<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
 
     pub(super) var_values: CanonicalVarValues<'tcx>,
+
+    predefined_opaques_in_body: PredefinedOpaques<'tcx>,
+
     /// The highest universe index nameable by the caller.
     ///
     /// When we enter a new binder inside of the query we create new universes
@@ -126,6 +132,11 @@ impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
         let mut ecx = EvalCtxt {
             search_graph: &mut search_graph,
             infcx: self,
+            // Only relevant when canonicalizing the response,
+            // which we don't do within this evaluation context.
+            predefined_opaques_in_body: self
+                .tcx
+                .mk_predefined_opaques_in_body(PredefinedOpaquesData::default()),
             // Only relevant when canonicalizing the response.
             max_input_universe: ty::UniverseIndex::ROOT,
             var_values: CanonicalVarValues::dummy(),
@@ -162,29 +173,59 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     fn evaluate_canonical_goal(
         tcx: TyCtxt<'tcx>,
         search_graph: &'a mut search_graph::SearchGraph<'tcx>,
-        canonical_goal: CanonicalGoal<'tcx>,
+        canonical_input: CanonicalInput<'tcx>,
     ) -> QueryResult<'tcx> {
         // Deal with overflow, caching, and coinduction.
         //
         // The actual solver logic happens in `ecx.compute_goal`.
-        search_graph.with_new_goal(tcx, canonical_goal, |search_graph| {
+        search_graph.with_new_goal(tcx, canonical_input, |search_graph| {
             let intercrate = match search_graph.solver_mode() {
                 SolverMode::Normal => false,
                 SolverMode::Coherence => true,
             };
-            let (ref infcx, goal, var_values) = tcx
+            let (ref infcx, input, var_values) = tcx
                 .infer_ctxt()
                 .intercrate(intercrate)
-                .build_with_canonical(DUMMY_SP, &canonical_goal);
+                .with_opaque_type_inference(canonical_input.value.anchor)
+                .build_with_canonical(DUMMY_SP, &canonical_input);
+
+            for &(a, b) in &input.predefined_opaques_in_body.opaque_types {
+                let InferOk { value: (), obligations } = infcx
+                    .handle_opaque_type(
+                        tcx.mk_opaque(a.def_id.to_def_id(), a.substs),
+                        b,
+                        true,
+                        &ObligationCause::dummy(),
+                        input.goal.param_env,
+                    )
+                    .expect("expected opaque type instantiation to succeed");
+                // We're only registering opaques already defined by the caller,
+                // so we're not responsible for proving that they satisfy their
+                // item bounds, unless we use them in a normalizes-to goal,
+                // which is handled in `EvalCtxt::unify_existing_opaque_tys`.
+                let _ = obligations;
+            }
             let mut ecx = EvalCtxt {
                 infcx,
                 var_values,
-                max_input_universe: canonical_goal.max_universe,
+                predefined_opaques_in_body: input.predefined_opaques_in_body,
+                max_input_universe: canonical_input.max_universe,
                 search_graph,
                 nested_goals: NestedGoals::new(),
                 tainted: Ok(()),
             };
-            ecx.compute_goal(goal)
+
+            let result = ecx.compute_goal(input.goal);
+
+            // When creating a query response we clone the opaque type constraints
+            // instead of taking them. This would cause an ICE here, since we have
+            // assertions against dropping an `InferCtxt` without taking opaques.
+            // FIXME: Once we remove support for the old impl we can remove this.
+            if input.anchor != DefiningAnchor::Error {
+                let _ = infcx.take_opaque_types();
+            }
+
+            result
         })
     }
 
@@ -199,7 +240,8 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         let canonical_response =
             EvalCtxt::evaluate_canonical_goal(self.tcx(), self.search_graph, canonical_goal)?;
 
-        let has_changed = !canonical_response.value.var_values.is_identity();
+        let has_changed = !canonical_response.value.var_values.is_identity()
+            || !canonical_response.value.external_constraints.opaque_types.is_empty();
         let (certainty, nested_goals) = self.instantiate_and_apply_query_response(
             goal.param_env,
             orig_values,
@@ -418,6 +460,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let mut ecx = EvalCtxt {
             infcx: self.infcx,
             var_values: self.var_values,
+            predefined_opaques_in_body: self.predefined_opaques_in_body,
             max_input_universe: self.max_input_universe,
             search_graph: self.search_graph,
             nested_goals: self.nested_goals.clone(),
@@ -681,5 +724,17 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | rustc_transmute::Answer::IfAll(_)
             | rustc_transmute::Answer::IfAny(_) => Err(NoSolution),
         }
+    }
+
+    pub(super) fn handle_opaque_ty(
+        &mut self,
+        a: Ty<'tcx>,
+        b: Ty<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> Result<(), NoSolution> {
+        let InferOk { value: (), obligations } =
+            self.infcx.handle_opaque_type(a, b, true, &ObligationCause::dummy(), param_env)?;
+        self.add_goals(obligations.into_iter().map(|obligation| obligation.into()));
+        Ok(())
     }
 }

@@ -16,6 +16,7 @@ fn evaluate_obligation<'tcx>(
     tcx: TyCtxt<'tcx>,
     canonical_goal: CanonicalPredicateGoal<'tcx>,
 ) -> Result<EvaluationResult, OverflowError> {
+    assert!(!tcx.trait_solver_next());
     debug!("evaluate_obligation(canonical_goal={:#?})", canonical_goal);
     // HACK This bubble is required for this tests to pass:
     // impl-trait/issue99642.rs
