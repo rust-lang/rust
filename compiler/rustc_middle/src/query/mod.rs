@@ -527,7 +527,7 @@ rustc_queries! {
         }
     }
 
-    query mir_generator_witnesses(key: DefId) -> &'tcx mir::GeneratorLayout<'tcx> {
+    query mir_generator_witnesses(key: DefId) -> &'tcx Option<mir::GeneratorLayout<'tcx>> {
         arena_cache
         desc { |tcx| "generator witness types for `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }

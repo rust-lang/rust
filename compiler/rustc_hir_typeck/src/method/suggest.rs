@@ -2633,47 +2633,62 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 Nothing,
                             }
                             let ast_generics = hir.get_generics(id.owner.def_id).unwrap();
-                            let (sp, mut introducer) = if let Some(span) =
-                                ast_generics.bounds_span_for_suggestions(def_id)
-                            {
-                                (span, Introducer::Plus)
-                            } else if let Some(colon_span) = param.colon_span {
-                                (colon_span.shrink_to_hi(), Introducer::Nothing)
-                            } else {
-                                (param.span.shrink_to_hi(), Introducer::Colon)
-                            };
-                            if matches!(
-                                param.kind,
-                                hir::GenericParamKind::Type { synthetic: true, .. },
-                            ) {
-                                introducer = Introducer::Plus
-                            }
                             let trait_def_ids: FxHashSet<DefId> = ast_generics
                                 .bounds_for_param(def_id)
                                 .flat_map(|bp| bp.bounds.iter())
                                 .filter_map(|bound| bound.trait_ref()?.trait_def_id())
                                 .collect();
-                            if !candidates.iter().any(|t| trait_def_ids.contains(&t.def_id)) {
-                                err.span_suggestions(
-                                    sp,
-                                    message(format!(
-                                        "restrict type parameter `{}` with",
-                                        param.name.ident(),
-                                    )),
+                            if candidates.iter().any(|t| trait_def_ids.contains(&t.def_id)) {
+                                return;
+                            }
+                            let msg = message(format!(
+                                "restrict type parameter `{}` with",
+                                param.name.ident(),
+                            ));
+                            let bounds_span = ast_generics.bounds_span_for_suggestions(def_id);
+                            if rcvr_ty.is_ref() && param.is_impl_trait() && bounds_span.is_some() {
+                                err.multipart_suggestions(
+                                    msg,
                                     candidates.iter().map(|t| {
-                                        format!(
-                                            "{} {}",
-                                            match introducer {
-                                                Introducer::Plus => " +",
-                                                Introducer::Colon => ":",
-                                                Introducer::Nothing => "",
-                                            },
-                                            self.tcx.def_path_str(t.def_id),
-                                        )
+                                        vec![
+                                            (param.span.shrink_to_lo(), "(".to_string()),
+                                            (
+                                                bounds_span.unwrap(),
+                                                format!(" + {})", self.tcx.def_path_str(t.def_id)),
+                                            ),
+                                        ]
                                     }),
                                     Applicability::MaybeIncorrect,
                                 );
+                                return;
                             }
+
+                            let (sp, introducer) = if let Some(span) = bounds_span {
+                                (span, Introducer::Plus)
+                            } else if let Some(colon_span) = param.colon_span {
+                                (colon_span.shrink_to_hi(), Introducer::Nothing)
+                            } else if param.is_impl_trait() {
+                                (param.span.shrink_to_hi(), Introducer::Plus)
+                            } else {
+                                (param.span.shrink_to_hi(), Introducer::Colon)
+                            };
+
+                            err.span_suggestions(
+                                sp,
+                                msg,
+                                candidates.iter().map(|t| {
+                                    format!(
+                                        "{} {}",
+                                        match introducer {
+                                            Introducer::Plus => " +",
+                                            Introducer::Colon => ":",
+                                            Introducer::Nothing => "",
+                                        },
+                                        self.tcx.def_path_str(t.def_id)
+                                    )
+                                }),
+                                Applicability::MaybeIncorrect,
+                            );
                             return;
                         }
                         Node::Item(hir::Item {

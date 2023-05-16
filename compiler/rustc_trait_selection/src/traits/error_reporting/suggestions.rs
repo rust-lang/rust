@@ -2447,10 +2447,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             && generator_did.is_local()
             // Try to avoid cycles.
             && !generator_within_in_progress_typeck
+            && let Some(generator_info) = self.tcx.mir_generator_witnesses(generator_did)
         {
-            let generator_info = &self.tcx.mir_generator_witnesses(generator_did);
             debug!(?generator_info);
-
             'find_source: for (variant, source_info) in
                 generator_info.variant_fields.iter().zip(&generator_info.variant_source_info)
             {

@@ -88,7 +88,7 @@ impl_element! { isize }
 /// The layout of this type is unspecified, and may change between platforms
 /// and/or Rust versions, and code should not assume that it is equivalent to
 /// `[T; LANES]`.
-#[repr(transparent)]
+#[cfg_attr(not(doc), repr(transparent))] // work around https://github.com/rust-lang/rust/issues/90435
 pub struct Mask<T, const LANES: usize>(mask_impl::Mask<T, LANES>)
 where
     T: MaskElement,
