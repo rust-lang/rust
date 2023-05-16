@@ -1795,6 +1795,7 @@ rustc_queries! {
         arena_cache
         desc { "looking up the debugger visualizers for this crate" }
         separate_provide_extern
+        feedable
     }
     query postorder_cnums(_: ()) -> &'tcx [CrateNum] {
         eval_always

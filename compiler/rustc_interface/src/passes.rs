@@ -486,6 +486,11 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
             files.push(normalize_path(profile_sample.as_path().to_path_buf()));
         }
 
+        // Debugger visualizer files
+        for debugger_visualizer in tcx.debugger_visualizers(LOCAL_CRATE) {
+            files.push(normalize_path(debugger_visualizer.path.clone().unwrap()));
+        }
+
         if sess.binary_dep_depinfo() {
             if let Some(ref backend) = sess.opts.unstable_opts.codegen_backend {
                 if backend.contains('.') {
@@ -566,6 +571,12 @@ fn resolver_for_lowering<'tcx>(
 
     // Make sure we don't mutate the cstore from here on.
     tcx.untracked().cstore.leak();
+
+    {
+        let debugger_visualizers = rustc_passes::debugger_visualizer::collect(tcx.sess, &krate);
+        let feed = tcx.feed_local_crate();
+        feed.debugger_visualizers(debugger_visualizers);
+    }
 
     let ty::ResolverOutputs {
         global_ctxt: untracked_resolutions,

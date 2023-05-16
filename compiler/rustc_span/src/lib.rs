@@ -1272,11 +1272,21 @@ pub struct DebuggerVisualizerFile {
     pub src: Lrc<[u8]>,
     /// Indicates which visualizer type this targets.
     pub visualizer_type: DebuggerVisualizerType,
+    // FIXME: Docs
+    pub path: Option<PathBuf>,
 }
 
 impl DebuggerVisualizerFile {
-    pub fn new(src: Lrc<[u8]>, visualizer_type: DebuggerVisualizerType) -> Self {
-        DebuggerVisualizerFile { src, visualizer_type }
+    pub fn new(src: Lrc<[u8]>, visualizer_type: DebuggerVisualizerType, path: PathBuf) -> Self {
+        DebuggerVisualizerFile { src, visualizer_type, path: Some(path) }
+    }
+
+    pub fn path_erased(&self) -> Self {
+        DebuggerVisualizerFile {
+            src: self.src.clone(),
+            visualizer_type: self.visualizer_type,
+            path: None,
+        }
     }
 }
 

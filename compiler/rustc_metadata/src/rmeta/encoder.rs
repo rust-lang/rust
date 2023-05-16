@@ -1852,7 +1852,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     fn encode_debugger_visualizers(&mut self) -> LazyArray<DebuggerVisualizerFile> {
         empty_proc_macro!(self);
-        self.lazy_array(self.tcx.debugger_visualizers(LOCAL_CRATE).iter())
+        self.lazy_array(
+            self.tcx
+                .debugger_visualizers(LOCAL_CRATE)
+                .iter()
+                // Erase the path since it may contain privacy sensitive data
+                // that we don't want to end up in crate metadata.
+                // The path is only needed for the local crate because of
+                // `--emit dep-info`.
+                .map(DebuggerVisualizerFile::path_erased),
+        )
     }
 
     fn encode_crate_deps(&mut self) -> LazyArray<CrateDep> {
