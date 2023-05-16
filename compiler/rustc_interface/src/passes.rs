@@ -572,12 +572,6 @@ fn resolver_for_lowering<'tcx>(
     // Make sure we don't mutate the cstore from here on.
     tcx.untracked().cstore.leak();
 
-    {
-        let debugger_visualizers = rustc_passes::debugger_visualizer::collect(tcx.sess, &krate);
-        let feed = tcx.feed_local_crate();
-        feed.debugger_visualizers(debugger_visualizers);
-    }
-
     let ty::ResolverOutputs {
         global_ctxt: untracked_resolutions,
         ast_lowering: untracked_resolver_for_lowering,

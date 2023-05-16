@@ -3,6 +3,10 @@
 use rustc_ast::Attribute;
 use rustc_data_structures::sync::Lrc;
 use rustc_expand::base::resolve_path;
+use rustc_middle::{
+    query::{LocalCrate, Providers},
+    ty::TyCtxt,
+};
 use rustc_session::Session;
 use rustc_span::{sym, DebuggerVisualizerFile, DebuggerVisualizerType};
 
@@ -12,7 +16,7 @@ impl DebuggerVisualizerCollector<'_> {
     fn check_for_debugger_visualizer(&mut self, attr: &Attribute) {
         if attr.has_name(sym::debugger_visualizer) {
             let Some(hints) = attr.meta_item_list() else {
-            self.sess.emit_err(DebugVisualizerInvalid { span: attr.span });
+                self.sess.emit_err(DebugVisualizerInvalid { span: attr.span });
                 return;
             };
 
@@ -82,12 +86,18 @@ impl<'ast> rustc_ast::visit::Visitor<'ast> for DebuggerVisualizerCollector<'_> {
 }
 
 /// Traverses and collects the debugger visualizers for a specific crate.
-pub fn collect(sess: &Session, krate: &rustc_ast::ast::Crate) -> Vec<DebuggerVisualizerFile> {
-    // Initialize the collector.
-    let mut visitor = DebuggerVisualizerCollector { sess, visualizers: Vec::new() };
+fn debugger_visualizers(tcx: TyCtxt<'_>, _: LocalCrate) -> Vec<DebuggerVisualizerFile> {
+    let resolver_and_krate = tcx.resolver_for_lowering(()).borrow();
+    let krate = &*resolver_and_krate.1;
+
+    let mut visitor = DebuggerVisualizerCollector { sess: tcx.sess, visualizers: Vec::new() };
     rustc_ast::visit::Visitor::visit_crate(&mut visitor, krate);
 
     // Sort the visualizers so we always get a deterministic query result.
     visitor.visualizers.sort_unstable();
     visitor.visualizers
+}
+
+pub fn provide(providers: &mut Providers) {
+    providers.debugger_visualizers = debugger_visualizers;
 }

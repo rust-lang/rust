@@ -27,7 +27,7 @@ use rustc_middle::query::Providers;
 mod check_attr;
 mod check_const;
 pub mod dead;
-pub mod debugger_visualizer;
+mod debugger_visualizer;
 mod diagnostic_items;
 pub mod entry;
 mod errors;
@@ -50,6 +50,7 @@ pub fn provide(providers: &mut Providers) {
     check_attr::provide(providers);
     check_const::provide(providers);
     dead::provide(providers);
+    debugger_visualizer::provide(providers);
     diagnostic_items::provide(providers);
     entry::provide(providers);
     lang_items::provide(providers);
