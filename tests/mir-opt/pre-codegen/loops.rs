@@ -9,32 +9,15 @@ pub fn int_range(start: usize, end: usize) {
     }
 }
 
-pub fn vec_range(mut v: Vec<impl Sized>) {
-    for i in 0..v.len() {
-        let x = &mut v[i];
-        opaque((i, x))
-    }
-    for i in 0..v.len() {
-        let x = &v[i];
-        opaque((i, x))
-    }
-}
-
-pub fn vec_iter(mut v: Vec<impl Sized>) {
-    for x in v.iter_mut() {
-        opaque(x)
-    }
-    for x in v.iter() {
+pub fn mapped<T, U>(iter: impl Iterator<Item = T>, f: impl Fn(T) -> U) {
+    for x in iter.map(f) {
         opaque(x)
     }
 }
 
-pub fn vec_iter_enumerate(mut v: Vec<impl Sized>) {
-    for (i, x) in v.iter_mut().enumerate() {
-        opaque((i, x))
-    }
-    for (i, x) in v.iter().enumerate() {
-        opaque((i, x))
+pub fn filter_mapped<T, U>(iter: impl Iterator<Item = T>, f: impl Fn(T) -> Option<U>) {
+    for x in iter.filter_map(f) {
+        opaque(x)
     }
 }
 
@@ -48,7 +31,6 @@ pub fn vec_move(mut v: Vec<impl Sized>) {
 fn opaque(_: impl Sized) {}
 
 // EMIT_MIR loops.int_range.PreCodegen.after.mir
-// EMIT_MIR loops.vec_range.PreCodegen.after.mir
-// EMIT_MIR loops.vec_iter.PreCodegen.after.mir
-// EMIT_MIR loops.vec_iter_enumerate.PreCodegen.after.mir
+// EMIT_MIR loops.mapped.PreCodegen.after.mir
+// EMIT_MIR loops.filter_mapped.PreCodegen.after.mir
 // EMIT_MIR loops.vec_move.PreCodegen.after.mir
