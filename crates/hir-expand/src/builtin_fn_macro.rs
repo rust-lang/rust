@@ -1,9 +1,13 @@
 //! Builtin macro
 
+use std::mem;
+
+use ::tt::Ident;
 use base_db::{AnchoredPath, Edition, FileId};
 use cfg::CfgExpr;
 use either::Either;
 use mbe::{parse_exprs_with_sep, parse_to_token_tree, TokenMap};
+use rustc_hash::FxHashMap;
 use syntax::{
     ast::{self, AstToken},
     SmolStr,
@@ -90,11 +94,6 @@ register_builtin! {
     (module_path, ModulePath) => module_path_expand,
     (assert, Assert) => assert_expand,
     (stringify, Stringify) => stringify_expand,
-    (format_args, FormatArgs) => format_args_expand,
-    (const_format_args, ConstFormatArgs) => format_args_expand,
-    // format_args_nl only differs in that it adds a newline in the end,
-    // so we use the same stub expansion for now
-    (format_args_nl, FormatArgsNl) => format_args_expand,
     (llvm_asm, LlvmAsm) => asm_expand,
     (asm, Asm) => asm_expand,
     (global_asm, GlobalAsm) => global_asm_expand,
@@ -106,6 +105,9 @@ register_builtin! {
     (trace_macros, TraceMacros) => trace_macros_expand,
 
     EAGER:
+    (format_args, FormatArgs) => format_args_expand,
+    (const_format_args, ConstFormatArgs) => format_args_expand,
+    (format_args_nl, FormatArgsNl) => format_args_nl_expand,
     (compile_error, CompileError) => compile_error_expand,
     (concat, Concat) => concat_expand,
     (concat_idents, ConcatIdents) => concat_idents_expand,
@@ -232,42 +234,159 @@ fn file_expand(
 }
 
 fn format_args_expand(
+    db: &dyn ExpandDatabase,
+    id: MacroCallId,
+    tt: &tt::Subtree,
+) -> ExpandResult<ExpandedEager> {
+    format_args_expand_general(db, id, tt, "")
+        .map(|x| ExpandedEager { subtree: x, included_file: None })
+}
+
+fn format_args_nl_expand(
+    db: &dyn ExpandDatabase,
+    id: MacroCallId,
+    tt: &tt::Subtree,
+) -> ExpandResult<ExpandedEager> {
+    format_args_expand_general(db, id, tt, "\\n")
+        .map(|x| ExpandedEager { subtree: x, included_file: None })
+}
+
+fn format_args_expand_general(
     _db: &dyn ExpandDatabase,
     _id: MacroCallId,
     tt: &tt::Subtree,
+    end_string: &str,
 ) -> ExpandResult<tt::Subtree> {
-    // We expand `format_args!("", a1, a2)` to
-    // ```
-    // $crate::fmt::Arguments::new_v1(&[], &[
-    //   $crate::fmt::ArgumentV1::new(&arg1,$crate::fmt::Display::fmt),
-    //   $crate::fmt::ArgumentV1::new(&arg2,$crate::fmt::Display::fmt),
-    // ])
-    // ```,
-    // which is still not really correct, but close enough for now
-    let mut args = parse_exprs_with_sep(tt, ',');
+    let args = parse_exprs_with_sep(tt, ',');
+
+    let expand_error =
+        ExpandResult::new(tt::Subtree::empty(), mbe::ExpandError::NoMatchingRule.into());
 
     if args.is_empty() {
-        return ExpandResult::new(tt::Subtree::empty(), mbe::ExpandError::NoMatchingRule.into());
+        return expand_error;
     }
-    for arg in &mut args {
+    let mut key_args = FxHashMap::default();
+    let mut args = args.into_iter().filter_map(|mut arg| {
         // Remove `key =`.
         if matches!(arg.token_trees.get(1), Some(tt::TokenTree::Leaf(tt::Leaf::Punct(p))) if p.char == '=')
         {
             // but not with `==`
-            if !matches!(arg.token_trees.get(2), Some(tt::TokenTree::Leaf(tt::Leaf::Punct(p))) if p.char == '=' )
+            if !matches!(arg.token_trees.get(2), Some(tt::TokenTree::Leaf(tt::Leaf::Punct(p))) if p.char == '=')
             {
-                arg.token_trees.drain(..2);
+                let key = arg.token_trees.drain(..2).next().unwrap();
+                key_args.insert(key.to_string(), arg);
+                return None;
             }
         }
-    }
-    let _format_string = args.remove(0);
-    let arg_tts = args.into_iter().flat_map(|arg| {
-        quote! { #DOLLAR_CRATE::fmt::ArgumentV1::new(&(#arg), #DOLLAR_CRATE::fmt::Display::fmt), }
-    }.token_trees);
-    let expanded = quote! {
-        #DOLLAR_CRATE::fmt::Arguments::new_v1(&[], &[##arg_tts])
+        Some(arg)
+    }).collect::<Vec<_>>().into_iter();
+    // ^^^^^^^ we need this collect, to enforce the side effect of the filter_map closure (building the `key_args`)
+    let format_subtree = args.next().unwrap();
+    let format_string = (|| {
+        let token_tree = format_subtree.token_trees.get(0)?;
+        match token_tree {
+            tt::TokenTree::Leaf(l) => match l {
+                tt::Leaf::Literal(l) => {
+                    let text = l.text.strip_prefix('"')?.strip_suffix('"')?;
+                    let span = l.span;
+                    Some((text, span))
+                }
+                _ => None,
+            },
+            tt::TokenTree::Subtree(_) => None,
+        }
+    })();
+    let Some((format_string, _format_string_span)) = format_string else {
+        return expand_error;
     };
-    ExpandResult::ok(expanded)
+    let mut format_iter = format_string.chars().peekable();
+    let mut parts = vec![];
+    let mut last_part = String::new();
+    let mut arg_tts = vec![];
+    let mut err = None;
+    while let Some(c) = format_iter.next() {
+        // Parsing the format string. See https://doc.rust-lang.org/std/fmt/index.html#syntax for the grammar and more info
+        match c {
+            '{' => {
+                if format_iter.peek() == Some(&'{') {
+                    format_iter.next();
+                    last_part.push('{');
+                    continue;
+                }
+                let mut argument = String::new();
+                while ![Some(&'}'), Some(&':')].contains(&format_iter.peek()) {
+                    argument.push(match format_iter.next() {
+                        Some(c) => c,
+                        None => return expand_error,
+                    });
+                }
+                let format_spec = match format_iter.next().unwrap() {
+                    '}' => "".to_owned(),
+                    ':' => {
+                        let mut s = String::new();
+                        while let Some(c) = format_iter.next() {
+                            if c == '}' {
+                                break;
+                            }
+                            s.push(c);
+                        }
+                        s
+                    }
+                    _ => unreachable!(),
+                };
+                parts.push(mem::take(&mut last_part));
+                let arg_tree = if argument.is_empty() {
+                    match args.next() {
+                        Some(x) => x,
+                        None => {
+                            err = Some(mbe::ExpandError::NoMatchingRule.into());
+                            tt::Subtree::empty()
+                        }
+                    }
+                } else if let Some(tree) = key_args.get(&argument) {
+                    tree.clone()
+                } else {
+                    // FIXME: we should pick the related substring of the `_format_string_span` as the span. You
+                    // can use `.char_indices()` instead of `.char()` for `format_iter` to find the substring interval.
+                    let ident = Ident::new(argument, tt::TokenId::unspecified());
+                    quote!(#ident)
+                };
+                let formatter = match &*format_spec {
+                    "?" => quote!(#DOLLAR_CRATE::fmt::Debug::fmt),
+                    "" => quote!(#DOLLAR_CRATE::fmt::Display::fmt),
+                    _ => {
+                        // FIXME: implement the rest and return expand error here
+                        quote!(#DOLLAR_CRATE::fmt::Display::fmt)
+                    }
+                };
+                arg_tts.push(
+                    quote! { #DOLLAR_CRATE::fmt::ArgumentV1::new(&(#arg_tree), #formatter), },
+                );
+            }
+            '}' => {
+                if format_iter.peek() == Some(&'}') {
+                    format_iter.next();
+                    last_part.push('}');
+                } else {
+                    return expand_error;
+                }
+            }
+            _ => last_part.push(c),
+        }
+    }
+    last_part += end_string;
+    if !last_part.is_empty() {
+        parts.push(last_part);
+    }
+    let part_tts = parts.into_iter().map(|x| {
+        let l = tt::Literal { span: tt::TokenId::unspecified(), text: format!("\"{}\"", x).into() };
+        quote!(#l ,)
+    });
+    let arg_tts = arg_tts.into_iter().flat_map(|arg| arg.token_trees);
+    let expanded = quote! {
+        #DOLLAR_CRATE::fmt::Arguments::new_v1(&[##part_tts], &[##arg_tts])
+    };
+    ExpandResult { value: expanded, err }
 }
 
 fn asm_expand(
