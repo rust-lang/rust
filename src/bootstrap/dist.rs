@@ -2327,7 +2327,6 @@ impl Step for BootstrapShim {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        // Create this even with only `dist bootstrap` to avoid having to update all CI builders.
         run.alias("bootstrap-shim")
     }
 

@@ -704,7 +704,6 @@ impl<'a> Builder<'a> {
                 check::RustAnalyzer,
                 check::Rustfmt,
                 check::Bootstrap,
-                check::BootstrapShim,
             ),
             Kind::Test => describe!(
                 crate::toolstate::ToolStateCheck,

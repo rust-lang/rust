@@ -1,13 +1,9 @@
-use super::{Config, Flags, TomlConfig};
+use super::{Config, Flags};
 use clap::CommandFactory;
 use std::{env, path::Path};
 
-fn toml(config: &str) -> TomlConfig {
-    toml::from_str(config).unwrap()
-}
-
 fn parse(config: &str) -> Config {
-    Config::parse(&["check".to_owned(), "--config=/does/not/exist".to_owned()], Some(toml(config)))
+    Config::parse(&["check".to_owned(), "--config=/does/not/exist".to_owned()], Some(config))
 }
 
 #[test]

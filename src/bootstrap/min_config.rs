@@ -7,7 +7,6 @@ use std::{
     process::Command,
 };
 
-use serde::Deserialize;
 use serde_derive::Deserialize;
 
 use crate::{
@@ -19,6 +18,12 @@ use crate::{
 };
 
 /// The bare minimum config, suitable for `bootstrap-shim`, but sharing code with the main `bootstrap` binary.
+/// Unlike bootstrap itself, bootstrap-shim needs to be compatible across multiple versions of the Rust repo.
+///
+/// FIXME: Update the following information once bootstrap-shim is default in shell scripts
+///
+/// Once bootstrap-shim is used as default(today it's opt in) in shell scripts, DO NOT CHANGE this configuration
+/// without the version bump for the pinned nightly version of bootstrap-shim.
 #[derive(Default, Clone)]
 pub struct MinimalConfig {
     // Needed so we know where to store the unpacked bootstrap binary.
@@ -30,12 +35,11 @@ pub struct MinimalConfig {
     pub patch_binaries_for_nix: bool,
     // Needed to know which commit to download.
     pub stage0_metadata: Stage0Metadata,
-
     // This isn't currently used, but will eventually let people configure whether to download or build bootstrap.
     pub config: Option<PathBuf>,
-    // Not currently used in the shim.
+    // General need for verbose mode logging in `bootstrap-shim`.
     pub verbose: usize,
-    // Not currently used in the shim.
+    // Needed for `bootstrap::download` module
     pub dry_run: DryRun,
 }
 
@@ -46,11 +50,13 @@ pub struct Stage0Metadata {
     pub checksums_sha256: HashMap<String, String>,
     pub rustfmt: Option<RustfmtMetadata>,
 }
+
 #[derive(Clone, Default, Deserialize)]
 pub struct CompilerMetadata {
     pub date: String,
     pub version: String,
 }
+
 #[derive(Default, Deserialize, Clone)]
 pub struct Stage0Config {
     pub dist_server: String,
@@ -228,12 +234,12 @@ impl MinimalConfig {
 
 #[cfg(test)]
 /// Shared helper function to be used in `MinimalConfig::parse` and `bootstrap::config::Config::parse`
-pub(crate) fn get_toml<T: Deserialize<'static> + Default>(_file: &Path) -> T {
+pub(crate) fn get_toml<T: serde::Deserialize<'static> + Default>(_file: &Path) -> T {
     T::default()
 }
 #[cfg(not(test))]
 /// Shared helper function to be used in `MinimalConfig::parse` and `bootstrap::config::Config::parse`
-pub(crate) fn get_toml<T: Deserialize<'static> + Default>(file: &Path) -> T {
+pub(crate) fn get_toml<T: serde::Deserialize<'static> + Default>(file: &Path) -> T {
     let contents =
         t!(fs::read_to_string(file), format!("config file {} not found", file.display()));
     // Deserialize to Value and then TomlConfig to prevent the Deserialize impl of
@@ -262,7 +268,7 @@ fn set_config_output_dir(output_path: &mut PathBuf) {
 }
 
 /// Shared helper function to be used in `MinimalConfig::parse` and `bootstrap::config::Config::parse`
-pub(crate) fn set_cfg_path_and_return_toml_cfg<T: Deserialize<'static> + Default>(
+pub(crate) fn set_cfg_path_and_return_toml_cfg<T: serde::Deserialize<'static> + Default>(
     src: PathBuf,
     config_flag: Option<PathBuf>,
     cfg_path: &mut Option<PathBuf>,

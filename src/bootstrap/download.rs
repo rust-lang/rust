@@ -359,6 +359,110 @@ enum DownloadSource {
     Dist,
 }
 
+impl MinimalConfig {
+    pub fn download_bootstrap(&self, commit: &str) -> PathBuf {
+        self.verbose(&format!("downloading bootstrap from CI (commit {commit})"));
+        let host = self.build.triple;
+        let bin_root = self.out.join(host).join("bootstrap");
+        let stamp = bin_root.join(".bootstrap-stamp");
+        let bootstrap_bin = bin_root.join("bin").join("bootstrap");
+
+        if !bootstrap_bin.exists() || program_out_of_date(&stamp, commit) {
+            let version = self.git_artifact_version_part(commit);
+            let filename = format!("bootstrap-{version}-{host}.tar.xz");
+            self.download_component(DownloadSource::CI, filename, "bootstrap", commit, "");
+            if self.should_fix_bins_and_dylibs() {
+                self.fix_bin_or_dylib(&bootstrap_bin);
+            }
+            t!(fs::write(stamp, commit));
+        }
+
+        bootstrap_bin
+    }
+
+    fn download_component(
+        &self,
+        mode: DownloadSource,
+        filename: String,
+        prefix: &str,
+        key: &str,
+        destination: &str,
+    ) {
+        let cache_dst = self.out.join("cache");
+        let cache_dir = cache_dst.join(key);
+        if !cache_dir.exists() {
+            t!(fs::create_dir_all(&cache_dir));
+        }
+
+        let bin_root = self.out.join(self.build.triple).join(destination);
+        let tarball = cache_dir.join(&filename);
+        let (base_url, url, should_verify) = match mode {
+            DownloadSource::CI => (
+                self.stage0_metadata.config.artifacts_server.clone(),
+                format!("{key}/{filename}"),
+                false,
+            ),
+            DownloadSource::Dist => {
+                let dist_server = env::var("RUSTUP_DIST_SERVER")
+                    .unwrap_or(self.stage0_metadata.config.dist_server.to_string());
+                // NOTE: make `dist` part of the URL because that's how it's stored in src/stage0.json
+                (dist_server, format!("dist/{key}/{filename}"), true)
+            }
+        };
+
+        // For the beta compiler, put special effort into ensuring the checksums are valid.
+        // FIXME: maybe we should do this for download-rustc as well? but it would be a pain to update
+        // this on each and every nightly ...
+        let checksum = if should_verify {
+            let error = format!(
+                "src/stage0.json doesn't contain a checksum for {url}. \
+                Pre-built artifacts might not be available for this \
+                target at this time, see https://doc.rust-lang.org/nightly\
+                /rustc/platform-support.html for more information."
+            );
+            let sha256 = self.stage0_metadata.checksums_sha256.get(&url).expect(&error);
+            if tarball.exists() {
+                if self.verify(&tarball, sha256) {
+                    self.unpack(&tarball, &bin_root, prefix);
+                    return;
+                } else {
+                    self.verbose(&format!(
+                        "ignoring cached file {} due to failed verification",
+                        tarball.display()
+                    ));
+                    self.remove(&tarball);
+                }
+            }
+            Some(sha256)
+        } else if tarball.exists() {
+            self.unpack(&tarball, &bin_root, prefix);
+            return;
+        } else {
+            None
+        };
+
+        let mut help_on_error = "";
+        if destination == "ci-rustc" {
+            help_on_error = "error: failed to download pre-built rustc from CI
+
+note: old builds get deleted after a certain time
+help: if trying to compile an old commit of rustc, disable `download-rustc` in config.toml:
+
+[rust]
+download-rustc = false
+";
+        }
+        self.download_file(&format!("{base_url}/{url}"), &tarball, help_on_error);
+        if let Some(sha256) = checksum {
+            if !self.verify(&tarball, sha256) {
+                panic!("failed to verify {}", tarball.display());
+            }
+        }
+
+        self.unpack(&tarball, &bin_root, prefix);
+    }
+}
+
 /// Functions that are only ever called once, but named for clarify and to avoid thousand-line functions.
 impl Config {
     pub(crate) fn maybe_download_rustfmt(&self) -> Option<PathBuf> {
@@ -573,109 +677,5 @@ impl Config {
         }
         let llvm_root = self.ci_llvm_root();
         self.unpack(&tarball, &llvm_root, "rust-dev");
-    }
-}
-
-impl MinimalConfig {
-    pub fn download_bootstrap(&self, commit: &str) -> PathBuf {
-        self.verbose(&format!("downloading bootstrap from CI (commit {commit})"));
-        let host = self.build.triple;
-        let bin_root = self.out.join(host).join("bootstrap");
-        let stamp = bin_root.join(".bootstrap-stamp");
-        let bootstrap_bin = bin_root.join("bin").join("bootstrap");
-
-        if !bootstrap_bin.exists() || program_out_of_date(&stamp, commit) {
-            let version = self.git_artifact_version_part(commit);
-            let filename = format!("bootstrap-{version}-{host}.tar.xz");
-            self.download_component(DownloadSource::CI, filename, "bootstrap", commit, "");
-            if self.should_fix_bins_and_dylibs() {
-                self.fix_bin_or_dylib(&bootstrap_bin);
-            }
-            t!(fs::write(stamp, commit));
-        }
-
-        bootstrap_bin
-    }
-
-    fn download_component(
-        &self,
-        mode: DownloadSource,
-        filename: String,
-        prefix: &str,
-        key: &str,
-        destination: &str,
-    ) {
-        let cache_dst = self.out.join("cache");
-        let cache_dir = cache_dst.join(key);
-        if !cache_dir.exists() {
-            t!(fs::create_dir_all(&cache_dir));
-        }
-
-        let bin_root = self.out.join(self.build.triple).join(destination);
-        let tarball = cache_dir.join(&filename);
-        let (base_url, url, should_verify) = match mode {
-            DownloadSource::CI => (
-                self.stage0_metadata.config.artifacts_server.clone(),
-                format!("{key}/{filename}"),
-                false,
-            ),
-            DownloadSource::Dist => {
-                let dist_server = env::var("RUSTUP_DIST_SERVER")
-                    .unwrap_or(self.stage0_metadata.config.dist_server.to_string());
-                // NOTE: make `dist` part of the URL because that's how it's stored in src/stage0.json
-                (dist_server, format!("dist/{key}/{filename}"), true)
-            }
-        };
-
-        // For the beta compiler, put special effort into ensuring the checksums are valid.
-        // FIXME: maybe we should do this for download-rustc as well? but it would be a pain to update
-        // this on each and every nightly ...
-        let checksum = if should_verify {
-            let error = format!(
-                "src/stage0.json doesn't contain a checksum for {url}. \
-                Pre-built artifacts might not be available for this \
-                target at this time, see https://doc.rust-lang.org/nightly\
-                /rustc/platform-support.html for more information."
-            );
-            let sha256 = self.stage0_metadata.checksums_sha256.get(&url).expect(&error);
-            if tarball.exists() {
-                if self.verify(&tarball, sha256) {
-                    self.unpack(&tarball, &bin_root, prefix);
-                    return;
-                } else {
-                    self.verbose(&format!(
-                        "ignoring cached file {} due to failed verification",
-                        tarball.display()
-                    ));
-                    self.remove(&tarball);
-                }
-            }
-            Some(sha256)
-        } else if tarball.exists() {
-            self.unpack(&tarball, &bin_root, prefix);
-            return;
-        } else {
-            None
-        };
-
-        let mut help_on_error = "";
-        if destination == "ci-rustc" {
-            help_on_error = "error: failed to download pre-built rustc from CI
-
-note: old builds get deleted after a certain time
-help: if trying to compile an old commit of rustc, disable `download-rustc` in config.toml:
-
-[rust]
-download-rustc = false
-";
-        }
-        self.download_file(&format!("{base_url}/{url}"), &tarball, help_on_error);
-        if let Some(sha256) = checksum {
-            if !self.verify(&tarball, sha256) {
-                panic!("failed to verify {}", tarball.display());
-            }
-        }
-
-        self.unpack(&tarball, &bin_root, prefix);
     }
 }

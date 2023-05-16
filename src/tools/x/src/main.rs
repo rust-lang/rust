@@ -19,7 +19,7 @@ const PYTHON: &str = "python";
 const PYTHON2: &str = "python2";
 const PYTHON3: &str = "python3";
 
-fn python() -> &'static str {
+pub fn python() -> &'static str {
     let val = match env::var_os("PATH") {
         Some(val) => val,
         None => return PYTHON,
@@ -98,16 +98,8 @@ fn handle_result(result: io::Result<ExitStatus>, cmd: Command) {
     }
 }
 
-pub fn main() {
-    match env::args().skip(1).next().as_deref() {
-        Some("--wrapper-version") => {
-            let version = env!("CARGO_PKG_VERSION");
-            println!("{}", version);
-            return;
-        }
-        _ => {}
-    }
-    let current = match env::current_dir() {
+fn find_and_run_available_bootstrap_script() {
+    let current_path = match env::current_dir() {
         Ok(dir) => dir,
         Err(err) => {
             eprintln!("Failed to get current directory: {err}");
@@ -115,7 +107,7 @@ pub fn main() {
         }
     };
 
-    for dir in current.ancestors() {
+    for dir in current_path.ancestors() {
         let candidate = dir.join("x.py");
         if candidate.exists() {
             let shell_script_candidate = dir.join("x");
@@ -132,6 +124,20 @@ pub fn main() {
             handle_result(result, cmd);
         }
     }
+}
+
+#[allow(dead_code)]
+fn main() {
+    match env::args().skip(1).next().as_deref() {
+        Some("--wrapper-version") => {
+            let version = env!("CARGO_PKG_VERSION");
+            println!("{}", version);
+            return;
+        }
+        _ => {}
+    }
+
+    find_and_run_available_bootstrap_script();
 
     eprintln!(
         "x.py not found. Please run inside of a checkout of `https://github.com/rust-lang/rust`."

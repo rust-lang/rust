@@ -85,7 +85,6 @@ pub struct Config {
     pub jobs: Option<u32>,
     pub cmd: Subcommand,
     pub incremental: bool,
-    pub dry_run: DryRun,
     /// Arguments appearing after `--` to be forwarded to tools,
     /// e.g. `--fix-broken` or test arguments.
     pub free_args: Vec<String>,
@@ -395,7 +394,7 @@ impl Target {
 /// `Config` structure.
 #[derive(Deserialize, Default)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
-pub struct TomlConfig {
+struct TomlConfig {
     changelog_seen: Option<usize>,
     build: Option<Build>,
     install: Option<Install>,
@@ -774,17 +773,19 @@ impl Config {
         args
     }
 
-    pub fn parse(args: &[String], custom_toml_config: Option<TomlConfig>) -> Config {
+    pub fn parse(args: &[String], custom_toml_config: Option<&str>) -> Config {
         let mut flags = Flags::parse(&args);
         let mut config = Config::default_opts();
 
-        let mut toml: TomlConfig = custom_toml_config.unwrap_or_else(|| {
+        let mut toml: TomlConfig = if let Some(custom_toml_config) = custom_toml_config {
+            toml::from_str(custom_toml_config).unwrap()
+        } else {
             set_cfg_path_and_return_toml_cfg(
                 config.src.clone(),
                 flags.config.clone(),
                 &mut config.config,
             )
-        });
+        };
 
         config.minimal_config = MinimalConfig::parse(&flags, toml.build.clone());
 
@@ -814,11 +815,6 @@ impl Config {
             crate::detail_exit(1);
         }
 
-        let build = toml.build.clone().unwrap_or_default();
-        if let Some(file_build) = build.build.as_ref() {
-            config.build = TargetSelection::from_user(file_build);
-        };
-
         if let Some(include) = &toml.profile {
             let mut include_path = config.src.clone();
             include_path.push("src");
@@ -830,6 +826,11 @@ impl Config {
         }
 
         config.changelog_seen = toml.changelog_seen;
+
+        let build = toml.build.unwrap_or_default();
+        if let Some(file_build) = build.build {
+            config.build = TargetSelection::from_user(&file_build);
+        };
 
         set(&mut config.out, flags.build_dir.or_else(|| build.build_dir.map(PathBuf::from)));
         // NOTE: Bootstrap spawns various commands with different working directories.
