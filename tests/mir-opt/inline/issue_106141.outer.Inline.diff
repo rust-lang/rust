@@ -17,6 +17,7 @@
   
       bb0: {
 -         _0 = inner() -> bb1;             // scope 0 at $DIR/issue_106141.rs:+1:5: +1:12
++         StorageLive(_1);                 // scope 0 at $DIR/issue_106141.rs:+1:5: +1:12
 +         StorageLive(_3);                 // scope 0 at $DIR/issue_106141.rs:+1:5: +1:12
 +         _3 = const _;                    // scope 1 at $DIR/issue_106141.rs:12:18: 12:25
                                            // mir::Constant
@@ -24,32 +25,31 @@
 -                                          // + literal: Const { ty: fn() -> usize {inner}, val: Value(<ZST>) }
 +                                          // + span: $DIR/issue_106141.rs:12:18: 12:25
 +                                          // + literal: Const { ty: &[bool; 1], val: Unevaluated(inner, [], Some(promoted[0])) }
-+         _0 = index() -> bb1;             // scope 2 at $DIR/issue_106141.rs:13:17: 13:24
++         _0 = index() -> bb2;             // scope 2 at $DIR/issue_106141.rs:13:17: 13:24
 +                                          // mir::Constant
 +                                          // + span: $DIR/issue_106141.rs:13:17: 13:22
 +                                          // + literal: Const { ty: fn() -> usize {index}, val: Value(<ZST>) }
       }
   
       bb1: {
-+         StorageLive(_1);                 // scope 3 at $DIR/issue_106141.rs:14:8: 14:21
-+         _2 = Lt(_0, const 1_usize);      // scope 3 at $DIR/issue_106141.rs:14:8: 14:21
-+         assert(move _2, "index out of bounds: the length is {} but the index is {}", const 1_usize, _0) -> bb2; // scope 3 at $DIR/issue_106141.rs:14:8: 14:21
++         StorageDead(_3);                 // scope 0 at $DIR/issue_106141.rs:+1:5: +1:12
++         StorageDead(_1);                 // scope 0 at $DIR/issue_106141.rs:+1:5: +1:12
+          return;                          // scope 0 at $DIR/issue_106141.rs:+2:2: +2:2
 +     }
 + 
 +     bb2: {
-+         _1 = (*_3)[_0];                  // scope 3 at $DIR/issue_106141.rs:14:8: 14:21
-+         switchInt(move _1) -> [0: bb3, otherwise: bb4]; // scope 3 at $DIR/issue_106141.rs:14:8: 14:21
++         _2 = Lt(_0, const 1_usize);      // scope 3 at $DIR/issue_106141.rs:14:8: 14:21
++         assert(move _2, "index out of bounds: the length is {} but the index is {}", const 1_usize, _0) -> bb3; // scope 3 at $DIR/issue_106141.rs:14:8: 14:21
 +     }
 + 
 +     bb3: {
-+         _0 = const 0_usize;              // scope 3 at $DIR/issue_106141.rs:17:9: 17:10
-+         goto -> bb4;                     // scope 3 at $DIR/issue_106141.rs:14:5: 18:6
++         _1 = (*_3)[_0];                  // scope 3 at $DIR/issue_106141.rs:14:8: 14:21
++         switchInt(move _1) -> [0: bb4, otherwise: bb1]; // scope 3 at $DIR/issue_106141.rs:14:8: 14:21
 +     }
 + 
 +     bb4: {
-+         StorageDead(_1);                 // scope 3 at $DIR/issue_106141.rs:18:5: 18:6
-+         StorageDead(_3);                 // scope 0 at $DIR/issue_106141.rs:+1:5: +1:12
-          return;                          // scope 0 at $DIR/issue_106141.rs:+2:2: +2:2
++         _0 = const 0_usize;              // scope 3 at $DIR/issue_106141.rs:17:9: 17:10
++         goto -> bb1;                     // scope 2 at $DIR/issue_106141.rs:14:5: 18:6
       }
   }
   

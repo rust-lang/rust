@@ -7,7 +7,6 @@
       let mut _2: !;                       // in scope 0 at $SRC_DIR/std/src/panic.rs:LL:COL
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/control_flow_simplification.rs:+1:8: +1:21
           _1 = const _;                    // scope 0 at $DIR/control_flow_simplification.rs:+1:8: +1:21
 -         switchInt(move _1) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/control_flow_simplification.rs:+1:8: +1:21
 +         switchInt(const false) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/control_flow_simplification.rs:+1:8: +1:21
@@ -24,7 +23,6 @@
       }
   
       bb2: {
-          StorageDead(_1);                 // scope 0 at $DIR/control_flow_simplification.rs:+3:5: +3:6
           return;                          // scope 0 at $DIR/control_flow_simplification.rs:+4:2: +4:2
       }
   }

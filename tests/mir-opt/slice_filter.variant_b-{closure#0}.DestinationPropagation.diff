@@ -33,77 +33,50 @@
           _5 = ((*_15).2: usize);          // scope 0 at $DIR/slice_filter.rs:+0:35: +0:36
           _16 = deref_copy (*_2);          // scope 0 at $DIR/slice_filter.rs:+0:38: +0:39
           _6 = ((*_16).3: usize);          // scope 0 at $DIR/slice_filter.rs:+0:38: +0:39
--         StorageLive(_7);                 // scope 1 at $DIR/slice_filter.rs:+0:42: +0:58
-+         nop;                             // scope 1 at $DIR/slice_filter.rs:+0:42: +0:58
-          StorageLive(_8);                 // scope 1 at $DIR/slice_filter.rs:+0:42: +0:48
           _8 = Le(_3, _5);                 // scope 1 at $DIR/slice_filter.rs:+0:42: +0:48
-          switchInt(move _8) -> [0: bb4, otherwise: bb5]; // scope 1 at $DIR/slice_filter.rs:+0:42: +0:58
+          switchInt(move _8) -> [0: bb3, otherwise: bb4]; // scope 1 at $DIR/slice_filter.rs:+0:42: +0:58
       }
   
       bb1: {
           _0 = const true;                 // scope 1 at $DIR/slice_filter.rs:+0:42: +0:78
-          goto -> bb3;                     // scope 1 at $DIR/slice_filter.rs:+0:42: +0:78
+          return;                          // scope 1 at $DIR/slice_filter.rs:+0:42: +0:78
       }
   
       bb2: {
--         StorageLive(_10);                // scope 1 at $DIR/slice_filter.rs:+0:62: +0:78
-+         nop;                             // scope 1 at $DIR/slice_filter.rs:+0:62: +0:78
-          StorageLive(_11);                // scope 1 at $DIR/slice_filter.rs:+0:62: +0:68
           _11 = Le(_5, _3);                // scope 1 at $DIR/slice_filter.rs:+0:62: +0:68
-          switchInt(move _11) -> [0: bb6, otherwise: bb7]; // scope 1 at $DIR/slice_filter.rs:+0:62: +0:78
+          switchInt(move _11) -> [0: bb5, otherwise: bb6]; // scope 1 at $DIR/slice_filter.rs:+0:62: +0:78
       }
   
       bb3: {
--         StorageDead(_10);                // scope 1 at $DIR/slice_filter.rs:+0:77: +0:78
--         StorageDead(_7);                 // scope 1 at $DIR/slice_filter.rs:+0:77: +0:78
-+         nop;                             // scope 1 at $DIR/slice_filter.rs:+0:77: +0:78
-+         nop;                             // scope 1 at $DIR/slice_filter.rs:+0:77: +0:78
-          return;                          // scope 0 at $DIR/slice_filter.rs:+0:78: +0:78
-      }
-  
-      bb4: {
--         StorageDead(_9);                 // scope 1 at $DIR/slice_filter.rs:+0:57: +0:58
-+         nop;                             // scope 1 at $DIR/slice_filter.rs:+0:57: +0:58
-          StorageDead(_8);                 // scope 1 at $DIR/slice_filter.rs:+0:57: +0:58
           goto -> bb2;                     // scope 1 at $DIR/slice_filter.rs:+0:42: +0:58
       }
   
-      bb5: {
--         StorageLive(_9);                 // scope 1 at $DIR/slice_filter.rs:+0:52: +0:58
-+         nop;                             // scope 1 at $DIR/slice_filter.rs:+0:52: +0:58
+      bb4: {
           _9 = Le(_6, _4);                 // scope 1 at $DIR/slice_filter.rs:+0:52: +0:58
 -         _7 = move _9;                    // scope 1 at $DIR/slice_filter.rs:+0:42: +0:58
--         StorageDead(_9);                 // scope 1 at $DIR/slice_filter.rs:+0:57: +0:58
-+         nop;                             // scope 1 at $DIR/slice_filter.rs:+0:42: +0:58
-+         nop;                             // scope 1 at $DIR/slice_filter.rs:+0:57: +0:58
-          StorageDead(_8);                 // scope 1 at $DIR/slice_filter.rs:+0:57: +0:58
 -         switchInt(move _7) -> [0: bb2, otherwise: bb1]; // scope 1 at $DIR/slice_filter.rs:+0:42: +0:78
++         nop;                             // scope 1 at $DIR/slice_filter.rs:+0:42: +0:58
 +         switchInt(move _9) -> [0: bb2, otherwise: bb1]; // scope 1 at $DIR/slice_filter.rs:+0:42: +0:78
       }
   
-      bb6: {
+      bb5: {
 -         _10 = const false;               // scope 1 at $DIR/slice_filter.rs:+0:62: +0:78
 +         _0 = const false;                // scope 1 at $DIR/slice_filter.rs:+0:62: +0:78
-          goto -> bb8;                     // scope 1 at $DIR/slice_filter.rs:+0:62: +0:78
+          goto -> bb7;                     // scope 1 at $DIR/slice_filter.rs:+0:62: +0:78
+      }
+  
+      bb6: {
+-         _12 = Le(_4, _6);                // scope 1 at $DIR/slice_filter.rs:+0:72: +0:78
+-         _10 = move _12;                  // scope 1 at $DIR/slice_filter.rs:+0:62: +0:78
++         _0 = Le(_4, _6);                 // scope 1 at $DIR/slice_filter.rs:+0:72: +0:78
++         nop;                             // scope 1 at $DIR/slice_filter.rs:+0:62: +0:78
+          goto -> bb7;                     // scope 1 at $DIR/slice_filter.rs:+0:62: +0:78
       }
   
       bb7: {
--         StorageLive(_12);                // scope 1 at $DIR/slice_filter.rs:+0:72: +0:78
--         _12 = Le(_4, _6);                // scope 1 at $DIR/slice_filter.rs:+0:72: +0:78
--         _10 = move _12;                  // scope 1 at $DIR/slice_filter.rs:+0:62: +0:78
-+         nop;                             // scope 1 at $DIR/slice_filter.rs:+0:72: +0:78
-+         _0 = Le(_4, _6);                 // scope 1 at $DIR/slice_filter.rs:+0:72: +0:78
-+         nop;                             // scope 1 at $DIR/slice_filter.rs:+0:62: +0:78
-          goto -> bb8;                     // scope 1 at $DIR/slice_filter.rs:+0:62: +0:78
-      }
-  
-      bb8: {
--         StorageDead(_12);                // scope 1 at $DIR/slice_filter.rs:+0:77: +0:78
-+         nop;                             // scope 1 at $DIR/slice_filter.rs:+0:77: +0:78
-          StorageDead(_11);                // scope 1 at $DIR/slice_filter.rs:+0:77: +0:78
 -         _0 = move _10;                   // scope 1 at $DIR/slice_filter.rs:+0:42: +0:78
 +         nop;                             // scope 1 at $DIR/slice_filter.rs:+0:42: +0:78
-          goto -> bb3;                     // scope 1 at $DIR/slice_filter.rs:+0:42: +0:78
+          return;                          // scope 1 at $DIR/slice_filter.rs:+0:42: +0:78
       }
   }
   

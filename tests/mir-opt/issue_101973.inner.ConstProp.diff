@@ -30,19 +30,9 @@
       }
   
       bb0: {
-          StorageLive(_2);                 // scope 0 at $DIR/issue_101973.rs:+1:5: +1:65
-          StorageLive(_3);                 // scope 0 at $DIR/issue_101973.rs:+1:5: +1:58
-          StorageLive(_4);                 // scope 0 at $DIR/issue_101973.rs:+1:5: +1:17
-          StorageLive(_14);                // scope 2 at $DIR/issue_101973.rs:8:12: 8:27
-          StorageLive(_15);                // scope 2 at $DIR/issue_101973.rs:8:12: 8:20
           _15 = Shr(_1, const 0_i32);      // scope 2 at $DIR/issue_101973.rs:8:12: 8:20
           _14 = BitAnd(move _15, const 255_u32); // scope 2 at $DIR/issue_101973.rs:8:12: 8:27
-          StorageDead(_15);                // scope 2 at $DIR/issue_101973.rs:8:26: 8:27
           _4 = BitOr(const 0_u32, move _14); // scope 2 at $DIR/issue_101973.rs:8:5: 8:27
-          StorageDead(_14);                // scope 2 at $DIR/issue_101973.rs:8:26: 8:27
-          StorageLive(_6);                 // scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
-          StorageLive(_7);                 // scope 0 at $DIR/issue_101973.rs:+1:31: +1:52
-          StorageLive(_8);                 // scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
 -         _10 = const 8_i32 as u32 (IntToInt); // scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
 -         _11 = Lt(move _10, const 32_u32); // scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
 -         assert(move _11, "attempt to shift right by `{}`, which would overflow", const 8_i32) -> bb1; // scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
@@ -54,7 +44,6 @@
       bb1: {
           _8 = Shr(_1, const 8_i32);       // scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
           _7 = BitAnd(move _8, const 15_u32); // scope 0 at $DIR/issue_101973.rs:+1:31: +1:52
-          StorageDead(_8);                 // scope 0 at $DIR/issue_101973.rs:+1:51: +1:52
 -         _12 = const 1_i32 as u32 (IntToInt); // scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
 -         _13 = Lt(move _12, const 32_u32); // scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
 -         assert(move _13, "attempt to shift left by `{}`, which would overflow", const 1_i32) -> bb2; // scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
@@ -65,7 +54,6 @@
   
       bb2: {
           _6 = Shl(move _7, const 1_i32);  // scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
-          StorageDead(_7);                 // scope 0 at $DIR/issue_101973.rs:+1:56: +1:57
           _3 = rotate_right::<u32>(_4, _6) -> [return: bb3, unwind unreachable]; // scope 3 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
                                            // mir::Constant
                                            // + span: $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
@@ -73,12 +61,8 @@
       }
   
       bb3: {
-          StorageDead(_6);                 // scope 0 at $DIR/issue_101973.rs:+1:57: +1:58
-          StorageDead(_4);                 // scope 0 at $DIR/issue_101973.rs:+1:57: +1:58
           _2 = move _3 as i32 (IntToInt);  // scope 0 at $DIR/issue_101973.rs:+1:5: +1:65
-          StorageDead(_3);                 // scope 0 at $DIR/issue_101973.rs:+1:64: +1:65
           _0 = move _2 as i64 (IntToInt);  // scope 0 at $DIR/issue_101973.rs:+1:5: +1:72
-          StorageDead(_2);                 // scope 0 at $DIR/issue_101973.rs:+1:71: +1:72
           return;                          // scope 0 at $DIR/issue_101973.rs:+2:2: +2:2
       }
   }

@@ -65,16 +65,9 @@
           _10 = deref_copy (*_2);          // scope 0 at $DIR/slice_filter.rs:+0:30: +0:31
           _11 = deref_copy (*_2);          // scope 0 at $DIR/slice_filter.rs:+0:33: +0:34
           _12 = deref_copy (*_2);          // scope 0 at $DIR/slice_filter.rs:+0:36: +0:37
--         StorageLive(_3);                 // scope 1 at $DIR/slice_filter.rs:+0:40: +0:56
-+         nop;                             // scope 1 at $DIR/slice_filter.rs:+0:40: +0:56
-          StorageLive(_4);                 // scope 1 at $DIR/slice_filter.rs:+0:40: +0:46
-          StorageLive(_13);                // scope 3 at $SRC_DIR/core/src/cmp.rs:LL:COL
           _13 = ((*_9).0: usize);          // scope 3 at $SRC_DIR/core/src/cmp.rs:LL:COL
-          StorageLive(_14);                // scope 3 at $SRC_DIR/core/src/cmp.rs:LL:COL
           _14 = ((*_11).2: usize);         // scope 3 at $SRC_DIR/core/src/cmp.rs:LL:COL
           _4 = Le(move _13, move _14);     // scope 3 at $SRC_DIR/core/src/cmp.rs:LL:COL
-          StorageDead(_14);                // scope 3 at $SRC_DIR/core/src/cmp.rs:LL:COL
-          StorageDead(_13);                // scope 3 at $SRC_DIR/core/src/cmp.rs:LL:COL
           switchInt(move _4) -> [0: bb4, otherwise: bb5]; // scope 1 at $DIR/slice_filter.rs:+0:40: +0:56
       }
   
@@ -84,50 +77,27 @@
       }
   
       bb2: {
--         StorageLive(_6);                 // scope 1 at $DIR/slice_filter.rs:+0:60: +0:76
-+         nop;                             // scope 1 at $DIR/slice_filter.rs:+0:60: +0:76
-          StorageLive(_7);                 // scope 1 at $DIR/slice_filter.rs:+0:60: +0:66
-          StorageLive(_15);                // scope 5 at $SRC_DIR/core/src/cmp.rs:LL:COL
           _15 = ((*_11).2: usize);         // scope 5 at $SRC_DIR/core/src/cmp.rs:LL:COL
-          StorageLive(_16);                // scope 5 at $SRC_DIR/core/src/cmp.rs:LL:COL
           _16 = ((*_9).0: usize);          // scope 5 at $SRC_DIR/core/src/cmp.rs:LL:COL
           _7 = Le(move _15, move _16);     // scope 5 at $SRC_DIR/core/src/cmp.rs:LL:COL
-          StorageDead(_16);                // scope 5 at $SRC_DIR/core/src/cmp.rs:LL:COL
-          StorageDead(_15);                // scope 5 at $SRC_DIR/core/src/cmp.rs:LL:COL
           switchInt(move _7) -> [0: bb6, otherwise: bb7]; // scope 1 at $DIR/slice_filter.rs:+0:60: +0:76
       }
   
       bb3: {
--         StorageDead(_6);                 // scope 1 at $DIR/slice_filter.rs:+0:75: +0:76
--         StorageDead(_3);                 // scope 1 at $DIR/slice_filter.rs:+0:75: +0:76
-+         nop;                             // scope 1 at $DIR/slice_filter.rs:+0:75: +0:76
-+         nop;                             // scope 1 at $DIR/slice_filter.rs:+0:75: +0:76
           return;                          // scope 0 at $DIR/slice_filter.rs:+0:76: +0:76
       }
   
       bb4: {
--         StorageDead(_5);                 // scope 1 at $DIR/slice_filter.rs:+0:55: +0:56
-+         nop;                             // scope 1 at $DIR/slice_filter.rs:+0:55: +0:56
-          StorageDead(_4);                 // scope 1 at $DIR/slice_filter.rs:+0:55: +0:56
           goto -> bb2;                     // scope 1 at $DIR/slice_filter.rs:+0:40: +0:56
       }
   
       bb5: {
--         StorageLive(_5);                 // scope 1 at $DIR/slice_filter.rs:+0:50: +0:56
-+         nop;                             // scope 1 at $DIR/slice_filter.rs:+0:50: +0:56
-          StorageLive(_17);                // scope 7 at $SRC_DIR/core/src/cmp.rs:LL:COL
           _17 = ((*_12).3: usize);         // scope 7 at $SRC_DIR/core/src/cmp.rs:LL:COL
-          StorageLive(_18);                // scope 7 at $SRC_DIR/core/src/cmp.rs:LL:COL
           _18 = ((*_10).1: usize);         // scope 7 at $SRC_DIR/core/src/cmp.rs:LL:COL
           _5 = Le(move _17, move _18);     // scope 7 at $SRC_DIR/core/src/cmp.rs:LL:COL
-          StorageDead(_18);                // scope 7 at $SRC_DIR/core/src/cmp.rs:LL:COL
-          StorageDead(_17);                // scope 7 at $SRC_DIR/core/src/cmp.rs:LL:COL
 -         _3 = move _5;                    // scope 1 at $DIR/slice_filter.rs:+0:40: +0:56
--         StorageDead(_5);                 // scope 1 at $DIR/slice_filter.rs:+0:55: +0:56
-+         nop;                             // scope 1 at $DIR/slice_filter.rs:+0:40: +0:56
-+         nop;                             // scope 1 at $DIR/slice_filter.rs:+0:55: +0:56
-          StorageDead(_4);                 // scope 1 at $DIR/slice_filter.rs:+0:55: +0:56
 -         switchInt(move _3) -> [0: bb2, otherwise: bb1]; // scope 1 at $DIR/slice_filter.rs:+0:40: +0:76
++         nop;                             // scope 1 at $DIR/slice_filter.rs:+0:40: +0:56
 +         switchInt(move _5) -> [0: bb2, otherwise: bb1]; // scope 1 at $DIR/slice_filter.rs:+0:40: +0:76
       }
   
@@ -138,25 +108,16 @@
       }
   
       bb7: {
--         StorageLive(_8);                 // scope 1 at $DIR/slice_filter.rs:+0:70: +0:76
-+         nop;                             // scope 1 at $DIR/slice_filter.rs:+0:70: +0:76
-          StorageLive(_19);                // scope 9 at $SRC_DIR/core/src/cmp.rs:LL:COL
           _19 = ((*_10).1: usize);         // scope 9 at $SRC_DIR/core/src/cmp.rs:LL:COL
-          StorageLive(_20);                // scope 9 at $SRC_DIR/core/src/cmp.rs:LL:COL
           _20 = ((*_12).3: usize);         // scope 9 at $SRC_DIR/core/src/cmp.rs:LL:COL
 -         _8 = Le(move _19, move _20);     // scope 9 at $SRC_DIR/core/src/cmp.rs:LL:COL
-+         _0 = Le(move _19, move _20);     // scope 9 at $SRC_DIR/core/src/cmp.rs:LL:COL
-          StorageDead(_20);                // scope 9 at $SRC_DIR/core/src/cmp.rs:LL:COL
-          StorageDead(_19);                // scope 9 at $SRC_DIR/core/src/cmp.rs:LL:COL
 -         _6 = move _8;                    // scope 1 at $DIR/slice_filter.rs:+0:60: +0:76
++         _0 = Le(move _19, move _20);     // scope 9 at $SRC_DIR/core/src/cmp.rs:LL:COL
 +         nop;                             // scope 1 at $DIR/slice_filter.rs:+0:60: +0:76
           goto -> bb8;                     // scope 1 at $DIR/slice_filter.rs:+0:60: +0:76
       }
   
       bb8: {
--         StorageDead(_8);                 // scope 1 at $DIR/slice_filter.rs:+0:75: +0:76
-+         nop;                             // scope 1 at $DIR/slice_filter.rs:+0:75: +0:76
-          StorageDead(_7);                 // scope 1 at $DIR/slice_filter.rs:+0:75: +0:76
 -         _0 = move _6;                    // scope 1 at $DIR/slice_filter.rs:+0:40: +0:76
 +         nop;                             // scope 1 at $DIR/slice_filter.rs:+0:40: +0:76
           goto -> bb3;                     // scope 1 at $DIR/slice_filter.rs:+0:40: +0:76

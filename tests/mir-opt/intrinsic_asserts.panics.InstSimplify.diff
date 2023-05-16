@@ -8,7 +8,6 @@
       let _3: ();                          // in scope 0 at $DIR/intrinsic_asserts.rs:+3:5: +3:62
   
       bb0: {
-          nop;                             // scope 0 at $DIR/intrinsic_asserts.rs:+1:5: +1:50
 -         _1 = assert_inhabited::<Never>() -> [return: bb1, unwind unreachable]; // scope 0 at $DIR/intrinsic_asserts.rs:+1:5: +1:50
 +         _1 = assert_inhabited::<Never>() -> unwind unreachable; // scope 0 at $DIR/intrinsic_asserts.rs:+1:5: +1:50
                                            // mir::Constant
@@ -17,8 +16,6 @@
       }
   
       bb1: {
-          nop;                             // scope 0 at $DIR/intrinsic_asserts.rs:+1:50: +1:51
-          nop;                             // scope 0 at $DIR/intrinsic_asserts.rs:+2:5: +2:49
 -         _2 = assert_zero_valid::<&u8>() -> [return: bb2, unwind unreachable]; // scope 0 at $DIR/intrinsic_asserts.rs:+2:5: +2:49
 +         _2 = assert_zero_valid::<&u8>() -> unwind unreachable; // scope 0 at $DIR/intrinsic_asserts.rs:+2:5: +2:49
                                            // mir::Constant
@@ -28,8 +25,6 @@
       }
   
       bb2: {
-          nop;                             // scope 0 at $DIR/intrinsic_asserts.rs:+2:49: +2:50
-          nop;                             // scope 0 at $DIR/intrinsic_asserts.rs:+3:5: +3:62
 -         _3 = assert_mem_uninitialized_valid::<&u8>() -> [return: bb3, unwind unreachable]; // scope 0 at $DIR/intrinsic_asserts.rs:+3:5: +3:62
 +         _3 = assert_mem_uninitialized_valid::<&u8>() -> unwind unreachable; // scope 0 at $DIR/intrinsic_asserts.rs:+3:5: +3:62
                                            // mir::Constant
@@ -39,7 +34,6 @@
       }
   
       bb3: {
-          nop;                             // scope 0 at $DIR/intrinsic_asserts.rs:+3:62: +3:63
           nop;                             // scope 0 at $DIR/intrinsic_asserts.rs:+0:17: +4:2
           return;                          // scope 0 at $DIR/intrinsic_asserts.rs:+4:2: +4:2
       }

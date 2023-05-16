@@ -16,8 +16,6 @@
       }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/union.rs:+5:9: +5:11
-          StorageLive(_2);                 // scope 0 at $DIR/union.rs:+5:23: +5:28
           _2 = val() -> bb1;               // scope 0 at $DIR/union.rs:+5:23: +5:28
                                            // mir::Constant
                                            // + span: $DIR/union.rs:14:23: 14:26
@@ -25,10 +23,8 @@
       }
   
       bb1: {
-          StorageDead(_2);                 // scope 0 at $DIR/union.rs:+5:29: +5:30
           StorageLive(_3);                 // scope 1 at $DIR/union.rs:+7:10: +7:26
           StorageDead(_3);                 // scope 1 at $DIR/union.rs:+7:26: +7:27
-          StorageDead(_1);                 // scope 0 at $DIR/union.rs:+8:1: +8:2
           return;                          // scope 0 at $DIR/union.rs:+8:2: +8:2
       }
   }

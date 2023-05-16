@@ -70,6 +70,7 @@
 -                                          // + literal: Const { ty: for<'a> fn(Pin<&'a mut [generator@$DIR/inline_generator.rs:15:5: 15:8]>, bool) -> GeneratorState<<[generator@$DIR/inline_generator.rs:15:5: 15:8] as Generator<bool>>::Yield, <[generator@$DIR/inline_generator.rs:15:5: 15:8] as Generator<bool>>::Return> {<[generator@$DIR/inline_generator.rs:15:5: 15:8] as Generator<bool>>::resume}, val: Value(<ZST>) }
 +         StorageLive(_5);                 // scope 0 at $DIR/inline_generator.rs:+1:33: +1:46
 +         _5 = const false;                // scope 0 at $DIR/inline_generator.rs:+1:33: +1:46
++         StorageLive(_6);                 // scope 0 at $DIR/inline_generator.rs:+1:33: +1:46
 +         _8 = deref_copy (_2.0: &mut [generator@$DIR/inline_generator.rs:15:5: 15:8]); // scope 6 at $DIR/inline_generator.rs:15:5: 15:41
 +         _7 = discriminant((*_8));        // scope 6 at $DIR/inline_generator.rs:15:5: 15:41
 +         switchInt(move _7) -> [0: bb3, 1: bb8, 3: bb7, otherwise: bb9]; // scope 6 at $DIR/inline_generator.rs:15:5: 15:41
@@ -77,6 +78,7 @@
   
 -     bb3: {
 +     bb1: {
++         StorageDead(_6);                 // scope 0 at $DIR/inline_generator.rs:+1:33: +1:46
 +         StorageDead(_5);                 // scope 0 at $DIR/inline_generator.rs:+1:33: +1:46
           StorageDead(_2);                 // scope 0 at $DIR/inline_generator.rs:+1:45: +1:46
           StorageDead(_4);                 // scope 0 at $DIR/inline_generator.rs:+1:46: +1:47
@@ -91,7 +93,6 @@
 +     }
 + 
 +     bb3: {
-+         StorageLive(_6);                 // scope 6 at $DIR/inline_generator.rs:15:17: 15:39
 +         switchInt(_5) -> [0: bb5, otherwise: bb4]; // scope 6 at $DIR/inline_generator.rs:15:20: 15:21
 +     }
 + 
@@ -113,8 +114,6 @@
 +     }
 + 
 +     bb7: {
-+         StorageLive(_6);                 // scope 6 at $DIR/inline_generator.rs:15:5: 15:41
-+         StorageDead(_6);                 // scope 6 at $DIR/inline_generator.rs:15:38: 15:39
 +         _1 = GeneratorState::<i32, bool>::Complete(_5); // scope 6 at $DIR/inline_generator.rs:15:41: 15:41
 +         _10 = deref_copy (_2.0: &mut [generator@$DIR/inline_generator.rs:15:5: 15:8]); // scope 6 at $DIR/inline_generator.rs:15:41: 15:41
 +         discriminant((*_10)) = 1;        // scope 6 at $DIR/inline_generator.rs:15:41: 15:41

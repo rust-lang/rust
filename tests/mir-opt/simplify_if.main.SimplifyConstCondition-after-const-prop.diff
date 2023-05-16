@@ -7,7 +7,6 @@
       let _2: ();                          // in scope 0 at $DIR/simplify_if.rs:+2:9: +2:15
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/simplify_if.rs:+1:8: +1:13
           _1 = const false;                // scope 0 at $DIR/simplify_if.rs:+1:8: +1:13
 -         switchInt(const false) -> [0: bb3, otherwise: bb1]; // scope 0 at $DIR/simplify_if.rs:+1:8: +1:13
 +         goto -> bb3;                     // scope 0 at $DIR/simplify_if.rs:+1:8: +1:13
@@ -21,16 +20,11 @@
       }
   
       bb2: {
-          goto -> bb4;                     // scope 0 at $DIR/simplify_if.rs:+1:5: +3:6
+          return;                          // scope 0 at $DIR/simplify_if.rs:+1:5: +3:6
       }
   
       bb3: {
-          goto -> bb4;                     // scope 0 at $DIR/simplify_if.rs:+1:5: +3:6
-      }
-  
-      bb4: {
-          StorageDead(_1);                 // scope 0 at $DIR/simplify_if.rs:+3:5: +3:6
-          return;                          // scope 0 at $DIR/simplify_if.rs:+4:2: +4:2
+          return;                          // scope 0 at $DIR/simplify_if.rs:+1:5: +3:6
       }
   }
   

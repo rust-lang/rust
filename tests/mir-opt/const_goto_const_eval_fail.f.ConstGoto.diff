@@ -7,8 +7,6 @@
       let mut _2: i32;                     // in scope 0 at $DIR/const_goto_const_eval_fail.rs:+2:15: +2:16
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/const_goto_const_eval_fail.rs:+1:11: +6:6
-          StorageLive(_2);                 // scope 0 at $DIR/const_goto_const_eval_fail.rs:+2:15: +2:16
           _2 = const A;                    // scope 0 at $DIR/const_goto_const_eval_fail.rs:+2:15: +2:16
           switchInt(_2) -> [1: bb2, 2: bb2, 3: bb2, otherwise: bb1]; // scope 0 at $DIR/const_goto_const_eval_fail.rs:+2:9: +2:16
       }
@@ -43,8 +41,6 @@
   
 -     bb6: {
 +     bb5: {
-          StorageDead(_2);                 // scope 0 at $DIR/const_goto_const_eval_fail.rs:+10:1: +10:2
-          StorageDead(_1);                 // scope 0 at $DIR/const_goto_const_eval_fail.rs:+10:1: +10:2
           return;                          // scope 0 at $DIR/const_goto_const_eval_fail.rs:+10:2: +10:2
       }
   }

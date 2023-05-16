@@ -1,4 +1,4 @@
-// compile-flags: --crate-type=lib -O -Cdebuginfo=2 -Cno-prepopulate-passes
+// compile-flags: --crate-type=lib -O -Cdebuginfo=2 -Cno-prepopulate-passes -Zmir-opt-level=0
 // min-llvm-version: 15.0 # this test uses opaque pointer notation
 #![feature(stmt_expr_attributes)]
 
