@@ -1,11 +1,14 @@
 //! Performs various peephole optimizations.
 
 use crate::simplify::simplify_duplicate_switch_targets;
+use rustc_hir::def::DefKind;
+use rustc_index::IndexVec;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{self, GenericArgsRef, ParamEnv, Ty, TyCtxt};
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::FieldIdx;
+use rustc_target::abi::FIRST_VARIANT;
 
 pub struct InstSimplify;
 
@@ -36,6 +39,10 @@ impl<'tcx> MirPass<'tcx> for InstSimplify {
             ctx.simplify_primitive_clone(block.terminator.as_mut().unwrap(), &mut block.statements);
             ctx.simplify_intrinsic_assert(
                 block.terminator.as_mut().unwrap(),
+                &mut block.statements,
+            );
+            ctx.simplify_constructor_calls(
+                &mut block.terminator.as_mut().unwrap(),
                 &mut block.statements,
             );
             simplify_duplicate_switch_targets(block.terminator.as_mut().unwrap());
@@ -286,6 +293,57 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
                 terminator.kind = TerminatorKind::Goto { target: *target_block };
             }
         }
+    }
+
+    fn simplify_constructor_calls(
+        &self,
+        terminator: &mut Terminator<'tcx>,
+        statements: &mut Vec<Statement<'tcx>>,
+    ) {
+        let TerminatorKind::Call { func, target, destination, args, .. } = &mut terminator.kind
+        else {
+            return;
+        };
+        let Some(target_block) = target else {
+            return;
+        };
+        let func_ty = func.ty(self.local_decls, self.tcx);
+        let ty::FnDef(ctor_id, generics) = *func_ty.kind() else {
+            return;
+        };
+        let DefKind::Ctor(..) = self.tcx.def_kind(ctor_id) else {
+            return;
+        };
+
+        let sig = self
+            .tcx
+            .fn_sig(ctor_id)
+            .instantiate(self.tcx, generics)
+            .no_bound_vars()
+            .expect("LBR in ADT constructor signature");
+        let ty::Adt(adt_def, generics) = sig.output().kind() else {
+            bug!("unexpected type for ADT ctor {:?}", sig.output());
+        };
+        let variant_index = if adt_def.is_enum() {
+            adt_def.variant_index_with_ctor_id(ctor_id)
+        } else {
+            FIRST_VARIANT
+        };
+
+        let kind = AggregateKind::Adt(adt_def.did(), variant_index, generics, None, None);
+
+        let args = std::mem::take(args);
+        let fields = IndexVec::from_raw(args);
+
+        let statement = Statement {
+            kind: StatementKind::Assign(Box::new((
+                *destination,
+                Rvalue::Aggregate(Box::new(kind), fields),
+            ))),
+            source_info: terminator.source_info,
+        };
+        statements.push(statement);
+        terminator.kind = TerminatorKind::Goto { target: *target_block };
     }
 }
 
