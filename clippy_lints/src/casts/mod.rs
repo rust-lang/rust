@@ -448,7 +448,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.65.0"]
     pub PTR_CAST_CONSTNESS,
     pedantic,
-    "TODO"
+    "casting using `as` from and to raw pointers to change constness when specialized methods apply"
 }
 
 declare_clippy_lint! {

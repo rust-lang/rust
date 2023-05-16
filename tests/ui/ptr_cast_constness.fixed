@@ -36,7 +36,7 @@ fn main() {
 }
 
 #[clippy::msrv = "1.64"]
-fn _msrv_1_37() {
+fn _msrv_1_64() {
     let ptr: *const u32 = &42_u32;
     let mut_ptr: *mut u32 = &mut 42_u32;
 
@@ -46,7 +46,7 @@ fn _msrv_1_37() {
 }
 
 #[clippy::msrv = "1.65"]
-fn _msrv_1_38() {
+fn _msrv_1_65() {
     let ptr: *const u32 = &42_u32;
     let mut_ptr: *mut u32 = &mut 42_u32;
 
