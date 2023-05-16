@@ -935,6 +935,54 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
+    fn make_memory_loop<BodyPtrsVisitor, const VAR_COUNT: usize>(
+        &mut self,
+        loop_name: &str,
+        start_ptrs: [Self::Value; VAR_COUNT],
+        steps: [Size; VAR_COUNT],
+        iterations: Self::Value,
+        body_visitor: BodyPtrsVisitor,
+    ) where
+        BodyPtrsVisitor: FnOnce(&mut Self, &[Self::Value; VAR_COUNT]),
+    {
+        const {
+            assert!(VAR_COUNT > 0, "VAR_COUNT must be bigger than zero.");
+        }
+        for step in steps {
+            assert_ne!(step.bytes(), 0, "We are iterating over memory, ZSTs unexpected.");
+        }
+
+        let zero = self.const_usize(0);
+        let additions: [Self::Value; VAR_COUNT] = steps.map(|st| self.const_usize(st.bytes()));
+
+        let header_bb = self.append_sibling_block(&format!("{}_header", loop_name));
+        let body_bb = self.append_sibling_block(&format!("{}_body", loop_name));
+        let next_bb = self.append_sibling_block(&format!("{}_next", loop_name));
+        self.br(header_bb);
+
+        let mut header_bx = Builder::build(self.cx, header_bb);
+        // Use integer for iteration instead of pointers because LLVM canonicalize loop into indexed anyway.
+        let loop_i = header_bx.phi(self.type_isize(), &[zero], &[self.llbb()]);
+        let keep_going = header_bx.icmp(IntPredicate::IntNE, loop_i, iterations);
+        header_bx.cond_br(keep_going, body_bb, next_bb);
+
+        let mut body_bx = Builder::build(self.cx, body_bb);
+        let current_ptrs: [Self::Value; VAR_COUNT] = std::array::from_fn(|i| {
+            let start = start_ptrs[i];
+            // FIXME: Remove pointercast after dropping supporting of LLVM 14.
+            let start = self.pointercast(start, self.type_i8p());
+            let addition = additions[i];
+            let offset = body_bx.unchecked_umul(loop_i, addition);
+            body_bx.inbounds_gep(body_bx.type_i8(), start, &[offset])
+        });
+        body_visitor(&mut body_bx, &current_ptrs);
+        let next_i = body_bx.unchecked_uadd(loop_i, body_bx.const_usize(1));
+        header_bx.add_incoming_to_phi(loop_i, next_i, body_bb);
+        body_bx.br(header_bb);
+
+        *self = Builder::build(self.cx, next_bb);
+    }
+
     fn select(
         &mut self,
         cond: &'ll Value,

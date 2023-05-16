@@ -567,6 +567,130 @@ fn codegen_regular_intrinsic_call<'tcx>(
             // FIXME use emit_small_memset
             fx.bcx.call_memset(fx.target_config, dst_ptr, val, count);
         }
+
+        sym::swap_nonoverlapping_single => {
+            intrinsic_args!(fx, args => (x_ptr, y_ptr); intrinsic);
+            let pointee_ty = x_ptr.layout().ty.builtin_deref(true).unwrap().ty;
+            let pointee_layout = fx.layout_of(pointee_ty);
+
+            // ZSTs swap is noop.
+            if pointee_layout.size != Size::ZERO {
+                // Probably, it would be better to have dedicated method for this in
+                // `cranelift_frontend::FunctionBuilder`
+                // with optimizations based on size and alignment of values.
+
+                let x_ptr_val = x_ptr.load_scalar(fx);
+                let y_ptr_val = y_ptr.load_scalar(fx);
+
+                let tmp_place = CPlace::new_stack_slot(fx, pointee_layout);
+                let tmp_ptr_val = tmp_place.to_ptr().get_addr(fx);
+
+                let size_bytes = pointee_layout.size.bytes();
+                let align_bytes: u8 = pointee_layout.align.abi.bytes().try_into().unwrap();
+                fx.bcx.emit_small_memory_copy(
+                    fx.target_config,
+                    tmp_ptr_val,
+                    x_ptr_val,
+                    size_bytes,
+                    align_bytes,
+                    align_bytes,
+                    true,
+                    MemFlags::trusted(),
+                );
+                fx.bcx.emit_small_memory_copy(
+                    fx.target_config,
+                    x_ptr_val,
+                    y_ptr_val,
+                    size_bytes,
+                    align_bytes,
+                    align_bytes,
+                    true,
+                    MemFlags::trusted(),
+                );
+                fx.bcx.emit_small_memory_copy(
+                    fx.target_config,
+                    y_ptr_val,
+                    tmp_ptr_val,
+                    size_bytes,
+                    align_bytes,
+                    align_bytes,
+                    true,
+                    MemFlags::trusted(),
+                );
+            }
+        }
+
+        sym::swap_nonoverlapping_many => {
+            intrinsic_args!(fx, args => (x_ptr, y_ptr, count); intrinsic);
+            let pointee_ty = x_ptr.layout().ty.builtin_deref(true).unwrap().ty;
+            let pointee_layout = fx.layout_of(pointee_ty);
+
+            // ZSTs swap is noop.
+            if pointee_layout.size != Size::ZERO {
+                let x_ptr_val = x_ptr.load_scalar(fx);
+                let y_ptr_val = y_ptr.load_scalar(fx);
+
+                let count = count.load_scalar(fx);
+
+                let tmp_place = CPlace::new_stack_slot(fx, pointee_layout);
+                let tmp_ptr_val = tmp_place.to_ptr().get_addr(fx);
+
+                let elem_size_bytes = pointee_layout.size.bytes();
+                let align_bytes: u8 = pointee_layout.align.abi.bytes().try_into().unwrap();
+
+                let loop_header = fx.bcx.create_block();
+                let loop_body = fx.bcx.create_block();
+                let loop_done = fx.bcx.create_block();
+
+                let index = fx.bcx.append_block_param(loop_header, fx.pointer_type);
+                let zero = fx.bcx.ins().iconst(fx.pointer_type, 0);
+                fx.bcx.ins().jump(loop_header, &[zero]);
+
+                fx.bcx.switch_to_block(loop_header);
+                let is_done = fx.bcx.ins().icmp(IntCC::Equal, index, count);
+                fx.bcx.ins().brif(is_done, loop_done, &[], loop_body, &[]);
+
+                fx.bcx.switch_to_block(loop_body);
+                let curr_x_ptr_val = fx.bcx.ins().iadd(x_ptr_val, index);
+                let curr_y_ptr_val = fx.bcx.ins().iadd(y_ptr_val, index);
+                fx.bcx.emit_small_memory_copy(
+                    fx.target_config,
+                    tmp_ptr_val,
+                    curr_x_ptr_val,
+                    elem_size_bytes,
+                    align_bytes,
+                    align_bytes,
+                    true,
+                    MemFlags::trusted(),
+                );
+                fx.bcx.emit_small_memory_copy(
+                    fx.target_config,
+                    curr_x_ptr_val,
+                    curr_y_ptr_val,
+                    elem_size_bytes,
+                    align_bytes,
+                    align_bytes,
+                    true,
+                    MemFlags::trusted(),
+                );
+                fx.bcx.emit_small_memory_copy(
+                    fx.target_config,
+                    curr_y_ptr_val,
+                    tmp_ptr_val,
+                    elem_size_bytes,
+                    align_bytes,
+                    align_bytes,
+                    true,
+                    MemFlags::trusted(),
+                );
+                let next_index = fx.bcx.ins().iadd_imm(index, 1);
+                fx.bcx.ins().jump(loop_header, &[next_index]);
+
+                fx.bcx.switch_to_block(loop_done);
+                fx.bcx.ins().nop();
+            }
+        }
+
         sym::ctlz | sym::ctlz_nonzero => {
             intrinsic_args!(fx, args => (arg); intrinsic);
             let val = arg.load_scalar(fx);

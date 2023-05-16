@@ -1,0 +1,47 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/swap_nonoverlapping_single.rs:25:5
+   |
+LL |     assert!(a != 5, "Must fail.");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'Must fail.', $DIR/swap_nonoverlapping_single.rs:25:5
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/swap_nonoverlapping_single.rs:35:5
+   |
+LL |     assert!(b != 0, "Must fail.");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'Must fail.', $DIR/swap_nonoverlapping_single.rs:35:5
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/swap_nonoverlapping_single.rs:62:5
+   |
+LL |     assert!(a != 0, "Must fail.");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'Must fail.', $DIR/swap_nonoverlapping_single.rs:62:5
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/swap_nonoverlapping_single.rs:75:5
+   |
+LL |     assert!(b != 5, "Must fail.");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'Must fail.', $DIR/swap_nonoverlapping_single.rs:75:5
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/swap_nonoverlapping_single.rs:102:9
+   |
+LL |         swap_nonoverlapping_single(x, y);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ swap was called on overlapping memory.
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/swap_nonoverlapping_single.rs:114:9
+   |
+LL |         swap_nonoverlapping_single(x, y);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ swap was called on overlapping memory.
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

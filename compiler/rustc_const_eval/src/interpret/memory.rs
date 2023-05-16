@@ -21,10 +21,10 @@ use rustc_target::abi::{Align, HasDataLayout, Size};
 use crate::const_eval::CheckAlignment;
 use crate::fluent_generated as fluent;
 
+use super::alloc_range;
 use super::{
-    alloc_range, AllocBytes, AllocId, AllocMap, AllocRange, Allocation, CheckInAllocMsg,
-    GlobalAlloc, InterpCx, InterpResult, Machine, MayLeak, Pointer, PointerArithmetic, Provenance,
-    Scalar,
+    AllocBytes, AllocId, AllocMap, AllocRange, Allocation, CheckInAllocMsg, GlobalAlloc, InterpCx,
+    InterpResult, Machine, MayLeak, Pointer, PointerArithmetic, Provenance, Scalar,
 };
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -1219,6 +1219,59 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         );
         // copy the provenance to the destination
         dest_alloc.provenance_apply_copy(provenance);
+
+        Ok(())
+    }
+
+    pub fn mem_swap_nonoverlapping(
+        &mut self,
+        x_ptr: Pointer<Option<M::Provenance>>,
+        y_ptr: Pointer<Option<M::Provenance>>,
+        count: u64,
+        layout: ty::layout::TyAndLayout<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let elem_size = layout.size;
+        let align = layout.align.abi;
+
+        if count > i64::MAX as u64 {
+            throw_ub_format!("`count` argument to `swap_nonoverlapping_many` is too large.");
+        }
+
+        let first_ptr_acc = self.get_ptr_access(x_ptr, elem_size * count, align)?;
+        let second_ptr_acc = self.get_ptr_access(y_ptr, elem_size * count, align)?;
+
+        let Some((x_alloc_id, x_offset, _)) = first_ptr_acc else {
+            assert_eq!(elem_size, Size::ZERO);
+            // Called on ZST so it is noop.
+            return Ok(())
+        };
+        let Some((y_alloc_id, y_offset, _)) = second_ptr_acc else {
+            unreachable!("If right param is ZST, left must be too")
+        };
+
+        if x_alloc_id == y_alloc_id {
+            if (x_offset..x_offset + elem_size * count).contains(&y_offset)
+                || (y_offset..y_offset + elem_size * count).contains(&x_offset)
+            {
+                throw_ub_format!("swap was called on overlapping memory.");
+            }
+        }
+
+        if count == 0 {
+            return Ok(());
+        }
+
+        let tmp_stack_alloc = self.allocate(layout, MemoryKind::Stack)?;
+
+        for i in 0..i64::try_from(count).unwrap() {
+            let curr_x_ptr = self.ptr_offset_inbounds(x_ptr, layout.ty, i)?;
+            let curr_y_ptr = self.ptr_offset_inbounds(y_ptr, layout.ty, i)?;
+
+            self.mem_copy(curr_x_ptr, align, tmp_stack_alloc.ptr, align, elem_size, true)?;
+            self.mem_copy(curr_y_ptr, align, curr_x_ptr, align, elem_size, true)?;
+            self.mem_copy(tmp_stack_alloc.ptr, align, curr_y_ptr, align, elem_size, true)?;
+        }
+        self.deallocate_ptr(tmp_stack_alloc.ptr, Some((elem_size, align)), MemoryKind::Stack)?;
 
         Ok(())
     }

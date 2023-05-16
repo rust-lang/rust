@@ -7,6 +7,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(extern_types)]
 #![feature(hash_raw_entry)]
+#![feature(inline_const)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
 #![feature(never_type)]

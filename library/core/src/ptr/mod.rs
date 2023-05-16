@@ -908,25 +908,6 @@ pub const unsafe fn swap<T>(x: *mut T, y: *mut T) {
 #[stable(feature = "swap_nonoverlapping", since = "1.27.0")]
 #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
 pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
-    #[allow(unused)]
-    macro_rules! attempt_swap_as_chunks {
-        ($ChunkTy:ty) => {
-            if mem::align_of::<T>() >= mem::align_of::<$ChunkTy>()
-                && mem::size_of::<T>() % mem::size_of::<$ChunkTy>() == 0
-            {
-                let x: *mut $ChunkTy = x.cast();
-                let y: *mut $ChunkTy = y.cast();
-                let count = count * (mem::size_of::<T>() / mem::size_of::<$ChunkTy>());
-                // SAFETY: these are the same bytes that the caller promised were
-                // ok, just typed as `MaybeUninit<ChunkTy>`s instead of as `T`s.
-                // The `if` condition above ensures that we're not violating
-                // alignment requirements, and that the division is exact so
-                // that we don't lose any bytes off the end.
-                return unsafe { swap_nonoverlapping_simple_untyped(x, y, count) };
-            }
-        };
-    }
-
     // SAFETY: the caller must guarantee that `x` and `y` are
     // valid for writes and properly aligned.
     unsafe {
@@ -940,19 +921,16 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
         );
     }
 
-    // Split up the slice into small power-of-two-sized chunks that LLVM is able
-    // to vectorize (unless it's a special type with more-than-pointer alignment,
-    // because we don't want to pessimize things like slices of SIMD vectors.)
-    if mem::align_of::<T>() <= mem::size_of::<usize>()
-        && (!mem::size_of::<T>().is_power_of_two()
-            || mem::size_of::<T>() > mem::size_of::<usize>() * 2)
-    {
-        attempt_swap_as_chunks!(usize);
-        attempt_swap_as_chunks!(u8);
-    }
-
+    #[cfg(bootstrap)]
     // SAFETY: Same preconditions as this function
-    unsafe { swap_nonoverlapping_simple_untyped(x, y, count) }
+    unsafe {
+        swap_nonoverlapping_simple_untyped(x, y, count)
+    }
+    #[cfg(not(bootstrap))]
+    // SAFETY: Same preconditions as this function
+    unsafe {
+        intrinsics::swap_nonoverlapping_many(x, y, count)
+    }
 }
 
 /// Same behaviour and safety conditions as [`swap_nonoverlapping`]
@@ -960,6 +938,7 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
 /// LLVM can vectorize this (at least it can for the power-of-two-sized types
 /// `swap_nonoverlapping` tries to use) so no need to manually SIMD it.
 #[inline]
+#[cfg(bootstrap)]
 #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
 const unsafe fn swap_nonoverlapping_simple_untyped<T>(x: *mut T, y: *mut T, count: usize) {
     let x = x.cast::<MaybeUninit<T>>();

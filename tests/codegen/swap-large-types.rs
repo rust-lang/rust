@@ -16,7 +16,7 @@ type KeccakBuffer = [[u64; 5]; 5];
 // CHECK-LABEL: @swap_basic
 #[no_mangle]
 pub fn swap_basic(x: &mut KeccakBuffer, y: &mut KeccakBuffer) {
-// CHECK: alloca [5 x [5 x i64]]
+    // CHECK: alloca [5 x [5 x i64]]
 
     // SAFETY: exclusive references are always valid to read/write,
     // are non-overlapping, and nothing here panics so it's drop-safe.
@@ -33,9 +33,14 @@ pub fn swap_basic(x: &mut KeccakBuffer, y: &mut KeccakBuffer) {
 // CHECK-LABEL: @swap_std
 #[no_mangle]
 pub fn swap_std(x: &mut KeccakBuffer, y: &mut KeccakBuffer) {
-// CHECK-NOT: alloca
-// CHECK: load <{{[0-9]+}} x i64>
-// CHECK: store <{{[0-9]+}} x i64>
+    // CHECK-NOT: alloca
+    // CHECK-NOT: br
+    // CHECK: load <{{[0-9]+}} x i64>{{.*}}align 8
+    // CHECK-NOT: alloca
+    // CHECK-NOT: br
+    // CHECK: store <{{[0-9]+}} x i64>{{.*}}align 8
+    // CHECK-NOT: alloca
+    // CHECK-NOT: br
     swap(x, y)
 }
 
@@ -45,9 +50,11 @@ pub fn swap_std(x: &mut KeccakBuffer, y: &mut KeccakBuffer) {
 // CHECK-LABEL: @swap_slice
 #[no_mangle]
 pub fn swap_slice(x: &mut [KeccakBuffer], y: &mut [KeccakBuffer]) {
-// CHECK-NOT: alloca
-// CHECK: load <{{[0-9]+}} x i64>
-// CHECK: store <{{[0-9]+}} x i64>
+    // CHECK-NOT: alloca
+    // CHECK: load <{{[0-9]+}} x i{{8|16|32|64}}>{{.*}}align 8
+    // CHECK-NOT: alloca
+    // CHECK: store <{{[0-9]+}} x i{{8|16|32|64}}>{{.*}}align 8
+    // CHECK-NOT: alloca
     if x.len() == y.len() {
         x.swap_with_slice(y);
     }
@@ -60,21 +67,14 @@ type OneKilobyteBuffer = [u8; 1024];
 // CHECK-LABEL: @swap_1kb_slices
 #[no_mangle]
 pub fn swap_1kb_slices(x: &mut [OneKilobyteBuffer], y: &mut [OneKilobyteBuffer]) {
-// CHECK-NOT: alloca
-// CHECK: load <{{[0-9]+}} x i8>
-// CHECK: store <{{[0-9]+}} x i8>
+    // CHECK-NOT: alloca
+    // CHECK: load <{{[0-9]+}} x i{{8|16|32|64}}>
+    // CHECK: store <{{[0-9]+}} x i{{8|16|32|64}}>
+    // CHECK-NOT: alloca
     if x.len() == y.len() {
         x.swap_with_slice(y);
     }
 }
-
-// This verifies that the 2×read + 2×write optimizes to just 3 memcpys
-// for an unusual type like this.  It's not clear whether we should do anything
-// smarter in Rust for these, so for now it's fine to leave these up to the backend.
-// That's not as bad as it might seem, as for example, LLVM will lower the
-// memcpys below to VMOVAPS on YMMs if one enables the AVX target feature.
-// Eventually we'll be able to pass `align_of::<T>` to a const generic and
-// thus pick a smarter chunk size ourselves without huge code duplication.
 
 #[repr(align(64))]
 pub struct BigButHighlyAligned([u8; 64 * 3]);
@@ -82,10 +82,9 @@ pub struct BigButHighlyAligned([u8; 64 * 3]);
 // CHECK-LABEL: @swap_big_aligned
 #[no_mangle]
 pub fn swap_big_aligned(x: &mut BigButHighlyAligned, y: &mut BigButHighlyAligned) {
-// CHECK-NOT: call void @llvm.memcpy
-// CHECK: call void @llvm.memcpy.{{.+}}({{i8\*|ptr}} noundef nonnull align 64 dereferenceable(192)
-// CHECK: call void @llvm.memcpy.{{.+}}({{i8\*|ptr}} noundef nonnull align 64 dereferenceable(192)
-// CHECK: call void @llvm.memcpy.{{.+}}({{i8\*|ptr}} noundef nonnull align 64 dereferenceable(192)
-// CHECK-NOT: call void @llvm.memcpy
+    // CHECK-NOT: alloca
+    // CHECK-NOT: call void @llvm.memcpy
+    // CHECK: call void @llvm.memcpy.{{.+}}({{i8\*|ptr}} noundef nonnull align 64 dereferenceable(192)
+    // CHECK-NOT: call void @llvm.memcpy
     swap(x, y)
 }

@@ -1089,6 +1089,28 @@ fn swap_copy_untyped() {
 }
 
 #[test]
+fn test_swap_unaligned_on_x86_64() {
+    #[derive(Copy, Clone, Eq, PartialEq, Debug)]
+    struct AlignedTo2([u16; 4]);
+
+    assert!(
+        mem::size_of::<AlignedTo2>() >= mem::size_of::<usize>()
+            && mem::align_of::<AlignedTo2>() == 2
+            && mem::align_of::<AlignedTo2>() < mem::align_of::<usize>()
+    );
+
+    let buff0: &mut [_] = &mut [AlignedTo2([1, 2, 3, 4]); 20];
+    let buff1: &mut [_] = &mut [AlignedTo2([5, 6, 7, 8]); 20];
+    let len = 20;
+
+    unsafe {
+        swap_nonoverlapping(buff0.as_mut_ptr(), buff1.as_mut_ptr(), read_volatile(&len));
+    }
+    assert_eq!(buff0, &[AlignedTo2([5, 6, 7, 8]); 20]);
+    assert_eq!(buff1, &[AlignedTo2([1, 2, 3, 4]); 20]);
+}
+
+#[test]
 fn test_const_copy() {
     const {
         let ptr1 = &1;

@@ -257,6 +257,21 @@ pub trait BuilderMethods<'a, 'tcx>:
         flags: MemFlags,
     );
 
+    /// Loop that iterates over some memory using offsets steps.
+    /// Interprets pointers as u8 pointers.
+    /// `BodyPtrsVisitor` allow access to body and current iteration pointers.
+    /// Steps MUST not be zeros.
+    /// `steps[i]*iterations` MUST not overflow targets `usize`.
+    fn make_memory_loop<BodyPtrsVisitor, const VAR_COUNT: usize>(
+        &mut self,
+        loop_name: &str,
+        start_ptrs: [Self::Value; VAR_COUNT],
+        steps: [Size; VAR_COUNT],
+        iterations: Self::Value,
+        visitor: BodyPtrsVisitor,
+    ) where
+        BodyPtrsVisitor: FnOnce(&mut Self, &[Self::Value; VAR_COUNT]);
+
     fn select(
         &mut self,
         cond: Self::Value,

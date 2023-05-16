@@ -1,4 +1,4 @@
-// compile-flags: -O -C target-feature=+avx
+// compile-flags: -Copt-level=3 -C target-feature=+avx
 // only-x86_64
 // ignore-debug: the debug assertions get in the way
 
@@ -35,7 +35,7 @@ pub fn swap_m256_slice(x: &mut [__m256], y: &mut [__m256]) {
 #[no_mangle]
 pub fn swap_bytes32(x: &mut [u8; 32], y: &mut [u8; 32]) {
 // CHECK-NOT: alloca
-// CHECK: load <32 x i8>{{.+}}align 1
-// CHECK: store <32 x i8>{{.+}}align 1
+// CHECK: load <4 x i64>{{.+}}align 1
+// CHECK: store <4 x i64>{{.+}}align 1
     swap(x, y)
 }

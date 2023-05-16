@@ -1070,6 +1070,55 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.block.add_eval(None, self.context.new_call(None, memset, &[ptr, fill_byte, size]));
     }
 
+    fn make_memory_loop<BodyPtrsVisitor, const VAR_COUNT: usize>(
+        &mut self,
+        loop_name: &str,
+        start_ptrs: [Self::Value; VAR_COUNT],
+        steps: [Size; VAR_COUNT],
+        iterations: Self::Value,
+        body_visitor: BodyPtrsVisitor,
+    ) where
+        BodyPtrsVisitor: FnOnce(&mut Self, &[Self::Value; VAR_COUNT]),
+    {
+        assert!(VAR_COUNT > 0, "VAR_COUNT must be bigger than zero.");
+
+        for step in steps {
+            assert_ne!(step.bytes(), 0, "We are iterating over memory, ZSTs unexpected.");
+        }
+
+        let header_bb = self.append_sibling_block(&format!("{}_header", loop_name));
+        let body_bb = self.append_sibling_block(&format!("{}_body", loop_name));
+        let next_bb = self.append_sibling_block(&format!("{}_next", loop_name));
+
+        let zero = self.const_usize(0);
+        let additions: [Self::Value; VAR_COUNT] = steps.map(|st| self.const_usize(st.bytes()));
+
+        let loop_i = self.llbb().get_function().new_local(None, self.type_size_t(), "loop_i");
+        self.assign(loop_i, zero);
+        let loop_i_val = loop_i.to_rvalue();
+
+        self.br(header_bb);
+
+        self.switch_to_block(header_bb);
+        let keep_going = self.icmp(IntPredicate::IntNE, loop_i_val, iterations);
+        self.cond_br(keep_going, body_bb, next_bb);
+
+        self.switch_to_block(body_bb);
+        let current_ptrs: [Self::Value; VAR_COUNT] = core::array::from_fn(
+            |i|{
+                let start = self.pointercast(start_ptrs[i], self.type_i8p());
+                let offset = self.unchecked_umul(additions[i], loop_i_val);
+                self.inbounds_gep(self.type_i8(), start, &[offset])
+            }
+        );
+        body_visitor(self, &current_ptrs);
+        let next_i = self.unchecked_uadd(loop_i_val, self.const_usize(1));
+        self.assign(loop_i, next_i);
+        self.br(header_bb);
+
+        self.switch_to_block(next_bb);
+    }
+
     fn select(&mut self, cond: RValue<'gcc>, then_val: RValue<'gcc>, mut else_val: RValue<'gcc>) -> RValue<'gcc> {
         let func = self.current_func();
         let variable = func.new_local(None, then_val.get_type(), "selectVar");

@@ -1480,6 +1480,8 @@ symbols! {
         sub_assign,
         sub_with_overflow,
         suggestion,
+        swap_nonoverlapping_many,
+        swap_nonoverlapping_single,
         sym,
         sync,
         t32,

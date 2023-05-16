@@ -104,6 +104,92 @@ fn test_swap() {
 }
 
 #[test]
+fn test_many() {
+    // This tests if chunking works properly
+    fn swap_sized<T: Copy + Eq + core::fmt::Debug, const SIZE: usize>(a: T, b: T) {
+        let mut x: [T; SIZE] = [a; SIZE];
+        let mut y: [T; SIZE] = [b; SIZE];
+        swap::<[T; SIZE]>(&mut x, &mut y);
+        assert_eq!(x, [b; SIZE]);
+        assert_eq!(y, [a; SIZE]);
+    }
+
+    fn swap_t<T: Copy + Eq + core::fmt::Debug>(a: T, b: T) {
+        swap_sized::<T, 0>(a, b);
+        swap_sized::<T, 1>(a, b);
+        swap_sized::<T, 2>(a, b);
+        swap_sized::<T, 3>(a, b);
+        swap_sized::<T, 4>(a, b);
+        swap_sized::<T, 5>(a, b);
+        swap_sized::<T, 6>(a, b);
+        swap_sized::<T, 7>(a, b);
+        swap_sized::<T, 8>(a, b);
+        swap_sized::<T, 9>(a, b);
+        swap_sized::<T, 10>(a, b);
+        swap_sized::<T, 11>(a, b);
+        swap_sized::<T, 12>(a, b);
+        swap_sized::<T, 13>(a, b);
+        swap_sized::<T, 14>(a, b);
+        swap_sized::<T, 15>(a, b);
+        swap_sized::<T, 16>(a, b);
+        swap_sized::<T, 17>(a, b);
+        swap_sized::<T, 18>(a, b);
+        swap_sized::<T, 19>(a, b);
+        swap_sized::<T, 20>(a, b);
+        swap_sized::<T, 21>(a, b);
+        swap_sized::<T, 22>(a, b);
+        swap_sized::<T, 23>(a, b);
+        swap_sized::<T, 24>(a, b);
+        swap_sized::<T, 25>(a, b);
+        swap_sized::<T, 26>(a, b);
+        swap_sized::<T, 27>(a, b);
+        swap_sized::<T, 28>(a, b);
+        swap_sized::<T, 29>(a, b);
+        swap_sized::<T, 30>(a, b);
+        swap_sized::<T, 31>(a, b);
+        swap_sized::<T, 32>(a, b);
+        swap_sized::<T, 33>(a, b);
+    }
+
+    swap_t::<u8>(7, 0xFF);
+    swap_t::<u16>(0xFAFA, 0x9898);
+    swap_t::<u32>(0xF0F0_F0F0, 0x0E0E_0E0E);
+    swap_t::<u64>(7, 8);
+
+    #[derive(Eq, PartialEq, Debug)]
+    #[repr(align(32))]
+    struct LargeAlign([u8; 32]);
+
+    let mut x = LargeAlign([9; 32]);
+    let mut y = LargeAlign([20; 32]);
+    swap(&mut x, &mut y);
+    assert_eq!(x, LargeAlign([20; 32]));
+    assert_eq!(y, LargeAlign([9; 32]));
+
+    #[derive(Eq, PartialEq, Debug)]
+    #[repr(align(32))]
+    struct LargeAlignAndSize([u8; 96]);
+
+    let mut x = LargeAlignAndSize([9; 96]);
+    let mut y = LargeAlignAndSize([20; 96]);
+    swap(&mut x, &mut y);
+    assert_eq!(x, LargeAlignAndSize([20; 96]));
+    assert_eq!(y, LargeAlignAndSize([9; 96]));
+
+    #[derive(Eq, PartialEq, Debug)]
+    struct WithPadding {
+        a: u16,
+        b: u64,
+    }
+
+    let mut x = WithPadding { a: 7, b: 27 };
+    let mut y = WithPadding { a: 77, b: u64::MAX };
+    swap(&mut x, &mut y);
+    assert_eq!(x, WithPadding { a: 77, b: u64::MAX });
+    assert_eq!(y, WithPadding { a: 7, b: 27 });
+}
+
+#[test]
 fn test_replace() {
     let mut x = Some("test".to_string());
     let y = replace(&mut x, None);

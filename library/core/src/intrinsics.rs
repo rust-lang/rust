@@ -2768,6 +2768,67 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     }
 }
 
+#[cfg(not(bootstrap))]
+extern "rust-intrinsic" {
+    /// This is an implementation detail of [`crate::mem::swap`] and should
+    /// not be used anywhere else.
+    ///
+    /// Swaps 2 values using minimal extra memory depending on target.
+    /// Created to remove target/backend specific optimizations from library code to
+    /// make MIR-level optimizations simpler to implement.
+    ///
+    /// The operation is "untyped" in the sense that data may be uninitialized or otherwise violate the
+    /// requirements of `T`. The initialization state is preserved exactly.
+    ///
+    /// # Safety
+    ///
+    /// Behavior is undefined if any of the following conditions are violated:
+    ///
+    /// * Both `x` and `y` must be valid for both reads and writes of `size_of::<T>()` bytes.
+    ///
+    /// * Both `x` and `y` must be properly aligned.
+    ///
+    /// * The region of memory beginning at `x` with a size of `size_of::<T>()`
+    ///   bytes must *not* overlap with the region of memory beginning at `y`
+    ///   with the same size.
+    ///
+    /// Note that even if the effectively copied size (`size_of::<T>()`) is `0`,
+    /// the pointers must be non-null and properly aligned.
+    #[rustc_nounwind]
+    #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+    pub fn swap_nonoverlapping_single<T: Sized>(x: *mut T, y: *mut T);
+
+    /// This is an implementation detail of [`crate::ptr::swap_nonoverlapping`] and should
+    /// not be used anywhere else.
+    ///
+    /// Swaps 2 ranges of values starting from `x` and `y` using minimal extra memory depending on target.
+    /// Created to remove target/backend specific optimizations from library code to
+    /// make MIR-level optimizations simpler to implement.
+    ///
+    /// The operation is "untyped" in the sense that data may be uninitialized or otherwise violate the
+    /// requirements of `T`. The initialization state is preserved exactly.
+    ///
+    /// # Safety
+    ///
+    /// Behavior is undefined if any of the following conditions are violated:
+    ///
+    /// * Both `x` and `y` must be valid for both reads and writes of `count *
+    ///   size_of::<T>()` bytes.
+    ///
+    /// * Both `x` and `y` must be properly aligned.
+    ///
+    /// * The region of memory beginning at `x` with a size of `count *
+    ///   size_of::<T>()` bytes must *not* overlap with the region of memory
+    ///   beginning at `y` with the same size.
+    ///
+    /// Note that even if the effectively copied size (`count * size_of::<T>()`) is `0`,
+    /// the pointers must be non-null and properly aligned.
+    ///
+    #[rustc_nounwind]
+    #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+    pub fn swap_nonoverlapping_many<T: Sized>(x: *mut T, y: *mut T, count: usize);
+}
+
 /// Sets `count * size_of::<T>()` bytes of memory starting at `dst` to
 /// `val`.
 ///

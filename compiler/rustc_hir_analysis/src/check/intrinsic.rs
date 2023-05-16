@@ -278,6 +278,23 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 ],
                 tcx.mk_unit(),
             ),
+            sym::swap_nonoverlapping_single => (
+                1,
+                vec![
+                    tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: hir::Mutability::Mut }),
+                    tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: hir::Mutability::Mut }),
+                ],
+                tcx.mk_unit(),
+            ),
+            sym::swap_nonoverlapping_many => (
+                1,
+                vec![
+                    tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: hir::Mutability::Mut }),
+                    tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: hir::Mutability::Mut }),
+                    tcx.types.usize,
+                ],
+                tcx.mk_unit(),
+            ),
             sym::sqrtf32 => (0, vec![tcx.types.f32], tcx.types.f32),
             sym::sqrtf64 => (0, vec![tcx.types.f64], tcx.types.f64),
             sym::powif32 => (0, vec![tcx.types.f32, tcx.types.i32], tcx.types.f32),
