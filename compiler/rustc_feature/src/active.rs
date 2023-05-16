@@ -338,7 +338,7 @@ declare_features! (
     /// Allow conditional compilation depending on rust version
     (active, cfg_version, "1.45.0", Some(64796), None),
     /// Allows to use the `#[cfi_encoding = ""]` attribute.
-    (active, cfi_encoding, "1.69.0", Some(89653), None),
+    (active, cfi_encoding, "CURRENT_RUSTC_VERSION", Some(89653), None),
     /// Allows `for<...>` on closures and generators.
     (active, closure_lifetime_binder, "1.64.0", Some(97362), None),
     /// Allows `#[track_caller]` on closures and generators.
