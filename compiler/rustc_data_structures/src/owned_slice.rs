@@ -74,10 +74,10 @@ where
     O: Send + Sync + 'static,
     F: FnOnce(&O) -> Result<&[u8], E>,
 {
-    // We box the owner of the bytes, so it doesn't move.
+    // We wrap the owner of the bytes in, so it doesn't move.
     //
     // Since the owner does not move and we don't access it in any way
-    // before drop, there is nothing that can invalidate the bytes pointer.
+    // before dropping, there is nothing that can invalidate the bytes pointer.
     //
     // Thus, "extending" the lifetime of the reference returned from `F` is fine.
     // We pretend that we pass it a reference that lives as long as the returned slice.
@@ -137,11 +137,11 @@ impl Borrow<[u8]> for OwnedSlice {
     }
 }
 
-// Safety: `OwnedSlice` is conceptually `(&'self.1 [u8], Box<dyn Send + Sync>)`, which is `Send`
+// Safety: `OwnedSlice` is conceptually `(&'self.1 [u8], Arc<dyn Send + Sync>)`, which is `Send`
 #[cfg(parallel_compiler)]
 unsafe impl Send for OwnedSlice {}
 
-// Safety: `OwnedSlice` is conceptually `(&'self.1 [u8], Box<dyn Send + Sync>)`, which is `Sync`
+// Safety: `OwnedSlice` is conceptually `(&'self.1 [u8], Arc<dyn Send + Sync>)`, which is `Sync`
 #[cfg(parallel_compiler)]
 unsafe impl Sync for OwnedSlice {}
 
