@@ -550,7 +550,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
         if !parser.errors.is_empty() {
             let err = parser.errors.remove(0);
             let err_sp = template_span.from_inner(InnerSpan::new(err.span.start, err.span.end));
-            let msg = &format!("invalid asm template string: {}", err.description);
+            let msg = format!("invalid asm template string: {}", err.description);
             let mut e = ecx.struct_span_err(err_sp, msg);
             e.span_label(err_sp, err.label + " in asm template string");
             if let Some(note) = err.note {
@@ -585,7 +585,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
                                 || args.reg_args.contains(idx)
                             {
                                 let msg = format!("invalid reference to argument at index {}", idx);
-                                let mut err = ecx.struct_span_err(span, &msg);
+                                let mut err = ecx.struct_span_err(span, msg);
                                 err.span_label(span, "from here");
 
                                 let positional_args = args.operands.len()
@@ -638,7 +638,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
                                     ecx.struct_span_err(
                                         template_span
                                             .from_inner(InnerSpan::new(span.start, span.end)),
-                                        &msg,
+                                        msg,
                                     )
                                     .emit();
                                     None

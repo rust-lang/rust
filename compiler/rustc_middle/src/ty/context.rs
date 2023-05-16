@@ -702,7 +702,11 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` with the given `msg` to
     /// ensure it gets used.
     #[track_caller]
-    pub fn ty_error_with_message<S: Into<MultiSpan>>(self, span: S, msg: &str) -> Ty<'tcx> {
+    pub fn ty_error_with_message<S: Into<MultiSpan>>(
+        self,
+        span: S,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> Ty<'tcx> {
         let reported = self.sess.delay_span_bug(span, msg);
         self.mk_ty_from_kind(Error(reported))
     }
@@ -2435,7 +2439,7 @@ impl<'tcx> TyCtxtAt<'tcx> {
     /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` with the given `msg` to
     /// ensure it gets used.
     #[track_caller]
-    pub fn ty_error_with_message(self, msg: &str) -> Ty<'tcx> {
+    pub fn ty_error_with_message(self, msg: impl Into<DiagnosticMessage>) -> Ty<'tcx> {
         self.tcx.ty_error_with_message(self.span, msg)
     }
 }

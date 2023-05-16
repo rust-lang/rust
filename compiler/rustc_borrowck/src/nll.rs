@@ -430,7 +430,7 @@ pub(super) fn dump_annotation<'tcx>(
 fn for_each_region_constraint<'tcx>(
     tcx: TyCtxt<'tcx>,
     closure_region_requirements: &ClosureRegionRequirements<'tcx>,
-    with_msg: &mut dyn FnMut(&str) -> io::Result<()>,
+    with_msg: &mut dyn FnMut(String) -> io::Result<()>,
 ) -> io::Result<()> {
     for req in &closure_region_requirements.outlives_requirements {
         let subject = match req.subject {
@@ -439,7 +439,7 @@ fn for_each_region_constraint<'tcx>(
                 format!("{:?}", ty.instantiate(tcx, |vid| tcx.mk_re_var(vid)))
             }
         };
-        with_msg(&format!("where {}: {:?}", subject, req.outlived_free_region,))?;
+        with_msg(format!("where {}: {:?}", subject, req.outlived_free_region,))?;
     }
     Ok(())
 }
