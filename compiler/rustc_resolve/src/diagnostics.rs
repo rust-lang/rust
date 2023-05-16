@@ -1832,7 +1832,17 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
             (msg, None)
         } else if ident.name == kw::SelfUpper {
-            ("`Self` is only available in impls, traits, and type definitions".to_string(), None)
+            // As mentioned above, `opt_ns` being `None` indicates a module path in import.
+            // We can use this to improve a confusing error for, e.g. `use Self::Variant` in an
+            // impl
+            if opt_ns.is_none() {
+                ("`Self` cannot be used in imports".to_string(), None)
+            } else {
+                (
+                    "`Self` is only available in impls, traits, and type definitions".to_string(),
+                    None,
+                )
+            }
         } else if ident.name.as_str().chars().next().map_or(false, |c| c.is_ascii_uppercase()) {
             // Check whether the name refers to an item in the value namespace.
             let binding = if let Some(ribs) = ribs {
