@@ -1915,7 +1915,10 @@ impl CheckAttrVisitor<'_> {
 
     /// Checks if the items on the `#[debugger_visualizer]` attribute are valid.
     fn check_debugger_visualizer(&self, attr: &Attribute, target: Target) -> bool {
-        // FIXME: mention that other checks are done in the query provider
+        // Here we only check that the #[debugger_visualizer] attribute is attached
+        // to nothing other than a module. All other checks are done in the
+        // `debugger_visualizer` query where they need to be done for decoding
+        // anyway.
         match target {
             Target::Mod => {}
             _ => {

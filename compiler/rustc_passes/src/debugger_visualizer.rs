@@ -4,11 +4,12 @@ use rustc_ast::Attribute;
 use rustc_data_structures::sync::Lrc;
 use rustc_expand::base::resolve_path;
 use rustc_middle::{
+    middle::debugger_visualizer::{DebuggerVisualizerFile, DebuggerVisualizerType},
     query::{LocalCrate, Providers},
     ty::TyCtxt,
 };
 use rustc_session::Session;
-use rustc_span::{sym, DebuggerVisualizerFile, DebuggerVisualizerType};
+use rustc_span::sym;
 
 use crate::errors::{DebugVisualizerInvalid, DebugVisualizerUnreadable};
 

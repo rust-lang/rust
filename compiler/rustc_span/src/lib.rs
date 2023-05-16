@@ -1257,39 +1257,6 @@ impl SourceFileHash {
     }
 }
 
-#[derive(HashStable_Generic)]
-#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug, Encodable, Decodable)]
-pub enum DebuggerVisualizerType {
-    Natvis,
-    GdbPrettyPrinter,
-}
-
-/// A single debugger visualizer file.
-#[derive(HashStable_Generic)]
-#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Encodable, Decodable)]
-pub struct DebuggerVisualizerFile {
-    /// The complete debugger visualizer source.
-    pub src: Lrc<[u8]>,
-    /// Indicates which visualizer type this targets.
-    pub visualizer_type: DebuggerVisualizerType,
-    // FIXME: Docs
-    pub path: Option<PathBuf>,
-}
-
-impl DebuggerVisualizerFile {
-    pub fn new(src: Lrc<[u8]>, visualizer_type: DebuggerVisualizerType, path: PathBuf) -> Self {
-        DebuggerVisualizerFile { src, visualizer_type, path: Some(path) }
-    }
-
-    pub fn path_erased(&self) -> Self {
-        DebuggerVisualizerFile {
-            src: self.src.clone(),
-            visualizer_type: self.visualizer_type,
-            path: None,
-        }
-    }
-}
-
 #[derive(Clone)]
 pub enum SourceFileLines {
     /// The source file lines, in decoded (random-access) form.

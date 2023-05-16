@@ -1,4 +1,5 @@
 use crate::hir::{ModuleItems, Owner};
+use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
 use crate::query::LocalCrate;
 use crate::ty::TyCtxt;
 use rustc_ast as ast;
@@ -15,7 +16,7 @@ use rustc_index::Idx;
 use rustc_middle::hir::nested_filter;
 use rustc_span::def_id::StableCrateId;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{DebuggerVisualizerFile, Span};
+use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
 #[inline]

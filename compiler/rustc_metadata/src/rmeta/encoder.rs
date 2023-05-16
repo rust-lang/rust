@@ -19,6 +19,7 @@ use rustc_hir::definitions::DefPathData;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::hir::nested_filter;
+use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::{
     metadata_symbol_name, ExportedSymbol, SymbolExportInfo,
@@ -36,9 +37,7 @@ use rustc_session::config::{CrateType, OptLevel};
 use rustc_session::cstore::{ForeignModule, LinkagePreference, NativeLib};
 use rustc_span::hygiene::{ExpnIndex, HygieneEncodeContext, MacroKind};
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{
-    self, DebuggerVisualizerFile, ExternalSource, FileName, SourceFile, Span, SyntaxContext,
-};
+use rustc_span::{self, ExternalSource, FileName, SourceFile, Span, SyntaxContext};
 use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
 use std::hash::Hash;

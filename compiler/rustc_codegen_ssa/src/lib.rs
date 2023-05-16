@@ -28,6 +28,7 @@ use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_fluent_macro::fluent_messages;
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::dep_graph::WorkProduct;
+use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Dependencies;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_middle::query::{ExternProviders, Providers};
@@ -37,7 +38,6 @@ use rustc_session::config::{CrateType, OutputFilenames, OutputType, RUST_CGU_EXT
 use rustc_session::cstore::{self, CrateSource};
 use rustc_session::utils::NativeLibKind;
 use rustc_span::symbol::Symbol;
-use rustc_span::DebuggerVisualizerFile;
 use std::collections::BTreeSet;
 use std::io;
 use std::path::{Path, PathBuf};
