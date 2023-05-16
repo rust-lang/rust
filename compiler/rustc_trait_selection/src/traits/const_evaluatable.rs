@@ -79,7 +79,7 @@ pub fn is_const_evaluatable<'tcx>(
                             "Missing value for constant, but no error reported?",
                         )))
                     }
-                    Err(ErrorHandled::Reported(e)) => Err(NotConstEvaluatable::Error(e)),
+                    Err(ErrorHandled::Reported(e)) => Err(NotConstEvaluatable::Error(e.into())),
                     Ok(_) => Ok(()),
                 }
             }
@@ -147,7 +147,7 @@ pub fn is_const_evaluatable<'tcx>(
 
                 Err(err)
             }
-            Err(ErrorHandled::Reported(e)) => Err(NotConstEvaluatable::Error(e)),
+            Err(ErrorHandled::Reported(e)) => Err(NotConstEvaluatable::Error(e.into())),
             Ok(_) => Ok(()),
         }
     }
