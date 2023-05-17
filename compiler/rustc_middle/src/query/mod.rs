@@ -25,6 +25,7 @@ use crate::mir::interpret::{
 use crate::mir::interpret::{LitToConstError, LitToConstInput};
 use crate::mir::mono::CodegenUnit;
 use crate::query::erase::{erase, restore, Erase};
+use crate::query::plumbing::{query_ensure, query_get_at, DynamicQuery};
 use crate::thir;
 use crate::traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
@@ -39,10 +40,6 @@ use crate::traits::specialization_graph;
 use crate::traits::{self, ImplSource};
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::ValidityRequirement;
-use crate::ty::query::{
-    query_ensure, query_get_at, DynamicQuery, IntoQueryParam, TyCtxtAt, TyCtxtEnsure,
-    TyCtxtEnsureWithValue,
-};
 use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::util::AlwaysRequiresDrop;
 use crate::ty::GeneratorDiagnosticData;
@@ -90,8 +87,11 @@ use std::sync::Arc;
 
 pub mod erase;
 mod keys;
-pub mod on_disk_cache;
 pub use keys::{AsLocalKey, Key, LocalCrate};
+pub mod on_disk_cache;
+#[macro_use]
+pub mod plumbing;
+pub use plumbing::{IntoQueryParam, TyCtxtAt, TyCtxtEnsure, TyCtxtEnsureWithValue};
 
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method

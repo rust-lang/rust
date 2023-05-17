@@ -14,14 +14,14 @@ use crate::middle::resolve_bound_vars;
 use crate::middle::stability;
 use crate::mir::interpret::{self, Allocation, ConstAllocation};
 use crate::mir::{Body, Local, Place, PlaceElem, ProjectionKind, Promoted};
+use crate::query::plumbing::QuerySystem;
 use crate::query::LocalCrate;
 use crate::query::Providers;
+use crate::query::{IntoQueryParam, TyCtxtAt};
 use crate::thir::Thir;
 use crate::traits;
 use crate::traits::solve;
 use crate::traits::solve::{ExternalConstraints, ExternalConstraintsData};
-use crate::ty::query::QuerySystem;
-use crate::ty::query::{self, TyCtxtAt};
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Const, ConstData, FloatTy, FloatVar, FloatVid,
     GenericParamDefKind, ImplPolarity, InferTy, IntTy, IntVar, IntVid, List, ParamConst, ParamTy,
@@ -79,8 +79,6 @@ use std::hash::{Hash, Hasher};
 use std::iter;
 use std::mem;
 use std::ops::{Bound, Deref};
-
-use super::query::IntoQueryParam;
 
 const TINY_CONST_EVAL_LIMIT: Limit = Limit(20);
 
@@ -512,7 +510,7 @@ pub struct GlobalCtxt<'tcx> {
 
     untracked: Untracked,
 
-    pub query_system: query::QuerySystem<'tcx>,
+    pub query_system: QuerySystem<'tcx>,
     pub(crate) query_kinds: &'tcx [DepKindStruct<'tcx>],
 
     // Internal caches for metadata decoding. No need to track deps on this.
