@@ -2,7 +2,7 @@ use super::Error;
 
 use itertools::Itertools;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::graph::dominators::{self, DominatorTree, Dominators};
+use rustc_data_structures::graph::dominators::{self, Dominators};
 use rustc_data_structures::graph::{self, GraphSuccessors, WithNumNodes, WithStartNode};
 use rustc_index::bit_set::BitSet;
 use rustc_index::{IndexSlice, IndexVec};
@@ -25,7 +25,6 @@ pub(super) struct CoverageGraph {
     bb_to_bcb: IndexVec<BasicBlock, Option<BasicCoverageBlock>>,
     pub successors: IndexVec<BasicCoverageBlock, Vec<BasicCoverageBlock>>,
     pub predecessors: IndexVec<BasicCoverageBlock, Vec<BasicCoverageBlock>>,
-    dominator_tree: Option<DominatorTree<BasicCoverageBlock>>,
     dominators: Option<Dominators<BasicCoverageBlock>>,
 }
 
@@ -68,17 +67,9 @@ impl CoverageGraph {
             }
         }
 
-        let mut basic_coverage_blocks = Self {
-            bcbs,
-            bb_to_bcb,
-            successors,
-            predecessors,
-            dominator_tree: None,
-            dominators: None,
-        };
-        let dominator_tree = dominators::dominator_tree(&basic_coverage_blocks);
-        let dominators = dominators::dominators(&dominator_tree);
-        basic_coverage_blocks.dominator_tree = Some(dominator_tree);
+        let mut basic_coverage_blocks =
+            Self { bcbs, bb_to_bcb, successors, predecessors, dominators: None };
+        let dominators = dominators::dominators(&basic_coverage_blocks);
         basic_coverage_blocks.dominators = Some(dominators);
         basic_coverage_blocks
     }
@@ -227,7 +218,7 @@ impl CoverageGraph {
         a: BasicCoverageBlock,
         b: BasicCoverageBlock,
     ) -> Option<Ordering> {
-        self.dominator_tree.as_ref().unwrap().rank_partial_cmp(a, b)
+        self.dominators.as_ref().unwrap().rank_partial_cmp(a, b)
     }
 }
 

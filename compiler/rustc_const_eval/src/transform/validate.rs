@@ -155,7 +155,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if self.unwind_edge_count <= 1 {
             return;
         }
-        let dom_tree = self.body.basic_blocks.dominator_tree();
+        let dom_tree = self.body.basic_blocks.dominators();
         let mut post_contract_node = FxHashMap::default();
         // Reusing the allocation across invocations of the closure
         let mut dom_path = vec![];

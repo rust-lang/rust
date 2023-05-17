@@ -3,7 +3,6 @@ use crate::mir::{BasicBlock, BasicBlockData, Successors, Terminator, TerminatorK
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph;
-use rustc_data_structures::graph::dominators::{dominator_tree, DominatorTree};
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::OnceCell;
@@ -28,7 +27,6 @@ struct Cache {
     switch_sources: OnceCell<SwitchSources>,
     is_cyclic: OnceCell<bool>,
     postorder: OnceCell<Vec<BasicBlock>>,
-    dominator_tree: OnceCell<DominatorTree<BasicBlock>>,
     dominators: OnceCell<Dominators<BasicBlock>>,
 }
 
@@ -44,12 +42,8 @@ impl<'tcx> BasicBlocks<'tcx> {
         *self.cache.is_cyclic.get_or_init(|| graph::is_cyclic(self))
     }
 
-    pub fn dominator_tree(&self) -> &DominatorTree<BasicBlock> {
-        self.cache.dominator_tree.get_or_init(|| dominator_tree(&self))
-    }
-
     pub fn dominators(&self) -> &Dominators<BasicBlock> {
-        self.cache.dominators.get_or_init(|| dominators(self.dominator_tree()))
+        self.cache.dominators.get_or_init(|| dominators(self))
     }
 
     /// Returns predecessors for each basic block.
