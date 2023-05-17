@@ -1966,15 +1966,16 @@ pub(crate) struct Interner(Lock<InternerInner>);
 #[derive(Default)]
 struct InternerInner {
     arena: DroplessArena,
-    names: FxHashMap<&'static str, Symbol>,
-    strings: Vec<&'static str>,
+    names: FxHashMap<*const str, Symbol>,
+    strings: Vec<*const str>,
 }
 
 impl Interner {
     fn prefill(init: &[&'static str]) -> Self {
+        let init = init.iter().map(|&s| s as *const str);
         Interner(Lock::new(InternerInner {
-            strings: init.into(),
-            names: init.iter().copied().zip((0..).map(Symbol::new)).collect(),
+            strings: init.clone().collect(),
+            names: init.zip((0..).map(Symbol::new)).collect(),
             ..Default::default()
         }))
     }
@@ -1989,20 +1990,17 @@ impl Interner {
         let name = Symbol::new(inner.strings.len() as u32);
 
         // SAFETY: we convert from `&str` to `&[u8]`, clone it into the arena,
-        // and immediately convert the clone back to `&[u8]`, all because there
+        // and immediately convert the clone back to `&str`, all because there
         // is no `inner.arena.alloc_str()` method. This is clearly safe.
         let string: &str =
             unsafe { str::from_utf8_unchecked(inner.arena.alloc_slice(string.as_bytes())) };
 
-        // SAFETY: we can extend the arena allocation to `'static` because we
-        // only access these while the arena is still alive.
-        let string: &'static str = unsafe { &*(string as *const str) };
-        inner.strings.push(string);
+        inner.strings.push(string as *const str);
 
         // This second hash table lookup can be avoided by using `RawEntryMut`,
         // but this code path isn't hot enough for it to be worth it. See
         // #91445 for details.
-        inner.names.insert(string, name);
+        inner.names.insert(string as *const str, name);
         name
     }
 
@@ -2010,7 +2008,9 @@ impl Interner {
     ///
     /// [`Symbol::as_str()`] should be used in preference to this function.
     fn get(&self, symbol: Symbol) -> &str {
-        self.0.lock().strings[symbol.0.as_usize()]
+        // SAFETY: all applicable pointers point either to static strings or
+        // into the `DroplessArena`, which the Interner 'owns'.
+        unsafe { &*self.0.lock().strings[symbol.0.as_usize()] }
     }
 }
 
