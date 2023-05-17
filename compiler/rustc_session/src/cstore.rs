@@ -6,7 +6,8 @@ use crate::search_paths::PathKind;
 use crate::utils::NativeLibKind;
 use crate::Session;
 use rustc_ast as ast;
-use rustc_data_structures::sync::{self, AppendOnlyIndexVec, MetadataRef, RwLock};
+use rustc_data_structures::owned_slice::OwnedSlice;
+use rustc_data_structures::sync::{self, AppendOnlyIndexVec, RwLock};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash, Definitions};
 use rustc_span::hygiene::{ExpnHash, ExpnId};
@@ -203,8 +204,8 @@ pub enum ExternCrateSource {
 /// metadata in library -- this trait just serves to decouple rustc_metadata from
 /// the archive reader, which depends on LLVM.
 pub trait MetadataLoader: std::fmt::Debug {
-    fn get_rlib_metadata(&self, target: &Target, filename: &Path) -> Result<MetadataRef, String>;
-    fn get_dylib_metadata(&self, target: &Target, filename: &Path) -> Result<MetadataRef, String>;
+    fn get_rlib_metadata(&self, target: &Target, filename: &Path) -> Result<OwnedSlice, String>;
+    fn get_dylib_metadata(&self, target: &Target, filename: &Path) -> Result<OwnedSlice, String>;
 }
 
 pub type MetadataLoaderDyn = dyn MetadataLoader + Send + Sync + sync::DynSend + sync::DynSync;
