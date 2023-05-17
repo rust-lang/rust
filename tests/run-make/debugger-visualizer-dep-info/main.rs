@@ -3,7 +3,7 @@
 fn main() {
     const _UNUSED: u32 = {
         mod inner {
-            #![debugger_visualizer(gdb_script_file = "my_visualizers/bar.py")]
+            #![debugger_visualizer(natvis_file = "my_visualizers/bar.natvis")]
             pub const XYZ: u32 = 123;
         }
 
