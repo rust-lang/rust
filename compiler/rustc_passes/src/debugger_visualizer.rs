@@ -94,8 +94,9 @@ fn debugger_visualizers(tcx: TyCtxt<'_>, _: LocalCrate) -> Vec<DebuggerVisualize
     let mut visitor = DebuggerVisualizerCollector { sess: tcx.sess, visualizers: Vec::new() };
     rustc_ast::visit::Visitor::visit_crate(&mut visitor, krate);
 
-    // Sort the visualizers so we always get a deterministic query result.
-    visitor.visualizers.sort_unstable();
+    // We are collecting visualizers in AST-order, which is deterministic,
+    // so we don't need to do any explicit sorting in order to get a
+    // deterministic query result
     visitor.visualizers
 }
 
