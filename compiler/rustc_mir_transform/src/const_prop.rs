@@ -37,6 +37,7 @@ macro_rules! throw_machine_stop_str {
     ($($tt:tt)*) => {{
         // We make a new local type for it. The type itself does not carry any information,
         // but its vtable (for the `MachineStopType` trait) does.
+        #[derive(Debug)]
         struct Zst;
         // Printing this type shows the desired string.
         impl std::fmt::Display for Zst {
@@ -44,7 +45,17 @@ macro_rules! throw_machine_stop_str {
                 write!(f, $($tt)*)
             }
         }
-        impl rustc_middle::mir::interpret::MachineStopType for Zst {}
+
+        impl rustc_middle::mir::interpret::MachineStopType for Zst {
+            fn diagnostic_message(&self) -> rustc_errors::DiagnosticMessage {
+                self.to_string().into()
+            }
+
+            fn add_args(
+                self: Box<Self>,
+                _: &mut dyn FnMut(std::borrow::Cow<'static, str>, rustc_errors::DiagnosticArgValue<'static>),
+            ) {}
+        }
         throw_machine_stop!(Zst)
     }};
 }
@@ -367,7 +378,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 op
             }
             Err(e) => {
-                trace!("get_const failed: {}", e);
+                trace!("get_const failed: {e:?}");
                 return None;
             }
         };

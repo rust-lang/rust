@@ -1,3 +1,7 @@
+use std::borrow::Cow;
+use std::fmt;
+
+use rustc_errors::{DiagnosticArgValue, DiagnosticMessage};
 use rustc_macros::Diagnostic;
 use rustc_span::{Span, Symbol};
 
@@ -88,3 +92,54 @@ pub(super) struct ConstNotUsedTraitAlias {
     #[primary_span]
     pub span: Span,
 }
+
+pub struct CustomSubdiagnostic<'a> {
+    pub msg: fn() -> DiagnosticMessage,
+    pub add_args:
+        Box<dyn FnOnce(&mut dyn FnMut(Cow<'static, str>, DiagnosticArgValue<'static>)) + 'a>,
+}
+
+impl<'a> CustomSubdiagnostic<'a> {
+    pub fn label(x: fn() -> DiagnosticMessage) -> Self {
+        Self::label_and_then(x, |_| {})
+    }
+    pub fn label_and_then<
+        F: FnOnce(&mut dyn FnMut(Cow<'static, str>, DiagnosticArgValue<'static>)) + 'a,
+    >(
+        msg: fn() -> DiagnosticMessage,
+        f: F,
+    ) -> Self {
+        Self { msg, add_args: Box::new(move |x| f(x)) }
+    }
+}
+
+impl fmt::Debug for CustomSubdiagnostic<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CustomSubdiagnostic").finish_non_exhaustive()
+    }
+}
+
+#[derive(Diagnostic)]
+pub enum LayoutError<'tcx> {
+    #[diag(middle_unknown_layout)]
+    Unknown { ty: Ty<'tcx> },
+
+    #[diag(middle_values_too_big)]
+    Overflow { ty: Ty<'tcx> },
+
+    #[diag(middle_cannot_be_normalized)]
+    NormalizationFailure { ty: Ty<'tcx>, failure_ty: String },
+
+    #[diag(middle_cycle)]
+    Cycle,
+}
+
+#[derive(Diagnostic)]
+#[diag(middle_adjust_for_foreign_abi_error)]
+pub struct UnsupportedFnAbi {
+    pub arch: Symbol,
+    pub abi: &'static str,
+}
+
+/// Used by `rustc_const_eval`
+pub use crate::fluent_generated::middle_adjust_for_foreign_abi_error;

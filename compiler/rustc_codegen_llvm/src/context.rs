@@ -969,9 +969,9 @@ impl<'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
     #[inline]
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
         if let LayoutError::SizeOverflow(_) = err {
-            self.sess().emit_fatal(Spanned { span, node: err })
+            self.sess().emit_fatal(Spanned { span, node: err.into_diagnostic() })
         } else {
-            span_bug!(span, "failed to get layout for `{}`: {}", ty, err)
+            span_bug!(span, "failed to get layout for `{ty}`: {err:?}")
         }
     }
 }
@@ -991,21 +991,12 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
         } else {
             match fn_abi_request {
                 FnAbiRequest::OfFnPtr { sig, extra_args } => {
-                    span_bug!(
-                        span,
-                        "`fn_abi_of_fn_ptr({}, {:?})` failed: {}",
-                        sig,
-                        extra_args,
-                        err
-                    );
+                    span_bug!(span, "`fn_abi_of_fn_ptr({sig}, {extra_args:?})` failed: {err:?}",);
                 }
                 FnAbiRequest::OfInstance { instance, extra_args } => {
                     span_bug!(
                         span,
-                        "`fn_abi_of_instance({}, {:?})` failed: {}",
-                        instance,
-                        extra_args,
-                        err
+                        "`fn_abi_of_instance({instance}, {extra_args:?})` failed: {err:?}",
                     );
                 }
             }

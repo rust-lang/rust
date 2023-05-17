@@ -60,10 +60,8 @@ into_diagnostic_arg_using_display!(
     u8,
     i16,
     u16,
-    i32,
     u32,
     i64,
-    u64,
     i128,
     u128,
     std::io::Error,
@@ -79,6 +77,18 @@ into_diagnostic_arg_using_display!(
     SplitDebuginfo,
     ExitStatus,
 );
+
+impl IntoDiagnosticArg for i32 {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Number(self.into())
+    }
+}
+
+impl IntoDiagnosticArg for u64 {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Number(self.into())
+    }
+}
 
 impl IntoDiagnosticArg for bool {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
@@ -134,7 +144,7 @@ impl IntoDiagnosticArg for PathBuf {
 
 impl IntoDiagnosticArg for usize {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        DiagnosticArgValue::Number(self)
+        DiagnosticArgValue::Number(self as i128)
     }
 }
 
@@ -147,9 +157,9 @@ impl IntoDiagnosticArg for PanicStrategy {
 impl IntoDiagnosticArg for hir::ConstContext {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         DiagnosticArgValue::Str(Cow::Borrowed(match self {
-            hir::ConstContext::ConstFn => "constant function",
+            hir::ConstContext::ConstFn => "const_fn",
             hir::ConstContext::Static(_) => "static",
-            hir::ConstContext::Const => "constant",
+            hir::ConstContext::Const => "const",
         }))
     }
 }
@@ -254,7 +264,8 @@ impl IntoDiagnostic<'_, !> for TargetDataLayoutErrors<'_> {
             TargetDataLayoutErrors::InvalidAlignment { cause, err } => {
                 diag = handler.struct_fatal(fluent::errors_target_invalid_alignment);
                 diag.set_arg("cause", cause);
-                diag.set_arg("err", err);
+                diag.set_arg("err_kind", err.diag_ident());
+                diag.set_arg("align", err.align());
                 diag
             }
             TargetDataLayoutErrors::InconsistentTargetArchitecture { dl, target } => {

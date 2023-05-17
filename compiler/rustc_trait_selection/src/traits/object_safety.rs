@@ -526,7 +526,7 @@ fn virtual_call_violation_for_method<'tcx>(
                         // #78372
                         tcx.sess.delay_span_bug(
                             tcx.def_span(method.def_id),
-                            format!("error: {}\n while computing layout for type {:?}", err, ty),
+                            format!("error: {err}\n while computing layout for type {ty:?}"),
                         );
                         None
                     }

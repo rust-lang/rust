@@ -2,7 +2,7 @@ error: this operation will panic at runtime
   --> $DIR/modulo_one.rs:11:5
    |
 LL |     i32::MIN % (-1); // also caught by rustc
-   |     ^^^^^^^^^^^^^^^ attempt to compute the remainder of `i32::MIN % -1_i32`, which would overflow
+   |     ^^^^^^^^^^^^^^^ attempt to compute `i32::MIN % -1_i32`, which would overflow
    |
    = note: `#[deny(unconditional_panic)]` on by default
 
@@ -10,13 +10,13 @@ error: this operation will panic at runtime
   --> $DIR/modulo_one.rs:21:5
    |
 LL |     INT_MIN % NEG_ONE; // also caught by rustc
-   |     ^^^^^^^^^^^^^^^^^ attempt to compute the remainder of `i64::MIN % -1_i64`, which would overflow
+   |     ^^^^^^^^^^^^^^^^^ attempt to compute `i64::MIN % -1_i64`, which would overflow
 
 error: this operation will panic at runtime
   --> $DIR/modulo_one.rs:22:5
    |
 LL |     INT_MIN % STATIC_NEG_ONE; // ONLY caught by rustc
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ attempt to compute the remainder of `i64::MIN % -1_i64`, which would overflow
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ attempt to compute `i64::MIN % -1_i64`, which would overflow
 
 error: any number modulo 1 will be 0
   --> $DIR/modulo_one.rs:8:5
