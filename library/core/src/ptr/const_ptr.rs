@@ -104,6 +104,7 @@ impl<T: ?Sized> *const T {
     /// refactored.
     #[stable(feature = "ptr_const_cast", since = "1.65.0")]
     #[rustc_const_stable(feature = "ptr_const_cast", since = "1.65.0")]
+    #[rustc_diagnostic_item = "ptr_cast_mut"]
     #[inline(always)]
     pub const fn cast_mut(self) -> *mut T {
         self as _
