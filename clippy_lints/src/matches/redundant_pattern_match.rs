@@ -289,10 +289,11 @@ fn is_pat_variant(cx: &LateContext<'_>, pat: &Pat<'_>, path: &QPath<'_>, expecte
     let Some(id) = cx.typeck_results().qpath_res(path, pat.hir_id).opt_def_id() else { return false };
 
     match expected_item {
-        Item::Lang(expected_lang_item) => {
-            let expected_id = cx.tcx.lang_items().require(expected_lang_item).unwrap();
-            cx.tcx.parent(id) == expected_id
-        },
+        Item::Lang(expected_lang_item) => cx
+            .tcx
+            .lang_items()
+            .get(expected_lang_item)
+            .map_or(false, |expected_id| cx.tcx.parent(id) == expected_id),
         Item::Diag(expected_ty, expected_variant) => {
             let ty = cx.typeck_results().pat_ty(pat);
 
