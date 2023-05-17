@@ -613,6 +613,12 @@ pub struct ExpectationNote {
     pub rationale: Symbol,
 }
 
+// fn_null_check.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_fn_null_check)]
+#[help]
+pub struct FnNullCheckDiag;
+
 // for_loops_over_fallibles.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_for_loops_over_fallibles)]
