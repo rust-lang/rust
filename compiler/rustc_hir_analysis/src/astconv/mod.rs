@@ -19,7 +19,7 @@ use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{
     struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, FatalError,
-    MultiSpan,
+    MultiSpan, StashKey,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
@@ -38,7 +38,6 @@ use rustc_middle::ty::{self, Const, IsSuggestable, Ty, TyCtxt, TypeVisitableExt}
 use rustc_middle::ty::{DynKind, ToPredicate};
 use rustc_session::lint::builtin::{AMBIGUOUS_ASSOCIATED_ITEMS, BARE_TRAIT_OBJECTS};
 use rustc_span::edit_distance::find_best_match_for_name;
-use rustc_span::edition::Edition;
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::{sym, Span, DUMMY_SP};
 use rustc_target::spec::abi;
@@ -3718,7 +3717,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 ));
             }
 
-            if self_ty.span.edition() >= Edition::Edition2021 {
+            if self_ty.span.edition().rust_2021() {
                 let msg = "trait objects must include the `dyn` keyword";
                 let label = "add `dyn` keyword before this trait";
                 let mut diag =
@@ -3732,7 +3731,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
                 // check if the impl trait that we are considering is a impl of a local trait
                 self.maybe_lint_blanket_trait_impl(&self_ty, &mut diag);
-                diag.emit();
+                diag.stash(self_ty.span, StashKey::TraitMissingMethod);
             } else {
                 let msg = "trait objects without an explicit `dyn` are deprecated";
                 tcx.struct_span_lint_hir(
