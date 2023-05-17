@@ -1995,7 +1995,7 @@ impl Interner {
         let string: &str =
             unsafe { str::from_utf8_unchecked(inner.arena.alloc_slice(string.as_bytes())) };
         let sp = string as *const str;
-        
+
         inner.strings.push(sp);
 
         // This second hash table lookup can be avoided by using `RawEntryMut`,
