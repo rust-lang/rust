@@ -22,7 +22,7 @@ use rustc_session::{output::find_crate_name, Session};
 use rustc_span::symbol::sym;
 use rustc_span::Symbol;
 use std::any::Any;
-use std::cell::{RefCell, RefMut, OnceCell};
+use std::cell::{RefCell, RefMut};
 use std::sync::Arc;
 
 /// Represent the result of a query.
@@ -47,9 +47,10 @@ impl<T> Query<T> {
     fn compute<F: FnOnce() -> Result<T>>(&self, f: F) -> Result<QueryResult<'_, T>> {
         self.result.get_or_init(|| f().map(|t| RefCell::new(Steal::new(t)))).as_ref()
             .map(|rst| QueryResult(rst.borrow_mut()))
+            .map_err(Copy::clone)
     //(aplee): updated version: (how clean)
     //  self.result.get_or_init(|| f().map(Steal::new)).as_ref()
-    //      .map(QueryResult)
+    //      .map(QueryResult).map_err(Copy::clone)
     }
 }
 
@@ -397,9 +398,10 @@ impl Compiler {
         let ret = f(&queries);
 
         // NOTE: intentionally does not compute the global context if it hasn't been built yet,
-        // since that likely means there was a parse error.
-        if let Some(Ok(gcx)) = &mut *queries.gcx.result.borrow_mut() {
-            let gcx = gcx.get_mut();
+        // since that likely means there was a parse error.  
+        //(aplee): refactoring needed for suggestion above
+        if let Some(Ok(ref_cell) = queries.gcx.result.get() {
+            let gcx = ref_cell.borrow().borrow();
             // We assume that no queries are run past here. If there are new queries
             // after this point, they'll show up as "<unknown>" in self-profiling data.
             {
