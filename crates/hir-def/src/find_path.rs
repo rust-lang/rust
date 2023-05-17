@@ -183,7 +183,7 @@ fn find_path_for_module(
 
     // - if the item is the crate root of a dependency crate, return the name from the extern prelude
     let root_def_map = crate_root.def_map(db);
-    for (name, &def_id) in root_def_map.extern_prelude() {
+    for (name, def_id) in root_def_map.extern_prelude() {
         if module_id == def_id {
             let name = scope_name.unwrap_or_else(|| name.clone());
 

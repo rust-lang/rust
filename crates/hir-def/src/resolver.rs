@@ -461,7 +461,10 @@ impl Resolver {
                 res.add(name, ScopeDef::ModuleDef(ModuleDefId::MacroId(mac)));
             })
         });
-        def_map.extern_prelude().for_each(|(name, &def)| {
+        def_map.macro_use_prelude().for_each(|(name, def)| {
+            res.add(name, ScopeDef::ModuleDef(def.into()));
+        });
+        def_map.extern_prelude().for_each(|(name, def)| {
             res.add(name, ScopeDef::ModuleDef(ModuleDefId::ModuleId(def)));
         });
         BUILTIN_SCOPE.iter().for_each(|(name, &def)| {

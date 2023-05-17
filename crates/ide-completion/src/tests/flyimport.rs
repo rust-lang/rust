@@ -1265,3 +1265,24 @@ macro_rules! define_struct {
         "#]],
     );
 }
+
+#[test]
+fn macro_use_prelude_is_in_scope() {
+    check(
+        r#"
+//- /main.rs crate:main deps:dep
+#[macro_use]
+extern crate dep;
+
+fn main() {
+    print$0
+}
+//- /lib.rs crate:dep
+#[macro_export]
+macro_rules! println {
+    () => {}
+}
+"#,
+        expect![""],
+    )
+}
