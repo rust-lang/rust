@@ -1,5 +1,6 @@
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lock;
+use rustc_span::def_id::DefId;
 use rustc_span::Symbol;
 use rustc_target::abi::{Align, Size};
 use std::cmp;
@@ -65,9 +66,18 @@ pub struct TypeSizeInfo {
     pub variants: Vec<VariantInfo>,
 }
 
+pub struct VTableSizeInfo {
+    pub trait_name: String,
+    pub size_words_without_upcasting: usize,
+    pub size_words_with_upcasting: usize,
+    pub difference_words: usize,
+    pub difference_percent: f64,
+}
+
 #[derive(Default)]
 pub struct CodeStats {
     type_sizes: Lock<FxHashSet<TypeSizeInfo>>,
+    vtable_sizes: Lock<FxHashMap<DefId, VTableSizeInfo>>,
 }
 
 impl CodeStats {
@@ -99,6 +109,14 @@ impl CodeStats {
             variants,
         };
         self.type_sizes.borrow_mut().insert(info);
+    }
+
+    pub fn record_vtable_size(&self, trait_did: DefId, trait_name: &str, info: VTableSizeInfo) {
+        let prev = self.vtable_sizes.lock().insert(trait_did, info);
+        assert!(
+            prev.is_none(),
+            "size of vtable for `{trait_name}` ({trait_did:?}) is already recorded"
+        );
     }
 
     pub fn print_type_sizes(&self) {
@@ -194,6 +212,30 @@ impl CodeStats {
                 Some(diff @ 1..) => println!("print-type-size {indent}end padding: {diff} bytes"),
                 Some(0) => {}
             }
+        }
+    }
+
+    pub fn print_vtable_sizes(&self, crate_name: &str) {
+        let mut rr = std::mem::take(&mut *self.vtable_sizes.lock()).into_iter().collect::<Vec<_>>();
+
+        rr.sort_by(|(_, stats_a), (_, stats_b)| {
+            stats_b.difference_percent.total_cmp(&stats_a.difference_percent)
+        });
+
+        for (
+            _,
+            VTableSizeInfo {
+                trait_name,
+                size_words_without_upcasting,
+                size_words_with_upcasting,
+                difference_words,
+                difference_percent,
+            },
+        ) in rr
+        {
+            println!(
+                r#"print-vtable-sizes {{ "crate_name": "{crate_name}", "trait_name": "{trait_name}", "size_unupcastable_words": "{size_words_without_upcasting}", "size_upcastable_words": "{size_words_with_upcasting}", diff: "{difference_words}", diff_p: "{difference_percent}" }}"#
+            );
         }
     }
 }

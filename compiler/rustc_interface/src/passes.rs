@@ -24,6 +24,7 @@ use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str, validate_a
 use rustc_passes::{self, hir_stats, layout_test};
 use rustc_plugin_impl as plugin;
 use rustc_resolve::Resolver;
+use rustc_session::code_stats::VTableSizeInfo;
 use rustc_session::config::{CrateType, Input, OutFileName, OutputFilenames, OutputType};
 use rustc_session::cstore::{MetadataLoader, Untracked};
 use rustc_session::output::filename_for_input;
@@ -865,6 +866,99 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
         // define a lint filter, as all lint checks should have finished at this point.
         sess.time("check_lint_expectations", || tcx.check_expectations(None));
     });
+
+    if sess.opts.unstable_opts.print_vtable_sizes {
+        let traits = tcx.traits(LOCAL_CRATE);
+
+        for &tr in traits {
+            if !tcx.check_is_object_safe(tr) {
+                continue;
+            }
+
+            let name = ty::print::with_no_trimmed_paths!(tcx.def_path_str(tr));
+
+            let mut first_dsa = true;
+
+            // Number of vtable entries, if we didn't have upcasting
+            let mut unupcasted_cost = 0;
+            // Number of vtable entries needed solely for upcasting
+            let mut upcast_cost = 0;
+
+            let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(tcx, tr));
+
+            // A slightly edited version of the code in `rustc_trait_selection::traits::vtable::vtable_entries`,
+            // that works without self type and just counts number of entries.
+            //
+            // Note that this is technically wrong, for traits which have associated types in supertraits:
+            //
+            //   trait A: AsRef<Self::T> + AsRef<()> { type T; }
+            //
+            // Without self type we can't normalize `Self::T`, so we can't know if `AsRef<Self::T>` and
+            // `AsRef<()>` are the same trait, thus we assume that those are different, and potentially
+            // over-estimate how many vtable entries there are.
+            //
+            // Similarly this is wrong for traits that have methods with possibly-impossible bounds.
+            // For example:
+            //
+            //   trait B<T> { fn f(&self) where T: Copy; }
+            //
+            // Here `dyn B<u8>` will have 4 entries, while `dyn B<String>` will only have 3.
+            // However, since we don't know `T`, we can't know if `T: Copy` holds or not,
+            // thus we lean on the bigger side and say it has 4 entries.
+            traits::vtable::prepare_vtable_segments(tcx, trait_ref, |segment| {
+                match segment {
+                    traits::vtable::VtblSegment::MetadataDSA => {
+                        // If this is the first dsa, it would be included either way,
+                        // otherwise it's needed for upcasting
+                        if std::mem::take(&mut first_dsa) {
+                            unupcasted_cost += 3;
+                        } else {
+                            upcast_cost += 3;
+                        }
+                    }
+
+                    traits::vtable::VtblSegment::TraitOwnEntries { trait_ref, emit_vptr } => {
+                        let existential_trait_ref = trait_ref.map_bound(|trait_ref| {
+                            ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref)
+                        });
+
+                        // Lookup the shape of vtable for the trait.
+                        let own_existential_entries =
+                            tcx.own_existential_vtable_entries(existential_trait_ref.def_id());
+
+                        let own_entries = own_existential_entries.iter().copied().map(|_def_id| {
+                            // The original code here ignores the method if its predicates are impossible.
+                            // We can't really do that as, for example, all not trivial bounds on generic
+                            // parameters are impossible (since we don't know the parameters...),
+                            // see the comment above.
+
+                            1
+                        });
+
+                        unupcasted_cost += own_entries.sum::<usize>();
+
+                        if emit_vptr {
+                            upcast_cost += 1;
+                        }
+                    }
+                }
+
+                std::ops::ControlFlow::Continue::<std::convert::Infallible>(())
+            });
+
+            sess.code_stats.record_vtable_size(
+                tr,
+                &name,
+                VTableSizeInfo {
+                    trait_name: name.clone(),
+                    size_words_without_upcasting: unupcasted_cost,
+                    size_words_with_upcasting: unupcasted_cost + upcast_cost,
+                    difference_words: upcast_cost,
+                    difference_percent: upcast_cost as f64 / unupcasted_cost as f64 * 100.,
+                },
+            )
+        }
+    }
 
     Ok(())
 }

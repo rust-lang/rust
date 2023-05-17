@@ -21,7 +21,7 @@ mod structural_match;
 mod structural_normalize;
 #[cfg_attr(not(bootstrap), allow(hidden_glob_reexports))]
 mod util;
-mod vtable;
+pub mod vtable;
 pub mod wf;
 
 use crate::infer::outlives::env::OutlivesEnvironment;
