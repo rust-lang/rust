@@ -2,6 +2,8 @@
 //! found or is otherwise invalid.
 
 use crate::errors;
+use crate::errors::CandidateTraitNote;
+use crate::errors::NoAssociatedItem;
 use crate::Expectation;
 use crate::FnCtxt;
 use rustc_ast::ast::Mutability;
@@ -38,6 +40,7 @@ use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _
 use rustc_trait_selection::traits::{
     FulfillmentError, Obligation, ObligationCause, ObligationCauseCode,
 };
+use std::borrow::Cow;
 
 use super::probe::{AutorefOrPtrAdjustment, IsSuggestion, Mode, ProbeScope};
 use super::{CandidateSource, MethodError, NoMatchData};
@@ -112,6 +115,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         error: MethodError<'tcx>,
         args: Option<(&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>])>,
         expected: Expectation<'tcx>,
+        trait_missing_method: bool,
     ) -> Option<DiagnosticBuilder<'_, ErrorGuaranteed>> {
         // Avoid suggestions when we don't know what's going on.
         if rcvr_ty.references_error() {
@@ -136,6 +140,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     sugg_span,
                     &mut no_match_data,
                     expected,
+                    trait_missing_method,
                 );
             }
 
@@ -278,6 +283,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         sugg_span: Span,
         no_match_data: &mut NoMatchData<'tcx>,
         expected: Expectation<'tcx>,
+        trait_missing_method: bool,
     ) -> Option<DiagnosticBuilder<'_, ErrorGuaranteed>> {
         let mode = no_match_data.mode;
         let tcx = self.tcx;
@@ -323,7 +329,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span = item_name.span;
 
         // Don't show generic arguments when the method can't be found in any implementation (#81576).
-        let mut ty_str_reported = ty_str.clone();
+        let mut ty_str_reported = if trait_missing_method {
+            ty_str.strip_prefix("dyn ").expect("Failed to remove the prefix dyn").to_owned()
+        } else {
+            ty_str.clone()
+        };
+
         if let ty::Adt(_, generics) = rcvr_ty.kind() {
             if generics.len() > 0 {
                 let mut autoderef = self.autoderef(span, rcvr_ty);
@@ -355,25 +366,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             self.suggest_missing_writer(rcvr_ty, args)
         } else {
-            struct_span_err!(
-                tcx.sess,
+            tcx.sess.create_err(NoAssociatedItem {
                 span,
-                E0599,
-                "no {} named `{}` found for {} `{}` in the current scope",
                 item_kind,
                 item_name,
-                rcvr_ty.prefix_string(self.tcx),
-                ty_str_reported,
-            )
+                ty_prefix: if trait_missing_method {
+                    // FIXME(mu001999) E0599 maybe not suitable here because it is for types
+                    Cow::from("trait")
+                } else {
+                    rcvr_ty.prefix_string(self.tcx)
+                },
+                ty_str: ty_str_reported,
+                trait_missing_method,
+            })
         };
         if tcx.sess.source_map().is_multiline(sugg_span) {
             err.span_label(sugg_span.with_hi(span.lo()), "");
         }
-        let ty_str = if short_ty_str.len() < ty_str.len() && ty_str.len() > 10 {
+        let mut ty_str = if short_ty_str.len() < ty_str.len() && ty_str.len() > 10 {
             short_ty_str
         } else {
             ty_str
         };
+        if trait_missing_method {
+            ty_str =
+                ty_str.strip_prefix("dyn ").expect("Failed to remove the prefix dyn").to_owned();
+        }
+
         if let Some(file) = ty_file {
             err.note(format!("the full type name has been written to '{}'", file.display(),));
         }
@@ -1067,6 +1086,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &static_candidates,
                 unsatisfied_bounds,
                 expected.only_has_type(self),
+                trait_missing_method,
             );
         }
 
@@ -2375,6 +2395,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         static_candidates: &[CandidateSource],
         unsatisfied_bounds: bool,
         return_type: Option<Ty<'tcx>>,
+        trait_missing_method: bool,
     ) {
         let mut alt_rcvr_sugg = false;
         if let (SelfSource::MethodCall(rcvr), false) = (source, unsatisfied_bounds) {
@@ -2598,11 +2619,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 },
                 _ => None,
             };
-            err.help(if param_type.is_some() {
-                "items from traits can only be used if the type parameter is bounded by the trait"
-            } else {
-                "items from traits can only be used if the trait is implemented and in scope"
-            });
+            if !trait_missing_method {
+                err.help(if param_type.is_some() {
+                    "items from traits can only be used if the type parameter is bounded by the trait"
+                } else {
+                    "items from traits can only be used if the trait is implemented and in scope"
+                });
+            }
+
             let candidates_len = candidates.len();
             let message = |action| {
                 format!(
@@ -2751,27 +2775,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (candidates, Vec::new())
             };
 
-            let action = if let Some(param) = param_type {
-                format!("restrict type parameter `{}` with", param)
-            } else {
-                // FIXME: it might only need to be imported into scope, not implemented.
-                "implement".to_string()
-            };
             match &potential_candidates[..] {
                 [] => {}
                 [trait_info] if trait_info.def_id.is_local() => {
-                    err.span_note(
-                        self.tcx.def_span(trait_info.def_id),
-                        format!(
-                            "`{}` defines an item `{}`, perhaps you need to {} it",
-                            self.tcx.def_path_str(trait_info.def_id),
-                            item_name,
-                            action
-                        ),
-                    );
+                    err.subdiagnostic(CandidateTraitNote {
+                        span: self.tcx.def_span(trait_info.def_id),
+                        trait_name: self.tcx.def_path_str(trait_info.def_id),
+                        item_name,
+                        action_or_ty: if trait_missing_method {
+                            "NONE".to_string()
+                        } else {
+                            param_type.map_or_else(
+                                || "implement".to_string(), // FIXME: it might only need to be imported into scope, not implemented.
+                                ToString::to_string,
+                            )
+                        },
+                    });
                 }
                 trait_infos => {
-                    let mut msg = message(action);
+                    let mut msg = message(param_type.map_or_else(
+                        || "implement".to_string(), // FIXME: it might only need to be imported into scope, not implemented.
+                        |param| format!("restrict type parameter `{}` with", param),
+                    ));
                     for (i, trait_info) in trait_infos.iter().enumerate() {
                         msg.push_str(&format!(
                             "\ncandidate #{}: `{}`",
