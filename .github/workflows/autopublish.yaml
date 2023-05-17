@@ -28,7 +28,7 @@ jobs:
       - name: Publish Crates
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-          PATCH: ${{ github.run_number }}
+          RUN_NUMBER: ${{ github.run_number }}
         shell: bash
         run: |
           git config --global user.email "runner@gha.local"
@@ -53,4 +53,4 @@ jobs:
           # Remove library crates from the workspaces so we don't auto-publish them as well
           sed -i 's/ "lib\/\*",//' ./Cargo.toml
           find crates/rust-analyzer -type f -name '*.rs' -exec sed -i 's/rust_analyzer/ra_ap_rust_analyzer/g' {} +
-          cargo workspaces publish --yes --force '*' --exact --no-git-commit --allow-dirty --skip-published custom 0.0.$PATCH
+          cargo workspaces publish --yes --force '*' --exact --no-git-commit --allow-dirty --skip-published custom 0.0.$(($RUN_NUMBER + 133))
