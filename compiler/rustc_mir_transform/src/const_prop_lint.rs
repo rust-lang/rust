@@ -232,7 +232,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 op
             }
             Err(e) => {
-                trace!("get_const failed: {}", e);
+                trace!("get_const failed: {e:?}");
                 return None;
             }
         };
@@ -272,8 +272,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 // dedicated error variants should be introduced instead.
                 assert!(
                     !error.kind().formatted_string(),
-                    "const-prop encountered formatting error: {}",
-                    error
+                    "const-prop encountered formatting error: {error:?}",
                 );
                 None
             }

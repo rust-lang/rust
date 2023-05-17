@@ -22,6 +22,8 @@ use super::{
     Pointer,
 };
 
+use crate::fluent_generated as fluent;
+
 mod caller_location;
 
 fn numeric_intrinsic<Prov>(name: Symbol, bits: u128, kind: Primitive) -> Scalar<Prov> {
@@ -198,15 +200,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         ty
                     ),
                 };
-                let (nonzero, intrinsic_name) = match intrinsic_name {
+                let (nonzero, actual_intrinsic_name) = match intrinsic_name {
                     sym::cttz_nonzero => (true, sym::cttz),
                     sym::ctlz_nonzero => (true, sym::ctlz),
                     other => (false, other),
                 };
                 if nonzero && bits == 0 {
-                    throw_ub_format!("`{}_nonzero` called on 0", intrinsic_name);
+                    throw_ub_custom!(
+                        fluent::const_eval_call_nonzero_intrinsic,
+                        name = intrinsic_name,
+                    );
                 }
-                let out_val = numeric_intrinsic(intrinsic_name, bits, kind);
+                let out_val = numeric_intrinsic(actual_intrinsic_name, bits, kind);
                 self.write_scalar(out_val, dest)?;
             }
             sym::saturating_add | sym::saturating_sub => {
@@ -253,9 +258,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     let layout = self.layout_of(substs.type_at(0))?;
                     let r_val = r.to_scalar().to_bits(layout.size)?;
                     if let sym::unchecked_shl | sym::unchecked_shr = intrinsic_name {
-                        throw_ub_format!("overflowing shift by {} in `{}`", r_val, intrinsic_name);
+                        throw_ub_custom!(
+                            fluent::const_eval_overflow_shift,
+                            val = r_val,
+                            name = intrinsic_name
+                        );
                     } else {
-                        throw_ub_format!("overflow executing `{}`", intrinsic_name);
+                        throw_ub_custom!(fluent::const_eval_overflow, name = intrinsic_name);
                     }
                 }
                 self.write_scalar(val, dest)?;
@@ -314,17 +323,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         (Err(_), _) | (_, Err(_)) => {
                             // We managed to find a valid allocation for one pointer, but not the other.
                             // That means they are definitely not pointing to the same allocation.
-                            throw_ub_format!(
-                                "`{}` called on pointers into different allocations",
-                                intrinsic_name
+                            throw_ub_custom!(
+                                fluent::const_eval_different_allocations,
+                                name = intrinsic_name,
                             );
                         }
                         (Ok((a_alloc_id, a_offset, _)), Ok((b_alloc_id, b_offset, _))) => {
                             // Found allocation for both. They must be into the same allocation.
                             if a_alloc_id != b_alloc_id {
-                                throw_ub_format!(
-                                    "`{}` called on pointers into different allocations",
-                                    intrinsic_name
+                                throw_ub_custom!(
+                                    fluent::const_eval_different_allocations,
+                                    name = intrinsic_name,
                                 );
                             }
                             // Use these offsets for distance calculation.
@@ -344,11 +353,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     if overflowed {
                         // a < b
                         if intrinsic_name == sym::ptr_offset_from_unsigned {
-                            throw_ub_format!(
-                                "`{}` called when first pointer has smaller offset than second: {} < {}",
-                                intrinsic_name,
-                                a_offset,
-                                b_offset,
+                            throw_ub_custom!(
+                                fluent::const_eval_unsigned_offset_from_overflow,
+                                a_offset = a_offset,
+                                b_offset = b_offset,
                             );
                         }
                         // The signed form of the intrinsic allows this. If we interpret the
@@ -356,9 +364,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         // seems *positive*, they were more than isize::MAX apart.
                         let dist = val.to_target_isize(self)?;
                         if dist >= 0 {
-                            throw_ub_format!(
-                                "`{}` called when first pointer is too far before second",
-                                intrinsic_name
+                            throw_ub_custom!(
+                                fluent::const_eval_offset_from_underflow,
+                                name = intrinsic_name,
                             );
                         }
                         dist
@@ -368,9 +376,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         // If converting to isize produced a *negative* result, we had an overflow
                         // because they were more than isize::MAX apart.
                         if dist < 0 {
-                            throw_ub_format!(
-                                "`{}` called when first pointer is too far ahead of second",
-                                intrinsic_name
+                            throw_ub_custom!(
+                                fluent::const_eval_offset_from_overflow,
+                                name = intrinsic_name,
                             );
                         }
                         dist
@@ -513,7 +521,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let op = self.eval_operand(op, None)?;
                 let cond = self.read_scalar(&op)?.to_bool()?;
                 if !cond {
-                    throw_ub_format!("`assume` called with `false`");
+                    throw_ub_custom!(fluent::const_eval_assume_false);
                 }
                 Ok(())
             }
@@ -542,7 +550,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let (res, overflow, _ty) = self.overflowing_binary_op(BinOp::Rem, &a, &b)?;
         assert!(!overflow); // All overflow is UB, so this should never return on overflow.
         if res.assert_bits(a.layout.size) != 0 {
-            throw_ub_format!("exact_div: {} cannot be divided by {} without remainder", a, b)
+            throw_ub_custom!(
+                fluent::const_eval_exact_div_has_remainder,
+                a = format!("{a}"),
+                b = format!("{b}")
+            )
         }
         // `Rem` says this is all right, so we can let `Div` do its job.
         self.binop_ignore_overflow(BinOp::Div, &a, &b, dest)
@@ -638,9 +650,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // `checked_mul` enforces a too small bound (the correct one would probably be target_isize_max),
         // but no actual allocation can be big enough for the difference to be noticeable.
         let size = size.checked_mul(count, self).ok_or_else(|| {
-            err_ub_format!(
-                "overflow computing total size of `{}`",
-                if nonoverlapping { "copy_nonoverlapping" } else { "copy" }
+            err_ub_custom!(
+                fluent::const_eval_size_overflow,
+                name = if nonoverlapping { "copy_nonoverlapping" } else { "copy" }
             )
         })?;
 
@@ -664,10 +676,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         // `checked_mul` enforces a too small bound (the correct one would probably be target_isize_max),
         // but no actual allocation can be big enough for the difference to be noticeable.
-        let len = layout
-            .size
-            .checked_mul(count, self)
-            .ok_or_else(|| err_ub_format!("overflow computing total size of `write_bytes`"))?;
+        let len = layout.size.checked_mul(count, self).ok_or_else(|| {
+            err_ub_custom!(fluent::const_eval_size_overflow, name = "write_bytes")
+        })?;
 
         let bytes = std::iter::repeat(byte).take(len.bytes_usize());
         self.write_bytes_ptr(dst, bytes)
@@ -691,7 +702,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 return Ok(&[]);
             };
             if alloc_ref.has_provenance() {
-                throw_ub_format!("`raw_eq` on bytes with provenance");
+                throw_ub_custom!(fluent::const_eval_raw_eq_with_provenance);
             }
             alloc_ref.get_bytes_strip_provenance()
         };

@@ -538,7 +538,7 @@ struct LabelWithTrailingPath {
 #[diag(no_crate_example, code = "E0123")]
 struct LabelWithTrailingNameValue {
     #[label(no_crate_label, foo = "...")]
-    //~^ ERROR invalid nested attribute
+    //~^ ERROR only `no_span` is a valid nested attribute
     span: Span,
 }
 
@@ -546,7 +546,7 @@ struct LabelWithTrailingNameValue {
 #[diag(no_crate_example, code = "E0123")]
 struct LabelWithTrailingList {
     #[label(no_crate_label, foo("..."))]
-    //~^ ERROR invalid nested attribute
+    //~^ ERROR only `no_span` is a valid nested attribute
     span: Span,
 }
 

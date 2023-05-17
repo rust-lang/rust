@@ -25,6 +25,7 @@ use crate::interpret::{
     self, compile_time_machine, AllocId, ConstAllocation, FnVal, Frame, ImmTy, InterpCx,
     InterpResult, OpTy, PlaceTy, Pointer, Scalar,
 };
+use crate::{errors, fluent_generated as fluent};
 
 use super::error::*;
 
@@ -254,7 +255,10 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
         let target_align = self.read_scalar(&args[1])?.to_target_usize(self)?;
 
         if !target_align.is_power_of_two() {
-            throw_ub_format!("`align_offset` called with non-power-of-two align: {}", target_align);
+            throw_ub_custom!(
+                fluent::const_eval_align_offset_invalid_align,
+                target_align = target_align,
+            );
         }
 
         match self.ptr_try_get_alloc_id(ptr) {
@@ -360,15 +364,18 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 "`alignment_check_failed` called when no alignment check requested"
             ),
             CheckAlignment::FutureIncompat => {
-                let err = ConstEvalErr::new(ecx, err, None);
-                ecx.tcx.struct_span_lint_hir(
+                let (_, backtrace) = err.into_parts();
+                backtrace.print_backtrace();
+                let (span, frames) = super::get_span_and_frames(&ecx);
+
+                ecx.tcx.emit_spanned_lint(
                     INVALID_ALIGNMENT,
                     ecx.stack().iter().find_map(|frame| frame.lint_root()).unwrap_or(CRATE_HIR_ID),
-                    err.span,
-                    err.error.to_string(),
-                    |db| {
-                        err.decorate(db, |_| {});
-                        db
+                    span,
+                    errors::AlignmentCheckFailed {
+                        has: has.bytes(),
+                        required: required.bytes(),
+                        frames,
                     },
                 );
                 Ok(())
@@ -482,7 +489,12 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
                 let align = match Align::from_bytes(align) {
                     Ok(a) => a,
-                    Err(err) => throw_ub_format!("align has to be a power of 2, {}", err),
+                    Err(err) => throw_ub_custom!(
+                        fluent::const_eval_invalid_align_details,
+                        name = "const_allocate",
+                        err_kind = err.diag_ident(),
+                        align = err.align()
+                    ),
                 };
 
                 let ptr = ecx.allocate_ptr(
@@ -500,7 +512,12 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 let size = Size::from_bytes(size);
                 let align = match Align::from_bytes(align) {
                     Ok(a) => a,
-                    Err(err) => throw_ub_format!("align has to be a power of 2, {}", err),
+                    Err(err) => throw_ub_custom!(
+                        fluent::const_eval_invalid_align_details,
+                        name = "const_deallocate",
+                        err_kind = err.diag_ident(),
+                        align = err.align()
+                    ),
                 };
 
                 // If an allocation is created in an another const,

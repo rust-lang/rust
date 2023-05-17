@@ -6,6 +6,7 @@ use rustc_index::IndexVec;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers,
 };
+use rustc_span::source_map::Spanned;
 use rustc_span::SourceFile;
 use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{Integer, Primitive};
@@ -495,25 +496,16 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for RevealAllLayoutCx<'tcx> {
         fn_abi_request: FnAbiRequest<'tcx>,
     ) -> ! {
         if let FnAbiError::Layout(LayoutError::SizeOverflow(_)) = err {
-            self.0.sess.span_fatal(span, err.to_string())
+            self.0.sess.emit_fatal(Spanned { span, node: err })
         } else {
             match fn_abi_request {
                 FnAbiRequest::OfFnPtr { sig, extra_args } => {
-                    span_bug!(
-                        span,
-                        "`fn_abi_of_fn_ptr({}, {:?})` failed: {}",
-                        sig,
-                        extra_args,
-                        err
-                    );
+                    span_bug!(span, "`fn_abi_of_fn_ptr({sig}, {extra_args:?})` failed: {err:?}");
                 }
                 FnAbiRequest::OfInstance { instance, extra_args } => {
                     span_bug!(
                         span,
-                        "`fn_abi_of_instance({}, {:?})` failed: {}",
-                        instance,
-                        extra_args,
-                        err
+                        "`fn_abi_of_instance({instance}, {extra_args:?})` failed: {err:?}"
                     );
                 }
             }

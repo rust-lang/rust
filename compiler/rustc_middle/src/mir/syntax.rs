@@ -801,7 +801,8 @@ pub enum UnwindAction {
 }
 
 /// Information about an assertion failure.
-#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, TypeFoldable, TypeVisitable)]
+#[derive(Clone, Hash, HashStable, PartialEq, Debug)]
+#[derive(TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
 pub enum AssertKind<O> {
     BoundsCheck { len: O, index: O },
     Overflow(BinOp, O, O),

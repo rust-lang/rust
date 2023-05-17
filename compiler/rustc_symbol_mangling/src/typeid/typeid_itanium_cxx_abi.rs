@@ -501,7 +501,15 @@ fn encode_ty<'tcx>(
         ty::Array(ty0, len) => {
             // A<array-length><element-type>
             let mut s = String::from("A");
-            let _ = write!(s, "{}", &len.kind().try_to_scalar().unwrap().to_u64().unwrap());
+            let _ = write!(
+                s,
+                "{}",
+                &len.kind()
+                    .try_to_scalar()
+                    .unwrap()
+                    .to_u64()
+                    .unwrap_or_else(|_| panic!("failed to convert length to u64"))
+            );
             s.push_str(&encode_ty(tcx, *ty0, dict, options));
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             typeid.push_str(&s);
@@ -786,7 +794,12 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
         }
 
         ty::Array(ty0, len) => {
-            let len = len.kind().try_to_scalar().unwrap().to_u64().unwrap();
+            let len = len
+                .kind()
+                .try_to_scalar()
+                .unwrap()
+                .to_u64()
+                .unwrap_or_else(|_| panic!("failed to convert length to u64"));
             ty = tcx.mk_array(transform_ty(tcx, *ty0, options), len);
         }
 
