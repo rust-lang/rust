@@ -9,6 +9,7 @@
 pub struct NotCopy(u16);
 
 impl Drop for NotCopy {
+    #[inline]
     fn drop(&mut self) {}
 }
 
@@ -33,7 +34,7 @@ pub fn iter_repeat_n_next(it: &mut std::iter::RepeatN<NotCopy>) -> Option<NotCop
 
     // CHECK: [[EMPTY]]:
     // CHECK-NOT: br
-    // CHECK: phi i16 [ undef, %start ], [ %[[VAL]], %[[NOT_EMPTY]] ]
+    // CHECK: phi i16 [ %[[VAL]], %[[NOT_EMPTY]] ], [ undef, %start ]
     // CHECK-NOT: br
     // CHECK: ret
 

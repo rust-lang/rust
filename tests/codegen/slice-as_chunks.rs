@@ -23,8 +23,8 @@ pub fn chunks4(x: &[u8]) -> &[[u8; 4]] {
 #[no_mangle]
 pub fn chunks4_with_remainder(x: &[u8]) -> (&[[u8; 4]], &[u8]) {
     // CHECK: and i64 %x.1, -4
+    // CHECK: lshr
     // CHECK: and i64 %x.1, 3
-    // CHECK: lshr exact
     // CHECK-NOT: mul
     // CHECK-NOT: udiv
     // CHECK-NOT: urem

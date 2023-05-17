@@ -7,20 +7,185 @@ fn slice_index_range(_1: &[u32], _2: std::ops::Range<usize>) -> &[u32] {
     scope 1 (inlined #[track_caller] core::slice::index::<impl Index<std::ops::Range<usize>> for [u32]>::index) { // at $DIR/slice_index.rs:21:6: 21:18
         debug self => _1;                // in scope 1 at $SRC_DIR/core/src/slice/index.rs:LL:COL
         debug index => _2;               // in scope 1 at $SRC_DIR/core/src/slice/index.rs:LL:COL
-        let _3: &[u32];                  // in scope 1 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        scope 2 (inlined #[track_caller] <std::ops::Range<usize> as SliceIndex<[u32]>>::index) { // at $SRC_DIR/core/src/slice/index.rs:LL:COL
+            debug self => _2;            // in scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+            debug slice => _1;           // in scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+            let mut _3: bool;            // in scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+            let mut _4: usize;           // in scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+            let mut _5: usize;           // in scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+            let _6: !;                   // in scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+            let mut _7: usize;           // in scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+            let mut _8: usize;           // in scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+            let mut _9: bool;            // in scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+            let mut _10: usize;          // in scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+            let mut _11: usize;          // in scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+            let _12: !;                  // in scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+            let mut _13: usize;          // in scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+            let mut _14: usize;          // in scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+            let _15: *const [u32];       // in scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+            let mut _16: *const [u32];   // in scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+            scope 3 {
+                scope 4 (inlined <std::ops::Range<usize> as SliceIndex<[u32]>>::get_unchecked) { // at $SRC_DIR/core/src/slice/index.rs:LL:COL
+                    debug self => _2;    // in scope 4 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+                    debug slice => _16;  // in scope 4 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+                    let _17: std::ops::Range<usize>; // in scope 4 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+                    let mut _19: usize;  // in scope 4 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+                    let mut _20: usize;  // in scope 4 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+                    let mut _21: *const u32; // in scope 4 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+                    let mut _22: *const u32; // in scope 4 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+                    let mut _23: usize;  // in scope 4 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+                    let mut _24: usize;  // in scope 4 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+                    let mut _25: std::ops::Range<usize>; // in scope 4 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                    let mut _26: *const [u32]; // in scope 4 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                    scope 5 {
+                        debug this => _17; // in scope 5 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+                        scope 6 {
+                            let _18: usize; // in scope 6 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+                            scope 7 {
+                                debug new_len => _18; // in scope 7 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+                                scope 12 (inlined ptr::const_ptr::<impl *const [u32]>::as_ptr) { // at $SRC_DIR/core/src/slice/index.rs:LL:COL
+                                    debug self => _16; // in scope 12 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+                                }
+                                scope 13 (inlined ptr::const_ptr::<impl *const u32>::add) { // at $SRC_DIR/core/src/slice/index.rs:LL:COL
+                                    debug self => _22; // in scope 13 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+                                    debug count => _23; // in scope 13 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+                                    scope 14 {
+                                    }
+                                }
+                                scope 15 (inlined slice_from_raw_parts::<u32>) { // at $SRC_DIR/core/src/slice/index.rs:LL:COL
+                                    debug data => _21; // in scope 15 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+                                    debug len => _24; // in scope 15 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+                                    let mut _27: *const (); // in scope 15 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+                                    scope 16 (inlined ptr::const_ptr::<impl *const u32>::cast::<()>) { // at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+                                        debug self => _21; // in scope 16 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+                                    }
+                                    scope 17 (inlined std::ptr::from_raw_parts::<[u32]>) { // at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+                                        debug data_address => _27; // in scope 17 at $SRC_DIR/core/src/ptr/metadata.rs:LL:COL
+                                        debug metadata => _24; // in scope 17 at $SRC_DIR/core/src/ptr/metadata.rs:LL:COL
+                                        let mut _28: std::ptr::metadata::PtrRepr<[u32]>; // in scope 17 at $SRC_DIR/core/src/ptr/metadata.rs:LL:COL
+                                        let mut _29: std::ptr::metadata::PtrComponents<[u32]>; // in scope 17 at $SRC_DIR/core/src/ptr/metadata.rs:LL:COL
+                                        scope 18 {
+                                        }
+                                    }
+                                }
+                            }
+                            scope 8 (inlined <std::ops::Range<usize> as SliceIndex<[T]>>::get_unchecked::runtime::<u32>) { // at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                                debug this => _25; // in scope 8 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                                debug slice => _26; // in scope 8 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                                scope 9 (inlined ptr::const_ptr::<impl *const [u32]>::len) { // at $SRC_DIR/core/src/slice/index.rs:LL:COL
+                                    debug self => _26; // in scope 9 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+                                    scope 10 (inlined std::ptr::metadata::<[u32]>) { // at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+                                        debug ptr => _26; // in scope 10 at $SRC_DIR/core/src/ptr/metadata.rs:LL:COL
+                                        scope 11 {
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     bb0: {
-        StorageLive(_3);                 // scope 1 at $SRC_DIR/core/src/slice/index.rs:LL:COL
-        _3 = <std::ops::Range<usize> as SliceIndex<[u32]>>::index(move _2, _1) -> bb1; // scope 1 at $SRC_DIR/core/src/slice/index.rs:LL:COL
-                                         // mir::Constant
-                                         // + span: $SRC_DIR/core/src/slice/index.rs:LL:COL
-                                         // + literal: Const { ty: for<'a> fn(std::ops::Range<usize>, &'a [u32]) -> &'a <std::ops::Range<usize> as SliceIndex<[u32]>>::Output {<std::ops::Range<usize> as SliceIndex<[u32]>>::index}, val: Value(<ZST>) }
+        StorageLive(_3);                 // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageLive(_4);                 // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        _4 = (_2.0: usize);              // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageLive(_5);                 // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        _5 = (_2.1: usize);              // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        _3 = Gt(move _4, move _5);       // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageDead(_5);                 // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageDead(_4);                 // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        switchInt(move _3) -> [0: bb2, otherwise: bb1]; // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
     }
 
     bb1: {
-        _0 = _3;                         // scope 1 at $SRC_DIR/core/src/slice/index.rs:LL:COL
-        StorageDead(_3);                 // scope 1 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageLive(_7);                 // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        _7 = (_2.0: usize);              // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageLive(_8);                 // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        _8 = (_2.1: usize);              // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        _6 = core::slice::index::slice_index_order_fail(move _7, move _8); // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+                                         // mir::Constant
+                                         // + span: $SRC_DIR/core/src/slice/index.rs:LL:COL
+                                         // + literal: Const { ty: fn(usize, usize) -> ! {core::slice::index::slice_index_order_fail}, val: Value(<ZST>) }
+    }
+
+    bb2: {
+        StorageLive(_9);                 // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageLive(_10);                // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        _10 = (_2.1: usize);             // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageLive(_11);                // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        _11 = Len((*_1));                // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        _9 = Gt(move _10, move _11);     // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageDead(_11);                // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageDead(_10);                // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        switchInt(move _9) -> [0: bb4, otherwise: bb3]; // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+    }
+
+    bb3: {
+        StorageLive(_13);                // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        _13 = (_2.1: usize);             // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageLive(_14);                // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        _14 = Len((*_1));                // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        _12 = core::slice::index::slice_end_index_len_fail(move _13, move _14); // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+                                         // mir::Constant
+                                         // + span: $SRC_DIR/core/src/slice/index.rs:LL:COL
+                                         // + literal: Const { ty: fn(usize, usize) -> ! {core::slice::index::slice_end_index_len_fail}, val: Value(<ZST>) }
+    }
+
+    bb4: {
+        StorageDead(_9);                 // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageDead(_3);                 // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageLive(_15);                // scope 3 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageLive(_16);                // scope 3 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        _16 = &raw const (*_1);          // scope 3 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageLive(_17);                // scope 3 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageLive(_25);                // scope 3 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageLive(_26);                // scope 3 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageLive(_18);                // scope 6 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageLive(_19);                // scope 6 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        _19 = (_2.1: usize);             // scope 6 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageLive(_20);                // scope 6 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        _20 = (_2.0: usize);             // scope 6 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        _18 = unchecked_sub::<usize>(move _19, move _20) -> [return: bb5, unwind unreachable]; // scope 6 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+                                         // mir::Constant
+                                         // + span: $SRC_DIR/core/src/slice/index.rs:LL:COL
+                                         // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(usize, usize) -> usize {unchecked_sub::<usize>}, val: Value(<ZST>) }
+    }
+
+    bb5: {
+        StorageDead(_20);                // scope 6 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageDead(_19);                // scope 6 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageLive(_21);                // scope 7 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageLive(_22);                // scope 7 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        _22 = _16 as *const u32 (PtrToPtr); // scope 12 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+        StorageLive(_23);                // scope 7 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        _23 = (_2.0: usize);             // scope 7 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        _21 = Offset(_22, _23);          // scope 14 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+        StorageDead(_23);                // scope 7 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageDead(_22);                // scope 7 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageLive(_24);                // scope 7 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        _24 = _18;                       // scope 7 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageLive(_27);                // scope 15 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+        _27 = _21 as *const () (PtrToPtr); // scope 16 at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+        StorageLive(_28);                // scope 18 at $SRC_DIR/core/src/ptr/metadata.rs:LL:COL
+        StorageLive(_29);                // scope 18 at $SRC_DIR/core/src/ptr/metadata.rs:LL:COL
+        _29 = ptr::metadata::PtrComponents::<[u32]> { data_address: _27, metadata: _24 }; // scope 18 at $SRC_DIR/core/src/ptr/metadata.rs:LL:COL
+        _28 = ptr::metadata::PtrRepr::<[u32]> { const_ptr: move _29 }; // scope 18 at $SRC_DIR/core/src/ptr/metadata.rs:LL:COL
+        StorageDead(_29);                // scope 18 at $SRC_DIR/core/src/ptr/metadata.rs:LL:COL
+        _15 = (_28.0: *const [u32]);     // scope 18 at $SRC_DIR/core/src/ptr/metadata.rs:LL:COL
+        StorageDead(_28);                // scope 17 at $SRC_DIR/core/src/ptr/metadata.rs:LL:COL
+        StorageDead(_27);                // scope 15 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+        StorageDead(_24);                // scope 7 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageDead(_21);                // scope 7 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageDead(_18);                // scope 6 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageDead(_26);                // scope 3 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageDead(_25);                // scope 3 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageDead(_17);                // scope 3 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageDead(_16);                // scope 3 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        _0 = &(*_15);                    // scope 3 at $SRC_DIR/core/src/slice/index.rs:LL:COL
+        StorageDead(_15);                // scope 2 at $SRC_DIR/core/src/slice/index.rs:LL:COL
         return;                          // scope 0 at $DIR/slice_index.rs:+2:2: +2:2
     }
 }

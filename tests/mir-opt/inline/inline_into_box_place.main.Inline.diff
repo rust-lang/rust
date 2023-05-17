@@ -18,6 +18,101 @@
 +         let mut _6: *mut u8;             // in scope 3 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
 +         let mut _7: *const std::vec::Vec<u32>; // in scope 3 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
 +         scope 4 {
++             scope 5 (inlined alloc::alloc::exchange_malloc) { // at $SRC_DIR/alloc/src/boxed.rs:LL:COL
++                 debug size => _4;        // in scope 5 at $SRC_DIR/alloc/src/alloc.rs:LL:COL
++                 debug align => _5;       // in scope 5 at $SRC_DIR/alloc/src/alloc.rs:LL:COL
++                 let _8: std::alloc::Layout; // in scope 5 at $SRC_DIR/alloc/src/alloc.rs:LL:COL
++                 let mut _9: std::result::Result<std::ptr::NonNull<[u8]>, std::alloc::AllocError>; // in scope 5 at $SRC_DIR/alloc/src/alloc.rs:LL:COL
++                 let mut _10: isize;      // in scope 5 at $SRC_DIR/alloc/src/alloc.rs:LL:COL
++                 let mut _12: !;          // in scope 5 at $SRC_DIR/alloc/src/alloc.rs:LL:COL
++                 scope 6 {
++                     debug layout => _8;  // in scope 6 at $SRC_DIR/alloc/src/alloc.rs:LL:COL
++                     let _11: std::ptr::NonNull<[u8]>; // in scope 6 at $SRC_DIR/alloc/src/alloc.rs:LL:COL
++                     let mut _13: &std::alloc::Global; // in scope 6 at $SRC_DIR/alloc/src/alloc.rs:LL:COL
++                     scope 8 {
++                         debug ptr => _11; // in scope 8 at $SRC_DIR/alloc/src/alloc.rs:LL:COL
++                         scope 18 (inlined NonNull::<[u8]>::as_mut_ptr) { // at $SRC_DIR/alloc/src/alloc.rs:LL:COL
++                             debug self => _11; // in scope 18 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++                             let mut _16: std::ptr::NonNull<u8>; // in scope 18 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++                             scope 19 (inlined NonNull::<[u8]>::as_non_null_ptr) { // at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++                                 debug self => _11; // in scope 19 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++                                 let mut _17: *mut u8; // in scope 19 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++                                 let mut _18: *mut [u8]; // in scope 19 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++                                 scope 20 {
++                                     scope 21 (inlined NonNull::<[u8]>::as_ptr) { // at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++                                         debug self => _11; // in scope 21 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++                                         let mut _19: *const [u8]; // in scope 21 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++                                     }
++                                     scope 22 (inlined ptr::mut_ptr::<impl *mut [u8]>::as_mut_ptr) { // at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++                                         debug self => _18; // in scope 22 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
++                                     }
++                                     scope 23 (inlined NonNull::<u8>::new_unchecked) { // at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++                                         debug ptr => _17; // in scope 23 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++                                         let mut _20: *const u8; // in scope 23 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++                                         let mut _21: *mut u8; // in scope 23 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
++                                         scope 24 {
++                                             scope 25 (inlined NonNull::<T>::new_unchecked::runtime::<u8>) { // at $SRC_DIR/core/src/intrinsics.rs:LL:COL
++                                                 debug ptr => _21; // in scope 25 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
++                                                 scope 26 (inlined ptr::mut_ptr::<impl *mut u8>::is_null) { // at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++                                                     debug self => _21; // in scope 26 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
++                                                     let mut _22: *mut u8; // in scope 26 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
++                                                     scope 27 {
++                                                         scope 28 (inlined ptr::mut_ptr::<impl *mut T>::is_null::runtime_impl) { // at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
++                                                             debug ptr => _22; // in scope 28 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
++                                                             scope 29 (inlined ptr::mut_ptr::<impl *mut u8>::addr) { // at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
++                                                                 debug self => _22; // in scope 29 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
++                                                                 scope 30 {
++                                                                     scope 31 (inlined ptr::mut_ptr::<impl *mut u8>::cast::<()>) { // at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
++                                                                         debug self => _22; // in scope 31 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
++                                                                     }
++                                                                 }
++                                                             }
++                                                         }
++                                                     }
++                                                 }
++                                             }
++                                         }
++                                     }
++                                 }
++                             }
++                             scope 32 (inlined NonNull::<u8>::as_ptr) { // at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++                                 debug self => _16; // in scope 32 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++                                 let mut _23: *const u8; // in scope 32 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++                             }
++                         }
++                     }
++                     scope 17 (inlined <std::alloc::Global as Allocator>::allocate) { // at $SRC_DIR/alloc/src/alloc.rs:LL:COL
++                         debug self => const _; // in scope 17 at $SRC_DIR/alloc/src/alloc.rs:LL:COL
++                         debug layout => _8; // in scope 17 at $SRC_DIR/alloc/src/alloc.rs:LL:COL
++                     }
++                 }
++                 scope 7 {
++                     scope 9 (inlined Layout::from_size_align_unchecked) { // at $SRC_DIR/alloc/src/alloc.rs:LL:COL
++                         debug size => _4; // in scope 9 at $SRC_DIR/core/src/alloc/layout.rs:LL:COL
++                         debug align => _5; // in scope 9 at $SRC_DIR/core/src/alloc/layout.rs:LL:COL
++                         let mut _14: std::ptr::Alignment; // in scope 9 at $SRC_DIR/core/src/alloc/layout.rs:LL:COL
++                         scope 10 {
++                             scope 11 (inlined std::ptr::Alignment::new_unchecked) { // at $SRC_DIR/core/src/alloc/layout.rs:LL:COL
++                                 debug align => _5; // in scope 11 at $SRC_DIR/core/src/ptr/alignment.rs:LL:COL
++                                 let mut _15: usize; // in scope 11 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
++                                 scope 12 {
++                                     scope 14 (inlined std::ptr::Alignment::new_unchecked::runtime) { // at $SRC_DIR/core/src/intrinsics.rs:LL:COL
++                                         debug align => _15; // in scope 14 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
++                                         scope 15 (inlined core::num::<impl usize>::is_power_of_two) { // at $SRC_DIR/core/src/ptr/alignment.rs:LL:COL
++                                             debug self => _15; // in scope 15 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
++                                             scope 16 (inlined core::num::<impl usize>::count_ones) { // at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
++                                                 debug self => _15; // in scope 16 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
++                                             }
++                                         }
++                                     }
++                                 }
++                                 scope 13 {
++                                 }
++                             }
++                         }
++                     }
++                 }
++             }
 +         }
 +     }
   
@@ -36,46 +131,107 @@
 +                                          // + literal: Const { ty: alloc::raw_vec::RawVec<u32>, val: Unevaluated(alloc::raw_vec::RawVec::<T>::NEW, [u32], None) }
 +         _2 = Vec::<u32> { buf: move _3, len: const 0_usize }; // scope 2 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 +         StorageDead(_3);                 // scope 2 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
++         StorageLive(_12);                // scope 0 at $DIR/inline_into_box_place.rs:+1:29: +1:49
 +         _4 = SizeOf(std::vec::Vec<u32>); // scope 4 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
 +         _5 = AlignOf(std::vec::Vec<u32>); // scope 4 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
-+         _6 = alloc::alloc::exchange_malloc(move _4, move _5) -> [return: bb3, unwind: bb4]; // scope 4 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
++         StorageLive(_8);                 // scope 4 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
++         StorageLive(_11);                // scope 4 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
++         StorageLive(_13);                // scope 4 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
++         StorageLive(_14);                // scope 10 at $SRC_DIR/core/src/alloc/layout.rs:LL:COL
++         StorageLive(_15);                // scope 10 at $SRC_DIR/core/src/alloc/layout.rs:LL:COL
++         _14 = _5 as std::ptr::Alignment (Transmute); // scope 13 at $SRC_DIR/core/src/ptr/alignment.rs:LL:COL
++         StorageDead(_15);                // scope 10 at $SRC_DIR/core/src/alloc/layout.rs:LL:COL
++         _8 = Layout { size: _4, align: move _14 }; // scope 10 at $SRC_DIR/core/src/alloc/layout.rs:LL:COL
++         StorageDead(_14);                // scope 10 at $SRC_DIR/core/src/alloc/layout.rs:LL:COL
++         StorageLive(_9);                 // scope 6 at $SRC_DIR/alloc/src/alloc.rs:LL:COL
++         _13 = const _;                   // scope 6 at $SRC_DIR/alloc/src/alloc.rs:LL:COL
 +                                          // mir::Constant
-+                                          // + span: $SRC_DIR/alloc/src/boxed.rs:LL:COL
-+                                          // + literal: Const { ty: unsafe fn(usize, usize) -> *mut u8 {alloc::alloc::exchange_malloc}, val: Value(<ZST>) }
++                                          // + span: $SRC_DIR/alloc/src/alloc.rs:LL:COL
++                                          // + literal: Const { ty: &std::alloc::Global, val: Unevaluated(alloc::alloc::exchange_malloc, [], Some(promoted[0])) }
++         _9 = std::alloc::Global::alloc_impl(_13, _8, const false) -> [return: bb7, unwind: bb3]; // scope 17 at $SRC_DIR/alloc/src/alloc.rs:LL:COL
++                                          // mir::Constant
++                                          // + span: $SRC_DIR/alloc/src/alloc.rs:LL:COL
++                                          // + literal: Const { ty: for<'a> fn(&'a std::alloc::Global, Layout, bool) -> Result<NonNull<[u8]>, std::alloc::AllocError> {std::alloc::Global::alloc_impl}, val: Value(<ZST>) }
       }
   
       bb1: {
 -         _1 = Box::<Vec<u32>>::new(move _2) -> [return: bb2, unwind: bb4]; // scope 0 at $DIR/inline_into_box_place.rs:+1:29: +1:49
--                                          // mir::Constant
++         StorageDead(_1);                 // scope 0 at $DIR/inline_into_box_place.rs:+2:1: +2:2
++         return;                          // scope 0 at $DIR/inline_into_box_place.rs:+2:2: +2:2
++     }
++ 
++     bb2 (cleanup): {
++         resume;                          // scope 0 at $DIR/inline_into_box_place.rs:+0:1: +2:2
++     }
++ 
++     bb3 (cleanup): {
++         drop(_2) -> [return: bb2, unwind terminate]; // scope 3 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
++     }
++ 
++     bb4: {
++         _12 = handle_alloc_error(_8) -> bb3; // scope 6 at $SRC_DIR/alloc/src/alloc.rs:LL:COL
+                                           // mir::Constant
 -                                          // + span: $DIR/inline_into_box_place.rs:8:29: 8:37
 -                                          // + user_ty: UserType(1)
 -                                          // + literal: Const { ty: fn(Vec<u32>) -> Box<Vec<u32>> {Box::<Vec<u32>>::new}, val: Value(<ZST>) }
-+         StorageDead(_1);                 // scope 0 at $DIR/inline_into_box_place.rs:+2:1: +2:2
-+         return;                          // scope 0 at $DIR/inline_into_box_place.rs:+2:2: +2:2
++                                          // + span: $SRC_DIR/alloc/src/alloc.rs:LL:COL
++                                          // + literal: Const { ty: fn(Layout) -> ! {handle_alloc_error}, val: Value(<ZST>) }
       }
   
 -     bb2: {
--         StorageDead(_2);                 // scope 0 at $DIR/inline_into_box_place.rs:+1:48: +1:49
--         _0 = const ();                   // scope 0 at $DIR/inline_into_box_place.rs:+0:11: +2:2
--         drop(_1) -> [return: bb3, unwind: bb4]; // scope 0 at $DIR/inline_into_box_place.rs:+2:1: +2:2
-+     bb2 (cleanup): {
-+         resume;                          // scope 0 at $DIR/inline_into_box_place.rs:+0:1: +2:2
-      }
-  
-      bb3: {
--         StorageDead(_1);                 // scope 0 at $DIR/inline_into_box_place.rs:+2:1: +2:2
--         return;                          // scope 0 at $DIR/inline_into_box_place.rs:+2:2: +2:2
++     bb5: {
++         unreachable;                     // scope 6 at $SRC_DIR/alloc/src/alloc.rs:LL:COL
++     }
++ 
++     bb6: {
++         _11 = ((_9 as Ok).0: std::ptr::NonNull<[u8]>); // scope 6 at $SRC_DIR/alloc/src/alloc.rs:LL:COL
++         StorageLive(_16);                // scope 18 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++         StorageLive(_17);                // scope 20 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++         StorageLive(_18);                // scope 20 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++         StorageLive(_19);                // scope 21 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++         _19 = (_11.0: *const [u8]);      // scope 21 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++         _18 = move _19 as *mut [u8] (PtrToPtr); // scope 21 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++         StorageDead(_19);                // scope 21 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++         _17 = _18 as *mut u8 (PtrToPtr); // scope 22 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
++         StorageDead(_18);                // scope 20 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++         StorageLive(_20);                // scope 20 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++         StorageLive(_21);                // scope 20 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++         StorageLive(_22);                // scope 20 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++         _20 = _17 as *const u8 (Pointer(MutToConstPointer)); // scope 24 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++         _16 = NonNull::<u8> { pointer: _20 }; // scope 24 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++         StorageDead(_22);                // scope 20 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++         StorageDead(_21);                // scope 20 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++         StorageDead(_20);                // scope 20 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++         StorageDead(_17);                // scope 20 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++         StorageLive(_23);                // scope 32 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++         _23 = (_16.0: *const u8);        // scope 32 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++         _6 = move _23 as *mut u8 (PtrToPtr); // scope 32 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++         StorageDead(_23);                // scope 32 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++         StorageDead(_16);                // scope 18 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
++         StorageDead(_9);                 // scope 5 at $SRC_DIR/alloc/src/alloc.rs:LL:COL
++         StorageDead(_13);                // scope 4 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
++         StorageDead(_11);                // scope 4 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
++         StorageDead(_8);                 // scope 4 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
 +         _1 = ShallowInitBox(move _6, std::vec::Vec<u32>); // scope 3 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
 +         _7 = (((_1.0: std::ptr::Unique<std::vec::Vec<u32>>).0: std::ptr::NonNull<std::vec::Vec<u32>>).0: *const std::vec::Vec<u32>); // scope 3 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
 +         (*_7) = move _2;                 // scope 3 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
-+         StorageDead(_2);                 // scope 0 at $DIR/inline_into_box_place.rs:+1:48: +1:49
-+         _0 = const ();                   // scope 0 at $DIR/inline_into_box_place.rs:+0:11: +2:2
++         StorageDead(_12);                // scope 0 at $DIR/inline_into_box_place.rs:+1:29: +1:49
+          StorageDead(_2);                 // scope 0 at $DIR/inline_into_box_place.rs:+1:48: +1:49
+          _0 = const ();                   // scope 0 at $DIR/inline_into_box_place.rs:+0:11: +2:2
+-         drop(_1) -> [return: bb3, unwind: bb4]; // scope 0 at $DIR/inline_into_box_place.rs:+2:1: +2:2
 +         drop(_1) -> [return: bb1, unwind: bb2]; // scope 0 at $DIR/inline_into_box_place.rs:+2:1: +2:2
       }
   
-      bb4 (cleanup): {
+-     bb3: {
+-         StorageDead(_1);                 // scope 0 at $DIR/inline_into_box_place.rs:+2:1: +2:2
+-         return;                          // scope 0 at $DIR/inline_into_box_place.rs:+2:2: +2:2
+-     }
+- 
+-     bb4 (cleanup): {
 -         resume;                          // scope 0 at $DIR/inline_into_box_place.rs:+0:1: +2:2
-+         drop(_2) -> [return: bb2, unwind terminate]; // scope 3 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
++     bb7: {
++         _10 = discriminant(_9);          // scope 6 at $SRC_DIR/alloc/src/alloc.rs:LL:COL
++         switchInt(move _10) -> [0: bb6, 1: bb4, otherwise: bb5]; // scope 6 at $SRC_DIR/alloc/src/alloc.rs:LL:COL
       }
   }
   

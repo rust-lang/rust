@@ -26,6 +26,14 @@ const CALL_PENALTY: usize = 25;
 const LANDINGPAD_PENALTY: usize = 50;
 const RESUME_PENALTY: usize = 45;
 
+/// Assume that each block will cost at least this much,
+/// as part of pre-rejecting particularly large bodies.
+const MIN_BLOCK_COST: usize = 4;
+
+/// One thing we're saving by inlining is needing to pass around all the arguments,
+/// so give a threshold bonus for each thing we'd no longer need to pass.
+const PARAMETER_BONUS: usize = 5;
+
 const TOP_DOWN_DEPTH_LIMIT: usize = 5;
 
 pub struct Inline;
@@ -409,6 +417,30 @@ impl<'tcx> Inliner<'tcx> {
             self.tcx.sess.opts.unstable_opts.inline_mir_threshold.unwrap_or(50)
         };
 
+        // Functions that actually *use* lots of parameters will probably end up too
+        // expensive to inline, but inlining saves needing to pass them, so give a
+        // small bonus to the threshold the more parameters something. If the
+        // parameters *aren't* actually used, such as in trait method impls that turn
+        // out to not need everything, then inlining and seeing that they're unused
+        // might be particularly helpful.
+        threshold += callee_body.arg_count * PARAMETER_BONUS;
+
+        if callee_attrs.inline != InlineAttr::Always {
+            // Don't bother walking all the blocks if there's so many of them that
+            // there's no way the cost will come out below the threshold.
+            if threshold / MIN_BLOCK_COST < callee_body.basic_blocks.len() {
+                return Err("too many blocks to consider inlining");
+            }
+
+            // We don't have loop optimizations for MIR at this time, so
+            // leave inlining of them up to the backend for now.
+            // (If they end up vectorizing or unrolling, seemingly small things
+            // might actually end up having huge costs.)
+            if callee_body.basic_blocks.is_cfg_cyclic() {
+                return Err("skipping inlining loops");
+            }
+        }
+
         // Give a bonus functions with a small number of blocks,
         // We normally have two or three blocks for even
         // very small functions.
@@ -773,16 +805,50 @@ struct CostChecker<'b, 'tcx> {
 
 impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
-        // Don't count StorageLive/StorageDead in the inlining cost.
+        // Most statements are, by themselves, basically free.  `Assign`ments
+        // are nothing in SSA unless projected. `FakeRead`, `StorageLive`,
+        // `StorageDead`, `AscribeUserType`, etc don't do anything.
         match statement.kind {
-            StatementKind::StorageLive(_)
-            | StatementKind::StorageDead(_)
-            | StatementKind::Deinit(_)
-            | StatementKind::Nop => {}
-            _ => self.cost += INSTR_COST,
+            StatementKind::Intrinsic(_) => self.cost += CALL_PENALTY,
+            _ => {}
         }
 
         self.super_statement(statement, location);
+    }
+
+    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
+        fn is_trivial_cast(kind: CastKind) -> bool {
+            matches!(kind, CastKind::PtrToPtr | CastKind::Pointer(..))
+        }
+
+        // Most "normal" costs come from here, like unary/binary operators,
+        // int-to-float casts, etc. But many things aren't actually going to
+        // have any cost: `*mut` to `*const` casts are runtime nops, and the
+        // nullary ops are just constants in disguise, for example.
+        match rvalue {
+            Rvalue::ThreadLocalRef(..) => self.cost += CALL_PENALTY,
+            Rvalue::Use(..)
+            | Rvalue::NullaryOp(..)
+            | Rvalue::Len(..)
+            | Rvalue::Ref(..)
+            | Rvalue::AddressOf(..) => {}
+            Rvalue::Cast(kind, ..) if is_trivial_cast(*kind) => {}
+            _ => self.cost += INSTR_COST,
+        }
+
+        self.super_rvalue(rvalue, location);
+    }
+
+    fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
+        // We've let many things that take `Operand`s be considered "free" at
+        // the statement and rvalue levels, but if they actually require a load
+        // or store, we account for that here. (A copy like `_6 = _7` takes
+        // very different codegen from `*_6 = *_7`, for example.)
+        if place.has_deref() && !context.is_borrow() && !context.is_address_of() {
+            self.cost += INSTR_COST;
+        }
+
+        self.super_place(place, context, location);
     }
 
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {

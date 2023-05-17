@@ -4,15 +4,102 @@ fn mem_swap_simple(_1: &mut u32, _2: &mut u32) -> () {
     debug a => _1;                       // in scope 0 at $DIR/mem_swap.rs:+0:24: +0:25
     debug b => _2;                       // in scope 0 at $DIR/mem_swap.rs:+0:37: +0:38
     let mut _0: ();                      // return place in scope 0 at $DIR/mem_swap.rs:+0:50: +0:50
-
-    bb0: {
-        _0 = std::mem::swap::<u32>(_1, _2) -> bb1; // scope 0 at $DIR/mem_swap.rs:+1:5: +1:25
-                                         // mir::Constant
-                                         // + span: $DIR/mem_swap.rs:14:5: 14:19
-                                         // + literal: Const { ty: for<'a, 'b> fn(&'a mut u32, &'b mut u32) {std::mem::swap::<u32>}, val: Value(<ZST>) }
+    scope 1 (inlined std::mem::swap::<u32>) { // at $DIR/mem_swap.rs:14:5: 14:25
+        debug x => _1;                   // in scope 1 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        debug y => _2;                   // in scope 1 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        scope 2 {
+        }
+        scope 3 (inlined std::mem::size_of::<u32>) { // at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        }
+        scope 4 (inlined align_of::<u32>) { // at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        }
+        scope 5 (inlined mem::swap_simple::<u32>) { // at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+            debug x => _1;               // in scope 5 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+            debug y => _2;               // in scope 5 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+            let mut _4: *const u32;      // in scope 5 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+            let mut _6: *const u32;      // in scope 5 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+            let mut _7: *mut u32;        // in scope 5 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+            let mut _8: *mut u32;        // in scope 5 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+            scope 6 {
+                let _3: u32;             // in scope 6 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+                scope 7 {
+                    debug a => _3;       // in scope 7 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+                    let _5: u32;         // in scope 7 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+                    scope 8 {
+                        debug b => _5;   // in scope 8 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+                        scope 15 (inlined std::ptr::write::<u32>) { // at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+                            debug dst => _7; // in scope 15 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+                            debug src => _5; // in scope 15 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+                            let mut _11: *mut u32; // in scope 15 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                            scope 16 {
+                                scope 17 (inlined std::ptr::write::runtime::<u32>) { // at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                                    debug dst => _11; // in scope 17 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                                }
+                            }
+                        }
+                        scope 18 (inlined std::ptr::write::<u32>) { // at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+                            debug dst => _8; // in scope 18 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+                            debug src => _3; // in scope 18 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+                            let mut _12: *mut u32; // in scope 18 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                            scope 19 {
+                                scope 20 (inlined std::ptr::write::runtime::<u32>) { // at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                                    debug dst => _12; // in scope 20 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                                }
+                            }
+                        }
+                    }
+                    scope 12 (inlined std::ptr::read::<u32>) { // at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+                        debug src => _6; // in scope 12 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+                        let mut _10: *const u32; // in scope 12 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                        scope 13 {
+                            scope 14 (inlined std::ptr::read::runtime::<u32>) { // at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                                debug src => _10; // in scope 14 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                            }
+                        }
+                    }
+                }
+                scope 9 (inlined std::ptr::read::<u32>) { // at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+                    debug src => _4;     // in scope 9 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+                    let mut _9: *const u32; // in scope 9 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                    scope 10 {
+                        scope 11 (inlined std::ptr::read::runtime::<u32>) { // at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                            debug src => _9; // in scope 11 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                        }
+                    }
+                }
+            }
+        }
     }
 
-    bb1: {
+    bb0: {
+        StorageLive(_3);                 // scope 1 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        StorageLive(_5);                 // scope 1 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        StorageLive(_4);                 // scope 6 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        _4 = &raw const (*_1);           // scope 6 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        StorageLive(_9);                 // scope 6 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        _3 = (*_4);                      // scope 10 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+        StorageDead(_9);                 // scope 6 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        StorageDead(_4);                 // scope 6 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        StorageLive(_6);                 // scope 7 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        _6 = &raw const (*_2);           // scope 7 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        StorageLive(_10);                // scope 7 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        _5 = (*_6);                      // scope 13 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+        StorageDead(_10);                // scope 7 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        StorageDead(_6);                 // scope 7 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        StorageLive(_7);                 // scope 8 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        _7 = &raw mut (*_1);             // scope 8 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        StorageLive(_11);                // scope 8 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        (*_7) = move _5;                 // scope 16 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+        StorageDead(_11);                // scope 8 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        StorageDead(_7);                 // scope 8 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        StorageLive(_8);                 // scope 8 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        _8 = &raw mut (*_2);             // scope 8 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        StorageLive(_12);                // scope 8 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        (*_8) = move _3;                 // scope 19 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+        StorageDead(_12);                // scope 8 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        StorageDead(_8);                 // scope 8 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        StorageDead(_5);                 // scope 1 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+        StorageDead(_3);                 // scope 1 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
         return;                          // scope 0 at $DIR/mem_swap.rs:+2:2: +2:2
     }
 }
