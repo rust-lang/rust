@@ -13,6 +13,8 @@ pub use super::{
     facts::{AllFacts as PoloniusInput, RustcFacts},
     location::{LocationTable, RichLocation},
     nll::PoloniusOutput,
+    place_ext::PlaceExt,
+    places_conflict::{places_conflict, PlaceConflictBias},
     region_infer::RegionInferenceContext,
     BodyWithBorrowckFacts,
 };
