@@ -891,6 +891,194 @@ impl<'tcx> Constructor<'tcx> {
     }
 }
 
+/// Describes a set of constructors for a type. The constructors must be an exhaustive set, must
+/// cover all constructors in the matrix, and must be split wrt the constructors of the matrix, as
+/// explained at the top of the file.
+pub(super) enum ConstructorSet<'tcx> {
+    Uninhabited,
+    Ranges(Vec<IntRange>),
+    Slices(Slice),
+    UnListable,
+    Other { base_ctors: Vec<Constructor<'tcx>> },
+}
+
+impl<'tcx> ConstructorSet<'tcx> {
+    pub(super) fn new<'p>(pcx: &PatCtxt<'_, 'p, 'tcx>) -> Self {
+        debug!("ConstructorSet::new({:?})", pcx.ty);
+        //let cx = pcx.cx;
+        //let make_range = |start, end| {
+        //    // `unwrap()` is ok because we know the type is an integer.
+        //    IntRange::from_range(cx.tcx, start, end, pcx.ty, &RangeEnd::Included).unwrap()
+        //};
+        //// This determines the set of all possible constructors for the type `pcx.ty`. For numbers,
+        //// arrays and slices we use ranges and variable-length slices when appropriate.
+        ////
+        //// If the `exhaustive_patterns` feature is enabled, we make sure to omit constructors that
+        //// are statically impossible. E.g., for `Option<!>`, we do not include `Some(_)` in the
+        //// returned list of constructors.
+        //// Invariant: this is empty if and only if the type is uninhabited (as determined by
+        //// `cx.is_uninhabited()`).
+        //match pcx.ty.kind() {
+        //    ty::Bool => Self::Ranges(vec![make_range(0, 1)]),
+        //    ty::Array(sub_ty, len) if len.try_eval_target_usize(cx.tcx, cx.param_env).is_some() => {
+        //        let len = len.eval_target_usize(cx.tcx, cx.param_env) as usize;
+        //        if len != 0 && cx.is_uninhabited(*sub_ty) {
+        //            Self::Uninhabited
+        //        } else {
+        //            Self::Slices(Slice::new(Some(len), VarLen(0, 0)))
+        //        }
+        //    }
+        //    // Treat arrays of a constant but unknown length like slices.
+        //    ty::Array(sub_ty, _) | ty::Slice(sub_ty) => {
+        //        let kind = if cx.is_uninhabited(*sub_ty) { FixedLen(0) } else { VarLen(0, 0) };
+        //        Self::Slices(Slice::new(None, kind))
+        //    }
+        //    ty::Adt(def, substs) if def.is_enum() => {
+        //        // If the enum is declared as `#[non_exhaustive]`, we treat it as if it had an
+        //        // additional "unknown" constructor.
+        //        // There is no point in enumerating all possible variants, because the user can't
+        //        // actually match against them all themselves. So we always return only the fictitious
+        //        // constructor.
+        //        // E.g., in an example like:
+        //        //
+        //        // ```
+        //        //     let err: io::ErrorKind = ...;
+        //        //     match err {
+        //        //         io::ErrorKind::NotFound => {},
+        //        //     }
+        //        // ```
+        //        //
+        //        // we don't want to show every possible IO error, but instead have only `_` as the
+        //        // witness.
+        //        let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive_enum(pcx.ty);
+
+        //        let is_exhaustive_pat_feature = cx.tcx.features().exhaustive_patterns;
+
+        //        // If `exhaustive_patterns` is disabled and our scrutinee is an empty enum, we treat it
+        //        // as though it had an "unknown" constructor to avoid exposing its emptiness. The
+        //        // exception is if the pattern is at the top level, because we want empty matches to be
+        //        // considered exhaustive.
+        //        let is_secretly_empty =
+        //            def.variants().is_empty() && !is_exhaustive_pat_feature && !pcx.is_top_level;
+
+        //        let mut ctors: Vec<_> = def
+        //            .variants()
+        //            .iter_enumerated()
+        //            .filter(|(_, v)| {
+        //                // If `exhaustive_patterns` is enabled, we exclude variants known to be
+        //                // uninhabited.
+        //                !is_exhaustive_pat_feature
+        //                    || v.inhabited_predicate(cx.tcx, *def).subst(cx.tcx, substs).apply(
+        //                        cx.tcx,
+        //                        cx.param_env,
+        //                        cx.module,
+        //                    )
+        //            })
+        //            .map(|(idx, _)| Variant(idx))
+        //            .collect();
+
+        //        if is_secretly_empty || is_declared_nonexhaustive {
+        //            ctors.push(NonExhaustive);
+        //        }
+        //        Self::Other { all_ctors: ctors }
+        //    }
+        //    ty::Char => {
+        //        Self::Ranges(vec![
+        //            // The valid Unicode Scalar Value ranges.
+        //            make_range('\u{0000}' as u128, '\u{D7FF}' as u128),
+        //            make_range('\u{E000}' as u128, '\u{10FFFF}' as u128),
+        //        ])
+        //    }
+        //    ty::Int(_) | ty::Uint(_)
+        //        if pcx.ty.is_ptr_sized_integral()
+        //            && !cx.tcx.features().precise_pointer_size_matching =>
+        //    {
+        //        // `usize`/`isize` are not allowed to be matched exhaustively unless the
+        //        // `precise_pointer_size_matching` feature is enabled. So we treat those types like
+        //        // `#[non_exhaustive]` enums by returning a special unmatchable constructor.
+        //        Self::UnListable
+        //    }
+        //    &ty::Int(ity) => {
+        //        let bits = Integer::from_int_ty(&cx.tcx, ity).size().bits() as u128;
+        //        let min = 1u128 << (bits - 1);
+        //        let max = min - 1;
+        //        Self::Ranges(vec![make_range(min, max)])
+        //    }
+        //    &ty::Uint(uty) => {
+        //        let size = Integer::from_uint_ty(&cx.tcx, uty).size();
+        //        let max = size.truncate(u128::MAX);
+        //        Self::Ranges(vec![make_range(0, max)])
+        //    }
+        //    // If `exhaustive_patterns` is disabled and our scrutinee is the never type, we cannot
+        //    // expose its emptiness. The exception is if the pattern is at the top level, because we
+        //    // want empty matches to be considered exhaustive.
+        //    ty::Never if !cx.tcx.features().exhaustive_patterns && !pcx.is_top_level => {
+        //        Self::UnListable
+        //    }
+        //    ty::Never => Self::Uninhabited,
+        //    _ if cx.is_uninhabited(pcx.ty) => Self::Uninhabited,
+        //    ty::Adt(..) | ty::Tuple(..) | ty::Ref(..) => Self::Other { all_ctors: vec![Single] },
+        //    // This type is one for which we cannot list constructors, like `str` or `f64`.
+        //    _ => Self::UnListable,
+        //}
+        Self::Other { base_ctors: SplitWildcard::new(pcx).all_ctors.to_vec() }
+    }
+
+    /// Pass a set of constructors relative to which to split this one.
+    pub(super) fn split<'a>(
+        self,
+        pcx: &PatCtxt<'_, '_, 'tcx>,
+        ctors: impl Iterator<Item = &'a Constructor<'tcx>> + Clone,
+    ) -> Vec<Constructor<'tcx>>
+    where
+        'tcx: 'a,
+    {
+        let mut split_ctors = Vec::new();
+        let mut seen_ctors = Vec::new();
+        let mut seen_wildcard = false;
+        let mut any_missing = false;
+        for ctor in ctors {
+            if ctor.is_wildcard() {
+                seen_wildcard = true;
+            } else if let Constructor::Opaque(..) = ctor {
+                split_ctors.push(ctor.clone());
+            } else {
+                seen_ctors.push(ctor.clone());
+            }
+        }
+        match self {
+            ConstructorSet::Uninhabited => todo!(),
+            ConstructorSet::Ranges(_) => todo!(),
+            ConstructorSet::Slices(_) => todo!(),
+            ConstructorSet::UnListable => todo!(),
+            ConstructorSet::Other { base_ctors } => {
+                if matches!(base_ctors.as_slice(), [Constructor::NonExhaustive]) {
+                    // FIXME: self-splitting is only useful for isize/usize. Would be nice to reust
+                    // IntRange there somehow.
+                    split_ctors
+                        .extend(seen_ctors.iter().flat_map(|c| c.split(pcx, seen_ctors.iter())));
+                    any_missing = true;
+                } else {
+                    // FIXME: splitting and collecting present ctors should be done in one pass.
+                    let split_base_ctors =
+                        base_ctors.iter().flat_map(|ctor| ctor.split(pcx, seen_ctors.iter()));
+                    for ctor in split_base_ctors {
+                        if ctor.is_covered_by_any(pcx, seen_ctors.as_slice()) {
+                            split_ctors.push(ctor.clone());
+                        } else {
+                            any_missing = true;
+                        }
+                    }
+                }
+            }
+        }
+        if seen_wildcard && any_missing {
+            split_ctors.push(Constructor::Missing);
+        }
+        split_ctors
+    }
+}
+
 /// A wildcard constructor that we split relative to the constructors in the matrix, as explained
 /// at the top of the file.
 ///
@@ -1069,7 +1257,8 @@ impl<'tcx> SplitWildcard<'tcx> {
 
     /// Iterate over the constructors for this type that are present in the matrix. This has the
     /// effect of deduplicating present constructors.
-    /// WARNING: this omits special constructors like `Wildcard` and `Opaque`.
+    /// WARNING: this omits special constructors like `Wildcard` and `Opaque` and doesn't work for
+    /// non exhaustive types.
     pub(super) fn iter_present<'a, 'p>(
         &'a self,
         pcx: &'a PatCtxt<'a, 'p, 'tcx>,
