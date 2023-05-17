@@ -41,6 +41,7 @@ fn main() {
 fn delta() {
     offset_of!(Delta<Alpha>, z); //~ ERROR the size for values of type
     offset_of!(Delta<Extern>, z); //~ ERROR the size for values of type
+    offset_of!(Delta<dyn Trait>, z); //~ ERROR the size for values of type
 }
 
 fn generic_with_maybe_sized<T: ?Sized>() -> usize {

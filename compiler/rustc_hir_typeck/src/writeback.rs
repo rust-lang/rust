@@ -692,15 +692,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             fcx_typeck_results.offset_of_data().items_in_stable_order()
         {
             let hir_id = hir::HirId { owner: common_hir_owner, local_id };
-
-            if cfg!(debug_assertions) && container.has_infer() {
-                span_bug!(
-                    hir_id.to_span(self.fcx.tcx),
-                    "writeback: `{:?}` has inference variables",
-                    container
-                );
-            };
-
+            let container = self.resolve(container, &hir_id);
             self.typeck_results.offset_of_data_mut().insert(hir_id, (container, indices.clone()));
         }
     }
