@@ -451,9 +451,11 @@ impl<'hir> Map<'hir> {
     /// Panics if `LocalDefId` does not have an associated body.
     pub fn body_owner_kind(self, def_id: LocalDefId) -> BodyOwnerKind {
         match self.tcx.def_kind(def_id) {
-            DefKind::Const | DefKind::AssocConst | DefKind::InlineConst | DefKind::AnonConst => {
-                BodyOwnerKind::Const
-            }
+            DefKind::Const
+            | DefKind::AssocConst
+            | DefKind::InlineConst
+            | DefKind::AnonConst
+            | DefKind::Promoted => BodyOwnerKind::Const,
             DefKind::Ctor(..) | DefKind::Fn | DefKind::AssocFn => BodyOwnerKind::Fn,
             DefKind::Closure | DefKind::Generator => BodyOwnerKind::Closure,
             DefKind::Static(mt) => BodyOwnerKind::Static(mt),

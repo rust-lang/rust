@@ -58,11 +58,6 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
 
     #[instrument(skip(self, tcx), level = "debug")]
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        // will be evaluated by miri and produce its errors there
-        if body.source.promoted.is_some() {
-            return;
-        }
-
         let def_id = body.source.def_id().expect_local();
         let def_kind = tcx.def_kind(def_id);
         let is_fn_like = def_kind.is_fn_like();

@@ -979,6 +979,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 | DefKind::LifetimeParam
                 | DefKind::GlobalAsm
                 | DefKind::Closure
+                | DefKind::Promoted
                 | DefKind::Impl { .. }
                 | DefKind::Generator,
                 _,

@@ -599,7 +599,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             ty::ConstKind::Unevaluated(uv) => {
                 let instance = self.resolve(uv.def, uv.substs)?;
-                let cid = GlobalId { instance, promoted: None };
+                let cid = GlobalId { instance };
                 self.ctfe_query(span, |tcx| {
                     tcx.eval_to_valtree(self.param_env.with_const().and(cid))
                 })?
@@ -628,7 +628,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             mir::ConstantKind::Val(val, ty) => self.const_val_to_op(val, ty, layout),
             mir::ConstantKind::Unevaluated(uv, _) => {
                 let instance = self.resolve(uv.def, uv.substs)?;
-                Ok(self.eval_global(GlobalId { instance, promoted: uv.promoted }, span)?.into())
+                Ok(self.eval_global(GlobalId { instance }, span)?.into())
             }
         }
     }

@@ -197,7 +197,7 @@ fn remap_mir_for_const_eval_select<'tcx>(
 }
 
 fn is_mir_available(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-    tcx.mir_keys(()).contains(&def_id)
+    tcx.mir_keys(()).contains(&def_id) || tcx.def_kind(def_id) == DefKind::Promoted
 }
 
 /// Finds the full set of `DefId`s within the current crate that have
@@ -292,7 +292,11 @@ fn mir_const(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
 fn mir_promoted(
     tcx: TyCtxt<'_>,
     def: LocalDefId,
-) -> (&Steal<Body<'_>>, &Steal<IndexVec<Promoted, Body<'_>>>) {
+) -> (&Steal<Body<'_>>, &IndexVec<Promoted, LocalDefId>) {
+    if tcx.def_kind(def) == DefKind::Promoted {
+        return (tcx.mir_for_promoted(def), tcx.arena.alloc(IndexVec::new()));
+    }
+
     // Ensure that we compute the `mir_const_qualif` for constants at
     // this point, before we steal the mir-const result.
     // Also this means promotion can rely on all const checks having been done.
@@ -319,7 +323,7 @@ fn mir_promoted(
     );
 
     let promoted = promote_pass.promoted_fragments.into_inner();
-    (tcx.alloc_steal_mir(body), tcx.alloc_steal_promoted(promoted))
+    (tcx.alloc_steal_mir(body), tcx.arena.alloc(promoted))
 }
 
 /// Compute the MIR that is used during CTFE (and thus has no optimizations run on it)
@@ -378,15 +382,13 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
 /// mir borrowck *before* doing so in order to ensure that borrowck can be run and doesn't
 /// end up missing the source MIR due to stealing happening.
 fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
-    if tcx.sess.opts.unstable_opts.drop_tracking_mir
-        && let DefKind::Generator = tcx.def_kind(def)
-    {
+    let def_kind = tcx.def_kind(def);
+    if tcx.sess.opts.unstable_opts.drop_tracking_mir && def_kind == DefKind::Generator {
         tcx.ensure_with_value().mir_generator_witnesses(def);
     }
     let mir_borrowck = tcx.mir_borrowck(def);
 
-    let is_fn_like = tcx.def_kind(def).is_fn_like();
-    if is_fn_like {
+    if def_kind.is_fn_like() {
         // Do not compute the mir call graph without said call graph actually being used.
         if inline::Inline.is_enabled(&tcx.sess) {
             tcx.ensure_with_value().mir_inliner_callees(ty::InstanceDef::Item(def.to_def_id()));
@@ -621,17 +623,11 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
 
 /// Fetch all the promoteds of an item and prepare their MIR bodies to be ready for
 /// constant evaluation once all substitutions become known.
-fn promoted_mir(tcx: TyCtxt<'_>, def: LocalDefId) -> &IndexVec<Promoted, Body<'_>> {
+fn promoted_mir(tcx: TyCtxt<'_>, def: LocalDefId) -> &IndexVec<Promoted, LocalDefId> {
     if tcx.is_constructor(def.to_def_id()) {
         return tcx.arena.alloc(IndexVec::new());
     }
 
     tcx.ensure_with_value().mir_borrowck(def);
-    let mut promoted = tcx.mir_promoted(def).1.steal();
-
-    for body in &mut promoted {
-        run_analysis_to_runtime_passes(tcx, body);
-    }
-
-    tcx.arena.alloc(promoted)
+    tcx.mir_promoted(def).1
 }

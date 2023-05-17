@@ -14,7 +14,7 @@
           _4 = const _;                    // scope 0 at $DIR/ref_deref.rs:+1:6: +1:10
                                            // mir::Constant
                                            // + span: $DIR/ref_deref.rs:5:6: 5:10
-                                           // + literal: Const { ty: &i32, val: Unevaluated(main, [], Some(promoted[0])) }
+                                           // + literal: Const { ty: &i32, val: Unevaluated(main::{promoted#0}, [&i32]) }
           _2 = &(*_4);                     // scope 0 at $DIR/ref_deref.rs:+1:6: +1:10
           _1 = (*_2);                      // scope 0 at $DIR/ref_deref.rs:+1:5: +1:10
           StorageDead(_2);                 // scope 0 at $DIR/ref_deref.rs:+1:10: +1:11

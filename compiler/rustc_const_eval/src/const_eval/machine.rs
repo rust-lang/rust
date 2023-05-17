@@ -441,7 +441,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         }
 
         // This is a const fn. Call it.
-        Ok(Some((ecx.load_mir(instance.def, None)?, instance)))
+        Ok(Some((ecx.load_mir(instance.def)?, instance)))
     }
 
     fn call_intrinsic(

@@ -782,10 +782,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>>
     }
 }
 
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>>
-    for &'tcx IndexVec<mir::Promoted, mir::Body<'tcx>>
-{
-    #[inline]
+impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx IndexVec<mir::Promoted, LocalDefId> {
     fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
         RefDecodable::decode(d)
     }

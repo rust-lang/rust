@@ -1,32 +1,21 @@
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
+
 use crate::BorrowckInferCtxt;
-use rustc_index::IndexSlice;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::mir::visit::{MutVisitor, TyContext};
 use rustc_middle::mir::Constant;
-use rustc_middle::mir::{Body, Location, Promoted};
+use rustc_middle::mir::{Body, Location};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_span::{Span, Symbol};
 
 /// Replaces all free regions appearing in the MIR with fresh
 /// inference variables, returning the number of variables created.
-#[instrument(skip(infcx, body, promoted), level = "debug")]
-pub fn renumber_mir<'tcx>(
-    infcx: &BorrowckInferCtxt<'_, 'tcx>,
-    body: &mut Body<'tcx>,
-    promoted: &mut IndexSlice<Promoted, Body<'tcx>>,
-) {
+#[instrument(skip(infcx, body), level = "debug")]
+pub fn renumber_mir<'tcx>(infcx: &BorrowckInferCtxt<'_, 'tcx>, body: &mut Body<'tcx>) {
     debug!(?body.arg_count);
-
-    let mut renumberer = RegionRenumberer { infcx };
-
-    for body in promoted.iter_mut() {
-        renumberer.visit_body(body);
-    }
-
-    renumberer.visit_body(body);
+    RegionRenumberer { infcx }.visit_body(body);
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]

@@ -228,7 +228,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         };
         match instance {
             None => Ok(None), // no symbol with this name
-            Some(instance) => Ok(Some((this.load_mir(instance.def, None)?, instance))),
+            Some(instance) => Ok(Some((this.load_mir(instance.def)?, instance))),
         }
     }
 
@@ -283,7 +283,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         let panic_impl_id = tcx.lang_items().panic_impl().unwrap();
                         let panic_impl_instance = ty::Instance::mono(tcx, panic_impl_id);
                         return Ok(Some((
-                            this.load_mir(panic_impl_instance.def, None)?,
+                            this.load_mir(panic_impl_instance.def)?,
                             panic_impl_instance,
                         )));
                     }

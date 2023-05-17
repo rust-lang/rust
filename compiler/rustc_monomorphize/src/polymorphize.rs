@@ -161,7 +161,6 @@ fn mark_used_by_default_parameters<'tcx>(
         | DefKind::Use
         | DefKind::ForeignMod
         | DefKind::AnonConst
-        | DefKind::InlineConst
         | DefKind::OpaqueTy
         | DefKind::ImplTraitPlaceholder
         | DefKind::Field
@@ -174,6 +173,16 @@ fn mark_used_by_default_parameters<'tcx>(
                     unused_parameters.mark_used(param.index);
                 }
             }
+        }
+        DefKind::InlineConst | DefKind::Promoted => {
+            for param in &generics.params {
+                debug!(?param, "(other)");
+                if let ty::GenericParamDefKind::Lifetime = param.kind {
+                    unused_parameters.mark_used(param.index);
+                }
+            }
+            // The last generic parameter is `<const_ty>`, which is a dummy for typeck purposes.
+            unused_parameters.mark_used((generics.count() - 1).try_into().unwrap());
         }
     }
 
@@ -268,18 +277,12 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
             ConstantKind::Ty(c) => {
                 c.visit_with(self);
             }
-            ConstantKind::Unevaluated(mir::UnevaluatedConst { def, substs: _, promoted }, ty) => {
+            ConstantKind::Unevaluated(mir::UnevaluatedConst { def, substs }, ty) => {
                 // Avoid considering `T` unused when constants are of the form:
-                //   `<Self as Foo<T>>::foo::promoted[p]`
-                if let Some(p) = promoted {
-                    if self.def_id == def && !self.tcx.generics_of(def).has_self {
-                        // If there is a promoted, don't look at the substs - since it will always contain
-                        // the generic parameters, instead, traverse the promoted MIR.
-                        let promoted = self.tcx.promoted_mir(def);
-                        self.visit_body(&promoted[p]);
-                    }
+                //   `<Self as Foo<T>>::foo::{promoted#p}`
+                if let DefKind::Promoted = self.tcx.def_kind(def) {
+                    self.visit_child_body(def, substs);
                 }
-
                 Visitor::visit_ty(self, ty, TyContext::Location(location));
             }
             ConstantKind::Val(_, ty) => Visitor::visit_ty(self, ty, TyContext::Location(location)),

@@ -13,7 +13,7 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::resolve_bound_vars;
 use crate::middle::stability;
 use crate::mir::interpret::{self, Allocation, ConstAllocation};
-use crate::mir::{Body, Local, Place, PlaceElem, ProjectionKind, Promoted};
+use crate::mir::{Body, Local, Place, PlaceElem, ProjectionKind};
 use crate::query::plumbing::QuerySystem;
 use crate::query::LocalCrate;
 use crate::query::Providers;
@@ -559,7 +559,11 @@ impl<'tcx> TyCtxt<'tcx> {
             self.codegen_fn_attrs(def_id)
         } else if matches!(
             def_kind,
-            DefKind::AnonConst | DefKind::AssocConst | DefKind::Const | DefKind::InlineConst
+            DefKind::AnonConst
+                | DefKind::AssocConst
+                | DefKind::Const
+                | DefKind::InlineConst
+                | DefKind::Promoted
         ) {
             CodegenFnAttrs::EMPTY
         } else {
@@ -577,13 +581,6 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn alloc_steal_mir(self, mir: Body<'tcx>) -> &'tcx Steal<Body<'tcx>> {
         self.arena.alloc(Steal::new(mir))
-    }
-
-    pub fn alloc_steal_promoted(
-        self,
-        promoted: IndexVec<Promoted, Body<'tcx>>,
-    ) -> &'tcx Steal<IndexVec<Promoted, Body<'tcx>>> {
-        self.arena.alloc(Steal::new(promoted))
     }
 
     pub fn mk_adt_def(
@@ -2393,6 +2390,7 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
+    #[track_caller]
     pub fn local_def_id_to_hir_id(self, local_def_id: LocalDefId) -> HirId {
         self.opt_local_def_id_to_hir_id(local_def_id).unwrap()
     }

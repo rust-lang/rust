@@ -163,7 +163,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | sym::type_id
             | sym::type_name
             | sym::variant_count => {
-                let gid = GlobalId { instance, promoted: None };
+                let gid = GlobalId { instance };
                 let ty = match intrinsic_name {
                     sym::pref_align_of | sym::variant_count => self.tcx.types.usize,
                     sym::needs_drop => self.tcx.types.bool,

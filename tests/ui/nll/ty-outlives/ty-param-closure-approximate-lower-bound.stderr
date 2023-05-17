@@ -1,3 +1,11 @@
+note: no external requirements
+  --> $DIR/ty-param-closure-approximate-lower-bound.rs:23:26
+   |
+LL |     let cell = Cell::new(&());
+   |                          ^^^
+   |
+   = note: defining inline constant type: generic<T>::{promoted#0}
+
 note: external requirements
   --> $DIR/ty-param-closure-approximate-lower-bound.rs:24:24
    |

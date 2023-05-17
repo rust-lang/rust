@@ -50,9 +50,9 @@ static STATIC_SIMPLE_FN: &'static fn(&[u8]) -> &[u8] = &(id_u8_slice as fn(&[u8]
 const CONST_SIMPLE_FN: &'static fn(&[u8]) -> &[u8] = &(id_u8_slice as fn(&[u8]) -> &[u8]);
 
 // this should be the same as without elision
-static STATIC_NON_ELIDED_fN: &'static for<'a> fn(&'a [u8]) -> &'a [u8] =
+static STATIC_NON_ELIDED_FN: &'static for<'a> fn(&'a [u8]) -> &'a [u8] =
     &(id_u8_slice as for<'a> fn(&'a [u8]) -> &'a [u8]);
-const CONST_NON_ELIDED_fN: &'static for<'a> fn(&'a [u8]) -> &'a [u8] =
+const CONST_NON_ELIDED_FN: &'static for<'a> fn(&'a [u8]) -> &'a [u8] =
     &(id_u8_slice as for<'a> fn(&'a [u8]) -> &'a [u8]);
 
 // another function that elides, each to a different unbound lifetime

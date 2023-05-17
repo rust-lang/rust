@@ -38,7 +38,7 @@ const C: S = {
     s
 };
 
-fn main() { //~ ERROR it is undefined behavior to use this value
-    // FIXME the span here is wrong, sould be pointing at the line below, not above.
+fn main() {
     let _: &'static _ = &C;
+    //~^ ERROR it is undefined behavior to use this value
 }

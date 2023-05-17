@@ -3,7 +3,7 @@
 //! This pass type-checks the MIR to ensure it is not broken.
 
 use std::rc::Rc;
-use std::{fmt, iter, mem};
+use std::{fmt, iter};
 
 use either::Either;
 
@@ -113,7 +113,6 @@ mod relate_tys;
 /// - `infcx` -- inference context to use
 /// - `param_env` -- parameter environment to use for trait solving
 /// - `body` -- MIR body to type-check
-/// - `promoted` -- map of promoted constants within `body`
 /// - `universal_regions` -- the universal regions from `body`s function signature
 /// - `location_table` -- MIR location map of `body`
 /// - `borrow_set` -- information about borrows occurring in `body`
@@ -125,7 +124,6 @@ pub(crate) fn type_check<'mir, 'tcx>(
     infcx: &BorrowckInferCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body: &Body<'tcx>,
-    promoted: &IndexSlice<Promoted, Body<'tcx>>,
     universal_regions: &Rc<UniversalRegions<'tcx>>,
     location_table: &LocationTable,
     borrow_set: &BorrowSet<'tcx>,
@@ -184,7 +182,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
     );
 
     let errors_reported = {
-        let mut verifier = TypeVerifier::new(&mut checker, promoted);
+        let mut verifier = TypeVerifier::new(&mut checker);
         verifier.visit_body(&body);
         verifier.errors_reported
     };
@@ -292,7 +290,6 @@ enum FieldAccessError {
 /// is a problem.
 struct TypeVerifier<'a, 'b, 'tcx> {
     cx: &'a mut TypeChecker<'b, 'tcx>,
-    promoted: &'b IndexSlice<Promoted, Body<'tcx>>,
     last_span: Span,
     errors_reported: bool,
 }
@@ -364,42 +361,11 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
             };
 
             if let Some(uv) = maybe_uneval {
-                if let Some(promoted) = uv.promoted {
-                    let check_err = |verifier: &mut TypeVerifier<'a, 'b, 'tcx>,
-                                     promoted: &Body<'tcx>,
-                                     ty,
-                                     san_ty| {
-                        if let Err(terr) =
-                            verifier.cx.eq_types(ty, san_ty, locations, ConstraintCategory::Boring)
-                        {
-                            span_mirbug!(
-                                verifier,
-                                promoted,
-                                "bad promoted type ({:?}: {:?}): {:?}",
-                                ty,
-                                san_ty,
-                                terr
-                            );
-                        };
-                    };
-
-                    if !self.errors_reported {
-                        let promoted_body = &self.promoted[promoted];
-                        self.sanitize_promoted(promoted_body, location);
-
-                        let promoted_ty = promoted_body.return_ty();
-                        check_err(self, promoted_body, ty, promoted_ty);
-                    }
-                } else {
-                    self.cx.ascribe_user_type(
-                        constant.literal.ty(),
-                        UserType::TypeOf(
-                            uv.def,
-                            UserSubsts { substs: uv.substs, user_self_ty: None },
-                        ),
-                        locations.span(&self.cx.body),
-                    );
-                }
+                self.cx.ascribe_user_type(
+                    constant.literal.ty(),
+                    UserType::TypeOf(uv.def, UserSubsts { substs: uv.substs, user_self_ty: None }),
+                    locations.span(&self.cx.body),
+                );
             } else if let Some(static_def_id) = constant.check_static_ptr(tcx) {
                 let unnormalized_ty = tcx.type_of(static_def_id).subst_identity();
                 let normalized_ty = self.cx.normalize(unnormalized_ty, locations);
@@ -491,11 +457,8 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
 }
 
 impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
-    fn new(
-        cx: &'a mut TypeChecker<'b, 'tcx>,
-        promoted: &'b IndexSlice<Promoted, Body<'tcx>>,
-    ) -> Self {
-        TypeVerifier { promoted, last_span: cx.body.span, cx, errors_reported: false }
+    fn new(cx: &'a mut TypeChecker<'b, 'tcx>) -> Self {
+        TypeVerifier { last_span: cx.body.span, cx, errors_reported: false }
     }
 
     fn body(&self) -> &Body<'tcx> {
@@ -560,74 +523,6 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         }
 
         place_ty
-    }
-
-    fn sanitize_promoted(&mut self, promoted_body: &'b Body<'tcx>, location: Location) {
-        // Determine the constraints from the promoted MIR by running the type
-        // checker on the promoted MIR, then transfer the constraints back to
-        // the main MIR, changing the locations to the provided location.
-
-        let parent_body = mem::replace(&mut self.cx.body, promoted_body);
-
-        // Use new sets of constraints and closure bounds so that we can
-        // modify their locations.
-        let all_facts = &mut None;
-        let mut constraints = Default::default();
-        let mut liveness_constraints =
-            LivenessValues::new(Rc::new(RegionValueElements::new(&promoted_body)));
-        // Don't try to add borrow_region facts for the promoted MIR
-
-        let mut swap_constraints = |this: &mut Self| {
-            mem::swap(this.cx.borrowck_context.all_facts, all_facts);
-            mem::swap(
-                &mut this.cx.borrowck_context.constraints.outlives_constraints,
-                &mut constraints,
-            );
-            mem::swap(
-                &mut this.cx.borrowck_context.constraints.liveness_constraints,
-                &mut liveness_constraints,
-            );
-        };
-
-        swap_constraints(self);
-
-        self.visit_body(&promoted_body);
-
-        if !self.errors_reported {
-            // if verifier failed, don't do further checks to avoid ICEs
-            self.cx.typeck_mir(promoted_body);
-        }
-
-        self.cx.body = parent_body;
-        // Merge the outlives constraints back in, at the given location.
-        swap_constraints(self);
-
-        let locations = location.to_locations();
-        for constraint in constraints.outlives().iter() {
-            let mut constraint = *constraint;
-            constraint.locations = locations;
-            if let ConstraintCategory::Return(_)
-            | ConstraintCategory::UseAsConst
-            | ConstraintCategory::UseAsStatic = constraint.category
-            {
-                // "Returning" from a promoted is an assignment to a
-                // temporary from the user's point of view.
-                constraint.category = ConstraintCategory::Boring;
-            }
-            self.cx.borrowck_context.constraints.outlives_constraints.push(constraint)
-        }
-        for region in liveness_constraints.rows() {
-            // If the region is live at at least one location in the promoted MIR,
-            // then add a liveness constraint to the main MIR for this region
-            // at the location provided as an argument to this method
-            if liveness_constraints.get_elements(region).next().is_some() {
-                self.cx
-                    .borrowck_context
-                    .constraints
-                    .liveness_constraints
-                    .add_element(region, location);
-            }
-        }
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -1767,19 +1662,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             };
 
             if let Some(uv) = maybe_uneval {
-                if uv.promoted.is_none() {
-                    let tcx = self.tcx();
-                    let def_id = uv.def;
-                    if tcx.def_kind(def_id) == DefKind::InlineConst {
-                        let def_id = def_id.expect_local();
-                        let predicates =
-                            self.prove_closure_bounds(tcx, def_id, uv.substs, location);
-                        self.normalize_and_prove_instantiated_predicates(
-                            def_id.to_def_id(),
-                            predicates,
-                            location.to_locations(),
-                        );
-                    }
+                let tcx = self.tcx();
+                if matches!(tcx.def_kind(uv.def), DefKind::InlineConst | DefKind::Promoted) {
+                    let def_id = uv.def.expect_local();
+                    let predicates = self.prove_closure_bounds(tcx, def_id, uv.substs, location);
+                    self.normalize_and_prove_instantiated_predicates(
+                        def_id.to_def_id(),
+                        predicates,
+                        location.to_locations(),
+                    );
                 }
             }
         }
@@ -2628,7 +2519,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let parent_substs = match tcx.def_kind(def_id) {
             DefKind::Closure => substs.as_closure().parent_substs(),
             DefKind::Generator => substs.as_generator().parent_substs(),
-            DefKind::InlineConst => substs.as_inline_const().parent_substs(),
+            DefKind::InlineConst | DefKind::Promoted => substs.as_inline_const().parent_substs(),
             other => bug!("unexpected item {:?}", other),
         };
         let parent_substs = tcx.mk_substs(parent_substs);

@@ -119,7 +119,7 @@ fn array_casts() -> () {
         _35 = const _;                   // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                          // mir::Constant
                                          // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
-                                         // + literal: Const { ty: &usize, val: Unevaluated(array_casts, [], Some(promoted[0])) }
+                                         // + literal: Const { ty: &usize, val: Unevaluated(array_casts::{promoted#0}, [&usize]) }
         Retag(_35);                      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _18 = &(*_35);                   // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _13 = (move _14, move _18);      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL

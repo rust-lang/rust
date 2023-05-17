@@ -135,6 +135,7 @@ impl From<DefKind> for ItemType {
             | DefKind::ForeignMod
             | DefKind::AnonConst
             | DefKind::InlineConst
+            | DefKind::Promoted
             | DefKind::OpaqueTy
             | DefKind::ImplTraitPlaceholder
             | DefKind::Field

@@ -144,6 +144,8 @@ pub trait Printer<'tcx>: Sized {
                         // Anon consts doesn't have their own generics, and inline consts' own
                         // generics are their inferred types, so don't print them.
                         DefPathData::AnonConst => {}
+                        // Promoted do not have their own generics, so we don't print them.
+                        DefPathData::Promoted => {}
 
                         // If we have any generic arguments to print, we do that
                         // on top of the same path, but without its own generics.

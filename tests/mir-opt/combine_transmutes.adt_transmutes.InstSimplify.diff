@@ -40,7 +40,7 @@
           _2 = Option::<NonZeroU8>::Some(const _); // scope 0 at $DIR/combine_transmutes.rs:+1:28: +1:58
                                            // mir::Constant
                                            // + span: $DIR/combine_transmutes.rs:35:33: 35:57
-                                           // + literal: Const { ty: NonZeroU8, val: Unevaluated(NonZeroU8::MAX, [], None) }
+                                           // + literal: Const { ty: NonZeroU8, val: Unevaluated(NonZeroU8::MAX, []) }
           _1 = move _2 as u8 (Transmute);  // scope 0 at $DIR/combine_transmutes.rs:+1:18: +1:59
           StorageDead(_2);                 // scope 0 at $DIR/combine_transmutes.rs:+1:58: +1:59
           StorageLive(_3);                 // scope 1 at $DIR/combine_transmutes.rs:+2:9: +2:11

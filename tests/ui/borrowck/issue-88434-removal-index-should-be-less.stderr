@@ -1,4 +1,4 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation of `_CONST::{promoted#0}` failed
   --> $DIR/issue-88434-removal-index-should-be-less.rs:10:5
    |
 LL |     panic!()
@@ -9,7 +9,7 @@ note: inside `f::<[closure@$DIR/issue-88434-removal-index-should-be-less.rs:3:31
    |
 LL |     panic!()
    |     ^^^^^^^^
-note: inside `_CONST`
+note: inside `_CONST::{promoted#0}`
   --> $DIR/issue-88434-removal-index-should-be-less.rs:3:24
    |
 LL | const _CONST: &[u8] = &f(&[], |_| {});

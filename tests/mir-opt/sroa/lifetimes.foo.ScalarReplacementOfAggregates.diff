@@ -99,7 +99,7 @@
           _26 = const _;                   // scope 4 at $DIR/lifetimes.rs:+10:19: +10:28
                                            // mir::Constant
                                            // + span: $DIR/lifetimes.rs:27:19: 27:28
-                                           // + literal: Const { ty: &[&str; 3], val: Unevaluated(foo, [T], Some(promoted[0])) }
+                                           // + literal: Const { ty: &[&str; 3], val: Unevaluated(foo::{promoted#0}, [T, &[&str; 3]]) }
           _14 = &(*_26);                   // scope 4 at $DIR/lifetimes.rs:+10:19: +10:28
           _13 = &(*_14);                   // scope 4 at $DIR/lifetimes.rs:+10:19: +10:28
           _12 = move _13 as &[&str] (Pointer(Unsize)); // scope 4 at $DIR/lifetimes.rs:+10:19: +10:28

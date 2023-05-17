@@ -150,6 +150,7 @@ fixed_size_enum! {
         ( Impl { of_trait: true }                  )
         ( Closure                                  )
         ( Generator                                )
+        ( Promoted                                 )
         ( Static(ast::Mutability::Not)             )
         ( Static(ast::Mutability::Mut)             )
         ( Ctor(CtorOf::Struct, CtorKind::Fn)       )

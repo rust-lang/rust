@@ -76,9 +76,7 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
     if !tcx.hir().body_owner_kind(def_id).is_fn_or_closure() {
         return false;
     }
-    if body.source.promoted.is_some() {
-        return false;
-    }
+
     // Avoid inlining into generators, since their `optimized_mir` is used for layout computation,
     // which can create a cycle, even when no attempt is made to inline the function in the other
     // direction.

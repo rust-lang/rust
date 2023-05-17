@@ -25,7 +25,7 @@
 -         _3 = [move _4];                  // scope 0 at $DIR/const_promotion_extern_static.rs:+0:31: +0:35
 -         _2 = &_3;                        // scope 0 at $DIR/const_promotion_extern_static.rs:+0:31: +0:44
 +                                          // + span: $DIR/const_promotion_extern_static.rs:9:31: 9:44
-+                                          // + literal: Const { ty: &[&i32; 1], val: Unevaluated(BAR, [], Some(promoted[0])) }
++                                          // + literal: Const { ty: &[&i32; 1], val: Unevaluated(BAR::{promoted#0}, [&[&i32; 1]]) }
 +         _2 = &(*_6);                     // scope 0 at $DIR/const_promotion_extern_static.rs:+0:31: +0:44
           _1 = move _2 as &[&i32] (Pointer(Unsize)); // scope 0 at $DIR/const_promotion_extern_static.rs:+0:31: +0:44
 -         StorageDead(_4);                 // scope 0 at $DIR/const_promotion_extern_static.rs:+0:34: +0:35

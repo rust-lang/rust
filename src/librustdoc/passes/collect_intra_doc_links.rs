@@ -1810,6 +1810,7 @@ fn resolution_failure(
                             | LifetimeParam
                             | Ctor(_, _)
                             | AnonConst
+                            | Promoted
                             | InlineConst => {
                                 let note = assoc_item_not_allowed(res);
                                 if let Some(span) = sp {

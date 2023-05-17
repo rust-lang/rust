@@ -1324,7 +1324,7 @@ pub trait PrettyPrinter<'tcx>:
                     DefKind::Const | DefKind::AssocConst => {
                         p!(print_value_path(def, substs))
                     }
-                    DefKind::AnonConst => {
+                    DefKind::AnonConst | DefKind::Promoted => {
                         if def.is_local()
                             && let span = self.tcx().def_span(def)
                             && let Ok(snip) = self.tcx().sess.source_map().span_to_snippet(span)

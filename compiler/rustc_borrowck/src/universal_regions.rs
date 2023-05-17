@@ -16,11 +16,13 @@ use either::Either;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Diagnostic;
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::BodyOwnerKind;
 use rustc_index::IndexVec;
 use rustc_infer::infer::NllRegionVariableOrigin;
+use rustc_middle::mir::RETURN_PLACE;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, InlineConstSubsts, InlineConstSubstsParts, RegionVid, Ty, TyCtxt};
 use rustc_middle::ty::{InternalSubsts, SubstsRef};
@@ -571,31 +573,53 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             }
 
             BodyOwnerKind::Const | BodyOwnerKind::Static(..) => {
-                let identity_substs = InternalSubsts::identity_for_item(tcx, typeck_root_def_id);
-                if self.mir_def.to_def_id() == typeck_root_def_id {
-                    let substs =
-                        self.infcx.replace_free_regions_with_nll_infer_vars(FR, identity_substs);
-                    DefiningTy::Const(self.mir_def.to_def_id(), substs)
-                } else {
-                    // FIXME this line creates a dependency between borrowck and typeck.
-                    //
-                    // This is required for `AscribeUserType` canonical query, which will call
-                    // `type_of(inline_const_def_id)`. That `type_of` would inject erased lifetimes
-                    // into borrowck, which is ICE #78174.
-                    //
-                    // As a workaround, inline consts have an additional generic param (`ty`
-                    // below), so that `type_of(inline_const_def_id).substs(substs)` uses the
-                    // proper type with NLL infer vars.
-                    let ty = tcx
-                        .typeck(self.mir_def)
-                        .node_type(tcx.local_def_id_to_hir_id(self.mir_def));
-                    let substs = InlineConstSubsts::new(
-                        tcx,
-                        InlineConstSubstsParts { parent_substs: identity_substs, ty },
-                    )
-                    .substs;
-                    let substs = self.infcx.replace_free_regions_with_nll_infer_vars(FR, substs);
-                    DefiningTy::InlineConst(self.mir_def.to_def_id(), substs)
+                match tcx.def_kind(self.mir_def) {
+                    DefKind::InlineConst => {
+                        // FIXME this line creates a dependency between borrowck and typeck.
+                        //
+                        // This is required for `AscribeUserType` canonical query, which will call
+                        // `type_of(inline_const_def_id)`. That `type_of` would inject erased lifetimes
+                        // into borrowck, which is ICE #78174.
+                        //
+                        // As a workaround, inline consts have an additional generic param (`ty`
+                        // below), so that `type_of(inline_const_def_id).substs(substs)` uses the
+                        // proper type with NLL infer vars.
+                        let ty = tcx
+                            .typeck(self.mir_def)
+                            .node_type(tcx.local_def_id_to_hir_id(self.mir_def));
+                        let identity_substs =
+                            InternalSubsts::identity_for_item(tcx, typeck_root_def_id);
+                        let substs = InlineConstSubsts::new(
+                            tcx,
+                            InlineConstSubstsParts { parent_substs: identity_substs, ty },
+                        )
+                        .substs;
+                        let substs =
+                            self.infcx.replace_free_regions_with_nll_infer_vars(FR, substs);
+                        DefiningTy::InlineConst(self.mir_def.to_def_id(), substs)
+                    }
+                    DefKind::Promoted => {
+                        let body = tcx.mir_for_promoted(self.mir_def).borrow();
+                        let ty = body.local_decls[RETURN_PLACE].ty;
+                        let parent_def_id = tcx.parent(self.mir_def.to_def_id());
+                        let parent_substs = InternalSubsts::identity_for_item(tcx, parent_def_id);
+                        let substs = InlineConstSubsts::new(
+                            tcx,
+                            InlineConstSubstsParts { parent_substs, ty },
+                        )
+                        .substs;
+                        let substs =
+                            self.infcx.replace_free_regions_with_nll_infer_vars(FR, substs);
+                        DefiningTy::InlineConst(self.mir_def.to_def_id(), substs)
+                    }
+                    _ => {
+                        let identity_substs =
+                            InternalSubsts::identity_for_item(tcx, self.mir_def.to_def_id());
+                        let substs = self
+                            .infcx
+                            .replace_free_regions_with_nll_infer_vars(FR, identity_substs);
+                        DefiningTy::Const(self.mir_def.to_def_id(), substs)
+                    }
                 }
             }
         }

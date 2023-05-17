@@ -9,4 +9,5 @@ fn foo<'a>(_: &'a ()) {}
 pub fn test<T>() {
     //~^ ERROR item has unused generic parameters
     foo(&());
+    //~^ ERROR item has unused generic parameters
 }

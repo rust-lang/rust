@@ -35,16 +35,16 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     debug!("eval_body_using_ecx: {:?}, {:?}", cid, ecx.param_env);
     let tcx = *ecx.tcx;
     assert!(
-        cid.promoted.is_some()
-            || matches!(
-                ecx.tcx.def_kind(cid.instance.def_id()),
-                DefKind::Const
-                    | DefKind::Static(_)
-                    | DefKind::ConstParam
-                    | DefKind::AnonConst
-                    | DefKind::InlineConst
-                    | DefKind::AssocConst
-            ),
+        matches!(
+            ecx.tcx.def_kind(cid.instance.def_id()),
+            DefKind::Const
+                | DefKind::Static(_)
+                | DefKind::ConstParam
+                | DefKind::AnonConst
+                | DefKind::InlineConst
+                | DefKind::AssocConst
+                | DefKind::Promoted
+        ),
         "Unexpected DefKind: {:?}",
         ecx.tcx.def_kind(cid.instance.def_id())
     );
@@ -53,9 +53,8 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     let ret = ecx.allocate(layout, MemoryKind::Stack)?;
 
     trace!(
-        "eval_body_using_ecx: pushing stack frame for global: {}{}",
+        "eval_body_using_ecx: pushing stack frame for global: {}",
         with_no_trimmed_paths!(ecx.tcx.def_path_str(cid.instance.def_id())),
-        cid.promoted.map_or_else(String::new, |p| format!("::promoted[{:?}]", p))
     );
 
     ecx.push_stack_frame(
@@ -69,13 +68,10 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     while ecx.step()? {}
 
     // Intern the result
-    let intern_kind = if cid.promoted.is_some() {
-        InternKind::Promoted
-    } else {
-        match tcx.static_mutability(cid.instance.def_id()) {
-            Some(m) => InternKind::Static(m),
-            None => InternKind::Constant,
-        }
+    let intern_kind = match tcx.def_kind(cid.instance.def_id()) {
+        DefKind::Promoted => InternKind::Promoted,
+        DefKind::Static(m) => InternKind::Static(m),
+        _ => InternKind::Constant,
     };
     ecx.machine.check_alignment = CheckAlignment::No; // interning doesn't need to respect alignment
     intern_const_alloc_recursive(ecx, intern_kind, &ret)?;
@@ -218,7 +214,7 @@ pub(crate) fn turn_into_const_value<'tcx>(
         which should have given a good error before ever invoking this function",
     );
     assert!(
-        !is_static || cid.promoted.is_some(),
+        !is_static,
         "the `eval_to_const_value_raw` query should not be used for statics, use `eval_to_allocation` instead"
     );
 
@@ -297,17 +293,21 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
 
     let cid = key.value;
     let def = cid.instance.def.def_id();
-    let is_static = tcx.is_static(def);
+    let within_static = match tcx.def_kind(def) {
+        DefKind::Promoted => tcx.is_static(tcx.parent(def)),
+        DefKind::Static(_) => true,
+        _ => false,
+    };
 
     let mut ecx = InterpCx::new(
         tcx,
         tcx.def_span(def),
         key.param_env,
-        // Statics (and promoteds inside statics) may access other statics, because unlike consts
+        // Statics may access other statics, because unlike consts
         // they do not have to behave "as if" they were evaluated at runtime.
         CompileTimeInterpreter::new(
             tcx.const_eval_limit(),
-            /*can_access_statics:*/ is_static,
+            /*can_access_statics:*/ within_static,
             if tcx.sess.opts.unstable_opts.extra_const_ub_checks {
                 CheckAlignment::Error
             } else {
@@ -316,11 +316,11 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
         ),
     );
 
-    let res = ecx.load_mir(cid.instance.def, cid.promoted);
+    let res = ecx.load_mir(cid.instance.def);
     match res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, &body)) {
         Err(error) => {
             let err = ConstEvalErr::new(&ecx, error, None);
-            let msg = if is_static {
+            let msg = if within_static {
                 Cow::from("could not evaluate static initializer")
             } else {
                 // If the current item has generics, we'd like to enrich the message with the
@@ -345,13 +345,11 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                 let mut ref_tracking = RefTracking::new(mplace);
                 let mut inner = false;
                 while let Some((mplace, path)) = ref_tracking.todo.pop() {
-                    let mode = match tcx.static_mutability(cid.instance.def_id()) {
-                        Some(_) if cid.promoted.is_some() => {
-                            // Promoteds in statics are allowed to point to statics.
-                            CtfeValidationMode::Const { inner, allow_static_ptrs: true }
-                        }
-                        Some(_) => CtfeValidationMode::Regular, // a `static`
-                        None => CtfeValidationMode::Const { inner, allow_static_ptrs: false },
+                    let mode = if tcx.is_static(def) {
+                        CtfeValidationMode::Regular // a `static`
+                    } else {
+                        // Promoteds in statics are allowed to point to statics.
+                        CtfeValidationMode::Const { inner, allow_static_ptrs: within_static }
                     };
                     ecx.const_validate_operand(&mplace.into(), path, &mut ref_tracking, mode)?;
                     inner = true;

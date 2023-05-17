@@ -458,15 +458,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn load_mir(
         &self,
         instance: ty::InstanceDef<'tcx>,
-        promoted: Option<mir::Promoted>,
     ) -> InterpResult<'tcx, &'tcx mir::Body<'tcx>> {
-        trace!("load mir(instance={:?}, promoted={:?})", instance, promoted);
-        let body = if let Some(promoted) = promoted {
-            let def = instance.def_id();
-            &self.tcx.promoted_mir(def)[promoted]
-        } else {
-            M::load_mir(self, instance)?
-        };
+        let body = M::load_mir(self, instance)?;
         // do not continue if typeck errors occurred (can only occur in local crate)
         if let Some(err) = body.tainted_by_errors {
             throw_inval!(AlreadyReported(ReportedErrorInfo::tainted_by_errors(err)));

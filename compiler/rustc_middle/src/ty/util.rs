@@ -533,7 +533,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn is_typeck_child(self, def_id: DefId) -> bool {
         matches!(
             self.def_kind(def_id),
-            DefKind::Closure | DefKind::Generator | DefKind::InlineConst
+            DefKind::Closure | DefKind::Generator | DefKind::InlineConst | DefKind::Promoted
         )
     }
 

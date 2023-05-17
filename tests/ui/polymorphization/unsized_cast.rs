@@ -10,7 +10,8 @@ fn foo<T: Default>() {
     let _: T = Default::default();
     (|| Box::new(|| {}) as Box<dyn Fn()>)();
     //~^ ERROR item has unused generic parameters
-    //~^^ ERROR item has unused generic parameters
+    //~| ERROR item has unused generic parameters
+    //~| ERROR item has unused generic parameters
 }
 
 #[rustc_polymorphize_error]
@@ -18,9 +19,11 @@ fn foo2<T: Default>() {
     let _: T = Default::default();
     (|| {
         //~^ ERROR item has unused generic parameters
+        //~| ERROR item has unused generic parameters
         let call: extern "rust-call" fn(_, _) = Fn::call;
         call(&|| {}, ());
         //~^ ERROR item has unused generic parameters
+        //~| ERROR item has unused generic parameters
     })();
 }
 

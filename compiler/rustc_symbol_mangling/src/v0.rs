@@ -777,6 +777,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
             DefPathData::ClosureExpr => 'C',
             DefPathData::Ctor => 'c',
             DefPathData::AnonConst => 'k',
+            DefPathData::Promoted => 'p',
             DefPathData::ImplTrait => 'i',
 
             // These should never show up as `path_append` arguments.

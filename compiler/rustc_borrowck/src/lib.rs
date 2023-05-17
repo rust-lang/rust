@@ -24,17 +24,11 @@ use rustc_fluent_macro::fluent_messages;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::ChunkedBitSet;
-use rustc_index::{IndexSlice, IndexVec};
+use rustc_index::IndexVec;
 use rustc_infer::infer::{
     DefiningAnchor, InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin, TyCtxtInferExt,
 };
-use rustc_middle::mir::{
-    traversal, Body, ClearCrossCrate, Local, Location, Mutability, NonDivergingIntrinsic, Operand,
-    Place, PlaceElem, PlaceRef, VarDebugInfoContents,
-};
-use rustc_middle::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
-use rustc_middle::mir::{InlineAsmOperand, Terminator, TerminatorKind};
-use rustc_middle::mir::{ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
+use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, CapturedPlace, ParamEnv, RegionVid, TyCtxt};
 use rustc_session::lint::builtin::UNUSED_MUT;
@@ -123,7 +117,7 @@ pub fn provide(providers: &mut Providers) {
 }
 
 fn mir_borrowck(tcx: TyCtxt<'_>, def: LocalDefId) -> &BorrowCheckResult<'_> {
-    let (input_body, promoted) = tcx.mir_promoted(def);
+    let (input_body, _) = tcx.mir_promoted(def);
     debug!("run query mir_borrowck: {}", tcx.def_path_str(def));
 
     if input_body.borrow().should_skip() {
@@ -138,13 +132,11 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def: LocalDefId) -> &BorrowCheckResult<'_> {
         return tcx.arena.alloc(result);
     }
 
-    let hir_owner = tcx.hir().local_def_id_to_hir_id(def).owner;
-
+    let typeck_root = tcx.typeck_root_def_id(def.to_def_id()).expect_local();
     let infcx =
-        tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bind(hir_owner.def_id)).build();
+        tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bind(typeck_root)).build();
     let input_body: &Body<'_> = &input_body.borrow();
-    let promoted: &IndexSlice<_, _> = &promoted.borrow();
-    let opt_closure_req = do_mir_borrowck(&infcx, input_body, promoted, false).0;
+    let opt_closure_req = do_mir_borrowck(&infcx, input_body, false).0;
     debug!("mir_borrowck done");
 
     tcx.arena.alloc(opt_closure_req)
@@ -155,11 +147,10 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def: LocalDefId) -> &BorrowCheckResult<'_> {
 /// If `return_body_with_facts` is true, then return the body with non-erased
 /// region ids on which the borrow checking was performed together with Polonius
 /// facts.
-#[instrument(skip(infcx, input_body, input_promoted), fields(id=?input_body.source.def_id()), level = "debug")]
+#[instrument(skip(infcx, input_body), fields(id=?input_body.source.def_id()), level = "debug")]
 fn do_mir_borrowck<'tcx>(
     infcx: &InferCtxt<'tcx>,
     input_body: &Body<'tcx>,
-    input_promoted: &IndexSlice<Promoted, Body<'tcx>>,
     return_body_with_facts: bool,
 ) -> (BorrowCheckResult<'tcx>, Option<Box<BodyWithBorrowckFacts<'tcx>>>) {
     let def = input_body.source.def_id().expect_local();
@@ -212,9 +203,7 @@ fn do_mir_borrowck<'tcx>(
     // be modified (in place) to contain non-lexical lifetimes. It
     // will have a lifetime tied to the inference context.
     let mut body_owned = input_body.clone();
-    let mut promoted = input_promoted.to_owned();
-    let free_regions =
-        nll::replace_regions_in_mir(&infcx, param_env, &mut body_owned, &mut promoted);
+    let free_regions = nll::replace_regions_in_mir(&infcx, param_env, &mut body_owned);
     let body = &body_owned; // no further changes
 
     let location_table_owned = LocationTable::new(body);
@@ -225,9 +214,6 @@ fn do_mir_borrowck<'tcx>(
             Ok((_, move_data)) => (move_data, Vec::new()),
             Err((move_data, move_errors)) => (move_data, move_errors),
         };
-    let promoted_errors = promoted
-        .iter_enumerated()
-        .map(|(idx, body)| (idx, MoveData::gather_moves(&body, tcx, param_env)));
 
     let mdpe = MoveDataParamEnv { move_data, param_env };
 
@@ -255,7 +241,6 @@ fn do_mir_borrowck<'tcx>(
         &infcx,
         free_regions,
         body,
-        &promoted,
         location_table,
         param_env,
         &mut flow_inits,
@@ -310,39 +295,6 @@ fn do_mir_borrowck<'tcx>(
     } else {
         true
     };
-
-    for (idx, move_data_results) in promoted_errors {
-        let promoted_body = &promoted[idx];
-
-        if let Err((move_data, move_errors)) = move_data_results {
-            let mut promoted_mbcx = MirBorrowckCtxt {
-                infcx: &infcx,
-                param_env,
-                body: promoted_body,
-                move_data: &move_data,
-                location_table, // no need to create a real one for the promoted, it is not used
-                movable_generator,
-                fn_self_span_reported: Default::default(),
-                locals_are_invalidated_at_exit,
-                access_place_error_reported: Default::default(),
-                reservation_error_reported: Default::default(),
-                uninitialized_error_reported: Default::default(),
-                regioncx: regioncx.clone(),
-                used_mut: Default::default(),
-                used_mut_upvars: SmallVec::new(),
-                borrow_set: Rc::clone(&borrow_set),
-                dominators: Default::default(),
-                upvars: Vec::new(),
-                local_names: IndexVec::from_elem(None, &promoted_body.local_decls),
-                region_names: RefCell::default(),
-                next_region_name: RefCell::new(1),
-                polonius_output: None,
-                errors,
-            };
-            promoted_mbcx.report_move_errors(move_errors);
-            errors = promoted_mbcx.errors;
-        };
-    }
 
     let mut mbcx = MirBorrowckCtxt {
         infcx: &infcx,
@@ -737,7 +689,6 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
             }
             TerminatorKind::Assert { cond, expected: _, msg, target: _, unwind: _ } => {
                 self.consume_operand(loc, (cond, span), flow_state);
-                use rustc_middle::mir::AssertKind;
                 if let AssertKind::BoundsCheck { len, index } = &**msg {
                     self.consume_operand(loc, (len, span), flow_state);
                     self.consume_operand(loc, (index, span), flow_state);

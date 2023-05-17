@@ -692,6 +692,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             | DefKind::InlineConst
             | DefKind::Field
             | DefKind::GlobalAsm
+            | DefKind::Promoted
             | DefKind::Impl { .. }
             | DefKind::Closure
             | DefKind::Generator => (),

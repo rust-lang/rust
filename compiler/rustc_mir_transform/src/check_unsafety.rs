@@ -148,14 +148,11 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
             };
 
             if let Some(uv) = maybe_uneval {
-                if uv.promoted.is_none() {
-                    let def_id = uv.def;
-                    if self.tcx.def_kind(def_id) == DefKind::InlineConst {
-                        let local_def_id = def_id.expect_local();
-                        let UnsafetyCheckResult { violations, used_unsafe_blocks, .. } =
-                            self.tcx.unsafety_check_result(local_def_id);
-                        self.register_violations(violations, used_unsafe_blocks.items().copied());
-                    }
+                if self.tcx.def_kind(uv.def) == DefKind::InlineConst {
+                    let local_def_id = uv.def.expect_local();
+                    let UnsafetyCheckResult { violations, used_unsafe_blocks, .. } =
+                        self.tcx.unsafety_check_result(local_def_id);
+                    self.register_violations(violations, used_unsafe_blocks.items().copied());
                 }
             }
         }

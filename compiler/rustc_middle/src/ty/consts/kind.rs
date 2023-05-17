@@ -30,7 +30,7 @@ impl rustc_errors::IntoDiagnosticArg for UnevaluatedConst<'_> {
 impl<'tcx> UnevaluatedConst<'tcx> {
     #[inline]
     pub fn expand(self) -> mir::UnevaluatedConst<'tcx> {
-        mir::UnevaluatedConst { def: self.def, substs: self.substs, promoted: None }
+        mir::UnevaluatedConst { def: self.def, substs: self.substs }
     }
 }
 

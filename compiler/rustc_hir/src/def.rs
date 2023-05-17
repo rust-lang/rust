@@ -121,6 +121,9 @@ pub enum DefKind {
     },
     Closure,
     Generator,
+
+    /// Promoted constant from a MIR body.
+    Promoted,
 }
 
 impl DefKind {
@@ -167,6 +170,7 @@ impl DefKind {
             DefKind::Generator => "generator",
             DefKind::ExternCrate => "extern crate",
             DefKind::GlobalAsm => "global assembly block",
+            DefKind::Promoted => "promoted constant",
         }
     }
 
@@ -227,6 +231,7 @@ impl DefKind {
             | DefKind::Use
             | DefKind::ForeignMod
             | DefKind::GlobalAsm
+            | DefKind::Promoted
             | DefKind::Impl { .. }
             | DefKind::ImplTraitPlaceholder => None,
         }
@@ -271,6 +276,7 @@ impl DefKind {
             | DefKind::AnonConst
             | DefKind::InlineConst
             | DefKind::GlobalAsm
+            | DefKind::Promoted
             | DefKind::ExternCrate => false,
         }
     }

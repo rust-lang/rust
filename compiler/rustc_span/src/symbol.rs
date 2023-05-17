@@ -1145,6 +1145,7 @@ symbols! {
         proc_macro_path_invoc,
         profiler_builtins,
         profiler_runtime,
+        promoted,
         ptr,
         ptr_guaranteed_cmp,
         ptr_mask,

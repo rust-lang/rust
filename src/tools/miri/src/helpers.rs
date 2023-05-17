@@ -160,7 +160,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn eval_path_scalar(&self, path: &[&str]) -> Scalar<Provenance> {
         let this = self.eval_context_ref();
         let instance = this.resolve_path(path, Namespace::ValueNS);
-        let cid = GlobalId { instance, promoted: None };
+        let cid = GlobalId { instance };
         // We don't give a span -- this isn't actually used directly by the program anyway.
         let const_val = this
             .eval_global(cid, None)
@@ -358,7 +358,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
 
         // Push frame.
-        let mir = this.load_mir(f.def, None)?;
+        let mir = this.load_mir(f.def)?;
         let dest = match dest {
             Some(dest) => dest.clone(),
             None => MPlaceTy::fake_alloc_zst(this.layout_of(mir.return_ty())?).into(),

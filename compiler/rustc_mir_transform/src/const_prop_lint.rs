@@ -38,11 +38,6 @@ pub struct ConstProp;
 
 impl<'tcx> MirLint<'tcx> for ConstProp {
     fn run_lint(&self, tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
-        // will be evaluated by miri and produce its errors there
-        if body.source.promoted.is_some() {
-            return;
-        }
-
         let def_id = body.source.def_id().expect_local();
         let is_fn_like = tcx.def_kind(def_id).is_fn_like();
         let is_assoc_const = tcx.def_kind(def_id) == DefKind::AssocConst;

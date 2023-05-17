@@ -22,7 +22,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // encountered.
         let substs = InternalSubsts::identity_for_item(self, def_id);
         let instance = ty::Instance::new(def_id, substs);
-        let cid = GlobalId { instance, promoted: None };
+        let cid = GlobalId { instance };
         let param_env = self.param_env(def_id).with_reveal_all_normalized(self);
         self.const_eval_global_id(param_env, cid, None)
     }
@@ -58,7 +58,7 @@ impl<'tcx> TyCtxt<'tcx> {
             ct.def, ct.substs,
         ) {
             Ok(Some(instance)) => {
-                let cid = GlobalId { instance, promoted: ct.promoted };
+                let cid = GlobalId { instance };
                 self.const_eval_global_id(param_env, cid, span)
             }
             Ok(None) => Err(ErrorHandled::TooGeneric),
@@ -85,7 +85,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         match ty::Instance::resolve(self, param_env, ct.def, ct.substs) {
             Ok(Some(instance)) => {
-                let cid = GlobalId { instance, promoted: None };
+                let cid = GlobalId { instance };
                 self.const_eval_global_id_for_typeck(param_env, cid, span).inspect(|_| {
                     // We are emitting the lint here instead of in `is_const_evaluatable`
                     // as we normalize obligations before checking them, and normalization
@@ -121,7 +121,7 @@ impl<'tcx> TyCtxt<'tcx> {
         instance: ty::Instance<'tcx>,
         span: Option<Span>,
     ) -> EvalToConstValueResult<'tcx> {
-        self.const_eval_global_id(param_env, GlobalId { instance, promoted: None }, span)
+        self.const_eval_global_id(param_env, GlobalId { instance }, span)
     }
 
     /// Evaluate a constant to a `ConstValue`.
@@ -185,7 +185,7 @@ impl<'tcx> TyCtxtAt<'tcx> {
         trace!("eval_static_initializer: Need to compute {:?}", def_id);
         assert!(self.is_static(def_id));
         let instance = ty::Instance::mono(*self, def_id);
-        let gid = GlobalId { instance, promoted: None };
+        let gid = GlobalId { instance };
         self.eval_to_allocation(gid, ty::ParamEnv::reveal_all())
     }
 
@@ -216,7 +216,7 @@ impl<'tcx> TyCtxtEnsure<'tcx> {
         // encountered.
         let substs = InternalSubsts::identity_for_item(self.tcx, def_id);
         let instance = ty::Instance::new(def_id, substs);
-        let cid = GlobalId { instance, promoted: None };
+        let cid = GlobalId { instance };
         let param_env =
             self.tcx.param_env(def_id).with_reveal_all_normalized(self.tcx).with_const();
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
@@ -230,7 +230,7 @@ impl<'tcx> TyCtxtEnsure<'tcx> {
         trace!("eval_static_initializer: Need to compute {:?}", def_id);
         assert!(self.tcx.is_static(def_id));
         let instance = ty::Instance::mono(self.tcx, def_id);
-        let gid = GlobalId { instance, promoted: None };
+        let gid = GlobalId { instance };
         let param_env = ty::ParamEnv::reveal_all().with_const();
         trace!("eval_to_allocation: Need to compute {:?}", gid);
         self.eval_to_allocation_raw(param_env.and(gid))

@@ -13,15 +13,14 @@
 //! move analysis runs after promotion on broken MIR.
 
 use rustc_hir as hir;
-use rustc_middle::mir;
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::traversal::ReversePostorderIter;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, List, TyCtxt, TypeVisitableExt};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
-
-use rustc_index::{Idx, IndexSlice, IndexVec};
 
 use std::cell::Cell;
 use std::{cmp, iter, mem};
@@ -36,20 +35,17 @@ use crate::transform::check_consts::{qualifs, ConstCx};
 /// After this pass is run, `promoted_fragments` will hold the MIR body corresponding to each
 /// newly created `Constant`.
 #[derive(Default)]
-pub struct PromoteTemps<'tcx> {
-    pub promoted_fragments: Cell<IndexVec<Promoted, Body<'tcx>>>,
+pub struct PromoteTemps {
+    pub promoted_fragments: Cell<IndexVec<Promoted, LocalDefId>>,
 }
 
-impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
+impl<'tcx> MirPass<'tcx> for PromoteTemps {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // There's not really any point in promoting errorful MIR.
         //
         // This does not include MIR that failed const-checking, which we still try to promote.
         if let Err(_) = body.return_ty().error_reported() {
             debug!("PromoteTemps: MIR had errors");
-            return;
-        }
-        if body.source.promoted.is_some() {
             return;
         }
 
@@ -828,74 +824,53 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         new_temp
     }
 
-    fn promote_candidate(mut self, candidate: Candidate, next_promoted_id: usize) -> Body<'tcx> {
-        let def = self.source.source.def_id();
-        let mut rvalue = {
-            let promoted = &mut self.promoted;
-            let promoted_id = Promoted::new(next_promoted_id);
-            let tcx = self.tcx;
-            let mut promoted_operand = |ty, span| {
-                promoted.span = span;
-                promoted.local_decls[RETURN_PLACE] = LocalDecl::new(ty, span);
-                let substs = tcx.erase_regions(InternalSubsts::identity_for_item(tcx, def));
-                let uneval = mir::UnevaluatedConst { def, substs, promoted: Some(promoted_id) };
+    fn promote_candidate(mut self, candidate: Candidate) -> LocalDefId {
+        let tcx = self.tcx;
 
-                Operand::Constant(Box::new(Constant {
-                    span,
-                    user_ty: None,
-                    literal: ConstantKind::Unevaluated(uneval, ty),
-                }))
-            };
+        let blocks = self.source.basic_blocks.as_mut_preserves_cfg();
+        let local_decls = &mut self.source.local_decls;
+        let loc = candidate.location;
 
-            let blocks = self.source.basic_blocks.as_mut();
-            let local_decls = &mut self.source.local_decls;
-            let loc = candidate.location;
-            let statement = &mut blocks[loc.block].statements[loc.statement_index];
-            let StatementKind::Assign(box (_, Rvalue::Ref(region, borrow_kind, place))) = &mut statement.kind else {
-                bug!()
-            };
+        let statement = &mut blocks[loc.block].statements[loc.statement_index];
+        let source_info = statement.source_info;
+        let span = source_info.span;
+        self.promoted.span = span;
 
-            // Use the underlying local for this (necessarily interior) borrow.
-            let ty = local_decls[place.local].ty;
-            let span = statement.source_info.span;
+        let StatementKind::Assign(box (_, Rvalue::Ref(region, borrow_kind, place))) = &mut statement.kind else {
+            bug!()
+        };
+        *region = tcx.lifetimes.re_erased;
 
-            let ref_ty = tcx.mk_ref(
-                tcx.lifetimes.re_erased,
-                ty::TypeAndMut { ty, mutbl: borrow_kind.to_mutbl_lossy() },
-            );
+        // Use the underlying local for this (necessarily interior) borrow.
+        let ty = local_decls[place.local].ty;
+        let ref_ty = tcx.mk_ref(
+            tcx.lifetimes.re_erased,
+            ty::TypeAndMut { ty, mutbl: borrow_kind.to_mutbl_lossy() },
+        );
+        self.promoted.local_decls[RETURN_PLACE] = LocalDecl::new(ref_ty, span);
 
-            *region = tcx.lifetimes.re_erased;
-
+        place.projection = {
             let mut projection = vec![PlaceElem::Deref];
             projection.extend(place.projection);
-            place.projection = tcx.mk_place_elems(&projection);
-
-            // Create a temp to hold the promoted reference.
-            // This is because `*r` requires `r` to be a local,
-            // otherwise we would use the `promoted` directly.
-            let mut promoted_ref = LocalDecl::new(ref_ty, span);
-            promoted_ref.source_info = statement.source_info;
-            let promoted_ref = local_decls.push(promoted_ref);
-            assert_eq!(self.temps.push(TempState::Unpromotable), promoted_ref);
-
-            let promoted_ref_statement = Statement {
-                source_info: statement.source_info,
-                kind: StatementKind::Assign(Box::new((
-                    Place::from(promoted_ref),
-                    Rvalue::Use(promoted_operand(ref_ty, span)),
-                ))),
-            };
-            self.extra_statements.push((loc, promoted_ref_statement));
-
-            Rvalue::Ref(
-                tcx.lifetimes.re_erased,
-                *borrow_kind,
-                Place {
-                    local: mem::replace(&mut place.local, promoted_ref),
-                    projection: List::empty(),
-                },
-            )
+            tcx.mk_place_elems(&projection)
         };
+
+        // Create a temp to hold the promoted reference.
+        // This is because `*r` requires `r` to be a local,
+        // otherwise we would use the `promoted` directly.
+        let mut promoted_ref = LocalDecl::new(ref_ty, span);
+        promoted_ref.source_info = source_info;
+        let promoted_ref = local_decls.push(promoted_ref);
+        assert_eq!(self.temps.push(TempState::Unpromotable), promoted_ref);
+
+        let mut rvalue = Rvalue::Ref(
+            tcx.lifetimes.re_erased,
+            *borrow_kind,
+            Place {
+                local: mem::replace(&mut place.local, promoted_ref),
+                projection: List::empty(),
+            },
+        );
 
         assert_eq!(self.new_block(), START_BLOCK);
         self.visit_rvalue(
@@ -905,7 +880,45 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
         let span = self.promoted.span;
         self.assign(RETURN_PLACE, rvalue, span);
-        self.promoted
+
+        let source_def_id = self.source.source.def_id().expect_local();
+        let feeder =
+            tcx.at(span).create_def(source_def_id, hir::definitions::DefPathData::Promoted);
+        feeder.opt_def_kind(Some(hir::def::DefKind::Promoted));
+        feeder.opt_local_def_id_to_hir_id(None);
+
+        let def_id = feeder.def_id();
+        self.promoted.source = MirSource::item(def_id.to_def_id());
+        let parent_substs = tcx.erase_regions(InternalSubsts::identity_for_item(
+            tcx,
+            tcx.typeck_root_def_id(source_def_id.to_def_id()),
+        ));
+        let substs = ty::InlineConstSubsts::new(
+            tcx,
+            ty::InlineConstSubstsParts { parent_substs, ty: ref_ty },
+        )
+        .substs;
+        let uneval = UnevaluatedConst { def: self.promoted.source.def_id(), substs };
+
+        feeder.mir_for_promoted(tcx.alloc_steal_mir(self.promoted));
+
+        let promoted_operand = {
+            Operand::Constant(Box::new(Constant {
+                span,
+                user_ty: None,
+                literal: ConstantKind::Unevaluated(uneval, ref_ty),
+            }))
+        };
+        let promoted_ref_statement = Statement {
+            source_info,
+            kind: StatementKind::Assign(Box::new((
+                Place::from(promoted_ref),
+                Rvalue::Use(promoted_operand),
+            ))),
+        };
+        self.extra_statements.push((loc, promoted_ref_statement));
+
+        def_id
     }
 }
 
@@ -927,7 +940,7 @@ pub fn promote_candidates<'tcx>(
     tcx: TyCtxt<'tcx>,
     mut temps: IndexVec<Local, TempState>,
     candidates: Vec<Candidate>,
-) -> IndexVec<Promoted, Body<'tcx>> {
+) -> IndexVec<Promoted, LocalDefId> {
     // Visit candidates in reverse, in case they're nested.
     debug!("promote_candidates({:?})", candidates);
 
@@ -957,7 +970,7 @@ pub fn promote_candidates<'tcx>(
             IndexVec::new(),
             IndexVec::from_elem_n(scope, 1),
             initial_locals,
-            IndexVec::new(),
+            body.user_type_annotations.clone(),
             0,
             vec![],
             body.span,
@@ -975,8 +988,7 @@ pub fn promote_candidates<'tcx>(
             keep_original: false,
         };
 
-        let mut promoted = promoter.promote_candidate(candidate, promotions.len());
-        promoted.source.promoted = Some(promotions.next_index());
+        let promoted = promoter.promote_candidate(candidate);
         promotions.push(promoted);
     }
 

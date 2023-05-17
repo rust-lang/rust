@@ -160,7 +160,7 @@ pub fn provide(providers: &mut Providers) {
     };
     providers.def_ident_span = |tcx, def_id| {
         let def_id = def_id;
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+        let hir_id = tcx.opt_local_def_id_to_hir_id(def_id)?;
         tcx.hir().opt_ident_span(hir_id)
     };
     providers.fn_arg_names = |tcx, id| {

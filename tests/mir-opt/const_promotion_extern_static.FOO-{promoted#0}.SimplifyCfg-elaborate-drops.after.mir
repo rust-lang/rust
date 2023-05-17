@@ -1,6 +1,6 @@
-// MIR for `FOO::promoted[0]` after SimplifyCfg-elaborate-drops
+// MIR for `FOO::{promoted#0}` after SimplifyCfg-elaborate-drops
 
-promoted[0] in FOO: &[&i32; 1] = {
+FOO::{promoted#0}: &[&i32; 1] = {
     let mut _0: &[&i32; 1];              // return place in scope 0 at $DIR/const_promotion_extern_static.rs:+0:31: +0:55
     let mut _1: [&i32; 1];               // in scope 0 at $DIR/const_promotion_extern_static.rs:+0:31: +0:46
     let mut _2: &i32;                    // in scope 0 at $DIR/const_promotion_extern_static.rs:+0:32: +0:45

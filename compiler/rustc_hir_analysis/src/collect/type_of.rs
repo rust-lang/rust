@@ -1,5 +1,6 @@
 use rustc_errors::{Applicability, StashKey};
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit;
 use rustc_hir::intravisit::Visitor;
@@ -39,8 +40,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
         Node::Expr(&Expr { kind: ExprKind::ConstBlock(ref anon_const), .. })
             if anon_const.hir_id == hir_id =>
         {
-            let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
-            return substs.as_inline_const().ty()
+            bug!("InlineConst should have been handled by type_of")
         }
         Node::Expr(&Expr { kind: ExprKind::InlineAsm(asm), .. })
         | Node::Item(&Item { kind: ItemKind::GlobalAsm(asm), .. })
@@ -331,6 +331,11 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
                 ));
             }
         }
+    }
+
+    if let DefKind::Promoted | DefKind::InlineConst = tcx.def_kind(def_id) {
+        let substs = InternalSubsts::identity_for_item(tcx, def_id);
+        return ty::EarlyBinder(substs.as_inline_const().ty());
     }
 
     use rustc_hir::*;

@@ -123,13 +123,7 @@ fn dump_matched_mir_node<'tcx, F>(
         // see notes on #41697 above
         let def_path =
             ty::print::with_forced_impl_filename_line!(tcx.def_path_str(body.source.def_id()));
-        // ignore-tidy-odd-backticks the literal below is fine
-        write!(file, "// MIR for `{}", def_path)?;
-        match body.source.promoted {
-            None => write!(file, "`")?,
-            Some(promoted) => write!(file, "::{:?}`", promoted)?,
-        }
-        writeln!(file, " {} {}", disambiguator, pass_name)?;
+        writeln!(file, "// MIR for `{}` {} {}", def_path, disambiguator, pass_name)?;
         if let Some(ref layout) = body.generator_layout() {
             writeln!(file, "/* generator_layout = {:#?} */", layout)?;
         }
@@ -168,11 +162,6 @@ fn dump_file_basename<'tcx>(
     body: &Body<'tcx>,
 ) -> String {
     let source = body.source;
-    let promotion_id = match source.promoted {
-        Some(id) => format!("-{:?}", id),
-        None => String::new(),
-    };
-
     let pass_num = if tcx.sess.opts.unstable_opts.dump_mir_exclude_pass_number {
         String::new()
     } else {
@@ -203,8 +192,8 @@ fn dump_file_basename<'tcx>(
     };
 
     format!(
-        "{}.{}{}{}{}.{}.{}",
-        crate_name, item_name, shim_disambiguator, promotion_id, pass_num, pass_name, disambiguator,
+        "{}.{}{}{}.{}.{}",
+        crate_name, item_name, shim_disambiguator, pass_num, pass_name, disambiguator,
     )
 }
 
@@ -282,9 +271,12 @@ pub fn write_mir_pretty<'tcx>(
         let render_body = |w: &mut dyn Write, body| -> io::Result<()> {
             write_mir_fn(tcx, body, &mut |_, _| Ok(()), w)?;
 
-            for body in tcx.promoted_mir(def_id) {
-                writeln!(w)?;
-                write_mir_fn(tcx, body, &mut |_, _| Ok(()), w)?;
+            if let Some(def_id) = def_id.as_local() {
+                for body in tcx.promoted_mir(def_id) {
+                    writeln!(w)?;
+                    let body = tcx.mir_for_ctfe(body.to_def_id());
+                    write_mir_fn(tcx, body, &mut |_, _| Ok(()), w)?;
+                }
             }
             Ok(())
         };
@@ -474,12 +466,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                     | ty::ConstKind::Bound(..) => bug!("unexpected MIR constant: {:?}", literal),
                 },
                 ConstantKind::Unevaluated(uv, _) => {
-                    format!(
-                        "Unevaluated({}, {:?}, {:?})",
-                        self.tcx.def_path_str(uv.def),
-                        uv.substs,
-                        uv.promoted,
-                    )
+                    format!("Unevaluated({}, {:?})", self.tcx.def_path_str(uv.def), uv.substs,)
                 }
                 // To keep the diffs small, we render this like we render `ty::Const::Value`.
                 //
@@ -996,13 +983,12 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn Write) -> io::Res
         DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(..) => true,
         _ => tcx.is_closure(def_id),
     };
-    match (kind, body.source.promoted) {
-        (_, Some(i)) => write!(w, "{:?} in ", i)?,
-        (DefKind::Const | DefKind::AssocConst, _) => write!(w, "const ")?,
-        (DefKind::Static(hir::Mutability::Not), _) => write!(w, "static ")?,
-        (DefKind::Static(hir::Mutability::Mut), _) => write!(w, "static mut ")?,
-        (_, _) if is_function => write!(w, "fn ")?,
-        (DefKind::AnonConst | DefKind::InlineConst, _) => {} // things like anon const, not an item
+    match kind {
+        DefKind::Const | DefKind::AssocConst => write!(w, "const ")?,
+        DefKind::Static(hir::Mutability::Not) => write!(w, "static ")?,
+        DefKind::Static(hir::Mutability::Mut) => write!(w, "static mut ")?,
+        _ if is_function => write!(w, "fn ")?,
+        DefKind::AnonConst | DefKind::InlineConst | DefKind::Promoted => {} // things like anon const, not an item
         _ => bug!("Unexpected def kind {:?}", kind),
     }
 
@@ -1011,7 +997,7 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn Write) -> io::Res
         write!(w, "{}", tcx.def_path_str(def_id))?
     }
 
-    if body.source.promoted.is_none() && is_function {
+    if is_function {
         write!(w, "(")?;
 
         // fn argument types.

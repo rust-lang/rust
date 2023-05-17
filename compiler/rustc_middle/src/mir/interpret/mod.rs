@@ -112,7 +112,6 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_target::abi::{AddressSpace, Endian, HasDataLayout};
 
-use crate::mir;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::subst::GenericArgKind;
 use crate::ty::{self, Instance, Ty, TyCtxt};
@@ -142,19 +141,11 @@ pub struct GlobalId<'tcx> {
     /// For a constant or static, the `Instance` of the item itself.
     /// For a promoted global, the `Instance` of the function they belong to.
     pub instance: ty::Instance<'tcx>,
-
-    /// The index for promoted globals within their function's `mir::Body`.
-    pub promoted: Option<mir::Promoted>,
 }
 
 impl<'tcx> GlobalId<'tcx> {
     pub fn display(self, tcx: TyCtxt<'tcx>) -> String {
-        let instance_name = with_no_trimmed_paths!(tcx.def_path_str(self.instance.def.def_id()));
-        if let Some(promoted) = self.promoted {
-            format!("{}::{:?}", instance_name, promoted)
-        } else {
-            instance_name
-        }
+        with_no_trimmed_paths!(tcx.def_path_str(self.instance.def.def_id()))
     }
 }
 

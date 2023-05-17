@@ -47,7 +47,7 @@
           _19 = const _;                   // scope 0 at $DIR/lower_intrinsics.rs:+2:42: +2:44
                                            // mir::Constant
                                            // + span: $DIR/lower_intrinsics.rs:83:42: 83:44
-                                           // + literal: Const { ty: &i32, val: Unevaluated(discriminant, [T], Some(promoted[2])) }
+                                           // + literal: Const { ty: &i32, val: Unevaluated(discriminant::{promoted#2}, [T, &i32]) }
           _7 = &(*_19);                    // scope 0 at $DIR/lower_intrinsics.rs:+2:42: +2:44
           _6 = &(*_7);                     // scope 0 at $DIR/lower_intrinsics.rs:+2:42: +2:44
 -         _5 = discriminant_value::<i32>(move _6) -> [return: bb2, unwind unreachable]; // scope 0 at $DIR/lower_intrinsics.rs:+2:5: +2:45
@@ -68,7 +68,7 @@
           _18 = const _;                   // scope 0 at $DIR/lower_intrinsics.rs:+3:42: +3:45
                                            // mir::Constant
                                            // + span: $DIR/lower_intrinsics.rs:84:42: 84:45
-                                           // + literal: Const { ty: &(), val: Unevaluated(discriminant, [T], Some(promoted[1])) }
+                                           // + literal: Const { ty: &(), val: Unevaluated(discriminant::{promoted#1}, [T, &()]) }
           _11 = &(*_18);                   // scope 0 at $DIR/lower_intrinsics.rs:+3:42: +3:45
           _10 = &(*_11);                   // scope 0 at $DIR/lower_intrinsics.rs:+3:42: +3:45
 -         _9 = discriminant_value::<()>(move _10) -> [return: bb3, unwind unreachable]; // scope 0 at $DIR/lower_intrinsics.rs:+3:5: +3:46
@@ -89,7 +89,7 @@
           _17 = const _;                   // scope 0 at $DIR/lower_intrinsics.rs:+4:42: +4:47
                                            // mir::Constant
                                            // + span: $DIR/lower_intrinsics.rs:85:42: 85:47
-                                           // + literal: Const { ty: &E, val: Unevaluated(discriminant, [T], Some(promoted[0])) }
+                                           // + literal: Const { ty: &E, val: Unevaluated(discriminant::{promoted#0}, [T, &E]) }
           _15 = &(*_17);                   // scope 0 at $DIR/lower_intrinsics.rs:+4:42: +4:47
           _14 = &(*_15);                   // scope 0 at $DIR/lower_intrinsics.rs:+4:42: +4:47
 -         _13 = discriminant_value::<E>(move _14) -> [return: bb4, unwind unreachable]; // scope 0 at $DIR/lower_intrinsics.rs:+4:5: +4:48

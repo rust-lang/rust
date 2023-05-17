@@ -219,7 +219,6 @@ provide! { tcx, def_id, other, cdata,
     optimized_mir => { table }
     mir_for_ctfe => { table }
     mir_generator_witnesses => { table }
-    promoted_mir => { table }
     def_span => { table }
     def_ident_span => { table }
     lookup_stability => { table }

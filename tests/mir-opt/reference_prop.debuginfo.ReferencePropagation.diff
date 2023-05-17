@@ -67,7 +67,7 @@
           _28 = const _;                   // scope 1 at $DIR/reference_prop.rs:+4:17: +4:24
                                            // mir::Constant
                                            // + span: $DIR/reference_prop.rs:535:17: 535:24
-                                           // + literal: Const { ty: &T, val: Unevaluated(debuginfo, [], Some(promoted[2])) }
+                                           // + literal: Const { ty: &T, val: Unevaluated(debuginfo::{promoted#2}, [&debuginfo::T]) }
 -         _3 = &((*_28).0: u8);            // scope 1 at $DIR/reference_prop.rs:+4:17: +4:24
 -         StorageLive(_5);                 // scope 2 at $DIR/reference_prop.rs:+7:9: +7:17
 -         _5 = &(*_1);                     // scope 2 at $DIR/reference_prop.rs:+7:20: +7:32
@@ -83,7 +83,7 @@
           _27 = const _;                   // scope 3 at $DIR/reference_prop.rs:+11:14: +11:31
                                            // mir::Constant
                                            // + span: $DIR/reference_prop.rs:542:14: 542:31
-                                           // + literal: Const { ty: &Option<i32>, val: Unevaluated(debuginfo, [], Some(promoted[1])) }
+                                           // + literal: Const { ty: &Option<i32>, val: Unevaluated(debuginfo::{promoted#1}, [&std::option::Option<i32>]) }
 -         _9 = &(((*_27) as Some).0: i32); // scope 3 at $DIR/reference_prop.rs:+11:14: +11:31
 -         _6 = const ();                   // scope 4 at $DIR/reference_prop.rs:+11:36: +11:38
 -         StorageDead(_9);                 // scope 3 at $DIR/reference_prop.rs:+11:37: +11:38
@@ -109,7 +109,7 @@
           _26 = const _;                   // scope 5 at $DIR/reference_prop.rs:+16:83: +16:90
                                            // mir::Constant
                                            // + span: $DIR/reference_prop.rs:547:83: 547:90
-                                           // + literal: Const { ty: &[i32; 10], val: Unevaluated(debuginfo, [], Some(promoted[0])) }
+                                           // + literal: Const { ty: &[i32; 10], val: Unevaluated(debuginfo::{promoted#0}, [&[i32; 10]]) }
           _13 = &(*_26);                   // scope 5 at $DIR/reference_prop.rs:+16:83: +16:90
           StorageLive(_15);                // scope 5 at $DIR/reference_prop.rs:+16:91: +16:93
           _15 = RangeFull;                 // scope 5 at $DIR/reference_prop.rs:+16:91: +16:93

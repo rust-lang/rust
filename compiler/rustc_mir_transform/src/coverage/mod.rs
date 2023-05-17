@@ -16,6 +16,7 @@ use crate::MirPass;
 
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_data_structures::sync::Lrc;
+use rustc_hir::def::DefKind;
 use rustc_index::IndexVec;
 use rustc_middle::hir;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -57,7 +58,7 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
 
         // If the InstrumentCoverage pass is called on promoted MIRs, skip them.
         // See: https://github.com/rust-lang/rust/pull/73011#discussion_r438317601
-        if mir_source.promoted.is_some() {
+        if let DefKind::Promoted = tcx.def_kind(mir_source.def_id()) {
             trace!(
                 "InstrumentCoverage skipped for {:?} (already promoted for Miri evaluation)",
                 mir_source.def_id()

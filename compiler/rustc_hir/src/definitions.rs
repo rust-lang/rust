@@ -278,6 +278,8 @@ pub enum DefPathData {
     Ctor,
     /// A constant expression (see `{ast,hir}::AnonConst`).
     AnonConst,
+    /// A constant promoted from a MIR body.
+    Promoted,
     /// An `impl Trait` type node.
     ImplTrait,
     /// `impl Trait` generated associated type node.
@@ -405,7 +407,7 @@ impl DefPathData {
             TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => Some(name),
 
             Impl | ForeignMod | CrateRoot | Use | GlobalAsm | ClosureExpr | Ctor | AnonConst
-            | ImplTrait | ImplTraitAssocTy => None,
+            | ImplTrait | ImplTraitAssocTy | Promoted => None,
         }
     }
 
@@ -425,6 +427,7 @@ impl DefPathData {
             Ctor => DefPathDataName::Anon { namespace: sym::constructor },
             AnonConst => DefPathDataName::Anon { namespace: sym::constant },
             ImplTrait | ImplTraitAssocTy => DefPathDataName::Anon { namespace: sym::opaque },
+            Promoted => DefPathDataName::Anon { namespace: sym::promoted },
         }
     }
 }

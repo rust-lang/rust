@@ -4,11 +4,9 @@
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::LocalDefId;
-use rustc_index::IndexSlice;
 use rustc_middle::mir::{create_dump_file, dump_enabled, dump_mir, PassWhere};
 use rustc_middle::mir::{
-    Body, ClosureOutlivesSubject, ClosureRegionRequirements, LocalKind, Location, Promoted,
-    START_BLOCK,
+    Body, ClosureOutlivesSubject, ClosureRegionRequirements, LocalKind, Location, START_BLOCK,
 };
 use rustc_middle::ty::{self, OpaqueHiddenType, TyCtxt};
 use rustc_span::symbol::sym;
@@ -54,12 +52,11 @@ pub(crate) struct NllOutput<'tcx> {
 /// Rewrites the regions in the MIR to use NLL variables, also scraping out the set of universal
 /// regions (e.g., region parameters) declared on the function. That set will need to be given to
 /// `compute_regions`.
-#[instrument(skip(infcx, param_env, body, promoted), level = "debug")]
+#[instrument(skip(infcx, param_env, body), level = "debug")]
 pub(crate) fn replace_regions_in_mir<'tcx>(
     infcx: &BorrowckInferCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body: &mut Body<'tcx>,
-    promoted: &mut IndexSlice<Promoted, Body<'tcx>>,
 ) -> UniversalRegions<'tcx> {
     let def = body.source.def_id().expect_local();
 
@@ -69,7 +66,7 @@ pub(crate) fn replace_regions_in_mir<'tcx>(
     let universal_regions = UniversalRegions::new(infcx, def, param_env);
 
     // Replace all remaining regions with fresh inference variables.
-    renumber::renumber_mir(infcx, body, promoted);
+    renumber::renumber_mir(infcx, body);
 
     dump_mir(infcx.tcx, false, "renumber", &0, body, |_, _| Ok(()));
 
@@ -158,7 +155,6 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
     infcx: &BorrowckInferCtxt<'_, 'tcx>,
     universal_regions: UniversalRegions<'tcx>,
     body: &Body<'tcx>,
-    promoted: &IndexSlice<Promoted, Body<'tcx>>,
     location_table: &LocationTable,
     param_env: ty::ParamEnv<'tcx>,
     flow_inits: &mut ResultsCursor<'cx, 'tcx, MaybeInitializedPlaces<'cx, 'tcx>>,
@@ -180,7 +176,6 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
             infcx,
             param_env,
             body,
-            promoted,
             &universal_regions,
             location_table,
             borrow_set,

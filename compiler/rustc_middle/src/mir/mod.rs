@@ -184,18 +184,15 @@ impl RuntimePhase {
 #[derive(HashStable, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
 pub struct MirSource<'tcx> {
     pub instance: InstanceDef<'tcx>,
-
-    /// If `Some`, this is a promoted rvalue within the parent function.
-    pub promoted: Option<Promoted>,
 }
 
 impl<'tcx> MirSource<'tcx> {
     pub fn item(def_id: DefId) -> Self {
-        MirSource { instance: InstanceDef::Item(def_id), promoted: None }
+        MirSource { instance: InstanceDef::Item(def_id) }
     }
 
     pub fn from_instance(instance: InstanceDef<'tcx>) -> Self {
-        MirSource { instance, promoted: None }
+        MirSource { instance }
     }
 
     #[inline]
@@ -2500,7 +2497,7 @@ impl<'tcx> ConstantKind<'tcx> {
             ty::InlineConstSubsts::new(tcx, ty::InlineConstSubstsParts { parent_substs, ty })
                 .substs;
 
-        let uneval = UnevaluatedConst { def: def_id.to_def_id(), substs, promoted: None };
+        let uneval = UnevaluatedConst { def: def_id.to_def_id(), substs };
         debug_assert!(!uneval.has_free_regions());
 
         Self::Unevaluated(uneval, ty)
@@ -2594,7 +2591,6 @@ impl<'tcx> ConstantKind<'tcx> {
                     UnevaluatedConst {
                         def: did,
                         substs: InternalSubsts::identity_for_item(tcx, did),
-                        promoted: None,
                     },
                     ty,
                 )
@@ -2620,7 +2616,6 @@ impl<'tcx> ConstantKind<'tcx> {
 pub struct UnevaluatedConst<'tcx> {
     pub def: DefId,
     pub substs: SubstsRef<'tcx>,
-    pub promoted: Option<Promoted>,
 }
 
 impl<'tcx> UnevaluatedConst<'tcx> {
@@ -2635,7 +2630,7 @@ impl<'tcx> UnevaluatedConst<'tcx> {
 impl<'tcx> UnevaluatedConst<'tcx> {
     #[inline]
     pub fn new(def: DefId, substs: SubstsRef<'tcx>) -> UnevaluatedConst<'tcx> {
-        UnevaluatedConst { def, substs, promoted: Default::default() }
+        UnevaluatedConst { def, substs }
     }
 }
 

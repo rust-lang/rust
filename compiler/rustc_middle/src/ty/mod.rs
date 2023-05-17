@@ -2304,7 +2304,13 @@ impl<'tcx> TyCtxt<'tcx> {
         let did: DefId = did.into();
         let filter_fn = move |a: &&ast::Attribute| a.has_name(attr);
         if let Some(did) = did.as_local() {
-            self.hir().attrs(self.hir().local_def_id_to_hir_id(did)).iter().filter(filter_fn)
+            if let Some(hir_id) = self.opt_local_def_id_to_hir_id(did) {
+                self.hir().attrs(hir_id)
+            } else {
+                &[]
+            }
+            .iter()
+            .filter(filter_fn)
         } else if cfg!(debug_assertions) && rustc_feature::is_builtin_only_local(attr) {
             bug!("tried to access the `only_local` attribute `{}` from an extern crate", attr);
         } else {

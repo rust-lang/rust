@@ -31,7 +31,7 @@
           _14 = const _;                   // scope 0 at $DIR/derefer_complex_case.rs:+1:17: +1:26
                                            // mir::Constant
                                            // + span: $DIR/derefer_complex_case.rs:6:17: 6:26
-                                           // + literal: Const { ty: &[i32; 2], val: Unevaluated(main, [], Some(promoted[0])) }
+                                           // + literal: Const { ty: &[i32; 2], val: Unevaluated(main::{promoted#0}, [&[i32; 2]]) }
           _2 = &(*_14);                    // scope 0 at $DIR/derefer_complex_case.rs:+1:17: +1:26
           _1 = <&[i32; 2] as IntoIterator>::into_iter(move _2) -> bb1; // scope 0 at $DIR/derefer_complex_case.rs:+1:17: +1:26
                                            // mir::Constant

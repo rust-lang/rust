@@ -504,9 +504,12 @@ rustc_queries! {
         desc { |tcx| "elaborating drops for `{}`", tcx.def_path_str(key) }
     }
 
-    query mir_for_ctfe(
-        key: DefId
-    ) -> &'tcx mir::Body<'tcx> {
+    query mir_for_promoted(key: LocalDefId) -> &'tcx Steal<mir::Body<'tcx>> {
+        desc { |tcx| "caching mir of promoted constant `{}`", tcx.def_path_str(key.to_def_id()) }
+        feedable
+    }
+
+    query mir_for_ctfe(key: DefId) -> &'tcx mir::Body<'tcx> {
         desc { |tcx| "caching mir of `{}` for CTFE", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
@@ -514,7 +517,7 @@ rustc_queries! {
 
     query mir_promoted(key: LocalDefId) -> (
         &'tcx Steal<mir::Body<'tcx>>,
-        &'tcx Steal<IndexVec<mir::Promoted, mir::Body<'tcx>>>
+        &'tcx IndexVec<mir::Promoted, LocalDefId>,
     ) {
         no_hash
         desc { |tcx| "promoting constants in MIR for `{}`", tcx.def_path_str(key) }
@@ -569,10 +572,9 @@ rustc_queries! {
     /// promoteds by the `DefId` and the `mir::Promoted` index. This is necessary, because
     /// after inlining a body may refer to promoteds from other bodies. In that case you still
     /// need to use the `DefId` of the original body.
-    query promoted_mir(key: DefId) -> &'tcx IndexVec<mir::Promoted, mir::Body<'tcx>> {
-        desc { |tcx| "optimizing promoted MIR for `{}`", tcx.def_path_str(key) }
-        cache_on_disk_if { key.is_local() }
-        separate_provide_extern
+    query promoted_mir(key: LocalDefId) -> &'tcx IndexVec<mir::Promoted, LocalDefId> {
+        desc { |tcx| "optimizing promoted MIR for `{}`", tcx.def_path_str(key.to_def_id()) }
+        cache_on_disk_if { true }
     }
 
     /// Erases regions from `ty` to yield a new type.

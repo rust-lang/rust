@@ -62,7 +62,13 @@ pub(super) fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredic
 fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::GenericPredicates<'_> {
     use rustc_hir::*;
 
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+    let generics = tcx.generics_of(def_id);
+    let Some(hir_id) = tcx.opt_local_def_id_to_hir_id(def_id) else {
+        return ty::GenericPredicates {
+            parent: generics.parent,
+            predicates: &[],
+        };
+    };
     let node = tcx.hir().get(hir_id);
 
     let mut is_trait = None;
@@ -114,7 +120,6 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         _ => NO_GENERICS,
     };
 
-    let generics = tcx.generics_of(def_id);
     let parent_count = generics.parent_count as u32;
     let has_own_self = generics.has_self && parent_count == 0;
 

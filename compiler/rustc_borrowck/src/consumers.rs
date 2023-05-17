@@ -3,7 +3,6 @@
 //! This file provides API for compiler consumers.
 
 use rustc_hir::def_id::LocalDefId;
-use rustc_index::IndexSlice;
 use rustc_infer::infer::{DefiningAnchor, TyCtxtInferExt};
 use rustc_middle::mir::Body;
 use rustc_middle::ty::TyCtxt;
@@ -29,9 +28,8 @@ pub use super::{
 ///
 /// *   Polonius is highly unstable, so expect regular changes in its signature or other details.
 pub fn get_body_with_borrowck_facts(tcx: TyCtxt<'_>, def: LocalDefId) -> BodyWithBorrowckFacts<'_> {
-    let (input_body, promoted) = tcx.mir_promoted(def);
+    let (input_body, _) = tcx.mir_promoted(def);
     let infcx = tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bind(def)).build();
     let input_body: &Body<'_> = &input_body.borrow();
-    let promoted: &IndexSlice<_, _> = &promoted.borrow();
-    *super::do_mir_borrowck(&infcx, input_body, promoted, true).1.unwrap()
+    *super::do_mir_borrowck(&infcx, input_body, true).1.unwrap()
 }

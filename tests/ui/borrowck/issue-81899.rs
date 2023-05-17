@@ -8,7 +8,7 @@ const fn f<F>(_: &[u8], _: F) -> &[u8]
 where
     F: FnMut(&u8),
 {
-    panic!() //~ ERROR evaluation of constant value failed
+    panic!() //~ ERROR evaluation of `_CONST::{promoted#0}` failed
     //~^ panic
 }
 

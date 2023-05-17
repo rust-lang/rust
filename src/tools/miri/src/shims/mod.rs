@@ -59,7 +59,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
 
         // Otherwise, load the MIR.
-        Ok(Some((this.load_mir(instance.def, None)?, instance)))
+        Ok(Some((this.load_mir(instance.def)?, instance)))
     }
 
     /// Returns `true` if the computation was performed, and `false` if we should just evaluate

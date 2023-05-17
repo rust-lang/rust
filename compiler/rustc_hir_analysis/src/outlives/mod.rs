@@ -18,7 +18,9 @@ pub fn provide(providers: &mut Providers) {
 }
 
 fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[(ty::Clause<'_>, Span)] {
-    let id = tcx.hir().local_def_id_to_hir_id(item_def_id);
+    let Some(id) = tcx.opt_local_def_id_to_hir_id(item_def_id) else {
+        return &[];
+    };
 
     if matches!(tcx.def_kind(item_def_id), hir::def::DefKind::AnonConst) && tcx.lazy_normalization()
     {

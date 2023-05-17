@@ -14,6 +14,30 @@ use rustc_span::Span;
 pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     use rustc_hir::*;
 
+    // provide junk type parameter defs for const blocks.
+    if let DefKind::Promoted | DefKind::InlineConst = tcx.def_kind(def_id) {
+        let def_id = def_id.to_def_id();
+        let parent_def_id = tcx.typeck_root_def_id(def_id);
+        let parent_generics = tcx.generics_of(parent_def_id);
+        let params = vec![ty::GenericParamDef {
+            index: parent_generics.count() as u32,
+            name: Symbol::intern("<const_ty>"),
+            def_id,
+            pure_wrt_drop: false,
+            kind: ty::GenericParamDefKind::Type { has_default: false, synthetic: false },
+        }];
+        let param_def_id_to_index =
+            params.iter().map(|param| (param.def_id, param.index)).collect();
+        return ty::Generics {
+            parent: Some(parent_def_id),
+            parent_count: parent_generics.count(),
+            params,
+            param_def_id_to_index,
+            has_self: parent_generics.has_self,
+            has_late_bound_regions: None,
+        };
+    }
+
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
 
     let node = tcx.hir().get(hir_id);
@@ -336,20 +360,6 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             pure_wrt_drop: false,
             kind: ty::GenericParamDefKind::Type { has_default: false, synthetic: false },
         }));
-    }
-
-    // provide junk type parameter defs for const blocks.
-    if let Node::AnonConst(_) = node {
-        let parent_node = tcx.hir().get_parent(hir_id);
-        if let Node::Expr(&Expr { kind: ExprKind::ConstBlock(_), .. }) = parent_node {
-            params.push(ty::GenericParamDef {
-                index: next_index(),
-                name: Symbol::intern("<const_ty>"),
-                def_id: def_id.to_def_id(),
-                pure_wrt_drop: false,
-                kind: ty::GenericParamDefKind::Type { has_default: false, synthetic: false },
-            });
-        }
     }
 
     let param_def_id_to_index = params.iter().map(|param| (param.def_id, param.index)).collect();

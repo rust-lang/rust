@@ -3,9 +3,9 @@
 //! See the `Qualif` trait for more info.
 
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir::def::DefKind;
 use rustc_hir::LangItem;
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_middle::mir;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, subst::SubstsRef, AdtDef, Ty};
 use rustc_trait_selection::traits::{
@@ -357,14 +357,16 @@ where
         ConstantKind::Val(..) => None,
     };
 
-    if let Some(mir::UnevaluatedConst { def, substs: _, promoted }) = uneval {
+    if let Some(UnevaluatedConst { def, substs: _ }) = uneval {
+        let is_promoted = cx.tcx.def_kind(def) == DefKind::Promoted;
+
         // Use qualifs of the type for the promoted. Promoteds in MIR body should be possible
         // only for `NeedsNonConstDrop` with precise drop checking. This is the only const
         // check performed after the promotion. Verify that with an assertion.
-        assert!(promoted.is_none() || Q::ALLOW_PROMOTED);
+        assert!(!is_promoted || Q::ALLOW_PROMOTED);
 
         // Don't peek inside trait associated constants.
-        if promoted.is_none() && cx.tcx.trait_of_item(def).is_none() {
+        if !is_promoted && cx.tcx.trait_of_item(def).is_none() {
             let qualifs = cx.tcx.at(constant.span).mir_const_qualif(def);
 
             if !Q::in_qualifs(&qualifs) {

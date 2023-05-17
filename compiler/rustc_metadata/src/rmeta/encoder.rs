@@ -829,6 +829,7 @@ fn should_encode_span(def_kind: DefKind) -> bool {
         | DefKind::AssocConst
         | DefKind::Macro(_)
         | DefKind::ExternCrate
+        | DefKind::Promoted
         | DefKind::Use
         | DefKind::AnonConst
         | DefKind::InlineConst
@@ -876,6 +877,7 @@ fn should_encode_attrs(def_kind: DefKind) -> bool {
         | DefKind::AnonConst
         | DefKind::InlineConst
         | DefKind::OpaqueTy
+        | DefKind::Promoted
         | DefKind::ImplTraitPlaceholder
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
@@ -914,6 +916,7 @@ fn should_encode_expn_that_defined(def_kind: DefKind) -> bool {
         | DefKind::ImplTraitPlaceholder
         | DefKind::Field
         | DefKind::LifetimeParam
+        | DefKind::Promoted
         | DefKind::GlobalAsm
         | DefKind::Closure
         | DefKind::Generator => false,
@@ -953,6 +956,7 @@ fn should_encode_visibility(def_kind: DefKind) -> bool {
         | DefKind::Impl { .. }
         | DefKind::Closure
         | DefKind::Generator
+        | DefKind::Promoted
         | DefKind::ExternCrate => false,
     }
 }
@@ -990,6 +994,7 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
         | DefKind::GlobalAsm
         | DefKind::Closure
         | DefKind::Generator
+        | DefKind::Promoted
         | DefKind::ExternCrate => false,
     }
 }
@@ -1015,6 +1020,7 @@ fn should_encode_mir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> (bool, bool) {
         | DefKind::InlineConst
         | DefKind::AssocConst
         | DefKind::Static(..)
+        | DefKind::Promoted
         | DefKind::Const => (true, false),
         // Full-fledged functions + closures
         DefKind::AssocFn | DefKind::Fn | DefKind::Closure => {
@@ -1068,6 +1074,7 @@ fn should_encode_variances(def_kind: DefKind) -> bool {
         | DefKind::GlobalAsm
         | DefKind::Closure
         | DefKind::Generator
+        | DefKind::Promoted
         | DefKind::ExternCrate => false,
     }
 }
@@ -1097,6 +1104,7 @@ fn should_encode_generics(def_kind: DefKind) -> bool {
         | DefKind::Field
         | DefKind::TyParam
         | DefKind::Closure
+        | DefKind::Promoted
         | DefKind::Generator => true,
         DefKind::Mod
         | DefKind::ForeignMod
@@ -1129,6 +1137,7 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         | DefKind::Generator
         | DefKind::ConstParam
         | DefKind::AnonConst
+        | DefKind::Promoted
         | DefKind::InlineConst => true,
 
         DefKind::OpaqueTy => {
@@ -1219,6 +1228,7 @@ fn should_encode_const(def_kind: DefKind) -> bool {
         | DefKind::Use
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
+        | DefKind::Promoted
         | DefKind::ExternCrate => false,
     }
 }
@@ -1542,7 +1552,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     }
                 }
             }
-            record!(self.tables.promoted_mir[def_id.to_def_id()] <- tcx.promoted_mir(def_id));
+
+            for &def_id in tcx.promoted_mir(def_id) {
+                record!(self.tables.mir_for_ctfe[def_id.to_def_id()] <- tcx.mir_for_ctfe(def_id));
+            }
 
             let instance = ty::InstanceDef::Item(def_id.to_def_id());
             let unused = tcx.unused_generic_params(instance);

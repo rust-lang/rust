@@ -142,7 +142,7 @@ fn main() -> () {
         _28 = const _;                   // scope 7 at $DIR/retag.rs:+18:21: +18:23
                                          // mir::Constant
                                          // + span: $DIR/retag.rs:48:21: 48:23
-                                         // + literal: Const { ty: &i32, val: Unevaluated(main, [], Some(promoted[0])) }
+                                         // + literal: Const { ty: &i32, val: Unevaluated(main::{promoted#0}, [&i32]) }
         Retag(_28);                      // scope 7 at $DIR/retag.rs:+18:21: +18:23
         _23 = &(*_28);                   // scope 7 at $DIR/retag.rs:+18:21: +18:23
         _22 = &(*_23);                   // scope 7 at $DIR/retag.rs:+18:21: +18:23
