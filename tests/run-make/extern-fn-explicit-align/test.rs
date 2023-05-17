@@ -1,6 +1,6 @@
 // Issue #80127: Passing structs via FFI should work with explicit alignment.
 
-use std::ffi::CString;
+use std::ffi::{CString, c_char};
 use std::ptr::null_mut;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -23,7 +23,7 @@ extern "C" {
     fn many_args(
         a: *mut (),
         b: *mut (),
-        c: *const i8,
+        c: *const c_char,
         d: u64,
         e: bool,
         f: BoolAndU32,
@@ -33,7 +33,7 @@ extern "C" {
         j: *mut (),
         k: *mut (),
         l: *mut (),
-        m: *const i8,
+        m: *const c_char,
     ) -> i32;
 }
 
