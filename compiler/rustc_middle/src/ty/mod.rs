@@ -122,8 +122,6 @@ pub mod inhabitedness;
 pub mod layout;
 pub mod normalize_erasing_regions;
 pub mod print;
-#[macro_use]
-pub mod query;
 pub mod relate;
 pub mod subst;
 pub mod trait_def;

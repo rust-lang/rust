@@ -1,4 +1,6 @@
 //! Errors emitted by `rustc_hir_typeck`.
+use std::borrow::Cow;
+
 use crate::fluent_generated as fluent;
 use rustc_errors::{AddToDiagnostic, Applicability, Diagnostic, MultiSpan, SubdiagnosticMessage};
 use rustc_macros::{Diagnostic, Subdiagnostic};
@@ -294,4 +296,26 @@ pub enum SuggestBoxing {
         #[suggestion_part(code = ")")]
         end: Span,
     },
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_no_associated_item, code = "E0599")]
+pub struct NoAssociatedItem {
+    #[primary_span]
+    pub span: Span,
+    pub item_kind: &'static str,
+    pub item_name: Ident,
+    pub ty_prefix: Cow<'static, str>,
+    pub ty_str: String,
+    pub trait_missing_method: bool,
+}
+
+#[derive(Subdiagnostic)]
+#[note(hir_typeck_candidate_trait_note)]
+pub struct CandidateTraitNote {
+    #[primary_span]
+    pub span: Span,
+    pub trait_name: String,
+    pub item_name: Ident,
+    pub action_or_ty: String,
 }

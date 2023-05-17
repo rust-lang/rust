@@ -3,7 +3,8 @@ use std::fmt;
 
 use rustc_errors::Diagnostic;
 use rustc_middle::mir::AssertKind;
-use rustc_middle::ty::{layout::LayoutError, query::TyCtxtAt, ConstInt};
+use rustc_middle::query::TyCtxtAt;
+use rustc_middle::ty::{layout::LayoutError, ConstInt};
 use rustc_span::{Span, Symbol};
 
 use super::InterpCx;

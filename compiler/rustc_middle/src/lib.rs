@@ -95,7 +95,6 @@ pub mod middle;
 pub mod mir;
 pub mod thir;
 pub mod traits;
-#[macro_use]
 pub mod ty;
 pub mod util;
 mod values;

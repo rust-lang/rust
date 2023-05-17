@@ -716,8 +716,7 @@ macro_rules! define_queries {
 
         mod query_structs {
             use super::*;
-            use rustc_middle::ty::query::QueryStruct;
-            use rustc_middle::ty::query::QueryKeyStringCache;
+            use rustc_middle::query::plumbing::{QueryKeyStringCache, QueryStruct};
             use rustc_middle::dep_graph::DepKind;
             use crate::QueryConfigRestored;
 
