@@ -726,12 +726,6 @@ rustc_queries! {
         desc { |tcx| "checking if item is promotable: `{}`", tcx.def_path_str(key) }
     }
 
-    /// Returns `true` if this is a foreign item (i.e., linked via `extern { ... }`).
-    query is_foreign_item(key: DefId) -> bool {
-        desc { |tcx| "checking if `{}` is a foreign item", tcx.def_path_str(key) }
-        separate_provide_extern
-    }
-
     /// Returns `Some(generator_kind)` if the node pointed to by `def_id` is a generator.
     query generator_kind(def_id: DefId) -> Option<hir::GeneratorKind> {
         desc { |tcx| "looking up generator kind of `{}`", tcx.def_path_str(def_id) }
