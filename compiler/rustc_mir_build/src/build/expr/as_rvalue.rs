@@ -481,9 +481,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }))))
             }
 
-            ExprKind::OffsetOf { container, fields } => {
-                block.and(Rvalue::NullaryOp(NullOp::OffsetOf(fields), container))
-            }
+            ExprKind::OffsetOf { container, fields } => block.and(Rvalue::NullaryOp(
+                NullOp::OffsetOf(fields),
+                this.tcx.erase_regions(container),
+            )),
 
             ExprKind::Literal { .. }
             | ExprKind::NamedConst { .. }
