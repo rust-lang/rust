@@ -24,7 +24,6 @@ use rustc_span::Span;
 use rustc_symbol_mangling::typeid::{kcfi_typeid_for_fnabi, typeid_for_fnabi, TypeIdOptions};
 use rustc_target::abi::{self, call::FnAbi, Align, Size, WrappingRange};
 use rustc_target::spec::{HasTargetSpec, SanitizerSet, Target};
-use smallvec::SmallVec;
 use std::borrow::Cow;
 use std::ffi::CStr;
 use std::iter;
@@ -1231,12 +1230,10 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn apply_attrs_to_cleanup_callsite(&mut self, llret: &'ll Value) {
-        let mut attrs = SmallVec::<[_; 2]>::new();
-
         // Cleanup is always the cold path.
-        attrs.push(llvm::AttributeKind::Cold.create_attr(self.llcx));
+        let cold_inline = llvm::AttributeKind::Cold.create_attr(self.llcx);
 
-        attributes::apply_to_callsite(llret, llvm::AttributePlace::Function, &attrs);
+        attributes::apply_to_callsite(llret, llvm::AttributePlace::Function, &[cold_inline]);
     }
 }
 
