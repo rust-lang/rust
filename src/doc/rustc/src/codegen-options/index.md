@@ -40,7 +40,7 @@ also produce slower code. Setting this to 1 may improve the performance of
 generated code, but may be slower to compile.
 
 The default value, if not specified, is 16 for non-incremental builds. For
-incremental builds the default is 256 which allows caching to be more granular.
+incremental builds the default is 64 which allows caching to be more granular.
 
 ## control-flow-guard
 

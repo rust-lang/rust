@@ -1229,7 +1229,7 @@ impl Session {
         // codegen units in order to reduce the "collateral damage" small
         // changes cause.
         if self.opts.incremental.is_some() {
-            return 256;
+            return 64;
         }
 
         // Why is 16 codegen units the default all the time?
