@@ -966,11 +966,7 @@ fn codegen_panic_inner<'tcx>(
     args: &[Value],
     span: Span,
 ) {
-    let def_id = fx
-        .tcx
-        .lang_items()
-        .require(lang_item)
-        .unwrap_or_else(|e| fx.tcx.sess.span_fatal(span, e.to_string()));
+    let def_id = fx.tcx.require_lang_item(lang_item, Some(span));
 
     let instance = Instance::mono(fx.tcx, def_id).polymorphize(fx.tcx);
     let symbol_name = fx.tcx.symbol_name(instance).name;

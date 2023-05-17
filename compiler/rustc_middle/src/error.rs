@@ -1,5 +1,5 @@
 use rustc_macros::Diagnostic;
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 
 use crate::ty::Ty;
 
@@ -71,6 +71,14 @@ pub(crate) struct StrictCoherenceNeedsNegativeCoherence {
     pub span: Span,
     #[label]
     pub attr_span: Option<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(middle_requires_lang_item)]
+pub(crate) struct RequiresLangItem {
+    #[primary_span]
+    pub span: Option<Span>,
+    pub name: Symbol,
 }
 
 #[derive(Diagnostic)]
