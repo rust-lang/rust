@@ -787,10 +787,9 @@ fn is_nth_row_useful<'p, 'tcx>(
 
     matrix.rows[row_id].is_useful = false;
     // We split the head constructor of `v`.
-    let split_ctors = v_ctor.split(pcx, matrix.heads().take(row_id).map(DeconstructedPat::ctor));
+    let split_ctors = v_ctor.split(pcx, matrix.heads().map(DeconstructedPat::ctor));
     // For each constructor, we compute whether there's a value that starts with it that would
     // witness the usefulness of `v`.
-    let below = matrix.rows.split_off(row_id + 1);
     for ctor in split_ctors {
         debug!("specialize({:?})", ctor);
         let mut spec_matrix = matrix.specialize_constructor(pcx, &ctor);
@@ -804,7 +803,6 @@ fn is_nth_row_useful<'p, 'tcx>(
             }
         }
     }
-    matrix.rows.extend(below);
     let v = &matrix.rows[row_id];
     if v.is_useful {
         v.head().set_reachable();
