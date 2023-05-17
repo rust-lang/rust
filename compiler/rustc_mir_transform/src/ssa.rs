@@ -31,11 +31,11 @@ pub struct SsaLocals {
 /// We often encounter MIR bodies with 1 or 2 basic blocks. In those cases, it's unnecessary to
 /// actually compute dominators, we can just compare block indices because bb0 is always the first
 /// block, and in any body all other blocks are always dominated by bb0.
-struct SmallDominators {
-    inner: Option<Dominators<BasicBlock>>,
+struct SmallDominators<'a> {
+    inner: Option<&'a Dominators<BasicBlock>>,
 }
 
-impl SmallDominators {
+impl SmallDominators<'_> {
     fn dominates(&self, first: Location, second: Location) -> bool {
         if first.block == second.block {
             first.statement_index <= second.statement_index
@@ -68,11 +68,8 @@ impl SsaLocals {
         let assignment_order = Vec::with_capacity(body.local_decls.len());
 
         let assignments = IndexVec::from_elem(Set1::Empty, &body.local_decls);
-        let dominators = if body.basic_blocks.len() > 2 {
-            Some(body.basic_blocks.dominators().clone())
-        } else {
-            None
-        };
+        let dominators =
+            if body.basic_blocks.len() > 2 { Some(body.basic_blocks.dominators()) } else { None };
         let dominators = SmallDominators { inner: dominators };
 
         let direct_uses = IndexVec::from_elem(0, &body.local_decls);
@@ -201,14 +198,14 @@ enum LocationExtended {
     Arg,
 }
 
-struct SsaVisitor {
-    dominators: SmallDominators,
+struct SsaVisitor<'a> {
+    dominators: SmallDominators<'a>,
     assignments: IndexVec<Local, Set1<LocationExtended>>,
     assignment_order: Vec<Local>,
     direct_uses: IndexVec<Local, u32>,
 }
 
-impl<'tcx> Visitor<'tcx> for SsaVisitor {
+impl<'tcx> Visitor<'tcx> for SsaVisitor<'_> {
     fn visit_local(&mut self, local: Local, ctxt: PlaceContext, loc: Location) {
         match ctxt {
             PlaceContext::MutatingUse(MutatingUseContext::Projection)
