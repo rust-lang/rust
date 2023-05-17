@@ -1029,18 +1029,16 @@ impl<'tcx> ConstructorSet<'tcx> {
         self,
         pcx: &PatCtxt<'_, '_, 'tcx>,
         ctors: impl Iterator<Item = &'a Constructor<'tcx>> + Clone,
-    ) -> Vec<Constructor<'tcx>>
+    ) -> (Vec<Constructor<'tcx>>, Vec<Constructor<'tcx>>)
     where
         'tcx: 'a,
     {
+        let mut missing_ctors = Vec::new();
         let mut split_ctors = Vec::new();
         let mut seen_ctors = Vec::new();
-        let mut seen_wildcard = false;
-        let mut any_missing = false;
         let mut seen_any_non_wildcard = false;
         for ctor in ctors {
             if ctor.is_wildcard() {
-                seen_wildcard = true;
             } else if let Constructor::Opaque(..) = ctor {
                 split_ctors.push(ctor.clone());
                 seen_any_non_wildcard = true;
@@ -1052,26 +1050,28 @@ impl<'tcx> ConstructorSet<'tcx> {
         match self {
             ConstructorSet::Other { base_ctors } => {
                 if matches!(base_ctors.as_slice(), [Constructor::NonExhaustive]) {
-                    // FIXME: self-splitting is only useful for isize/usize. Would be nice to reust
+                    // Since `base_ctors` isn't listing our constructors, we need to take the ones
+                    // in the matrix.
+                    // FIXME: self-splitting is only useful for isize/usize. Would be nice to reuse
                     // IntRange there somehow.
                     split_ctors
                         .extend(seen_ctors.iter().flat_map(|c| c.split(pcx, seen_ctors.iter())));
-                    any_missing = true;
+                    missing_ctors = base_ctors;
                 } else {
                     // FIXME: splitting and collecting present ctors should be done in one pass.
                     let split_base_ctors =
-                        base_ctors.iter().flat_map(|ctor| ctor.split(pcx, seen_ctors.iter()));
+                        base_ctors.into_iter().flat_map(|ctor| ctor.split(pcx, seen_ctors.iter()));
                     for ctor in split_base_ctors {
                         if ctor.is_covered_by_any(pcx, seen_ctors.as_slice()) {
-                            split_ctors.push(ctor.clone());
+                            split_ctors.push(ctor);
                         } else {
-                            any_missing = true;
+                            missing_ctors.push(ctor);
                         }
                     }
                 }
             }
         }
-        if seen_wildcard && any_missing {
+        if !missing_ctors.is_empty() {
             let report_when_all_missing = pcx.is_top_level && !IntRange::is_integral(pcx.ty);
             if seen_any_non_wildcard || report_when_all_missing {
                 split_ctors.push(Missing);
@@ -1079,58 +1079,7 @@ impl<'tcx> ConstructorSet<'tcx> {
                 split_ctors.push(Wildcard);
             }
         }
-        split_ctors
-    }
-
-    /// Pass a set of constructors relative to which to split this one.
-    pub(super) fn split_for_wildcard<'a>(
-        self,
-        pcx: &PatCtxt<'_, '_, 'tcx>,
-        ctors: impl Iterator<Item = &'a Constructor<'tcx>> + Clone,
-    ) -> (Vec<Constructor<'tcx>>, Vec<Constructor<'tcx>>)
-    where
-        'tcx: 'a,
-    {
-        let split_base_ctors: Vec<_>;
-        let mut missing_ctors = Vec::new();
-        let mut seen_ctors = Vec::new();
-        let mut seen_any_non_wildcard = false;
-        // let mut seen_wildcard = false;
-        for ctor in ctors {
-            if ctor.is_wildcard() {
-                // seen_wildcard = true;
-            } else if let Constructor::Opaque(..) = ctor {
-                //     split_ctors.push(ctor.clone());
-                seen_any_non_wildcard = true;
-            } else {
-                seen_ctors.push(ctor.clone());
-                seen_any_non_wildcard = true;
-            }
-        }
-        match self {
-            ConstructorSet::Other { base_ctors } => {
-                split_base_ctors =
-                    base_ctors.iter().flat_map(|ctor| ctor.split(pcx, seen_ctors.iter())).collect();
-                for ctor in split_base_ctors.iter() {
-                    if ctor.is_covered_by_any(pcx, seen_ctors.as_slice()) {
-                        // split_ctors.push(ctor.clone());
-                    } else {
-                        missing_ctors.push(ctor.clone());
-                    }
-                }
-            }
-        }
-        let ctors = if !missing_ctors.is_empty() {
-            let report_when_all_missing = pcx.is_top_level && !IntRange::is_integral(pcx.ty);
-            if seen_any_non_wildcard || report_when_all_missing {
-                vec![Missing]
-            } else {
-                vec![Wildcard]
-            }
-        } else {
-            split_base_ctors
-        };
-        (ctors, missing_ctors)
+        (split_ctors, missing_ctors)
     }
 }
 

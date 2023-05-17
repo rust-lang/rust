@@ -742,106 +742,28 @@ impl<'p, 'tcx> WitnessMatrix<'p, 'tcx> {
 /// `is_under_guard` is used to inform if the pattern has a guard. If it
 /// has one it must not be inserted into the matrix. This shouldn't be
 /// relied on for soundness.
-#[instrument(level = "debug", skip(cx, lint_root, is_top_level), ret)]
-fn compute_row_usefulnesses<'p, 'tcx>(
-    cx: &MatchCheckCtxt<'p, 'tcx>,
-    matrix: &mut Matrix<'p, 'tcx>,
-    lint_root: HirId,
-    is_top_level: bool,
-) {
-    if matrix.rows.is_empty() {
-        return;
-    }
-    debug_assert!(matrix.rows().all(|r| r.len() == matrix.rows[0].len()));
-    // The base case. We are pattern-matching on () and the return value is based on whether our
-    // matrix has a row or not.
-    let first_row = &matrix.rows[0];
-    if first_row.is_empty() {
-        for row_id in 0..matrix.len() {
-            let useful = matrix.rows().take(row_id).all(|v| v.is_under_guard);
-            matrix.rows[row_id].is_useful = useful;
-        }
-        return;
-    }
-
-    let ty = first_row.head().ty();
-    let is_non_exhaustive = cx.is_foreign_non_exhaustive_enum(ty);
-    for row_id in 0..matrix.len() {
-        matrix.rows[row_id].is_useful = false;
-        let v = &matrix.rows[row_id];
-        if let Constructor::IntRange(ctor_range) = v.head().ctor() {
-            // Lint on likely incorrect range patterns (#63987)
-            let pcx = &PatCtxt { cx, ty, span: v.head().span(), is_top_level, is_non_exhaustive };
-            ctor_range.lint_overlapping_range_endpoints(
-                pcx,
-                matrix.heads().take(row_id),
-                v.len(),
-                lint_root,
-            )
-        }
-    }
-
-    let pcx = &PatCtxt { cx, ty, span: DUMMY_SP, is_top_level, is_non_exhaustive };
-    let set = ConstructorSet::new(pcx);
-    let split_ctors = set.split(pcx, matrix.heads().map(|p| p.ctor()));
-    for ctor in &split_ctors {
-        debug!("specialize({:?})", ctor);
-        let mut spec_matrix = matrix.specialize_constructor(pcx, &ctor);
-        ensure_sufficient_stack(|| {
-            compute_row_usefulnesses(cx, &mut spec_matrix, lint_root, false)
-        });
-        for i in 0..spec_matrix.len() {
-            matrix.rows[spec_matrix.rows[i].parent_row].is_useful =
-                matrix.rows[spec_matrix.rows[i].parent_row].is_useful
-                    || spec_matrix.rows[i].is_useful;
-        }
-    }
-
-    for row in matrix.rows() {
-        if row.is_useful {
-            row.head().set_reachable();
-        }
-    }
-}
-
-/// Algorithm from <http://moscova.inria.fr/~maranget/papers/warn/index.html>.
-/// The algorithm from the paper has been modified to correctly handle empty
-/// types. The changes are:
-///   (0) We don't exit early if the pattern matrix has zero rows. We just
-///       continue to recurse over columns.
-///   (1) all_constructors will only return constructors that are statically
-///       possible. E.g., it will only return `Ok` for `Result<T, !>`.
-///
-/// This finds whether a (row) vector `v` of patterns is 'useful' in relation
-/// to a set of such vectors `m` - this is defined as there being a set of
-/// inputs that will match `v` but not any of the sets in `m`.
-///
-/// All the patterns at each column of the `matrix ++ v` matrix must have the same type.
-///
-/// This is used both for reachability checking (if a pattern isn't useful in
-/// relation to preceding patterns, it is not reachable) and exhaustiveness
-/// checking (if a wildcard pattern is useful in relation to a matrix, the
-/// matrix isn't exhaustive).
-///
-/// `is_under_guard` is used to inform if the pattern has a guard. If it
-/// has one it must not be inserted into the matrix. This shouldn't be
-/// relied on for soundness.
 #[instrument(level = "debug", skip(cx, is_top_level), ret)]
-fn compute_nonexhaustiveness_witnesses<'p, 'tcx>(
+fn compute_usefulness<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     matrix: &mut Matrix<'p, 'tcx>,
     v: &PatStack<'p, 'tcx>,
+    lint_root: HirId,
     is_top_level: bool,
 ) -> WitnessMatrix<'p, 'tcx> {
     debug_assert!(matrix.rows().all(|r| r.len() == v.len()));
 
-    // The base case. We are pattern-matching on () and the return value is
-    // based on whether our matrix has a row or not.
-    // NOTE: This could potentially be optimized by checking rows.is_empty()
-    // first and then, if v is non-empty, the return value is based on whether
-    // the type of the tuple we're checking is inhabited or not.
+    // The base case. We are pattern-matching on () and the return value is based on whether our
+    // matrix has a row or not.
     if v.is_empty() {
-        if matrix.rows().all(|v| v.is_under_guard) {
+        let mut useful = true;
+        for row in matrix.rows.iter_mut() {
+            row.is_useful = useful;
+            useful = useful && row.is_under_guard;
+            if !useful {
+                break;
+            }
+        }
+        if useful {
             return WitnessMatrix::new_unit();
         } else {
             return WitnessMatrix::new_empty();
@@ -860,21 +782,48 @@ fn compute_nonexhaustiveness_witnesses<'p, 'tcx>(
     let is_non_exhaustive = cx.is_foreign_non_exhaustive_enum(ty);
     let pcx = &PatCtxt { cx, ty, span: DUMMY_SP, is_top_level, is_non_exhaustive };
 
-    let mut ret = WitnessMatrix::new_empty();
+    for row_id in 0..matrix.len() {
+        let v = &matrix.rows[row_id];
+        if let Constructor::IntRange(ctor_range) = v.head().ctor() {
+            // Lint on likely incorrect range patterns (#63987)
+            let pcx = &PatCtxt { span: v.head().span(), ..*pcx };
+            let compare_against =
+                matrix.rows().take(row_id).filter(|row| !row.is_under_guard).map(|row| row.head());
+            ctor_range.lint_overlapping_range_endpoints(pcx, compare_against, v.len(), lint_root)
+        }
+    }
+
     let set = ConstructorSet::new(pcx);
-    let (split_ctors, missing_ctors) =
-        set.split_for_wildcard(pcx, matrix.heads().map(|p| p.ctor()));
+    let (split_ctors, missing_ctors) = set.split(pcx, matrix.heads().map(|p| p.ctor()));
     // For each constructor, we compute whether there's a value that starts with it that would
     // witness the usefulness of `v`.
+    let mut ret = WitnessMatrix::new_empty();
     for ctor in split_ctors {
         debug!("specialize({:?})", ctor);
         let mut spec_matrix = matrix.specialize_constructor(pcx, &ctor);
         let v = v.pop_head_constructor(pcx, &ctor, usize::MAX);
         let mut witnesses = ensure_sufficient_stack(|| {
-            compute_nonexhaustiveness_witnesses(cx, &mut spec_matrix, &v, false)
+            compute_usefulness(cx, &mut spec_matrix, &v, lint_root, false)
         });
-        witnesses.apply_constructor(pcx, &missing_ctors, &ctor);
-        ret.extend(witnesses);
+        if missing_ctors.is_empty() || matches!(ctor, Constructor::Wildcard | Constructor::Missing)
+        {
+            // If some ctors are missing we only report those. Mostly for historical reasons,
+            // nothing stops us from reporting all.
+            // FIXME: propagate this choice deeper to save work.
+            witnesses.apply_constructor(pcx, &missing_ctors, &ctor);
+            ret.extend(witnesses);
+        }
+
+        for child_row in spec_matrix.rows() {
+            let parent_row = &mut matrix.rows[child_row.parent_row];
+            parent_row.is_useful = parent_row.is_useful || child_row.is_useful;
+        }
+    }
+
+    for row in matrix.rows() {
+        if row.is_useful {
+            row.head().set_reachable();
+        }
     }
 
     ret
@@ -1020,9 +969,7 @@ pub(crate) fn compute_match_usefulness<'p, 'tcx>(
 
     let wild_pattern = cx.pattern_arena.alloc(DeconstructedPat::wildcard(scrut_ty, DUMMY_SP));
     let v = PatStack::from_pattern(wild_pattern, usize::MAX, false);
-    compute_row_usefulnesses(cx, &mut matrix, lint_root, true);
-    let non_exhaustiveness_witnesses =
-        compute_nonexhaustiveness_witnesses(cx, &mut matrix, &v, true);
+    let non_exhaustiveness_witnesses = compute_usefulness(cx, &mut matrix, &v, lint_root, true);
     let non_exhaustiveness_witnesses: Vec<_> = non_exhaustiveness_witnesses.single_column();
     let arm_usefulness: Vec<_> = arms
         .iter()
