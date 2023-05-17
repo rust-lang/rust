@@ -44,7 +44,7 @@ impl<T> Trait1<T> for i32 {
 }
 
 // Trait implementation
-impl<T> Trait1<T> for Struct1<T> {
+impl<T, U> Trait1<T> for Struct1<U> {
     fn foo(&self) { }
 }
 
@@ -536,15 +536,15 @@ pub fn foo149(_: Type14<Bar>, _: Type14<Bar>, _: Type14<Bar>) { }
 // CHECK: ![[TYPE93]] = !{i64 0, !"_ZTSFvPFu3i32S_EE"}
 // CHECK: ![[TYPE94]] = !{i64 0, !"_ZTSFvPFu3i32S_ES0_E"}
 // CHECK: ![[TYPE95]] = !{i64 0, !"_ZTSFvPFu3i32S_ES0_S0_E"}
-// CHECK: ![[TYPE96]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtNtC{{[[:print:]]+}}_4core3ops8function2FnIu5tupleIu3i32EEu{{[0-9]+}}NtNtNtNtC{{[[:print:]]+}}_4core3ops8function6FnOnce6OutputIS0_ES_u6regionEEE"}
-// CHECK: ![[TYPE97]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtNtC{{[[:print:]]+}}_4core3ops8function2FnIu5tupleIu3i32EEu{{[0-9]+}}NtNtNtNtC{{[[:print:]]+}}_4core3ops8function6FnOnce6OutputIS0_ES_u6regionEES5_E"}
-// CHECK: ![[TYPE98]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtNtC{{[[:print:]]+}}_4core3ops8function2FnIu5tupleIu3i32EEu{{[0-9]+}}NtNtNtNtC{{[[:print:]]+}}_4core3ops8function6FnOnce6OutputIS0_ES_u6regionEES5_S5_E"}
-// CHECK: ![[TYPE99]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtNtC{{[[:print:]]+}}_4core3ops8function5FnMutIu5tupleIu3i32EEu{{[0-9]+}}NtNtNtNtC{{[[:print:]]+}}_4core3ops8function6FnOnce6OutputIS0_ES_u6regionEEE"}
-// CHECK: ![[TYPE100]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtNtC{{[[:print:]]+}}_4core3ops8function5FnMutIu5tupleIu3i32EEu{{[0-9]+}}NtNtNtNtC{{[[:print:]]+}}_4core3ops8function6FnOnce6OutputIS0_ES_u6regionEES5_E"}
-// CHECK: ![[TYPE101]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtNtC{{[[:print:]]+}}_4core3ops8function5FnMutIu5tupleIu3i32EEu{{[0-9]+}}NtNtNtNtC{{[[:print:]]+}}_4core3ops8function6FnOnce6OutputIS0_ES_u6regionEES5_S5_E"}
-// CHECK: ![[TYPE102]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtNtC{{[[:print:]]+}}_4core3ops8function6FnOnceIu5tupleIu3i32EEu{{[0-9]+}}NtNtNtNtC{{[[:print:]]+}}_4core3ops8function6FnOnce6OutputIS0_ES_u6regionEEE"}
-// CHECK: ![[TYPE103]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtNtC{{[[:print:]]+}}_4core3ops8function6FnOnceIu5tupleIu3i32EEu{{[0-9]+}}NtNtNtNtC{{[[:print:]]+}}_4core3ops8function6FnOnce6OutputIS0_ES_u6regionEES5_E"}
-// CHECK: ![[TYPE104]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtNtC{{[[:print:]]+}}_4core3ops8function6FnOnceIu5tupleIu3i32EEu{{[0-9]+}}NtNtNtNtC{{[[:print:]]+}}_4core3ops8function6FnOnce6OutputIS0_ES_u6regionEES5_S5_E"}
+// CHECK: ![[TYPE96]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtNtC{{[[:print:]]+}}_4core3ops8function2FnIu5paramEu{{[0-9]+}}NtNtNtNtC{{[[:print:]]+}}_4core3ops8function6FnOnce6OutputIu5tupleIu3i32EES1_u6regionEEE"}
+// CHECK: ![[TYPE97]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtNtC{{[[:print:]]+}}_4core3ops8function2FnIu5paramEu{{[0-9]+}}NtNtNtNtC{{[[:print:]]+}}_4core3ops8function6FnOnce6OutputIu5tupleIu3i32EES1_u6regionEES6_E"}
+// CHECK: ![[TYPE98]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtNtC{{[[:print:]]+}}_4core3ops8function2FnIu5paramEu{{[0-9]+}}NtNtNtNtC{{[[:print:]]+}}_4core3ops8function6FnOnce6OutputIu5tupleIu3i32EES1_u6regionEES6_S6_E"}
+// CHECK: ![[TYPE99]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtNtC{{[[:print:]]+}}_4core3ops8function5FnMutIu5paramEu{{[0-9]+}}NtNtNtNtC{{[[:print:]]+}}_4core3ops8function6FnOnce6OutputIu5tupleIu3i32EES1_u6regionEEE"}
+// CHECK: ![[TYPE100]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtNtC{{[[:print:]]+}}_4core3ops8function5FnMutIu5paramEu{{[0-9]+}}NtNtNtNtC{{[[:print:]]+}}_4core3ops8function6FnOnce6OutputIu5tupleIu3i32EES1_u6regionEES6_E"}
+// CHECK: ![[TYPE101]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtNtC{{[[:print:]]+}}_4core3ops8function5FnMutIu5paramEu{{[0-9]+}}NtNtNtNtC{{[[:print:]]+}}_4core3ops8function6FnOnce6OutputIu5tupleIu3i32EES1_u6regionEES6_S6_E"}
+// CHECK: ![[TYPE102]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtNtC{{[[:print:]]+}}_4core3ops8function6FnOnceIu5paramEu{{[0-9]+}}NtNtNtNtC{{[[:print:]]+}}_4core3ops8function6FnOnce6OutputIu5tupleIu3i32EES1_u6regionEEE"}
+// CHECK: ![[TYPE103]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtNtC{{[[:print:]]+}}_4core3ops8function6FnOnceIu5paramEu{{[0-9]+}}NtNtNtNtC{{[[:print:]]+}}_4core3ops8function6FnOnce6OutputIu5tupleIu3i32EES1_u6regionEES6_E"}
+// CHECK: ![[TYPE104]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtNtC{{[[:print:]]+}}_4core3ops8function6FnOnceIu5paramEu{{[0-9]+}}NtNtNtNtC{{[[:print:]]+}}_4core3ops8function6FnOnce6OutputIu5tupleIu3i32EES1_u6regionEES6_S6_E"}
 // CHECK: ![[TYPE105]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker4Sendu6regionEEE"}
 // CHECK: ![[TYPE106]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker4Sendu6regionEES2_E"}
 // CHECK: ![[TYPE107]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtNtC{{[[:print:]]+}}_4core6marker4Sendu6regionEES2_S2_E"}
@@ -566,9 +566,9 @@ pub fn foo149(_: Type14<Bar>, _: Type14<Bar>, _: Type14<Bar>) { }
 // CHECK: ![[TYPE123]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NvNINvC{{[[:print:]]+}}_51sanitizer_cfi_emit_type_metadata_id_itanium_cxx_abi3fn18{{[{}][{}]}}impl{{[}][}]}}3fooIu3i32EE"}
 // CHECK: ![[TYPE124]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NvNINvC{{[[:print:]]+}}_51sanitizer_cfi_emit_type_metadata_id_itanium_cxx_abi3fn18{{[{}][{}]}}impl{{[}][}]}}3fooIu3i32ES0_E"}
 // CHECK: ![[TYPE125]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NvNINvC{{[[:print:]]+}}_51sanitizer_cfi_emit_type_metadata_id_itanium_cxx_abi3fn18{{[{}][{}]}}impl{{[}][}]}}3fooIu3i32ES0_S0_E"}
-// CHECK: ![[TYPE126]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NvNtC{{[[:print:]]+}}_51sanitizer_cfi_emit_type_metadata_id_itanium_cxx_abi6Trait13fooIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_51sanitizer_cfi_emit_type_metadata_id_itanium_cxx_abi6Trait1Iu3i32Eu6regionES_EE"}
-// CHECK: ![[TYPE127]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NvNtC{{[[:print:]]+}}_51sanitizer_cfi_emit_type_metadata_id_itanium_cxx_abi6Trait13fooIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_51sanitizer_cfi_emit_type_metadata_id_itanium_cxx_abi6Trait1Iu3i32Eu6regionES_ES3_E"}
-// CHECK: ![[TYPE128]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NvNtC{{[[:print:]]+}}_51sanitizer_cfi_emit_type_metadata_id_itanium_cxx_abi6Trait13fooIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_51sanitizer_cfi_emit_type_metadata_id_itanium_cxx_abi6Trait1Iu3i32Eu6regionES_ES3_S3_E"}
+// CHECK: ![[TYPE126]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NvNtC{{[[:print:]]+}}_51sanitizer_cfi_emit_type_metadata_id_itanium_cxx_abi6Trait13fooIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_51sanitizer_cfi_emit_type_metadata_id_itanium_cxx_abi6Trait1Iu5paramEu6regionEu3i32EE"}
+// CHECK: ![[TYPE127]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NvNtC{{[[:print:]]+}}_51sanitizer_cfi_emit_type_metadata_id_itanium_cxx_abi6Trait13fooIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_51sanitizer_cfi_emit_type_metadata_id_itanium_cxx_abi6Trait1Iu5paramEu6regionEu3i32ES4_E"}
+// CHECK: ![[TYPE128]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NvNtC{{[[:print:]]+}}_51sanitizer_cfi_emit_type_metadata_id_itanium_cxx_abi6Trait13fooIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_51sanitizer_cfi_emit_type_metadata_id_itanium_cxx_abi6Trait1Iu5paramEu6regionEu3i32ES4_S4_E"}
 // CHECK: ![[TYPE129]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NvNtC{{[[:print:]]+}}_51sanitizer_cfi_emit_type_metadata_id_itanium_cxx_abi6Trait13fooIu3i32S_EE"}
 // CHECK: ![[TYPE130]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NvNtC{{[[:print:]]+}}_51sanitizer_cfi_emit_type_metadata_id_itanium_cxx_abi6Trait13fooIu3i32S_ES0_E"}
 // CHECK: ![[TYPE131]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NvNtC{{[[:print:]]+}}_51sanitizer_cfi_emit_type_metadata_id_itanium_cxx_abi6Trait13fooIu3i32S_ES0_S0_E"}
