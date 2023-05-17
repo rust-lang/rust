@@ -1994,13 +1994,14 @@ impl Interner {
         // is no `inner.arena.alloc_str()` method. This is clearly safe.
         let string: &str =
             unsafe { str::from_utf8_unchecked(inner.arena.alloc_slice(string.as_bytes())) };
-
-        inner.strings.push(string as *const str);
+        let sp = string as *const str;
+        
+        inner.strings.push(sp);
 
         // This second hash table lookup can be avoided by using `RawEntryMut`,
         // but this code path isn't hot enough for it to be worth it. See
         // #91445 for details.
-        inner.names.insert(string as *const str, name);
+        inner.names.insert(sp, name);
         name
     }
 
