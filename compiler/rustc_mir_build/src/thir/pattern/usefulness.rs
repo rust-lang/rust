@@ -673,7 +673,7 @@ impl<'p, 'tcx> WitnessMatrix<'p, 'tcx> {
     fn apply_constructor(
         &mut self,
         pcx: &PatCtxt<'_, 'p, 'tcx>,
-        split_wildcard: &SplitWildcard<'tcx>,
+        missing_ctors: &[Constructor<'tcx>],
         ctor: &Constructor<'tcx>,
     ) {
         if self.is_empty() {
@@ -696,7 +696,7 @@ impl<'p, 'tcx> WitnessMatrix<'p, 'tcx> {
             // We replace them with a wildcard.
             let old_witnesses = std::mem::replace(self, Self::new_empty());
             let mut skipped_any_variant = false;
-            for missing_ctor in split_wildcard.iter_missing(pcx) {
+            for missing_ctor in missing_ctors {
                 if missing_ctor.is_doc_hidden_variant(pcx) || missing_ctor.is_unstable_variant(pcx)
                 {
                     skipped_any_variant = true;
@@ -782,7 +782,7 @@ fn compute_row_usefulnesses<'p, 'tcx>(
     }
 
     let pcx = &PatCtxt { cx, ty, span: DUMMY_SP, is_top_level, is_non_exhaustive };
-    let mut set = ConstructorSet::new(pcx);
+    let set = ConstructorSet::new(pcx);
     let split_ctors = set.split(pcx, matrix.heads().map(|p| p.ctor()));
     for ctor in &split_ctors {
         debug!("specialize({:?})", ctor);
@@ -829,7 +829,7 @@ fn compute_row_usefulnesses<'p, 'tcx>(
 #[instrument(level = "debug", skip(cx, is_top_level), ret)]
 fn compute_nonexhaustiveness_witnesses<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
-    matrix: &Matrix<'p, 'tcx>,
+    matrix: &mut Matrix<'p, 'tcx>,
     v: &PatStack<'p, 'tcx>,
     is_top_level: bool,
 ) -> WitnessMatrix<'p, 'tcx> {
@@ -861,18 +861,19 @@ fn compute_nonexhaustiveness_witnesses<'p, 'tcx>(
     let pcx = &PatCtxt { cx, ty, span: DUMMY_SP, is_top_level, is_non_exhaustive };
 
     let mut ret = WitnessMatrix::new_empty();
-    let mut split_wildcard = SplitWildcard::new(pcx);
-    split_wildcard.split(pcx, matrix.heads().map(|p| p.ctor()));
+    let set = ConstructorSet::new(pcx);
+    let (split_ctors, missing_ctors) =
+        set.split_for_wildcard(pcx, matrix.heads().map(|p| p.ctor()));
     // For each constructor, we compute whether there's a value that starts with it that would
     // witness the usefulness of `v`.
-    for ctor in split_wildcard.to_ctors(pcx) {
+    for ctor in split_ctors {
         debug!("specialize({:?})", ctor);
-        let spec_matrix = matrix.specialize_constructor(pcx, &ctor);
+        let mut spec_matrix = matrix.specialize_constructor(pcx, &ctor);
         let v = v.pop_head_constructor(pcx, &ctor, usize::MAX);
         let mut witnesses = ensure_sufficient_stack(|| {
-            compute_nonexhaustiveness_witnesses(cx, &spec_matrix, &v, false)
+            compute_nonexhaustiveness_witnesses(cx, &mut spec_matrix, &v, false)
         });
-        witnesses.apply_constructor(pcx, &split_wildcard, &ctor);
+        witnesses.apply_constructor(pcx, &missing_ctors, &ctor);
         ret.extend(witnesses);
     }
 
@@ -1016,7 +1017,13 @@ pub(crate) fn compute_match_usefulness<'p, 'tcx>(
         let v = PatStack::from_pattern(arm.pat, row_id, arm.has_guard);
         matrix.push(v);
     }
+
+    let wild_pattern = cx.pattern_arena.alloc(DeconstructedPat::wildcard(scrut_ty, DUMMY_SP));
+    let v = PatStack::from_pattern(wild_pattern, usize::MAX, false);
     compute_row_usefulnesses(cx, &mut matrix, lint_root, true);
+    let non_exhaustiveness_witnesses =
+        compute_nonexhaustiveness_witnesses(cx, &mut matrix, &v, true);
+    let non_exhaustiveness_witnesses: Vec<_> = non_exhaustiveness_witnesses.single_column();
     let arm_usefulness: Vec<_> = arms
         .iter()
         .copied()
@@ -1030,12 +1037,6 @@ pub(crate) fn compute_match_usefulness<'p, 'tcx>(
             (arm, reachability)
         })
         .collect();
-
-    matrix.rows.retain(|v| !v.is_under_guard);
-    let wild_pattern = cx.pattern_arena.alloc(DeconstructedPat::wildcard(scrut_ty, DUMMY_SP));
-    let v = PatStack::from_pattern(wild_pattern, usize::MAX, false);
-    let non_exhaustiveness_witnesses = compute_nonexhaustiveness_witnesses(cx, &matrix, &v, true);
-    let non_exhaustiveness_witnesses: Vec<_> = non_exhaustiveness_witnesses.single_column();
 
     // Run the non_exhaustive_omitted_patterns lint. Only run on refutable patterns to avoid hittin
     // `if let`s. Only run if the match is exhaustive otherwise the error is redundant.
