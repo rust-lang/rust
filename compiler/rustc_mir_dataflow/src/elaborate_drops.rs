@@ -276,6 +276,7 @@ where
                 assert_eq!(self.elaborator.param_env().reveal(), Reveal::All);
                 let field_ty =
                     tcx.normalize_erasing_regions(self.elaborator.param_env(), f.ty(tcx, substs));
+
                 (tcx.mk_place_field(base_place, field, field_ty), subpath)
             })
             .collect()
