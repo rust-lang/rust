@@ -678,8 +678,10 @@ impl OsStr {
     /// `OsStr`'s encoding is an unspecified superset of UTF-8 and callers must
     /// pass in bytes that originated as a mixture of validated UTF-8 and bytes from
     /// [`OsStr::as_os_str_bytes`] from within the same rust version built for the same target
-    /// platform.  The bytes from `OsStr::as_os_str_bytes` may be split either
-    /// immediately before or immediately after some valid non-empty UTF-8 substring
+    /// platform.  For example, reconstructing an `OsStr` from bytes sent over the network or stored
+    /// in a file will likely violate these safety rules.  The bytes from `OsStr::as_os_str_bytes`
+    /// may be split either immediately before or immediately after some valid non-empty UTF-8
+    /// substring
     ///
     /// # Example
     ///
@@ -881,8 +883,9 @@ impl OsStr {
     ///
     /// Note: As the encoding is unspecified, any sub-slice of bytes that is not valid UTF-8 should
     /// be treated as opaque and only comparable within the same rust version built for the same
-    /// target platform.  See [`OsString`] for more encoding details and [`std::ffi`] for
-    /// platform-specific, specified conversions.
+    /// target platform.  For example, sending the slice over the network or storing it in a file
+    /// will likely result in incompatible byte slices  See [`OsString`] for more encoding details
+    /// and [`std::ffi`] for platform-specific, specified conversions.
     ///
     /// [`std::ffi`]: crate::ffi
     #[inline]
