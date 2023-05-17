@@ -1983,7 +1983,7 @@ impl Interner {
     #[inline]
     fn intern(&self, string: &str) -> Symbol {
         let mut inner = self.0.lock();
-        if let Some(&name) = inner.names.get(string) {
+        if let Some(&name) = inner.names.get(&(string as *const str)) {
             return name;
         }
 
