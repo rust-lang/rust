@@ -574,6 +574,8 @@ fn link_staticlib<'a>(
         }
     }
 
+    all_native_libs.extend_from_slice(&codegen_results.crate_info.used_libraries);
+
     if sess.opts.prints.contains(&PrintRequest::NativeStaticLibs) {
         print_native_static_libs(sess, &all_native_libs, &all_rust_dylibs);
     }
