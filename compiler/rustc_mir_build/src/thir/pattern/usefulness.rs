@@ -305,9 +305,7 @@
 //! stay as a full constant and become an `Opaque` pattern. These `Opaque` patterns do not participate
 //! in exhaustiveness, specialization or overlap checking.
 
-use super::deconstruct_pat::{
-    Constructor, ConstructorSet, DeconstructedPat, Fields, SplitWildcard,
-};
+use super::deconstruct_pat::{Constructor, ConstructorSet, DeconstructedPat, Fields};
 use crate::errors::{NonExhaustiveOmittedPattern, Uncovered};
 
 use rustc_data_structures::captures::Captures;
@@ -851,23 +849,22 @@ fn collect_nonexhaustive_missing_variants<'p, 'tcx>(
     let is_non_exhaustive = cx.is_foreign_non_exhaustive_enum(ty);
     let pcx = &PatCtxt { cx, ty, span, is_top_level: false, is_non_exhaustive };
 
-    let mut split_wildcard = SplitWildcard::new(pcx);
-    split_wildcard.split(pcx, column.iter().map(|p| p.ctor()));
+    let set = ConstructorSet::new(pcx);
+    let (split_ctors, missing_ctors) = set.split(pcx, column.iter().map(|p| p.ctor()));
 
     if is_non_exhaustive {
         witnesses.extend(
-            split_wildcard
-                .iter_missing(pcx)
+            missing_ctors
+                .into_iter()
                 // Filter out the `NonExhaustive` ctor because we want to list only real variants.
                 // Also remove any unstable feature gated variants.
                 .filter(|c| !(c.is_non_exhaustive() || c.is_unstable_variant(pcx)))
-                .cloned()
                 .map(|missing_ctor| DeconstructedPat::wild_from_ctor(pcx, missing_ctor)),
         )
     }
 
     // Recurse into the fields.
-    for ctor in split_wildcard.iter_present(pcx) {
+    for ctor in split_ctors {
         let arity = ctor.arity(pcx);
         if arity == 0 {
             continue;

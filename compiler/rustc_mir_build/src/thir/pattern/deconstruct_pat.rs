@@ -778,9 +778,7 @@ impl<'tcx> Constructor<'tcx> {
     {
         match self {
             Wildcard => {
-                let mut split_wildcard = SplitWildcard::new(pcx);
-                split_wildcard.split(pcx, ctors);
-                split_wildcard.to_ctors(pcx)
+                bug!("should not be splitting a wildcard");
             }
             // Fast-track if the range is trivial. In particular, we don't do the overlapping
             // ranges check.
@@ -1229,89 +1227,6 @@ impl<'tcx> SplitWildcard<'tcx> {
         };
 
         SplitWildcard { matrix_ctors: Vec::new(), all_ctors }
-    }
-
-    /// Pass a set of constructors relative to which to split this one. Don't call twice, it won't
-    /// do what you want.
-    pub(super) fn split<'a>(
-        &mut self,
-        pcx: &PatCtxt<'_, '_, 'tcx>,
-        ctors: impl Iterator<Item = &'a Constructor<'tcx>> + Clone,
-    ) where
-        'tcx: 'a,
-    {
-        // Since `all_ctors` never contains wildcards, this won't recurse further.
-        self.all_ctors =
-            self.all_ctors.iter().flat_map(|ctor| ctor.split(pcx, ctors.clone())).collect();
-        self.matrix_ctors = ctors.filter(|c| !matches!(c, Wildcard | Opaque)).cloned().collect();
-    }
-
-    /// Whether there are any value constructors for this type that are not present in the matrix.
-    fn any_missing(&self, pcx: &PatCtxt<'_, '_, 'tcx>) -> bool {
-        self.iter_missing(pcx).next().is_some()
-    }
-
-    /// Iterate over the constructors for this type that are not present in the matrix.
-    pub(super) fn iter_missing<'a, 'p>(
-        &'a self,
-        pcx: &'a PatCtxt<'a, 'p, 'tcx>,
-    ) -> impl Iterator<Item = &'a Constructor<'tcx>> + Captures<'p> {
-        self.all_ctors.iter().filter(move |ctor| !ctor.is_covered_by_any(pcx, &self.matrix_ctors))
-    }
-
-    /// Iterate over the constructors for this type that are present in the matrix. This has the
-    /// effect of deduplicating present constructors.
-    /// WARNING: this omits special constructors like `Wildcard` and `Opaque` and doesn't work for
-    /// non exhaustive types.
-    pub(super) fn iter_present<'a, 'p>(
-        &'a self,
-        pcx: &'a PatCtxt<'a, 'p, 'tcx>,
-    ) -> impl Iterator<Item = &'a Constructor<'tcx>> + Captures<'p> {
-        self.all_ctors.iter().filter(move |ctor| ctor.is_covered_by_any(pcx, &self.matrix_ctors))
-    }
-
-    /// Return the set of constructors resulting from splitting the wildcard. As explained at the
-    /// top of the file, if any constructors are missing we can ignore the present ones.
-    pub(super) fn to_ctors(&self, pcx: &PatCtxt<'_, '_, 'tcx>) -> SmallVec<[Constructor<'tcx>; 1]> {
-        if self.any_missing(pcx) {
-            // Some constructors are missing, thus we can specialize with the special `Missing`
-            // constructor, which stands for those constructors that are not seen in the matrix,
-            // and matches the same rows as any of them (namely the wildcard rows). See the top of
-            // the file for details.
-            // However, when all constructors are missing we can also specialize with the full
-            // `Wildcard` constructor. The difference will depend on what we want in diagnostics.
-
-            // If some constructors are missing, we typically want to report those constructors,
-            // e.g.:
-            // ```
-            //     enum Direction { N, S, E, W }
-            //     let Direction::N = ...;
-            // ```
-            // we can report 3 witnesses: `S`, `E`, and `W`.
-            //
-            // However, if the user didn't actually specify a constructor
-            // in this arm, e.g., in
-            // ```
-            //     let x: (Direction, Direction, bool) = ...;
-            //     let (_, _, false) = x;
-            // ```
-            // we don't want to show all 16 possible witnesses `(<direction-1>, <direction-2>,
-            // true)` - we are satisfied with `(_, _, true)`. So if all constructors are missing we
-            // prefer to report just a wildcard `_`.
-            //
-            // The exception is: if we are at the top-level, for example in an empty match, we
-            // sometimes prefer reporting the list of constructors instead of just `_`.
-            let report_when_all_missing = pcx.is_top_level && !IntRange::is_integral(pcx.ty);
-            let ctor = if !self.matrix_ctors.is_empty() || report_when_all_missing {
-                Missing
-            } else {
-                Wildcard
-            };
-            return smallvec![ctor];
-        }
-
-        // All the constructors are present in the matrix, so we just go through them all.
-        self.all_ctors.clone()
     }
 }
 
