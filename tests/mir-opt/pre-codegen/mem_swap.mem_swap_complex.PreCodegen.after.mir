@@ -1,0 +1,18 @@
+// MIR for `mem_swap_complex` after PreCodegen
+
+fn mem_swap_complex(_1: &mut [u16; 13], _2: &mut [u16; 13]) -> () {
+    debug a => _1;                       // in scope 0 at $DIR/mem_swap.rs:+0:25: +0:26
+    debug b => _2;                       // in scope 0 at $DIR/mem_swap.rs:+0:44: +0:45
+    let mut _0: ();                      // return place in scope 0 at $DIR/mem_swap.rs:+0:63: +0:63
+
+    bb0: {
+        _0 = std::mem::swap::<[u16; 13]>(_1, _2) -> bb1; // scope 0 at $DIR/mem_swap.rs:+1:5: +1:25
+                                         // mir::Constant
+                                         // + span: $DIR/mem_swap.rs:19:5: 19:19
+                                         // + literal: Const { ty: for<'a, 'b> fn(&'a mut [u16; 13], &'b mut [u16; 13]) {std::mem::swap::<[u16; 13]>}, val: Value(<ZST>) }
+    }
+
+    bb1: {
+        return;                          // scope 0 at $DIR/mem_swap.rs:+2:2: +2:2
+    }
+}
