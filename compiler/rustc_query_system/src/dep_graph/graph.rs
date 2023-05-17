@@ -2,7 +2,7 @@ use parking_lot::Mutex;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::{EventId, QueryInvocationId, SelfProfilerRef};
-use rustc_data_structures::sharded::Sharded;
+use rustc_data_structures::sharded::{DynSharded, SHARDS};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc, Ordering};
@@ -1083,7 +1083,7 @@ rustc_index::newtype_index! {
 /// first, and `data` second.
 pub(super) struct CurrentDepGraph<K: DepKind> {
     encoder: Steal<GraphEncoder<K>>,
-    new_node_to_index: Sharded<FxHashMap<DepNode<K>, DepNodeIndex>>,
+    new_node_to_index: DynSharded<FxHashMap<DepNode<K>, DepNodeIndex>>,
     prev_index_to_index: Lock<IndexVec<SerializedDepNodeIndex, Option<DepNodeIndex>>>,
 
     /// This is used to verify that fingerprints do not change between the creation of a node
@@ -1151,7 +1151,11 @@ impl<K: DepKind> CurrentDepGraph<K> {
         // doesn't inadvertently increase.
         static_assert_size!(Option<DepNodeIndex>, 4);
 
-        let new_node_count_estimate = 102 * prev_graph_node_count / 100 + 200;
+        let mut new_node_count_estimate = 102 * prev_graph_node_count / 100 + 200;
+
+        if rustc_data_structures::sync::active() {
+            new_node_count_estimate /= SHARDS;
+        }
 
         let node_intern_event_id = profiler
             .get_or_alloc_cached_string("incr_comp_intern_dep_graph_node")
@@ -1164,7 +1168,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
                 record_graph,
                 record_stats,
             )),
-            new_node_to_index: Sharded::new(|| {
+            new_node_to_index: DynSharded::new(|| {
                 FxHashMap::with_capacity_and_hasher(new_node_count_estimate, Default::default())
             }),
             prev_index_to_index: Lock::new(IndexVec::from_elem_n(None, prev_graph_node_count)),

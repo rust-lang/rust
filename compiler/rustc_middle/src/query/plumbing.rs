@@ -9,8 +9,16 @@ use crate::query::{
 use crate::ty::TyCtxt;
 use field_offset::FieldOffset;
 use measureme::StringId;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::{AtomicU64, Lrc, SLock, SMutex, SRefCell, WorkerLocal};
+use rustc_arena::TypedArena;
+use rustc_ast as ast;
+use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_attr as attr;
+use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
+use rustc_data_structures::sharded::{Shard, Sharded, SingleShard};
+use rustc_data_structures::steal::Steal;
+use rustc_data_structures::svh::Svh;
+use rustc_data_structures::sync::{AtomicU64, Lrc, WorkerLocal};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::hir_id::OwnerId;
@@ -84,8 +92,8 @@ pub struct QuerySystem<'tcx> {
     pub dynamic_queries: DynamicQueries<'tcx>,
 
     pub single_thread: bool,
-    pub single_caches: QueryCaches<'tcx, SRefCell>,
-    pub parallel_caches: QueryCaches<'tcx, SMutex>,
+    pub single_caches: QueryCaches<'tcx, SingleShard>,
+    pub parallel_caches: QueryCaches<'tcx, Sharded>,
 
     /// This provides access to the incremental compilation on-disk cache for query results.
     /// Do not access this directly. It is only meant to be used by
@@ -377,8 +385,8 @@ macro_rules! define_callbacks {
         }
 
         #[derive(Default)]
-        pub struct QueryCaches<'tcx, L: SLock> {
-            $($(#[$attr])* pub $name: query_storage::$name<'tcx, L>,)*
+        pub struct QueryCaches<'tcx, S: Shard> {
+            $($(#[$attr])* pub $name: query_storage::$name<'tcx, S>,)*
         }
 
         impl<'tcx> TyCtxtEnsure<'tcx> {

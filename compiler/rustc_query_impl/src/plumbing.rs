@@ -634,10 +634,23 @@ macro_rules! define_queries {
 
 
 
+            type Cache<S: Shard> = query_storage::$name<'tcx, S>;
 
 
 
+            #[inline(always)]
+            fn single_query_cache<'a>(self, tcx: QueryCtxt<'tcx>) -> &'a Self::Cache<SingleShard>
+                where 'tcx:'a
+            {
+                &tcx.query_system.single_caches.$name
+            }
 
+            #[inline(always)]
+            fn parallel_query_cache<'a>(self, tcx: QueryCtxt<'tcx>) -> &'a Self::Cache<Sharded>
+                where 'tcx:'a
+            {
+                &tcx.query_system.parallel_caches.$name
+            }
 
 
 

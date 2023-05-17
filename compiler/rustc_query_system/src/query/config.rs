@@ -8,7 +8,7 @@ use crate::query::DepNodeIndex;
 use crate::query::{QueryContext, QueryInfo, QueryState};
 
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::sync::{SLock, SMutex, SRefCell};
+use rustc_data_structures::sharded::{Shard, Sharded, SingleShard};
 use std::fmt::Debug;
 use std::hash::Hash;
 
@@ -22,7 +22,7 @@ pub trait QueryConfig<Qcx: QueryContext>: Copy {
     type Key: DepNodeParams<Qcx::DepContext> + Eq + Hash + Copy + Debug;
     type Value: Copy;
 
-    type Cache<L: SLock>: QueryCache<Key = Self::Key, Value = Self::Value>;
+    type Cache<S: Shard>: QueryCache<Key = Self::Key, Value = Self::Value>;
 
     fn single_thread(self, tcx: Qcx) -> bool;
 
@@ -30,11 +30,11 @@ pub trait QueryConfig<Qcx: QueryContext>: Copy {
 
     fn look_up(self, tcx: Qcx, key: &Self::Key) -> Option<(Self::Value, DepNodeIndex)>;
 
-    fn single_query_cache<'a>(self, tcx: Qcx) -> &'a Self::Cache<SRefCell>
+    fn single_query_cache<'a>(self, tcx: Qcx) -> &'a Self::Cache<SingleShard>
     where
         Qcx: 'a;
 
-    fn parallel_query_cache<'a>(self, tcx: Qcx) -> &'a Self::Cache<SMutex>
+    fn parallel_query_cache<'a>(self, tcx: Qcx) -> &'a Self::Cache<Sharded>
     where
         Qcx: 'a;
 

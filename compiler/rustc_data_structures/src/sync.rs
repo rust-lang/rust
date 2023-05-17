@@ -767,10 +767,6 @@ impl<'a, T> Drop for LockGuard<'a, T> {
     }
 }
 
-pub trait SLock: Copy {
-    type Lock<T>: LockLike<T>;
-}
-
 pub trait LockLike<T> {
     type LockGuard<'a>: DerefMut<Target = T>
     where
@@ -785,13 +781,6 @@ pub trait LockLike<T> {
     fn try_lock(&self) -> Option<Self::LockGuard<'_>>;
 
     fn lock(&self) -> Self::LockGuard<'_>;
-}
-
-#[derive(Copy, Clone, Default)]
-pub struct SRefCell;
-
-impl SLock for SRefCell {
-    type Lock<T> = RefCell<T>;
 }
 
 impl<T> LockLike<T> for RefCell<T> {
@@ -822,13 +811,6 @@ impl<T> LockLike<T> for RefCell<T> {
     fn lock(&self) -> RefMut<'_, T> {
         self.borrow_mut()
     }
-}
-
-#[derive(Copy, Clone, Default)]
-pub struct SMutex;
-
-impl SLock for SMutex {
-    type Lock<T> = Mutex<T>;
 }
 
 impl<T> LockLike<T> for Mutex<T> {

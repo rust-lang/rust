@@ -17,9 +17,7 @@
 extern crate rustc_middle;
 
 use crate::plumbing::{encode_all_query_results, try_mark_green};
-use field_offset::offset_of;
-use rustc_data_structures::stable_hasher::HashStable;
-use rustc_data_structures::sync::{SLock, SMutex, SRefCell};
+use rustc_data_structures::sharded::{Shard, Sharded, SingleShard};
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepNodeIndex;
 use rustc_middle::dep_graph::{self, DepKind, DepKindStruct};

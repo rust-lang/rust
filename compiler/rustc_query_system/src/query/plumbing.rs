@@ -16,9 +16,9 @@ use crate::HandleCycleError;
 use rustc_data_structures::cold_path;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sharded::Sharded;
+use rustc_data_structures::sharded::{DynSharded, Shard, ShardImpl, Sharded, SingleShard};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_data_structures::sync::Lock;
+use rustc_data_structures::sync::{Lock, LockLike};
 
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, FatalError};
 use rustc_span::{Span, DUMMY_SP};
@@ -34,7 +34,7 @@ use thin_vec::ThinVec;
 use super::QueryConfig;
 
 pub struct QueryState<K, D: DepKind> {
-    active: Sharded<FxHashMap<K, QueryResult<D>>>,
+    active: DynSharded<FxHashMap<K, QueryResult<D>>>,
 }
 
 /// Indicates the state of a query for a given key in a query map.
@@ -53,8 +53,8 @@ where
     D: DepKind,
 {
     pub fn all_inactive(&self) -> bool {
-        let shards = self.active.lock_shards();
-        shards.iter().all(|shard| shard.is_empty())
+        let shards = self.active.with_lock_shards(|shard| shard.is_empty());
+        shards.into_iter().all(|empty| empty)
     }
 
     pub fn try_collect_active_jobs<Qcx: Copy>(
@@ -65,15 +65,14 @@ where
     ) -> Option<()> {
         // We use try_lock_shards here since we are called from the
         // deadlock handler, and this shouldn't be locked.
-        let shards = self.active.try_lock_shards()?;
-        for shard in shards.iter() {
+        self.active.with_try_lock_shards(|shard| {
             for (k, v) in shard.iter() {
                 if let QueryResult::Started(ref job) = *v {
                     let query = make_query(qcx, *k);
                     jobs.insert(job.id, QueryJobInfo { query, job: job.clone() });
                 }
             }
-        }
+        });
 
         Some(())
     }
@@ -294,8 +293,34 @@ where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
 {
+    if query.single_thread(qcx) {
+        let state = query.query_state(qcx);
+        let state_lock = state.active.get_borrow_by_value(&key);
+        try_execute_query_inner::<Q, Qcx, SingleShard>(query, qcx, span, key, dep_node, state_lock)
+    } else {
+        let state = query.query_state(qcx);
+        let state_lock = state.active.get_lock_by_value(&key);
+        try_execute_query_inner::<Q, Qcx, Sharded>(query, qcx, span, key, dep_node, state_lock)
+    }
+}
+
+#[inline(always)]
+fn try_execute_query_inner<Q, Qcx, S: Shard>(
+    query: Q,
+    qcx: Qcx,
+    span: Span,
+    key: Q::Key,
+    dep_node: Option<DepNode<Qcx::DepKind>>,
+    state_lock: &<S::Impl<FxHashMap<Q::Key, QueryResult<Qcx::DepKind>>> as ShardImpl<
+        FxHashMap<Q::Key, QueryResult<Qcx::DepKind>>,
+    >>::Lock,
+) -> (Q::Value, Option<DepNodeIndex>)
+where
+    Q: QueryConfig<Qcx>,
+    Qcx: QueryContext,
+{
     let state = query.query_state(qcx);
-    let mut state_lock = state.active.get_shard_by_value(&key).lock();
+    let mut state_lock = state_lock.lock();
     let lock = state_lock.deref_mut();
 
     // For the parallel compiler we need to check both the query cache and query state structures
