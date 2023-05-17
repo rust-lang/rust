@@ -613,6 +613,18 @@ impl SplitVarLenSlice {
     }
 }
 
+/// A globally unique id to distinguish `Opaque` patterns.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) struct OpaqueId(u32);
+
+impl OpaqueId {
+    fn new() -> Self {
+        use std::sync::atomic::{AtomicU32, Ordering};
+        static OPAQUE_ID: AtomicU32 = AtomicU32::new(0);
+        OpaqueId(OPAQUE_ID.fetch_add(1, Ordering::SeqCst))
+    }
+}
+
 /// A value can be decomposed into a constructor applied to some fields. This struct represents
 /// the constructor. See also `Fields`.
 ///
@@ -635,10 +647,11 @@ pub(super) enum Constructor<'tcx> {
     Str(mir::ConstantKind<'tcx>),
     /// Array and slice patterns.
     Slice(Slice),
-    /// Constants that must not be matched structurally. They are treated as black
-    /// boxes for the purposes of exhaustiveness: we must not inspect them, and they
-    /// don't count towards making a match exhaustive.
-    Opaque,
+    /// Constants that must not be matched structurally. They are treated as black boxes for the
+    /// purposes of exhaustiveness: we must not inspect them, and they don't count towards making a
+    /// match exhaustive.
+    /// Carries an id that must be globally unique.
+    Opaque(OpaqueId),
     /// Fake extra constructor for enums that aren't allowed to be matched exhaustively. Also used
     /// for those types for which we cannot list constructors explicitly, like `f64` and `str`.
     NonExhaustive,
@@ -735,7 +748,7 @@ impl<'tcx> Constructor<'tcx> {
             | FloatRange(..)
             | IntRange(..)
             | NonExhaustive
-            | Opaque
+            | Opaque(..)
             | Missing { .. }
             | Wildcard => 0,
             Or => bug!("The `Or` constructor doesn't have a fixed arity"),
@@ -828,8 +841,10 @@ impl<'tcx> Constructor<'tcx> {
             }
             (Slice(self_slice), Slice(other_slice)) => self_slice.is_covered_by(*other_slice),
 
-            // We are trying to inspect an opaque constant. Thus we skip the row.
-            (Opaque, _) | (_, Opaque) => false,
+            // Opaque constructors don't interact with anything unless they come from the
+            // structurally identical pattern.
+            (Opaque(self_id), Opaque(other_id)) => self_id == other_id,
+            (Opaque(..), _) | (_, Opaque(..)) => false,
             // Only a wildcard pattern can match the special extra constructor.
             (NonExhaustive, _) => false,
 
@@ -869,7 +884,7 @@ impl<'tcx> Constructor<'tcx> {
                 .any(|other| slice.is_covered_by(other)),
             // This constructor is never covered by anything else
             NonExhaustive => false,
-            Str(..) | FloatRange(..) | Opaque | Missing { .. } | Wildcard | Or => {
+            Str(..) | FloatRange(..) | Opaque(..) | Missing { .. } | Wildcard | Or => {
                 span_bug!(pcx.span, "found unexpected ctor in all_ctors: {:?}", self)
             }
         }
@@ -1220,7 +1235,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
             | FloatRange(..)
             | IntRange(..)
             | NonExhaustive
-            | Opaque
+            | Opaque(..)
             | Missing { .. }
             | Wildcard => Fields::empty(),
             Or => {
@@ -1378,7 +1393,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                         // into the corresponding `Pat`s by `const_to_pat`. Constants that remain are
                         // opaque.
                         _ => {
-                            ctor = Opaque;
+                            ctor = Opaque(OpaqueId::new());
                             fields = Fields::empty();
                         }
                     }
@@ -1507,7 +1522,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                 "trying to convert a `Missing` constructor into a `Pat`; this is probably a bug,
                 `Missing` should have been processed in `apply_constructors`"
             ),
-            Opaque | Or => {
+            Opaque(..) | Or => {
                 bug!("can't convert to pattern: {:?}", self)
             }
         };
@@ -1711,7 +1726,7 @@ impl<'p, 'tcx> fmt::Debug for DeconstructedPat<'p, 'tcx> {
                 Ok(())
             }
             Str(value) => write!(f, "{}", value),
-            Opaque => write!(f, "<constant pattern>"),
+            Opaque(..) => write!(f, "<constant pattern>"),
         }
     }
 }

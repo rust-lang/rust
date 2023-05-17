@@ -791,24 +791,19 @@ fn is_nth_row_useful<'p, 'tcx>(
     // For each constructor, we compute whether there's a value that starts with it that would
     // witness the usefulness of `v`.
     let below = matrix.rows.split_off(row_id + 1);
-    let mut v = matrix.rows.pop().unwrap();
-    let start_matrix = &matrix;
     for ctor in split_ctors {
         debug!("specialize({:?})", ctor);
-        let mut spec_matrix = start_matrix.specialize_constructor(pcx, &ctor);
-        let sub_v = v.pop_head_constructor(pcx, &ctor, row_id);
-        spec_matrix.push(sub_v);
-
+        let mut spec_matrix = matrix.specialize_constructor(pcx, &ctor);
         for i in 0..spec_matrix.len() {
             if spec_matrix.rows[i].parent_row == row_id {
                 ensure_sufficient_stack(|| {
                     is_nth_row_useful(cx, &mut spec_matrix, i, lint_root, false)
                 });
-                v.is_useful = v.is_useful || spec_matrix.rows[i].is_useful;
+                matrix.rows[row_id].is_useful =
+                    matrix.rows[row_id].is_useful || spec_matrix.rows[i].is_useful;
             }
         }
     }
-    matrix.push(v);
     matrix.rows.extend(below);
     let v = &matrix.rows[row_id];
     if v.is_useful {
