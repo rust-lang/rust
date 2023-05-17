@@ -447,6 +447,7 @@ fn do_mir_borrowck<'tcx>(
         let output_facts = mbcx.polonius_output;
         Some(Box::new(BodyWithBorrowckFacts {
             body: body_owned,
+            promoted,
             borrow_set,
             region_inference_context: regioncx,
             location_table: polonius_input.as_ref().map(|_| location_table_owned),
@@ -470,6 +471,8 @@ fn do_mir_borrowck<'tcx>(
 pub struct BodyWithBorrowckFacts<'tcx> {
     /// A mir body that contains region identifiers.
     pub body: Body<'tcx>,
+    /// The mir bodies of promoteds.
+    pub promoted: IndexVec<Promoted, Body<'tcx>>,
     /// The set of borrows occurring in `body` with data about them.
     pub borrow_set: Rc<BorrowSet<'tcx>>,
     /// Context generated during borrowck, intended to be passed to
