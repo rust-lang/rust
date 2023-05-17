@@ -176,7 +176,7 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         }
         // Generic statics are rejected, but we still reach this case.
         Err(e) => {
-            tcx.sess.delay_span_bug(span, e.to_string());
+            tcx.sess.delay_span_bug(span, format!("{e:?}"));
             return;
         }
     };

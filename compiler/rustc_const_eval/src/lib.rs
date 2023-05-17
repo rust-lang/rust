@@ -4,6 +4,7 @@ Rust MIR: a lowered representation of Rust.
 
 */
 
+#![deny(rustc::untranslatable_diagnostic)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(decl_macro)]

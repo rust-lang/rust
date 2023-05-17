@@ -1,4 +1,4 @@
-error[E0080]: evaluation of `<std::string::String as Bar<std::vec::Vec<u32>, std::string::String>>::F` failed
+error[E0080]: evaluation of `<String as Bar<Vec<u32>, String>>::F` failed
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
    |
    = note: calling non-const function `<Vec<u32> as Drop>::drop`

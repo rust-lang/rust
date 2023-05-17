@@ -43,3 +43,38 @@ middle_requires_lang_item = requires `{$name}` lang_item
 
 middle_const_not_used_in_type_alias =
     const parameter `{$ct}` is part of concrete type but not used in parameter list for the `impl Trait` type alias
+
+middle_bounds_check =
+    index out of bounds: the length is {$len} but the index is {$index}
+
+middle_assert_overflow_neg =
+    attempt to negate `{$val}`, which would overflow
+
+middle_assert_divide_by_zero =
+    attempt to divide `{$val}` by zero
+
+middle_assert_remainder_by_zero =
+    attempt to calculate the remainder of `{$val}` with a divisor of zero
+
+middle_assert_op_overflow =
+    attempt to compute `{$left} {$op} {$right}`, which would overflow
+
+middle_assert_shl_overflow =
+    attempt to shift left by `{$val}`, which would overflow
+
+middle_assert_shr_overflow =
+    attempt to shift right by `{$val}`, which would overflow
+
+middle_assert_misaligned_ptr_deref =
+    misaligned pointer dereference: address must be a multiple of {$required} but is {$found}
+
+middle_assert_generator_resume_after_return = generator resumed after completion
+
+middle_assert_generator_resume_after_panic = generator resumed after panicking
+
+middle_assert_async_resume_after_return = `async fn` resumed after completion
+
+middle_assert_async_resume_after_panic = `async fn` resumed after panicking
+
+middle_adjust_for_foreign_abi_error =
+    target architecture {$arch} does not support `extern {$abi}` ABI

@@ -1,5 +1,6 @@
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
+use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_target::abi::Size;
 use std::fmt;
@@ -110,6 +111,14 @@ impl std::fmt::Debug for ConstInt {
                 Ok(())
             }
         }
+    }
+}
+
+impl IntoDiagnosticArg for ConstInt {
+    // FIXME this simply uses the Debug impl, but we could probably do better by converting both
+    // to an inherent method that returns `Cow`.
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(format!("{self:?}").into())
     }
 }
 

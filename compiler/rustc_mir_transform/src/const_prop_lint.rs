@@ -232,7 +232,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 op
             }
             Err(e) => {
-                trace!("get_const failed: {}", e);
+                trace!("get_const failed: {e:?}");
                 return None;
             }
         };
@@ -267,14 +267,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             Ok(val) => Some(val),
             Err(error) => {
                 trace!("InterpCx operation failed: {:?}", error);
-                // Some errors shouldn't come up because creating them causes
-                // an allocation, which we should avoid. When that happens,
-                // dedicated error variants should be introduced instead.
-                assert!(
-                    !error.kind().formatted_string(),
-                    "const-prop encountered formatting error: {}",
-                    error
-                );
                 None
             }
         }
