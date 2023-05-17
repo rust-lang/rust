@@ -670,18 +670,22 @@ impl OsStr {
     /// Converts a slice of bytes to an OS string slice without checking that the string contains
     /// valid `OsStr`-encoded data.
     ///
+    /// The byte encoding is an unspecified, platform-specific, self-synchronizing superset of UTF-8.
+    /// By being a self-synchronizing superset of UTF-8, this encoding is also a superset of 7-bit
+    /// ASCII.
+    ///
     /// See the [module's toplevel documentation about conversions][conversions] for safe,
     /// cross-platform [conversions] from/to native representations.
     ///
     /// # Safety
     ///
-    /// `OsStr`'s encoding is an unspecified superset of UTF-8 and callers must
-    /// pass in bytes that originated as a mixture of validated UTF-8 and bytes from
-    /// [`OsStr::as_os_str_bytes`] from within the same rust version built for the same target
-    /// platform.  For example, reconstructing an `OsStr` from bytes sent over the network or stored
-    /// in a file will likely violate these safety rules.  The bytes from `OsStr::as_os_str_bytes`
-    /// may be split either immediately before or immediately after some valid non-empty UTF-8
-    /// substring
+    /// As the encoding is unspecified, callers must pass in bytes that originated as a mixture of
+    /// validated UTF-8 and bytes from [`OsStr::as_os_str_bytes`] from within the same rust version
+    /// built for the same target platform.  For example, reconstructing an `OsStr` from bytes sent
+    /// over the network or stored in a file will likely violate these safety rules.
+    ///
+    /// Due to the encoding being self-synchronizing, the bytes from [`OsStr::as_os_str_bytes`] can be
+    /// split either immediately before or immediately after any valid non-empty UTF-8 substring.
     ///
     /// # Example
     ///
@@ -880,6 +884,10 @@ impl OsStr {
 
     /// Converts an OS string slice to a byte slice.  To convert the byte slice back into an OS
     /// string slice, use the [`OsStr::from_os_str_bytes_unchecked`] function.
+    ///
+    /// The byte encoding is an unspecified, platform-specific, self-synchronizing superset of UTF-8.
+    /// By being a self-synchronizing superset of UTF-8, this encoding is also a superset of 7-bit
+    /// ASCII.
     ///
     /// Note: As the encoding is unspecified, any sub-slice of bytes that is not valid UTF-8 should
     /// be treated as opaque and only comparable within the same rust version built for the same
