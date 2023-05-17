@@ -22,7 +22,7 @@ use rustc_session::{output::find_crate_name, Session};
 use rustc_span::symbol::sym;
 use rustc_span::Symbol;
 use std::any::Any;
-use std::cell::{RefCell, RefMut};
+use std::cell::{RefCell, RefMut, OnceCell};
 use std::sync::Arc;
 
 /// Represent the result of a query.
@@ -33,19 +33,13 @@ use std::sync::Arc;
 /// [`compute`]: Self::compute
 pub struct Query<T> {
     /// `None` means no value has been computed yet.
-    result: RefCell<Option<Result<Steal<T>>>>,
+    result: OnceCell<Result<RefCell<Steal<T>>>>,
 }
 
 impl<T> Query<T> {
     fn compute<F: FnOnce() -> Result<T>>(&self, f: F) -> Result<QueryResult<'_, T>> {
-        RefMut::filter_map(
-            self.result.borrow_mut(),
-            |r: &mut Option<Result<Steal<T>>>| -> Option<&mut Steal<T>> {
-                r.get_or_insert_with(|| f().map(Steal::new)).as_mut().ok()
-            },
-        )
-        .map_err(|r| *r.as_ref().unwrap().as_ref().map(|_| ()).unwrap_err())
-        .map(QueryResult)
+        self.result.get_or_init(|| f().map(|t| RefCell::new(Steal::new(t))))
+            .map(|inner| QueryResult(inner.borrow_mut()))
     }
 }
 
