@@ -58,8 +58,8 @@ Example: `-l static:+whole-archive=mylib`.
 
 The kind of library and the modifiers can also be specified in a [`#[link]`
 attribute][link-attribute]. If the kind is not specified in the `link`
-attribute or on the command-line, it will link a dynamic library if available,
-otherwise it will use a static library. If the kind is specified on the
+attribute or on the command-line, it will link a dynamic library by default,
+except when building a static executable. If the kind is specified on the
 command-line, it will override the kind specified in a `link` attribute.
 
 The name used in a `link` attribute may be overridden using the form `-l
