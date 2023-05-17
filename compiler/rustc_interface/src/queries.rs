@@ -34,19 +34,33 @@ use std::sync::Arc;
 pub struct Query<T> {
     /// Cell is empty until a value is computed
     result: OnceCell<Result<RefCell<Steal<T>>>>,
+ //(aplee): OnceCell<Result<Steal<T>>>
 }
+    
+// TODO(aplee): (remove once finished) (see #111668)
+// - remove 'RefCell' both from 'QueryResult' and 'Query',
+// - fix anything which breaks; if needed, add a '.borrow_mut()' method to 'Steal',
+//   although this should be avoided.
+    
 
 impl<T> Query<T> {
     fn compute<F: FnOnce() -> Result<T>>(&self, f: F) -> Result<QueryResult<'_, T>> {
         self.result.get_or_init(|| f().map(|t| RefCell::new(Steal::new(t)))).as_ref()
             .map(|rst| QueryResult(rst.borrow_mut()))
+    //(aplee): updated version: (how clean)
+    //  self.result.get_or_init(|| f().map(Steal::new)).as_ref()
+    //      .map(QueryResult)
     }
 }
 
 pub struct QueryResult<'a, T>(RefMut<'a, Steal<T>>);
+//(aplee): QueryResult<'a, T>(&'a Steal<T>);
+// -> Check if 'RefCell' is actually needed for dynamic borrow-checking, although
+//    rather unlikely
 
 impl<'a, T> std::ops::Deref for QueryResult<'a, T> {
     type Target = RefMut<'a, Steal<T>>;
+    //(aplee):... &'a Steal<T>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -61,7 +75,7 @@ impl<'a, T> std::ops::DerefMut for QueryResult<'a, T> {
 
 impl<'a, 'tcx> QueryResult<'a, &'tcx GlobalCtxt<'tcx>> {
     pub fn enter<T>(&mut self, f: impl FnOnce(TyCtxt<'tcx>) -> T) -> T {
-        (*self.0).get_mut().enter(f)
+        (*self.0).borrow().enter(f)
     }
 }
 
