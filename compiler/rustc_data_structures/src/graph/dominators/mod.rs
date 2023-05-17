@@ -315,8 +315,6 @@ pub struct DominatorTree<N: Idx> {
     // Even though we track only the immediate dominator of each node, it's
     // possible to get its full list of dominators by looking up the dominator
     // of each dominator. (See the `impl Iterator for Iter` definition).
-    //
-    // Note: immediate_dominators[root] is Some(root)!
     immediate_dominators: IndexVec<N, Option<N>>,
 }
 
