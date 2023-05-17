@@ -10,7 +10,8 @@ use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::traits::solve::{
-    CanonicalInput, Certainty, MaybeCause, PredefinedOpaques, PredefinedOpaquesData, QueryResult,
+    CanonicalInput, CanonicalResponse, Certainty, MaybeCause, PredefinedOpaques,
+    PredefinedOpaquesData, QueryResult,
 };
 use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::{
@@ -726,7 +727,12 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
-    pub(super) fn handle_opaque_ty(
+    pub(super) fn can_define_opaque_ty(&mut self, def_id: DefId) -> bool {
+        let Some(def_id) = def_id.as_local() else { return false; };
+        self.infcx.opaque_type_origin(def_id).is_some()
+    }
+
+    pub(super) fn register_opaque_ty(
         &mut self,
         a: Ty<'tcx>,
         b: Ty<'tcx>,
@@ -736,5 +742,43 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             self.infcx.handle_opaque_type(a, b, true, &ObligationCause::dummy(), param_env)?;
         self.add_goals(obligations.into_iter().map(|obligation| obligation.into()));
         Ok(())
+    }
+
+    // Do something for each opaque/hidden pair defined with `def_id` in the
+    // current inference context.
+    pub(super) fn unify_existing_opaque_tys(
+        &mut self,
+        param_env: ty::ParamEnv<'tcx>,
+        key: ty::AliasTy<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Vec<CanonicalResponse<'tcx>> {
+        let Some(def_id) = key.def_id.as_local() else { return vec![]; };
+
+        // FIXME: Super inefficient to be cloning this...
+        let opaques = self.infcx.clone_opaque_types_for_query_response();
+
+        let mut values = vec![];
+        for (candidate_key, candidate_ty) in opaques {
+            if candidate_key.def_id != def_id {
+                continue;
+            }
+            values.extend(self.probe(|ecx| {
+                for (a, b) in std::iter::zip(candidate_key.substs, key.substs) {
+                    ecx.eq(param_env, a, b)?;
+                }
+                ecx.eq(param_env, candidate_ty, ty)?;
+                let mut obl = vec![];
+                ecx.infcx.add_item_bounds_for_hidden_type(
+                    candidate_key,
+                    ObligationCause::dummy(),
+                    param_env,
+                    candidate_ty,
+                    &mut obl,
+                );
+                ecx.add_goals(obl.into_iter().map(Into::into));
+                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            }));
+        }
+        values
     }
 }
