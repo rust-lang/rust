@@ -32,7 +32,7 @@ use std::sync::Arc;
 /// [`steal`]: Steal::steal
 /// [`compute`]: Self::compute
 pub struct Query<T> {
-    /// `None` means no value has been computed yet.
+    /// Cell is empty until a value is computed
     result: OnceCell<Result<RefCell<Steal<T>>>>,
 }
 
@@ -67,7 +67,7 @@ impl<'a, 'tcx> QueryResult<'a, &'tcx GlobalCtxt<'tcx>> {
 
 impl<T> Default for Query<T> {
     fn default() -> Self {
-        Query { result: RefCell::new(None) }
+        Query { result: OnceCell::new() }
     }
 }
 
