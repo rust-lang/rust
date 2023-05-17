@@ -386,6 +386,21 @@ fn offset_of() {
     // Layout of tuples is unstable
     assert!(offset_of!((u8, u16), 0) <= size_of::<(u8, u16)>() - 1);
     assert!(offset_of!((u8, u16), 1) <= size_of::<(u8, u16)>() - 2);
+
+    #[repr(C)]
+    struct Generic<T> {
+        x: u8,
+        y: u32,
+        z: T
+    }
+
+    // Ensure that this type of generics works
+    fn offs_of_z<T>() -> usize {
+        offset_of!(Generic<T>, z)
+    }
+
+    assert_eq!(offset_of!(Generic<u8>, z), 8);
+    assert_eq!(offs_of_z::<u8>(), 8);
 }
 
 #[test]
