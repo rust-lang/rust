@@ -371,31 +371,6 @@ cc = ["@GuillaumeGomez"]
 message = "Some changes might have occurred in exhaustiveness checking"
 cc = ["@Nadrieril"]
 
-[mentions."library"]
-message = """
-Hey! It looks like you've submitted a new PR for the library teams!
-
-If this PR contains changes to any `rust-lang/rust` public library APIs then \
-please comment with `@rustbot label +T-libs-api -T-libs` to tag it \
-appropriately. If this PR contains changes to any unstable APIs please edit \
-the PR description to add a link to the relevant [API Change \
-Proposal](https://std-dev-guide.rust-lang.org/feature-lifecycle/api-change-proposals.html) \
-or [create one](https://github.com/rust-lang/libs-team/issues/new?assignees=&labels=api-change-proposal%2C+T-libs-api&template=api-change-proposal.md&title=%28My+API+Change+Proposal%29) \
-if you haven't already. If you're unsure where your change falls no worries, \
-just leave it as is and the reviewer will take a look and make a decision to \
-forward on if necessary.
-
-Examples of `T-libs-api` changes:
-
-* Stabilizing library features
-* Introducing insta-stable changes such as new implementations of existing \
-  stable traits on existing stable types
-* Introducing new or changing existing unstable library APIs (excluding \
-  permanently unstable features / features without a tracking issue)
-* Changing public documentation in ways that create new stability guarantees
-* Changing observable runtime behavior of library APIs
-"""
-
 [mentions."src/librustdoc/clean/types.rs"]
 cc = ["@camelid"]
 
