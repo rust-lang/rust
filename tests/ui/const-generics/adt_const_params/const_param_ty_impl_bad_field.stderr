@@ -7,6 +7,17 @@ LL |
 LL | impl std::marker::ConstParamTy for CantParam {}
    |                                    ^^^^^^^^^
 
-error: aborting due to previous error
+error[E0204]: the trait `ConstParamTy` cannot be implemented for this type
+  --> $DIR/const_param_ty_impl_bad_field.rs:13:10
+   |
+LL | #[derive(std::marker::ConstParamTy, Eq, PartialEq)]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | struct CantParamDerive(NotParam);
+   |                        -------- this field does not implement `ConstParamTy`
+   |
+   = note: this error originates in the derive macro `std::marker::ConstParamTy` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0204`.
