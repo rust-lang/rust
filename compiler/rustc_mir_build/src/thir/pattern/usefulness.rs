@@ -473,9 +473,8 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         Matrix { rows: vec![] }
     }
 
-    /// Number of columns of this matrix. `None` is the matrix is empty.
-    pub(super) fn column_count(&self) -> Option<usize> {
-        self.rows().next().map(|r| r.len())
+    fn len(&self) -> usize {
+        self.rows.len()
     }
 
     /// Pushes a new row to the matrix. If the row starts with an or-pattern, this recursively
@@ -493,17 +492,11 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         }
     }
 
-    /// Iterate over the first component of each row
     fn rows<'a>(
         &'a self,
-    ) -> impl Iterator<Item = &'a PatStack<'p, 'tcx>> + Clone + DoubleEndedIterator {
+    ) -> impl Iterator<Item = &'a PatStack<'p, 'tcx>> + Clone + DoubleEndedIterator + ExactSizeIterator
+    {
         self.rows.iter()
-    }
-    /// Iterate over the first component of each row
-    fn rows_mut<'a>(
-        &'a mut self,
-    ) -> impl Iterator<Item = &'a mut PatStack<'p, 'tcx>> + DoubleEndedIterator {
-        self.rows.iter_mut()
     }
     /// Iterate over the first component of each row
     fn heads<'a>(
@@ -748,89 +741,78 @@ impl<'p, 'tcx> WitnessMatrix<'p, 'tcx> {
 /// has one it must not be inserted into the matrix. This shouldn't be
 /// relied on for soundness.
 #[instrument(level = "debug", skip(cx, lint_root, is_top_level), ret)]
-fn is_arm_useful<'p, 'tcx>(
+fn is_nth_row_useful<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     matrix: &mut Matrix<'p, 'tcx>,
-    mut v: PatStack<'p, 'tcx>,
+    row_id: usize,
     lint_root: HirId,
     is_top_level: bool,
 ) {
-    debug_assert!(matrix.rows().all(|r| r.len() == v.len()));
+    debug_assert!(matrix.rows().all(|r| r.len() == matrix.rows[0].len()));
 
     // The base case. We are pattern-matching on () and the return value is based on whether our
     // matrix has a row or not.
-    if v.is_empty() {
-        v.is_useful = matrix.rows().all(|v| v.is_under_guard);
-        matrix.push(v);
+    if matrix.rows[0].is_empty() {
+        let useful = matrix.rows().take(row_id).all(|v| v.is_under_guard);
+        matrix.rows[row_id].is_useful = useful;
         return;
     }
 
-    // If the first pattern is an or-pattern, expand it.
-    v.is_useful = false;
-    if v.head().is_or_pat() {
-        debug!("expanding or-pattern");
-        // We try each or-pattern branch in turn.
-        let mut count = 0;
-        for sub_v in v.expand_or_pat() {
-            count += 1;
-            ensure_sufficient_stack(|| is_arm_useful(cx, matrix, sub_v, lint_root, false));
-        }
-        for sub_v in matrix.rows().rev().take(count) {
-            v.is_useful = v.is_useful || sub_v.is_useful;
-        }
-        if v.is_useful {
-            v.head().set_reachable();
-        }
-    } else {
-        let mut ty = v.head().ty();
+    let v = &matrix.rows[row_id];
 
-        // Opaque types can't get destructured/split, but the patterns can
-        // actually hint at hidden types, so we use the patterns' types instead.
-        if let ty::Alias(ty::Opaque, ..) = ty.kind() {
-            if let Some(row) = matrix.rows().next() {
-                ty = row.head().ty();
+    let mut ty = v.head().ty();
+    // Opaque types can't get destructured/split, but the patterns can
+    // actually hint at hidden types, so we use the patterns' types instead.
+    if let ty::Alias(ty::Opaque, ..) = ty.kind() {
+        if let Some(row) = matrix.rows().next() {
+            ty = row.head().ty();
+        }
+    }
+
+    let is_non_exhaustive = cx.is_foreign_non_exhaustive_enum(ty);
+    let pcx = &PatCtxt { cx, ty, span: v.head().span(), is_top_level, is_non_exhaustive };
+
+    let v_ctor = v.head().ctor();
+    debug!(?v_ctor);
+
+    if let Constructor::IntRange(ctor_range) = &v_ctor {
+        // Lint on likely incorrect range patterns (#63987)
+        ctor_range.lint_overlapping_range_endpoints(
+            pcx,
+            matrix.heads().take(row_id),
+            v.len(),
+            lint_root,
+        )
+    }
+
+    matrix.rows[row_id].is_useful = false;
+    // We split the head constructor of `v`.
+    let split_ctors = v_ctor.split(pcx, matrix.heads().take(row_id).map(DeconstructedPat::ctor));
+    // For each constructor, we compute whether there's a value that starts with it that would
+    // witness the usefulness of `v`.
+    let below = matrix.rows.split_off(row_id + 1);
+    let mut v = matrix.rows.pop().unwrap();
+    let start_matrix = &matrix;
+    for ctor in split_ctors {
+        debug!("specialize({:?})", ctor);
+        let mut spec_matrix = start_matrix.specialize_constructor(pcx, &ctor);
+        let sub_v = v.pop_head_constructor(pcx, &ctor, row_id);
+        spec_matrix.push(sub_v);
+
+        for i in 0..spec_matrix.len() {
+            if spec_matrix.rows[i].parent_row == row_id {
+                ensure_sufficient_stack(|| {
+                    is_nth_row_useful(cx, &mut spec_matrix, i, lint_root, false)
+                });
+                v.is_useful = v.is_useful || spec_matrix.rows[i].is_useful;
             }
         }
-        let is_non_exhaustive = cx.is_foreign_non_exhaustive_enum(ty);
-        let pcx = &PatCtxt { cx, ty, span: v.head().span(), is_top_level, is_non_exhaustive };
-
-        let v_ctor = v.head().ctor();
-        debug!(?v_ctor);
-        if let Constructor::IntRange(ctor_range) = &v_ctor {
-            // Lint on likely incorrect range patterns (#63987)
-            ctor_range.lint_overlapping_range_endpoints(
-                pcx,
-                matrix.heads(),
-                matrix.column_count().unwrap_or(0),
-                lint_root,
-            )
-        }
-        // We split the head constructor of `v`.
-        let split_ctors = v_ctor.split(pcx, matrix.heads().map(DeconstructedPat::ctor));
-        // For each constructor, we compute whether there's a value that starts with it that would
-        // witness the usefulness of `v`.
-        let start_matrix = &matrix;
-        for ctor in split_ctors {
-            debug!("specialize({:?})", ctor);
-            let mut spec_matrix = start_matrix.specialize_constructor(pcx, &ctor);
-            let sub_v = v.pop_head_constructor(pcx, &ctor, start_matrix.rows.len());
-            assert_eq!(sub_v.parent_row, start_matrix.rows.len());
-            ensure_sufficient_stack(|| {
-                is_arm_useful(cx, &mut spec_matrix, sub_v, lint_root, false)
-            });
-            for sub_v in spec_matrix
-                .rows()
-                .rev()
-                .take_while(|sub_v| sub_v.parent_row == start_matrix.rows.len())
-            {
-                v.is_useful = v.is_useful || sub_v.is_useful;
-            }
-        }
-        matrix.push(v);
-        let v = matrix.rows().last().unwrap();
-        if v.is_useful {
-            v.head().set_reachable();
-        }
+    }
+    matrix.push(v);
+    matrix.rows.extend(below);
+    let v = &matrix.rows[row_id];
+    if v.is_useful {
+        v.head().set_reachable();
     }
 }
 
@@ -1042,14 +1024,18 @@ pub(crate) fn compute_match_usefulness<'p, 'tcx>(
     scrut_span: Span,
 ) -> UsefulnessReport<'p, 'tcx> {
     let mut matrix = Matrix::empty();
+    for (row_id, arm) in arms.iter().enumerate() {
+        let v = PatStack::from_pattern(arm.pat, row_id, arm.has_guard);
+        matrix.push(v);
+    }
+    for i in 0..matrix.len() {
+        is_nth_row_useful(cx, &mut matrix, i, lint_root, true);
+    }
     let arm_usefulness: Vec<_> = arms
         .iter()
         .copied()
-        .enumerate()
-        .map(|(row_id, arm)| {
+        .map(|arm| {
             debug!(?arm);
-            let v = PatStack::from_pattern(arm.pat, row_id, arm.has_guard);
-            is_arm_useful(cx, &mut matrix, v, lint_root, true);
             let reachability = if arm.pat.is_reachable() {
                 Reachability::Reachable(arm.pat.unreachable_spans())
             } else {

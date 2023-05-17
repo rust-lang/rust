@@ -1590,7 +1590,16 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
         self.reachable.set(true)
     }
     pub(super) fn is_reachable(&self) -> bool {
-        self.reachable.get()
+        if self.reachable.get() {
+            true
+        } else if self.is_or_pat() && self.iter_fields().any(|f| f.is_reachable()) {
+            // We always expand or patterns in the matrix, so the algo will never see the or-pattern
+            // itself, only the children. We recover this information here.
+            self.set_reachable();
+            true
+        } else {
+            false
+        }
     }
 
     /// Report the spans of subpatterns that were not reachable, if any.
