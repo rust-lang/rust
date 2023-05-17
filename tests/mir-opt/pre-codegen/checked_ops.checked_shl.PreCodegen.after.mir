@@ -4,7 +4,7 @@ fn checked_shl(_1: u32, _2: u32) -> Option<u32> {
     debug x => _1;                       // in scope 0 at $DIR/checked_ops.rs:+0:20: +0:21
     debug rhs => _2;                     // in scope 0 at $DIR/checked_ops.rs:+0:28: +0:31
     let mut _0: std::option::Option<u32>; // return place in scope 0 at $DIR/checked_ops.rs:+0:41: +0:52
-    scope 1 (inlined core::num::<impl u32>::checked_shl) { // at $DIR/checked_ops.rs:14:7: 14:23
+    scope 1 (inlined core::num::<impl u32>::checked_shl) { // at $DIR/checked_ops.rs:15:7: 15:23
         debug self => _1;                // in scope 1 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
         debug rhs => _2;                 // in scope 1 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
         let mut _13: (u32, bool);        // in scope 1 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL

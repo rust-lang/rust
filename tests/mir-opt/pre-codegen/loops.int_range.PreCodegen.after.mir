@@ -16,11 +16,11 @@ fn int_range(_1: usize, _2: usize) -> () {
         scope 2 {
             debug i => _8;               // in scope 2 at $DIR/loops.rs:+1:9: +1:10
         }
-        scope 4 (inlined iter::range::<impl Iterator for std::ops::Range<usize>>::next) { // at $DIR/loops.rs:7:14: 7:24
+        scope 4 (inlined iter::range::<impl Iterator for std::ops::Range<usize>>::next) { // at $DIR/loops.rs:8:14: 8:24
             debug self => _5;            // in scope 4 at $SRC_DIR/core/src/iter/range.rs:LL:COL
         }
     }
-    scope 3 (inlined <std::ops::Range<usize> as IntoIterator>::into_iter) { // at $DIR/loops.rs:7:14: 7:24
+    scope 3 (inlined <std::ops::Range<usize> as IntoIterator>::into_iter) { // at $DIR/loops.rs:8:14: 8:24
         debug self => _3;                // in scope 3 at $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
     }
 
@@ -55,7 +55,7 @@ fn int_range(_1: usize, _2: usize) -> () {
         _8 = ((_6 as Some).0: usize);    // scope 1 at $DIR/loops.rs:+1:9: +1:10
         _9 = opaque::<usize>(_8) -> bb5; // scope 2 at $DIR/loops.rs:+2:9: +2:18
                                          // mir::Constant
-                                         // + span: $DIR/loops.rs:8:9: 8:15
+                                         // + span: $DIR/loops.rs:9:9: 9:15
                                          // + literal: Const { ty: fn(usize) {opaque::<usize>}, val: Value(<ZST>) }
     }
 

@@ -17,13 +17,13 @@ fn filter_mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> Option<U>) -> ()
         scope 2 {
             debug x => _11;              // in scope 2 at $DIR/loops.rs:+1:9: +1:10
         }
-        scope 4 (inlined <FilterMap<impl Iterator<Item = T>, impl Fn(T) -> Option<U>> as Iterator>::next) { // at $DIR/loops.rs:19:14: 19:32
+        scope 4 (inlined <FilterMap<impl Iterator<Item = T>, impl Fn(T) -> Option<U>> as Iterator>::next) { // at $DIR/loops.rs:20:14: 20:32
             debug self => _6;            // in scope 4 at $SRC_DIR/core/src/iter/adapters/filter_map.rs:LL:COL
             let mut _7: &mut impl Iterator<Item = T>; // in scope 4 at $SRC_DIR/core/src/iter/adapters/filter_map.rs:LL:COL
             let mut _8: &mut impl Fn(T) -> Option<U>; // in scope 4 at $SRC_DIR/core/src/iter/adapters/filter_map.rs:LL:COL
         }
     }
-    scope 3 (inlined <FilterMap<impl Iterator<Item = T>, impl Fn(T) -> Option<U>> as IntoIterator>::into_iter) { // at $DIR/loops.rs:19:14: 19:32
+    scope 3 (inlined <FilterMap<impl Iterator<Item = T>, impl Fn(T) -> Option<U>> as IntoIterator>::into_iter) { // at $DIR/loops.rs:20:14: 20:32
         debug self => _3;                // in scope 3 at $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
     }
 
@@ -32,7 +32,7 @@ fn filter_mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> Option<U>) -> ()
         StorageLive(_3);                 // scope 0 at $DIR/loops.rs:+1:14: +1:32
         _3 = <impl Iterator<Item = T> as Iterator>::filter_map::<U, impl Fn(T) -> Option<U>>(move _1, move _2) -> bb1; // scope 0 at $DIR/loops.rs:+1:14: +1:32
                                          // mir::Constant
-                                         // + span: $DIR/loops.rs:19:19: 19:29
+                                         // + span: $DIR/loops.rs:20:19: 20:29
                                          // + literal: Const { ty: fn(impl Iterator<Item = T>, impl Fn(T) -> Option<U>) -> FilterMap<impl Iterator<Item = T>, impl Fn(T) -> Option<U>> {<impl Iterator<Item = T> as Iterator>::filter_map::<U, impl Fn(T) -> Option<U>>}, val: Value(<ZST>) }
     }
 
@@ -79,7 +79,7 @@ fn filter_mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> Option<U>) -> ()
         _11 = move ((_9 as Some).0: U);  // scope 1 at $DIR/loops.rs:+1:9: +1:10
         _12 = opaque::<U>(move _11) -> [return: bb7, unwind: bb9]; // scope 2 at $DIR/loops.rs:+2:9: +2:18
                                          // mir::Constant
-                                         // + span: $DIR/loops.rs:20:9: 20:15
+                                         // + span: $DIR/loops.rs:21:9: 21:15
                                          // + literal: Const { ty: fn(U) {opaque::<U>}, val: Value(<ZST>) }
     }
 
