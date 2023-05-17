@@ -398,7 +398,7 @@ pub fn dominators<N: Idx>(tree: &DominatorTree<N>) -> Dominators<N> {
     let DominatorTree { start_node, ref immediate_dominators, post_order_rank: _ } = *tree;
 
     // Transpose the dominator tree edges, so that child nodes of vertex v are stored in
-    // node[edges[v].start..edges[y].end].
+    // node[edges[v].start..edges[v].end].
     let mut edges: IndexVec<N, std::ops::Range<u32>> =
         IndexVec::from_elem(0..0, immediate_dominators);
     for &idom in immediate_dominators.iter() {
