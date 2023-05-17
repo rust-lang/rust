@@ -1,5 +1,5 @@
 use super::imp::{BitMaskWord, BITMASK_MASK, BITMASK_STRIDE};
-#[cfg(feature = "nightly-base")]
+#[cfg(feature = "nightly")]
 use core::intrinsics;
 
 /// A bit mask which contains the result of a `Match` operation on a `Group` and
@@ -64,12 +64,12 @@ impl BitMask {
     /// Returns the first set bit in the `BitMask`, if there is one. The
     /// bitmask must not be empty.
     #[inline]
-    #[cfg(feature = "nightly-base")]
+    #[cfg(feature = "nightly")]
     pub(crate) unsafe fn lowest_set_bit_nonzero(self) -> usize {
         intrinsics::cttz_nonzero(self.0) as usize / BITMASK_STRIDE
     }
     #[inline]
-    #[cfg(not(feature = "nightly-base"))]
+    #[cfg(not(feature = "nightly"))]
     pub(crate) unsafe fn lowest_set_bit_nonzero(self) -> usize {
         self.trailing_zeros()
     }

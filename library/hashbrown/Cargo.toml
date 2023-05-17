@@ -40,13 +40,11 @@ bumpalo = "3.6.0"
 [features]
 default = ["ahash", "inline-more", "allocator-api2"]
 
-nightly-base = [] # non-public feature to use nightly features without depending on `allocator-api2`
-
-nightly = ["allocator-api2/nightly", "nightly-base", "bumpalo/allocator_api"]
+nightly = ["allocator-api2?/nightly", "bumpalo/allocator_api"]
 
 rustc-internal-api = []
 rustc-dep-of-std = [
-    "nightly-base",
+    "nightly",
     "core",
     "compiler_builtins",
     "alloc",

@@ -4,7 +4,7 @@ pub(crate) use self::inner::{do_alloc, Allocator, Global};
 // Use unstable `allocator_api` feature.
 // This is compatible with `allocator-api2` which can be enabled or not.
 // This is used when building for `std`.
-#[cfg(feature = "nightly-base")]
+#[cfg(feature = "nightly")]
 mod inner {
     use crate::alloc::alloc::Layout;
     pub use crate::alloc::alloc::{Allocator, Global};
@@ -25,7 +25,7 @@ mod inner {
 // this will be equivalent to the nightly case,
 // since `allocator_api2::alloc::Allocator` would be re-export of
 // `core::alloc::Allocator`.
-#[cfg(all(not(feature = "nightly-base"), feature = "allocator-api2"))]
+#[cfg(all(not(feature = "nightly"), feature = "allocator-api2"))]
 mod inner {
     use crate::alloc::alloc::Layout;
     pub use allocator_api2::alloc::{Allocator, Global};
@@ -48,7 +48,7 @@ mod inner {
 // in this crate.
 // Any crate in build-tree can enable `allocator-api2`,
 // or `nightly` without disturbing users that don't want to use it.
-#[cfg(not(any(feature = "nightly-base", feature = "allocator-api2")))]
+#[cfg(not(any(feature = "nightly", feature = "allocator-api2")))]
 mod inner {
     use crate::alloc::alloc::{alloc, dealloc, Layout};
     use core::ptr::NonNull;
