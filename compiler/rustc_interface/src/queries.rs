@@ -38,8 +38,8 @@ pub struct Query<T> {
 
 impl<T> Query<T> {
     fn compute<F: FnOnce() -> Result<T>>(&self, f: F) -> Result<QueryResult<'_, T>> {
-        self.result.get_or_init(|| f().map(|t| RefCell::new(Steal::new(t))))
-            .map(|inner| QueryResult(inner.borrow_mut()))
+        self.result.get_or_init(|| f().map(|t| RefCell::new(Steal::new(t)))).as_ref()
+            .map(|rst| QueryResult(rst.borrow_mut()))
     }
 }
 
