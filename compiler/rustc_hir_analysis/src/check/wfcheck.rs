@@ -836,7 +836,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
                         ObligationCause::new(
                             hir_ty.span,
                             param.def_id,
-                            ObligationCauseCode::WellFormed(Some(hir_ty.span)),
+                            ObligationCauseCode::ConstParam(ty),
                         ),
                         wfcx.param_env,
                         ty,
