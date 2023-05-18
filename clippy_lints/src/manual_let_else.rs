@@ -77,53 +77,54 @@ impl<'tcx> LateLintPass<'tcx> for ManualLetElse {
             local.els.is_none() &&
             local.ty.is_none() &&
             init.span.ctxt() == stmt.span.ctxt() &&
-            let Some(if_let_or_match) = IfLetOrMatch::parse(cx, init) {
-        match if_let_or_match {
-            IfLetOrMatch::IfLet(if_let_expr, let_pat, if_then, if_else) => if_chain! {
-                if expr_is_simple_identity(let_pat, if_then);
-                if let Some(if_else) = if_else;
-                if expr_diverges(cx, if_else);
-                then {
-                    emit_manual_let_else(cx, stmt.span, if_let_expr, local.pat, let_pat, if_else);
-                }
-            },
-            IfLetOrMatch::Match(match_expr, arms, source) => {
-                if self.matches_behaviour == MatchLintBehaviour::Never {
-                    return;
-                }
-                if source != MatchSource::Normal {
-                    return;
-                }
-                // Any other number than two arms doesn't (necessarily)
-                // have a trivial mapping to let else.
-                if arms.len() != 2 {
-                    return;
-                }
-                // Guards don't give us an easy mapping either
-                if arms.iter().any(|arm| arm.guard.is_some()) {
-                    return;
-                }
-                let check_types = self.matches_behaviour == MatchLintBehaviour::WellKnownTypes;
-                let diverging_arm_opt = arms
-                    .iter()
-                    .enumerate()
-                    .find(|(_, arm)| expr_diverges(cx, arm.body) && pat_allowed_for_else(cx, arm.pat, check_types));
-                let Some((idx, diverging_arm)) = diverging_arm_opt else { return; };
-                // If the non-diverging arm is the first one, its pattern can be reused in a let/else statement.
-                // However, if it arrives in second position, its pattern may cover some cases already covered
-                // by the diverging one.
-                // TODO: accept the non-diverging arm as a second position if patterns are disjointed.
-                if idx == 0 {
-                    return;
-                }
-                let pat_arm = &arms[1 - idx];
-                if !expr_is_simple_identity(pat_arm.pat, pat_arm.body) {
-                    return;
-                }
+            let Some(if_let_or_match) = IfLetOrMatch::parse(cx, init)
+        {
+            match if_let_or_match {
+                IfLetOrMatch::IfLet(if_let_expr, let_pat, if_then, if_else) => if_chain! {
+                    if expr_is_simple_identity(let_pat, if_then);
+                    if let Some(if_else) = if_else;
+                    if expr_diverges(cx, if_else);
+                    then {
+                        emit_manual_let_else(cx, stmt.span, if_let_expr, local.pat, let_pat, if_else);
+                    }
+                },
+                IfLetOrMatch::Match(match_expr, arms, source) => {
+                    if self.matches_behaviour == MatchLintBehaviour::Never {
+                        return;
+                    }
+                    if source != MatchSource::Normal {
+                        return;
+                    }
+                    // Any other number than two arms doesn't (necessarily)
+                    // have a trivial mapping to let else.
+                    if arms.len() != 2 {
+                        return;
+                    }
+                    // Guards don't give us an easy mapping either
+                    if arms.iter().any(|arm| arm.guard.is_some()) {
+                        return;
+                    }
+                    let check_types = self.matches_behaviour == MatchLintBehaviour::WellKnownTypes;
+                    let diverging_arm_opt = arms
+                        .iter()
+                        .enumerate()
+                        .find(|(_, arm)| expr_diverges(cx, arm.body) && pat_allowed_for_else(cx, arm.pat, check_types));
+                    let Some((idx, diverging_arm)) = diverging_arm_opt else { return; };
+                    // If the non-diverging arm is the first one, its pattern can be reused in a let/else statement.
+                    // However, if it arrives in second position, its pattern may cover some cases already covered
+                    // by the diverging one.
+                    // TODO: accept the non-diverging arm as a second position if patterns are disjointed.
+                    if idx == 0 {
+                        return;
+                    }
+                    let pat_arm = &arms[1 - idx];
+                    if !expr_is_simple_identity(pat_arm.pat, pat_arm.body) {
+                        return;
+                    }
 
-                emit_manual_let_else(cx, stmt.span, match_expr, local.pat, pat_arm.pat, diverging_arm.body);
-            },
-        }
+                    emit_manual_let_else(cx, stmt.span, match_expr, local.pat, pat_arm.pat, diverging_arm.body);
+                },
+            }
         };
     }
 
