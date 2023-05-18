@@ -18,6 +18,7 @@ use crate::late::{
     ConstantHasGenerics, HasGenericParams, NoConstantGenericsReason, PathSource, Rib, RibKind,
 };
 use crate::macros::{sub_namespace_match, MacroRulesScope};
+use crate::BindingKey;
 use crate::{errors, AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, Determinacy, Finalize};
 use crate::{Import, ImportKind, LexicalScopeBinding, Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{NameBinding, NameBindingKind, ParentScope, PathResult, PrivacyError, Res};
@@ -865,7 +866,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         };
 
-        let key = self.new_key(ident, ns);
+        let key = BindingKey::new(ident, ns);
         let resolution =
             self.resolution(module, key).try_borrow_mut().map_err(|_| (Determined, Weak::No))?; // This happens when there is a cycle of imports.
 

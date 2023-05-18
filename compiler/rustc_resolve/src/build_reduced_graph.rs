@@ -9,12 +9,9 @@ use crate::def_collector::collect_definitions;
 use crate::imports::{Import, ImportKind};
 use crate::macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
 use crate::Namespace::{self, MacroNS, TypeNS, ValueNS};
-use crate::{
-    errors, Determinacy, ExternPreludeEntry, Finalize, Module, ModuleKind, ModuleOrUniformRoot,
-};
-use crate::{
-    MacroData, NameBinding, NameBindingKind, ParentScope, PathResult, PerNS, ResolutionError,
-};
+use crate::{errors, BindingKey, MacroData};
+use crate::{Determinacy, ExternPreludeEntry, Finalize, Module, ModuleKind, ModuleOrUniformRoot};
+use crate::{NameBinding, NameBindingKind, ParentScope, PathResult, PerNS, ResolutionError};
 use crate::{Resolver, ResolverArenas, Segment, ToNameBinding, VisResolutionError};
 
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
@@ -72,7 +69,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         T: ToNameBinding<'a>,
     {
         let binding = def.to_name_binding(self.arenas);
-        let key = self.new_key(ident, ns);
+        let key = self.new_disambiguated_key(ident, ns);
         if let Err(old_binding) = self.try_define(parent, key, binding) {
             self.report_conflict(parent, ident, ns, old_binding, &binding);
         }
@@ -379,7 +376,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             ImportKind::Single { target, type_ns_only, .. } => {
                 self.r.per_ns(|this, ns| {
                     if !type_ns_only || ns == TypeNS {
-                        let key = this.new_key(target, ns);
+                        let key = BindingKey::new(target, ns);
                         let mut resolution = this.resolution(current_module, key).borrow_mut();
                         resolution.add_single_import(import);
                     }

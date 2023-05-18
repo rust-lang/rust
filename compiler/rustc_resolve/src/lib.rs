@@ -469,6 +469,13 @@ struct BindingKey {
     disambiguator: u32,
 }
 
+impl BindingKey {
+    fn new(ident: Ident, ns: Namespace) -> Self {
+        let ident = ident.normalize_to_macros_2_0();
+        BindingKey { ident, ns, disambiguator: 0 }
+    }
+}
+
 type Resolutions<'a> = RefCell<FxIndexMap<BindingKey, &'a RefCell<NameResolution<'a>>>>;
 
 /// One node in the tree of modules.
@@ -943,6 +950,7 @@ pub struct Resolver<'a, 'tcx> {
     empty_module: Module<'a>,
     module_map: FxHashMap<DefId, Module<'a>>,
     binding_parent_modules: FxHashMap<Interned<'a, NameBinding<'a>>, Module<'a>>,
+
     underscore_disambiguator: u32,
 
     /// Maps glob imports to the names of items actually imported.
@@ -1595,7 +1603,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         import_ids
     }
 
-    fn new_key(&mut self, ident: Ident, ns: Namespace) -> BindingKey {
+    fn new_disambiguated_key(&mut self, ident: Ident, ns: Namespace) -> BindingKey {
         let ident = ident.normalize_to_macros_2_0();
         let disambiguator = if ident.name == kw::Underscore {
             self.underscore_disambiguator += 1;
