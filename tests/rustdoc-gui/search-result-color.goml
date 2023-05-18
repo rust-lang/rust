@@ -5,7 +5,7 @@ define-function: (
     (result_kind, color, hover_color),
     block {
         assert-css: (".result-" + |result_kind| + " ." + |result_kind|, {"color": |color|}, ALL)
-        assert-css: (".result-" + |result_kind| + " i", {"color": |default_color|})
+        assert-css: (".result-" + |result_kind| + " .type-kind", {"color": |entry_color|})
         assert-css: (
             ".result-" + |result_kind|,
             {"color": |entry_color|, "background-color": |background_color|},
@@ -19,7 +19,7 @@ define-function: (
             ".result-" + |result_kind| + ":hover ." + |result_kind|,
             {"color": |hover_color|},
         )
-        assert-css: (".result-" + |result_kind| + ":hover i", {"color": |default_color|})
+        assert-css: (".result-" + |result_kind| + ":hover .type-kind", {"color": |hover_entry_color|})
         move-cursor-to: ".search-input"
         focus: ".result-" + |result_kind|
         assert-css: (
@@ -65,14 +65,6 @@ assert-css: (
 assert-css: (
     ".search-results > a",
     {"border-bottom-color": "#aaa3"}
-)
-
-store-value: (default_color, "rgb(197, 197, 197)")
-
-// Checking the color of "keyword" text.
-assert-css: (
-    "//*[@class='result-name']//*[text()='(keyword)']",
-    {"color": |default_color|},
 )
 
 store-value: (entry_color, "#0096cf") // color of the search entry
@@ -186,14 +178,6 @@ assert-css: (
     {"border-bottom-color": "#aaa3"}
 )
 
-store-value: (default_color, "rgb(221, 221, 221)")
-
-// Checking the color for "keyword" text.
-assert-css: (
-    "//*[@class='result-name']//*[text()='(keyword)']",
-    {"color": |default_color|},
-)
-
 store-value: (entry_color, "#ddd") // color of the search entry
 store-value: (hover_entry_color, "#ddd") // color of the hovered/focused search entry
 store-value: (background_color, "transparent") // background color
@@ -288,14 +272,6 @@ assert-css: (
 assert-css: (
     ".search-results > a",
     {"border-bottom-color": "#aaa3"}
-)
-
-store-value: (default_color, "rgb(0, 0, 0)")
-
-// Checking the color for "keyword" text.
-assert-css: (
-    "//*[@class='result-name']//*[text()='(keyword)']",
-    {"color": |default_color|},
 )
 
 store-value: (entry_color, "#000") // color of the search entry

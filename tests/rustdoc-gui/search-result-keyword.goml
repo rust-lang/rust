@@ -9,5 +9,5 @@ wait-for: "#search-tabs"
 // less good.
 //
 // Checking that the CSS is displaying " (keyword)" in italic.
-assert-text: (".result-keyword span.keyword + i", "(keyword)")
-assert-text: (".result-keyword .result-name", "CookieMonster (keyword)")
+assert-text: (".result-keyword .type-kind", "keyword")
+assert-text: (".result-keyword .result-name", "CookieMonster")
