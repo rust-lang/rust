@@ -943,7 +943,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                     lint::builtin::UNUSED_CRATE_DEPENDENCIES,
                     span,
                     ast::CRATE_NODE_ID,
-                    &format!(
+                    format!(
                         "external crate `{}` unused in `{}`: remove the dependency or add `use {} as _;`",
                         name,
                         self.tcx.crate_name(LOCAL_CRATE),

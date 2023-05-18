@@ -25,7 +25,7 @@ pub fn arg_expand_all(at_args: &[String]) -> Vec<String> {
             Ok(arg) => args.extend(arg),
             Err(err) => rustc_session::early_error(
                 rustc_session::config::ErrorOutputType::default(),
-                &format!("Failed to load argument file: {err}"),
+                format!("Failed to load argument file: {err}"),
             ),
         }
     }

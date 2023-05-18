@@ -814,7 +814,7 @@ fn report_invalid_references(
         };
         e = ecx.struct_span_err(
             span,
-            &format!("invalid reference to positional {} ({})", arg_list, num_args_desc),
+            format!("invalid reference to positional {} ({})", arg_list, num_args_desc),
         );
         e.note("positional arguments are zero-based");
     }

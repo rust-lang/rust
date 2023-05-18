@@ -24,7 +24,7 @@ fn generic_arg_mismatch_err(
     arg: &GenericArg<'_>,
     param: &GenericParamDef,
     possible_ordering_error: bool,
-    help: Option<&str>,
+    help: Option<String>,
 ) -> ErrorGuaranteed {
     let sess = tcx.sess;
     let mut err = struct_span_err!(
@@ -300,7 +300,7 @@ pub fn create_substs_for_generic_args<'tcx, 'a>(
                                     arg,
                                     param,
                                     !args_iter.clone().is_sorted_by_key(|arg| arg.to_ord()),
-                                    Some(&format!(
+                                    Some(format!(
                                         "reorder the arguments: {}: `<{}>`",
                                         param_types_present
                                             .into_iter()

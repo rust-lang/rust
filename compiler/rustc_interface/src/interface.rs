@@ -80,7 +80,7 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String
                     ($reason: expr) => {
                         early_error(
                             ErrorOutputType::default(),
-                            &format!(concat!("invalid `--cfg` argument: `{}` (", $reason, ")"), s),
+                            format!(concat!("invalid `--cfg` argument: `{}` (", $reason, ")"), s),
                         );
                     };
                 }
@@ -139,10 +139,7 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
                 ($reason: expr) => {
                     early_error(
                         ErrorOutputType::default(),
-                        &format!(
-                            concat!("invalid `--check-cfg` argument: `{}` (", $reason, ")"),
-                            s
-                        ),
+                        format!(concat!("invalid `--check-cfg` argument: `{}` (", $reason, ")"), s),
                     )
                 };
             }

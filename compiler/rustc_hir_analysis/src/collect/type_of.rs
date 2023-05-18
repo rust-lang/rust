@@ -164,7 +164,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
             let Some(type_dependent_def) = tables.type_dependent_def_id(parent_node_id) else {
                 return tcx.ty_error_with_message(
                     tcx.def_span(def_id),
-                    &format!("unable to find type-dependent def for {:?}", parent_node_id),
+                    format!("unable to find type-dependent def for {:?}", parent_node_id),
                 );
             };
             let idx = segment
@@ -205,14 +205,14 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
                     } else {
                         return tcx.ty_error_with_message(
                             tcx.def_span(def_id),
-                            &format!("unable to find const parent for {} in pat {:?}", hir_id, pat),
+                            format!("unable to find const parent for {} in pat {:?}", hir_id, pat),
                         );
                     }
                 }
                 _ => {
                     return tcx.ty_error_with_message(
                         tcx.def_span(def_id),
-                        &format!("unexpected const parent path {:?}", parent_node),
+                        format!("unexpected const parent path {:?}", parent_node),
                     );
                 }
             };
@@ -243,7 +243,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
                 None => {
                     return tcx.ty_error_with_message(
                         tcx.def_span(def_id),
-                        &format!("unexpected anon const res {:?} in path: {:?}", segment.res, path),
+                        format!("unexpected anon const res {:?} in path: {:?}", segment.res, path),
                     );
                 }
             };
@@ -253,7 +253,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
 
         _ => return tcx.ty_error_with_message(
             tcx.def_span(def_id),
-            &format!("unexpected const parent in type_of(): {parent_node:?}"),
+            format!("unexpected const parent in type_of(): {parent_node:?}"),
         ),
     };
 
@@ -279,7 +279,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
     } else {
         return tcx.ty_error_with_message(
             tcx.def_span(def_id),
-            &format!("const generic parameter not found in {generics:?} at position {arg_idx:?}"),
+            format!("const generic parameter not found in {generics:?} at position {arg_idx:?}"),
         );
     }
 }

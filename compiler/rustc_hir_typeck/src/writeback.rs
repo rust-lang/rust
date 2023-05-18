@@ -237,7 +237,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     // error has been emitted. (#64638)
                     self.fcx.tcx.ty_error_with_message(
                         e.span,
-                        &format!("bad index {:?} for base: `{:?}`", index, base),
+                        format!("bad index {:?} for base: `{:?}`", index, base),
                     )
                 });
                 let index_ty = self.fcx.resolve_vars_if_possible(index_ty);

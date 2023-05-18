@@ -2260,7 +2260,7 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
                 obligation, poly_cache_entry, e,
             );
             debug!("confirm_param_env_candidate: {}", msg);
-            let err = infcx.tcx.ty_error_with_message(obligation.cause.span, &msg);
+            let err = infcx.tcx.ty_error_with_message(obligation.cause.span, msg);
             Progress { term: err.into(), obligations: vec![] }
         }
     }

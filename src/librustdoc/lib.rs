@@ -192,11 +192,11 @@ fn init_logging() {
         Ok("auto") | Err(VarError::NotPresent) => io::stdout().is_terminal(),
         Ok(value) => early_error(
             ErrorOutputType::default(),
-            &format!("invalid log color value '{}': expected one of always, never, or auto", value),
+            format!("invalid log color value '{}': expected one of always, never, or auto", value),
         ),
         Err(VarError::NotUnicode(value)) => early_error(
             ErrorOutputType::default(),
-            &format!(
+            format!(
                 "invalid log color value '{}': expected one of always, never, or auto",
                 value.to_string_lossy()
             ),
@@ -228,7 +228,7 @@ fn get_args() -> Option<Vec<String>> {
                 .map_err(|arg| {
                     early_warn(
                         ErrorOutputType::default(),
-                        &format!("Argument {} is not valid Unicode: {:?}", i, arg),
+                        format!("Argument {} is not valid Unicode: {:?}", i, arg),
                     );
                 })
                 .ok()
@@ -721,7 +721,7 @@ fn main_args(at_args: &[String]) -> MainResult {
     let matches = match options.parse(&args[1..]) {
         Ok(m) => m,
         Err(err) => {
-            early_error(ErrorOutputType::default(), &err.to_string());
+            early_error(ErrorOutputType::default(), err.to_string());
         }
     };
 
