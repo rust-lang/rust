@@ -948,16 +948,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     /// Equate the inferred type and the annotated type for user type annotations
     #[instrument(skip(self), level = "debug")]
     fn check_user_type_annotations(&mut self) {
-        // Promoted clone the `user_type_annotations` from their original body, because some
-        // statements may refer to them. However, we don't want to apply the other type annotations
-        // while checking the promoted: that would create spurious constraints that we won't be
-        // able to verify. Instead, the annotations are checked on-demand before relating to the
-        // actual type in MIR.
-        if let DefKind::Promoted = self.tcx().def_kind(self.body.source.def_id()) {
-            debug!("promoted: skipping user type annotations");
-            return;
-        }
-
         debug!(?self.user_type_annotations);
         for user_annotation in self.user_type_annotations {
             let CanonicalUserTypeAnnotation { span, ref user_ty, inferred_ty } = *user_annotation;
@@ -1022,23 +1012,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         locations: Locations,
         category: ConstraintCategory<'tcx>,
     ) -> Fallible<()> {
-        let CanonicalUserTypeAnnotation {
-            span,
-            user_ty: ref canonical_user_ty,
-            inferred_ty: annotated_type,
-        } = self.user_type_annotations[user_ty.base];
+        let annotated_type = self.user_type_annotations[user_ty.base].inferred_ty;
         trace!(?annotated_type);
-
-        // We may have skipped checking the canonical annotation earlier, so do it now.
-        if let DefKind::Promoted = self.tcx().def_kind(self.body.source.def_id()) {
-            let annotation =
-                self.instantiate_canonical_with_fresh_inference_vars(span, canonical_user_ty);
-            self.ascribe_user_type(annotated_type, annotation, span);
-        }
+        let mut curr_projected_ty = PlaceTy::from_ty(annotated_type);
 
         let tcx = self.infcx.tcx;
 
-        let mut curr_projected_ty = PlaceTy::from_ty(annotated_type);
         for proj in &user_ty.projs {
             if let ty::Alias(ty::Opaque, ..) = curr_projected_ty.ty.kind() {
                 // There is nothing that we can compare here if we go through an opaque type.

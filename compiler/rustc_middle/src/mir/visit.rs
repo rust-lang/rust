@@ -156,6 +156,12 @@ macro_rules! make_mir_visitor {
                 self.super_ascribe_user_ty(place, variance, user_ty, location);
             }
 
+            fn visit_user_type_annotation_index(
+                &mut self,
+                _index: $(& $mutability)? UserTypeAnnotationIndex,
+            ) {
+            }
+
             fn visit_coverage(
                 &mut self,
                 coverage: & $($mutability)? Coverage,
@@ -724,10 +730,13 @@ macro_rules! make_mir_visitor {
                                 _adt_def,
                                 _variant_index,
                                 substs,
-                                _user_substs,
+                                user_substs,
                                 _active_field_index
                             ) => {
                                 self.visit_substs(substs, location);
+                                if let Some(user_substs) = user_substs {
+                                    self.visit_user_type_annotation_index($(& $mutability)? *user_substs);
+                                }
                             }
                             AggregateKind::Closure(
                                 _,
@@ -881,11 +890,14 @@ macro_rules! make_mir_visitor {
             ) {
                 let Constant {
                     span,
-                    user_ty: _, // no visit method for this
+                    user_ty,
                     literal,
                 } = constant;
 
                 self.visit_span($(& $mutability)? *span);
+                if let Some(user_ty) = user_ty {
+                    self.visit_user_type_annotation_index($(& $mutability)? *user_ty);
+                }
                 match literal {
                     ConstantKind::Ty(ct) => self.visit_ty_const($(&$mutability)? *ct, location),
                     ConstantKind::Val(_, ty) => self.visit_ty($(& $mutability)? *ty, TyContext::Location(location)),
@@ -916,8 +928,9 @@ macro_rules! make_mir_visitor {
 
             fn super_user_type_projection(
                 &mut self,
-                _ty: & $($mutability)? UserTypeProjection,
+                ty: & $($mutability)? UserTypeProjection,
             ) {
+                self.visit_user_type_annotation_index($(&$mutability)? ty.base);
             }
 
             fn super_user_type_annotation(

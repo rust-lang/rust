@@ -12,13 +12,14 @@
 //! initialization and can otherwise silence errors, if
 //! move analysis runs after promotion on broken MIR.
 
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::traversal::ReversePostorderIter;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::subst::InternalSubsts;
-use rustc_middle::ty::{self, List, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, List, TyCtxt, TypeVisitableExt, UserTypeAnnotationIndex};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
 
@@ -881,6 +882,22 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         let span = self.promoted.span;
         self.assign(RETURN_PLACE, rvalue, span);
 
+        // Copy user type annotations from the original body to the promoted.
+        // We don't want to keep all the original annotations, as they may create
+        // constants that borrowck will not be able to verify. However, we still
+        // need some of them to borrow-check the promoted itself.
+        //
+        // We don't remove the cloned annotations from the original body, as they
+        // are harmless there.
+        let mut annotation_renumber =
+            RenumberUserTypeAnnotations { tcx, mapping: FxIndexSet::default() };
+        annotation_renumber.visit_body_preserves_cfg(&mut self.promoted);
+        self.promoted.user_type_annotations = annotation_renumber
+            .mapping
+            .iter()
+            .map(|&original_index| self.source.user_type_annotations[original_index].clone())
+            .collect();
+
         let source_def_id = self.source.source.def_id().expect_local();
         let feeder =
             tcx.at(span).create_def(source_def_id, hir::definitions::DefPathData::Promoted);
@@ -935,6 +952,23 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
     }
 }
 
+/// Replaces type annotation indices.
+struct RenumberUserTypeAnnotations<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    mapping: FxIndexSet<UserTypeAnnotationIndex>,
+}
+
+impl<'tcx> MutVisitor<'tcx> for RenumberUserTypeAnnotations<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn visit_user_type_annotation_index(&mut self, annotation: &mut UserTypeAnnotationIndex) {
+        let (new_index, _) = self.mapping.insert_full(*annotation);
+        *annotation = UserTypeAnnotationIndex::from_usize(new_index);
+    }
+}
+
 pub fn promote_candidates<'tcx>(
     body: &mut Body<'tcx>,
     tcx: TyCtxt<'tcx>,
@@ -970,7 +1004,7 @@ pub fn promote_candidates<'tcx>(
             IndexVec::new(),
             IndexVec::from_elem_n(scope, 1),
             initial_locals,
-            body.user_type_annotations.clone(),
+            IndexVec::new(),
             0,
             vec![],
             body.span,
