@@ -3,11 +3,20 @@
 #include <stdint.h>
 #include <string.h>
 
+#ifdef _MSC_VER
+__declspec(align(16))
 struct TwoU64s
 {
     uint64_t a;
     uint64_t b;
-} __attribute__((aligned(16)));
+};
+#else
+struct __attribute__((aligned(16))) TwoU64s
+{
+    uint64_t a;
+    uint64_t b;
+};
+#endif
 
 struct BoolAndU32
 {
