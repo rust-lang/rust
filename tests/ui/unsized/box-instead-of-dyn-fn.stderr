@@ -1,22 +1,3 @@
-error[E0308]: `if` and `else` have incompatible types
-  --> $DIR/box-instead-of-dyn-fn.rs:10:9
-   |
-LL | /     if a % 2 == 0 {
-LL | |         move || println!("{a}")
-   | |         -----------------------
-   | |         |
-   | |         the expected closure
-   | |         expected because of this
-LL | |     } else {
-LL | |         Box::new(move || println!("{}", b))
-   | |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected closure, found `Box<[closure@box-instead-of-dyn-fn.rs:10:18]>`
-LL | |
-LL | |     }
-   | |_____- `if` and `else` have incompatible types
-   |
-   = note: expected closure `[closure@$DIR/box-instead-of-dyn-fn.rs:8:9: 8:16]`
-               found struct `Box<[closure@$DIR/box-instead-of-dyn-fn.rs:10:18: 10:25]>`
-
 error[E0746]: return type cannot have an unboxed trait object
   --> $DIR/box-instead-of-dyn-fn.rs:5:56
    |
@@ -35,7 +16,6 @@ LL |     if a % 2 == 0 {
 LL ~         Box::new(move || println!("{a}"))
    |
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
-Some errors have detailed explanations: E0308, E0746.
-For more information about an error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0746`.

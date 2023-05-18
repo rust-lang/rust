@@ -186,23 +186,6 @@ LL |         _ => {
 LL ~             Box::new(1u32)
    |
 
-error[E0308]: `match` arms have incompatible types
-  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:80:14
-   |
-LL | /     match 13 {
-LL | |         0 => 0i32,
-   | |              ---- this is found to be of type `i32`
-LL | |         1 => 1u32,
-   | |              ^^^^ expected `i32`, found `u32`
-LL | |         _ => 2u32,
-LL | |     }
-   | |_____- `match` arms have incompatible types
-   |
-help: change the type of the numeric literal from `u32` to `i32`
-   |
-LL |         1 => 1i32,
-   |               ~~~
-
 error[E0746]: return type cannot have an unboxed trait object
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:77:13
    |
@@ -221,23 +204,6 @@ LL ~         0 => Box::new(0i32),
 LL ~         1 => Box::new(1u32),
 LL ~         _ => Box::new(2u32),
    |
-
-error[E0308]: `if` and `else` have incompatible types
-  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:89:9
-   |
-LL | /     if false {
-LL | |         0i32
-   | |         ---- expected because of this
-LL | |     } else {
-LL | |         1u32
-   | |         ^^^^ expected `i32`, found `u32`
-LL | |     }
-   | |_____- `if` and `else` have incompatible types
-   |
-help: change the type of the numeric literal from `u32` to `i32`
-   |
-LL |         1i32
-   |          ~~~
 
 error[E0746]: return type cannot have an unboxed trait object
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:85:13
@@ -258,7 +224,7 @@ LL |     } else {
 LL ~         Box::new(1u32)
    |
 
-error: aborting due to 14 previous errors
+error: aborting due to 12 previous errors
 
 Some errors have detailed explanations: E0308, E0746.
 For more information about an error, try `rustc --explain E0308`.

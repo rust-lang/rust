@@ -100,18 +100,6 @@ LL |     }
 LL ~     Box::new(42)
    |
 
-error[E0308]: `if` and `else` have incompatible types
-  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:29:9
-   |
-LL | /     if true {
-LL | |         Struct
-   | |         ------ expected because of this
-LL | |     } else {
-LL | |         42
-   | |         ^^ expected `Struct`, found integer
-LL | |     }
-   | |_____- `if` and `else` have incompatible types
-
 error[E0746]: return type cannot have an unboxed trait object
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:25:13
    |
@@ -305,7 +293,7 @@ LL |     } else {
 LL ~         Box::new(42)
    |
 
-error: aborting due to 20 previous errors
+error: aborting due to 19 previous errors
 
 Some errors have detailed explanations: E0277, E0308, E0746.
 For more information about an error, try `rustc --explain E0277`.
