@@ -329,11 +329,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span = item_name.span;
 
         // Don't show generic arguments when the method can't be found in any implementation (#81576).
-        let mut ty_str_reported = if trait_missing_method {
-            ty_str.strip_prefix("dyn ").expect("Failed to remove the prefix dyn").to_owned()
-        } else {
-            ty_str.clone()
-        };
+        let mut ty_str_reported =
+            if trait_missing_method { ty_str.replacen("dyn ", "", 1) } else { ty_str.clone() };
 
         if let ty::Adt(_, generics) = rcvr_ty.kind() {
             if generics.len() > 0 {
@@ -389,8 +386,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty_str
         };
         if trait_missing_method {
-            ty_str =
-                ty_str.strip_prefix("dyn ").expect("Failed to remove the prefix dyn").to_owned();
+            ty_str = ty_str.replacen("dyn ", "", 1);
         }
 
         if let Some(file) = ty_file {
