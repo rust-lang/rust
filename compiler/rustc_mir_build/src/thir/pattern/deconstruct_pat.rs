@@ -37,9 +37,9 @@
 //! skipping some constructors as long as it doesn't change whether the resulting list of witnesses
 //! is empty of not. We use this in the wildcard `_` case.
 //!
-//! Splitting is implemented in the [`Constructor::split`] function. We don't do splitting for
+//! Splitting is implemented in the `Constructor::split` function. We don't do splitting for
 //! or-patterns; instead we just try the alternatives one-by-one. For details on splitting
-//! wildcards, see [`SplitWildcard`]; for integer ranges, see [`SplitIntRange`]; for slices, see
+//! wildcards, see `SplitWildcard`; for integer ranges, see [`SplitIntRange`]; for slices, see
 //! [`SplitVarLenSlice`].
 
 use std::cell::Cell;
@@ -657,7 +657,7 @@ pub(super) enum Constructor<'tcx> {
     /// for those types for which we cannot list constructors explicitly, like `f64` and `str`.
     NonExhaustive,
     /// Stands for constructors that are not seen in the matrix, as explained in the documentation
-    /// for [`SplitWildcard`].
+    /// for `SplitWildcard`.
     Missing,
     /// Wildcard pattern.
     Wildcard,

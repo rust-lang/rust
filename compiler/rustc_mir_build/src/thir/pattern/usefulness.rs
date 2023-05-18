@@ -272,7 +272,7 @@
 //! //==>> we have tried all the constructors. The output is the single witness `[Some(false)]`.
 //! ```
 //!
-//! This computation is done in [`is_useful`]. In practice we don't care about the list of
+//! This computation is done in `is_useful`. In practice we don't care about the list of
 //! witnesses when computing reachability; we only need to know whether any exist. We do keep the
 //! witnesses when computing exhaustiveness to report them to the user.
 //!
@@ -287,7 +287,7 @@
 //! group together constructors that behave the same.
 //!
 //! The details are not necessary to understand this file, so we explain them in
-//! [`super::deconstruct_pat`]. Splitting is done by the [`Constructor::split`] function.
+//! [`super::deconstruct_pat`]. Splitting is done by the `Constructor::split` function.
 //!
 //! # Constants in patterns
 //!
