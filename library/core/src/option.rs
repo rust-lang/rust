@@ -892,6 +892,7 @@ impl<T> Option<T> {
     #[track_caller]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_option", issue = "67441")]
+    #[rustc_diagnostic_item = "option_expect"]
     pub const fn expect(self, msg: &str) -> T {
         match self {
             Some(val) => val,
@@ -929,6 +930,7 @@ impl<T> Option<T> {
     #[track_caller]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_option", issue = "67441")]
+    #[rustc_diagnostic_item = "option_unwrap"]
     pub const fn unwrap(self) -> T {
         match self {
             Some(val) => val,
