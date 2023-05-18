@@ -488,6 +488,18 @@ macro_rules! expand_if_cached {
     };
 }
 
+/// Don't show the backtrace for query system by default
+/// use `RUST_BACKTRACE=full` to show all the backtraces
+#[inline(never)]
+pub fn __rust_begin_short_backtrace<F, T>(f: F) -> T
+where
+    F: FnOnce() -> T,
+{
+    let result = f();
+    std::hint::black_box(());
+    result
+}
+
 // NOTE: `$V` isn't used here, but we still need to match on it so it can be passed to other macros
 // invoked by `rustc_query_append`.
 macro_rules! define_queries {
@@ -498,21 +510,25 @@ macro_rules! define_queries {
             use super::*;
 
             $(
-                #[inline(always)]
-                #[tracing::instrument(level = "trace", skip(tcx))]
-                pub(super) fn $name<'tcx>(
-                    tcx: TyCtxt<'tcx>,
-                    span: Span,
-                    key: query_keys::$name<'tcx>,
-                    mode: QueryMode,
-                ) -> Option<Erase<query_values::$name<'tcx>>> {
-                    get_query_incr(
-                        queries::$name::config(tcx),
-                        QueryCtxt::new(tcx),
-                        span,
-                        key,
-                        mode
-                    )
+                // Adding `__rust_end_short_backtrace` marker to backtraces so that we emit the frames
+                // when `RUST_BACKTRACE=1`, add a new mod with `$name` here is to allow duplicate naming
+                pub mod $name {
+                    use super::*;
+                    #[inline(never)]
+                    pub fn __rust_end_short_backtrace<'tcx>(
+                        tcx: TyCtxt<'tcx>,
+                        span: Span,
+                        key: query_keys::$name<'tcx>,
+                        mode: QueryMode,
+                    ) -> Option<Erase<query_values::$name<'tcx>>> {
+                        get_query_incr(
+                            queries::$name::config(tcx),
+                            QueryCtxt::new(tcx),
+                            span,
+                            key,
+                            mode
+                        )
+                    }
                 }
             )*
         }
@@ -521,20 +537,22 @@ macro_rules! define_queries {
             use super::*;
 
             $(
-                #[inline(always)]
-                #[tracing::instrument(level = "trace", skip(tcx))]
-                pub(super) fn $name<'tcx>(
-                    tcx: TyCtxt<'tcx>,
-                    span: Span,
-                    key: query_keys::$name<'tcx>,
-                    __mode: QueryMode,
-                ) -> Option<Erase<query_values::$name<'tcx>>> {
-                    Some(get_query_non_incr(
-                        queries::$name::config(tcx),
-                        QueryCtxt::new(tcx),
-                        span,
-                        key,
-                    ))
+                pub mod $name {
+                    use super::*;
+                    #[inline(never)]
+                    pub fn __rust_end_short_backtrace<'tcx>(
+                        tcx: TyCtxt<'tcx>,
+                        span: Span,
+                        key: query_keys::$name<'tcx>,
+                        __mode: QueryMode,
+                    ) -> Option<Erase<query_values::$name<'tcx>>> {
+                        Some(get_query_non_incr(
+                            queries::$name::config(tcx),
+                            QueryCtxt::new(tcx),
+                            span,
+                            key,
+                        ))
+                    }
                 }
             )*
         }
@@ -542,11 +560,11 @@ macro_rules! define_queries {
         pub(crate) fn engine(incremental: bool) -> QueryEngine {
             if incremental {
                 QueryEngine {
-                    $($name: get_query_incr::$name,)*
+                    $($name: get_query_incr::$name::__rust_end_short_backtrace,)*
                 }
             } else {
                 QueryEngine {
-                    $($name: get_query_non_incr::$name,)*
+                    $($name: get_query_non_incr::$name::__rust_end_short_backtrace,)*
                 }
             }
         }
@@ -578,10 +596,15 @@ macro_rules! define_queries {
                         query_cache: offset_of!(QueryCaches<'tcx> => $name),
                         cache_on_disk: |tcx, key| ::rustc_middle::query::cached::$name(tcx, key),
                         execute_query: |tcx, key| erase(tcx.$name(key)),
-                        compute: |tcx, key| query_provided_to_value::$name(
-                            tcx,
-                            call_provider!([$($modifiers)*][tcx, $name, key])
-                        ),
+                        compute: |tcx, key| {
+                            use crate::plumbing::__rust_begin_short_backtrace;
+                            __rust_begin_short_backtrace(||
+                                query_provided_to_value::$name(
+                                    tcx,
+                                    call_provider!([$($modifiers)*][tcx, $name, key])
+                                )
+                            )
+                        },
                         can_load_from_disk: should_ever_cache_on_disk!([$($modifiers)*] true false),
                         try_load_from_disk: should_ever_cache_on_disk!([$($modifiers)*] {
                             |tcx, key, prev_index, index| {
