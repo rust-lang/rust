@@ -176,7 +176,7 @@ fn dump_file_basename<'tcx>(
     let item_name = tcx.def_path(source.def_id()).to_filename_friendly_no_crate();
     // All drop shims have the same DefId, so we have to add the type
     // to get unique file names.
-    let shim_disambiguator = match source.instance {
+    let shim_disambiguator = match source {
         ty::InstanceDef::DropGlue(_, Some(ty)) => {
             // Unfortunately, pretty-printed typed are not very filename-friendly.
             // We dome some filtering.
@@ -976,7 +976,7 @@ fn write_allocation_bytes<'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>(
 fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn Write) -> io::Result<()> {
     use rustc_hir::def::DefKind;
 
-    trace!("write_mir_sig: {:?}", body.source.instance);
+    trace!("write_mir_sig: {:?}", body.source);
     let def_id = body.source.def_id();
     let kind = tcx.def_kind(def_id);
     let is_function = match kind {

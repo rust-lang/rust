@@ -179,28 +179,6 @@ impl RuntimePhase {
     }
 }
 
-/// Where a specific `mir::Body` comes from.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-#[derive(HashStable, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
-pub struct MirSource<'tcx> {
-    pub instance: InstanceDef<'tcx>,
-}
-
-impl<'tcx> MirSource<'tcx> {
-    pub fn item(def_id: DefId) -> Self {
-        MirSource { instance: InstanceDef::Item(def_id) }
-    }
-
-    pub fn from_instance(instance: InstanceDef<'tcx>) -> Self {
-        MirSource { instance }
-    }
-
-    #[inline]
-    pub fn def_id(&self) -> DefId {
-        self.instance.def_id()
-    }
-}
-
 #[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable, TypeFoldable, TypeVisitable)]
 pub struct GeneratorInfo<'tcx> {
     /// The yield type of the function, if it is a generator.
@@ -234,7 +212,7 @@ pub struct Body<'tcx> {
     /// How many passses we have executed since starting the current phase. Used for debug output.
     pub pass_count: usize,
 
-    pub source: MirSource<'tcx>,
+    pub source: InstanceDef<'tcx>,
 
     /// A list of source scopes; these are referenced by statements
     /// and used for debuginfo. Indexed by a `SourceScope`.
@@ -305,7 +283,7 @@ pub struct Body<'tcx> {
 
 impl<'tcx> Body<'tcx> {
     pub fn new(
-        source: MirSource<'tcx>,
+        source: InstanceDef<'tcx>,
         basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
         source_scopes: IndexVec<SourceScope, SourceScopeData<'tcx>>,
         local_decls: IndexVec<Local, LocalDecl<'tcx>>,
@@ -362,7 +340,7 @@ impl<'tcx> Body<'tcx> {
         let mut body = Body {
             phase: MirPhase::Built,
             pass_count: 0,
-            source: MirSource::item(CRATE_DEF_ID.to_def_id()),
+            source: InstanceDef::Item(CRATE_DEF_ID.to_def_id()),
             basic_blocks: BasicBlocks::new(basic_blocks),
             source_scopes: IndexVec::new(),
             generator: None,

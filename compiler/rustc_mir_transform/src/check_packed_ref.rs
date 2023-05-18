@@ -39,7 +39,7 @@ impl<'tcx> Visitor<'tcx> for PackedRefChecker<'_, 'tcx> {
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _location: Location) {
         if context.is_borrow() {
             if util::is_disaligned(self.tcx, self.body, self.param_env, *place) {
-                let def_id = self.body.source.instance.def_id();
+                let def_id = self.body.source.def_id();
                 if let Some(impl_def_id) = self.tcx.impl_of_method(def_id)
                     && self.tcx.is_builtin_derived(impl_def_id)
                 {

@@ -905,7 +905,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         feeder.opt_local_def_id_to_hir_id(None);
 
         let def_id = feeder.def_id();
-        self.promoted.source = MirSource::item(def_id.to_def_id());
+        self.promoted.source = ty::InstanceDef::Item(def_id.to_def_id());
         let parent_substs = tcx.erase_regions(InternalSubsts::identity_for_item(
             tcx,
             tcx.typeck_root_def_id(source_def_id.to_def_id()),

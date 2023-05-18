@@ -42,7 +42,7 @@ impl<'tcx> MirPass<'tcx> for Validator {
         // terribly important that they pass the validator. However, I think other passes might
         // still see them, in which case they might be surprised. It would probably be better if we
         // didn't put this through the MIR pipeline at all.
-        if matches!(body.source.instance, InstanceDef::Intrinsic(..) | InstanceDef::Virtual(..)) {
+        if matches!(body.source, InstanceDef::Intrinsic(..) | InstanceDef::Virtual(..)) {
             return;
         }
         let def_id = body.source.def_id();
@@ -74,7 +74,7 @@ impl<'tcx> MirPass<'tcx> for Validator {
         checker.check_cleanup_control_flow();
 
         if let MirPhase::Runtime(_) = body.phase {
-            if let ty::InstanceDef::Item(_) = body.source.instance {
+            if let ty::InstanceDef::Item(_) = body.source {
                 if body.has_free_regions() {
                     checker.fail(
                         Location::START,
@@ -109,7 +109,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             span,
             format!(
                 "broken MIR in {:?} ({}) at {:?}:\n{}",
-                self.body.source.instance,
+                self.body.source,
                 self.when,
                 location,
                 msg.as_ref()
@@ -1104,7 +1104,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 self.body.span,
                 format!(
                     "broken MIR in {:?} ({}):\ninvalid source scope {:?}",
-                    self.body.source.instance, self.when, scope,
+                    self.body.source, self.when, scope,
                 ),
             );
         }

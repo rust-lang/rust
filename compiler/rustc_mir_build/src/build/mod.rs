@@ -640,7 +640,7 @@ fn construct_error(tcx: TyCtxt<'_>, def: LocalDefId, err: ErrorGuaranteed) -> Bo
     cfg.terminate(START_BLOCK, source_info, TerminatorKind::Unreachable);
 
     let mut body = Body::new(
-        MirSource::item(def.to_def_id()),
+        ty::InstanceDef::Item(def.to_def_id()),
         cfg.basic_blocks,
         source_scopes,
         local_decls,
@@ -730,7 +730,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         Body::new(
-            MirSource::item(self.def_id.to_def_id()),
+            ty::InstanceDef::Item(self.def_id.to_def_id()),
             self.cfg.basic_blocks,
             self.source_scopes,
             self.local_decls,

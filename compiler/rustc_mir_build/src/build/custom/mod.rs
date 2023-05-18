@@ -25,7 +25,7 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::{
     mir::*,
     thir::*,
-    ty::{ParamEnv, Ty, TyCtxt},
+    ty::{InstanceDef, ParamEnv, Ty, TyCtxt},
 };
 use rustc_span::Span;
 
@@ -45,7 +45,7 @@ pub(super) fn build_custom_mir<'tcx>(
 ) -> Body<'tcx> {
     let mut body = Body {
         basic_blocks: BasicBlocks::new(IndexVec::new()),
-        source: MirSource::item(did),
+        source: InstanceDef::Item(did),
         phase: MirPhase::Built,
         source_scopes: IndexVec::new(),
         generator: None,
