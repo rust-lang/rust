@@ -227,7 +227,7 @@ pub(crate) fn write_ir_file(
         // Using early_warn as no Session is available here
         rustc_session::early_warn(
             rustc_session::config::ErrorOutputType::default(),
-            &format!("error writing ir file: {}", err),
+            format!("error writing ir file: {}", err),
         );
     }
 }
