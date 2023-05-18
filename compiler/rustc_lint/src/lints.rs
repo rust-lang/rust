@@ -801,6 +801,27 @@ pub struct MappingToUnit {
     pub replace: String,
 }
 
+// option_env_unwrap.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_option_env_unwrap)]
+pub struct OptionEnvUnwrapDiag {
+    #[subdiagnostic]
+    pub suggestion: Option<OptionEnvUnwrapSuggestion>,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    lint_suggestion,
+    style = "verbose",
+    code = "env!({replace})",
+    applicability = "machine-applicable"
+)]
+pub struct OptionEnvUnwrapSuggestion {
+    #[primary_span]
+    pub span: Span,
+    pub replace: String,
+}
+
 // internal.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_default_hash_types)]

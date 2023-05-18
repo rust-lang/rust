@@ -31,6 +31,9 @@ lint_map_unit_fn = `Iterator::map` call that discard the iterator's values
     .map_label = after this call to map, the resulting iterator is `impl Iterator<Item = ()>`, which means the only information carried by the iterator is the number of items
     .suggestion = you might have meant to use `Iterator::for_each`
 
+lint_option_env_unwrap = incorrect usage of `option_env!`, it will panic at run-time if the environment variable doesn't exist at compile-time
+    .suggestion = consider using the `env!` macro instead
+
 lint_non_binding_let_on_sync_lock =
     non-binding let on a synchronization lock
 

@@ -72,6 +72,7 @@ mod non_fmt_panic;
 mod nonstandard_style;
 mod noop_method_call;
 mod opaque_hidden_inferred_bound;
+mod option_env_unwrap;
 mod pass_by_value;
 mod passes;
 mod redundant_semicolon;
@@ -111,6 +112,7 @@ use non_fmt_panic::NonPanicFmt;
 use nonstandard_style::*;
 use noop_method_call::*;
 use opaque_hidden_inferred_bound::*;
+use option_env_unwrap::*;
 use pass_by_value::*;
 use redundant_semicolon::*;
 use traits::*;
@@ -211,6 +213,7 @@ late_lint_methods!(
             BoxPointers: BoxPointers,
             PathStatements: PathStatements,
             LetUnderscore: LetUnderscore,
+            OptionEnvUnwrap: OptionEnvUnwrap,
             // Depends on referenced function signatures in expressions
             UnusedResults: UnusedResults,
             NonUpperCaseGlobals: NonUpperCaseGlobals,

@@ -1,0 +1,102 @@
+warning: incorrect usage of `option_env!`, it will panic at run-time if the environment variable doesn't exist at compile-time
+  --> $DIR/option_env_unwrap.rs:4:13
+   |
+LL |     let _ = option_env!("PATH").unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incorrect_option_env_unwraps)]` on by default
+help: consider using the `env!` macro instead
+   |
+LL |     let _ = env!("PATH");
+   |             ~~~~~~~~~~~~
+
+warning: incorrect usage of `option_env!`, it will panic at run-time if the environment variable doesn't exist at compile-time
+  --> $DIR/option_env_unwrap.rs:6:13
+   |
+LL |     let _ = option_env!("PATH").expect("environment variable PATH isn't set");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using the `env!` macro instead
+   |
+LL |     let _ = env!("PATH");
+   |             ~~~~~~~~~~~~
+
+warning: incorrect usage of `option_env!`, it will panic at run-time if the environment variable doesn't exist at compile-time
+  --> $DIR/option_env_unwrap.rs:8:13
+   |
+LL |     let _ = option_env!("NOT_IN_ENV").unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using the `env!` macro instead
+   |
+LL |     let _ = env!("NOT_IN_ENV");
+   |             ~~~~~~~~~~~~~~~~~~
+
+warning: incorrect usage of `option_env!`, it will panic at run-time if the environment variable doesn't exist at compile-time
+  --> $DIR/option_env_unwrap.rs:10:13
+   |
+LL |     let _ = option_env!("NOT_IN_ENV").expect("environment variable NOT_IN_ENV isn't set");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using the `env!` macro instead
+   |
+LL |     let _ = env!("NOT_IN_ENV");
+   |             ~~~~~~~~~~~~~~~~~~
+
+warning: incorrect usage of `option_env!`, it will panic at run-time if the environment variable doesn't exist at compile-time
+  --> $DIR/option_env_unwrap.rs:12:24
+   |
+LL |     let _ = assert_ne!(option_env!("PATH").unwrap(), "a");
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using the `env!` macro instead
+   |
+LL |     let _ = assert_ne!(env!("PATH"), "a");
+   |                        ~~~~~~~~~~~~
+
+warning: incorrect usage of `option_env!`, it will panic at run-time if the environment variable doesn't exist at compile-time
+  --> $DIR/option_env_unwrap.rs:16:13
+   |
+LL |       let _ = option_env!("PATH")
+   |  _____________^
+LL | |
+LL | |         .unwrap();
+   | |_________________^
+   |
+help: consider using the `env!` macro instead
+   |
+LL |     let _ = env!("PATH");
+   |             ~~~~~~~~~~~~
+
+warning: incorrect usage of `option_env!`, it will panic at run-time if the environment variable doesn't exist at compile-time
+  --> $DIR/option_env_unwrap.rs:19:13
+   |
+LL |       let _ = option_env!(
+   |  _____________^
+LL | |
+LL | |             "PATH"
+LL | |         )
+LL | |         . unwrap();
+   | |__________________^
+   |
+help: consider using the `env!` macro instead
+   |
+LL ~     let _ = env!(
+LL +
+LL +             "PATH"
+LL ~         );
+   |
+
+warning: incorrect usage of `option_env!`, it will panic at run-time if the environment variable doesn't exist at compile-time
+  --> $DIR/option_env_unwrap.rs:24:13
+   |
+LL |     let _ = (option_env!("NOT_IN_ENV")).expect("aaa");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using the `env!` macro instead
+   |
+LL |     let _ = env!("NOT_IN_ENV");
+   |             ~~~~~~~~~~~~~~~~~~
+
+warning: 8 warnings emitted
+
