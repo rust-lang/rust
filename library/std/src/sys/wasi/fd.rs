@@ -96,7 +96,7 @@ impl WasiFd {
         unsafe { wasi::fd_sync(self.as_raw_fd() as wasi::Fd).map_err(err2io) }
     }
 
-    pub fn advise(&self, offset: u64, len: u64, advice: wasi::Advice) -> io::Result<()> {
+    pub(crate) fn advise(&self, offset: u64, len: u64, advice: wasi::Advice) -> io::Result<()> {
         unsafe {
             wasi::fd_advise(self.as_raw_fd() as wasi::Fd, offset, len, advice).map_err(err2io)
         }
@@ -179,7 +179,7 @@ impl WasiFd {
         }
     }
 
-    pub fn filestat_get(&self) -> io::Result<wasi::Filestat> {
+    pub(crate) fn filestat_get(&self) -> io::Result<wasi::Filestat> {
         unsafe { wasi::fd_filestat_get(self.as_raw_fd() as wasi::Fd).map_err(err2io) }
     }
 
@@ -199,7 +199,7 @@ impl WasiFd {
         unsafe { wasi::fd_filestat_set_size(self.as_raw_fd() as wasi::Fd, size).map_err(err2io) }
     }
 
-    pub fn path_filestat_get(
+    pub(crate) fn path_filestat_get(
         &self,
         flags: wasi::Lookupflags,
         path: &str,
