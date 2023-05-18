@@ -65,7 +65,7 @@ impl MirLowerCtx<'_> {
                     )? else {
                         return Ok(None);
                     };
-                    x.0.projection.push(ProjectionElem::Deref);
+                    x.0 = x.0.project(ProjectionElem::Deref);
                     Ok(Some(x))
                 }
                 Adjust::Deref(Some(od)) => {
@@ -139,15 +139,14 @@ impl MirLowerCtx<'_> {
                         let ty = self.expr_ty_without_adjust(expr_id);
                         let ref_ty =
                             TyKind::Ref(Mutability::Not, static_lifetime(), ty).intern(Interner);
-                        let mut temp: Place = self.temp(ref_ty, current, expr_id.into())?.into();
+                        let temp: Place = self.temp(ref_ty, current, expr_id.into())?.into();
                         self.push_assignment(
                             current,
                             temp.clone(),
                             Operand::Static(s).into(),
                             expr_id.into(),
                         );
-                        temp.projection.push(ProjectionElem::Deref);
-                        Ok(Some((temp, current)))
+                        Ok(Some((temp.project(ProjectionElem::Deref), current)))
                     }
                     _ => try_rvalue(self),
                 }
@@ -196,7 +195,7 @@ impl MirLowerCtx<'_> {
                     let Some((mut r, current)) = self.lower_expr_as_place(current, *expr, true)? else {
                         return Ok(None);
                     };
-                    r.projection.push(ProjectionElem::Deref);
+                    r = r.project(ProjectionElem::Deref);
                     Ok(Some((r, current)))
                 }
                 _ => try_rvalue(self),
@@ -253,7 +252,7 @@ impl MirLowerCtx<'_> {
                 let Some(current) = self.lower_expr_to_place(*index, l_index.into(), current)? else {
                     return Ok(None);
                 };
-                p_base.projection.push(ProjectionElem::Index(l_index));
+                p_base = p_base.project(ProjectionElem::Index(l_index));
                 Ok(Some((p_base, current)))
             }
             _ => try_rvalue(self),
@@ -283,10 +282,10 @@ impl MirLowerCtx<'_> {
             )
             .intern(Interner),
         );
-        let Some(current) = self.lower_call(index_fn_op, vec![Operand::Copy(place), index_operand], result.clone(), current, false, span)? else {
+        let Some(current) = self.lower_call(index_fn_op, Box::new([Operand::Copy(place), index_operand]), result.clone(), current, false, span)? else {
             return Ok(None);
         };
-        result.projection.push(ProjectionElem::Deref);
+        result = result.project(ProjectionElem::Deref);
         Ok(Some((result, current)))
     }
 
@@ -330,10 +329,10 @@ impl MirLowerCtx<'_> {
             .intern(Interner),
         );
         let mut result: Place = self.temp(target_ty_ref, current, span)?.into();
-        let Some(current) = self.lower_call(deref_fn_op, vec![Operand::Copy(ref_place)], result.clone(), current, false, span)? else {
+        let Some(current) = self.lower_call(deref_fn_op, Box::new([Operand::Copy(ref_place)]), result.clone(), current, false, span)? else {
             return Ok(None);
         };
-        result.projection.push(ProjectionElem::Deref);
+        result = result.project(ProjectionElem::Deref);
         Ok(Some((result, current)))
     }
 }

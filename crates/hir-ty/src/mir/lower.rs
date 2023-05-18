@@ -387,7 +387,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                                 current,
                                 place,
                                 ty,
-                                vec![],
+                                Box::new([]),
                                 expr_id.into(),
                             )?;
                         }
@@ -561,7 +561,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 };
                 self.push_assignment(current, ref_mut_iterator_place.clone(), Rvalue::Ref(BorrowKind::Mut { allow_two_phase_borrow: false }, iterator_place), expr_id.into());
                 self.lower_loop(current, place, label, expr_id.into(), |this, begin| {
-                    let Some(current) = this.lower_call(iter_next_fn_op, vec![Operand::Copy(ref_mut_iterator_place)], option_item_place.clone(), begin, false, expr_id.into())?
+                    let Some(current) = this.lower_call(iter_next_fn_op, Box::new([Operand::Copy(ref_mut_iterator_place)]), option_item_place.clone(), begin, false, expr_id.into())?
                     else {
                         return Ok(());
                     };
@@ -758,8 +758,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                                         match x {
                                             Some(x) => x,
                                             None => {
-                                                let mut p = sp.clone();
-                                                p.projection.push(ProjectionElem::Field(FieldId {
+                                                let p = sp.project(ProjectionElem::Field(FieldId {
                                                     parent: variant_id,
                                                     local_id: LocalFieldId::from_raw(RawIdx::from(i as u32)),
                                                 }));
@@ -782,10 +781,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         };
                         let local_id =
                             variant_data.field(name).ok_or(MirLowerError::UnresolvedField)?;
-                        let mut place = place;
-                        place
-                            .projection
-                            .push(PlaceElem::Field(FieldId { parent: union_id.into(), local_id }));
+                        let place = place.project(PlaceElem::Field(FieldId { parent: union_id.into(), local_id }));
                         self.lower_expr_to_place(*expr, place, current)
                     }
                 }
@@ -826,8 +822,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 let Some((operand, current)) = self.lower_expr_to_some_operand(*expr, current)? else {
                     return Ok(None);
                 };
-                let mut p = place;
-                p.projection.push(ProjectionElem::Deref);
+                let p = place.project(ProjectionElem::Deref);
                 self.push_assignment(current, p, operand.into(), expr_id.into());
                 Ok(Some(current))
             },
@@ -1031,7 +1026,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 self.push_assignment(
                     current,
                     place,
-                    Rvalue::Aggregate(AggregateKind::Closure(ty), operands),
+                    Rvalue::Aggregate(AggregateKind::Closure(ty), operands.into()),
                     expr_id.into(),
                 );
                 Ok(Some(current))
@@ -1128,11 +1123,11 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 let index = name
                     .as_tuple_index()
                     .ok_or(MirLowerError::TypeError("named field on tuple"))?;
-                place.projection.push(ProjectionElem::TupleOrClosureField(index))
+                *place = place.project(ProjectionElem::TupleOrClosureField(index))
             } else {
                 let field =
                     self.infer.field_resolution(expr_id).ok_or(MirLowerError::UnresolvedField)?;
-                place.projection.push(ProjectionElem::Field(field));
+                *place = place.project(ProjectionElem::Field(field));
             }
         } else {
             not_supported!("")
@@ -1242,7 +1237,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
         prev_block: BasicBlockId,
         place: Place,
         ty: Ty,
-        fields: Vec<Operand>,
+        fields: Box<[Operand]>,
         span: MirSpan,
     ) -> Result<BasicBlockId> {
         let subst = match ty.kind(Interner) {
@@ -1280,13 +1275,13 @@ impl<'ctx> MirLowerCtx<'ctx> {
         else {
             return Ok(None);
         };
-        self.lower_call(func, args, place, current, is_uninhabited, span)
+        self.lower_call(func, args.into(), place, current, is_uninhabited, span)
     }
 
     fn lower_call(
         &mut self,
         func: Operand,
-        args: Vec<Operand>,
+        args: Box<[Operand]>,
         place: Place,
         current: BasicBlockId,
         is_uninhabited: bool,
@@ -1744,12 +1739,13 @@ pub fn mir_body_for_closure_query(
             match r {
                 Some(x) => {
                     p.local = closure_local;
-                    let prev_projs =
-                        mem::replace(&mut p.projection, vec![PlaceElem::TupleOrClosureField(x.1)]);
+                    let mut next_projs = vec![PlaceElem::TupleOrClosureField(x.1)];
+                    let prev_projs = mem::take(&mut p.projection);
                     if x.0.kind != CaptureKind::ByValue {
-                        p.projection.push(ProjectionElem::Deref);
+                        next_projs.push(ProjectionElem::Deref);
                     }
-                    p.projection.extend(prev_projs.into_iter().skip(x.0.place.projections.len()));
+                    next_projs.extend(prev_projs.iter().cloned().skip(x.0.place.projections.len()));
+                    p.projection = next_projs.into();
                 }
                 None => err = Some(p.clone()),
             }
@@ -1764,6 +1760,7 @@ pub fn mir_body_for_closure_query(
     if let Some(err) = err {
         return Err(MirLowerError::UnresolvedUpvar(err));
     }
+    ctx.result.shrink_to_fit();
     Ok(Arc::new(ctx.result))
 }
 
@@ -1780,7 +1777,8 @@ pub fn mir_body_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Result<Arc<Mi
     });
     let body = db.body(def);
     let infer = db.infer(def);
-    let result = lower_to_mir(db, def, &body, &infer, body.body_expr)?;
+    let mut result = lower_to_mir(db, def, &body, &infer, body.body_expr)?;
+    result.shrink_to_fit();
     Ok(Arc::new(result))
 }
 

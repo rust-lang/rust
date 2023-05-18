@@ -205,7 +205,7 @@ type PlaceElem = ProjectionElem<LocalId, Ty>;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Place {
     pub local: LocalId,
-    pub projection: Vec<PlaceElem>,
+    pub projection: Box<[PlaceElem]>,
 }
 
 impl Place {
@@ -216,13 +216,20 @@ impl Place {
     fn iterate_over_parents(&self) -> impl Iterator<Item = Place> + '_ {
         (0..self.projection.len())
             .map(|x| &self.projection[0..x])
-            .map(|x| Place { local: self.local, projection: x.to_vec() })
+            .map(|x| Place { local: self.local, projection: x.to_vec().into() })
+    }
+
+    fn project(&self, projection: PlaceElem) -> Place {
+        Place {
+            local: self.local,
+            projection: self.projection.iter().cloned().chain([projection]).collect(),
+        }
     }
 }
 
 impl From<LocalId> for Place {
     fn from(local: LocalId) -> Self {
-        Self { local, projection: vec![] }
+        Self { local, projection: vec![].into() }
     }
 }
 
@@ -437,7 +444,7 @@ pub enum TerminatorKind {
         /// These are owned by the callee, which is free to modify them.
         /// This allows the memory occupied by "by-value" arguments to be
         /// reused across function calls without duplicating the contents.
-        args: Vec<Operand>,
+        args: Box<[Operand]>,
         /// Where the returned value will be written
         destination: Place,
         /// Where to go after this call returns. If none, the call necessarily diverges.
@@ -894,7 +901,7 @@ pub enum Rvalue {
     ///
     /// Disallowed after deaggregation for all aggregate kinds except `Array` and `Generator`. After
     /// generator lowering, `Generator` aggregate kinds are disallowed too.
-    Aggregate(AggregateKind, Vec<Operand>),
+    Aggregate(AggregateKind, Box<[Operand]>),
 
     /// Transmutes a `*mut u8` into shallow-initialized `Box<T>`.
     ///
@@ -1011,7 +1018,7 @@ impl MirBody {
                                 for_operand(o2, &mut f);
                             }
                             Rvalue::Aggregate(_, ops) => {
-                                for op in ops {
+                                for op in ops.iter_mut() {
                                     for_operand(op, &mut f);
                                 }
                             }
@@ -1056,6 +1063,27 @@ impl MirBody {
                 },
                 None => (),
             }
+        }
+    }
+
+    fn shrink_to_fit(&mut self) {
+        let MirBody {
+            basic_blocks,
+            locals,
+            start_block: _,
+            owner: _,
+            binding_locals,
+            param_locals,
+            closures,
+        } = self;
+        basic_blocks.shrink_to_fit();
+        locals.shrink_to_fit();
+        binding_locals.shrink_to_fit();
+        param_locals.shrink_to_fit();
+        closures.shrink_to_fit();
+        for (_, b) in basic_blocks.iter_mut() {
+            let BasicBlock { statements, terminator: _, is_cleanup: _ } = b;
+            statements.shrink_to_fit();
         }
     }
 }

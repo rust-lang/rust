@@ -110,10 +110,10 @@ impl MirLowerCtx<'_> {
             Pat::Slice { prefix, slice, suffix } => {
                 pattern_matching_dereference(&mut cond_ty, &mut binding_mode, &mut cond_place);
                 for (i, &pat) in prefix.iter().enumerate() {
-                    let mut next_place = cond_place.clone();
-                    next_place
-                        .projection
-                        .push(ProjectionElem::ConstantIndex { offset: i as u64, from_end: false });
+                    let next_place = cond_place.project(ProjectionElem::ConstantIndex {
+                        offset: i as u64,
+                        from_end: false,
+                    });
                     let cond_ty = self.infer[pat].clone();
                     (current, current_else) = self.pattern_match(
                         current,
@@ -126,8 +126,7 @@ impl MirLowerCtx<'_> {
                 }
                 if let Some(slice) = slice {
                     if let Pat::Bind { id, subpat: _ } = self.body[*slice] {
-                        let mut next_place = cond_place.clone();
-                        next_place.projection.push(ProjectionElem::Subslice {
+                        let next_place = cond_place.project(ProjectionElem::Subslice {
                             from: prefix.len() as u64,
                             to: suffix.len() as u64,
                         });
@@ -142,10 +141,10 @@ impl MirLowerCtx<'_> {
                     }
                 }
                 for (i, &pat) in suffix.iter().enumerate() {
-                    let mut next_place = cond_place.clone();
-                    next_place
-                        .projection
-                        .push(ProjectionElem::ConstantIndex { offset: i as u64, from_end: true });
+                    let next_place = cond_place.project(ProjectionElem::ConstantIndex {
+                        offset: i as u64,
+                        from_end: true,
+                    });
                     let cond_ty = self.infer[pat].clone();
                     (current, current_else) = self.pattern_match(
                         current,
@@ -269,11 +268,10 @@ impl MirLowerCtx<'_> {
             Pat::Ref { pat, mutability: _ } => {
                 if let Some((ty, _, _)) = cond_ty.as_reference() {
                     cond_ty = ty.clone();
-                    cond_place.projection.push(ProjectionElem::Deref);
                     self.pattern_match(
                         current,
                         current_else,
-                        cond_place,
+                        cond_place.project(ProjectionElem::Deref),
                         cond_ty,
                         *pat,
                         binding_mode,
@@ -479,8 +477,7 @@ impl MirLowerCtx<'_> {
         binding_mode: BindingAnnotation,
     ) -> Result<(BasicBlockId, Option<BasicBlockId>)> {
         for (proj, arg, ty) in args {
-            let mut cond_place = cond_place.clone();
-            cond_place.projection.push(proj);
+            let cond_place = cond_place.project(proj);
             (current, current_else) =
                 self.pattern_match(current, current_else, cond_place, ty, arg, binding_mode)?;
         }
@@ -513,5 +510,11 @@ fn pattern_matching_dereference(
     cond_place: &mut Place,
 ) {
     let cnt = pattern_matching_dereference_count(cond_ty, binding_mode);
-    cond_place.projection.extend((0..cnt).map(|_| ProjectionElem::Deref));
+    cond_place.projection = cond_place
+        .projection
+        .iter()
+        .cloned()
+        .chain((0..cnt).map(|_| ProjectionElem::Deref))
+        .collect::<Vec<_>>()
+        .into();
 }

@@ -562,7 +562,7 @@ impl Evaluator<'_> {
         let mut ty: Ty =
             self.ty_filler(&locals.body.locals[p.local].ty, locals.subst, locals.body.owner)?;
         let mut metadata: Option<IntervalOrOwned> = None; // locals are always sized
-        for proj in &p.projection {
+        for proj in &*p.projection {
             let prev_ty = ty.clone();
             ty = proj.projected_ty(
                 ty,
