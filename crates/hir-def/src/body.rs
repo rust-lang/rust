@@ -165,7 +165,7 @@ impl Body {
         };
         let expander = Expander::new(db, file_id, module);
         let (mut body, source_map) =
-            Body::new(db, expander, params, body, module.krate, is_async_fn);
+            Body::new(db, def, expander, params, body, module.krate, is_async_fn);
         body.shrink_to_fit();
 
         (Arc::new(body), Arc::new(source_map))
@@ -189,13 +189,14 @@ impl Body {
 
     fn new(
         db: &dyn DefDatabase,
+        owner: DefWithBodyId,
         expander: Expander,
         params: Option<(ast::ParamList, impl Iterator<Item = bool>)>,
         body: Option<ast::Expr>,
         krate: CrateId,
         is_async_fn: bool,
     ) -> (Body, BodySourceMap) {
-        lower::lower(db, expander, params, body, krate, is_async_fn)
+        lower::lower(db, owner, expander, params, body, krate, is_async_fn)
     }
 
     fn shrink_to_fit(&mut self) {

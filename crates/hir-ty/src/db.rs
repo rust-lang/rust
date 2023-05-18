@@ -6,8 +6,8 @@ use std::sync;
 use base_db::{impl_intern_key, salsa, CrateId, Upcast};
 use hir_def::{
     db::DefDatabase, hir::ExprId, layout::TargetDataLayout, AdtId, BlockId, ConstParamId,
-    DefWithBodyId, EnumVariantId, FunctionId, GenericDefId, ImplId, LifetimeParamId, LocalFieldId,
-    TypeOrConstParamId, VariantId,
+    DefWithBodyId, EnumVariantId, FunctionId, GeneralConstId, GenericDefId, ImplId,
+    LifetimeParamId, LocalFieldId, StaticId, TypeOrConstParamId, VariantId,
 };
 use la_arena::ArenaMap;
 use smallvec::SmallVec;
@@ -60,7 +60,12 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
 
     #[salsa::invoke(crate::consteval::const_eval_query)]
     #[salsa::cycle(crate::consteval::const_eval_recover)]
-    fn const_eval(&self, def: DefWithBodyId, subst: Substitution) -> Result<Const, ConstEvalError>;
+    fn const_eval(&self, def: GeneralConstId, subst: Substitution)
+        -> Result<Const, ConstEvalError>;
+
+    #[salsa::invoke(crate::consteval::const_eval_static_query)]
+    #[salsa::cycle(crate::consteval::const_eval_static_recover)]
+    fn const_eval_static(&self, def: StaticId) -> Result<Const, ConstEvalError>;
 
     #[salsa::invoke(crate::consteval::const_eval_discriminant_variant)]
     #[salsa::cycle(crate::consteval::const_eval_discriminant_recover)]

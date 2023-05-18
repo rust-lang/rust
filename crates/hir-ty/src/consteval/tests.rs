@@ -163,6 +163,22 @@ fn casts() {
 }
 
 #[test]
+fn raw_pointer_equality() {
+    check_number(
+        r#"
+        //- minicore: copy, eq
+        const GOAL: bool = {
+            let a = 2;
+            let p1 = a as *const i32;
+            let p2 = a as *const i32;
+            p1 == p2
+        };
+        "#,
+        1,
+    );
+}
+
+#[test]
 fn locals() {
     check_number(
         r#"
@@ -976,6 +992,22 @@ fn pattern_matching_literal() {
     const GOAL: u8 = f("foo") + f("bar");
         "#,
         11,
+    );
+}
+
+#[test]
+fn pattern_matching_slice() {
+    check_number(
+        r#"
+    //- minicore: slice, index, coerce_unsized, copy
+    const fn f(x: &[usize]) -> usize {
+        match x {
+            [a, b @ .., c, d] => *a + b.len() + *c + *d,
+        }
+    }
+    const GOAL: usize = f(&[10, 20, 3, 15, 1000, 60, 16]);
+        "#,
+        10 + 4 + 60 + 16,
     );
 }
 
@@ -1812,6 +1844,28 @@ fn array_and_index() {
     const GOAL: usize = [1, 2, 3, 4, 5].len();"#,
         5,
     );
+    check_number(
+        r#"
+    //- minicore: coerce_unsized, index, slice
+    const GOAL: [u16; 5] = [1, 2, 3, 4, 5];"#,
+        1 + (2 << 16) + (3 << 32) + (4 << 48) + (5 << 64),
+    );
+    check_number(
+        r#"
+    //- minicore: coerce_unsized, index, slice
+    const GOAL: [u16; 5] = [12; 5];"#,
+        12 + (12 << 16) + (12 << 32) + (12 << 48) + (12 << 64),
+    );
+    check_number(
+        r#"
+    //- minicore: coerce_unsized, index, slice
+    const LEN: usize = 4;
+    const GOAL: u16 = {
+        let x = [7; LEN];
+        x[2]
+    }"#,
+        7,
+    );
 }
 
 #[test]
@@ -1907,7 +1961,7 @@ fn enums() {
         "#,
     );
     let r = eval_goal(&db, file_id).unwrap();
-    assert_eq!(try_const_usize(&r), Some(1));
+    assert_eq!(try_const_usize(&db, &r), Some(1));
 }
 
 #[test]
@@ -1936,6 +1990,29 @@ fn const_transfer_memory() {
 }
 
 #[test]
+fn anonymous_const_block() {
+    check_number(
+        r#"
+    extern "rust-intrinsic" {
+        pub fn size_of<T>() -> usize;
+    }
+
+    const fn f<T>() -> usize {
+        let r = const { size_of::<T>() };
+        r
+    }
+
+    const GOAL: usize = {
+        let x = const { 2 + const { 3 } };
+        let y = f::<i32>();
+        x + y
+    };
+    "#,
+        9,
+    );
+}
+
+#[test]
 fn const_impl_assoc() {
     check_number(
         r#"
@@ -1943,9 +2020,9 @@ fn const_impl_assoc() {
     impl U5 {
         const VAL: usize = 5;
     }
-    const GOAL: usize = U5::VAL;
+    const GOAL: usize = U5::VAL + <U5>::VAL;
     "#,
-        5,
+        10,
     );
 }
 
@@ -2001,6 +2078,35 @@ fn const_generic_subst_assoc_const_impl() {
         const VAL: usize = N + M;
     }
     const GOAL: usize = Adder::<2, 3>::VAL;
+    "#,
+        5,
+    );
+}
+
+#[test]
+fn associated_types() {
+    check_number(
+        r#"
+    trait Tr {
+        type Item;
+        fn get_item(&self) -> Self::Item;
+    }
+
+    struct X(i32);
+    struct Y(i32);
+
+    impl Tr for X {
+        type Item = Y;
+        fn get_item(&self) -> Self::Item {
+            Y(self.0 + 2)
+        }
+    }
+
+    fn my_get_item<T: Tr>(x: T) -> <T as Tr>::Item {
+        x.get_item()
+    }
+
+    const GOAL: i32 = my_get_item(X(3)).0;
     "#,
         5,
     );

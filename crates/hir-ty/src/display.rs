@@ -420,13 +420,8 @@ impl HirDisplay for Const {
             ConstValue::Concrete(c) => match &c.interned {
                 ConstScalar::Bytes(b, m) => render_const_scalar(f, &b, m, &data.ty),
                 ConstScalar::UnevaluatedConst(c, parameters) => {
-                    let const_data = f.db.const_data(*c);
-                    write!(
-                        f,
-                        "{}",
-                        const_data.name.as_ref().and_then(|x| x.as_str()).unwrap_or("_")
-                    )?;
-                    hir_fmt_generics(f, parameters, Some((*c).into()))?;
+                    write!(f, "{}", c.name(f.db.upcast()))?;
+                    hir_fmt_generics(f, parameters, c.generic_def(f.db.upcast()))?;
                     Ok(())
                 }
                 ConstScalar::Unknown => f.write_char('_'),

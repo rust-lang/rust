@@ -40,11 +40,12 @@ use crate::{
     nameres::{DefMap, MacroSubNs},
     path::{GenericArgs, Path},
     type_ref::{Mutability, Rawness, TypeRef},
-    AdtId, BlockId, BlockLoc, ModuleDefId, UnresolvedMacro,
+    AdtId, BlockId, BlockLoc, DefWithBodyId, ModuleDefId, UnresolvedMacro,
 };
 
 pub(super) fn lower(
     db: &dyn DefDatabase,
+    owner: DefWithBodyId,
     expander: Expander,
     params: Option<(ast::ParamList, impl Iterator<Item = bool>)>,
     body: Option<ast::Expr>,
@@ -53,6 +54,7 @@ pub(super) fn lower(
 ) -> (Body, BodySourceMap) {
     ExprCollector {
         db,
+        owner,
         krate,
         def_map: expander.module.def_map(db),
         source_map: BodySourceMap::default(),
@@ -80,6 +82,7 @@ pub(super) fn lower(
 struct ExprCollector<'a> {
     db: &'a dyn DefDatabase,
     expander: Expander,
+    owner: DefWithBodyId,
     def_map: Arc<DefMap>,
     ast_id_map: Arc<AstIdMap>,
     krate: CrateId,
@@ -269,16 +272,13 @@ impl ExprCollector<'_> {
                 }
                 Some(ast::BlockModifier::Const(_)) => {
                     self.with_label_rib(RibKind::Constant, |this| {
-                        this.collect_as_a_binding_owner_bad(
-                            |this| {
-                                this.collect_block_(e, |id, statements, tail| Expr::Const {
-                                    id,
-                                    statements,
-                                    tail,
-                                })
-                            },
-                            syntax_ptr,
-                        )
+                        let (result_expr_id, prev_binding_owner) =
+                            this.initialize_binding_owner(syntax_ptr);
+                        let inner_expr = this.collect_block(e);
+                        let x = this.db.intern_anonymous_const((this.owner, inner_expr));
+                        this.body.exprs[result_expr_id] = Expr::Const(x);
+                        this.current_binding_owner = prev_binding_owner;
+                        result_expr_id
                     })
                 }
                 None => self.collect_block(e),

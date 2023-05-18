@@ -6,7 +6,7 @@ use std::{
 };
 
 use chalk_ir::{
-    cast::Cast, fold::Shift, DebruijnIndex, GenericArgData, Mutability, TyKind, TyVariableKind,
+    cast::Cast, fold::Shift, DebruijnIndex, GenericArgData, Mutability, TyVariableKind,
 };
 use hir_def::{
     generics::TypeOrConstParamData,
@@ -42,7 +42,7 @@ use crate::{
     traits::FnTrait,
     utils::{generics, Generics},
     Adjust, Adjustment, AdtId, AutoBorrow, Binders, CallableDefId, FnPointer, FnSig, FnSubst,
-    Interner, Rawness, Scalar, Substitution, TraitRef, Ty, TyBuilder, TyExt,
+    Interner, Rawness, Scalar, Substitution, TraitRef, Ty, TyBuilder, TyExt, TyKind,
 };
 
 use super::{
@@ -171,9 +171,10 @@ impl<'a> InferenceContext<'a> {
             Expr::Unsafe { id, statements, tail } => {
                 self.infer_block(tgt_expr, *id, statements, *tail, None, expected)
             }
-            Expr::Const { id, statements, tail } => {
+            Expr::Const(id) => {
                 self.with_breakable_ctx(BreakableKind::Border, None, None, |this| {
-                    this.infer_block(tgt_expr, *id, statements, *tail, None, expected)
+                    let (_, expr) = this.db.lookup_intern_anonymous_const(*id);
+                    this.infer_expr(expr, expected)
                 })
                 .1
             }

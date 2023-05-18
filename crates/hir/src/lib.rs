@@ -1862,18 +1862,34 @@ impl Function {
         self,
         db: &dyn HirDatabase,
         span_formatter: impl Fn(FileId, TextRange) -> String,
-    ) -> Result<(), String> {
-        let converter = |e: MirEvalError| {
-            let mut r = String::new();
-            _ = e.pretty_print(&mut r, db, &span_formatter);
-            r
+    ) -> String {
+        let body = match db.mir_body(self.id.into()) {
+            Ok(body) => body,
+            Err(e) => {
+                let mut r = String::new();
+                _ = e.pretty_print(&mut r, db, &span_formatter);
+                return r;
+            }
         };
-        let body = db
-            .mir_body(self.id.into())
-            .map_err(|e| MirEvalError::MirLowerError(self.id.into(), e))
-            .map_err(converter)?;
-        interpret_mir(db, &body, Substitution::empty(Interner), false).map_err(converter)?;
-        Ok(())
+        let (result, stdout, stderr) =
+            interpret_mir(db, &body, Substitution::empty(Interner), false);
+        let mut text = match result {
+            Ok(_) => "pass".to_string(),
+            Err(e) => {
+                let mut r = String::new();
+                _ = e.pretty_print(&mut r, db, &span_formatter);
+                r
+            }
+        };
+        if !stdout.is_empty() {
+            text += "\n--------- stdout ---------\n";
+            text += &stdout;
+        }
+        if !stderr.is_empty() {
+            text += "\n--------- stderr ---------\n";
+            text += &stderr;
+        }
+        text
     }
 }
 
@@ -3684,9 +3700,9 @@ impl Type {
         }
     }
 
-    pub fn as_array(&self, _db: &dyn HirDatabase) -> Option<(Type, usize)> {
+    pub fn as_array(&self, db: &dyn HirDatabase) -> Option<(Type, usize)> {
         if let TyKind::Array(ty, len) = &self.ty.kind(Interner) {
-            try_const_usize(len).map(|x| (self.derived(ty.clone()), x as usize))
+            try_const_usize(db, len).map(|x| (self.derived(ty.clone()), x as usize))
         } else {
             None
         }

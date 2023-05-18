@@ -324,6 +324,13 @@ pub mod mem {
         }
     }
 }
+
+pub mod ptr {
+    #[lang = "drop_in_place"]
+    pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
+        unsafe { drop_in_place(to_drop) }
+    }
+}
 // endregion:drop
 
 pub mod ops {

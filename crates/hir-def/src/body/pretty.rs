@@ -436,8 +436,8 @@ impl<'a> Printer<'a> {
             Expr::Async { id: _, statements, tail } => {
                 self.print_block(Some("async "), statements, tail);
             }
-            Expr::Const { id: _, statements, tail } => {
-                self.print_block(Some("const "), statements, tail);
+            Expr::Const(id) => {
+                w!(self, "const {{ /* {id:?} */ }}");
             }
         }
     }

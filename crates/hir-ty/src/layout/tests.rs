@@ -233,7 +233,8 @@ fn associated_types() {
         }
 
         struct Foo<A: Tr>(<A as Tr>::Ty);
-        struct Goal(Foo<i32>);
+        struct Bar<A: Tr>(A::Ty);
+        struct Goal(Foo<i32>, Bar<i32>, <i32 as Tr>::Ty);
     }
     check_size_and_align(
         r#"

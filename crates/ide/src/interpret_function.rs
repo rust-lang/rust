@@ -42,8 +42,5 @@ fn find_and_interpret(db: &RootDatabase, position: FilePosition) -> Option<Strin
         let path = path.as_deref().unwrap_or("<unknown file>");
         format!("file://{path}#{}:{}", line_col.line + 1, line_col.col)
     };
-    match def.eval(db, span_formatter) {
-        Ok(_) => Some("pass".to_string()),
-        Err(e) => Some(e),
-    }
+    Some(def.eval(db, span_formatter))
 }

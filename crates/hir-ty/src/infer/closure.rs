@@ -123,9 +123,14 @@ impl HirPlace {
     fn ty(&self, ctx: &mut InferenceContext<'_>) -> Ty {
         let mut ty = ctx.table.resolve_completely(ctx.result[self.local].clone());
         for p in &self.projections {
-            ty = p.projected_ty(ty, ctx.db, |_, _, _| {
-                unreachable!("Closure field only happens in MIR");
-            });
+            ty = p.projected_ty(
+                ty,
+                ctx.db,
+                |_, _, _| {
+                    unreachable!("Closure field only happens in MIR");
+                },
+                ctx.owner.module(ctx.db.upcast()).krate(),
+            );
         }
         ty.clone()
     }
@@ -451,7 +456,6 @@ impl InferenceContext<'_> {
                 }
             }
             Expr::Async { statements, tail, .. }
-            | Expr::Const { statements, tail, .. }
             | Expr::Unsafe { statements, tail, .. }
             | Expr::Block { statements, tail, .. } => {
                 for s in statements.iter() {
@@ -609,6 +613,7 @@ impl InferenceContext<'_> {
             | Expr::Continue { .. }
             | Expr::Path(_)
             | Expr::Literal(_)
+            | Expr::Const(_)
             | Expr::Underscore => (),
         }
     }

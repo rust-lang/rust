@@ -148,7 +148,7 @@ pub fn layout_of_ty(db: &dyn HirDatabase, ty: &Ty, krate: CrateId) -> Result<Lay
             cx.univariant(dl, &fields, &ReprOptions::default(), kind).ok_or(LayoutError::Unknown)?
         }
         TyKind::Array(element, count) => {
-            let count = try_const_usize(&count).ok_or(LayoutError::UserError(
+            let count = try_const_usize(db, &count).ok_or(LayoutError::UserError(
                 "unevaluated or mistyped const generic parameter".to_string(),
             ))? as u64;
             let element = layout_of_ty(db, element, krate)?;

@@ -59,7 +59,11 @@ mod pretty;
 
 use std::hash::{Hash, Hasher};
 
-use base_db::{impl_intern_key, salsa, CrateId, ProcMacroKind};
+use base_db::{
+    impl_intern_key,
+    salsa::{self, InternId},
+    CrateId, ProcMacroKind,
+};
 use hir_expand::{
     ast_id_map::FileAstId,
     attrs::{Attr, AttrId, AttrInput},
@@ -471,6 +475,46 @@ impl_from!(
     BuiltinType
     for ModuleDefId
 );
+
+// FIXME: make this a DefWithBodyId
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub struct AnonymousConstId(InternId);
+impl_intern_key!(AnonymousConstId);
+
+/// A constant, which might appears as a const item, an annonymous const block in expressions
+/// or patterns, or as a constant in types with const generics.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum GeneralConstId {
+    ConstId(ConstId),
+    AnonymousConstId(AnonymousConstId),
+}
+
+impl_from!(ConstId, AnonymousConstId for GeneralConstId);
+
+impl GeneralConstId {
+    pub fn generic_def(self, db: &dyn db::DefDatabase) -> Option<GenericDefId> {
+        match self {
+            GeneralConstId::ConstId(x) => Some(x.into()),
+            GeneralConstId::AnonymousConstId(x) => {
+                let (parent, _) = db.lookup_intern_anonymous_const(x);
+                parent.as_generic_def_id()
+            }
+        }
+    }
+
+    pub fn name(self, db: &dyn db::DefDatabase) -> String {
+        match self {
+            GeneralConstId::ConstId(const_id) => db
+                .const_data(const_id)
+                .name
+                .as_ref()
+                .and_then(|x| x.as_str())
+                .unwrap_or("_")
+                .to_owned(),
+            GeneralConstId::AnonymousConstId(id) => format!("{{anonymous const {id:?}}}"),
+        }
+    }
+}
 
 /// The defs which have a body.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

@@ -376,6 +376,7 @@ pub mod known {
         deref,
         div_assign,
         div,
+        drop,
         fn_mut,
         fn_once,
         future_trait,

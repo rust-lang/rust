@@ -51,6 +51,24 @@ impl Evaluator<'_> {
             )?;
             return Ok(true);
         }
+        let is_extern_c = match def.lookup(self.db.upcast()).container {
+            hir_def::ItemContainerId::ExternBlockId(block) => {
+                let id = block.lookup(self.db.upcast()).id;
+                id.item_tree(self.db.upcast())[id.value].abi.as_deref() == Some("C")
+            }
+            _ => false,
+        };
+        if is_extern_c {
+            self.exec_extern_c(
+                function_data.name.as_text().unwrap_or_default().as_str(),
+                args,
+                generic_args,
+                destination,
+                &locals,
+                span,
+            )?;
+            return Ok(true);
+        }
         let alloc_fn = function_data
             .attrs
             .iter()
@@ -72,7 +90,7 @@ impl Evaluator<'_> {
         if let Some(x) = self.detect_lang_function(def) {
             let arg_bytes =
                 args.iter().map(|x| Ok(x.get(&self)?.to_owned())).collect::<Result<Vec<_>>>()?;
-            let result = self.exec_lang_item(x, &arg_bytes)?;
+            let result = self.exec_lang_item(x, generic_args, &arg_bytes, locals, span)?;
             destination.write_from_bytes(self, &result)?;
             return Ok(true);
         }
@@ -118,13 +136,20 @@ impl Evaluator<'_> {
         use LangItem::*;
         let candidate = lang_attr(self.db.upcast(), def)?;
         // We want to execute these functions with special logic
-        if [PanicFmt, BeginPanic, SliceLen].contains(&candidate) {
+        if [PanicFmt, BeginPanic, SliceLen, DropInPlace].contains(&candidate) {
             return Some(candidate);
         }
         None
     }
 
-    fn exec_lang_item(&self, x: LangItem, args: &[Vec<u8>]) -> Result<Vec<u8>> {
+    fn exec_lang_item(
+        &mut self,
+        x: LangItem,
+        generic_args: &Substitution,
+        args: &[Vec<u8>],
+        locals: &Locals<'_>,
+        span: MirSpan,
+    ) -> Result<Vec<u8>> {
         use LangItem::*;
         let mut args = args.iter();
         match x {
@@ -139,7 +164,111 @@ impl Evaluator<'_> {
                 let ptr_size = arg.len() / 2;
                 Ok(arg[ptr_size..].into())
             }
+            DropInPlace => {
+                let ty =
+                    generic_args.as_slice(Interner).get(0).and_then(|x| x.ty(Interner)).ok_or(
+                        MirEvalError::TypeError(
+                            "generic argument of drop_in_place is not provided",
+                        ),
+                    )?;
+                let arg = args
+                    .next()
+                    .ok_or(MirEvalError::TypeError("argument of drop_in_place is not provided"))?;
+                self.run_drop_glue_deep(
+                    ty.clone(),
+                    locals,
+                    Address::from_bytes(&arg[0..self.ptr_size()])?,
+                    &arg[self.ptr_size()..],
+                    span,
+                )?;
+                Ok(vec![])
+            }
             x => not_supported!("Executing lang item {x:?}"),
+        }
+    }
+
+    fn exec_extern_c(
+        &mut self,
+        as_str: &str,
+        args: &[IntervalAndTy],
+        _generic_args: &Substitution,
+        destination: Interval,
+        locals: &Locals<'_>,
+        _span: MirSpan,
+    ) -> Result<()> {
+        match as_str {
+            "write" => {
+                let [fd, ptr, len] = args else {
+                    return Err(MirEvalError::TypeError("libc::write args are not provided"));
+                };
+                let fd = u128::from_le_bytes(pad16(fd.get(self)?, false));
+                let interval = Interval {
+                    addr: Address::from_bytes(ptr.get(self)?)?,
+                    size: from_bytes!(usize, len.get(self)?),
+                };
+                match fd {
+                    1 => {
+                        self.write_to_stdout(interval)?;
+                    }
+                    2 => {
+                        self.write_to_stderr(interval)?;
+                    }
+                    _ => not_supported!("write to arbitrary file descriptor"),
+                }
+                Ok(())
+            }
+            "pthread_key_create" => {
+                let key = self.thread_local_storage.create_key();
+                let Some(arg0) = args.get(0) else {
+                    return Err(MirEvalError::TypeError("pthread_key_create arg0 is not provided"));
+                };
+                let arg0_addr = Address::from_bytes(arg0.get(self)?)?;
+                let key_ty = if let Some((ty, ..)) = arg0.ty.as_reference_or_ptr() {
+                    ty
+                } else {
+                    return Err(MirEvalError::TypeError(
+                        "pthread_key_create arg0 is not a pointer",
+                    ));
+                };
+                let arg0_interval = Interval::new(
+                    arg0_addr,
+                    self.size_of_sized(key_ty, locals, "pthread_key_create key arg")?,
+                );
+                arg0_interval.write_from_bytes(self, &key.to_le_bytes()[0..arg0_interval.size])?;
+                // return 0 as success
+                destination.write_from_bytes(self, &0u64.to_le_bytes()[0..destination.size])?;
+                Ok(())
+            }
+            "pthread_getspecific" => {
+                let Some(arg0) = args.get(0) else {
+                    return Err(MirEvalError::TypeError("pthread_getspecific arg0 is not provided"));
+                };
+                let key = from_bytes!(usize, &pad16(arg0.get(self)?, false)[0..8]);
+                let value = self.thread_local_storage.get_key(key)?;
+                destination.write_from_bytes(self, &value.to_le_bytes()[0..destination.size])?;
+                Ok(())
+            }
+            "pthread_setspecific" => {
+                let Some(arg0) = args.get(0) else {
+                    return Err(MirEvalError::TypeError("pthread_setspecific arg0 is not provided"));
+                };
+                let key = from_bytes!(usize, &pad16(arg0.get(self)?, false)[0..8]);
+                let Some(arg1) = args.get(1) else {
+                    return Err(MirEvalError::TypeError("pthread_setspecific arg1 is not provided"));
+                };
+                let value = from_bytes!(u128, pad16(arg1.get(self)?, false));
+                self.thread_local_storage.set_key(key, value)?;
+                // return 0 as success
+                destination.write_from_bytes(self, &0u64.to_le_bytes()[0..destination.size])?;
+                Ok(())
+            }
+            "pthread_key_delete" => {
+                // we ignore this currently
+                // return 0 as success
+                destination.write_from_bytes(self, &0u64.to_le_bytes()[0..destination.size])?;
+                Ok(())
+            }
+            _ => not_supported!("unknown external function {as_str}"),
         }
     }
 
@@ -288,13 +417,46 @@ impl Evaluator<'_> {
                 let ans = lhs.get(self)? == rhs.get(self)?;
                 destination.write_from_bytes(self, &[u8::from(ans)])
             }
-            "wrapping_add" => {
+            "wrapping_add" | "unchecked_add" => {
                 let [lhs, rhs] = args else {
                     return Err(MirEvalError::TypeError("wrapping_add args are not provided"));
                 };
                 let lhs = u128::from_le_bytes(pad16(lhs.get(self)?, false));
                 let rhs = u128::from_le_bytes(pad16(rhs.get(self)?, false));
                 let ans = lhs.wrapping_add(rhs);
+                destination.write_from_bytes(self, &ans.to_le_bytes()[0..destination.size])
+            }
+            "wrapping_sub" | "unchecked_sub" | "ptr_offset_from_unsigned" | "ptr_offset_from" => {
+                let [lhs, rhs] = args else {
+                    return Err(MirEvalError::TypeError("wrapping_sub args are not provided"));
+                };
+                let lhs = u128::from_le_bytes(pad16(lhs.get(self)?, false));
+                let rhs = u128::from_le_bytes(pad16(rhs.get(self)?, false));
+                let ans = lhs.wrapping_sub(rhs);
+                destination.write_from_bytes(self, &ans.to_le_bytes()[0..destination.size])
+            }
+            "unchecked_rem" => {
+                // FIXME: signed
+                let [lhs, rhs] = args else {
+                    return Err(MirEvalError::TypeError("unchecked_rem args are not provided"));
+                };
+                let lhs = u128::from_le_bytes(pad16(lhs.get(self)?, false));
+                let rhs = u128::from_le_bytes(pad16(rhs.get(self)?, false));
+                let ans = lhs.checked_rem(rhs).ok_or_else(|| {
+                    MirEvalError::UndefinedBehavior("unchecked_rem with bad inputs".to_owned())
+                })?;
+                destination.write_from_bytes(self, &ans.to_le_bytes()[0..destination.size])
+            }
+            "unchecked_div" | "exact_div" => {
+                // FIXME: signed
+                let [lhs, rhs] = args else {
+                    return Err(MirEvalError::TypeError("unchecked_div args are not provided"));
+                };
+                let lhs = u128::from_le_bytes(pad16(lhs.get(self)?, false));
+                let rhs = u128::from_le_bytes(pad16(rhs.get(self)?, false));
+                let ans = lhs.checked_div(rhs).ok_or_else(|| {
+                    MirEvalError::UndefinedBehavior("unchecked_rem with bad inputs".to_owned())
+                })?;
                 destination.write_from_bytes(self, &ans.to_le_bytes()[0..destination.size])
             }
             "add_with_overflow" => {
@@ -372,6 +534,22 @@ impl Evaluator<'_> {
                     return Err(MirEvalError::TypeError("likely arg is not provided"));
                 };
                 destination.write_from_interval(self, arg.interval)
+            }
+            "ctpop" => {
+                let [arg] = args else {
+                    return Err(MirEvalError::TypeError("likely arg is not provided"));
+                };
+                let result = u128::from_le_bytes(pad16(arg.get(self)?, false)).count_ones();
+                destination
+                    .write_from_bytes(self, &(result as u128).to_le_bytes()[0..destination.size])
+            }
+            "cttz" | "cttz_nonzero" => {
+                let [arg] = args else {
+                    return Err(MirEvalError::TypeError("likely arg is not provided"));
+                };
+                let result = u128::from_le_bytes(pad16(arg.get(self)?, false)).trailing_zeros();
+                destination
+                    .write_from_bytes(self, &(result as u128).to_le_bytes()[0..destination.size])
             }
             "const_eval_select" => {
                 let [tuple, const_fn, _] = args else {

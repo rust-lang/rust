@@ -34,6 +34,7 @@ pub trait TyExt {
     fn as_closure(&self) -> Option<ClosureId>;
     fn as_fn_def(&self, db: &dyn HirDatabase) -> Option<FunctionId>;
     fn as_reference(&self) -> Option<(&Ty, Lifetime, Mutability)>;
+    fn as_raw_ptr(&self) -> Option<(&Ty, Mutability)>;
     fn as_reference_or_ptr(&self) -> Option<(&Ty, Rawness, Mutability)>;
     fn as_generic_def(&self, db: &dyn HirDatabase) -> Option<GenericDefId>;
 
@@ -146,9 +147,17 @@ impl TyExt for Ty {
             Some(CallableDefId::StructId(_) | CallableDefId::EnumVariantId(_)) | None => None,
         }
     }
+
     fn as_reference(&self) -> Option<(&Ty, Lifetime, Mutability)> {
         match self.kind(Interner) {
             TyKind::Ref(mutability, lifetime, ty) => Some((ty, lifetime.clone(), *mutability)),
+            _ => None,
+        }
+    }
+
+    fn as_raw_ptr(&self) -> Option<(&Ty, Mutability)> {
+        match self.kind(Interner) {
+            TyKind::Raw(mutability, ty) => Some((ty, *mutability)),
             _ => None,
         }
     }

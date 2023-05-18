@@ -44,7 +44,7 @@ use chalk_ir::{
     NoSolution, TyData,
 };
 use either::Either;
-use hir_def::{hir::ExprId, type_ref::Rawness, ConstId, TypeOrConstParamId};
+use hir_def::{hir::ExprId, type_ref::Rawness, GeneralConstId, TypeOrConstParamId};
 use hir_expand::name;
 use la_arena::{Arena, Idx};
 use mir::{MirEvalError, VTableMap};
@@ -180,7 +180,7 @@ pub enum ConstScalar {
     Bytes(Vec<u8>, MemoryMap),
     // FIXME: this is a hack to get around chalk not being able to represent unevaluatable
     // constants
-    UnevaluatedConst(ConstId, Substitution),
+    UnevaluatedConst(GeneralConstId, Substitution),
     /// Case of an unknown value that rustc might know but we don't
     // FIXME: this is a hack to get around chalk not being able to represent unevaluatable
     // constants
