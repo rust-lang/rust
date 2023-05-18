@@ -45,7 +45,7 @@ use hir_def::{
     hir::{BindingAnnotation, BindingId, ExprOrPatId, LabelId, Pat},
     item_tree::ItemTreeNode,
     lang_item::LangItemTarget,
-    layout::ReprOptions,
+    layout::{self, ReprOptions},
     macro_id_to_def_id,
     nameres::{self, diagnostics::DefDiagnostic, ModuleOrigin},
     per_ns::PerNs,
@@ -62,7 +62,7 @@ use hir_ty::{
     consteval::{try_const_usize, unknown_const_as_generic, ConstEvalError, ConstExt},
     diagnostics::BodyValidationDiagnostic,
     display::HexifiedConst,
-    layout::{layout_of_ty, Layout, LayoutError},
+    layout::{layout_of_ty, Layout, LayoutError, RustcEnumVariantIdx, TagEncoding},
     method_resolution::{self, TyFingerprint},
     mir::{self, interpret_mir},
     primitive::UintTy,
@@ -1089,7 +1089,7 @@ impl Enum {
         Type::new_for_crate(
             self.id.lookup(db.upcast()).container.krate(),
             TyBuilder::builtin(match db.enum_data(self.id).variant_body_type() {
-                hir_def::layout::IntegerType::Pointer(sign) => match sign {
+                layout::IntegerType::Pointer(sign) => match sign {
                     true => hir_def::builtin_type::BuiltinType::Int(
                         hir_def::builtin_type::BuiltinInt::Isize,
                     ),
@@ -1097,20 +1097,20 @@ impl Enum {
                         hir_def::builtin_type::BuiltinUint::Usize,
                     ),
                 },
-                hir_def::layout::IntegerType::Fixed(i, sign) => match sign {
+                layout::IntegerType::Fixed(i, sign) => match sign {
                     true => hir_def::builtin_type::BuiltinType::Int(match i {
-                        hir_def::layout::Integer::I8 => hir_def::builtin_type::BuiltinInt::I8,
-                        hir_def::layout::Integer::I16 => hir_def::builtin_type::BuiltinInt::I16,
-                        hir_def::layout::Integer::I32 => hir_def::builtin_type::BuiltinInt::I32,
-                        hir_def::layout::Integer::I64 => hir_def::builtin_type::BuiltinInt::I64,
-                        hir_def::layout::Integer::I128 => hir_def::builtin_type::BuiltinInt::I128,
+                        layout::Integer::I8 => hir_def::builtin_type::BuiltinInt::I8,
+                        layout::Integer::I16 => hir_def::builtin_type::BuiltinInt::I16,
+                        layout::Integer::I32 => hir_def::builtin_type::BuiltinInt::I32,
+                        layout::Integer::I64 => hir_def::builtin_type::BuiltinInt::I64,
+                        layout::Integer::I128 => hir_def::builtin_type::BuiltinInt::I128,
                     }),
                     false => hir_def::builtin_type::BuiltinType::Uint(match i {
-                        hir_def::layout::Integer::I8 => hir_def::builtin_type::BuiltinUint::U8,
-                        hir_def::layout::Integer::I16 => hir_def::builtin_type::BuiltinUint::U16,
-                        hir_def::layout::Integer::I32 => hir_def::builtin_type::BuiltinUint::U32,
-                        hir_def::layout::Integer::I64 => hir_def::builtin_type::BuiltinUint::U64,
-                        hir_def::layout::Integer::I128 => hir_def::builtin_type::BuiltinUint::U128,
+                        layout::Integer::I8 => hir_def::builtin_type::BuiltinUint::U8,
+                        layout::Integer::I16 => hir_def::builtin_type::BuiltinUint::U16,
+                        layout::Integer::I32 => hir_def::builtin_type::BuiltinUint::U32,
+                        layout::Integer::I64 => hir_def::builtin_type::BuiltinUint::U64,
+                        layout::Integer::I128 => hir_def::builtin_type::BuiltinUint::U128,
                     }),
                 },
             }),
@@ -1176,6 +1176,28 @@ impl Variant {
 
     pub fn eval(self, db: &dyn HirDatabase) -> Result<i128, ConstEvalError> {
         db.const_eval_discriminant(self.into())
+    }
+
+    /// Return layout of the variant and tag size of the parent enum.
+    pub fn layout(&self, db: &dyn HirDatabase) -> Result<(Layout, usize), LayoutError> {
+        let parent_enum = self.parent_enum(db);
+        let parent_layout = Adt::from(parent_enum).layout(db)?;
+        if let layout::Variants::Multiple { variants, tag, tag_encoding, tag_field: _ } =
+            parent_layout.variants
+        {
+            let tag_size = match tag_encoding {
+                TagEncoding::Direct => {
+                    let target_data_layout = db
+                        .target_data_layout(parent_enum.module(db).krate().id)
+                        .ok_or(LayoutError::TargetLayoutNotAvailable)?;
+                    tag.size(&*target_data_layout).bytes_usize()
+                }
+                TagEncoding::Niche { .. } => 0,
+            };
+            Ok((variants[RustcEnumVariantIdx(self.id)].clone(), tag_size))
+        } else {
+            Ok((parent_layout, 0))
+        }
     }
 }
 

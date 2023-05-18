@@ -150,7 +150,7 @@ fn foo() {
             *local*
 
             ```rust
-            let local: i32
+            let local: i32 // size = 4, align = 4
             ```
         "#]],
     );
@@ -396,12 +396,12 @@ fn main() {
 }
 "#,
         expect![[r#"
-                *iter*
+            *iter*
 
-                ```rust
-                let mut iter: Iter<Scan<OtherStruct<OtherStruct<i32>>, impl Fn(&mut u32, &u32, &mut u32) -> Option<u32>, u32>>
-                ```
-            "#]],
+            ```rust
+            let mut iter: Iter<Scan<OtherStruct<OtherStruct<i32>>, impl Fn(&mut u32, &u32, &mut u32) -> Option<u32>, u32>> // size = 8, align = 4
+            ```
+        "#]],
     );
 }
 
@@ -778,12 +778,12 @@ fn main() {
     let zz$0 = Test { t: 23u8, k: 33 };
 }"#,
         expect![[r#"
-                *zz*
+            *zz*
 
-                ```rust
-                let zz: Test<i32>
-                ```
-            "#]],
+            ```rust
+            let zz: Test<i32> // size = 8, align = 4
+            ```
+        "#]],
     );
     check_hover_range(
         r#"
@@ -829,12 +829,12 @@ use Option::Some;
 fn main() { let b$0ar = Some(12); }
 "#,
         expect![[r#"
-                *bar*
+            *bar*
 
-                ```rust
-                let bar: Option<i32>
-                ```
-            "#]],
+            ```rust
+            let bar: Option<i32> // size = 4, align = 4
+            ```
+        "#]],
     );
 }
 
@@ -898,12 +898,12 @@ fn hover_for_local_variable() {
     check(
         r#"fn func(foo: i32) { fo$0o; }"#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                foo: i32
-                ```
-            "#]],
+            ```rust
+            foo: i32 // size = 4, align = 4
+            ```
+        "#]],
     )
 }
 
@@ -912,12 +912,12 @@ fn hover_for_local_variable_pat() {
     check(
         r#"fn func(fo$0o: i32) {}"#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                foo: i32
-                ```
-            "#]],
+            ```rust
+            foo: i32 // size = 4, align = 4
+            ```
+        "#]],
     )
 }
 
@@ -926,12 +926,12 @@ fn hover_local_var_edge() {
     check(
         r#"fn func(foo: i32) { if true { $0foo; }; }"#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                foo: i32
-                ```
-            "#]],
+            ```rust
+            foo: i32 // size = 4, align = 4
+            ```
+        "#]],
     )
 }
 
@@ -940,12 +940,12 @@ fn hover_for_param_edge() {
     check(
         r#"fn func($0foo: i32) {}"#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                foo: i32
-                ```
-            "#]],
+            ```rust
+            foo: i32 // size = 4, align = 4
+            ```
+        "#]],
     )
 }
 
@@ -984,12 +984,12 @@ impl Thing {
 fn main() { let foo_$0test = Thing::new(); }
 "#,
         expect![[r#"
-                *foo_test*
+            *foo_test*
 
-                ```rust
-                let foo_test: Thing
-                ```
-            "#]],
+            ```rust
+            let foo_test: Thing // size = 4, align = 4
+            ```
+        "#]],
     )
 }
 
@@ -1144,12 +1144,12 @@ fn y() {
 }
 "#,
         expect![[r#"
-                *x*
+            *x*
 
-                ```rust
-                let x: i32
-                ```
-            "#]],
+            ```rust
+            let x: i32 // size = 4, align = 4
+            ```
+        "#]],
     )
 }
 
@@ -1274,12 +1274,12 @@ macro_rules! id { ($($tt:tt)*) => { $($tt)* } }
 fn foo(bar:u32) { let a = id!(ba$0r); }
 "#,
         expect![[r#"
-                *bar*
+            *bar*
 
-                ```rust
-                bar: u32
-                ```
-            "#]],
+            ```rust
+            bar: u32 // size = 4, align = 4
+            ```
+        "#]],
     );
 }
 
@@ -1292,12 +1292,12 @@ macro_rules! id { ($($tt:tt)*) => { id_deep!($($tt)*) } }
 fn foo(bar:u32) { let a = id!(ba$0r); }
 "#,
         expect![[r#"
-                *bar*
+            *bar*
 
-                ```rust
-                bar: u32
-                ```
-            "#]],
+            ```rust
+            bar: u32 // size = 4, align = 4
+            ```
+        "#]],
     );
 }
 
@@ -1838,6 +1838,27 @@ pub fn fo$0o() {}
 
                 [^example]: https://www.example.com/
             "#]],
+    );
+}
+
+#[test]
+fn test_hover_layout_of_variant() {
+    check(
+        r#"enum Foo {
+            Va$0riant1(u8, u16),
+            Variant2(i32, u8, i64),
+        }"#,
+        expect![[r#"
+            *Variant1*
+
+            ```rust
+            test::Foo
+            ```
+
+            ```rust
+            Variant1(u8, u16) // size = 4
+            ```
+        "#]],
     );
 }
 
@@ -3135,7 +3156,7 @@ fn main() {
             *f*
 
             ```rust
-            f: &i32
+            f: &i32 // size = 8, align = 8
             ```
             ---
 
@@ -3185,7 +3206,7 @@ fn main() {
             *value*
 
             ```rust
-            let value: Const<1>
+            let value: Const<1> // size = 0, align = 1
             ```
         "#]],
     );
@@ -3205,7 +3226,7 @@ fn main() {
             *value*
 
             ```rust
-            let value: Const<0>
+            let value: Const<0> // size = 0, align = 1
             ```
         "#]],
     );
@@ -3225,7 +3246,7 @@ fn main() {
             *value*
 
             ```rust
-            let value: Const<-1>
+            let value: Const<-1> // size = 0, align = 1
             ```
         "#]],
     );
@@ -3245,7 +3266,7 @@ fn main() {
             *value*
 
             ```rust
-            let value: Const<true>
+            let value: Const<true> // size = 0, align = 1
             ```
         "#]],
     );
@@ -3265,7 +3286,7 @@ fn main() {
             *value*
 
             ```rust
-            let value: Const<'🦀'>
+            let value: Const<'🦀'> // size = 0, align = 1
             ```
         "#]],
     );
@@ -3281,12 +3302,12 @@ impl Foo {
 }
 "#,
         expect![[r#"
-                *self*
+            *self*
 
-                ```rust
-                self: &Foo
-                ```
-            "#]],
+            ```rust
+            self: &Foo // size = 8, align = 8
+            ```
+        "#]],
     );
 }
 
@@ -3301,12 +3322,12 @@ impl Foo {
 }
 "#,
         expect![[r#"
-                *self*
+            *self*
 
-                ```rust
-                self: Arc<Foo>
-                ```
-            "#]],
+            ```rust
+            self: Arc<Foo> // size = 0, align = 1
+            ```
+        "#]],
     );
 }
 
@@ -4364,9 +4385,9 @@ fn main() {
             *tile4*
 
             ```rust
-            let tile4: [u32; 8]
+            let tile4: [u32; 8] // size = 32, align = 4
             ```
-            "#]],
+        "#]],
     );
 }
 
@@ -5541,7 +5562,7 @@ enum Enum {
             ```
 
             ```rust
-            RecordV { field: u32 }
+            RecordV { field: u32 } // size = 4
             ```
         "#]],
     );

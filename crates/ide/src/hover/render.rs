@@ -417,15 +417,25 @@ pub(super) fn definition(
             let layout = it.layout(db).ok()?;
             Some(format!("size = {}, align = {}", layout.size.bytes(), layout.align.abi.bytes()))
         }),
-        Definition::Variant(it) => label_value_and_docs(db, it, |&it| {
-            if !it.parent_enum(db).is_data_carrying(db) {
+        Definition::Variant(it) => label_value_and_layout_info_and_docs(db, it, config, |&it| {
+            let layout = (|| {
+                let (layout, tag_size) = it.layout(db).ok()?;
+                let size = layout.size.bytes_usize() - tag_size;
+                if size == 0 {
+                    // There is no value in showing layout info for fieldless variants
+                    return None;
+                }
+                Some(format!("size = {}", layout.size.bytes()))
+            })();
+            let value = if !it.parent_enum(db).is_data_carrying(db) {
                 match it.eval(db) {
                     Ok(x) => Some(if x >= 10 { format!("{x} ({x:#X})") } else { format!("{x}") }),
                     Err(_) => it.value(db).map(|x| format!("{x:?}")),
                 }
             } else {
                 None
-            }
+            };
+            (value, layout)
         }),
         Definition::Const(it) => label_value_and_docs(db, it, |it| {
             let body = it.render_eval(db);
@@ -460,7 +470,7 @@ pub(super) fn definition(
                 .and_then(|fd| builtin(fd, it))
                 .or_else(|| Some(Markup::fenced_block(&it.name())))
         }
-        Definition::Local(it) => return local(db, it),
+        Definition::Local(it) => return local(db, it, config),
         Definition::SelfType(impl_def) => {
             impl_def.self_ty(db).as_adt().map(|adt| label_and_docs(db, adt))?
         }
@@ -637,6 +647,32 @@ where
     (label, docs)
 }
 
+fn label_value_and_layout_info_and_docs<D, E, V, L>(
+    db: &RootDatabase,
+    def: D,
+    config: &HoverConfig,
+    value_extractor: E,
+) -> (String, Option<hir::Documentation>)
+where
+    D: HasAttrs + HirDisplay,
+    E: Fn(&D) -> (Option<V>, Option<L>),
+    V: Display,
+    L: Display,
+{
+    let (value, layout) = value_extractor(&def);
+    let label = if let Some(value) = value {
+        format!("{} = {value}", def.display(db))
+    } else {
+        def.display(db).to_string()
+    };
+    let label = match layout {
+        Some(layout) if config.memory_layout => format!("{} // {layout}", label),
+        _ => label,
+    };
+    let docs = def.attrs(db).docs();
+    (label, docs)
+}
+
 fn label_value_and_docs<D, E, V>(
     db: &RootDatabase,
     def: D,
@@ -696,11 +732,11 @@ fn find_std_module(famous_defs: &FamousDefs<'_, '_>, name: &str) -> Option<hir::
         .find(|module| module.name(db).map_or(false, |module| module.to_string() == name))
 }
 
-fn local(db: &RootDatabase, it: hir::Local) -> Option<Markup> {
+fn local(db: &RootDatabase, it: hir::Local, config: &HoverConfig) -> Option<Markup> {
     let ty = it.ty(db);
     let ty = ty.display_truncated(db, None);
     let is_mut = if it.is_mut(db) { "mut " } else { "" };
-    let desc = match it.primary_source(db).into_ident_pat() {
+    let mut desc = match it.primary_source(db).into_ident_pat() {
         Some(ident) => {
             let name = it.name(db);
             let let_kw = if ident
@@ -716,6 +752,16 @@ fn local(db: &RootDatabase, it: hir::Local) -> Option<Markup> {
         }
         None => format!("{is_mut}self: {ty}"),
     };
+    if config.memory_layout {
+        if let Ok(layout) = it.ty(db).layout(db) {
+            format_to!(
+                desc,
+                " // size = {}, align = {}",
+                layout.size.bytes(),
+                layout.align.abi.bytes()
+            );
+        }
+    }
     markup(None, desc, None)
 }
 
