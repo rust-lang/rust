@@ -164,21 +164,3 @@ pub enum TryReserveError {
         layout: alloc::alloc::Layout,
     },
 }
-
-/// Wrapper around `Bump` which allows it to be used as an allocator for
-/// `HashMap`, `HashSet` and `RawTable`.
-///
-/// `Bump` can be used directly without this wrapper on nightly if you enable
-/// the `allocator-api` feature of the `bumpalo` crate.
-#[cfg(feature = "bumpalo")]
-#[derive(Clone, Copy, Debug)]
-pub struct BumpWrapper<'a>(pub &'a bumpalo::Bump);
-
-#[cfg(feature = "bumpalo")]
-#[test]
-fn test_bumpalo() {
-    use bumpalo::Bump;
-    let bump = Bump::new();
-    let mut map = HashMap::new_in(BumpWrapper(&bump));
-    map.insert(0, 1);
-}

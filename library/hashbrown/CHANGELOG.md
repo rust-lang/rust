@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Support for `allocator-api2` crate
+  for interfacing with custom allocators on stable.
+
+### Changed
+
+- Bumped MSRV to 1.63.0.
+
+### Removed
+
+- Support for `bumpalo` as an allocator with custom wrapper.
+  Use `allocator-api2` feature in `bumpalo` to use it as an allocator
+  for `hashbrown` collections.
+
 ## [v0.13.2] - 2023-01-12
 
 ### Fixed

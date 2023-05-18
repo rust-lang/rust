@@ -10,7 +10,7 @@ keywords = ["hash", "no_std", "hashmap", "swisstable"]
 categories = ["data-structures", "no-std"]
 exclude = [".github", "/ci/*"]
 edition = "2021"
-rust-version = "1.61.0"
+rust-version = "1.63.0"
 
 [dependencies]
 # For the default hasher
@@ -25,8 +25,8 @@ core = { version = "1.0.0", optional = true, package = "rustc-std-workspace-core
 compiler_builtins = { version = "0.1.2", optional = true }
 alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-alloc" }
 
-# Optional support for bumpalo
-bumpalo = { version = "3.5.0", optional = true }
+# Support for allocators that use allocator-api2
+allocator-api2 = { version = "0.2.9", optional = true, default-features = false, features = ["alloc"] }
 
 [dev-dependencies]
 lazy_static = "1.4"
@@ -35,11 +35,13 @@ rayon = "1.0"
 fnv = "1.0.7"
 serde_test = "1.0"
 doc-comment = "0.3.1"
+bumpalo = "3.6.0"
 
 [features]
-default = ["ahash", "inline-more"]
+default = ["ahash", "inline-more", "allocator-api2"]
 
-nightly = []
+nightly = ["allocator-api2?/nightly", "bumpalo/allocator_api"]
+
 rustc-internal-api = []
 rustc-dep-of-std = [
     "nightly",

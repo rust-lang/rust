@@ -368,13 +368,13 @@ impl<K, V, A: Allocator + Clone> HashMap<K, V, DefaultHashBuilder, A> {
     /// # Examples
     ///
     /// ```
-    /// # #[cfg(feature = "bumpalo")]
+    /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use hashbrown::{HashMap, BumpWrapper};
+    /// use hashbrown::HashMap;
     /// use bumpalo::Bump;
     ///
     /// let bump = Bump::new();
-    /// let mut map = HashMap::new_in(BumpWrapper(&bump));
+    /// let mut map = HashMap::new_in(&bump);
     ///
     /// // The created HashMap holds none elements
     /// assert_eq!(map.len(), 0);
@@ -390,7 +390,7 @@ impl<K, V, A: Allocator + Clone> HashMap<K, V, DefaultHashBuilder, A> {
     /// assert!(map.capacity() > 1);
     /// # }
     /// # fn main() {
-    /// #     #[cfg(feature = "bumpalo")]
+    /// #     #[cfg(feature = "nightly")]
     /// #     test()
     /// # }
     /// ```
@@ -419,13 +419,13 @@ impl<K, V, A: Allocator + Clone> HashMap<K, V, DefaultHashBuilder, A> {
     /// # Examples
     ///
     /// ```
-    /// # #[cfg(feature = "bumpalo")]
+    /// # #[cfg(feature = "nightly")]
     /// # fn test() {
-    /// use hashbrown::{HashMap, BumpWrapper};
+    /// use hashbrown::HashMap;
     /// use bumpalo::Bump;
     ///
     /// let bump = Bump::new();
-    /// let mut map = HashMap::with_capacity_in(5, BumpWrapper(&bump));
+    /// let mut map = HashMap::with_capacity_in(5, &bump);
     ///
     /// // The created HashMap holds none elements
     /// assert_eq!(map.len(), 0);
@@ -446,7 +446,7 @@ impl<K, V, A: Allocator + Clone> HashMap<K, V, DefaultHashBuilder, A> {
     /// assert_eq!(map.capacity(), empty_map_capacity)
     /// # }
     /// # fn main() {
-    /// #     #[cfg(feature = "bumpalo")]
+    /// #     #[cfg(feature = "nightly")]
     /// #     test()
     /// # }
     /// ```
