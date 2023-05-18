@@ -5,12 +5,14 @@
 
 use std::iter;
 
-use hir_def::DefWithBodyId;
+use hir_def::{DefWithBodyId, HasModule};
 use la_arena::ArenaMap;
 use stdx::never;
 use triomphe::Arc;
 
-use crate::{db::HirDatabase, ClosureId};
+use crate::{
+    db::HirDatabase, mir::Operand, utils::ClosureSubst, ClosureId, Interner, Ty, TyExt, TypeFlags,
+};
 
 use super::{
     BasicBlockId, BorrowKind, LocalId, MirBody, MirLowerError, MirSpan, Place, ProjectionElem,
@@ -25,9 +27,16 @@ pub enum MutabilityReason {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MovedOutOfRef {
+    pub ty: Ty,
+    pub span: MirSpan,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BorrowckResult {
     pub mir_body: Arc<MirBody>,
     pub mutability_of_locals: ArenaMap<LocalId, MutabilityReason>,
+    pub moved_out_of_ref: Vec<MovedOutOfRef>,
 }
 
 fn all_mir_bodies(
@@ -68,10 +77,113 @@ pub fn borrowck_query(
     let r = all_mir_bodies(db, def)
         .map(|body| {
             let body = body?;
-            Ok(BorrowckResult { mutability_of_locals: mutability_of_locals(&body), mir_body: body })
+            Ok(BorrowckResult {
+                mutability_of_locals: mutability_of_locals(&body),
+                moved_out_of_ref: moved_out_of_ref(db, &body),
+                mir_body: body,
+            })
         })
         .collect::<Result<Vec<_>, MirLowerError>>()?;
     Ok(r.into())
+}
+
+fn moved_out_of_ref(db: &dyn HirDatabase, body: &MirBody) -> Vec<MovedOutOfRef> {
+    let mut result = vec![];
+    let mut for_operand = |op: &Operand, span: MirSpan| match op {
+        Operand::Copy(p) | Operand::Move(p) => {
+            let mut ty: Ty = body.locals[p.local].ty.clone();
+            let mut is_dereference_of_ref = false;
+            for proj in &p.projection {
+                if *proj == ProjectionElem::Deref && ty.as_reference().is_some() {
+                    is_dereference_of_ref = true;
+                }
+                ty = proj.projected_ty(
+                    ty,
+                    db,
+                    |c, subst, f| {
+                        let (def, _) = db.lookup_intern_closure(c.into());
+                        let infer = db.infer(def);
+                        let (captures, _) = infer.closure_info(&c);
+                        let parent_subst = ClosureSubst(subst).parent_subst();
+                        captures
+                            .get(f)
+                            .expect("broken closure field")
+                            .ty
+                            .clone()
+                            .substitute(Interner, parent_subst)
+                    },
+                    body.owner.module(db.upcast()).krate(),
+                );
+            }
+            if is_dereference_of_ref
+                && !ty.clone().is_copy(db, body.owner)
+                && !ty.data(Interner).flags.intersects(TypeFlags::HAS_ERROR)
+            {
+                result.push(MovedOutOfRef { span, ty });
+            }
+        }
+        Operand::Constant(_) | Operand::Static(_) => (),
+    };
+    for (_, block) in body.basic_blocks.iter() {
+        for statement in &block.statements {
+            match &statement.kind {
+                StatementKind::Assign(_, r) => match r {
+                    Rvalue::ShallowInitBoxWithAlloc(_) => (),
+                    Rvalue::ShallowInitBox(o, _)
+                    | Rvalue::UnaryOp(_, o)
+                    | Rvalue::Cast(_, o, _)
+                    | Rvalue::Repeat(o, _)
+                    | Rvalue::Use(o) => for_operand(o, statement.span),
+                    Rvalue::CopyForDeref(_)
+                    | Rvalue::Discriminant(_)
+                    | Rvalue::Len(_)
+                    | Rvalue::Ref(_, _) => (),
+                    Rvalue::CheckedBinaryOp(_, o1, o2) => {
+                        for_operand(o1, statement.span);
+                        for_operand(o2, statement.span);
+                    }
+                    Rvalue::Aggregate(_, ops) => {
+                        for op in ops {
+                            for_operand(op, statement.span);
+                        }
+                    }
+                },
+                StatementKind::Deinit(_)
+                | StatementKind::StorageLive(_)
+                | StatementKind::StorageDead(_)
+                | StatementKind::Nop => (),
+            }
+        }
+        match &block.terminator {
+            Some(terminator) => match &terminator.kind {
+                TerminatorKind::SwitchInt { discr, .. } => for_operand(discr, terminator.span),
+                TerminatorKind::FalseEdge { .. }
+                | TerminatorKind::FalseUnwind { .. }
+                | TerminatorKind::Goto { .. }
+                | TerminatorKind::Resume
+                | TerminatorKind::GeneratorDrop
+                | TerminatorKind::Abort
+                | TerminatorKind::Return
+                | TerminatorKind::Unreachable
+                | TerminatorKind::Drop { .. } => (),
+                TerminatorKind::DropAndReplace { value, .. } => {
+                    for_operand(value, terminator.span);
+                }
+                TerminatorKind::Call { func, args, .. } => {
+                    for_operand(func, terminator.span);
+                    args.iter().for_each(|x| for_operand(x, terminator.span));
+                }
+                TerminatorKind::Assert { cond, .. } => {
+                    for_operand(cond, terminator.span);
+                }
+                TerminatorKind::Yield { value, .. } => {
+                    for_operand(value, terminator.span);
+                }
+            },
+            None => (),
+        }
+    }
+    result
 }
 
 fn is_place_direct(lvalue: &Place) -> bool {

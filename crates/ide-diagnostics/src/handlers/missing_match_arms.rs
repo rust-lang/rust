@@ -1027,6 +1027,7 @@ fn main() {
 
             check_diagnostics(
                 r#"
+//- minicore: copy
 fn main() {
     match &false {
         &true => {}
@@ -1041,6 +1042,7 @@ fn main() {
             cov_mark::check_count!(validate_match_bailed_out, 1);
             check_diagnostics(
                 r#"
+//- minicore: copy
 fn main() {
     match (&false,) {
         //^^^^^^^^^ error: missing match arm: `(&false,)` not covered

@@ -90,10 +90,11 @@ pub use crate::{
         AnyDiagnostic, BreakOutsideOfLoop, ExpectedFunction, InactiveCode, IncoherentImpl,
         IncorrectCase, InvalidDeriveTarget, MacroDefError, MacroError, MacroExpansionParseError,
         MalformedDerive, MismatchedArgCount, MissingFields, MissingMatchArms, MissingUnsafe,
-        NeedMut, NoSuchField, PrivateAssocItem, PrivateField, ReplaceFilterMapNextWithFindMap,
-        TypeMismatch, UndeclaredLabel, UnimplementedBuiltinMacro, UnreachableLabel,
-        UnresolvedExternCrate, UnresolvedField, UnresolvedImport, UnresolvedMacroCall,
-        UnresolvedMethodCall, UnresolvedModule, UnresolvedProcMacro, UnusedMut,
+        MovedOutOfRef, NeedMut, NoSuchField, PrivateAssocItem, PrivateField,
+        ReplaceFilterMapNextWithFindMap, TypeMismatch, UndeclaredLabel, UnimplementedBuiltinMacro,
+        UnreachableLabel, UnresolvedExternCrate, UnresolvedField, UnresolvedImport,
+        UnresolvedMacroCall, UnresolvedMethodCall, UnresolvedModule, UnresolvedProcMacro,
+        UnusedMut,
     },
     has_source::HasSource,
     semantics::{PathResolution, Semantics, SemanticsScope, TypeInfo, VisibleTraits},
@@ -1575,6 +1576,26 @@ impl DefWithBody {
         if let Ok(borrowck_results) = db.borrowck(self.into()) {
             for borrowck_result in borrowck_results.iter() {
                 let mir_body = &borrowck_result.mir_body;
+                for moof in &borrowck_result.moved_out_of_ref {
+                    let span: InFile<SyntaxNodePtr> = match moof.span {
+                        mir::MirSpan::ExprId(e) => match source_map.expr_syntax(e) {
+                            Ok(s) => s.map(|x| x.into()),
+                            Err(_) => continue,
+                        },
+                        mir::MirSpan::PatId(p) => match source_map.pat_syntax(p) {
+                            Ok(s) => s.map(|x| match x {
+                                Either::Left(e) => e.into(),
+                                Either::Right(e) => e.into(),
+                            }),
+                            Err(_) => continue,
+                        },
+                        mir::MirSpan::Unknown => continue,
+                    };
+                    acc.push(
+                        MovedOutOfRef { ty: Type::new_for_crate(krate, moof.ty.clone()), span }
+                            .into(),
+                    )
+                }
                 let mol = &borrowck_result.mutability_of_locals;
                 for (binding_id, _) in hir_body.bindings.iter() {
                     let Some(&local) = mir_body.binding_locals.get(binding_id) else {

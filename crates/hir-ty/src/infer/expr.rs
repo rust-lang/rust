@@ -934,7 +934,18 @@ impl<'a> InferenceContext<'a> {
         match fn_x {
             FnTrait::FnOnce => (),
             FnTrait::FnMut => {
-                if !matches!(derefed_callee.kind(Interner), TyKind::Ref(Mutability::Mut, _, _)) {
+                if let TyKind::Ref(Mutability::Mut, _, inner) = derefed_callee.kind(Interner) {
+                    if adjustments
+                        .last()
+                        .map(|x| matches!(x.kind, Adjust::Borrow(_)))
+                        .unwrap_or(true)
+                    {
+                        // prefer reborrow to move
+                        adjustments
+                            .push(Adjustment { kind: Adjust::Deref(None), target: inner.clone() });
+                        adjustments.push(Adjustment::borrow(Mutability::Mut, inner.clone()))
+                    }
+                } else {
                     adjustments.push(Adjustment::borrow(Mutability::Mut, derefed_callee.clone()));
                 }
             }

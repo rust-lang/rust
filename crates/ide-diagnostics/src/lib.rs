@@ -38,6 +38,7 @@ mod handlers {
     pub(crate) mod missing_fields;
     pub(crate) mod missing_match_arms;
     pub(crate) mod missing_unsafe;
+    pub(crate) mod moved_out_of_ref;
     pub(crate) mod mutability_errors;
     pub(crate) mod no_such_field;
     pub(crate) mod private_assoc_item;
@@ -283,6 +284,7 @@ pub fn diagnostics(
             AnyDiagnostic::MissingFields(d) => handlers::missing_fields::missing_fields(&ctx, &d),
             AnyDiagnostic::MissingMatchArms(d) => handlers::missing_match_arms::missing_match_arms(&ctx, &d),
             AnyDiagnostic::MissingUnsafe(d) => handlers::missing_unsafe::missing_unsafe(&ctx, &d),
+            AnyDiagnostic::MovedOutOfRef(d) => handlers::moved_out_of_ref::moved_out_of_ref(&ctx, &d),
             AnyDiagnostic::NeedMut(d) => handlers::mutability_errors::need_mut(&ctx, &d),
             AnyDiagnostic::NoSuchField(d) => handlers::no_such_field::no_such_field(&ctx, &d),
             AnyDiagnostic::PrivateAssocItem(d) => handlers::private_assoc_item::private_assoc_item(&ctx, &d),

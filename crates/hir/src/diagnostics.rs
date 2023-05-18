@@ -46,6 +46,7 @@ diagnostics![
     MissingFields,
     MissingMatchArms,
     MissingUnsafe,
+    MovedOutOfRef,
     NeedMut,
     NoSuchField,
     PrivateAssocItem,
@@ -251,4 +252,10 @@ pub struct NeedMut {
 #[derive(Debug)]
 pub struct UnusedMut {
     pub local: Local,
+}
+
+#[derive(Debug)]
+pub struct MovedOutOfRef {
+    pub ty: Type,
+    pub span: InFile<SyntaxNodePtr>,
 }
