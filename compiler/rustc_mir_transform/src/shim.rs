@@ -320,7 +320,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
     block(&mut blocks, TerminatorKind::Goto { target: return_block });
     block(&mut blocks, TerminatorKind::Return);
 
-    let source = MirSource::from_instance(ty::InstanceKind::DropGlue(def_id, ty));
+    let source = ty::InstanceKind::DropGlue(def_id, ty);
     let mut body =
         new_body(source, blocks, local_decls_for_sig(&sig, span), sig.inputs().len(), span);
 
@@ -358,7 +358,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
 }
 
 fn new_body<'tcx>(
-    source: MirSource<'tcx>,
+    source: ty::InstanceKind<'tcx>,
     basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
     local_decls: IndexVec<Local, LocalDecl<'tcx>>,
     arg_count: usize,
@@ -488,7 +488,7 @@ fn build_thread_local_shim<'tcx>(
     )]);
 
     new_body(
-        MirSource::from_instance(instance),
+        instance,
         blocks,
         IndexVec::from_raw(vec![LocalDecl::new(tcx.thread_local_ptr_ty(def_id), span)]),
         0,
@@ -551,10 +551,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
     }
 
     fn into_mir(self) -> Body<'tcx> {
-        let source = MirSource::from_instance(ty::InstanceKind::CloneShim(
-            self.def_id,
-            self.sig.inputs_and_output[0],
-        ));
+        let source = ty::InstanceKind::CloneShim(self.def_id, self.sig.inputs_and_output[0]);
         new_body(source, self.blocks, self.local_decls, self.sig.inputs().len(), self.span)
     }
 
@@ -983,8 +980,7 @@ fn build_call_shim<'tcx>(
         block(&mut blocks, vec![], TerminatorKind::UnwindResume, true);
     }
 
-    let mut body =
-        new_body(MirSource::from_instance(instance), blocks, local_decls, sig.inputs().len(), span);
+    let mut body = new_body(instance, blocks, local_decls, sig.inputs().len(), span);
 
     if let ExternAbi::RustCall = sig.abi() {
         body.spread_arg = Some(Local::new(sig.inputs().len()));
@@ -1051,7 +1047,7 @@ pub(super) fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
         false,
     );
 
-    let source = MirSource::item(ctor_id);
+    let source = ty::InstanceKind::Item(ctor_id);
     let mut body = new_body(
         source,
         IndexVec::from_elem_n(start_block, 1),
@@ -1103,7 +1099,7 @@ fn build_fn_ptr_addr_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'t
         Some(Terminator { source_info, kind: TerminatorKind::Return }),
         false,
     );
-    let source = MirSource::from_instance(ty::InstanceKind::FnPtrAddrShim(def_id, self_ty));
+    let source = ty::InstanceKind::FnPtrAddrShim(def_id, self_ty);
     new_body(source, IndexVec::from_elem_n(start_block, 1), locals, sig.inputs().len(), span)
 }
 
@@ -1202,10 +1198,10 @@ fn build_construct_coroutine_by_move_shim<'tcx>(
         false,
     );
 
-    let source = MirSource::from_instance(ty::InstanceKind::ConstructCoroutineInClosureShim {
+    let source = ty::InstanceKind::ConstructCoroutineInClosureShim {
         coroutine_closure_def_id,
         receiver_by_ref,
-    });
+    };
 
     let body =
         new_body(source, IndexVec::from_elem_n(start_block, 1), locals, sig.inputs().len(), span);

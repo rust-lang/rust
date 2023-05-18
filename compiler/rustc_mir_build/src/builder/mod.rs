@@ -726,7 +726,7 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
     cfg.terminate(START_BLOCK, source_info, TerminatorKind::Unreachable);
 
     Body::new(
-        MirSource::item(def_id.to_def_id()),
+        ty::InstanceKind::Item(def_id.to_def_id()),
         cfg.basic_blocks,
         source_scopes,
         local_decls,
@@ -807,7 +807,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     #[allow(dead_code)]
     fn dump_for_debugging(&self) {
         let mut body = Body::new(
-            MirSource::item(self.def_id.to_def_id()),
+            ty::InstanceKind::Item(self.def_id.to_def_id()),
             self.cfg.basic_blocks.clone(),
             self.source_scopes.clone(),
             self.local_decls.clone(),
@@ -937,7 +937,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     fn finish(self) -> Body<'tcx> {
         let mut body = Body::new(
-            MirSource::item(self.def_id.to_def_id()),
+            ty::InstanceKind::Item(self.def_id.to_def_id()),
             self.cfg.basic_blocks,
             self.source_scopes,
             self.local_decls,

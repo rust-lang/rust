@@ -112,28 +112,6 @@ impl MirPhase {
     }
 }
 
-/// Where a specific `mir::Body` comes from.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-#[derive(StableHash, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
-pub struct MirSource<'tcx> {
-    pub instance: InstanceKind<'tcx>,
-}
-
-impl<'tcx> MirSource<'tcx> {
-    pub fn item(def_id: DefId) -> Self {
-        MirSource { instance: InstanceKind::Item(def_id) }
-    }
-
-    pub fn from_instance(instance: InstanceKind<'tcx>) -> Self {
-        MirSource { instance }
-    }
-
-    #[inline]
-    pub fn def_id(&self) -> DefId {
-        self.instance.def_id()
-    }
-}
-
 /// Additional information carried by a MIR body when it is lowered from a coroutine.
 /// This information is modified as it is lowered during the `StateTransform` MIR pass,
 /// so not all fields will be active at a given time. For example, the `yield_ty` is
@@ -215,7 +193,8 @@ pub struct Body<'tcx> {
     /// How many passes we have executed since starting the current phase. Used for debug output.
     pub pass_count: usize,
 
-    pub source: MirSource<'tcx>,
+    /// Where this specific body comes from.
+    pub source: InstanceKind<'tcx>,
 
     /// A list of source scopes; these are referenced by statements
     /// and used for debuginfo. Indexed by a `SourceScope`.
@@ -329,7 +308,7 @@ pub struct Body<'tcx> {
 
 impl<'tcx> Body<'tcx> {
     pub fn new(
-        source: MirSource<'tcx>,
+        source: InstanceKind<'tcx>,
         basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
         source_scopes: IndexVec<SourceScope, SourceScopeData<'tcx>>,
         local_decls: IndexVec<Local, LocalDecl<'tcx>>,
@@ -382,7 +361,7 @@ impl<'tcx> Body<'tcx> {
         let mut body = Body {
             phase: MirPhase::Built,
             pass_count: 0,
-            source: MirSource::item(CRATE_DEF_ID.to_def_id()),
+            source: InstanceKind::Item(CRATE_DEF_ID.to_def_id()),
             basic_blocks: BasicBlocks::new(basic_blocks),
             source_scopes: IndexVec::new(),
             coroutine: None,

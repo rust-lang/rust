@@ -956,7 +956,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         feeder.feed_hir();
 
         let def_id = feeder.def_id();
-        self.promoted.source = MirSource::item(def_id.to_def_id());
+        self.promoted.source = ty::InstanceKind::Item(def_id.to_def_id());
         self.promoted.set_required_consts(self.required_consts);
 
         let parent_args = tcx.erase_and_anonymize_regions(GenericArgs::identity_for_item(

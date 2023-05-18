@@ -605,17 +605,17 @@ pub(super) fn create_coroutine_drop_shim<'tcx>(
     simplify::remove_dead_blocks(&mut body);
 
     // Update the body's def to become the drop glue.
-    let coroutine_instance = body.source.instance;
+    let coroutine_instance = body.source;
     let drop_in_place = tcx.require_lang_item(LangItem::DropInPlace, body.span);
     let drop_instance = InstanceKind::DropGlue(drop_in_place, Some(coroutine_ty));
 
     // Temporary change MirSource to coroutine's instance so that dump_mir produces more sensible
     // filename.
-    body.source.instance = coroutine_instance;
+    body.source = coroutine_instance;
     if let Some(dumper) = MirDumper::new(tcx, "coroutine_drop", &body) {
         dumper.dump_mir(&body);
     }
-    body.source.instance = drop_instance;
+    body.source = drop_instance;
 
     // Creating a coroutine drop shim happens on `Analysis(PostCleanup) -> Runtime(Initial)`
     // but the pass manager doesn't update the phase of the coroutine drop shim. Update the

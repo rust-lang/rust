@@ -210,7 +210,7 @@ impl<'a, 'tcx> MirDumper<'a, 'tcx> {
         let item_name = tcx.def_path(source.def_id()).to_filename_friendly_no_crate();
         // All drop shims have the same DefId, so we have to add the type
         // to get unique file names.
-        let shim_disambiguator = match source.instance {
+        let shim_disambiguator = match source {
             ty::InstanceKind::DropGlue(_, Some(ty)) => {
                 // Unfortunately, pretty-printed types are not very filename-friendly.
                 // We do some filtering.
@@ -606,7 +606,7 @@ fn write_function_coverage_info(
 fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn io::Write) -> io::Result<()> {
     use rustc_hir::def::DefKind;
 
-    trace!("write_mir_sig: {:?}", body.source.instance);
+    trace!("write_mir_sig: {:?}", body.source);
     let def_id = body.source.def_id();
     let kind = tcx.def_kind(def_id);
     let is_function = match kind {

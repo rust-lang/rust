@@ -44,7 +44,7 @@ pub(super) fn build_custom_mir<'tcx>(
 ) -> Body<'tcx> {
     let mut body = Body {
         basic_blocks: BasicBlocks::new(IndexVec::new()),
-        source: MirSource::item(did),
+        source: ty::InstanceKind::Item(did),
         phase: MirPhase::Built,
         source_scopes: IndexVec::new(),
         coroutine: None,
