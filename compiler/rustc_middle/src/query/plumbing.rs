@@ -221,8 +221,8 @@ macro_rules! separate_provide_extern_decl {
     ([(separate_provide_extern) $($rest:tt)*][$name:ident]) => {
         for<'tcx> fn(
             TyCtxt<'tcx>,
-            query_keys::$name<'tcx>,
-        ) -> query_provided::$name<'tcx>
+            queries::$name::Key<'tcx>,
+        ) -> queries::$name::ProvidedValue<'tcx>
     };
     ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => {
         separate_provide_extern_decl!([$($modifiers)*][$($args)*])
@@ -252,60 +252,37 @@ macro_rules! define_callbacks {
      $($(#[$attr:meta])*
         [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,)*) => {
 
-        // HACK(eddyb) this is like the `impl QueryConfig for queries::$name`
-        // below, but using type aliases instead of associated types, to bypass
-        // the limitations around normalizing under HRTB - for example, this:
-        // `for<'tcx> fn(...) -> <queries::$name<'tcx> as QueryConfig<TyCtxt<'tcx>>>::Value`
-        // doesn't currently normalize to `for<'tcx> fn(...) -> query_values::$name<'tcx>`.
-        // This is primarily used by the `provide!` macro in `rustc_metadata`.
-        #[allow(nonstandard_style, unused_lifetimes)]
-        pub mod query_keys {
-            use super::*;
+        #[allow(unused_lifetimes)]
+        pub mod queries {
+            $(pub mod $name {
+                use super::super::*;
 
-            $(pub type $name<'tcx> = $($K)*;)*
-        }
-        #[allow(nonstandard_style, unused_lifetimes)]
-        pub mod query_keys_local {
-            use super::*;
+                pub type Key<'tcx> = $($K)*;
+                pub type Value<'tcx> = $V;
 
-            $(pub type $name<'tcx> = local_key_if_separate_extern!([$($modifiers)*] $($K)*);)*
-        }
-        #[allow(nonstandard_style, unused_lifetimes)]
-        pub mod query_values {
-            use super::*;
+                pub type LocalKey<'tcx> = local_key_if_separate_extern!([$($modifiers)*] $($K)*);
 
-            $(pub type $name<'tcx> = $V;)*
-        }
+                /// This type alias specifies the type returned from query providers and the type
+                /// used for decoding. For regular queries this is the declared returned type `V`,
+                /// but `arena_cache` will use `<V as Deref>::Target` instead.
+                pub type ProvidedValue<'tcx> = query_if_arena!(
+                    [$($modifiers)*]
+                    (<$V as Deref>::Target)
+                    ($V)
+                );
 
-        /// This module specifies the type returned from query providers and the type used for
-        /// decoding. For regular queries this is the declared returned type `V`, but
-        /// `arena_cache` will use `<V as Deref>::Target` instead.
-        #[allow(nonstandard_style, unused_lifetimes)]
-        pub mod query_provided {
-            use super::*;
-
-            $(
-                pub type $name<'tcx> = query_if_arena!([$($modifiers)*] (<$V as Deref>::Target) ($V));
-            )*
-        }
-
-        /// This module has a function per query which takes a `query_provided` value and coverts
-        /// it to a regular `V` value by allocating it on an arena if the query has the
-        /// `arena_cache` modifier. This will happen when computing the query using a provider or
-        /// decoding a stored result.
-        #[allow(nonstandard_style, unused_lifetimes)]
-        pub mod query_provided_to_value {
-            use super::*;
-
-            $(
+                /// This function takes `ProvidedValue` and coverts it to an erased `Value` by
+                /// allocating it on an arena if the query has the `arena_cache` modifier. The
+                /// value is then erased and returned. This will happen when computing the query
+                /// using a provider or decoding a stored result.
                 #[inline(always)]
-                pub fn $name<'tcx>(
+                pub fn provided_to_erased<'tcx>(
                     _tcx: TyCtxt<'tcx>,
-                    value: query_provided::$name<'tcx>,
-                ) -> Erase<query_values::$name<'tcx>> {
+                    value: ProvidedValue<'tcx>,
+                ) -> Erase<Value<'tcx>> {
                     erase(query_if_arena!([$($modifiers)*]
                         {
-                            if mem::needs_drop::<query_provided::$name<'tcx>>() {
+                            if mem::needs_drop::<ProvidedValue<'tcx>>() {
                                 &*_tcx.query_system.arenas.$name.alloc(value)
                             } else {
                                 &*_tcx.arena.dropless.alloc(value)
@@ -314,46 +291,40 @@ macro_rules! define_callbacks {
                         (value)
                     ))
                 }
-            )*
+
+                pub type Storage<'tcx> = <
+                    <$($K)* as keys::Key>::CacheSelector as CacheSelector<'tcx, Erase<$V>>
+                >::Cache;
+
+                // Ensure that keys grow no larger than 64 bytes
+                #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+                const _: () = {
+                    if mem::size_of::<Key<'static>>() > 64 {
+                        panic!("{}", concat!(
+                            "the query `",
+                            stringify!($name),
+                            "` has a key type `",
+                            stringify!($($K)*),
+                            "` that is too large"
+                        ));
+                    }
+                };
+
+                // Ensure that values grow no larger than 64 bytes
+                #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+                const _: () = {
+                    if mem::size_of::<Value<'static>>() > 64 {
+                        panic!("{}", concat!(
+                            "the query `",
+                            stringify!($name),
+                            "` has a value type `",
+                            stringify!($V),
+                            "` that is too large"
+                        ));
+                    }
+                };
+            })*
         }
-        #[allow(nonstandard_style, unused_lifetimes)]
-        pub mod query_storage {
-            use super::*;
-
-            $(
-                pub type $name<'tcx> = <<$($K)* as Key>::CacheSelector as CacheSelector<'tcx, Erase<$V>>>::Cache;
-            )*
-        }
-
-        $(
-            // Ensure that keys grow no larger than 64 bytes
-            #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-            const _: () = {
-                if mem::size_of::<query_keys::$name<'static>>() > 64 {
-                    panic!("{}", concat!(
-                        "the query `",
-                        stringify!($name),
-                        "` has a key type `",
-                        stringify!($($K)*),
-                        "` that is too large"
-                    ));
-                }
-            };
-
-            // Ensure that values grow no larger than 64 bytes
-            #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-            const _: () = {
-                if mem::size_of::<query_values::$name<'static>>() > 64 {
-                    panic!("{}", concat!(
-                        "the query `",
-                        stringify!($name),
-                        "` has a value type `",
-                        stringify!($V),
-                        "` that is too large"
-                    ));
-                }
-            };
-        )*
 
         pub struct QueryArenas<'tcx> {
             $($(#[$attr])* pub $name: query_if_arena!([$($modifiers)*]
@@ -375,7 +346,7 @@ macro_rules! define_callbacks {
 
         #[derive(Default)]
         pub struct QueryCaches<'tcx> {
-            $($(#[$attr])* pub $name: query_storage::$name<'tcx>,)*
+            $($(#[$attr])* pub $name: queries::$name::Storage<'tcx>,)*
         }
 
         impl<'tcx> TyCtxtEnsure<'tcx> {
@@ -433,7 +404,7 @@ macro_rules! define_callbacks {
 
         pub struct DynamicQueries<'tcx> {
             $(
-                pub $name: DynamicQuery<'tcx, query_storage::$name<'tcx>>,
+                pub $name: DynamicQuery<'tcx, queries::$name::Storage<'tcx>>,
             )*
         }
 
@@ -447,8 +418,8 @@ macro_rules! define_callbacks {
         pub struct Providers {
             $(pub $name: for<'tcx> fn(
                 TyCtxt<'tcx>,
-                query_keys_local::$name<'tcx>,
-            ) -> query_provided::$name<'tcx>,)*
+                queries::$name::LocalKey<'tcx>,
+            ) -> queries::$name::ProvidedValue<'tcx>,)*
         }
 
         pub struct ExternProviders {
@@ -493,7 +464,7 @@ macro_rules! define_callbacks {
             $(pub $name: for<'tcx> fn(
                 TyCtxt<'tcx>,
                 Span,
-                query_keys::$name<'tcx>,
+                queries::$name::Key<'tcx>,
                 QueryMode,
             ) -> Option<Erase<$V>>,)*
         }
@@ -517,11 +488,11 @@ macro_rules! define_feedable {
         $(impl<'tcx, K: IntoQueryParam<$($K)*> + Copy> TyCtxtFeed<'tcx, K> {
             $(#[$attr])*
             #[inline(always)]
-            pub fn $name(self, value: query_provided::$name<'tcx>) {
+            pub fn $name(self, value: queries::$name::ProvidedValue<'tcx>) {
                 let key = self.key().into_query_param();
 
                 let tcx = self.tcx;
-                let erased = query_provided_to_value::$name(tcx, value);
+                let erased = queries::$name::provided_to_erased(tcx, value);
                 let value = restore::<$V>(erased);
                 let cache = &tcx.query_system.caches.$name;
 
@@ -533,12 +504,20 @@ macro_rules! define_feedable {
                             let (value_hash, old_hash): (Fingerprint, Fingerprint) = tcx.with_stable_hashing_context(|mut hcx|
                                 (hasher(&mut hcx, &value), hasher(&mut hcx, &old))
                             );
-                            assert_eq!(
-                                old_hash, value_hash,
-                                "Trying to feed an already recorded value for query {} key={key:?}:\nold value: {old:?}\nnew value: {value:?}",
-                                stringify!($name),
-                            )
+                            if old_hash != value_hash {
+                                // We have an inconsistency. This can happen if one of the two
+                                // results is tainted by errors. In this case, delay a bug to
+                                // ensure compilation is doomed, and keep the `old` value.
+                                tcx.sess.delay_span_bug(DUMMY_SP, format!(
+                                    "Trying to feed an already recorded value for query {} key={key:?}:\n\
+                                    old value: {old:?}\nnew value: {value:?}",
+                                    stringify!($name),
+                                ));
+                            }
                         } else {
+                            // The query is `no_hash`, so we have no way to perform a sanity check.
+                            // If feeding the same value multiple times needs to be supported,
+                            // the query should not be marked `no_hash`.
                             bug!(
                                 "Trying to feed an already recorded value for query {} key={key:?}:\nold value: {old:?}\nnew value: {value:?}",
                                 stringify!($name),

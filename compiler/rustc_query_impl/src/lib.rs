@@ -15,7 +15,7 @@
 #[macro_use]
 extern crate rustc_middle;
 
-use crate::plumbing::{encode_all_query_results, try_mark_green};
+use crate::plumbing::{__rust_begin_short_backtrace, encode_all_query_results, try_mark_green};
 use field_offset::offset_of;
 use rustc_data_structures::stable_hasher::HashStable;
 use rustc_data_structures::sync::AtomicU64;
@@ -27,8 +27,7 @@ use rustc_middle::query::on_disk_cache::OnDiskCache;
 use rustc_middle::query::plumbing::{DynamicQuery, QuerySystem, QuerySystemFns};
 use rustc_middle::query::AsLocalKey;
 use rustc_middle::query::{
-    query_keys, query_provided, query_provided_to_value, query_storage, query_values,
-    DynamicQueries, ExternProviders, Providers, QueryCaches, QueryEngine, QueryStates,
+    queries, DynamicQueries, ExternProviders, Providers, QueryCaches, QueryEngine, QueryStates,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_query_system::dep_graph::SerializedDepNodeIndex;
