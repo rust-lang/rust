@@ -50,6 +50,13 @@ fn success(
     Ok(InferOk { goals, value: (adj, target) })
 }
 
+pub(super) enum CoercionCause {
+    // FIXME: Make better use of this. Right now things like return and break without a value
+    // use it to point to themselves, causing us to report a mismatch on those expressions even
+    // though technically they themselves are `!`
+    Expr(ExprId),
+}
+
 #[derive(Clone, Debug)]
 pub(super) struct CoerceMany {
     expected_ty: Ty,
@@ -90,8 +97,12 @@ impl CoerceMany {
         }
     }
 
-    pub(super) fn coerce_forced_unit(&mut self, ctx: &mut InferenceContext<'_>) {
-        self.coerce(ctx, None, &ctx.result.standard_types.unit.clone())
+    pub(super) fn coerce_forced_unit(
+        &mut self,
+        ctx: &mut InferenceContext<'_>,
+        cause: CoercionCause,
+    ) {
+        self.coerce(ctx, None, &ctx.result.standard_types.unit.clone(), cause)
     }
 
     /// Merge two types from different branches, with possible coercion.
@@ -106,6 +117,7 @@ impl CoerceMany {
         ctx: &mut InferenceContext<'_>,
         expr: Option<ExprId>,
         expr_ty: &Ty,
+        cause: CoercionCause,
     ) {
         let expr_ty = ctx.resolve_ty_shallow(expr_ty);
         self.expected_ty = ctx.resolve_ty_shallow(&self.expected_ty);
@@ -153,11 +165,13 @@ impl CoerceMany {
         } else if let Ok(res) = ctx.coerce(expr, &self.merged_ty(), &expr_ty) {
             self.final_ty = Some(res);
         } else {
-            if let Some(id) = expr {
-                ctx.result.type_mismatches.insert(
-                    id.into(),
-                    TypeMismatch { expected: self.merged_ty(), actual: expr_ty.clone() },
-                );
+            match cause {
+                CoercionCause::Expr(id) => {
+                    ctx.result.type_mismatches.insert(
+                        id.into(),
+                        TypeMismatch { expected: self.merged_ty(), actual: expr_ty.clone() },
+                    );
+                }
             }
             cov_mark::hit!(coerce_merge_fail_fallback);
         }
