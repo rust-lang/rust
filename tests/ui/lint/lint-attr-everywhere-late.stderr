@@ -305,124 +305,136 @@ note: the lint level is defined here
 LL |         #[deny(enum_intrinsics_non_enums)]
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error: variable `ARM_VAR` should have a snake case name
+  --> $DIR/lint-attr-everywhere-late.rs:167:9
+   |
+LL |         ARM_VAR => {}
+   |         ^^^^^^^ help: convert the identifier to snake case: `arm_var`
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:166:16
+   |
+LL |         #[deny(non_snake_case)]
+   |                ^^^^^^^^^^^^^^
+
 error: the return value of `mem::discriminant` is unspecified when called with a non-enum type
-  --> $DIR/lint-attr-everywhere-late.rs:168:9
+  --> $DIR/lint-attr-everywhere-late.rs:173:9
    |
 LL |         discriminant::<i32>(&123);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum.
-  --> $DIR/lint-attr-everywhere-late.rs:168:29
+  --> $DIR/lint-attr-everywhere-late.rs:173:29
    |
 LL |         discriminant::<i32>(&123);
    |                             ^^^^
 note: the lint level is defined here
-  --> $DIR/lint-attr-everywhere-late.rs:167:17
+  --> $DIR/lint-attr-everywhere-late.rs:172:17
    |
 LL |         #![deny(enum_intrinsics_non_enums)]
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: the return value of `mem::discriminant` is unspecified when called with a non-enum type
-  --> $DIR/lint-attr-everywhere-late.rs:172:9
+  --> $DIR/lint-attr-everywhere-late.rs:177:9
    |
 LL |         discriminant::<i32>(&123);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum.
-  --> $DIR/lint-attr-everywhere-late.rs:172:29
+  --> $DIR/lint-attr-everywhere-late.rs:177:29
    |
 LL |         discriminant::<i32>(&123);
    |                             ^^^^
 note: the lint level is defined here
-  --> $DIR/lint-attr-everywhere-late.rs:171:16
+  --> $DIR/lint-attr-everywhere-late.rs:176:16
    |
 LL |         #[deny(enum_intrinsics_non_enums)]
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: the return value of `mem::discriminant` is unspecified when called with a non-enum type
-  --> $DIR/lint-attr-everywhere-late.rs:177:5
+  --> $DIR/lint-attr-everywhere-late.rs:182:5
    |
 LL |     discriminant::<i32>(&123);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum.
-  --> $DIR/lint-attr-everywhere-late.rs:177:25
+  --> $DIR/lint-attr-everywhere-late.rs:182:25
    |
 LL |     discriminant::<i32>(&123);
    |                         ^^^^
 note: the lint level is defined here
-  --> $DIR/lint-attr-everywhere-late.rs:176:12
+  --> $DIR/lint-attr-everywhere-late.rs:181:12
    |
 LL |     #[deny(enum_intrinsics_non_enums)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: the return value of `mem::discriminant` is unspecified when called with a non-enum type
-  --> $DIR/lint-attr-everywhere-late.rs:179:41
+  --> $DIR/lint-attr-everywhere-late.rs:184:41
    |
 LL |     [#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123)];
    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum.
-  --> $DIR/lint-attr-everywhere-late.rs:179:61
+  --> $DIR/lint-attr-everywhere-late.rs:184:61
    |
 LL |     [#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123)];
    |                                                             ^^^^
 note: the lint level is defined here
-  --> $DIR/lint-attr-everywhere-late.rs:179:13
+  --> $DIR/lint-attr-everywhere-late.rs:184:13
    |
 LL |     [#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123)];
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: the return value of `mem::discriminant` is unspecified when called with a non-enum type
-  --> $DIR/lint-attr-everywhere-late.rs:180:41
+  --> $DIR/lint-attr-everywhere-late.rs:185:41
    |
 LL |     (#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123),);
    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum.
-  --> $DIR/lint-attr-everywhere-late.rs:180:61
+  --> $DIR/lint-attr-everywhere-late.rs:185:61
    |
 LL |     (#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123),);
    |                                                             ^^^^
 note: the lint level is defined here
-  --> $DIR/lint-attr-everywhere-late.rs:180:13
+  --> $DIR/lint-attr-everywhere-late.rs:185:13
    |
 LL |     (#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123),);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: the return value of `mem::discriminant` is unspecified when called with a non-enum type
-  --> $DIR/lint-attr-everywhere-late.rs:182:45
+  --> $DIR/lint-attr-everywhere-late.rs:187:45
    |
 LL |     call(#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123));
    |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum.
-  --> $DIR/lint-attr-everywhere-late.rs:182:65
+  --> $DIR/lint-attr-everywhere-late.rs:187:65
    |
 LL |     call(#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123));
    |                                                                 ^^^^
 note: the lint level is defined here
-  --> $DIR/lint-attr-everywhere-late.rs:182:17
+  --> $DIR/lint-attr-everywhere-late.rs:187:17
    |
 LL |     call(#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123));
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: the return value of `mem::discriminant` is unspecified when called with a non-enum type
-  --> $DIR/lint-attr-everywhere-late.rs:184:52
+  --> $DIR/lint-attr-everywhere-late.rs:189:52
    |
 LL |     TupleStruct(#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123));
    |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum.
-  --> $DIR/lint-attr-everywhere-late.rs:184:72
+  --> $DIR/lint-attr-everywhere-late.rs:189:72
    |
 LL |     TupleStruct(#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123));
    |                                                                        ^^^^
 note: the lint level is defined here
-  --> $DIR/lint-attr-everywhere-late.rs:184:24
+  --> $DIR/lint-attr-everywhere-late.rs:189:24
    |
 LL |     TupleStruct(#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123));
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 31 previous errors
+error: aborting due to 32 previous errors
 
