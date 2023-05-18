@@ -47,7 +47,8 @@ urls=($urls)
 for i in ${!modules[@]}; do
     module=${modules[$i]}
     if [[ " $included " = *" $module "* ]]; then
-        commit="$(git ls-tree HEAD $module | awk '{print $3}')"
+        # FIXME: replace --format with --object-only when git >= 2.36
+        commit="$(git ls-tree HEAD $module --format='%(objectname)')"
         git rm $module
         url=${urls[$i]}
         url=${url/\.git/}
