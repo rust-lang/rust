@@ -533,12 +533,20 @@ macro_rules! define_feedable {
                             let (value_hash, old_hash): (Fingerprint, Fingerprint) = tcx.with_stable_hashing_context(|mut hcx|
                                 (hasher(&mut hcx, &value), hasher(&mut hcx, &old))
                             );
-                            assert_eq!(
-                                old_hash, value_hash,
-                                "Trying to feed an already recorded value for query {} key={key:?}:\nold value: {old:?}\nnew value: {value:?}",
-                                stringify!($name),
-                            )
+                            if old_hash != value_hash {
+                                // We have an inconsistency. This can happen if one of the two
+                                // results is tainted by errors. In this case, delay a bug to
+                                // ensure compilation is doomed, and keep the `old` value.
+                                tcx.sess.delay_span_bug(DUMMY_SP, format!(
+                                    "Trying to feed an already recorded value for query {} key={key:?}:\n\
+                                    old value: {old:?}\nnew value: {value:?}",
+                                    stringify!($name),
+                                ));
+                            }
                         } else {
+                            // The query is `no_hash`, so we have no way to perform a sanity check.
+                            // If feeding the same value multiple times needs to be supported,
+                            // the query should not be marked `no_hash`.
                             bug!(
                                 "Trying to feed an already recorded value for query {} key={key:?}:\nold value: {old:?}\nnew value: {value:?}",
                                 stringify!($name),
