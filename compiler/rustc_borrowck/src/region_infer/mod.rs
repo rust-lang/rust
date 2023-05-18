@@ -642,7 +642,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         polonius_output: Option<Rc<PoloniusOutput>>,
     ) -> (Option<ClosureRegionRequirements<'tcx>>, RegionErrors<'tcx>) {
         let mir_def_id = body.source.def_id();
-        self.propagate_constraints(body);
+        self.propagate_constraints();
 
         let mut errors_buffer = RegionErrors::new(infcx.tcx);
 
@@ -653,13 +653,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // eagerly.
         let mut outlives_requirements = infcx.tcx.is_typeck_child(mir_def_id).then(Vec::new);
 
-        self.check_type_tests(
-            infcx,
-            param_env,
-            body,
-            outlives_requirements.as_mut(),
-            &mut errors_buffer,
-        );
+        self.check_type_tests(infcx, param_env, outlives_requirements.as_mut(), &mut errors_buffer);
 
         // In Polonius mode, the errors about missing universal region relations are in the output
         // and need to be emitted or propagated. Otherwise, we need to check whether the
@@ -695,8 +689,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// for each region variable until all the constraints are
     /// satisfied. Note that some values may grow **too** large to be
     /// feasible, but we check this later.
-    #[instrument(skip(self, _body), level = "debug")]
-    fn propagate_constraints(&mut self, _body: &Body<'tcx>) {
+    #[instrument(skip(self), level = "debug")]
+    fn propagate_constraints(&mut self) {
         debug!("constraints={:#?}", {
             let mut constraints: Vec<_> = self.constraints.outlives().iter().collect();
             constraints.sort_by_key(|c| (c.sup, c.sub));
@@ -908,7 +902,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         infcx: &InferCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        body: &Body<'tcx>,
         mut propagated_outlives_requirements: Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
         errors_buffer: &mut RegionErrors<'tcx>,
     ) {
@@ -937,7 +930,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 if self.try_promote_type_test(
                     infcx,
                     param_env,
-                    body,
                     type_test,
                     propagated_outlives_requirements,
                 ) {
@@ -990,12 +982,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// The idea then is to lower the `T: 'X` constraint into multiple
     /// bounds -- e.g., if `'X` is the union of two free lifetimes,
     /// `'1` and `'2`, then we would create `T: '1` and `T: '2`.
-    #[instrument(level = "debug", skip(self, infcx, propagated_outlives_requirements))]
+    #[instrument(
+        level = "debug",
+        skip(self, infcx, param_env, propagated_outlives_requirements),
+        ret
+    )]
     fn try_promote_type_test(
         &self,
         infcx: &InferCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        body: &Body<'tcx>,
         type_test: &TypeTest<'tcx>,
         propagated_outlives_requirements: &mut Vec<ClosureOutlivesRequirement<'tcx>>,
     ) -> bool {
