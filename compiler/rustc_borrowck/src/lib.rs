@@ -118,7 +118,7 @@ pub fn provide(providers: &mut Providers) {
 
 fn mir_borrowck(tcx: TyCtxt<'_>, def: LocalDefId) -> &BorrowCheckResult<'_> {
     let (input_body, _) = tcx.mir_promoted(def);
-    debug!("run query mir_borrowck: {}", tcx.def_path_str(def));
+    debug!("run query mir_borrowck: {def:?}");
 
     if input_body.borrow().should_skip() {
         debug!("Skipping borrowck because of injected body");
@@ -137,7 +137,7 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def: LocalDefId) -> &BorrowCheckResult<'_> {
         tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bind(typeck_root)).build();
     let input_body: &Body<'_> = &input_body.borrow();
     let opt_closure_req = do_mir_borrowck(&infcx, input_body, false).0;
-    debug!("mir_borrowck done");
+    debug!("mir_borrowck done: {def:?}");
 
     tcx.arena.alloc(opt_closure_req)
 }
