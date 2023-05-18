@@ -20,21 +20,23 @@ pub(super) fn enum_hints(
     _: FileId,
     enum_: ast::Enum,
 ) -> Option<()> {
-    let enabled = match config.discriminant_hints {
-        DiscriminantHints::Always => true,
-        DiscriminantHints::Fieldless => {
-            !sema.to_def(&enum_)?.is_data_carrying(sema.db)
-                || enum_.variant_list()?.variants().any(|v| v.expr().is_some())
-        }
-        DiscriminantHints::Never => false,
-    };
-    if !enabled {
+    if let DiscriminantHints::Never = config.discriminant_hints {
+        return None;
+    }
+
+    let def = sema.to_def(&enum_)?;
+    let data_carrying = def.is_data_carrying(sema.db);
+    if matches!(config.discriminant_hints, DiscriminantHints::Fieldless) && data_carrying {
+        return None;
+    }
+    // data carrying enums without a primitive repr have no stable discriminants
+    if data_carrying && def.repr(sema.db).map_or(true, |r| r.int.is_none()) {
         return None;
     }
     for variant in enum_.variant_list()?.variants() {
         variant_hints(acc, sema, &variant);
     }
-    None
+    Some(())
 }
 
 fn variant_hints(
@@ -91,7 +93,6 @@ fn variant_hints(
 
     Some(())
 }
-
 #[cfg(test)]
 mod tests {
     use crate::inlay_hints::{
@@ -123,30 +124,30 @@ mod tests {
         check_discriminants(
             r#"
 enum Enum {
-  Variant,
-//^^^^^^^ = 0$
-  Variant1,
-//^^^^^^^^ = 1$
-  Variant2,
-//^^^^^^^^ = 2$
-  Variant5 = 5,
-  Variant6,
-//^^^^^^^^ = 6$
+    Variant,
+//  ^^^^^^^ = 0$
+    Variant1,
+//  ^^^^^^^^ = 1$
+    Variant2,
+//  ^^^^^^^^ = 2$
+    Variant5 = 5,
+    Variant6,
+//  ^^^^^^^^ = 6$
 }
 "#,
         );
         check_discriminants_fieldless(
             r#"
 enum Enum {
-  Variant,
-//^^^^^^^ = 0
-  Variant1,
-//^^^^^^^^ = 1
-  Variant2,
-//^^^^^^^^ = 2
-  Variant5 = 5,
-  Variant6,
-//^^^^^^^^ = 6
+    Variant,
+//  ^^^^^^^ = 0
+    Variant1,
+//  ^^^^^^^^ = 1
+    Variant2,
+//  ^^^^^^^^ = 2
+    Variant5 = 5,
+    Variant6,
+//  ^^^^^^^^ = 6
 }
 "#,
         );
@@ -156,26 +157,23 @@ enum Enum {
     fn datacarrying_mixed() {
         check_discriminants(
             r#"
+#[repr(u8)]
 enum Enum {
     Variant(),
-  //^^^^^^^^^ = 0
+//  ^^^^^^^^^ = 0
     Variant1,
-  //^^^^^^^^ = 1
+//  ^^^^^^^^ = 1
     Variant2 {},
-  //^^^^^^^^^^^ = 2
+//  ^^^^^^^^^^^ = 2
     Variant3,
-  //^^^^^^^^ = 3
+//  ^^^^^^^^ = 3
     Variant5 = 5,
     Variant6,
-  //^^^^^^^^ = 6
+//  ^^^^^^^^ = 6
 }
 "#,
         );
-    }
-
-    #[test]
-    fn datacarrying_mixed_fieldless_set() {
-        check_discriminants_fieldless(
+        check_discriminants(
             r#"
 enum Enum {
     Variant(),
@@ -187,20 +185,20 @@ enum Enum {
 }
 "#,
         );
+    }
+
+    #[test]
+    fn datacarrying_mixed_fieldless_set() {
         check_discriminants_fieldless(
             r#"
+#[repr(u8)]
 enum Enum {
     Variant(),
-  //^^^^^^^^^ = 0
     Variant1,
-  //^^^^^^^^ = 1
     Variant2 {},
-  //^^^^^^^^^^^ = 2
     Variant3,
-  //^^^^^^^^ = 3
-    Variant5 = 5,
+    Variant5,
     Variant6,
-  //^^^^^^^^ = 6
 }
 "#,
         );
