@@ -1884,6 +1884,38 @@ fn byte_string() {
 }
 
 #[test]
+fn c_string() {
+    check_number(
+        r#"
+//- minicore: index, slice
+#[lang = "CStr"]
+pub struct CStr {
+    inner: [u8]
+}
+const GOAL: u8 = {
+    let a = c"hello";
+    a.inner[0]
+};
+    "#,
+        104,
+    );
+    check_number(
+        r#"
+//- minicore: index, slice
+#[lang = "CStr"]
+pub struct CStr {
+    inner: [u8]
+}
+const GOAL: u8 = {
+    let a = c"hello";
+    a.inner[6]
+};
+    "#,
+        0,
+    );
+}
+
+#[test]
 fn consts() {
     check_number(
         r#"

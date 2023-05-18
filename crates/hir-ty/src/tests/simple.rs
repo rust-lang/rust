@@ -3572,3 +3572,18 @@ fn main() {
 "#,
     );
 }
+
+#[test]
+fn cstring_literals() {
+    check_types(
+        r#"
+#[lang = "CStr"]
+pub struct CStr;
+
+fn main() {
+    c"ello";
+  //^^^^^^^ &CStr
+}
+"#,
+    );
+}

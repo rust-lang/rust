@@ -39,7 +39,7 @@ fn reparse_token(
     let prev_token = root.covering_element(edit.delete).as_token()?.clone();
     let prev_token_kind = prev_token.kind();
     match prev_token_kind {
-        WHITESPACE | COMMENT | IDENT | STRING => {
+        WHITESPACE | COMMENT | IDENT | STRING | BYTE_STRING | C_STRING => {
             if prev_token_kind == WHITESPACE || prev_token_kind == COMMENT {
                 // removing a new line may extends previous token
                 let deleted_range = edit.delete - prev_token.text_range().start();

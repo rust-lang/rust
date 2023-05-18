@@ -16,7 +16,10 @@ mod tests;
 use hir::{Name, Semantics};
 use ide_db::{FxHashMap, RootDatabase, SymbolKind};
 use syntax::{
-    ast, AstNode, AstToken, NodeOrToken, SyntaxKind::*, SyntaxNode, TextRange, WalkEvent, T,
+    ast::{self, IsString},
+    AstNode, AstToken, NodeOrToken,
+    SyntaxKind::*,
+    SyntaxNode, TextRange, WalkEvent, T,
 };
 
 use crate::{
@@ -440,7 +443,17 @@ fn traverse(
                 && ast::ByteString::can_cast(descended_token.kind())
             {
                 if let Some(byte_string) = ast::ByteString::cast(token) {
-                    highlight_escape_string(hl, &byte_string, range.start());
+                    if !byte_string.is_raw() {
+                        highlight_escape_string(hl, &byte_string, range.start());
+                    }
+                }
+            } else if ast::CString::can_cast(token.kind())
+                && ast::CString::can_cast(descended_token.kind())
+            {
+                if let Some(c_string) = ast::CString::cast(token) {
+                    if !c_string.is_raw() {
+                        highlight_escape_string(hl, &c_string, range.start());
+                    }
                 }
             } else if ast::Char::can_cast(token.kind())
                 && ast::Char::can_cast(descended_token.kind())
