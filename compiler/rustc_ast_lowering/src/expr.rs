@@ -419,14 +419,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
     // Lowers a condition (i.e. `cond` in `if cond` or `while cond`), wrapping it in a terminating scope
     // so that temporaries created in the condition don't live beyond it.
     fn lower_cond(&mut self, cond: &Expr) -> &'hir hir::Expr<'hir> {
-        fn has_let_expr(expr: &Expr) -> bool {
-            match &expr.kind {
-                ExprKind::Binary(_, lhs, rhs) => has_let_expr(lhs) || has_let_expr(rhs),
-                ExprKind::Let(..) => true,
-                _ => false,
-            }
-        }
-
         // We have to take special care for `let` exprs in the condition, e.g. in
         // `if let pat = val` or `if foo && let pat = val`, as we _do_ want `val` to live beyond the
         // condition in this case.
@@ -435,9 +427,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // we still wrap them in terminating scopes, e.g. `if foo && let pat = val` essentially
         // gets transformed into `if { let _t = foo; _t } && let pat = val`
         match &cond.kind {
-            ExprKind::Binary(op @ Spanned { node: ast::BinOpKind::And, .. }, lhs, rhs)
-                if has_let_expr(cond) =>
-            {
+            ExprKind::Binary(op @ Spanned { node: ast::BinOpKind::And, .. }, lhs, rhs) => {
                 let op = self.lower_binop(*op);
                 let lhs = self.lower_cond(lhs);
                 let rhs = self.lower_cond(rhs);
