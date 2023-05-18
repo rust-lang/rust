@@ -1251,14 +1251,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
-    fn is_foreign_item(self, id: DefIndex) -> bool {
-        if let Some(parent) = self.def_key(id).parent {
-            matches!(self.def_kind(parent), DefKind::ForeignMod)
-        } else {
-            false
-        }
-    }
-
     #[inline]
     fn def_key(self, index: DefIndex) -> DefKey {
         *self
