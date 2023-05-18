@@ -574,7 +574,7 @@ impl Evaluator<'_> {
     }
 
     fn layout_adt(&self, adt: AdtId, subst: Substitution) -> Result<Layout> {
-        self.db.layout_of_adt(adt, subst.clone()).map_err(|e| {
+        self.db.layout_of_adt(adt, subst.clone(), self.crate_id).map_err(|e| {
             MirEvalError::LayoutError(e, TyKind::Adt(chalk_ir::AdtId(adt), subst).intern(Interner))
         })
     }

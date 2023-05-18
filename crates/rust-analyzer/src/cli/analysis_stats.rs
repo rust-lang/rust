@@ -8,7 +8,7 @@ use std::{
 
 use hir::{
     db::{DefDatabase, ExpandDatabase, HirDatabase},
-    AssocItem, Crate, Function, HasSource, HirDisplay, ModuleDef,
+    AssocItem, Crate, Function, HasCrate, HasSource, HirDisplay, ModuleDef,
 };
 use hir_def::{
     body::{BodySourceMap, SyntheticSyntax},
@@ -210,7 +210,7 @@ impl flags::AnalysisStats {
                 continue;
             }
             all += 1;
-            let Err(e) = db.layout_of_adt(hir_def::AdtId::from(a).into(), Substitution::empty(Interner)) else {
+            let Err(e) = db.layout_of_adt(hir_def::AdtId::from(a).into(), Substitution::empty(Interner), a.krate(db).into()) else {
                 continue;
             };
             if verbosity.is_spammy() {

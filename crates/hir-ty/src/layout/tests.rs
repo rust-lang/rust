@@ -25,22 +25,25 @@ fn eval_goal(ra_fixture: &str, minicore: &str) -> Result<Layout, LayoutError> {
         "{minicore}//- /main.rs crate:test target_data_layout:{target_data_layout}\n{ra_fixture}",
     );
 
-    let (db, file_id) = TestDB::with_single_file(&ra_fixture);
-    let module_id = db.module_for_file(file_id);
-    let def_map = module_id.def_map(&db);
-    let scope = &def_map[module_id.local_id].scope;
-    let adt_id = scope
-        .declarations()
-        .find_map(|x| match x {
-            hir_def::ModuleDefId::AdtId(x) => {
-                let name = match x {
-                    hir_def::AdtId::StructId(x) => db.struct_data(x).name.to_smol_str(),
-                    hir_def::AdtId::UnionId(x) => db.union_data(x).name.to_smol_str(),
-                    hir_def::AdtId::EnumId(x) => db.enum_data(x).name.to_smol_str(),
-                };
-                (name == "Goal").then_some(x)
-            }
-            _ => None,
+    let (db, file_ids) = TestDB::with_many_files(&ra_fixture);
+    let (adt_id, module_id) = file_ids
+        .into_iter()
+        .find_map(|file_id| {
+            let module_id = db.module_for_file(file_id);
+            let def_map = module_id.def_map(&db);
+            let scope = &def_map[module_id.local_id].scope;
+            let adt_id = scope.declarations().find_map(|x| match x {
+                hir_def::ModuleDefId::AdtId(x) => {
+                    let name = match x {
+                        hir_def::AdtId::StructId(x) => db.struct_data(x).name.to_smol_str(),
+                        hir_def::AdtId::UnionId(x) => db.union_data(x).name.to_smol_str(),
+                        hir_def::AdtId::EnumId(x) => db.enum_data(x).name.to_smol_str(),
+                    };
+                    (name == "Goal").then_some(x)
+                }
+                _ => None,
+            })?;
+            Some((adt_id, module_id))
         })
         .unwrap();
     let goal_ty = TyKind::Adt(AdtId(adt_id), Substitution::empty(Interner)).intern(Interner);
@@ -232,6 +235,27 @@ fn associated_types() {
         struct Foo<A: Tr>(<A as Tr>::Ty);
         struct Goal(Foo<i32>);
     }
+    check_size_and_align(
+        r#"
+//- /b/mod.rs crate:b
+pub trait Tr {
+    type Ty;
+}
+pub struct Foo<A: Tr>(<A as Tr>::Ty);
+
+//- /a/mod.rs crate:a deps:b
+use b::{Tr, Foo};
+
+struct S;
+impl Tr for S {
+    type Ty = i64;
+}
+struct Goal(Foo<S>);
+        "#,
+        "",
+        8,
+        8,
+    );
 }
 
 #[test]

@@ -1207,7 +1207,7 @@ impl Adt {
         if db.generic_params(self.into()).iter().count() != 0 {
             return Err(LayoutError::HasPlaceholder);
         }
-        db.layout_of_adt(self.into(), Substitution::empty(Interner))
+        db.layout_of_adt(self.into(), Substitution::empty(Interner), self.krate(db).id)
     }
 
     /// Turns this ADT into a type. Any type parameters of the ADT will be

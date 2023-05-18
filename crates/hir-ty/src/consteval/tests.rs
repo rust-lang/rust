@@ -1963,6 +1963,36 @@ fn const_generic_subst_fn() {
 }
 
 #[test]
+fn layout_of_type_with_associated_type_field_defined_inside_body() {
+    check_number(
+        r#"
+trait Tr {
+    type Ty;
+}
+
+struct St<T: Tr>(T::Ty);
+
+const GOAL: i64 = {
+    // if we move `St2` out of body, the test will fail, as we don't see the impl anymore. That
+    // case will probably be rejected by rustc in some later edition, but we should support this
+    // case.
+    struct St2;
+
+    impl Tr for St2 {
+        type Ty = i64;
+    }
+
+    struct Goal(St<St2>);
+
+    let x = Goal(St(5));
+    x.0.0
+};
+"#,
+        5,
+    );
+}
+
+#[test]
 fn const_generic_subst_assoc_const_impl() {
     check_number(
         r#"
