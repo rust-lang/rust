@@ -1,4 +1,4 @@
-use super::imp::{BitMaskWord, BITMASK_MASK, BITMASK_STRIDE};
+use super::imp::{BitMaskWord, BITMASK_ITER_MASK, BITMASK_MASK, BITMASK_STRIDE};
 #[cfg(feature = "nightly")]
 use core::intrinsics;
 
@@ -8,11 +8,16 @@ use core::intrinsics;
 /// The bit mask is arranged so that low-order bits represent lower memory
 /// addresses for group match results.
 ///
-/// For implementation reasons, the bits in the set may be sparsely packed, so
-/// that there is only one bit-per-byte used (the high bit, 7). If this is the
+/// For implementation reasons, the bits in the set may be sparsely packed with
+/// groups of 8 bits representing one element. If any of these bits are non-zero
+/// then this element is considered to true in the mask. If this is the
 /// case, `BITMASK_STRIDE` will be 8 to indicate a divide-by-8 should be
 /// performed on counts/indices to normalize this difference. `BITMASK_MASK` is
 /// similarly a mask of all the actually-used bits.
+///
+/// To iterate over a bit mask, it must be converted to a form where only 1 bit
+/// is set per element. This is done by applying `BITMASK_ITER_MASK` on the
+/// mask bits.
 #[derive(Copy, Clone)]
 pub(crate) struct BitMask(pub(crate) BitMaskWord);
 
@@ -21,30 +26,18 @@ impl BitMask {
     /// Returns a new `BitMask` with all bits inverted.
     #[inline]
     #[must_use]
+    #[allow(dead_code)]
     pub(crate) fn invert(self) -> Self {
         BitMask(self.0 ^ BITMASK_MASK)
-    }
-
-    /// Flip the bit in the mask for the entry at the given index.
-    ///
-    /// Returns the bit's previous state.
-    #[inline]
-    #[allow(clippy::cast_ptr_alignment)]
-    #[cfg(feature = "raw")]
-    pub(crate) unsafe fn flip(&mut self, index: usize) -> bool {
-        // NOTE: The + BITMASK_STRIDE - 1 is to set the high bit.
-        let mask = 1 << (index * BITMASK_STRIDE + BITMASK_STRIDE - 1);
-        self.0 ^= mask;
-        // The bit was set if the bit is now 0.
-        self.0 & mask == 0
     }
 
     /// Returns a new `BitMask` with the lowest bit removed.
     #[inline]
     #[must_use]
-    pub(crate) fn remove_lowest_bit(self) -> Self {
+    fn remove_lowest_bit(self) -> Self {
         BitMask(self.0 & (self.0 - 1))
     }
+
     /// Returns whether the `BitMask` has at least one set bit.
     #[inline]
     pub(crate) fn any_bit_set(self) -> bool {
@@ -102,13 +95,32 @@ impl IntoIterator for BitMask {
 
     #[inline]
     fn into_iter(self) -> BitMaskIter {
-        BitMaskIter(self)
+        // A BitMask only requires each element (group of bits) to be non-zero.
+        // However for iteration we need each element to only contain 1 bit.
+        BitMaskIter(BitMask(self.0 & BITMASK_ITER_MASK))
     }
 }
 
 /// Iterator over the contents of a `BitMask`, returning the indices of set
 /// bits.
-pub(crate) struct BitMaskIter(BitMask);
+#[derive(Copy, Clone)]
+pub(crate) struct BitMaskIter(pub(crate) BitMask);
+
+impl BitMaskIter {
+    /// Flip the bit in the mask for the entry at the given index.
+    ///
+    /// Returns the bit's previous state.
+    #[inline]
+    #[allow(clippy::cast_ptr_alignment)]
+    #[cfg(feature = "raw")]
+    pub(crate) unsafe fn flip(&mut self, index: usize) -> bool {
+        // NOTE: The + BITMASK_STRIDE - 1 is to set the high bit.
+        let mask = 1 << (index * BITMASK_STRIDE + BITMASK_STRIDE - 1);
+        self.0 .0 ^= mask;
+        // The bit was set if the bit is now 0.
+        self.0 .0 & mask == 0
+    }
+}
 
 impl Iterator for BitMaskIter {
     type Item = usize;

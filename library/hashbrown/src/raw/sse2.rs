@@ -10,6 +10,7 @@ use core::arch::x86_64 as x86;
 pub(crate) type BitMaskWord = u16;
 pub(crate) const BITMASK_STRIDE: usize = 1;
 pub(crate) const BITMASK_MASK: BitMaskWord = 0xffff;
+pub(crate) const BITMASK_ITER_MASK: BitMaskWord = !0;
 
 /// Abstraction over a group of control bytes which can be scanned in
 /// parallel.
