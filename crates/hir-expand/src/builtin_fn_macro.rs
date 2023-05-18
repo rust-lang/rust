@@ -363,16 +363,14 @@ fn format_args_expand_general(
                     quote!(#ident)
                 };
                 let formatter = match &*format_spec {
-                    "?" => quote!(#DOLLAR_CRATE::fmt::Debug::fmt),
-                    "" => quote!(#DOLLAR_CRATE::fmt::Display::fmt),
+                    "?" => quote!(::core::fmt::Debug::fmt),
+                    "" => quote!(::core::fmt::Display::fmt),
                     _ => {
                         // FIXME: implement the rest and return expand error here
-                        quote!(#DOLLAR_CRATE::fmt::Display::fmt)
+                        quote!(::core::fmt::Display::fmt)
                     }
                 };
-                arg_tts.push(
-                    quote! { #DOLLAR_CRATE::fmt::ArgumentV1::new(&(#arg_tree), #formatter), },
-                );
+                arg_tts.push(quote! { ::core::fmt::ArgumentV1::new(&(#arg_tree), #formatter), });
             }
             '}' => {
                 if format_iter.peek() == Some(&'}') {
@@ -400,7 +398,7 @@ fn format_args_expand_general(
     });
     let arg_tts = arg_tts.into_iter().flat_map(|arg| arg.token_trees);
     let expanded = quote! {
-        #DOLLAR_CRATE::fmt::Arguments::new_v1(&[##part_tts], &[##arg_tts])
+        ::core::fmt::Arguments::new_v1(&[##part_tts], &[##arg_tts])
     };
     ExpandResult { value: expanded, err }
 }

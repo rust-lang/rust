@@ -362,6 +362,8 @@ pub mod known {
         gt,
         le,
         lt,
+        // known fields of lang items
+        pieces,
         // lang items
         add_assign,
         add,

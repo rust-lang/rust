@@ -1475,13 +1475,12 @@ fn regression_11688_3() {
         struct Ar<T, const N: u8>(T);
         fn f<const LEN: usize, T, const BASE: u8>(
             num_zeros: usize,
-        ) -> dyn Iterator<Item = [Ar<T, BASE>; LEN]> {
+        ) -> &dyn Iterator<Item = [Ar<T, BASE>; LEN]> {
             loop {}
         }
         fn dynamic_programming() {
-            for board in f::<9, u8, 7>(1) {
-              //^^^^^ [Ar<u8, 7>; 9]
-            }
+            let board = f::<9, u8, 7>(1).next();
+              //^^^^^ Option<[Ar<u8, 7>; 9]>
         }
         "#,
     );

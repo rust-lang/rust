@@ -26,9 +26,11 @@ fn simplify(e: ConstEvalError) -> ConstEvalError {
 #[track_caller]
 fn check_fail(ra_fixture: &str, error: impl FnOnce(ConstEvalError) -> bool) {
     let (db, file_id) = TestDB::with_single_file(ra_fixture);
-    match eval_goal(&db, file_id).map_err(simplify) {
+    match eval_goal(&db, file_id) {
         Ok(_) => panic!("Expected fail, but it succeeded"),
-        Err(e) => assert!(error(e)),
+        Err(e) => {
+            assert!(error(simplify(e.clone())), "Actual error was: {}", pretty_print_err(e, db))
+        }
     }
 }
 
@@ -38,13 +40,7 @@ fn check_number(ra_fixture: &str, answer: i128) {
     let r = match eval_goal(&db, file_id) {
         Ok(t) => t,
         Err(e) => {
-            let mut err = String::new();
-            let span_formatter = |file, range| format!("{:?} {:?}", file, range);
-            match e {
-                ConstEvalError::MirLowerError(e) => e.pretty_print(&mut err, &db, span_formatter),
-                ConstEvalError::MirEvalError(e) => e.pretty_print(&mut err, &db, span_formatter),
-            }
-            .unwrap();
+            let err = pretty_print_err(e, db);
             panic!("Error in evaluating goal: {}", err);
         }
     };
@@ -62,6 +58,17 @@ fn check_number(ra_fixture: &str, answer: i128) {
         },
         _ => panic!("result of const eval wasn't a concrete const"),
     }
+}
+
+fn pretty_print_err(e: ConstEvalError, db: TestDB) -> String {
+    let mut err = String::new();
+    let span_formatter = |file, range| format!("{:?} {:?}", file, range);
+    match e {
+        ConstEvalError::MirLowerError(e) => e.pretty_print(&mut err, &db, span_formatter),
+        ConstEvalError::MirEvalError(e) => e.pretty_print(&mut err, &db, span_formatter),
+    }
+    .unwrap();
+    err
 }
 
 fn eval_goal(db: &TestDB, file_id: FileId) -> Result<Const, ConstEvalError> {
@@ -2184,6 +2191,20 @@ fn const_trait_assoc() {
     const GOAL: usize = f::<i32>() + f::<i64>() * 2;
     "#,
         12,
+    );
+}
+
+#[test]
+fn panic_messages() {
+    check_fail(
+        r#"
+    //- minicore: panic
+    const GOAL: u8 = {
+        let x: u16 = 2;
+        panic!("hello");
+    };
+    "#,
+        |e| e == ConstEvalError::MirEvalError(MirEvalError::Panic("hello".to_string())),
     );
 }
 
