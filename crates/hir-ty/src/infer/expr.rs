@@ -815,7 +815,7 @@ impl<'a> InferenceContext<'a> {
             Expr::Array(array) => self.infer_expr_array(array, expected),
             Expr::Literal(lit) => match lit {
                 Literal::Bool(..) => self.result.standard_types.bool_.clone(),
-                Literal::String(..) => {
+                Literal::String(..) | Literal::CString(..) => {
                     TyKind::Ref(Mutability::Not, static_lifetime(), TyKind::Str.intern(Interner))
                         .intern(Interner)
                 }

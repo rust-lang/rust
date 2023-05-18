@@ -277,7 +277,7 @@ impl<'a> Converter<'a> {
                 if !terminated {
                     err = "Missing trailing `\"` symbol to terminate the string literal";
                 }
-                STRING
+                C_STRING
             }
             rustc_lexer::LiteralKind::RawStr { n_hashes } => {
                 if n_hashes.is_none() {
@@ -295,7 +295,7 @@ impl<'a> Converter<'a> {
                 if n_hashes.is_none() {
                     err = "Invalid raw string literal";
                 }
-                STRING
+                C_STRING
             }
         };
 

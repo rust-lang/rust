@@ -26,7 +26,7 @@ pub(super) fn token(sema: &Semantics<'_, RootDatabase>, token: SyntaxToken) -> O
     }
 
     let highlight: Highlight = match token.kind() {
-        STRING | BYTE_STRING => HlTag::StringLiteral.into(),
+        STRING | BYTE_STRING | C_STRING => HlTag::StringLiteral.into(),
         INT_NUMBER if token.parent_ancestors().nth(1).map(|it| it.kind()) == Some(FIELD_EXPR) => {
             SymbolKind::Field.into()
         }

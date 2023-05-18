@@ -9,7 +9,7 @@ use rustc_lexer::unescape::{self, unescape_literal, Mode};
 
 use crate::{
     algo,
-    ast::{self, HasAttrs, HasVisibility},
+    ast::{self, HasAttrs, HasVisibility, IsString},
     match_ast, AstNode, SyntaxError,
     SyntaxKind::{CONST, FN, INT_NUMBER, TYPE_ALIAS},
     SyntaxNode, SyntaxToken, TextSize, T,
@@ -146,6 +146,17 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
             }
         }
         ast::LiteralKind::ByteString(s) => {
+            if !s.is_raw() {
+                if let Some(without_quotes) = unquote(text, 2, '"') {
+                    unescape_literal(without_quotes, Mode::ByteStr, &mut |range, char| {
+                        if let Err(err) = char {
+                            push_err(1, range.start, err);
+                        }
+                    });
+                }
+            }
+        }
+        ast::LiteralKind::CString(s) => {
             if !s.is_raw() {
                 if let Some(without_quotes) = unquote(text, 2, '"') {
                     unescape_literal(without_quotes, Mode::ByteStr, &mut |range, char| {

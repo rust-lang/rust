@@ -85,6 +85,7 @@ impl fmt::Display for FloatTypeWrapper {
 pub enum Literal {
     String(Box<str>),
     ByteString(Box<[u8]>),
+    CString(Box<str>),
     Char(char),
     Bool(bool),
     Int(i128, Option<BuiltinInt>),
@@ -134,6 +135,10 @@ impl From<ast::LiteralKind> for Literal {
             LiteralKind::String(s) => {
                 let text = s.value().map(Box::from).unwrap_or_else(Default::default);
                 Literal::String(text)
+            }
+            LiteralKind::CString(s) => {
+                let text = s.value().map(Box::from).unwrap_or_else(Default::default);
+                Literal::CString(text)
             }
             LiteralKind::Byte(b) => {
                 Literal::Uint(b.value().unwrap_or_default() as u128, Some(BuiltinUint::U8))

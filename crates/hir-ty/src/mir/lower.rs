@@ -1112,15 +1112,24 @@ impl<'ctx> MirLowerCtx<'ctx> {
         let bytes = match l {
             hir_def::hir::Literal::String(b) => {
                 let b = b.as_bytes();
-                let mut data = vec![];
+                let mut data = Vec::with_capacity(mem::size_of::<usize>() * 2);
                 data.extend(0usize.to_le_bytes());
                 data.extend(b.len().to_le_bytes());
                 let mut mm = MemoryMap::default();
                 mm.insert(0, b.to_vec());
                 return Ok(Operand::from_concrete_const(data, mm, ty));
             }
+            hir_def::hir::Literal::CString(b) => {
+                let b = b.as_bytes();
+                let mut data = Vec::with_capacity(mem::size_of::<usize>() * 2);
+                data.extend(0usize.to_le_bytes());
+                data.extend(b.len().to_le_bytes());
+                let mut mm = MemoryMap::default();
+                mm.insert(0, b.iter().copied().chain(iter::once(0)).collect::<Vec<_>>());
+                return Ok(Operand::from_concrete_const(data, mm, ty));
+            }
             hir_def::hir::Literal::ByteString(b) => {
-                let mut data = vec![];
+                let mut data = Vec::with_capacity(mem::size_of::<usize>() * 2);
                 data.extend(0usize.to_le_bytes());
                 data.extend(b.len().to_le_bytes());
                 let mut mm = MemoryMap::default();

@@ -428,9 +428,10 @@ fn is_non_ref_pat(body: &hir_def::body::Body, pat: PatId) -> bool {
         // FIXME: ConstBlock/Path/Lit might actually evaluate to ref, but inference is unimplemented.
         Pat::Path(..) => true,
         Pat::ConstBlock(..) => true,
-        Pat::Lit(expr) => {
-            !matches!(body[*expr], Expr::Literal(Literal::String(..) | Literal::ByteString(..)))
-        }
+        Pat::Lit(expr) => !matches!(
+            body[*expr],
+            Expr::Literal(Literal::String(..) | Literal::CString(..) | Literal::ByteString(..))
+        ),
         Pat::Wild | Pat::Bind { .. } | Pat::Ref { .. } | Pat::Box { .. } | Pat::Missing => false,
     }
 }

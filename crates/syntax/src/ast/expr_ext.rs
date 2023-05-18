@@ -288,6 +288,7 @@ impl ast::ArrayExpr {
 pub enum LiteralKind {
     String(ast::String),
     ByteString(ast::ByteString),
+    CString(ast::CString),
     IntNumber(ast::IntNumber),
     FloatNumber(ast::FloatNumber),
     Char(ast::Char),
@@ -318,6 +319,9 @@ impl ast::Literal {
         }
         if let Some(t) = ast::ByteString::cast(token.clone()) {
             return LiteralKind::ByteString(t);
+        }
+        if let Some(t) = ast::CString::cast(token.clone()) {
+            return LiteralKind::CString(t);
         }
         if let Some(t) = ast::Char::cast(token.clone()) {
             return LiteralKind::Char(t);

@@ -28,6 +28,7 @@ const GENERIC_ARG_FIRST: TokenSet = TokenSet::new(&[
     BYTE,
     STRING,
     BYTE_STRING,
+    C_STRING,
 ])
 .union(types::TYPE_FIRST);
 
