@@ -355,8 +355,12 @@ impl DefMap {
         self.prelude
     }
 
-    pub(crate) fn extern_prelude(&self) -> impl Iterator<Item = (&Name, &ModuleId)> + '_ {
-        self.extern_prelude.iter()
+    pub(crate) fn extern_prelude(&self) -> impl Iterator<Item = (&Name, ModuleId)> + '_ {
+        self.extern_prelude.iter().map(|(name, def)| (name, *def))
+    }
+
+    pub(crate) fn macro_use_prelude(&self) -> impl Iterator<Item = (&Name, MacroId)> + '_ {
+        self.macro_use_prelude.iter().map(|(name, def)| (name, *def))
     }
 
     pub fn module_id(&self, local_id: LocalModuleId) -> ModuleId {
