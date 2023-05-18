@@ -2205,7 +2205,7 @@ pub trait BufRead: Read {
     /// assert_eq!(num_bytes, 11);
     /// assert_eq!(animal, b"Crustacean\0");
     /// ```
-    #[unstable(feature = "bufread_skip_until", issue = "none")]
+    #[unstable(feature = "bufread_skip_until", issue = "111735")]
     fn skip_until(&mut self, byte: u8) -> Result<usize> {
         skip_until(self, byte)
     }
