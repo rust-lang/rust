@@ -54,6 +54,7 @@ fn main() {
     let _ = e();
     let _ = f();
     let _ = g();
+    let closure = || {};
 
     _ = a();
     _ = b(1);
