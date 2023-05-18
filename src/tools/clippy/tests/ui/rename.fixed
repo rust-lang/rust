@@ -45,6 +45,7 @@
 #![allow(temporary_cstring_as_ptr)]
 #![allow(unknown_lints)]
 #![allow(unused_labels)]
+#![allow(option_env_unwrap)]
 #![warn(clippy::almost_complete_range)]
 #![warn(clippy::disallowed_names)]
 #![warn(clippy::blocks_in_if_conditions)]
@@ -92,5 +93,6 @@
 #![warn(temporary_cstring_as_ptr)]
 #![warn(unknown_lints)]
 #![warn(unused_labels)]
+#![warn(incorrect_option_env_unwraps)]
 
 fn main() {}

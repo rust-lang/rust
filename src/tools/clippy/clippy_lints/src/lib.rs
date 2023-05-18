@@ -237,7 +237,6 @@ mod nonstandard_macro_braces;
 mod octal_escapes;
 mod only_used_in_recursion;
 mod operators;
-mod option_env_unwrap;
 mod option_if_let_else;
 mod overflow_check_conditional;
 mod panic_in_result_fn;
@@ -811,7 +810,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
             max_fn_params_bools,
         ))
     });
-    store.register_early_pass(|| Box::new(option_env_unwrap::OptionEnvUnwrap));
     let warn_on_all_wildcard_imports = conf.warn_on_all_wildcard_imports;
     store.register_late_pass(move |_| Box::new(wildcard_imports::WildcardImports::new(warn_on_all_wildcard_imports)));
     store.register_late_pass(|_| Box::<redundant_pub_crate::RedundantPubCrate>::default());
