@@ -1,6 +1,6 @@
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{Certainty, Goal, QueryResult};
-use rustc_middle::traits::{ObligationCause, Reveal};
+use rustc_middle::traits::Reveal;
 use rustc_middle::ty;
 use rustc_middle::ty::util::NotUniqueParam;
 
@@ -37,11 +37,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                         Ok(()) => {}
                     }
                     // Prefer opaques registered already.
-                    let matches = self.unify_existing_opaque_tys(
-                        goal.param_env,
-                        opaque_ty,
-                        expected
-                    );
+                    let matches =
+                        self.unify_existing_opaque_tys(goal.param_env, opaque_ty, expected);
                     if !matches.is_empty() {
                         if let Some(response) = self.try_merge_responses(&matches) {
                             return Ok(response);
