@@ -1751,7 +1751,7 @@ fn render_impl(
             if trait_.is_none() && i.inner_impl().items.is_empty() {
                 w.write_str(
                     "<div class=\"item-info\">\
-                    <div class=\"stab empty-impl\">This impl block contains no items.</div>
+                    <div class=\"stab empty-impl\">This impl block contains no items.</div>\
                 </div>",
                 );
             }

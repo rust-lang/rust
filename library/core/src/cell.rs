@@ -2030,6 +2030,27 @@ impl<T> UnsafeCell<T> {
 }
 
 impl<T: ?Sized> UnsafeCell<T> {
+    /// Converts from `&mut T` to `&mut UnsafeCell<T>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(unsafe_cell_from_mut)]
+    /// use std::cell::UnsafeCell;
+    ///
+    /// let mut val = 42;
+    /// let uc = UnsafeCell::from_mut(&mut val);
+    ///
+    /// *uc.get_mut() -= 1;
+    /// assert_eq!(*uc.get_mut(), 41);
+    /// ```
+    #[inline(always)]
+    #[unstable(feature = "unsafe_cell_from_mut", issue = "111645")]
+    pub const fn from_mut(value: &mut T) -> &mut UnsafeCell<T> {
+        // SAFETY: `UnsafeCell<T>` has the same memory layout as `T` due to #[repr(transparent)].
+        unsafe { &mut *(value as *mut T as *mut UnsafeCell<T>) }
+    }
+
     /// Gets a mutable pointer to the wrapped value.
     ///
     /// This can be cast to a pointer of any kind.

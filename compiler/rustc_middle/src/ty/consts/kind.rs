@@ -42,7 +42,7 @@ impl<'tcx> UnevaluatedConst<'tcx> {
 }
 
 /// Represents a constant in Rust.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable)]
 #[derive(Hash, HashStable, TypeFoldable, TypeVisitable)]
 #[derive(derive_more::From)]
 pub enum ConstKind<'tcx> {
@@ -128,7 +128,7 @@ impl<'tcx> ConstKind<'tcx> {
 }
 
 /// An inference variable for a const, for use in const generics.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Hash)]
 pub enum InferConst<'tcx> {
     /// Infer the value of the const.
     Var(ty::ConstVid<'tcx>),
@@ -245,7 +245,7 @@ impl<'tcx> ConstKind<'tcx> {
                         // can leak through `val` into the const we return.
                         Ok(val) => Some(Ok(EvalResult::ValTree(val?))),
                         Err(ErrorHandled::TooGeneric) => None,
-                        Err(ErrorHandled::Reported(e)) => Some(Err(e)),
+                        Err(ErrorHandled::Reported(e)) => Some(Err(e.into())),
                     }
                 }
                 EvalMode::Mir => {
@@ -256,7 +256,7 @@ impl<'tcx> ConstKind<'tcx> {
                         // can leak through `val` into the const we return.
                         Ok(val) => Some(Ok(EvalResult::ConstVal(val))),
                         Err(ErrorHandled::TooGeneric) => None,
-                        Err(ErrorHandled::Reported(e)) => Some(Err(e)),
+                        Err(ErrorHandled::Reported(e)) => Some(Err(e.into())),
                     }
                 }
             }

@@ -312,7 +312,7 @@ where
 }
 
 #[inline(never)]
-fn try_execute_query<Q, Qcx>(
+fn try_execute_query<Q, Qcx, const INCR: bool>(
     query: Q,
     qcx: Qcx,
     span: Span,
@@ -355,7 +355,7 @@ where
             // Drop the lock before we start executing the query
             drop(state_lock);
 
-            execute_job(query, qcx, state, key, id, dep_node)
+            execute_job::<_, _, INCR>(query, qcx, state, key, id, dep_node)
         }
         Entry::Occupied(mut entry) => {
             match entry.get_mut() {
@@ -383,7 +383,7 @@ where
 }
 
 #[inline(always)]
-fn execute_job<Q, Qcx>(
+fn execute_job<Q, Qcx, const INCR: bool>(
     query: Q,
     qcx: Qcx,
     state: &QueryState<Q::Key, Qcx::DepKind>,
@@ -398,9 +398,19 @@ where
     // Use `JobOwner` so the query will be poisoned if executing it panics.
     let job_owner = JobOwner { state, key };
 
-    let (result, dep_node_index) = match qcx.dep_context().dep_graph().data() {
-        None => execute_job_non_incr(query, qcx, key, id),
-        Some(data) => execute_job_incr(query, qcx, data, key, dep_node, id),
+    debug_assert_eq!(qcx.dep_context().dep_graph().is_fully_enabled(), INCR);
+
+    let (result, dep_node_index) = if INCR {
+        execute_job_incr(
+            query,
+            qcx,
+            qcx.dep_context().dep_graph().data().unwrap(),
+            key,
+            dep_node,
+            id,
+        )
+    } else {
+        execute_job_non_incr(query, qcx, key, id)
     };
 
     let cache = query.query_cache(qcx);
@@ -784,7 +794,18 @@ pub enum QueryMode {
 }
 
 #[inline(always)]
-pub fn get_query<Q, Qcx>(
+pub fn get_query_non_incr<Q, Qcx>(query: Q, qcx: Qcx, span: Span, key: Q::Key) -> Q::Value
+where
+    Q: QueryConfig<Qcx>,
+    Qcx: QueryContext,
+{
+    debug_assert!(!qcx.dep_context().dep_graph().is_fully_enabled());
+
+    ensure_sufficient_stack(|| try_execute_query::<Q, Qcx, false>(query, qcx, span, key, None).0)
+}
+
+#[inline(always)]
+pub fn get_query_incr<Q, Qcx>(
     query: Q,
     qcx: Qcx,
     span: Span,
@@ -795,6 +816,8 @@ where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
 {
+    debug_assert!(qcx.dep_context().dep_graph().is_fully_enabled());
+
     let dep_node = if let QueryMode::Ensure { check_cache } = mode {
         let (must_run, dep_node) = ensure_must_run(query, qcx, &key, check_cache);
         if !must_run {
@@ -805,8 +828,9 @@ where
         None
     };
 
-    let (result, dep_node_index) =
-        ensure_sufficient_stack(|| try_execute_query(query, qcx, span, key, dep_node));
+    let (result, dep_node_index) = ensure_sufficient_stack(|| {
+        try_execute_query::<_, _, true>(query, qcx, span, key, dep_node)
+    });
     if let Some(dep_node_index) = dep_node_index {
         qcx.dep_context().dep_graph().read_index(dep_node_index)
     }
@@ -831,5 +855,7 @@ pub fn force_query<Q, Qcx>(
 
     debug_assert!(!query.anon());
 
-    ensure_sufficient_stack(|| try_execute_query(query, qcx, DUMMY_SP, key, Some(dep_node)));
+    ensure_sufficient_stack(|| {
+        try_execute_query::<_, _, true>(query, qcx, DUMMY_SP, key, Some(dep_node))
+    });
 }

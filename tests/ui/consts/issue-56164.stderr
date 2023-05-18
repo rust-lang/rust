@@ -28,18 +28,6 @@ error: function pointer calls are not allowed in constant functions
 LL |     input()
    |     ^^^^^^^
 
-note: erroneous constant used
-  --> $DIR/issue-56164.rs:1:18
-   |
-LL | const fn foo() { (||{})() }
-   |                  ^^^^^^
-
-note: erroneous constant used
-  --> $DIR/issue-56164.rs:1:18
-   |
-LL | const fn foo() { (||{})() }
-   |                  ^^^^^^
-
 error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0015, E0277.

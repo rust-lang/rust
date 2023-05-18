@@ -844,8 +844,8 @@ impl<'tcx> Constructor<'tcx> {
     }
 
     /// Faster version of `is_covered_by` when applied to many constructors. `used_ctors` is
-    /// assumed to be built from `matrix.head_ctors()` with wildcards filtered out, and `self` is
-    /// assumed to have been split from a wildcard.
+    /// assumed to be built from `matrix.head_ctors()` with wildcards and opaques filtered out,
+    /// and `self` is assumed to have been split from a wildcard.
     fn is_covered_by_any<'p>(
         &self,
         pcx: &PatCtxt<'_, 'p, 'tcx>,
@@ -894,7 +894,7 @@ impl<'tcx> Constructor<'tcx> {
 /// in `to_ctors`: in some cases we only return `Missing`.
 #[derive(Debug)]
 pub(super) struct SplitWildcard<'tcx> {
-    /// Constructors seen in the matrix.
+    /// Constructors (other than wildcards and opaques) seen in the matrix.
     matrix_ctors: Vec<Constructor<'tcx>>,
     /// All the constructors for this type
     all_ctors: SmallVec<[Constructor<'tcx>; 1]>,
@@ -1037,7 +1037,7 @@ impl<'tcx> SplitWildcard<'tcx> {
         // Since `all_ctors` never contains wildcards, this won't recurse further.
         self.all_ctors =
             self.all_ctors.iter().flat_map(|ctor| ctor.split(pcx, ctors.clone())).collect();
-        self.matrix_ctors = ctors.filter(|c| !c.is_wildcard()).cloned().collect();
+        self.matrix_ctors = ctors.filter(|c| !matches!(c, Wildcard | Opaque)).cloned().collect();
     }
 
     /// Whether there are any value constructors for this type that are not present in the matrix.

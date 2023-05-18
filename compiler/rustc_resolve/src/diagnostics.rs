@@ -550,7 +550,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                 let sm = self.tcx.sess.source_map();
                 let def_id = match outer_res {
-                    Res::SelfTyParam { .. } | Res::SelfCtor(_) => {
+                    Res::SelfTyParam { .. } => {
                         err.span_label(span, "can't use `Self` here");
                         return err;
                     }

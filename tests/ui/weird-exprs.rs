@@ -5,13 +5,16 @@
 
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
+#![allow(redundant_semicolons)]
 #![allow(unreachable_code)]
 #![allow(unused_braces, unused_must_use, unused_parens)]
 #![allow(uncommon_codepoints, confusable_idents)]
+#![allow(unused_imports)]
 #![allow(unreachable_patterns)]
 
 #![recursion_limit = "256"]
 
+extern crate core;
 use std::cell::Cell;
 use std::mem::swap;
 
@@ -204,6 +207,30 @@ fn closure_matching() {
     assert!(matches!(x(..), |_| Some(4)));
 }
 
+fn semisemisemisemisemi() {
+    ;;;;;;; ;;;;;;; ;;;    ;;; ;;
+    ;;      ;;      ;;;;  ;;;; ;;
+    ;;;;;;; ;;;;;   ;; ;;;; ;; ;;
+         ;; ;;      ;;  ;;  ;; ;;
+    ;;;;;;; ;;;;;;; ;;      ;; ;;
+}
+
+fn useful_syntax() {
+    use {{std::{{collections::{{HashMap}}}}}};
+    use ::{{{{core}, {std}}}};
+    use {{::{{core as core2}}}};
+}
+
+fn infcx() {
+    pub mod cx {
+        pub mod cx {
+            pub use super::cx;
+            pub struct Cx;
+        }
+    }
+    let _cx: cx::cx::Cx = cx::cx::cx::cx::cx::Cx;
+}
+
 pub fn main() {
     strange();
     funny();
@@ -227,4 +254,7 @@ pub fn main() {
     function();
     bathroom_stall();
     closure_matching();
+    semisemisemisemisemi();
+    useful_syntax();
+    infcx();
 }
