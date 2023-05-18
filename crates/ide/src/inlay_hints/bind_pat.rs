@@ -106,8 +106,8 @@ pub(super) fn hints(
         kind: InlayKind::Type,
         label,
         text_edit,
-        position: InlayHintPosition::Before,
-        pad_left: !has_colon,
+        position: InlayHintPosition::After,
+        pad_left: false,
         pad_right: false,
     });
 
