@@ -518,11 +518,11 @@ macro_rules! define_queries {
                     pub fn __rust_end_short_backtrace<'tcx>(
                         tcx: TyCtxt<'tcx>,
                         span: Span,
-                        key: query_keys::$name<'tcx>,
+                        key: queries::$name::Key<'tcx>,
                         mode: QueryMode,
-                    ) -> Option<Erase<query_values::$name<'tcx>>> {
+                    ) -> Option<Erase<queries::$name::Value<'tcx>>> {
                         get_query_incr(
-                            queries::$name::config(tcx),
+                            query_config::$name::config(tcx),
                             QueryCtxt::new(tcx),
                             span,
                             key,
@@ -543,11 +543,11 @@ macro_rules! define_queries {
                     pub fn __rust_end_short_backtrace<'tcx>(
                         tcx: TyCtxt<'tcx>,
                         span: Span,
-                        key: query_keys::$name<'tcx>,
+                        key: queries::$name::Key<'tcx>,
                         __mode: QueryMode,
-                    ) -> Option<Erase<query_values::$name<'tcx>>> {
+                    ) -> Option<Erase<queries::$name::Value<'tcx>>> {
                         Some(get_query_non_incr(
-                            queries::$name::config(tcx),
+                            query_config::$name::config(tcx),
                             QueryCtxt::new(tcx),
                             span,
                             key,
@@ -570,7 +570,7 @@ macro_rules! define_queries {
         }
 
         #[allow(nonstandard_style)]
-        mod queries {
+        mod query_config {
             use std::marker::PhantomData;
 
             $(
@@ -586,7 +586,7 @@ macro_rules! define_queries {
             use super::*;
 
             $(
-                pub(super) fn $name<'tcx>() -> DynamicQuery<'tcx, query_storage::$name<'tcx>> {
+                pub(super) fn $name<'tcx>() -> DynamicQuery<'tcx, queries::$name::Storage<'tcx>> {
                     DynamicQuery {
                         name: stringify!($name),
                         eval_always: is_eval_always!([$($modifiers)*]),
@@ -597,9 +597,8 @@ macro_rules! define_queries {
                         cache_on_disk: |tcx, key| ::rustc_middle::query::cached::$name(tcx, key),
                         execute_query: |tcx, key| erase(tcx.$name(key)),
                         compute: |tcx, key| {
-                            use crate::plumbing::__rust_begin_short_backtrace;
                             __rust_begin_short_backtrace(||
-                                query_provided_to_value::$name(
+                                queries::$name::provided_to_erased(
                                     tcx,
                                     call_provider!([$($modifiers)*][tcx, $name, key])
                                 )
@@ -609,12 +608,14 @@ macro_rules! define_queries {
                         try_load_from_disk: should_ever_cache_on_disk!([$($modifiers)*] {
                             |tcx, key, prev_index, index| {
                                 if ::rustc_middle::query::cached::$name(tcx, key) {
-                                    let value = $crate::plumbing::try_load_from_disk::<query_provided::$name<'tcx>>(
+                                    let value = $crate::plumbing::try_load_from_disk::<
+                                        queries::$name::ProvidedValue<'tcx>
+                                    >(
                                         tcx,
                                         prev_index,
                                         index,
                                     );
-                                    value.map(|value| query_provided_to_value::$name(tcx, value))
+                                    value.map(|value| queries::$name::provided_to_erased(tcx, value))
                                 } else {
                                     None
                                 }
@@ -623,7 +624,7 @@ macro_rules! define_queries {
                             |_tcx, _key, _prev_index, _index| None
                         }),
                         value_from_cycle_error: |tcx, cycle| {
-                            let result: query_values::$name<'tcx> = Value::from_cycle_error(tcx, cycle);
+                            let result: queries::$name::Value<'tcx> = Value::from_cycle_error(tcx, cycle);
                             erase(result)
                         },
                         loadable_from_disk: |_tcx, _key, _index| {
@@ -634,18 +635,18 @@ macro_rules! define_queries {
                                 false
                             })
                         },
-                        hash_result: hash_result!([$($modifiers)*][query_values::$name<'tcx>]),
-                        format_value: |value| format!("{:?}", restore::<query_values::$name<'tcx>>(*value)),
+                        hash_result: hash_result!([$($modifiers)*][queries::$name::Value<'tcx>]),
+                        format_value: |value| format!("{:?}", restore::<queries::$name::Value<'tcx>>(*value)),
                     }
                 }
             )*
         }
 
-        $(impl<'tcx> QueryConfigRestored<'tcx> for queries::$name<'tcx> {
-            type RestoredValue = query_values::$name<'tcx>;
+        $(impl<'tcx> QueryConfigRestored<'tcx> for query_config::$name<'tcx> {
+            type RestoredValue = queries::$name::Value<'tcx>;
             type Config = DynamicConfig<
                 'tcx,
-                query_storage::$name<'tcx>,
+                queries::$name::Storage<'tcx>,
                 { is_anon!([$($modifiers)*]) },
                 { depth_limit!([$($modifiers)*]) },
                 { feedable!([$($modifiers)*]) },
@@ -660,7 +661,7 @@ macro_rules! define_queries {
 
             #[inline(always)]
             fn restore(value: <Self::Config as QueryConfig<QueryCtxt<'tcx>>>::Value) -> Self::RestoredValue {
-                restore::<query_values::$name<'tcx>>(value)
+                restore::<queries::$name::Value<'tcx>>(value)
             }
         })*
 
@@ -730,7 +731,7 @@ macro_rules! define_queries {
             }
 
             $(pub(crate) fn $name<'tcx>()-> DepKindStruct<'tcx> {
-                $crate::plumbing::query_callback::<queries::$name<'tcx>>(
+                $crate::plumbing::query_callback::<query_config::$name<'tcx>>(
                     is_anon!([$($modifiers)*]),
                     is_eval_always!([$($modifiers)*]),
                 )
@@ -785,8 +786,8 @@ macro_rules! define_queries {
                     )
                 },
                 encode_query_results: expand_if_cached!([$($modifiers)*], |tcx, encoder, query_result_index|
-                    $crate::plumbing::encode_query_results::<super::queries::$name<'tcx>>(
-                        super::queries::$name::config(tcx),
+                    $crate::plumbing::encode_query_results::<super::query_config::$name<'tcx>>(
+                        super::query_config::$name::config(tcx),
                         QueryCtxt::new(tcx),
                         encoder,
                         query_result_index,
