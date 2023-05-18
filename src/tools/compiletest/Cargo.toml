@@ -20,6 +20,7 @@ once_cell = "1.16.0"
 walkdir = "2"
 glob = "0.3.0"
 lazycell = "1.3.0"
+anyhow = "1"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
