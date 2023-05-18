@@ -166,6 +166,10 @@ impl CapturedItem {
         self.place.local
     }
 
+    pub fn ty(&self, subst: &Substitution) -> Ty {
+        self.ty.clone().substitute(Interner, utils::ClosureSubst(subst).parent_subst())
+    }
+
     pub fn kind(&self) -> CaptureKind {
         self.kind
     }
