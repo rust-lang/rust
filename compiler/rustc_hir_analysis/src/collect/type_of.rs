@@ -569,12 +569,17 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
                     Some(ty::OpaqueHiddenType { span: DUMMY_SP, ty: self.tcx.ty_error(guar) });
                 return;
             }
-            let Some(&typeck_hidden_ty) = tables.concrete_opaque_types.get(&self.def_id) else {
+
+            let mut constrained_during_typeck = false;
+            for (key, typeck_hidden_ty) in &tables.concrete_opaque_types {
+                if key.def_id == self.def_id {
+                    constrained_during_typeck = true;
+                    self.typeck_types.push(*typeck_hidden_ty);
+                }
+            }
+            if !constrained_during_typeck {
                 debug!("no constraints in typeck results");
                 return;
-            };
-            if self.typeck_types.iter().all(|prev| prev.ty != typeck_hidden_ty.ty) {
-                self.typeck_types.push(typeck_hidden_ty);
             }
 
             // Use borrowck to get the type with unerased regions.
@@ -678,10 +683,11 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
     // Only check against typeck if we didn't already error
     if !hidden.ty.references_error() {
         for concrete_type in locator.typeck_types {
-            if tcx.erase_regions(concrete_type.ty) != tcx.erase_regions(hidden.ty)
+            if concrete_type.ty != tcx.erase_regions(hidden.ty)
                 && !(concrete_type, hidden).references_error()
             {
-                hidden.report_mismatch(&concrete_type, tcx);
+                let reported = hidden.report_mismatch(&concrete_type, tcx);
+                return tcx.ty_error(reported);
             }
         }
     }
@@ -786,15 +792,24 @@ fn find_opaque_ty_constraints_for_rpit(
             // the `concrete_opaque_types` table.
             tcx.ty_error(guar)
         } else {
-            table.concrete_opaque_types.get(&def_id).map(|ty| ty.ty).unwrap_or_else(|| {
-                // We failed to resolve the opaque type or it
-                // resolves to itself. We interpret this as the
-                // no values of the hidden type ever being constructed,
-                // so we can just make the hidden type be `!`.
-                // For backwards compatibility reasons, we fall back to
-                // `()` until we the diverging default is changed.
-                tcx.mk_diverging_default()
-            })
+            table
+                .concrete_opaque_types
+                .iter()
+                .find(|(key, _)| {
+                    // For backwards compatibility, we choose the first matching
+                    // opaque type definition
+                    key.def_id == def_id
+                })
+                .map(|(_, ty)| ty.ty)
+                .unwrap_or_else(|| {
+                    // We failed to resolve the opaque type or it
+                    // resolves to itself. We interpret this as the
+                    // no values of the hidden type ever being constructed,
+                    // so we can just make the hidden type be `!`.
+                    // For backwards compatibility reasons, we fall back to
+                    // `()` until we the diverging default is changed.
+                    tcx.mk_diverging_default()
+                })
         }
     })
 }
