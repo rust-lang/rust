@@ -33,7 +33,6 @@
 #![feature(strict_provenance)]
 #![feature(ptr_alignment_type)]
 #![feature(macro_metavar_expr)]
-#![feature(mutex_unpoison)]
 #![allow(rustc::default_hash_types)]
 #![allow(rustc::potential_query_instability)]
 #![deny(rustc::untranslatable_diagnostic)]

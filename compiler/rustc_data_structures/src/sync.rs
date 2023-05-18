@@ -493,7 +493,7 @@ cfg_if! {
 }
 
 #[derive(Default, Debug)]
-#[repr(align(64))]
+#[cfg_attr(parallel_compiler, repr(align(64)))]
 pub struct CacheAligned<T>(pub T);
 
 pub trait HashMapExt<K, V> {
@@ -593,50 +593,10 @@ impl<T> Lock<T> {
         LockGuard { lock: &self, marker: PhantomData }
     }
 
-    #[inline]
-    pub(crate) fn with_mt_lock<F: FnOnce(&mut T) -> R, R>(&self, f: F) -> R {
-        unsafe {
-            self.mutex.lock();
-            let r = f(&mut *self.data.get());
-            self.mutex.unlock();
-            r
-        }
-    }
-
     #[inline(always)]
     #[track_caller]
     pub fn with_lock<F: FnOnce(&mut T) -> R, R>(&self, f: F) -> R {
-        if likely(self.single_thread) {
-            assert!(!self.borrow.replace(true));
-            let r = unsafe { f(&mut *self.data.get()) };
-            self.borrow.set(false);
-            r
-        } else {
-            self.with_mt_lock(f)
-        }
-    }
-
-    #[inline]
-    fn with_mt_borrow<F: FnOnce(&T) -> R, R>(&self, f: F) -> R {
-        unsafe {
-            self.mutex.lock();
-            let r = f(&*self.data.get());
-            self.mutex.unlock();
-            r
-        }
-    }
-
-    #[inline(always)]
-    #[track_caller]
-    pub fn with_borrow<F: FnOnce(&T) -> R, R>(&self, f: F) -> R {
-        if likely(self.single_thread) {
-            assert!(!self.borrow.replace(true));
-            let r = unsafe { f(&*self.data.get()) };
-            self.borrow.set(false);
-            r
-        } else {
-            self.with_mt_borrow(f)
-        }
+        f(&mut *self.lock())
     }
 
     #[inline(always)]
