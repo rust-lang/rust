@@ -111,6 +111,7 @@ pub mod marker {
         impl<T: ?Sized> Copy for *const T {}
         impl<T: ?Sized> Copy for *mut T {}
         impl<T: ?Sized> Copy for &T {}
+        impl Copy for ! {}
     }
     // endregion:copy
 
@@ -246,6 +247,12 @@ pub mod clone {
         f32 f64
         bool char
     }
+
+    impl Clone for ! {
+        fn clone(&self) {
+            *self
+        }
+    }
     // endregion:builtin_impls
 
     // region:derive
@@ -319,8 +326,8 @@ pub mod mem {
     pub fn drop<T>(_x: T) {}
     pub const fn replace<T>(dest: &mut T, src: T) -> T {
         unsafe {
-            let result = *dest;
-            *dest = src;
+            let result = crate::ptr::read(dest);
+            crate::ptr::write(dest, src);
             result
         }
     }
@@ -338,6 +345,12 @@ pub mod ptr {
     #[lang = "drop_in_place"]
     pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
         unsafe { drop_in_place(to_drop) }
+    }
+    pub const unsafe fn read<T>(src: *const T) -> T {
+        *src
+    }
+    pub const unsafe fn write<T>(dst: *mut T, src: T) {
+        *dst = src;
     }
     // endregion:drop
 }

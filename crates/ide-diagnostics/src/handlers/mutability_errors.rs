@@ -340,6 +340,7 @@ fn main() {
     fn regression_14310() {
         check_diagnostics(
             r#"
+            //- minicore: copy, builtin_impls
             fn clone(mut i: &!) -> ! {
                    //^^^^^ 💡 weak: variable does not need to be mutable
                 *i
