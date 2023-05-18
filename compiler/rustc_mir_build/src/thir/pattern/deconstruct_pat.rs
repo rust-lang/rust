@@ -51,6 +51,7 @@ use std::ops::RangeInclusive;
 use smallvec::{smallvec, SmallVec};
 
 use rustc_data_structures::captures::Captures;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::{HirId, RangeEnd};
 use rustc_index::Idx;
 use rustc_middle::mir;
@@ -107,7 +108,7 @@ pub(crate) struct IntRange {
 
 impl IntRange {
     #[inline]
-    fn is_integral(ty: Ty<'_>) -> bool {
+    pub(super) fn is_integral(ty: Ty<'_>) -> bool {
         matches!(ty.kind(), ty::Char | ty::Int(_) | ty::Uint(_) | ty::Bool)
     }
 
@@ -673,13 +674,18 @@ impl<'tcx> Constructor<'tcx> {
         matches!(self, NonExhaustive)
     }
 
+    fn as_variant(&self) -> Option<VariantIdx> {
+        match self {
+            Variant(i) => Some(*i),
+            _ => None,
+        }
+    }
     fn as_int_range(&self) -> Option<&IntRange> {
         match self {
             IntRange(range) => Some(range),
             _ => None,
         }
     }
-
     fn as_slice(&self) -> Option<Slice> {
         match self {
             Slice(slice) => Some(*slice),
@@ -999,11 +1005,10 @@ impl ConstructorSet {
                 }
             }
             ConstructorSet::Variants { variants, non_exhaustive } => {
-                // FIXME: can do better than quadratic.
+                let seen_set: FxHashSet<_> = seen.iter().map(|c| c.as_variant().unwrap()).collect();
                 for variant in variants {
-                    let was_seen = seen.iter().any(|c| matches!(c, Variant(i) if *i == variant));
                     let ctor = Variant(variant);
-                    if was_seen {
+                    if seen_set.contains(&variant) {
                         split.push(ctor);
                     } else {
                         missing.push(ctor);
@@ -1084,7 +1089,7 @@ impl ConstructorSet {
                         // FIXME: splitting and collecting should be done in one pass.
                         let mut split_base_slice =
                             SplitVarLenSlice::new(self_prefix, self_suffix, base_slice.array_len);
-                        let seen_slices = seen.iter().filter_map(|c| c.as_slice());
+                        let seen_slices = seen.iter().map(|c| c.as_slice().unwrap());
                         split_base_slice.split(seen_slices.clone().map(|s| s.kind));
                         for splitted_slice in split_base_slice.iter() {
                             let is_covered_by_any = seen_slices

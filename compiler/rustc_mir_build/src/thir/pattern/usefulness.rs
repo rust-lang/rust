@@ -781,14 +781,24 @@ fn compute_usefulness<'p, 'tcx>(
     let is_non_exhaustive = cx.is_foreign_non_exhaustive_enum(ty);
     let pcx = &PatCtxt { cx, ty, span: DUMMY_SP, is_top_level, is_non_exhaustive };
 
-    for row_id in 0..matrix.len() {
-        let v = &matrix.rows[row_id];
-        if let Constructor::IntRange(ctor_range) = v.head().ctor() {
-            // Lint on likely incorrect range patterns (#63987)
-            let pcx = &PatCtxt { span: v.head().span(), ..*pcx };
-            let compare_against =
-                matrix.rows().take(row_id).filter(|row| !row.is_under_guard).map(|row| row.head());
-            ctor_range.lint_overlapping_range_endpoints(pcx, compare_against, v.len(), lint_root)
+    if super::deconstruct_pat::IntRange::is_integral(ty) {
+        for row_id in 0..matrix.len() {
+            let v = &matrix.rows[row_id];
+            if let Constructor::IntRange(ctor_range) = v.head().ctor() {
+                // Lint on likely incorrect range patterns (#63987)
+                let pcx = &PatCtxt { span: v.head().span(), ..*pcx };
+                let compare_against = matrix
+                    .rows()
+                    .take(row_id)
+                    .filter(|row| !row.is_under_guard)
+                    .map(|row| row.head());
+                ctor_range.lint_overlapping_range_endpoints(
+                    pcx,
+                    compare_against,
+                    v.len(),
+                    lint_root,
+                )
+            }
         }
     }
 
