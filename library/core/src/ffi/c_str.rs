@@ -517,8 +517,6 @@ impl CStr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(cstr_is_empty)]
-    ///
     /// use std::ffi::CStr;
     /// # use std::ffi::FromBytesWithNulError;
     ///
@@ -533,7 +531,8 @@ impl CStr {
     /// # }
     /// ```
     #[inline]
-    #[unstable(feature = "cstr_is_empty", issue = "102444")]
+    #[stable(feature = "cstr_is_empty", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "cstr_is_empty", since = "CURRENT_RUSTC_VERSION")]
     pub const fn is_empty(&self) -> bool {
         // SAFETY: We know there is at least one byte; for empty strings it
         // is the NUL terminator.

@@ -8,7 +8,6 @@
 //! * Functions called by the compiler itself.
 
 use crate::def_id::DefId;
-use crate::errors::LangItemError;
 use crate::{MethodKind, Target};
 
 use rustc_ast as ast;
@@ -40,13 +39,6 @@ impl LanguageItems {
 
     pub fn set(&mut self, item: LangItem, def_id: DefId) {
         self.items[item as usize] = Some(def_id);
-    }
-
-    /// Requires that a given `LangItem` was bound and returns the corresponding `DefId`.
-    /// If it wasn't bound, e.g. due to a missing `#[lang = "<it.name()>"]`,
-    /// returns an error encapsulating the `LangItem`.
-    pub fn require(&self, it: LangItem) -> Result<DefId, LangItemError> {
-        self.get(it).ok_or_else(|| LangItemError(it))
     }
 
     pub fn iter(&self) -> impl Iterator<Item = (LangItem, DefId)> + '_ {

@@ -14,8 +14,7 @@ use snap::write::FrameEncoder;
 
 use object::elf::NT_GNU_PROPERTY_TYPE_0;
 use rustc_data_structures::memmap::Mmap;
-use rustc_data_structures::owned_slice::try_slice_owned;
-use rustc_data_structures::sync::MetadataRef;
+use rustc_data_structures::owned_slice::{try_slice_owned, OwnedSlice};
 use rustc_metadata::fs::METADATA_FILENAME;
 use rustc_metadata::EncodedMetadata;
 use rustc_session::cstore::MetadataLoader;
@@ -39,7 +38,7 @@ pub struct DefaultMetadataLoader;
 fn load_metadata_with(
     path: &Path,
     f: impl for<'a> FnOnce(&'a [u8]) -> Result<&'a [u8], String>,
-) -> Result<MetadataRef, String> {
+) -> Result<OwnedSlice, String> {
     let file =
         File::open(path).map_err(|e| format!("failed to open file '{}': {}", path.display(), e))?;
 
@@ -49,7 +48,7 @@ fn load_metadata_with(
 }
 
 impl MetadataLoader for DefaultMetadataLoader {
-    fn get_rlib_metadata(&self, _target: &Target, path: &Path) -> Result<MetadataRef, String> {
+    fn get_rlib_metadata(&self, _target: &Target, path: &Path) -> Result<OwnedSlice, String> {
         load_metadata_with(path, |data| {
             let archive = object::read::archive::ArchiveFile::parse(&*data)
                 .map_err(|e| format!("failed to parse rlib '{}': {}", path.display(), e))?;
@@ -69,7 +68,7 @@ impl MetadataLoader for DefaultMetadataLoader {
         })
     }
 
-    fn get_dylib_metadata(&self, _target: &Target, path: &Path) -> Result<MetadataRef, String> {
+    fn get_dylib_metadata(&self, _target: &Target, path: &Path) -> Result<OwnedSlice, String> {
         load_metadata_with(path, |data| search_for_section(path, data, ".rustc"))
     }
 }

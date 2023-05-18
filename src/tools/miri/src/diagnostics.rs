@@ -289,7 +289,7 @@ pub fn report_error<'tcx, 'mir>(
                     (None, format!("see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information")),
                 ],
             InvalidProgram(
-                InvalidProgramInfo::AlreadyReported(rustc_errors::ErrorGuaranteed { .. })
+                InvalidProgramInfo::AlreadyReported(_)
             ) => {
                 // This got already reported. No point in reporting it again.
                 return None;

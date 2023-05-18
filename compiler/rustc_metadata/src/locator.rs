@@ -220,7 +220,6 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::owned_slice::slice_owned;
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::MetadataRef;
 use rustc_errors::{DiagnosticArgValue, FatalError, IntoDiagnosticArg};
 use rustc_fs_util::try_canonicalize;
 use rustc_session::config::{self, CrateType};
@@ -782,7 +781,7 @@ fn get_metadata_section<'p>(
     if !filename.exists() {
         return Err(MetadataError::NotPresent(filename));
     }
-    let raw_bytes: MetadataRef = match flavor {
+    let raw_bytes = match flavor {
         CrateFlavor::Rlib => {
             loader.get_rlib_metadata(target, filename).map_err(MetadataError::LoadFailure)?
         }
@@ -843,7 +842,7 @@ fn get_metadata_section<'p>(
             slice_owned(mmap, Deref::deref)
         }
     };
-    let blob = MetadataBlob::new(raw_bytes);
+    let blob = MetadataBlob(raw_bytes);
     if blob.is_compatible() {
         Ok(blob)
     } else {

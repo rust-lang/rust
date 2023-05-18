@@ -203,7 +203,7 @@ mod c_long_definition {
 //     be UB.
 #[doc = include_str!("c_void.md")]
 #[cfg_attr(not(bootstrap), lang = "c_void")]
-#[repr(u8)]
+#[cfg_attr(not(doc), repr(u8))] // work around https://github.com/rust-lang/rust/issues/90435
 #[stable(feature = "core_c_void", since = "1.30.0")]
 pub enum c_void {
     #[unstable(
@@ -244,7 +244,7 @@ impl fmt::Debug for c_void {
     target_os = "uefi",
     windows,
 ))]
-#[repr(transparent)]
+#[cfg_attr(not(doc), repr(transparent))] // work around https://github.com/rust-lang/rust/issues/90435
 #[unstable(
     feature = "c_variadic",
     reason = "the `c_variadic` feature has not been properly tested on \
@@ -296,7 +296,7 @@ impl<'f> fmt::Debug for VaListImpl<'f> {
     not(target_os = "uefi"),
     not(windows),
 ))]
-#[repr(C)]
+#[cfg_attr(not(doc), repr(C))] // work around https://github.com/rust-lang/rust/issues/66401
 #[derive(Debug)]
 #[unstable(
     feature = "c_variadic",
@@ -316,7 +316,7 @@ pub struct VaListImpl<'f> {
 
 /// PowerPC ABI implementation of a `va_list`.
 #[cfg(all(target_arch = "powerpc", not(target_os = "uefi"), not(windows)))]
-#[repr(C)]
+#[cfg_attr(not(doc), repr(C))] // work around https://github.com/rust-lang/rust/issues/66401
 #[derive(Debug)]
 #[unstable(
     feature = "c_variadic",
@@ -336,7 +336,7 @@ pub struct VaListImpl<'f> {
 
 /// s390x ABI implementation of a `va_list`.
 #[cfg(target_arch = "s390x")]
-#[repr(C)]
+#[cfg_attr(not(doc), repr(C))] // work around https://github.com/rust-lang/rust/issues/66401
 #[derive(Debug)]
 #[unstable(
     feature = "c_variadic",
@@ -355,7 +355,7 @@ pub struct VaListImpl<'f> {
 
 /// x86_64 ABI implementation of a `va_list`.
 #[cfg(all(target_arch = "x86_64", not(target_os = "uefi"), not(windows)))]
-#[repr(C)]
+#[cfg_attr(not(doc), repr(C))] // work around https://github.com/rust-lang/rust/issues/66401
 #[derive(Debug)]
 #[unstable(
     feature = "c_variadic",
@@ -373,7 +373,7 @@ pub struct VaListImpl<'f> {
 }
 
 /// A wrapper for a `va_list`
-#[repr(transparent)]
+#[cfg_attr(not(doc), repr(transparent))] // work around https://github.com/rust-lang/rust/issues/90435
 #[derive(Debug)]
 #[unstable(
     feature = "c_variadic",

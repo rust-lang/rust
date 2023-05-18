@@ -4,7 +4,7 @@ use crate::rvalue_scopes;
 use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, LocalTy, RawTy};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Applicability, Diagnostic, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{Applicability, Diagnostic, ErrorGuaranteed, MultiSpan, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -853,6 +853,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let item_name = item_segment.ident;
         let result = self
             .resolve_fully_qualified_call(span, item_name, ty.normalized, qself.span, hir_id)
+            .and_then(|r| {
+                // lint bare trait if the method is found in the trait
+                if span.edition().rust_2021() && let Some(mut diag) = self.tcx.sess.diagnostic().steal_diagnostic(qself.span, StashKey::TraitMissingMethod) {
+                    diag.emit();
+                }
+                Ok(r)
+            })
             .or_else(|error| {
                 let guar = self
                     .tcx
@@ -863,17 +870,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     _ => Err(guar),
                 };
 
+                let trait_missing_method =
+                    matches!(error, method::MethodError::NoMatch(_)) && ty.normalized.is_trait();
                 // If we have a path like `MyTrait::missing_method`, then don't register
                 // a WF obligation for `dyn MyTrait` when method lookup fails. Otherwise,
                 // register a WF obligation so that we can detect any additional
                 // errors in the self type.
-                if !(matches!(error, method::MethodError::NoMatch(_)) && ty.normalized.is_trait()) {
+                if !trait_missing_method {
                     self.register_wf_obligation(
                         ty.raw.into(),
                         qself.span,
                         traits::WellFormed(None),
                     );
                 }
+
+                // emit or cancel the diagnostic for bare traits
+                if span.edition().rust_2021() && let Some(mut diag) = self.tcx.sess.diagnostic().steal_diagnostic(qself.span, StashKey::TraitMissingMethod) {
+                    if trait_missing_method {
+                        // cancel the diag for bare traits when meeting `MyTrait::missing_method`
+                        diag.cancel();
+                    } else {
+                        diag.emit();
+                    }
+                }
+
                 if item_name.name != kw::Empty {
                     if let Some(mut e) = self.report_method_error(
                         span,
@@ -883,10 +903,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         error,
                         None,
                         Expectation::NoExpectation,
+                        trait_missing_method && span.edition().rust_2021(), // emits missing method for trait only after edition 2021
                     ) {
                         e.emit();
                     }
                 }
+
                 result
             });
 

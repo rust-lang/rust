@@ -79,3 +79,14 @@ hir_typeck_arg_mismatch_indeterminate = argument type mismatch was detected, but
 hir_typeck_suggest_boxing_note = for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 
 hir_typeck_suggest_boxing_when_appropriate = store this in the heap by calling `Box::new`
+
+hir_typeck_no_associated_item = no {$item_kind} named `{$item_name}` found for {$ty_prefix} `{$ty_str}`{$trait_missing_method ->
+    [true] {""}
+    *[other] {" "}in the current scope
+}
+
+hir_typeck_candidate_trait_note = `{$trait_name}` defines an item `{$item_name}`{$action_or_ty ->
+    [NONE] {""}
+    [implement] , perhaps you need to implement it
+    *[other] , perhaps you need to restrict type parameter `{$action_or_ty}` with it
+}

@@ -7,6 +7,7 @@ use crate::rmeta::*;
 use rustc_ast as ast;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::owned_slice::OwnedSlice;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{AppendOnlyVec, Lock, Lrc, OnceCell};
 use rustc_data_structures::unhash::UnhashMap;
@@ -50,7 +51,7 @@ mod cstore_impl;
 /// A `MetadataBlob` internally is just a reference counted pointer to
 /// the actual data, so cloning it is cheap.
 #[derive(Clone)]
-pub(crate) struct MetadataBlob(Lrc<MetadataRef>);
+pub(crate) struct MetadataBlob(pub(crate) OwnedSlice);
 
 impl std::ops::Deref for MetadataBlob {
     type Target = [u8];
@@ -660,10 +661,6 @@ impl<'a, 'tcx, I: Idx, T> Decodable<DecodeContext<'a, 'tcx>> for LazyTable<I, T>
 implement_ty_decoder!(DecodeContext<'a, 'tcx>);
 
 impl MetadataBlob {
-    pub(crate) fn new(metadata_ref: MetadataRef) -> MetadataBlob {
-        MetadataBlob(Lrc::new(metadata_ref))
-    }
-
     pub(crate) fn is_compatible(&self) -> bool {
         self.blob().starts_with(METADATA_HEADER)
     }

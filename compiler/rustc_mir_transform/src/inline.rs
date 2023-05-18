@@ -7,6 +7,7 @@ use rustc_index::Idx;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
+use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 use rustc_span::{hygiene::ExpnKind, ExpnData, LocalExpnId, Span};
@@ -168,7 +169,7 @@ impl<'tcx> Inliner<'tcx> {
         let callee_attrs = self.tcx.codegen_fn_attrs(callsite.callee.def_id());
         self.check_codegen_attributes(callsite, callee_attrs)?;
         self.check_mir_is_available(caller_body, &callsite.callee)?;
-        let callee_body = self.tcx.instance_mir(callsite.callee.def);
+        let callee_body = try_instance_mir(self.tcx, callsite.callee.def)?;
         self.check_mir_body(callsite, callee_body, callee_attrs)?;
 
         if !self.tcx.consider_optimizing(|| {
@@ -1126,5 +1127,29 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
                 *unwind = self.map_unwind(*unwind);
             }
         }
+    }
+}
+
+#[instrument(skip(tcx), level = "debug")]
+fn try_instance_mir<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: InstanceDef<'tcx>,
+) -> Result<&'tcx Body<'tcx>, &'static str> {
+    match instance {
+        ty::InstanceDef::DropGlue(_, Some(ty)) => match ty.kind() {
+            ty::Adt(def, substs) => {
+                let fields = def.all_fields();
+                for field in fields {
+                    let field_ty = field.ty(tcx, substs);
+                    if field_ty.has_param() && field_ty.has_projections() {
+                        return Err("cannot build drop shim for polymorphic type");
+                    }
+                }
+
+                Ok(tcx.instance_mir(instance))
+            }
+            _ => Ok(tcx.instance_mir(instance)),
+        },
+        _ => Ok(tcx.instance_mir(instance)),
     }
 }

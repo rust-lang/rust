@@ -1,3 +1,5 @@
+// revisions: current next
+//[next] compile-flags: -Ztrait-solver=next
 // edition:2021
 
 mod hyper {

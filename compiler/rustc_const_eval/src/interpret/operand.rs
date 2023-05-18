@@ -595,7 +595,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // FIXME(generic_const_exprs): `ConstKind::Expr` should be able to be evaluated
             ty::ConstKind::Expr(_) => throw_inval!(TooGeneric),
             ty::ConstKind::Error(reported) => {
-                throw_inval!(AlreadyReported(reported))
+                throw_inval!(AlreadyReported(reported.into()))
             }
             ty::ConstKind::Unevaluated(uv) => {
                 let instance = self.resolve(uv.def, uv.substs)?;
