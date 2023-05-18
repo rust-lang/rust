@@ -239,8 +239,9 @@ fn needless_return_macro() -> String {
 }
 
 fn issue_9361() -> i32 {
-    #[allow(clippy::integer_arithmetic)]
-    return 1 + 2;
+    let n = 1;
+    #[allow(clippy::arithmetic_side_effects)]
+    return n + n;
 }
 
 fn issue8336(x: i32) -> bool {

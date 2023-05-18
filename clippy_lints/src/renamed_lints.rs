@@ -15,6 +15,7 @@ pub static RENAMED_LINTS: &[(&str, &str)] = &[
     ("clippy::eval_order_dependence", "clippy::mixed_read_write_in_expression"),
     ("clippy::identity_conversion", "clippy::useless_conversion"),
     ("clippy::if_let_some_result", "clippy::match_result_ok"),
+    ("clippy::integer_arithmetic", "clippy::arithmetic_side_effects"),
     ("clippy::logic_bug", "clippy::overly_complex_bool_expr"),
     ("clippy::new_without_default_derive", "clippy::new_without_default"),
     ("clippy::option_and_then_some", "clippy::bind_instead_of_map"),
