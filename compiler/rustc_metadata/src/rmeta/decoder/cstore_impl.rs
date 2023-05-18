@@ -114,8 +114,8 @@ macro_rules! provide_one {
     ($tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => $compute:block) => {
         fn $name<'tcx>(
             $tcx: TyCtxt<'tcx>,
-            def_id_arg: rustc_middle::query::query_keys::$name<'tcx>,
-        ) -> rustc_middle::query::query_provided::$name<'tcx> {
+            def_id_arg: rustc_middle::query::queries::$name::Key<'tcx>,
+        ) -> rustc_middle::query::queries::$name::ProvidedValue<'tcx> {
             let _prof_timer =
                 $tcx.prof.generic_activity(concat!("metadata_decode_entry_", stringify!($name)));
 
