@@ -117,6 +117,7 @@ pub enum SyntaxKind {
     BYTE,
     STRING,
     BYTE_STRING,
+    C_STRING,
     ERROR,
     IDENT,
     WHITESPACE,
@@ -379,7 +380,7 @@ impl SyntaxKind {
         )
     }
     pub fn is_literal(self) -> bool {
-        matches!(self, INT_NUMBER | FLOAT_NUMBER | CHAR | BYTE | STRING | BYTE_STRING)
+        matches!(self, INT_NUMBER | FLOAT_NUMBER | CHAR | BYTE | STRING | BYTE_STRING | C_STRING)
     }
     pub fn from_keyword(ident: &str) -> Option<SyntaxKind> {
         let kw = match ident {
