@@ -81,7 +81,7 @@ pub enum MirLowerError {
     UnresolvedMethod(String),
     UnresolvedField,
     UnsizedTemporary(Ty),
-    MissingFunctionDefinition,
+    MissingFunctionDefinition(DefWithBodyId, ExprId),
     TypeMismatch(TypeMismatch),
     /// This should be never happen. Type mismatch should catch everything.
     TypeError(&'static str),
@@ -113,6 +113,22 @@ impl MirLowerError {
                     ConstEvalError::MirEvalError(e) => e.pretty_print(f, db, span_formatter)?,
                 }
             }
+            MirLowerError::MissingFunctionDefinition(owner, x) => {
+                let body = db.body(*owner);
+                writeln!(
+                    f,
+                    "Missing function definition for {}",
+                    body.pretty_print_expr(db.upcast(), *owner, *x)
+                )?;
+            }
+            MirLowerError::TypeMismatch(e) => {
+                writeln!(
+                    f,
+                    "Type mismatch: Expected {}, found {}",
+                    e.expected.display(db),
+                    e.actual.display(db),
+                )?;
+            }
             MirLowerError::LayoutError(_)
             | MirLowerError::UnsizedTemporary(_)
             | MirLowerError::IncompleteExpr
@@ -122,8 +138,6 @@ impl MirLowerError {
             | MirLowerError::RecordLiteralWithoutPath
             | MirLowerError::UnresolvedMethod(_)
             | MirLowerError::UnresolvedField
-            | MirLowerError::MissingFunctionDefinition
-            | MirLowerError::TypeMismatch(_)
             | MirLowerError::TypeError(_)
             | MirLowerError::NotSupported(_)
             | MirLowerError::ContinueWithoutLoop
@@ -599,7 +613,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         };
                         self.lower_call_and_args(func, args.iter().copied(), place, current, self.is_uninhabited(expr_id), expr_id.into())
                     }
-                    TyKind::Error => return Err(MirLowerError::MissingFunctionDefinition),
+                    TyKind::Error => return Err(MirLowerError::MissingFunctionDefinition(self.owner, expr_id)),
                     _ => return Err(MirLowerError::TypeError("function call on bad type")),
                 }
             }

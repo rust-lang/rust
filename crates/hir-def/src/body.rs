@@ -187,6 +187,15 @@ impl Body {
         pretty::print_body_hir(db, self, owner)
     }
 
+    pub fn pretty_print_expr(
+        &self,
+        db: &dyn DefDatabase,
+        owner: DefWithBodyId,
+        expr: ExprId,
+    ) -> String {
+        pretty::print_expr_hir(db, self, owner, expr)
+    }
+
     fn new(
         db: &dyn DefDatabase,
         owner: DefWithBodyId,

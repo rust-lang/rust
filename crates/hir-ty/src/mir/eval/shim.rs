@@ -153,10 +153,49 @@ impl Evaluator<'_> {
         use LangItem::*;
         let mut args = args.iter();
         match x {
-            // FIXME: we want to find the panic message from arguments, but it wouldn't work
-            // currently even if we do that, since macro expansion of panic related macros
-            // is dummy.
-            PanicFmt | BeginPanic => Err(MirEvalError::Panic("<format-args>".to_string())),
+            BeginPanic => Err(MirEvalError::Panic("<unknown-panic-payload>".to_string())),
+            PanicFmt => {
+                let message = (|| {
+                    let arguments_struct =
+                        self.db.lang_item(self.crate_id, LangItem::FormatArguments)?.as_struct()?;
+                    let arguments_layout = self
+                        .layout_adt(arguments_struct.into(), Substitution::empty(Interner))
+                        .ok()?;
+                    let arguments_field_pieces =
+                        self.db.struct_data(arguments_struct).variant_data.field(&name![pieces])?;
+                    let pieces_offset = arguments_layout
+                        .fields
+                        .offset(u32::from(arguments_field_pieces.into_raw()) as usize)
+                        .bytes_usize();
+                    let ptr_size = self.ptr_size();
+                    let arg = args.next()?;
+                    let pieces_array_addr =
+                        Address::from_bytes(&arg[pieces_offset..pieces_offset + ptr_size]).ok()?;
+                    let pieces_array_len = usize::from_le_bytes(
+                        (&arg[pieces_offset + ptr_size..pieces_offset + 2 * ptr_size])
+                            .try_into()
+                            .ok()?,
+                    );
+                    let mut message = "".to_string();
+                    for i in 0..pieces_array_len {
+                        let piece_ptr_addr = pieces_array_addr.offset(2 * i * ptr_size);
+                        let piece_addr =
+                            Address::from_bytes(self.read_memory(piece_ptr_addr, ptr_size).ok()?)
+                                .ok()?;
+                        let piece_len = usize::from_le_bytes(
+                            self.read_memory(piece_ptr_addr.offset(ptr_size), ptr_size)
+                                .ok()?
+                                .try_into()
+                                .ok()?,
+                        );
+                        let piece_data = self.read_memory(piece_addr, piece_len).ok()?;
+                        message += &std::string::String::from_utf8_lossy(piece_data);
+                    }
+                    Some(message)
+                })()
+                .unwrap_or_else(|| "<format-args-evaluation-failed>".to_string());
+                Err(MirEvalError::Panic(message))
+            }
             SliceLen => {
                 let arg = args
                     .next()

@@ -61,6 +61,17 @@ pub(super) fn print_body_hir(db: &dyn DefDatabase, body: &Body, owner: DefWithBo
     p.buf
 }
 
+pub(super) fn print_expr_hir(
+    _db: &dyn DefDatabase,
+    body: &Body,
+    _owner: DefWithBodyId,
+    expr: ExprId,
+) -> String {
+    let mut p = Printer { body, buf: String::new(), indent_level: 0, needs_indent: false };
+    p.print_expr(expr);
+    p.buf
+}
+
 macro_rules! w {
     ($dst:expr, $($arg:tt)*) => {
         { let _ = write!($dst, $($arg)*); }
