@@ -20,15 +20,13 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_query_system::dep_graph::{DepNodeParams, HasDepContext};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
-    force_query, QueryCache, QueryConfig, QueryContext, QueryJobId, QueryMap, QuerySideEffects,
-    QueryStackFrame,
+    force_query, QueryConfig, QueryContext, QueryJobId, QueryMap, QuerySideEffects, QueryStackFrame,
 };
 use rustc_query_system::{LayoutOfDepth, QueryOverflow};
 use rustc_serialize::Decodable;
 use rustc_serialize::Encodable;
 use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;
-use std::intrinsics::likely;
 use std::num::NonZeroU64;
 use thin_vec::ThinVec;
 
@@ -64,6 +62,11 @@ impl<'tcx> HasDepContext for QueryCtxt<'tcx> {
 }
 
 impl QueryContext for QueryCtxt<'_> {
+    #[inline]
+    fn single_thread(self) -> bool {
+        self.query_system.single_thread
+    }
+
     #[inline]
     fn next_job_id(self) -> QueryJobId {
         QueryJobId(
@@ -355,35 +358,18 @@ pub(crate) fn encode_query_results<'a, 'tcx, Q>(
         qcx.profiler().verbose_generic_activity_with_arg("encode_query_results_for", query.name());
 
     assert!(query.query_state(qcx).all_inactive());
-    if likely(query.single_thread(qcx)) {
-        let cache = query.single_query_cache(qcx);
-        cache.iter(&mut |key, value, dep_node| {
-            if query.cache_on_disk(qcx.tcx, &key) {
-                let dep_node = SerializedDepNodeIndex::new(dep_node.index());
+    query.cache_iter(qcx, &mut |key, value, dep_node: DepNodeIndex| {
+        if query.cache_on_disk(qcx.tcx, &key) {
+            let dep_node = SerializedDepNodeIndex::new(dep_node.index());
 
-                // Record position of the cache entry.
-                query_result_index.push((dep_node, AbsoluteBytePos::new(encoder.position())));
+            // Record position of the cache entry.
+            query_result_index.push((dep_node, AbsoluteBytePos::new(encoder.position())));
 
-                // Encode the type check tables with the `SerializedDepNodeIndex`
-                // as tag.
-                encoder.encode_tagged(dep_node, &Q::restore(*value));
-            }
-        });
-    } else {
-        let cache = query.parallel_query_cache(qcx);
-        cache.iter(&mut |key, value, dep_node| {
-            if query.cache_on_disk(qcx.tcx, &key) {
-                let dep_node = SerializedDepNodeIndex::new(dep_node.index());
-
-                // Record position of the cache entry.
-                query_result_index.push((dep_node, AbsoluteBytePos::new(encoder.position())));
-
-                // Encode the type check tables with the `SerializedDepNodeIndex`
-                // as tag.
-                encoder.encode_tagged(dep_node, &Q::restore(*value));
-            }
-        });
-    }
+            // Encode the type check tables with the `SerializedDepNodeIndex`
+            // as tag.
+            encoder.encode_tagged(dep_node, &Q::restore(*value));
+        }
+    });
 }
 
 fn try_load_from_on_disk_cache<'tcx, Q>(query: Q, tcx: TyCtxt<'tcx>, dep_node: DepNode)
@@ -585,14 +571,15 @@ macro_rules! define_queries {
             use super::*;
 
             $(
-                pub(super) fn $name<'tcx>() -> DynamicQuery<'tcx, query_storage::$name<'tcx>> {
+                pub(super) fn $name<'tcx>() -> DynamicQuery<'tcx, query_storage::$name<'tcx, SingleShard>, query_storage::$name<'tcx, Sharded>> {
                     DynamicQuery {
                         name: stringify!($name),
                         eval_always: is_eval_always!([$($modifiers)*]),
                         dep_kind: dep_graph::DepKind::$name,
                         handle_cycle_error: handle_cycle_error!([$($modifiers)*]),
                         query_state: offset_of!(QueryStates<'tcx> => $name),
-                        query_cache: offset_of!(QueryCaches<'tcx> => $name),
+                        single_query_cache: offset_of!(QueryCaches<'tcx, SingleShard> => $name),
+                        parallel_query_cache: offset_of!(QueryCaches<'tcx, Sharded> => $name),
                         cache_on_disk: |tcx, key| ::rustc_middle::query::cached::$name(tcx, key),
                         execute_query: |tcx, key| erase(tcx.$name(key)),
                         compute: |tcx, key| query_provided_to_value::$name(
@@ -630,55 +617,6 @@ macro_rules! define_queries {
                         },
                         hash_result: hash_result!([$($modifiers)*][query_values::$name<'tcx>]),
                         format_value: |value| format!("{:?}", restore::<query_values::$name<'tcx>>(*value)),
-
-
-
-
-            type Cache<S: Shard> = query_storage::$name<'tcx, S>;
-
-
-
-            #[inline(always)]
-            fn single_query_cache<'a>(self, tcx: QueryCtxt<'tcx>) -> &'a Self::Cache<SingleShard>
-                where 'tcx:'a
-            {
-                &tcx.query_system.single_caches.$name
-            }
-
-            #[inline(always)]
-            fn parallel_query_cache<'a>(self, tcx: QueryCtxt<'tcx>) -> &'a Self::Cache<Sharded>
-                where 'tcx:'a
-            {
-                &tcx.query_system.parallel_caches.$name
-            }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                     }
                 }
             )*
@@ -688,7 +626,8 @@ macro_rules! define_queries {
             type RestoredValue = query_values::$name<'tcx>;
             type Config = DynamicConfig<
                 'tcx,
-                query_storage::$name<'tcx>,
+                query_storage::$name<'tcx, SingleShard>,
+                query_storage::$name<'tcx, Sharded>,
                 { is_anon!([$($modifiers)*]) },
                 { depth_limit!([$($modifiers)*]) },
                 { feedable!([$($modifiers)*]) },

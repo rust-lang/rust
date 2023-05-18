@@ -6,6 +6,7 @@ use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[cfg(parallel_compiler)]
 use rustc_data_structures::sync;
+use rustc_data_structures::sync::FromDyn;
 use rustc_errors::registry::Registry;
 use rustc_parse::validate_attr;
 use rustc_session as session;
@@ -134,7 +135,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     f: F,
 ) -> R {
     #[cfg(parallel_compiler)]
-    if rustc_data_structures::sync::active() {
+    if rustc_data_structures::sync::is_dyn_thread_safe() {
         return run_in_threads_pool_with_globals(edition, _threads, f);
     }
     // The "thread pool" is a single spawned thread in the non-parallel
@@ -203,6 +204,7 @@ pub(crate) fn run_in_threads_pool_with_globals<F: FnOnce() -> R + Send, R: Send>
     // `Send` in the parallel compiler.
     rustc_span::create_session_globals_then(edition, || {
         rustc_span::with_session_globals(|session_globals| {
+            let session_globals = FromDyn::from(session_globals);
             builder
                 .build_scoped(
                     // Initialize each new worker thread when created.
@@ -210,7 +212,9 @@ pub(crate) fn run_in_threads_pool_with_globals<F: FnOnce() -> R + Send, R: Send>
                         // Register the thread for use with the `WorkerLocal` type.
                         registry.register();
 
-                        rustc_span::set_session_globals_then(session_globals, || thread.run())
+                        rustc_span::set_session_globals_then(session_globals.into_inner(), || {
+                            thread.run()
+                        })
                     },
                     // Run `f` on the first thread in the thread pool.
                     move |pool: &rayon::ThreadPool| pool.install(f),

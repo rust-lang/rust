@@ -9,16 +9,9 @@ use crate::query::{
 use crate::ty::TyCtxt;
 use field_offset::FieldOffset;
 use measureme::StringId;
-use rustc_arena::TypedArena;
-use rustc_ast as ast;
-use rustc_ast::expand::allocator::AllocatorKind;
-use rustc_attr as attr;
-use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
-use rustc_data_structures::sharded::{Shard, Sharded, SingleShard};
-use rustc_data_structures::steal::Steal;
-use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::{AtomicU64, Lrc, WorkerLocal};
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sharded::{Sharded, SingleShard};
+use rustc_data_structures::sync::{AtomicU64, DynSync};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::hir_id::OwnerId;
@@ -28,7 +21,6 @@ pub(crate) use rustc_query_system::query::QueryJobId;
 use rustc_query_system::query::*;
 use rustc_query_system::HandleCycleError;
 use rustc_span::{Span, DUMMY_SP};
-use std::intrinsics::likely;
 use std::ops::Deref;
 
 pub struct QueryKeyStringCache {
@@ -49,13 +41,14 @@ pub struct QueryStruct<'tcx> {
         Option<fn(TyCtxt<'tcx>, &mut CacheEncoder<'_, 'tcx>, &mut EncodedDepNodeIndex)>,
 }
 
-pub struct DynamicQuery<'tcx, C: QueryCache> {
+pub struct DynamicQuery<'tcx, C: QueryCache, C2: QueryCache<Key = C::Key, Value = C::Value>> {
     pub name: &'static str,
     pub eval_always: bool,
     pub dep_kind: rustc_middle::dep_graph::DepKind,
     pub handle_cycle_error: HandleCycleError,
     pub query_state: FieldOffset<QueryStates<'tcx>, QueryState<C::Key, crate::dep_graph::DepKind>>,
-    pub query_cache: FieldOffset<QueryCaches<'tcx>, C>,
+    pub single_query_cache: FieldOffset<QueryCaches<'tcx, SingleShard>, C>,
+    pub parallel_query_cache: FieldOffset<QueryCaches<'tcx, Sharded>, C2>,
     pub cache_on_disk: fn(tcx: TyCtxt<'tcx>, key: &C::Key) -> bool,
     pub execute_query: fn(tcx: TyCtxt<'tcx>, k: C::Key) -> C::Value,
     pub compute: fn(tcx: TyCtxt<'tcx>, key: C::Key) -> C::Value,
@@ -86,6 +79,7 @@ pub struct QuerySystemFns<'tcx> {
     ),
     pub try_mark_green: fn(tcx: TyCtxt<'tcx>, dep_node: &dep_graph::DepNode) -> bool,
 }
+
 pub struct QuerySystem<'tcx> {
     pub states: QueryStates<'tcx>,
     pub arenas: QueryArenas<'tcx>,
@@ -105,6 +99,9 @@ pub struct QuerySystem<'tcx> {
 
     pub jobs: AtomicU64,
 }
+
+#[cfg(parallel_compiler)]
+unsafe impl<'tcx> DynSync for QuerySystem<'tcx> {}
 
 #[derive(Copy, Clone)]
 pub struct TyCtxtAt<'tcx> {
@@ -332,7 +329,7 @@ macro_rules! define_callbacks {
             use super::*;
 
             $(
-                pub type $name<'tcx, L> = <<$($K)* as Key>::CacheSelector as CacheSelector<'tcx, Erase<$V>, L>>::Cache;
+                pub type $name<'tcx, S> = <<$($K)* as Key>::CacheSelector as CacheSelector<'tcx, Erase<$V>, S>>::Cache;
             )*
         }
 
@@ -474,7 +471,7 @@ macro_rules! define_callbacks {
 
         pub struct DynamicQueries<'tcx> {
             $(
-                pub $name: DynamicQuery<'tcx, query_storage::$name<'tcx>>,
+                pub $name: DynamicQuery<'tcx, query_storage::$name<'tcx, SingleShard>, query_storage::$name<'tcx, Sharded>>,
             )*
         }
 

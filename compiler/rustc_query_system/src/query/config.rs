@@ -4,11 +4,10 @@ use crate::dep_graph::{DepNode, DepNodeIndex, DepNodeParams, SerializedDepNodeIn
 use crate::error::HandleCycleError;
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
-use crate::query::DepNodeIndex;
 use crate::query::{QueryContext, QueryInfo, QueryState};
 
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::sharded::{Shard, Sharded, SingleShard};
+use rustc_data_structures::sharded::Shard;
 use std::fmt::Debug;
 use std::hash::Hash;
 
@@ -24,19 +23,13 @@ pub trait QueryConfig<Qcx: QueryContext>: Copy {
 
     type Cache<S: Shard>: QueryCache<Key = Self::Key, Value = Self::Value>;
 
-    fn single_thread(self, tcx: Qcx) -> bool;
-
     fn format_value(self) -> fn(&Self::Value) -> String;
 
-    fn look_up(self, tcx: Qcx, key: &Self::Key) -> Option<(Self::Value, DepNodeIndex)>;
+    fn look_up(self, qcx: Qcx, key: &Self::Key) -> Option<(Self::Value, DepNodeIndex)>;
 
-    fn single_query_cache<'a>(self, tcx: Qcx) -> &'a Self::Cache<SingleShard>
-    where
-        Qcx: 'a;
+    fn cache_iter(self, qcx: Qcx, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex));
 
-    fn parallel_query_cache<'a>(self, tcx: Qcx) -> &'a Self::Cache<Sharded>
-    where
-        Qcx: 'a;
+    fn complete(self, qcx: Qcx, key: Self::Key, value: Self::Value, index: DepNodeIndex);
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
     fn query_state<'a>(self, tcx: Qcx) -> &'a QueryState<Self::Key, Qcx::DepKind>

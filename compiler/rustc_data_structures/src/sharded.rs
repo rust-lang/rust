@@ -1,5 +1,5 @@
 use crate::fx::{FxHashMap, FxHasher};
-use crate::sync::LockLike;
+use crate::sync::{DynSync, LockLike};
 use parking_lot::{Mutex, MutexGuard};
 use std::borrow::Borrow;
 use std::cell::{RefCell, RefMut};
@@ -131,13 +131,13 @@ pub struct DynSharded<T> {
     parallel_shard: ShardedImpl<T>,
 }
 
-// just for speed test
-unsafe impl<T> Sync for DynSharded<T> {}
+#[cfg(parallel_compiler)]
+unsafe impl<T> DynSync for DynSharded<T> {}
 
 impl<T: Default> Default for DynSharded<T> {
     #[inline]
     fn default() -> Self {
-        let single_thread = !crate::sync::active();
+        let single_thread = !crate::sync::is_dyn_thread_safe();
         DynSharded {
             single_thread,
             single_shard: RefCell::new(T::default()),
@@ -148,7 +148,7 @@ impl<T: Default> Default for DynSharded<T> {
 
 impl<T: Default> DynSharded<T> {
     pub fn new(mut value: impl FnMut() -> T) -> Self {
-        if !crate::sync::active() {
+        if !crate::sync::is_dyn_thread_safe() {
             DynSharded {
                 single_thread: true,
                 single_shard: RefCell::new(value()),

@@ -1,5 +1,5 @@
 //! Validates syntax inside Rust code blocks (\`\`\`rust).
-use rustc_data_structures::sync::{Lock, Lrc};
+use rustc_data_structures::sync::Lrc;
 use rustc_errors::{
     emitter::Emitter,
     translation::{to_fluent_args, Translate},
@@ -10,6 +10,7 @@ use rustc_session::parse::ParseSess;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId};
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{FileName, InnerSpan, DUMMY_SP};
+use std::sync::Mutex;
 
 use crate::clean;
 use crate::core::DocContext;
@@ -32,7 +33,7 @@ fn check_rust_syntax(
     dox: &str,
     code_block: RustCodeBlock,
 ) {
-    let buffer = Lrc::new(Lock::new(Buffer::default()));
+    let buffer = Lrc::new(Mutex::new(Buffer::default()));
     let fallback_bundle = rustc_errors::fallback_fluent_bundle(
         rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
         false,
@@ -60,7 +61,7 @@ fn check_rust_syntax(
         .is_empty()
     })
     .unwrap_or(false);
-    let buffer = buffer.borrow();
+    let buffer = buffer.lock().unwrap();
 
     if !buffer.has_errors && !is_empty {
         // No errors in a non-empty program.
@@ -138,7 +139,7 @@ struct Buffer {
 }
 
 struct BufferEmitter {
-    buffer: Lrc<Lock<Buffer>>,
+    buffer: Lrc<Mutex<Buffer>>,
     fallback_bundle: LazyFallbackBundle,
 }
 
@@ -154,7 +155,7 @@ impl Translate for BufferEmitter {
 
 impl Emitter for BufferEmitter {
     fn emit_diagnostic(&mut self, diag: &Diagnostic) {
-        let mut buffer = self.buffer.borrow_mut();
+        let mut buffer = self.buffer.lock().unwrap();
 
         let fluent_args = to_fluent_args(diag.args());
         let translated_main_message = self

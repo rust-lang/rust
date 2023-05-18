@@ -26,7 +26,6 @@ use std::cell::Cell;
 use std::collections::hash_map::Entry;
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::intrinsics::likely;
 use std::mem;
 use std::ops::DerefMut;
 use thin_vec::ThinVec;
@@ -145,9 +144,14 @@ where
 {
     /// Completes the query by updating the query cache with the `result`,
     /// signals the waiter and forgets the JobOwner, so it won't poison the query
-    fn complete<C>(self, cache: &C, result: C::Value, dep_node_index: DepNodeIndex)
-    where
-        C: QueryCache<Key = K>,
+    fn complete<C, Qcx: QueryContext>(
+        self,
+        qcx: Qcx,
+        query: C,
+        result: C::Value,
+        dep_node_index: DepNodeIndex,
+    ) where
+        C: QueryConfig<Qcx, Key = K>,
     {
         let key = self.key;
         let state = self.state;
@@ -157,7 +161,7 @@ where
 
         // Mark as complete before we remove the job from the active state
         // so no other thread can re-execute this query.
-        cache.complete(key, result, dep_node_index);
+        query.complete(qcx, key, result, dep_node_index);
 
         let job = {
             state.active.with_get_shard_by_value(&key, |lock| match lock.remove(&key).unwrap() {
@@ -293,19 +297,23 @@ where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
 {
-    if query.single_thread(qcx) {
+    if qcx.single_thread() {
         let state = query.query_state(qcx);
         let state_lock = state.active.get_borrow_by_value(&key);
-        try_execute_query_inner::<Q, Qcx, SingleShard>(query, qcx, span, key, dep_node, state_lock)
+        try_execute_query_inner::<Q, Qcx, SingleShard, INCR>(
+            query, qcx, span, key, dep_node, state_lock,
+        )
     } else {
         let state = query.query_state(qcx);
         let state_lock = state.active.get_lock_by_value(&key);
-        try_execute_query_inner::<Q, Qcx, Sharded>(query, qcx, span, key, dep_node, state_lock)
+        try_execute_query_inner::<Q, Qcx, Sharded, INCR>(
+            query, qcx, span, key, dep_node, state_lock,
+        )
     }
 }
 
 #[inline(always)]
-fn try_execute_query_inner<Q, Qcx, S: Shard>(
+fn try_execute_query_inner<Q, Qcx, S: Shard, const INCR: bool>(
     query: Q,
     qcx: Qcx,
     span: Span,
@@ -329,7 +337,7 @@ where
     // re-executing the query since `try_start` only checks that the query is not currently
     // executing, but another thread may have already completed the query and stores it result
     // in the query cache.
-    if cfg!(parallel_compiler) && rustc_data_structures::sync::active() {
+    if cfg!(parallel_compiler) && rustc_data_structures::sync::is_dyn_thread_safe() {
         if let Some((value, index)) = query.look_up(qcx, &key) {
             qcx.dep_context().profiler().query_cache_hit(index.into());
             return (value, Some(index));
@@ -364,7 +372,7 @@ where
                 }
                 #[cfg(parallel_compiler)]
                 QueryResult::Started(job) => {
-                    if std::intrinsics::likely(!rustc_data_structures::sync::active()) {
+                    if std::intrinsics::likely(!rustc_data_structures::sync::is_dyn_thread_safe()) {
                         let id = job.id;
                         drop(state_lock);
 
@@ -447,11 +455,7 @@ where
         }
     }
 
-    if likely(query.single_thread(qcx)) {
-        job_owner.complete(query.single_query_cache(qcx), result, dep_node_index)
-    } else {
-        job_owner.complete(query.parallel_query_cache(qcx), result, dep_node_index)
-    };
+    job_owner.complete(qcx, query, result, dep_node_index);
 
     (result, Some(dep_node_index))
 }

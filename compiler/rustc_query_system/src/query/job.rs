@@ -20,7 +20,6 @@ use {
     parking_lot::{Condvar, Mutex},
     rayon_core,
     rustc_data_structures::fx::FxHashSet,
-    rustc_data_structures::sync::Lock,
     rustc_data_structures::sync::Lrc,
     rustc_data_structures::{jobserver, OnDrop},
     rustc_span::DUMMY_SP,
@@ -189,7 +188,7 @@ struct QueryWaiter<D: DepKind> {
     query: Option<QueryJobId>,
     condvar: Condvar,
     span: Span,
-    cycle: Lock<Option<CycleError<D>>>,
+    cycle: Mutex<Option<CycleError<D>>>,
 }
 
 #[cfg(parallel_compiler)]
@@ -227,7 +226,7 @@ impl<D: DepKind> QueryLatch<D> {
         span: Span,
     ) -> Result<(), CycleError<D>> {
         let waiter =
-            Lrc::new(QueryWaiter { query, span, cycle: Lock::new(None), condvar: Condvar::new() });
+            Lrc::new(QueryWaiter { query, span, cycle: Mutex::new(None), condvar: Condvar::new() });
         self.wait_on_inner(&waiter);
         // FIXME: Get rid of this lock. We have ownership of the QueryWaiter
         // although another thread may still have a Lrc reference so we cannot

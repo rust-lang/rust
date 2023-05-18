@@ -72,7 +72,7 @@ pub fn set_parallel_mode(sopts1: &config::UnstableOptions, sopts2: &config::Code
         }
     };
 
-    rustc_data_structures::sync::set(parallel);
+    rustc_data_structures::sync::set_dyn_thread_safe_mode(parallel);
 }
 
 /// Converts strings provided as `--cfg [cfgspec]` into a `crate_cfg`.

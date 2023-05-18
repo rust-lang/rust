@@ -1153,7 +1153,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
 
         let mut new_node_count_estimate = 102 * prev_graph_node_count / 100 + 200;
 
-        if rustc_data_structures::sync::active() {
+        if rustc_data_structures::sync::is_dyn_thread_safe() {
             new_node_count_estimate /= SHARDS;
         }
 

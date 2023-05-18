@@ -17,9 +17,11 @@
 extern crate rustc_middle;
 
 use crate::plumbing::{encode_all_query_results, try_mark_green};
+use field_offset::offset_of;
 use rustc_data_structures::sharded::{Shard, Sharded, SingleShard};
+use rustc_data_structures::stable_hasher::HashStable;
+use rustc_data_structures::sync::AtomicU64;
 use rustc_middle::arena::Arena;
-use rustc_middle::dep_graph::DepNodeIndex;
 use rustc_middle::dep_graph::{self, DepKind, DepKindStruct};
 use rustc_middle::query::erase::{erase, restore, Erase};
 use rustc_middle::query::on_disk_cache::OnDiskCache;
@@ -33,13 +35,12 @@ use rustc_middle::ty::TyCtxt;
 use rustc_query_system::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
-    get_query_incr, get_query_non_incr, HashResult, QueryCache, QueryConfig, QueryInfo, QueryMap,
-    QueryMode, QueryState,
+    get_query_incr, get_query_non_incr, HashResult, QueryCache, QueryConfig, QueryContext,
+    QueryInfo, QueryMap, QueryMode, QueryState,
 };
 use rustc_query_system::HandleCycleError;
 use rustc_query_system::Value;
 use rustc_span::Span;
-use std::intrinsics::likely;
 
 #[macro_use]
 mod plumbing;
@@ -51,33 +52,52 @@ pub use self::profiling_support::alloc_self_profile_query_strings;
 struct DynamicConfig<
     'tcx,
     C: QueryCache,
+    C2: QueryCache<Key = C::Key, Value = C::Value>,
     const ANON: bool,
     const DEPTH_LIMIT: bool,
     const FEEDABLE: bool,
 > {
-    dynamic: &'tcx DynamicQuery<'tcx, C>,
+    dynamic: &'tcx DynamicQuery<'tcx, C, C2>,
 }
 
-impl<'tcx, C: QueryCache, const ANON: bool, const DEPTH_LIMIT: bool, const FEEDABLE: bool> Copy
-    for DynamicConfig<'tcx, C, ANON, DEPTH_LIMIT, FEEDABLE>
+impl<
+    'tcx,
+    C: QueryCache,
+    C2: QueryCache<Key = C::Key, Value = C::Value>,
+    const ANON: bool,
+    const DEPTH_LIMIT: bool,
+    const FEEDABLE: bool,
+> Copy for DynamicConfig<'tcx, C, C2, ANON, DEPTH_LIMIT, FEEDABLE>
 {
 }
-impl<'tcx, C: QueryCache, const ANON: bool, const DEPTH_LIMIT: bool, const FEEDABLE: bool> Clone
-    for DynamicConfig<'tcx, C, ANON, DEPTH_LIMIT, FEEDABLE>
+impl<
+    'tcx,
+    C: QueryCache,
+    C2: QueryCache<Key = C::Key, Value = C::Value>,
+    const ANON: bool,
+    const DEPTH_LIMIT: bool,
+    const FEEDABLE: bool,
+> Clone for DynamicConfig<'tcx, C, C2, ANON, DEPTH_LIMIT, FEEDABLE>
 {
     fn clone(&self) -> Self {
         DynamicConfig { dynamic: self.dynamic }
     }
 }
 
-impl<'tcx, C: QueryCache, const ANON: bool, const DEPTH_LIMIT: bool, const FEEDABLE: bool>
-    QueryConfig<QueryCtxt<'tcx>> for DynamicConfig<'tcx, C, ANON, DEPTH_LIMIT, FEEDABLE>
+impl<
+    'tcx,
+    C: QueryCache,
+    C2: QueryCache<Key = C::Key, Value = C::Value>,
+    const ANON: bool,
+    const DEPTH_LIMIT: bool,
+    const FEEDABLE: bool,
+> QueryConfig<QueryCtxt<'tcx>> for DynamicConfig<'tcx, C, C2, ANON, DEPTH_LIMIT, FEEDABLE>
 where
     for<'a> C::Key: HashStable<StableHashingContext<'a>>,
 {
     type Key = C::Key;
     type Value = C::Value;
-    type Cache = C;
+    type Cache<S: Shard> = C;
 
     #[inline(always)]
     fn name(self) -> &'static str {
@@ -98,11 +118,49 @@ where
     }
 
     #[inline(always)]
-    fn query_cache<'a>(self, qcx: QueryCtxt<'tcx>) -> &'a Self::Cache
-    where
-        'tcx: 'a,
-    {
-        self.dynamic.query_cache.apply(&qcx.tcx.query_system.caches)
+    fn look_up(self, qcx: QueryCtxt<'tcx>, key: &Self::Key) -> Option<(Self::Value, DepNodeIndex)> {
+        if qcx.single_thread() {
+            self.dynamic.single_query_cache.apply(&qcx.tcx.query_system.single_caches).lookup(key)
+        } else {
+            self.dynamic
+                .parallel_query_cache
+                .apply(&qcx.tcx.query_system.parallel_caches)
+                .lookup(key)
+        }
+    }
+
+    #[inline(always)]
+    fn cache_iter(
+        self,
+        qcx: QueryCtxt<'tcx>,
+        f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex),
+    ) {
+        if qcx.single_thread() {
+            self.dynamic.single_query_cache.apply(&qcx.tcx.query_system.single_caches).iter(f)
+        } else {
+            self.dynamic.parallel_query_cache.apply(&qcx.tcx.query_system.parallel_caches).iter(f)
+        }
+    }
+
+    #[inline(always)]
+    fn complete(
+        self,
+        qcx: QueryCtxt<'tcx>,
+        key: Self::Key,
+        value: Self::Value,
+        index: DepNodeIndex,
+    ) {
+        if qcx.single_thread() {
+            self.dynamic
+                .single_query_cache
+                .apply(&qcx.tcx.query_system.single_caches)
+                .complete(key, value, index)
+        } else {
+            self.dynamic
+                .parallel_query_cache
+                .apply(&qcx.tcx.query_system.parallel_caches)
+                .complete(key, value, index)
+        }
     }
 
     #[inline(always)]
@@ -209,8 +267,11 @@ pub fn query_system<'tcx>(
     QuerySystem {
         states: Default::default(),
         arenas: Default::default(),
-        caches: Default::default(),
         dynamic_queries: dynamic_queries(),
+
+        single_thread: !rustc_data_structures::sync::is_dyn_thread_safe(),
+        single_caches: Default::default(),
+        parallel_caches: Default::default(),
         on_disk_cache,
         fns: QuerySystemFns {
             engine: engine(incremental),

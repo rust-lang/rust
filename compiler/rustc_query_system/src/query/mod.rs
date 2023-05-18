@@ -101,6 +101,8 @@ impl QuerySideEffects {
 }
 
 pub trait QueryContext: HasDepContext {
+    fn single_thread(self) -> bool;
+
     fn next_job_id(self) -> QueryJobId;
 
     /// Get the query information from the TLS context.

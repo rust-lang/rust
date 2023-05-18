@@ -65,11 +65,10 @@ mod mode {
     use super::Ordering;
     use std::sync::atomic::AtomicU8;
 
-    const UNINITIALIZED: u8 = 0;
     const DYN_NOT_THREAD_SAFE: u8 = 1;
     const DYN_THREAD_SAFE: u8 = 2;
 
-    static DYN_THREAD_SAFE_MODE: AtomicU8 = AtomicU8::new(UNINITIALIZED);
+    static DYN_THREAD_SAFE_MODE: AtomicU8 = AtomicU8::new(DYN_NOT_THREAD_SAFE);
 
     // Whether thread safety is enabled (due to running under multiple threads).
     #[inline]
@@ -84,15 +83,9 @@ mod mode {
     // Only set by the `-Z threads` compile option
     pub fn set_dyn_thread_safe_mode(mode: bool) {
         let set: u8 = if mode { DYN_THREAD_SAFE } else { DYN_NOT_THREAD_SAFE };
-        let previous = DYN_THREAD_SAFE_MODE.compare_exchange(
-            UNINITIALIZED,
-            set,
-            Ordering::Relaxed,
-            Ordering::Relaxed,
-        );
 
-        // Check that the mode was either uninitialized or was already set to the requested mode.
-        assert!(previous.is_ok() || previous == Err(set));
+        // just for speed test
+        DYN_THREAD_SAFE_MODE.store(set, Ordering::Relaxed);
     }
 }
 
@@ -343,24 +336,6 @@ cfg_if! {
             A: FnOnce() -> RA + DynSend,
             B: FnOnce() -> RB + DynSend,
         {
-            if mode::active() {
-                let oper_a = FromDyn::from(oper_a);
-                let oper_b = FromDyn::from(oper_b);
-                let (a, b) = rayon::join(move || FromDyn::from(oper_a.into_inner()()), move || FromDyn::from(oper_b.into_inner()()));
-                (a.into_inner(), b.into_inner())
-            } else {
-                (oper_a(), oper_b())
-            }
-        }
-
-        use std::thread;
-
-        #[inline]
-        pub fn join<A, B, RA: DynSend, RB: DynSend>(oper_a: A, oper_b: B) -> (RA, RB)
-        where
-            A: FnOnce() -> RA + DynSend,
-            B: FnOnce() -> RB + DynSend,
-        {
             if mode::is_dyn_thread_safe() {
                 let oper_a = FromDyn::from(oper_a);
                 let oper_b = FromDyn::from(oper_b);
@@ -385,19 +360,11 @@ cfg_if! {
         /// the current thread. Use that for the longest running block.
         #[macro_export]
         macro_rules! parallel {
-            (impl $fblock:tt [$($c:tt,)*] [$block:tt $(, $rest:tt)*]) => {
             (impl $fblock:block [$($c:expr,)*] [$block:expr $(, $rest:expr)*]) => {
                 parallel!(impl $fblock [$block, $($c,)*] [$($rest),*])
             };
-            (impl $fblock:tt [$($blocks:tt,)*] []) => {
             (impl $fblock:block [$($blocks:expr,)*] []) => {
                 ::rustc_data_structures::sync::scope(|s| {
-
-
-
-
-
-
                     $(let block = rustc_data_structures::sync::FromDyn::from(|| $blocks);
                     s.spawn(move |_| block.into_inner()());)*
                     (|| $fblock)();
@@ -421,7 +388,6 @@ cfg_if! {
                         }
                     }
                     $(
-                        s.spawn(|_| $blocks);
                         if let Err(p) = ::std::panic::catch_unwind(
                             ::std::panic::AssertUnwindSafe(|| $blocks)
                         ) {
@@ -430,18 +396,10 @@ cfg_if! {
                             }
                         }
                     )*
-                    $fblock;
-                })
                     if let Some(panic) = panic {
                         ::std::panic::resume_unwind(panic);
                     }
                 }
-            };
-            ($fblock:tt, $($blocks:tt),*) => {
-                // Reverse the order of the later blocks since Rayon executes them in reverse order
-                // when using a single thread. This ensures the execution order matches that
-                // of a single threaded rustc
-                parallel!(impl $fblock [] [$($blocks),*]);
             };
         }
 
@@ -453,7 +411,7 @@ cfg_if! {
         ) {
             if mode::is_dyn_thread_safe() {
                 let for_each = FromDyn::from(for_each);
-                let panic: Lock<Option<_>> = Lock::new(None);
+                let panic: Mutex<Option<_>> = Mutex::new(None);
                 t.into_par_iter().for_each(|i| if let Err(p) = catch_unwind(AssertUnwindSafe(|| for_each(i))) {
                     let mut l = panic.lock();
                     if l.is_none() {
@@ -491,7 +449,7 @@ cfg_if! {
             map: impl Fn(I) -> R + DynSync + DynSend
         ) -> C {
             if mode::is_dyn_thread_safe() {
-                let panic: Lock<Option<_>> = Lock::new(None);
+                let panic: Mutex<Option<_>> = Mutex::new(None);
                 let map = FromDyn::from(map);
                 // We catch panics here ensuring that all the loop iterations execute.
                 let r = t.into_par_iter().filter_map(|i| {
@@ -531,30 +489,6 @@ cfg_if! {
                 r
             }
         }
-
-pub unsafe trait DynSend {}
-pub unsafe trait DynSync {}
-
-unsafe impl<T> DynSend for T where T: Send {}
-unsafe impl<T> DynSync for T where T: Sync {}
-
-#[derive(Copy, Clone)]
-pub struct FromDyn<T>(T);
-
-impl<T> FromDyn<T> {
-    #[inline(always)]
-    pub fn from(val: T) -> Self {
-        // Check that `sync::active()` is true on creation so we can
-        // implement `Send` and `Sync` for this structure when `T`
-        // implements `DynSend` and `DynSync` respectively.
-        #[cfg(parallel_compiler)]
-        assert!(mode::active());
-        FromDyn(val)
-    }
-
-    #[inline(always)]
-    pub fn into_inner(self) -> T {
-        self.0
     }
 }
 
@@ -607,7 +541,7 @@ impl<T> Lock<T> {
     #[inline]
     pub fn new(val: T) -> Self {
         Lock {
-            single_thread: !active(),
+            single_thread: !is_dyn_thread_safe(),
             data: UnsafeCell::new(val),
             borrow: Cell::new(false),
             mutex: RawMutex::INIT,
@@ -724,10 +658,6 @@ impl<T: Default> Default for Lock<T> {
         Lock::new(T::default())
     }
 }
-
-// Just for speed test
-unsafe impl<T: Send> std::marker::Send for Lock<T> {}
-unsafe impl<T: Send> std::marker::Sync for Lock<T> {}
 
 pub struct LockGuard<'a, T> {
     lock: &'a Lock<T>,
@@ -1037,6 +967,10 @@ pub struct RwLock<T> {
     data: UnsafeCell<T>,
 }
 
+// just for speed test
+unsafe impl<T> std::marker::Send for RwLock<T> {}
+unsafe impl<T> std::marker::Sync for RwLock<T> {}
+
 impl<T: Debug> Debug for RwLock<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Lock").field("data", self.read().deref()).finish()
@@ -1046,7 +980,11 @@ impl<T: Debug> Debug for RwLock<T> {
 impl<T: Default> Default for RwLock<T> {
     fn default() -> Self {
         RwLock {
-            raw: RwLockRaw { single_thread: !active(), borrow: Cell::new(0), raw: RawRwLock::INIT },
+            raw: RwLockRaw {
+                single_thread: !is_dyn_thread_safe(),
+                borrow: Cell::new(0),
+                raw: RawRwLock::INIT,
+            },
 
             data: UnsafeCell::new(T::default()),
         }
@@ -1057,7 +995,11 @@ impl<T> RwLock<T> {
     #[inline(always)]
     pub fn new(inner: T) -> Self {
         RwLock {
-            raw: RwLockRaw { single_thread: !active(), borrow: Cell::new(0), raw: RawRwLock::INIT },
+            raw: RwLockRaw {
+                single_thread: !is_dyn_thread_safe(),
+                borrow: Cell::new(0),
+                raw: RawRwLock::INIT,
+            },
 
             data: UnsafeCell::new(inner),
         }
@@ -1197,10 +1139,6 @@ impl<T> RwLock<T> {
     }
 }
 
-// just for speed test
-unsafe impl<T: Send> std::marker::Send for RwLock<T> {}
-unsafe impl<T: Send + Sync> std::marker::Sync for RwLock<T> {}
-
 // FIXME: Probably a bad idea
 impl<T: Clone> Clone for RwLock<T> {
     #[inline]
@@ -1221,7 +1159,7 @@ impl<T> WorkerLocal<T> {
     /// value this worker local should take for each thread in the thread pool.
     #[inline]
     pub fn new<F: FnMut(usize) -> T>(mut f: F) -> WorkerLocal<T> {
-        if !active() {
+        if !is_dyn_thread_safe() {
             WorkerLocal { single_thread: true, inner: Some(f(0)), mt_inner: None }
         } else {
             WorkerLocal {
@@ -1246,9 +1184,6 @@ impl<T> Deref for WorkerLocal<T> {
     }
 }
 
-// Just for speed test
-unsafe impl<T: Send> std::marker::Sync for WorkerLocal<T> {}
-
 use std::thread;
 pub use worker_local::Registry;
 
@@ -1261,10 +1196,6 @@ pub struct OneThread<T> {
     inner: T,
 }
 
-// just for speed test now
-unsafe impl<T> std::marker::Sync for OneThread<T> {}
-unsafe impl<T> std::marker::Send for OneThread<T> {}
-
 impl<T> OneThread<T> {
     #[inline(always)]
     fn check(&self) {
@@ -1273,7 +1204,7 @@ impl<T> OneThread<T> {
 
     #[inline(always)]
     pub fn new(inner: T) -> Self {
-        OneThread { single_thread: !active(), thread: thread::current().id(), inner }
+        OneThread { single_thread: !is_dyn_thread_safe(), thread: thread::current().id(), inner }
     }
 
     #[inline(always)]
