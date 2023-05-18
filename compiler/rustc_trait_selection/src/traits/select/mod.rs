@@ -1645,7 +1645,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let tcx = self.infcx.tcx;
         let (def_id, substs) = match *placeholder_trait_predicate.trait_ref.self_ty().kind() {
-            ty::Alias(_, ty::AliasTy { def_id, substs, .. }) => (def_id, substs),
+            ty::Alias(ty::Projection | ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
+                (def_id, substs)
+            }
             _ => {
                 span_bug!(
                     obligation.cause.span,
