@@ -2409,9 +2409,10 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                         )
                     });
 
-                let obligation = Obligation::new(
+                let obligation = Obligation::with_depth(
                     self.tcx(),
                     cause.clone(),
+                    recursion_depth,
                     param_env,
                     ty::TraitRef::new(self.tcx(), trait_def_id, [normalized_ty]),
                 );

@@ -1,0 +1,25 @@
+error[E0275]: overflow evaluating the requirement `Runtime<RootDatabase>: RefUnwindSafe`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`cycle_recursion_limit`)
+note: required because it appears within the type `RootDatabase`
+  --> $DIR/cycle-recursion-limit.rs:21:8
+   |
+LL | struct RootDatabase {
+   |        ^^^^^^^^^^^^
+note: required for `RootDatabase` to implement `Database`
+  --> $DIR/cycle-recursion-limit.rs:44:9
+   |
+LL | impl<T> Database for T
+   |         ^^^^^^^^     ^
+LL | where
+LL |     T: RefUnwindSafe,
+   |        ------------- unsatisfied trait bound introduced here
+note: required because it appears within the type `Runtime<RootDatabase>`
+  --> $DIR/cycle-recursion-limit.rs:24:8
+   |
+LL | struct Runtime<DB: Database> {
+   |        ^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0275`.
