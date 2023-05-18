@@ -330,12 +330,11 @@ impl CodeSuggestion {
                     });
                     buf.push_str(&part.snippet);
                     let cur_hi = sm.lookup_char_pos(part.span.hi());
-                    if cur_hi.line == cur_lo.line && !part.snippet.is_empty() {
-                        // Account for the difference between the width of the current code and the
-                        // snippet being suggested, so that the *later* suggestions are correctly
-                        // aligned on the screen.
-                        acc += len - (cur_hi.col.0 - cur_lo.col.0) as isize;
-                    }
+                    // Account for the difference between the width of the current code and the
+                    // snippet being suggested, so that the *later* suggestions are correctly
+                    // aligned on the screen. Note that cur_hi and cur_lo can be on different
+                    // lines, so cur_hi.col can be smaller than cur_lo.col
+                    acc += len - (cur_hi.col.0 as isize - cur_lo.col.0 as isize);
                     prev_hi = cur_hi;
                     prev_line = sf.get_line(prev_hi.line - 1);
                     for line in part.snippet.split('\n').skip(1) {
