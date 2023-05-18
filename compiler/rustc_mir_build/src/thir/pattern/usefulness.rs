@@ -745,6 +745,7 @@ fn compute_usefulness<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     matrix: &mut Matrix<'p, 'tcx>,
     v: &PatStack<'p, 'tcx>,
+    collect_witnesses: bool,
     lint_root: HirId,
     is_top_level: bool,
 ) -> WitnessMatrix<'p, 'tcx> {
@@ -761,7 +762,7 @@ fn compute_usefulness<'p, 'tcx>(
                 break;
             }
         }
-        if useful {
+        if useful && collect_witnesses {
             return WitnessMatrix::new_unit();
         } else {
             return WitnessMatrix::new_empty();
@@ -797,17 +798,18 @@ fn compute_usefulness<'p, 'tcx>(
     // witness the usefulness of `v`.
     let mut ret = WitnessMatrix::new_empty();
     for ctor in split_ctors {
+        // If some ctors are missing we only report those. Could report all if that's useful for
+        // some applications.
+        let collect_witnesses = collect_witnesses
+            && (missing_ctors.is_empty()
+                || matches!(ctor, Constructor::Wildcard | Constructor::Missing));
         debug!("specialize({:?})", ctor);
         let mut spec_matrix = matrix.specialize_constructor(pcx, &ctor);
         let v = v.pop_head_constructor(pcx, &ctor, usize::MAX);
         let mut witnesses = ensure_sufficient_stack(|| {
-            compute_usefulness(cx, &mut spec_matrix, &v, lint_root, false)
+            compute_usefulness(cx, &mut spec_matrix, &v, collect_witnesses, lint_root, false)
         });
-        if missing_ctors.is_empty() || matches!(ctor, Constructor::Wildcard | Constructor::Missing)
-        {
-            // If some ctors are missing we only report those. Mostly for historical reasons,
-            // nothing stops us from reporting all.
-            // FIXME: propagate this choice deeper to save work.
+        if collect_witnesses {
             witnesses.apply_constructor(pcx, &missing_ctors, &ctor);
             ret.extend(witnesses);
         }
@@ -966,7 +968,8 @@ pub(crate) fn compute_match_usefulness<'p, 'tcx>(
 
     let wild_pattern = cx.pattern_arena.alloc(DeconstructedPat::wildcard(scrut_ty, DUMMY_SP));
     let v = PatStack::from_pattern(wild_pattern, usize::MAX, false);
-    let non_exhaustiveness_witnesses = compute_usefulness(cx, &mut matrix, &v, lint_root, true);
+    let non_exhaustiveness_witnesses =
+        compute_usefulness(cx, &mut matrix, &v, true, lint_root, true);
     let non_exhaustiveness_witnesses: Vec<_> = non_exhaustiveness_witnesses.single_column();
     let arm_usefulness: Vec<_> = arms
         .iter()
