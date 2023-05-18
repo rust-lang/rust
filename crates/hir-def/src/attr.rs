@@ -764,7 +764,7 @@ impl<'attr> AttrQuery<'attr> {
                 .nth(2);
 
             match name {
-                Some(tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal{ref text, ..}))) => Some(text),
+                Some(tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal{ ref text, ..}))) => Some(text),
                 _ => None
             }
         })
