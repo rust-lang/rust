@@ -74,7 +74,12 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
 
     #[salsa::invoke(crate::layout::layout_of_adt_query)]
     #[salsa::cycle(crate::layout::layout_of_adt_recover)]
-    fn layout_of_adt(&self, def: AdtId, subst: Substitution) -> Result<Layout, LayoutError>;
+    fn layout_of_adt(
+        &self,
+        def: AdtId,
+        subst: Substitution,
+        krate: CrateId,
+    ) -> Result<Layout, LayoutError>;
 
     #[salsa::invoke(crate::layout::target_data_layout_query)]
     fn target_data_layout(&self, krate: CrateId) -> Option<Arc<TargetDataLayout>>;

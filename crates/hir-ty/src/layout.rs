@@ -84,7 +84,7 @@ pub fn layout_of_ty(db: &dyn HirDatabase, ty: &Ty, krate: CrateId) -> Result<Lay
     let trait_env = Arc::new(TraitEnvironment::empty(krate));
     let ty = normalize(db, trait_env, ty.clone());
     Ok(match ty.kind(Interner) {
-        TyKind::Adt(AdtId(def), subst) => db.layout_of_adt(*def, subst.clone())?,
+        TyKind::Adt(AdtId(def), subst) => db.layout_of_adt(*def, subst.clone(), krate)?,
         TyKind::Scalar(s) => match s {
             chalk_ir::Scalar::Bool => Layout::scalar(
                 dl,

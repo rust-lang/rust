@@ -2,10 +2,11 @@
 
 use std::{cmp, ops::Bound};
 
+use base_db::CrateId;
 use hir_def::{
     data::adt::VariantData,
     layout::{Integer, LayoutCalculator, ReprOptions, TargetDataLayout},
-    AdtId, EnumVariantId, HasModule, LocalEnumVariantId, VariantId,
+    AdtId, EnumVariantId, LocalEnumVariantId, VariantId,
 };
 use la_arena::RawIdx;
 use smallvec::SmallVec;
@@ -27,8 +28,8 @@ pub fn layout_of_adt_query(
     db: &dyn HirDatabase,
     def: AdtId,
     subst: Substitution,
+    krate: CrateId,
 ) -> Result<Layout, LayoutError> {
-    let krate = def.module(db.upcast()).krate();
     let Some(target) = db.target_data_layout(krate) else { return Err(LayoutError::TargetLayoutNotAvailable) };
     let cx = LayoutCx { krate, target: &target };
     let dl = cx.current_data_layout();
@@ -127,6 +128,7 @@ pub fn layout_of_adt_recover(
     _: &[String],
     _: &AdtId,
     _: &Substitution,
+    _: &CrateId,
 ) -> Result<Layout, LayoutError> {
     user_error!("infinite sized recursive type");
 }
