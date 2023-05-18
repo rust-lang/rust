@@ -17,6 +17,7 @@ use rustc_hir::{GenericArg, GenericParam, GenericParamKind, HirIdMap, LifetimeNa
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::*;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeSuperVisitable, TypeVisitor};
 use rustc_session::lint;
 use rustc_span::def_id::DefId;
@@ -232,8 +233,8 @@ impl<'a> fmt::Debug for TruncatedScopeDebug<'a> {
 
 type ScopeRef<'a> = &'a Scope<'a>;
 
-pub(crate) fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers {
+pub(crate) fn provide(providers: &mut Providers) {
+    *providers = Providers {
         resolve_bound_vars,
 
         named_variable_map: |tcx, id| tcx.resolve_bound_vars(id).defs.get(&id),

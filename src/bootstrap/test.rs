@@ -10,6 +10,8 @@ use std::iter;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
+use clap_complete::shells;
+
 use crate::builder::crate_description;
 use crate::builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::Interned;
@@ -1138,7 +1140,24 @@ help: to skip test's attempt to check tidiness, pass `--exclude src/tools/tidy` 
         builder.info("tidy check");
         try_run(builder, &mut cmd);
 
-        builder.ensure(ExpandYamlAnchors {});
+        builder.ensure(ExpandYamlAnchors);
+
+        builder.info("x.py completions check");
+        let [bash, fish, powershell] = ["x.py.sh", "x.py.fish", "x.py.ps1"]
+            .map(|filename| builder.src.join("src/etc/completions").join(filename));
+        if builder.config.cmd.bless() {
+            builder.ensure(crate::run::GenerateCompletions);
+        } else {
+            if crate::flags::get_completion(shells::Bash, &bash).is_some()
+                || crate::flags::get_completion(shells::Fish, &fish).is_some()
+                || crate::flags::get_completion(shells::PowerShell, &powershell).is_some()
+            {
+                eprintln!(
+                    "x.py completions were changed; run `x.py run generate-completions` to update them"
+                );
+                crate::detail_exit(1);
+            }
+        }
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {

@@ -1124,7 +1124,7 @@ impl<T> fmt::Display for SendError<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Send> error::Error for SendError<T> {
+impl<T> error::Error for SendError<T> {
     #[allow(deprecated)]
     fn description(&self) -> &str {
         "sending on a closed channel"
@@ -1152,7 +1152,7 @@ impl<T> fmt::Display for TrySendError<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Send> error::Error for TrySendError<T> {
+impl<T> error::Error for TrySendError<T> {
     #[allow(deprecated)]
     fn description(&self) -> &str {
         match *self {

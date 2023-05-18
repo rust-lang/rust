@@ -22,7 +22,7 @@ mod errors;
 mod lints;
 pub mod thir;
 
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
 
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_fluent_macro::fluent_messages;

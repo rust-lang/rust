@@ -1,5 +1,5 @@
 use crate::lints::{Expectation, ExpectationNote};
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::UNFULFILLED_LINT_EXPECTATIONS;
 use rustc_session::lint::LintExpectationId;

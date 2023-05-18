@@ -21,21 +21,20 @@
 //!   thing we relate in chalk are basically domain goals and their
 //!   constituents)
 
-use crate::infer::InferCtxt;
-use crate::infer::{ConstVarValue, ConstVariableValue};
-use crate::infer::{TypeVariableOrigin, TypeVariableOriginKind};
-use crate::traits::{Obligation, PredicateObligations};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::traits::ObligationCause;
-use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::fold::FnMutDelegate;
-use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
+use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, InferConst, Ty, TyCtxt};
 use rustc_span::{Span, Symbol};
 use std::fmt::Debug;
 
-use super::combine::ObligationEmittingRelation;
+use crate::infer::combine::ObligationEmittingRelation;
+use crate::infer::generalize::{self, Generalization};
+use crate::infer::InferCtxt;
+use crate::infer::{TypeVariableOrigin, TypeVariableOriginKind};
+use crate::traits::{Obligation, PredicateObligations};
 
 pub struct TypeRelating<'me, 'tcx, D>
 where
@@ -198,7 +197,7 @@ where
             _ => (),
         }
 
-        let generalized_ty = self.generalize_value(value_ty, vid)?;
+        let generalized_ty = self.generalize(value_ty, vid)?;
         debug!("relate_ty_var: generalized_ty = {:?}", generalized_ty);
 
         if D::forbid_inference_vars() {
@@ -217,26 +216,15 @@ where
         result
     }
 
-    fn generalize_value<T: Relate<'tcx>>(
-        &mut self,
-        value: T,
-        for_vid: ty::TyVid,
-    ) -> RelateResult<'tcx, T> {
-        let universe = self.infcx.probe_ty_var(for_vid).unwrap_err();
-
-        if value.has_escaping_bound_vars() {
-            bug!("trying to instantiate {for_vid:?} with escaping bound vars: {value:?}");
-        }
-
-        let mut generalizer = TypeGeneralizer {
-            infcx: self.infcx,
-            delegate: &mut self.delegate,
-            ambient_variance: self.ambient_variance,
-            for_vid_sub_root: self.infcx.inner.borrow_mut().type_variables().sub_root_var(for_vid),
-            universe,
-        };
-
-        generalizer.relate(value, value)
+    fn generalize(&mut self, ty: Ty<'tcx>, for_vid: ty::TyVid) -> RelateResult<'tcx, Ty<'tcx>> {
+        let Generalization { value: ty, needs_wf: _ } = generalize::generalize(
+            self.infcx,
+            &mut self.delegate,
+            ty,
+            for_vid,
+            self.ambient_variance,
+        )?;
+        Ok(ty)
     }
 
     fn relate_opaques(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
@@ -714,237 +702,5 @@ where
             // Probably just need to do nothing here.
             ty::Variance::Bivariant => unreachable!(),
         })]);
-    }
-}
-
-/// The "type generalizer" is used when handling inference variables.
-///
-/// The basic strategy for handling a constraint like `?A <: B` is to
-/// apply a "generalization strategy" to the type `B` -- this replaces
-/// all the lifetimes in the type `B` with fresh inference
-/// variables. (You can read more about the strategy in this [blog
-/// post].)
-///
-/// As an example, if we had `?A <: &'x u32`, we would generalize `&'x
-/// u32` to `&'0 u32` where `'0` is a fresh variable. This becomes the
-/// value of `A`. Finally, we relate `&'0 u32 <: &'x u32`, which
-/// establishes `'0: 'x` as a constraint.
-///
-/// [blog post]: https://is.gd/0hKvIr
-struct TypeGeneralizer<'me, 'tcx, D>
-where
-    D: TypeRelatingDelegate<'tcx>,
-{
-    infcx: &'me InferCtxt<'tcx>,
-
-    delegate: &'me mut D,
-
-    /// After we generalize this type, we are going to relate it to
-    /// some other type. What will be the variance at this point?
-    ambient_variance: ty::Variance,
-
-    /// The vid of the type variable that is in the process of being
-    /// instantiated. If we find this within the value we are folding,
-    /// that means we would have created a cyclic value.
-    for_vid_sub_root: ty::TyVid,
-
-    /// The universe of the type variable that is in the process of being
-    /// instantiated. If we find anything that this universe cannot name,
-    /// we reject the relation.
-    universe: ty::UniverseIndex,
-}
-
-impl<'tcx, D> TypeRelation<'tcx> for TypeGeneralizer<'_, 'tcx, D>
-where
-    D: TypeRelatingDelegate<'tcx>,
-{
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.infcx.tcx
-    }
-
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.delegate.param_env()
-    }
-
-    fn tag(&self) -> &'static str {
-        "nll::generalizer"
-    }
-
-    fn a_is_expected(&self) -> bool {
-        true
-    }
-
-    fn relate_with_variance<T: Relate<'tcx>>(
-        &mut self,
-        variance: ty::Variance,
-        _info: ty::VarianceDiagInfo<'tcx>,
-        a: T,
-        b: T,
-    ) -> RelateResult<'tcx, T> {
-        debug!(
-            "TypeGeneralizer::relate_with_variance(variance={:?}, a={:?}, b={:?})",
-            variance, a, b
-        );
-
-        let old_ambient_variance = self.ambient_variance;
-        self.ambient_variance = self.ambient_variance.xform(variance);
-
-        debug!(
-            "TypeGeneralizer::relate_with_variance: ambient_variance = {:?}",
-            self.ambient_variance
-        );
-
-        let r = self.relate(a, b)?;
-
-        self.ambient_variance = old_ambient_variance;
-
-        debug!("TypeGeneralizer::relate_with_variance: r={:?}", r);
-
-        Ok(r)
-    }
-
-    fn tys(&mut self, a: Ty<'tcx>, _: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
-        use crate::infer::type_variable::TypeVariableValue;
-
-        debug!("TypeGeneralizer::tys(a={:?})", a);
-
-        match *a.kind() {
-            ty::Infer(ty::TyVar(_)) | ty::Infer(ty::IntVar(_)) | ty::Infer(ty::FloatVar(_))
-                if D::forbid_inference_vars() =>
-            {
-                bug!("unexpected inference variable encountered in NLL generalization: {:?}", a);
-            }
-
-            ty::Infer(ty::TyVar(vid)) => {
-                let mut inner = self.infcx.inner.borrow_mut();
-                let variables = &mut inner.type_variables();
-                let vid = variables.root_var(vid);
-                let sub_vid = variables.sub_root_var(vid);
-                if sub_vid == self.for_vid_sub_root {
-                    // If sub-roots are equal, then `for_vid` and
-                    // `vid` are related via subtyping.
-                    debug!("TypeGeneralizer::tys: occurs check failed");
-                    Err(TypeError::Mismatch)
-                } else {
-                    match variables.probe(vid) {
-                        TypeVariableValue::Known { value: u } => {
-                            drop(inner);
-                            self.relate(u, u)
-                        }
-                        TypeVariableValue::Unknown { universe: _universe } => {
-                            if self.ambient_variance == ty::Bivariant {
-                                // FIXME: we may need a WF predicate (related to #54105).
-                            }
-
-                            let origin = *variables.var_origin(vid);
-
-                            // Replacing with a new variable in the universe `self.universe`,
-                            // it will be unified later with the original type variable in
-                            // the universe `_universe`.
-                            let new_var_id = variables.new_var(self.universe, origin);
-
-                            let u = self.tcx().mk_ty_var(new_var_id);
-                            debug!("generalize: replacing original vid={:?} with new={:?}", vid, u);
-                            Ok(u)
-                        }
-                    }
-                }
-            }
-
-            ty::Infer(ty::IntVar(_) | ty::FloatVar(_)) => {
-                // No matter what mode we are in,
-                // integer/floating-point types must be equal to be
-                // relatable.
-                Ok(a)
-            }
-
-            ty::Placeholder(placeholder) => {
-                if self.universe.cannot_name(placeholder.universe) {
-                    debug!(
-                        "TypeGeneralizer::tys: root universe {:?} cannot name\
-                         placeholder in universe {:?}",
-                        self.universe, placeholder.universe
-                    );
-                    Err(TypeError::Mismatch)
-                } else {
-                    Ok(a)
-                }
-            }
-
-            _ => relate::super_relate_tys(self, a, a),
-        }
-    }
-
-    fn regions(
-        &mut self,
-        a: ty::Region<'tcx>,
-        _: ty::Region<'tcx>,
-    ) -> RelateResult<'tcx, ty::Region<'tcx>> {
-        debug!("TypeGeneralizer::regions(a={:?})", a);
-
-        if let ty::ReLateBound(..) = *a {
-            return Ok(a);
-        }
-
-        // For now, we just always create a fresh region variable to
-        // replace all the regions in the source type. In the main
-        // type checker, we special case the case where the ambient
-        // variance is `Invariant` and try to avoid creating a fresh
-        // region variable, but since this comes up so much less in
-        // NLL (only when users use `_` etc) it is much less
-        // important.
-        //
-        // As an aside, since these new variables are created in
-        // `self.universe` universe, this also serves to enforce the
-        // universe scoping rules.
-        //
-        // FIXME(#54105) -- if the ambient variance is bivariant,
-        // though, we may however need to check well-formedness or
-        // risk a problem like #41677 again.
-        let replacement_region_vid = self.delegate.generalize_existential(self.universe);
-
-        Ok(replacement_region_vid)
-    }
-
-    fn consts(
-        &mut self,
-        a: ty::Const<'tcx>,
-        _: ty::Const<'tcx>,
-    ) -> RelateResult<'tcx, ty::Const<'tcx>> {
-        match a.kind() {
-            ty::ConstKind::Infer(InferConst::Var(_)) if D::forbid_inference_vars() => {
-                bug!("unexpected inference variable encountered in NLL generalization: {:?}", a);
-            }
-            ty::ConstKind::Infer(InferConst::Var(vid)) => {
-                let mut inner = self.infcx.inner.borrow_mut();
-                let variable_table = &mut inner.const_unification_table();
-                let var_value = variable_table.probe_value(vid);
-                match var_value.val.known() {
-                    Some(u) => self.relate(u, u),
-                    None => {
-                        let new_var_id = variable_table.new_key(ConstVarValue {
-                            origin: var_value.origin,
-                            val: ConstVariableValue::Unknown { universe: self.universe },
-                        });
-                        Ok(self.tcx().mk_const(new_var_id, a.ty()))
-                    }
-                }
-            }
-            ty::ConstKind::Unevaluated(..) if self.tcx().lazy_normalization() => Ok(a),
-            _ => relate::super_relate_consts(self, a, a),
-        }
-    }
-
-    fn binders<T>(
-        &mut self,
-        a: ty::Binder<'tcx, T>,
-        _: ty::Binder<'tcx, T>,
-    ) -> RelateResult<'tcx, ty::Binder<'tcx, T>>
-    where
-        T: Relate<'tcx>,
-    {
-        debug!("TypeGeneralizer::binders(a={:?})", a);
-        let result = self.relate(a.skip_binder(), a.skip_binder())?;
-        Ok(a.rebind(result))
     }
 }

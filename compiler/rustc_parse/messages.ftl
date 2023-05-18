@@ -478,6 +478,11 @@ parse_missing_for_in_trait_impl = missing `for` in a trait impl
 
 parse_expected_trait_in_trait_impl_found_type = expected a trait, found type
 
+parse_extra_impl_keyword_in_trait_impl = unexpected `impl` keyword
+    .suggestion = remove the extra `impl`
+    .note = this is parsed as an `impl Trait` type, but a trait is expected at this position
+
+
 parse_non_item_in_item_list = non-item in item list
     .suggestion_use_const_not_let = consider using `const` instead of `let` for associated const
     .label_list_start = item list starts here

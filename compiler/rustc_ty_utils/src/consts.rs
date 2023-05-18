@@ -2,6 +2,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
+use rustc_middle::query::Providers;
 use rustc_middle::thir::visit;
 use rustc_middle::thir::visit::Visitor;
 use rustc_middle::ty::abstract_const::CastKind;
@@ -115,9 +116,7 @@ fn recurse_build<'tcx>(
             let sp = node.span;
             match tcx.at(sp).lit_to_const(LitToConstInput { lit: &lit.node, ty: node.ty, neg }) {
                 Ok(c) => c,
-                Err(LitToConstError::Reported(guar)) => {
-                    tcx.const_error_with_guaranteed(node.ty, guar)
-                }
+                Err(LitToConstError::Reported(guar)) => tcx.const_error(node.ty, guar),
                 Err(LitToConstError::TypeError) => {
                     bug!("encountered type error in lit_to_const")
                 }
@@ -423,6 +422,6 @@ pub fn thir_abstract_const(
     Ok(Some(ty::EarlyBinder(recurse_build(tcx, body, body_id, root_span)?)))
 }
 
-pub fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers { destructure_const, thir_abstract_const, ..*providers };
+pub fn provide(providers: &mut Providers) {
+    *providers = Providers { destructure_const, thir_abstract_const, ..*providers };
 }

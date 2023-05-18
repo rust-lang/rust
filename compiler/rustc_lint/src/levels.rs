@@ -20,7 +20,7 @@ use rustc_middle::lint::{
     reveal_actual_level, struct_lint_level, LevelAndSource, LintExpectation, LintLevelSource,
     ShallowLintLevelMap,
 };
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::lint::builtin::{RENAMED_AND_REMOVED_LINTS, UNKNOWN_LINTS, UNUSED_ATTRIBUTES};
 use rustc_session::lint::{

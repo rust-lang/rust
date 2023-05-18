@@ -4,6 +4,7 @@ use crate::dep_graph::{DepNode, DepNodeParams, SerializedDepNodeIndex};
 use crate::error::HandleCycleError;
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
+use crate::query::DepNodeIndex;
 use crate::query::{QueryContext, QueryInfo, QueryState};
 
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -11,8 +12,6 @@ use std::fmt::Debug;
 use std::hash::Hash;
 
 pub type HashResult<V> = Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>;
-
-pub type TryLoadFromDisk<Qcx, V> = Option<fn(Qcx, SerializedDepNodeIndex) -> Option<V>>;
 
 pub trait QueryConfig<Qcx: QueryContext>: Copy {
     fn name(self) -> &'static str;
@@ -43,7 +42,13 @@ pub trait QueryConfig<Qcx: QueryContext>: Copy {
 
     fn compute(self, tcx: Qcx, key: Self::Key) -> Self::Value;
 
-    fn try_load_from_disk(self, qcx: Qcx, idx: &Self::Key) -> TryLoadFromDisk<Qcx, Self::Value>;
+    fn try_load_from_disk(
+        self,
+        tcx: Qcx,
+        key: &Self::Key,
+        prev_index: SerializedDepNodeIndex,
+        index: DepNodeIndex,
+    ) -> Option<Self::Value>;
 
     fn loadable_from_disk(self, qcx: Qcx, key: &Self::Key, idx: SerializedDepNodeIndex) -> bool;
 

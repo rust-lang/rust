@@ -7,8 +7,8 @@ pub(crate) mod db;
 pub(crate) mod lowering;
 
 use rustc_middle::infer::canonical::{CanonicalTyVarKind, CanonicalVarKind};
+use rustc_middle::query::Providers;
 use rustc_middle::traits::ChalkRustInterner;
-use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeFoldable, TypeVisitable};
 
 use rustc_infer::infer::canonical::{

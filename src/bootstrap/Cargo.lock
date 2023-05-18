@@ -45,6 +45,7 @@ dependencies = [
  "build_helper",
  "cc",
  "clap",
+ "clap_complete",
  "cmake",
  "fd-lock",
  "filetime",
@@ -57,6 +58,7 @@ dependencies = [
  "once_cell",
  "opener",
  "pretty_assertions",
+ "semver",
  "serde",
  "serde_derive",
  "serde_json",
@@ -117,6 +119,15 @@ dependencies = [
  "anstyle",
  "bitflags",
  "clap_lex",
+]
+
+[[package]]
+name = "clap_complete"
+version = "4.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "36774babb166352bb4f7b9cb16f781ffa3439d2a8f12cd31bea85a38c888fea3"
+dependencies = [
+ "clap",
 ]
 
 [[package]]
@@ -634,6 +645,12 @@ name = "scopeguard"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d29ab0c6d3fc0ee92fe66e2d99f700eab17a8d57d1c1d3b748380fb20baa78cd"
+
+[[package]]
+name = "semver"
+version = "1.0.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bebd363326d05ec3e2f532ab7660680f3b02130d780c299bca73469d521bc0ed"
 
 [[package]]
 name = "serde"

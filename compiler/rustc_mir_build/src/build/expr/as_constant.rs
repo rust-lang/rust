@@ -52,7 +52,7 @@ pub fn as_constant_inner<'tcx>(
                 match lit_to_mir_constant(tcx, LitToConstInput { lit: &lit.node, ty, neg }) {
                     Ok(c) => c,
                     Err(LitToConstError::Reported(guar)) => {
-                        ConstantKind::Ty(tcx.const_error_with_guaranteed(ty, guar))
+                        ConstantKind::Ty(tcx.const_error(ty, guar))
                     }
                     Err(LitToConstError::TypeError) => {
                         bug!("encountered type error in `lit_to_mir_constant`")

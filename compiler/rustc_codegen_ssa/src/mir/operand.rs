@@ -402,8 +402,6 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
         indirect_dest: PlaceRef<'tcx, V>,
     ) {
         debug!("OperandRef::store_unsized: operand={:?}, indirect_dest={:?}", self, indirect_dest);
-        let flags = MemFlags::empty();
-
         // `indirect_dest` must have `*mut T` type. We extract `T` out of it.
         let unsized_ty = indirect_dest
             .layout
@@ -416,17 +414,23 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
             bug!("store_unsized called with a sized value")
         };
 
-        // FIXME: choose an appropriate alignment, or use dynamic align somehow
-        let max_align = Align::from_bits(128).unwrap();
-        let min_align = Align::from_bits(8).unwrap();
-
-        // Allocate an appropriate region on the stack, and copy the value into it
-        let (llsize, _) = glue::size_and_align_of_dst(bx, unsized_ty, Some(llextra));
-        let lldst = bx.byte_array_alloca(llsize, max_align);
-        bx.memcpy(lldst, max_align, llptr, min_align, llsize, flags);
+        // Allocate an appropriate region on the stack, and copy the value into it. Since alloca
+        // doesn't support dynamic alignment, we allocate an extra align - 1 bytes, and align the
+        // pointer manually.
+        let (size, align) = glue::size_and_align_of_dst(bx, unsized_ty, Some(llextra));
+        let one = bx.const_usize(1);
+        let align_minus_1 = bx.sub(align, one);
+        let size_extra = bx.add(size, align_minus_1);
+        let min_align = Align::ONE;
+        let alloca = bx.byte_array_alloca(size_extra, min_align);
+        let address = bx.ptrtoint(alloca, bx.type_isize());
+        let neg_address = bx.neg(address);
+        let offset = bx.and(neg_address, align_minus_1);
+        let dst = bx.inbounds_gep(bx.type_i8(), alloca, &[offset]);
+        bx.memcpy(dst, min_align, llptr, min_align, size, MemFlags::empty());
 
         // Store the allocated region and the extra to the indirect place.
-        let indirect_operand = OperandValue::Pair(lldst, llextra);
+        let indirect_operand = OperandValue::Pair(dst, llextra);
         indirect_operand.store(bx, indirect_dest);
     }
 }
