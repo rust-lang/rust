@@ -124,6 +124,10 @@ impl AstIdMap {
         FileAstId { raw, _ty: PhantomData }
     }
 
+    pub fn get<N: AstNode>(&self, id: FileAstId<N>) -> AstPtr<N> {
+        AstPtr::try_from_raw(self.arena[id.raw].clone()).unwrap()
+    }
+
     fn erased_ast_id(&self, item: &SyntaxNode) -> ErasedFileAstId {
         let ptr = SyntaxNodePtr::new(item);
         let hash = hash_ptr(&ptr);
@@ -135,10 +139,6 @@ impl AstIdMap {
                 self.arena.iter().map(|(_id, i)| i).collect::<Vec<_>>(),
             ),
         }
-    }
-
-    pub fn get<N: AstNode>(&self, id: FileAstId<N>) -> AstPtr<N> {
-        AstPtr::try_from_raw(self.arena[id.raw].clone()).unwrap()
     }
 
     fn alloc(&mut self, item: &SyntaxNode) -> ErasedFileAstId {

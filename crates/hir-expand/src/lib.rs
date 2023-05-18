@@ -978,6 +978,7 @@ fn ascend_node_border_tokens(
     let first_token = |node: &SyntaxNode| skip_trivia_token(node.first_token()?, Direction::Next);
     let last_token = |node: &SyntaxNode| skip_trivia_token(node.last_token()?, Direction::Prev);
 
+    // FIXME: Once the token map rewrite is done, this shouldnt need to rely on syntax nodes and tokens anymore
     let first = first_token(node)?;
     let last = last_token(node)?;
     let first = ascend_call_token(db, &expansion, InFile::new(file_id, first))?;
