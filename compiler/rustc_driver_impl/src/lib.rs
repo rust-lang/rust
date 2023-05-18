@@ -322,7 +322,7 @@ fn run_compiler(
             1 => panic!("make_input should have provided valid inputs"),
             _ => early_error(
                 config.opts.error_format,
-                &format!(
+                format!(
                     "multiple input filenames provided (first two filenames are `{}` and `{}`)",
                     matches.free[0], matches.free[1],
                 ),
@@ -527,7 +527,7 @@ fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
             }
         }
         Err(InvalidErrorCode) => {
-            early_error(output, &format!("{code} is not a valid error code"));
+            early_error(output, format!("{code} is not a valid error code"));
         }
     }
 }
@@ -1102,7 +1102,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
                 .map(|(flag, _)| format!("{e}. Did you mean `-{flag} {opt}`?")),
             _ => None,
         };
-        early_error(ErrorOutputType::default(), &msg.unwrap_or_else(|| e.to_string()));
+        early_error(ErrorOutputType::default(), msg.unwrap_or_else(|| e.to_string()));
     });
 
     // For all options we just parsed, we check a few aspects:
@@ -1250,7 +1250,7 @@ pub fn install_ice_hook(bug_report_url: &'static str, extra_info: fn(&Handler)) 
         #[cfg(windows)]
         if let Some(msg) = info.payload().downcast_ref::<String>() {
             if msg.starts_with("failed printing to stdout: ") && msg.ends_with("(os error 232)") {
-                early_error_no_abort(ErrorOutputType::default(), &msg);
+                early_error_no_abort(ErrorOutputType::default(), msg.as_str());
                 return;
             }
         };
@@ -1342,7 +1342,7 @@ pub fn init_rustc_env_logger() {
 /// other than `RUSTC_LOG`.
 pub fn init_env_logger(env: &str) {
     if let Err(error) = rustc_log::init_env_logger(env) {
-        early_error(ErrorOutputType::default(), &error.to_string());
+        early_error(ErrorOutputType::default(), error.to_string());
     }
 }
 
@@ -1409,7 +1409,7 @@ pub fn main() -> ! {
                 arg.into_string().unwrap_or_else(|arg| {
                     early_error(
                         ErrorOutputType::default(),
-                        &format!("argument {i} is not valid Unicode: {arg:?}"),
+                        format!("argument {i} is not valid Unicode: {arg:?}"),
                     )
                 })
             })

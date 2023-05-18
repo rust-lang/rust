@@ -71,7 +71,7 @@ macro_rules! span_mirbug {
         $crate::type_check::mirbug(
             $context.tcx(),
             $context.last_span,
-            &format!(
+            format!(
                 "broken MIR in {:?} ({:?}): {}",
                 $context.body().source.def_id(),
                 $elem,
@@ -274,7 +274,7 @@ fn translate_outlives_facts(typeck: &mut TypeChecker<'_, '_>) {
 }
 
 #[track_caller]
-fn mirbug(tcx: TyCtxt<'_>, span: Span, msg: &str) {
+fn mirbug(tcx: TyCtxt<'_>, span: Span, msg: String) {
     // We sometimes see MIR failures (notably predicate failures) due to
     // the fact that we check rvalue sized predicates here. So use `delay_span_bug`
     // to avoid reporting bugs in those cases.

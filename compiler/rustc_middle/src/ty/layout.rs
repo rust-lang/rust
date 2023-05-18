@@ -269,7 +269,7 @@ pub struct LayoutCx<'tcx, C> {
 impl<'tcx> LayoutCalculator for LayoutCx<'tcx, TyCtxt<'tcx>> {
     type TargetDataLayoutRef = &'tcx TargetDataLayout;
 
-    fn delay_bug(&self, txt: &str) {
+    fn delay_bug(&self, txt: String) {
         self.tcx.sess.delay_span_bug(DUMMY_SP, txt);
     }
 

@@ -773,7 +773,7 @@ impl<'tcx> ExtraInfo<'tcx> {
         ExtraInfo { def_id, sp, tcx }
     }
 
-    fn error_invalid_codeblock_attr(&self, msg: &str, help: &str) {
+    fn error_invalid_codeblock_attr(&self, msg: String, help: &str) {
         if let Some(def_id) = self.def_id.as_local() {
             self.tcx.struct_span_lint_hir(
                 crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
@@ -948,7 +948,7 @@ impl LangString {
                     } {
                         if let Some(extra) = extra {
                             extra.error_invalid_codeblock_attr(
-                                &format!("unknown attribute `{}`. Did you mean `{}`?", x, flag),
+                                format!("unknown attribute `{}`. Did you mean `{}`?", x, flag),
                                 help,
                             );
                         }

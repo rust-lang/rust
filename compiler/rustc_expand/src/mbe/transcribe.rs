@@ -510,7 +510,7 @@ fn out_of_bounds_err<'a>(
              must be less than {max}"
         )
     };
-    cx.struct_span_err(span, &msg)
+    cx.struct_span_err(span, msg)
 }
 
 fn transcribe_metavar_expr<'a>(
