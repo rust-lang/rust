@@ -23,8 +23,7 @@ use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
 pub const VERSION_PLACEHOLDER: &str = "CURRENT_RUSTC_VERSION";
 
 pub fn rust_version_symbol() -> Symbol {
-    let version = option_env!("CFG_VERSION").unwrap_or("<current>");
-    let version = version.split(' ').next().unwrap();
+    let version = option_env!("CFG_RELEASE").unwrap_or("<current>");
     Symbol::intern(&version)
 }
 

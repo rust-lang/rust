@@ -73,12 +73,22 @@ impl<T: Default> LoadResult<T> {
     }
 }
 
-fn load_data(
-    report_incremental_info: bool,
+fn load_data(path: &Path, sess: &Session) -> LoadResult<(Mmap, usize)> {
+    load_data_no_sess(
+        path,
+        sess.opts.unstable_opts.incremental_info,
+        sess.is_nightly_build(),
+        sess.cfg_version,
+    )
+}
+
+fn load_data_no_sess(
     path: &Path,
-    nightly_build: bool,
+    report_incremental_info: bool,
+    is_nightly_build: bool,
+    cfg_version: &'static str,
 ) -> LoadResult<(Mmap, usize)> {
-    match file_format::read_file(report_incremental_info, path, nightly_build) {
+    match file_format::read_file(path, report_incremental_info, is_nightly_build, cfg_version) {
         Ok(Some(data_and_pos)) => LoadResult::Ok { data: data_and_pos },
         Ok(None) => {
             // The file either didn't exist or was produced by an incompatible
@@ -138,14 +148,13 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
     let expected_hash = sess.opts.dep_tracking_hash(false);
 
     let mut prev_work_products = FxHashMap::default();
-    let nightly_build = sess.is_nightly_build();
 
     // If we are only building with -Zquery-dep-graph but without an actual
     // incr. comp. session directory, we skip this. Otherwise we'd fail
     // when trying to load work products.
     if sess.incr_comp_session_dir_opt().is_some() {
         let work_products_path = work_products_path(sess);
-        let load_result = load_data(report_incremental_info, &work_products_path, nightly_build);
+        let load_result = load_data(&work_products_path, sess);
 
         if let LoadResult::Ok { data: (work_products_data, start_pos) } = load_result {
             // Decode the list of work_products
@@ -173,10 +182,13 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
         }
     }
 
+    let is_nightly_build = sess.is_nightly_build();
+    let cfg_version = sess.cfg_version;
+
     MaybeAsync::Async(std::thread::spawn(move || {
         let _prof_timer = prof.generic_activity("incr_comp_load_dep_graph");
 
-        match load_data(report_incremental_info, &path, nightly_build) {
+        match load_data_no_sess(&path, report_incremental_info, is_nightly_build, cfg_version) {
             LoadResult::DataOutOfDate => LoadResult::DataOutOfDate,
             LoadResult::LoadDepGraph(path, err) => LoadResult::LoadDepGraph(path, err),
             LoadResult::DecodeIncrCache(err) => LoadResult::DecodeIncrCache(err),
@@ -218,11 +230,7 @@ pub fn load_query_result_cache(sess: &Session) -> Option<OnDiskCache<'_>> {
 
     let _prof_timer = sess.prof.generic_activity("incr_comp_load_query_result_cache");
 
-    match load_data(
-        sess.opts.unstable_opts.incremental_info,
-        &query_cache_path(sess),
-        sess.is_nightly_build(),
-    ) {
+    match load_data(&query_cache_path(sess), sess) {
         LoadResult::Ok { data: (bytes, start_pos) } => {
             Some(OnDiskCache::new(sess, bytes, start_pos))
         }

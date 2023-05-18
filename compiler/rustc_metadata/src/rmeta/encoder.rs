@@ -2276,7 +2276,7 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>, path: &Path) {
     };
 
     // Encode the rustc version string in a predictable location.
-    rustc_version().encode(&mut ecx);
+    rustc_version(tcx.sess.cfg_version).encode(&mut ecx);
 
     // Encode all the entries and extra information in the crate,
     // culminating in the `CrateRoot` which points to all of it.

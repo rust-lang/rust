@@ -572,7 +572,7 @@ pub fn try_process_rlink(sess: &Session, compiler: &interface::Compiler) -> Comp
             let rlink_data = fs::read(file).unwrap_or_else(|err| {
                 sess.emit_fatal(RlinkUnableToRead { err });
             });
-            let codegen_results = match CodegenResults::deserialize_rlink(rlink_data) {
+            let codegen_results = match CodegenResults::deserialize_rlink(sess, rlink_data) {
                 Ok(codegen) => codegen,
                 Err(err) => {
                     match err {
@@ -586,10 +586,10 @@ pub fn try_process_rlink(sess: &Session, compiler: &interface::Compiler) -> Comp
                                 rlink_version,
                             })
                         }
-                        CodegenErrors::RustcVersionMismatch { rustc_version, current_version } => {
+                        CodegenErrors::RustcVersionMismatch { rustc_version } => {
                             sess.emit_fatal(RLinkRustcVersionMismatch {
                                 rustc_version,
-                                current_version,
+                                current_version: sess.cfg_version,
                             })
                         }
                     };

@@ -211,6 +211,9 @@ pub struct Session {
 
     /// Set of enabled features for the current target, including unstable ones.
     pub unstable_target_features: FxIndexSet<Symbol>,
+
+    /// The version of the rustc process, possibly including a commit hash and description.
+    pub cfg_version: &'static str,
 }
 
 pub struct PerfStats {
@@ -1366,6 +1369,7 @@ pub fn build_session(
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
     file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
     target_override: Option<Target>,
+    cfg_version: &'static str,
 ) -> Session {
     // FIXME: This is not general enough to make the warning lint completely override
     // normal diagnostic warnings, since the warning lint can also be denied and changed
@@ -1510,6 +1514,7 @@ pub fn build_session(
         asm_arch,
         target_features: Default::default(),
         unstable_target_features: Default::default(),
+        cfg_version,
     };
 
     validate_commandline_args_with_session_available(&sess);

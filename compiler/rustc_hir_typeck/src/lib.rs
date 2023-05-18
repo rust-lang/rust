@@ -72,7 +72,6 @@ use rustc_middle::query::Providers;
 use rustc_middle::traits;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::config;
-use rustc_session::Session;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{sym, Span};
 
@@ -438,8 +437,8 @@ enum TupleArgumentsFlag {
     TupleArguments,
 }
 
-fn fatally_break_rust(sess: &Session) {
-    let handler = sess.diagnostic();
+fn fatally_break_rust(tcx: TyCtxt<'_>) {
+    let handler = tcx.sess.diagnostic();
     handler.span_bug_no_panic(
         MultiSpan::new(),
         "It looks like you're trying to break rust; would you like some ICE?",
@@ -451,7 +450,7 @@ fn fatally_break_rust(sess: &Session) {
     );
     handler.note_without_error(format!(
         "rustc {} running on {}",
-        option_env!("CFG_VERSION").unwrap_or("unknown_version"),
+        tcx.sess.cfg_version,
         config::host_triple(),
     ));
 }

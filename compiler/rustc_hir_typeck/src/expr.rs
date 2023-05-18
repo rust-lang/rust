@@ -721,7 +721,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // ICE this expression in particular (see #43162).
                 if let ExprKind::Path(QPath::Resolved(_, path)) = e.kind {
                     if path.segments.len() == 1 && path.segments[0].ident.name == sym::rust {
-                        fatally_break_rust(self.tcx.sess);
+                        fatally_break_rust(self.tcx);
                     }
                 }
             }
