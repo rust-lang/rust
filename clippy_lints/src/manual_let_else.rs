@@ -146,10 +146,9 @@ fn emit_manual_let_else(
         "this could be rewritten as `let...else`",
         |diag| {
             // This is far from perfect, for example there needs to be:
-            // * mut additions for the bindings
-            // * renamings of the bindings for `PatKind::Or`
+            // * tracking for multi-binding cases: let (foo, bar) = if let (Some(foo), Ok(bar)) = ...
+            // * renamings of the bindings for many `PatKind`s like structs, slices, etc.
             // * unused binding collision detection with existing ones
-            // * putting patterns with at the top level | inside ()
             // for this to be machine applicable.
             let mut app = Applicability::HasPlaceholders;
             let (sn_expr, _) = snippet_with_context(cx, expr.span, span.ctxt(), "", &mut app);
@@ -160,26 +159,60 @@ fn emit_manual_let_else(
             } else {
                 format!("{{ {sn_else} }}")
             };
-            let sn_bl = match pat.kind {
-                PatKind::Or(..) => {
-                    let (sn_pat, _) = snippet_with_context(cx, pat.span, span.ctxt(), "", &mut app);
-                    format!("({sn_pat})")
-                },
-                // Replace the variable name iff `TupleStruct` has one argument like `Variant(v)`.
-                PatKind::TupleStruct(ref w, args, ..) if args.len() == 1 => {
-                    let sn_wrapper = cx.sess().source_map().span_to_snippet(w.span()).unwrap_or_default();
-                    let (sn_inner, _) = snippet_with_context(cx, local.span, span.ctxt(), "", &mut app);
-                    format!("{sn_wrapper}({sn_inner})")
-                },
-                _ => {
-                    let (sn_pat, _) = snippet_with_context(cx, pat.span, span.ctxt(), "", &mut app);
-                    sn_pat.into_owned()
-                },
-            };
+            let sn_bl = replace_in_pattern(cx, span, local, pat, &mut app);
             let sugg = format!("let {sn_bl} = {sn_expr} else {else_bl};");
             diag.span_suggestion(span, "consider writing", sugg, app);
         },
     );
+}
+
+// replaces the locals in the pattern
+fn replace_in_pattern(
+    cx: &LateContext<'_>,
+    span: Span,
+    local: &Pat<'_>,
+    pat: &Pat<'_>,
+    app: &mut Applicability,
+) -> String {
+    let mut bindings_count = 0;
+    pat.each_binding_or_first(&mut |_, _, _, _| bindings_count += 1);
+    // If the pattern creates multiple bindings, exit early,
+    // as otherwise we might paste the pattern to the positions of multiple bindings.
+    if bindings_count > 1 {
+        let (sn_pat, _) = snippet_with_context(cx, pat.span, span.ctxt(), "", app);
+        return sn_pat.into_owned();
+    }
+
+    match pat.kind {
+        PatKind::Binding(..) => {
+            let (sn_bdg, _) = snippet_with_context(cx, local.span, span.ctxt(), "", app);
+            return sn_bdg.to_string();
+        },
+        PatKind::Or(pats) => {
+            let patterns = pats
+                .iter()
+                .map(|pat| replace_in_pattern(cx, span, local, pat, app))
+                .collect::<Vec<_>>();
+            let or_pat = patterns.join(" | ");
+            return format!("({or_pat})");
+        },
+        // Replace the variable name iff `TupleStruct` has one argument like `Variant(v)`.
+        PatKind::TupleStruct(ref w, args, dot_dot_pos) => {
+            let mut args = args
+                .iter()
+                .map(|pat| replace_in_pattern(cx, span, local, pat, app))
+                .collect::<Vec<_>>();
+            if let Some(pos) = dot_dot_pos.as_opt_usize() {
+                args.insert(pos, "..".to_owned());
+            }
+            let args = args.join(", ");
+            let sn_wrapper = cx.sess().source_map().span_to_snippet(w.span()).unwrap_or_default();
+            return format!("{sn_wrapper}({args})");
+        },
+        _ => {},
+    }
+    let (sn_pat, _) = snippet_with_context(cx, pat.span, span.ctxt(), "", app);
+    sn_pat.into_owned()
 }
 
 /// Check whether an expression is divergent. May give false negatives.
