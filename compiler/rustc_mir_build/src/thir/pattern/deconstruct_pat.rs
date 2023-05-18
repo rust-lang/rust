@@ -755,57 +755,13 @@ impl<'tcx> Constructor<'tcx> {
         }
     }
 
-    /// Some constructors (namely `Wildcard`, `IntRange` and `Slice`) actually stand for a set of actual
-    /// constructors (like variants, integers or fixed-sized slices). When specializing for these
-    /// constructors, we want to be specialising for the actual underlying constructors.
-    /// Naively, we would simply return the list of constructors they correspond to. We instead are
-    /// more clever: if there are constructors that we know will behave the same wrt the current
-    /// matrix, we keep them grouped. For example, all slices of a sufficiently large length
-    /// will either be all useful or all non-useful with a given matrix.
-    ///
-    /// See the branches for details on how the splitting is done.
-    ///
-    /// This function may discard some irrelevant constructors if this preserves behavior and
-    /// diagnostics. Eg. for the `_` case, we ignore the constructors already present in the
-    /// matrix, unless all of them are.
-    pub(super) fn split<'a>(
-        &self,
-        pcx: &PatCtxt<'_, '_, 'tcx>,
-        ctors: impl Iterator<Item = &'a Constructor<'tcx>> + Clone,
-    ) -> SmallVec<[Self; 1]>
-    where
-        'tcx: 'a,
-    {
-        match self {
-            Wildcard => {
-                bug!("should not be splitting a wildcard");
-            }
-            // Fast-track if the range is trivial. In particular, we don't do the overlapping
-            // ranges check.
-            IntRange(ctor_range) if !ctor_range.is_singleton() => {
-                let mut split_range = SplitIntRange::new(ctor_range.clone());
-                let int_ranges = ctors.filter_map(|ctor| ctor.as_int_range());
-                split_range.split(int_ranges.cloned());
-                split_range.iter().map(IntRange).collect()
-            }
-            &Slice(Slice { kind: VarLen(self_prefix, self_suffix), array_len }) => {
-                let mut split_self = SplitVarLenSlice::new(self_prefix, self_suffix, array_len);
-                let slices = ctors.filter_map(|c| c.as_slice()).map(|s| s.kind);
-                split_self.split(slices);
-                split_self.iter().map(Slice).collect()
-            }
-            // Any other constructor can be used unchanged.
-            _ => smallvec![self.clone()],
-        }
-    }
-
     /// Returns whether `self` is covered by `other`, i.e. whether `self` is a subset of `other`.
     /// For the simple cases, this is simply checking for equality. For the "grouped" constructors,
     /// this checks for inclusion.
     // We inline because this has a single call site in `Matrix::specialize_constructor`.
     #[inline]
     pub(super) fn is_covered_by<'p>(&self, pcx: &PatCtxt<'_, 'p, 'tcx>, other: &Self) -> bool {
-        // This must be kept in sync with `is_covered_by_any`.
+        // This must be compatible with `ConstructorSet::split`.
         match (self, other) {
             // Wildcards cover anything
             (_, Wildcard) => true,
@@ -854,265 +810,36 @@ impl<'tcx> Constructor<'tcx> {
             ),
         }
     }
-
-    /// Faster version of `is_covered_by` when applied to many constructors. `used_ctors` is
-    /// assumed to be built from `matrix.head_ctors()` with wildcards and opaques filtered out,
-    /// and `self` is assumed to have been split from a wildcard.
-    fn is_covered_by_any<'p>(
-        &self,
-        pcx: &PatCtxt<'_, 'p, 'tcx>,
-        used_ctors: &[Constructor<'tcx>],
-    ) -> bool {
-        if used_ctors.is_empty() {
-            return false;
-        }
-
-        // This must be kept in sync with `is_covered_by`.
-        match self {
-            // If `self` is `Single`, `used_ctors` cannot contain anything else than `Single`s.
-            Single => !used_ctors.is_empty(),
-            Variant(vid) => used_ctors.iter().any(|c| matches!(c, Variant(i) if i == vid)),
-            IntRange(range) => used_ctors
-                .iter()
-                .filter_map(|c| c.as_int_range())
-                .any(|other| range.is_covered_by(other)),
-            Slice(slice) => used_ctors
-                .iter()
-                .filter_map(|c| c.as_slice())
-                .any(|other| slice.is_covered_by(other)),
-            // This constructor is never covered by anything else
-            NonExhaustive => false,
-            Str(..) | FloatRange(..) | Opaque(..) | Missing { .. } | Wildcard | Or => {
-                span_bug!(pcx.span, "found unexpected ctor in all_ctors: {:?}", self)
-            }
-        }
-    }
 }
 
-/// Describes a set of constructors for a type. The constructors must be an exhaustive set, must
-/// cover all constructors in the matrix, and must be split wrt the constructors of the matrix, as
-/// explained at the top of the file.
-pub(super) enum ConstructorSet<'tcx> {
-    // Uninhabited,
-    // Ranges(Vec<IntRange>),
-    // Slices(Slice),
-    // UnListable,
-    Other { base_ctors: Vec<Constructor<'tcx>> },
+/// Describes the set of all constructors for a type.
+pub(super) enum ConstructorSet {
+    /// The type has a single constructor, e.g. `&T` or a newtype.
+    Single,
+    /// This type has the following list of constructors.
+    Variants { variants: Vec<VariantIdx>, non_exhaustive: bool },
+    /// The type is spanned by a range of integer values, e.g. all number types.
+    Range(IntRange),
+    /// The type is spanned by two ranges of integer values. This is special for chars.
+    Ranges([IntRange; 2]),
+    /// The type is spanned by a range of integer values of unknown boundaries.
+    UnlistableRange,
+    /// The type is matched by slices.
+    Slice(Slice),
+    /// The constructors cannot be listed, and the type cannot be matched exhaustively. E.g. `str`,
+    /// floats.
+    Unlistable,
+    /// The type has no inhabitants.
+    Uninhabited,
 }
 
-impl<'tcx> ConstructorSet<'tcx> {
-    pub(super) fn new<'p>(pcx: &PatCtxt<'_, 'p, 'tcx>) -> Self {
+impl ConstructorSet {
+    pub(super) fn new<'p, 'tcx>(pcx: &PatCtxt<'_, 'p, 'tcx>) -> Self {
         debug!("ConstructorSet::new({:?})", pcx.ty);
-        //let cx = pcx.cx;
-        //let make_range = |start, end| {
-        //    // `unwrap()` is ok because we know the type is an integer.
-        //    IntRange::from_range(cx.tcx, start, end, pcx.ty, &RangeEnd::Included).unwrap()
-        //};
-        //// This determines the set of all possible constructors for the type `pcx.ty`. For numbers,
-        //// arrays and slices we use ranges and variable-length slices when appropriate.
-        ////
-        //// If the `exhaustive_patterns` feature is enabled, we make sure to omit constructors that
-        //// are statically impossible. E.g., for `Option<!>`, we do not include `Some(_)` in the
-        //// returned list of constructors.
-        //// Invariant: this is empty if and only if the type is uninhabited (as determined by
-        //// `cx.is_uninhabited()`).
-        //match pcx.ty.kind() {
-        //    ty::Bool => Self::Ranges(vec![make_range(0, 1)]),
-        //    ty::Array(sub_ty, len) if len.try_eval_target_usize(cx.tcx, cx.param_env).is_some() => {
-        //        let len = len.eval_target_usize(cx.tcx, cx.param_env) as usize;
-        //        if len != 0 && cx.is_uninhabited(*sub_ty) {
-        //            Self::Uninhabited
-        //        } else {
-        //            Self::Slices(Slice::new(Some(len), VarLen(0, 0)))
-        //        }
-        //    }
-        //    // Treat arrays of a constant but unknown length like slices.
-        //    ty::Array(sub_ty, _) | ty::Slice(sub_ty) => {
-        //        let kind = if cx.is_uninhabited(*sub_ty) { FixedLen(0) } else { VarLen(0, 0) };
-        //        Self::Slices(Slice::new(None, kind))
-        //    }
-        //    ty::Adt(def, substs) if def.is_enum() => {
-        //        // If the enum is declared as `#[non_exhaustive]`, we treat it as if it had an
-        //        // additional "unknown" constructor.
-        //        // There is no point in enumerating all possible variants, because the user can't
-        //        // actually match against them all themselves. So we always return only the fictitious
-        //        // constructor.
-        //        // E.g., in an example like:
-        //        //
-        //        // ```
-        //        //     let err: io::ErrorKind = ...;
-        //        //     match err {
-        //        //         io::ErrorKind::NotFound => {},
-        //        //     }
-        //        // ```
-        //        //
-        //        // we don't want to show every possible IO error, but instead have only `_` as the
-        //        // witness.
-        //        let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive_enum(pcx.ty);
-
-        //        let is_exhaustive_pat_feature = cx.tcx.features().exhaustive_patterns;
-
-        //        // If `exhaustive_patterns` is disabled and our scrutinee is an empty enum, we treat it
-        //        // as though it had an "unknown" constructor to avoid exposing its emptiness. The
-        //        // exception is if the pattern is at the top level, because we want empty matches to be
-        //        // considered exhaustive.
-        //        let is_secretly_empty =
-        //            def.variants().is_empty() && !is_exhaustive_pat_feature && !pcx.is_top_level;
-
-        //        let mut ctors: Vec<_> = def
-        //            .variants()
-        //            .iter_enumerated()
-        //            .filter(|(_, v)| {
-        //                // If `exhaustive_patterns` is enabled, we exclude variants known to be
-        //                // uninhabited.
-        //                !is_exhaustive_pat_feature
-        //                    || v.inhabited_predicate(cx.tcx, *def).subst(cx.tcx, substs).apply(
-        //                        cx.tcx,
-        //                        cx.param_env,
-        //                        cx.module,
-        //                    )
-        //            })
-        //            .map(|(idx, _)| Variant(idx))
-        //            .collect();
-
-        //        if is_secretly_empty || is_declared_nonexhaustive {
-        //            ctors.push(NonExhaustive);
-        //        }
-        //        Self::Other { all_ctors: ctors }
-        //    }
-        //    ty::Char => {
-        //        Self::Ranges(vec![
-        //            // The valid Unicode Scalar Value ranges.
-        //            make_range('\u{0000}' as u128, '\u{D7FF}' as u128),
-        //            make_range('\u{E000}' as u128, '\u{10FFFF}' as u128),
-        //        ])
-        //    }
-        //    ty::Int(_) | ty::Uint(_)
-        //        if pcx.ty.is_ptr_sized_integral()
-        //            && !cx.tcx.features().precise_pointer_size_matching =>
-        //    {
-        //        // `usize`/`isize` are not allowed to be matched exhaustively unless the
-        //        // `precise_pointer_size_matching` feature is enabled. So we treat those types like
-        //        // `#[non_exhaustive]` enums by returning a special unmatchable constructor.
-        //        Self::UnListable
-        //    }
-        //    &ty::Int(ity) => {
-        //        let bits = Integer::from_int_ty(&cx.tcx, ity).size().bits() as u128;
-        //        let min = 1u128 << (bits - 1);
-        //        let max = min - 1;
-        //        Self::Ranges(vec![make_range(min, max)])
-        //    }
-        //    &ty::Uint(uty) => {
-        //        let size = Integer::from_uint_ty(&cx.tcx, uty).size();
-        //        let max = size.truncate(u128::MAX);
-        //        Self::Ranges(vec![make_range(0, max)])
-        //    }
-        //    // If `exhaustive_patterns` is disabled and our scrutinee is the never type, we cannot
-        //    // expose its emptiness. The exception is if the pattern is at the top level, because we
-        //    // want empty matches to be considered exhaustive.
-        //    ty::Never if !cx.tcx.features().exhaustive_patterns && !pcx.is_top_level => {
-        //        Self::UnListable
-        //    }
-        //    ty::Never => Self::Uninhabited,
-        //    _ if cx.is_uninhabited(pcx.ty) => Self::Uninhabited,
-        //    ty::Adt(..) | ty::Tuple(..) | ty::Ref(..) => Self::Other { all_ctors: vec![Single] },
-        //    // This type is one for which we cannot list constructors, like `str` or `f64`.
-        //    _ => Self::UnListable,
-        //}
-        Self::Other { base_ctors: SplitWildcard::new(pcx).all_ctors.to_vec() }
-    }
-
-    /// Pass a set of constructors relative to which to split this one.
-    pub(super) fn split<'a>(
-        self,
-        pcx: &PatCtxt<'_, '_, 'tcx>,
-        ctors: impl Iterator<Item = &'a Constructor<'tcx>> + Clone,
-    ) -> (Vec<Constructor<'tcx>>, Vec<Constructor<'tcx>>)
-    where
-        'tcx: 'a,
-    {
-        let mut missing_ctors = Vec::new();
-        let mut split_ctors = Vec::new();
-        let mut seen_ctors = Vec::new();
-        let mut seen_any_non_wildcard = false;
-        for ctor in ctors {
-            if ctor.is_wildcard() {
-            } else if let Constructor::Opaque(..) = ctor {
-                split_ctors.push(ctor.clone());
-                seen_any_non_wildcard = true;
-            } else {
-                seen_ctors.push(ctor.clone());
-                seen_any_non_wildcard = true;
-            }
-        }
-        match self {
-            ConstructorSet::Other { base_ctors } => {
-                if matches!(base_ctors.as_slice(), [Constructor::NonExhaustive]) {
-                    // Since `base_ctors` isn't listing our constructors, we need to take the ones
-                    // in the matrix.
-                    // FIXME: self-splitting is only useful for isize/usize. Would be nice to reuse
-                    // IntRange there somehow.
-                    split_ctors
-                        .extend(seen_ctors.iter().flat_map(|c| c.split(pcx, seen_ctors.iter())));
-                    missing_ctors = base_ctors;
-                } else {
-                    // FIXME: splitting and collecting present ctors should be done in one pass.
-                    let split_base_ctors =
-                        base_ctors.into_iter().flat_map(|ctor| ctor.split(pcx, seen_ctors.iter()));
-                    for ctor in split_base_ctors {
-                        if ctor.is_covered_by_any(pcx, seen_ctors.as_slice()) {
-                            split_ctors.push(ctor);
-                        } else {
-                            missing_ctors.push(ctor);
-                        }
-                    }
-                }
-            }
-        }
-        if !missing_ctors.is_empty() {
-            let report_when_all_missing = pcx.is_top_level && !IntRange::is_integral(pcx.ty);
-            if seen_any_non_wildcard || report_when_all_missing {
-                split_ctors.push(Missing);
-            } else {
-                split_ctors.push(Wildcard);
-            }
-        }
-        (split_ctors, missing_ctors)
-    }
-}
-
-/// A wildcard constructor that we split relative to the constructors in the matrix, as explained
-/// at the top of the file.
-///
-/// A constructor that is not present in the matrix rows will only be covered by the rows that have
-/// wildcards. Thus we can group all of those constructors together; we call them "missing
-/// constructors". Splitting a wildcard would therefore list all present constructors individually
-/// (or grouped if they are integers or slices), and then all missing constructors together as a
-/// group.
-///
-/// However we can go further: since any constructor will match the wildcard rows, and having more
-/// rows can only reduce the amount of usefulness witnesses, we can skip the present constructors
-/// and only try the missing ones.
-/// This will not preserve the whole list of witnesses, but will preserve whether the list is empty
-/// or not. In fact this is quite natural from the point of view of diagnostics too. This is done
-/// in `to_ctors`: in some cases we only return `Missing`.
-#[derive(Debug)]
-pub(super) struct SplitWildcard<'tcx> {
-    /// Constructors (other than wildcards and opaques) seen in the matrix.
-    matrix_ctors: Vec<Constructor<'tcx>>,
-    /// All the constructors for this type
-    all_ctors: SmallVec<[Constructor<'tcx>; 1]>,
-}
-
-impl<'tcx> SplitWildcard<'tcx> {
-    pub(super) fn new<'p>(pcx: &PatCtxt<'_, 'p, 'tcx>) -> Self {
-        debug!("SplitWildcard::new({:?})", pcx.ty);
         let cx = pcx.cx;
         let make_range = |start, end| {
-            IntRange(
-                // `unwrap()` is ok because we know the type is an integer.
-                IntRange::from_range(cx.tcx, start, end, pcx.ty, &RangeEnd::Included).unwrap(),
-            )
+            // `unwrap()` is ok because we know the type is an integer.
+            IntRange::from_range(cx.tcx, start, end, pcx.ty, &RangeEnd::Included).unwrap()
         };
         // This determines the set of all possible constructors for the type `pcx.ty`. For numbers,
         // arrays and slices we use ranges and variable-length slices when appropriate.
@@ -1120,22 +847,48 @@ impl<'tcx> SplitWildcard<'tcx> {
         // If the `exhaustive_patterns` feature is enabled, we make sure to omit constructors that
         // are statically impossible. E.g., for `Option<!>`, we do not include `Some(_)` in the
         // returned list of constructors.
-        // Invariant: this is empty if and only if the type is uninhabited (as determined by
+        // Invariant: this is `Uninhabited` if and only if the type is uninhabited (as determined by
         // `cx.is_uninhabited()`).
-        let all_ctors = match pcx.ty.kind() {
-            ty::Bool => smallvec![make_range(0, 1)],
+        match pcx.ty.kind() {
+            ty::Bool => Self::Range(make_range(0, 1)),
+            ty::Char => {
+                Self::Ranges([
+                    // The valid Unicode Scalar Value ranges.
+                    make_range('\u{0000}' as u128, '\u{D7FF}' as u128),
+                    make_range('\u{E000}' as u128, '\u{10FFFF}' as u128),
+                ])
+            }
+            ty::Int(_) | ty::Uint(_)
+                if pcx.ty.is_ptr_sized_integral()
+                    && !cx.tcx.features().precise_pointer_size_matching =>
+            {
+                // `usize`/`isize` are not allowed to be matched exhaustively unless the
+                // `precise_pointer_size_matching` feature is enabled.
+                Self::UnlistableRange
+            }
+            &ty::Int(ity) => {
+                let bits = Integer::from_int_ty(&cx.tcx, ity).size().bits() as u128;
+                let min = 1u128 << (bits - 1);
+                let max = min - 1;
+                Self::Range(make_range(min, max))
+            }
+            &ty::Uint(uty) => {
+                let size = Integer::from_uint_ty(&cx.tcx, uty).size();
+                let max = size.truncate(u128::MAX);
+                Self::Range(make_range(0, max))
+            }
             ty::Array(sub_ty, len) if len.try_eval_target_usize(cx.tcx, cx.param_env).is_some() => {
                 let len = len.eval_target_usize(cx.tcx, cx.param_env) as usize;
                 if len != 0 && cx.is_uninhabited(*sub_ty) {
-                    smallvec![]
+                    Self::Uninhabited
                 } else {
-                    smallvec![Slice(Slice::new(Some(len), VarLen(0, 0)))]
+                    Self::Slice(Slice::new(Some(len), VarLen(0, 0)))
                 }
             }
             // Treat arrays of a constant but unknown length like slices.
             ty::Array(sub_ty, _) | ty::Slice(sub_ty) => {
                 let kind = if cx.is_uninhabited(*sub_ty) { FixedLen(0) } else { VarLen(0, 0) };
-                smallvec![Slice(Slice::new(None, kind))]
+                Self::Slice(Slice::new(None, kind))
             }
             ty::Adt(def, substs) if def.is_enum() => {
                 // If the enum is declared as `#[non_exhaustive]`, we treat it as if it had an
@@ -1165,7 +918,7 @@ impl<'tcx> SplitWildcard<'tcx> {
                 let is_secretly_empty =
                     def.variants().is_empty() && !is_exhaustive_pat_feature && !pcx.is_top_level;
 
-                let mut ctors: SmallVec<[_; 1]> = def
+                let variants: Vec<_> = def
                     .variants()
                     .iter_enumerated()
                     .filter(|(_, v)| {
@@ -1178,55 +931,192 @@ impl<'tcx> SplitWildcard<'tcx> {
                                 cx.module,
                             )
                     })
-                    .map(|(idx, _)| Variant(idx))
+                    .map(|(idx, _)| idx)
                     .collect();
 
-                if is_secretly_empty || is_declared_nonexhaustive {
-                    ctors.push(NonExhaustive);
+                Self::Variants {
+                    variants,
+                    non_exhaustive: is_secretly_empty || is_declared_nonexhaustive,
                 }
-                ctors
-            }
-            ty::Char => {
-                smallvec![
-                    // The valid Unicode Scalar Value ranges.
-                    make_range('\u{0000}' as u128, '\u{D7FF}' as u128),
-                    make_range('\u{E000}' as u128, '\u{10FFFF}' as u128),
-                ]
-            }
-            ty::Int(_) | ty::Uint(_)
-                if pcx.ty.is_ptr_sized_integral()
-                    && !cx.tcx.features().precise_pointer_size_matching =>
-            {
-                // `usize`/`isize` are not allowed to be matched exhaustively unless the
-                // `precise_pointer_size_matching` feature is enabled. So we treat those types like
-                // `#[non_exhaustive]` enums by returning a special unmatchable constructor.
-                smallvec![NonExhaustive]
-            }
-            &ty::Int(ity) => {
-                let bits = Integer::from_int_ty(&cx.tcx, ity).size().bits() as u128;
-                let min = 1u128 << (bits - 1);
-                let max = min - 1;
-                smallvec![make_range(min, max)]
-            }
-            &ty::Uint(uty) => {
-                let size = Integer::from_uint_ty(&cx.tcx, uty).size();
-                let max = size.truncate(u128::MAX);
-                smallvec![make_range(0, max)]
             }
             // If `exhaustive_patterns` is disabled and our scrutinee is the never type, we cannot
             // expose its emptiness. The exception is if the pattern is at the top level, because we
             // want empty matches to be considered exhaustive.
             ty::Never if !cx.tcx.features().exhaustive_patterns && !pcx.is_top_level => {
-                smallvec![NonExhaustive]
+                Self::Unlistable
             }
-            ty::Never => smallvec![],
-            _ if cx.is_uninhabited(pcx.ty) => smallvec![],
-            ty::Adt(..) | ty::Tuple(..) | ty::Ref(..) => smallvec![Single],
+            ty::Never => Self::Uninhabited,
+            _ if cx.is_uninhabited(pcx.ty) => Self::Uninhabited,
+            ty::Adt(..) | ty::Tuple(..) | ty::Ref(..) => Self::Single,
             // This type is one for which we cannot list constructors, like `str` or `f64`.
-            _ => smallvec![NonExhaustive],
-        };
+            _ => Self::Unlistable,
+        }
+    }
 
-        SplitWildcard { matrix_ctors: Vec::new(), all_ctors }
+    /// Split the set into two vecs `split` and `missing`, respecting the following:
+    /// - `split` covers the whole type
+    /// - constructors in `split` and `missing` are split for the `ctors` list
+    /// - all non-wildcards in `ctors` cover something in `split` (including `Opaques`)
+    /// - no non-wildcard in `ctors` covers anything in `missing`
+    /// - if we replace any `Wildcard`/`Missing` in `split` with all of `missing`, this also
+    ///     covers the whole type
+    pub(super) fn split<'a, 'tcx>(
+        self,
+        pcx: &PatCtxt<'_, '_, 'tcx>,
+        ctors: impl Iterator<Item = &'a Constructor<'tcx>> + Clone,
+    ) -> (Vec<Constructor<'tcx>>, Vec<Constructor<'tcx>>)
+    where
+        'tcx: 'a,
+    {
+        let mut missing = Vec::new();
+        let mut split = Vec::new();
+        // Constructors in `ctors`, except wildcards and opaques.
+        let mut seen = Vec::new();
+        for ctor in ctors.cloned() {
+            match ctor {
+                Wildcard => {}
+                Constructor::Opaque(..) => {
+                    split.push(ctor);
+                }
+                _ => {
+                    seen.push(ctor);
+                }
+            }
+        }
+        let seen_any_non_wildcard = !(split.is_empty() && seen.is_empty());
+        match self {
+            ConstructorSet::Single => {
+                if seen.is_empty() {
+                    missing.push(Single);
+                } else {
+                    split.push(Single);
+                }
+            }
+            ConstructorSet::Variants { variants, non_exhaustive } if seen.is_empty() => {
+                missing.extend(variants.into_iter().map(Variant));
+                if non_exhaustive {
+                    missing.push(NonExhaustive);
+                }
+            }
+            ConstructorSet::Variants { variants, non_exhaustive } => {
+                // FIXME: can do better than quadratic.
+                for variant in variants {
+                    let was_seen = seen.iter().any(|c| matches!(c, Variant(i) if *i == variant));
+                    let ctor = Variant(variant);
+                    if was_seen {
+                        split.push(ctor);
+                    } else {
+                        missing.push(ctor);
+                    }
+                }
+                if non_exhaustive {
+                    missing.push(NonExhaustive);
+                }
+            }
+            ConstructorSet::Range(base_range) if seen.is_empty() => {
+                missing.push(IntRange(base_range));
+            }
+            ConstructorSet::Range(base_range) => {
+                // FIXME: splitting and collecting should be done in one pass.
+                let seen_ranges = seen.iter().map(|ctor| ctor.as_int_range().unwrap());
+                let mut split_base_range = SplitIntRange::new(base_range);
+                split_base_range.split(seen_ranges.clone().cloned());
+                for splitted_range in split_base_range.iter() {
+                    let is_covered_by_any =
+                        seen_ranges.clone().any(|other| splitted_range.is_covered_by(other));
+                    let ctor = IntRange(splitted_range);
+                    if is_covered_by_any {
+                        split.push(ctor);
+                    } else {
+                        missing.push(ctor);
+                    }
+                }
+            }
+            ConstructorSet::Ranges(base_ranges) if seen.is_empty() => {
+                missing.extend(base_ranges.into_iter().map(IntRange));
+            }
+            ConstructorSet::Ranges(base_ranges) => {
+                // FIXME: splitting and collecting should be done in one pass.
+                let seen_ranges = seen.iter().map(|ctor| ctor.as_int_range().unwrap());
+                for base_range in base_ranges {
+                    let mut split_base_range = SplitIntRange::new(base_range);
+                    split_base_range.split(seen_ranges.clone().cloned());
+                    for splitted_range in split_base_range.iter() {
+                        let is_covered_by_any =
+                            seen_ranges.clone().any(|other| splitted_range.is_covered_by(other));
+                        let ctor = IntRange(splitted_range);
+                        if is_covered_by_any {
+                            split.push(ctor);
+                        } else {
+                            missing.push(ctor);
+                        }
+                    }
+                }
+            }
+            ConstructorSet::UnlistableRange if seen.is_empty() => {
+                missing.push(NonExhaustive);
+            }
+            ConstructorSet::UnlistableRange => {
+                // Since we can't list constructors, we need to take the ones in the matrix.
+                // FIXME: would be nice to reuse the `Range` case somehow instead of this quadratic
+                // splitting.
+                let seen_ranges = seen.iter().map(|ctor| ctor.as_int_range().unwrap()).cloned();
+                for seen_range in seen_ranges.clone() {
+                    if seen_range.is_singleton() {
+                        split.push(IntRange(seen_range))
+                    } else {
+                        let mut split_range = SplitIntRange::new(seen_range);
+                        split_range.split(seen_ranges.clone());
+                        split.extend(split_range.iter().map(IntRange));
+                    }
+                }
+                missing.push(NonExhaustive);
+            }
+            ConstructorSet::Slice(base_slice) if seen.is_empty() => {
+                missing.push(Slice(base_slice));
+            }
+            ConstructorSet::Slice(base_slice) => {
+                match base_slice.kind {
+                    FixedLen(..) => {
+                        split.push(Slice(base_slice));
+                    }
+                    VarLen(self_prefix, self_suffix) => {
+                        // FIXME: splitting and collecting should be done in one pass.
+                        let mut split_base_slice =
+                            SplitVarLenSlice::new(self_prefix, self_suffix, base_slice.array_len);
+                        let seen_slices = seen.iter().filter_map(|c| c.as_slice());
+                        split_base_slice.split(seen_slices.clone().map(|s| s.kind));
+                        for splitted_slice in split_base_slice.iter() {
+                            let is_covered_by_any = seen_slices
+                                .clone()
+                                .any(|other| splitted_slice.is_covered_by(other));
+                            let ctor = Slice(splitted_slice);
+                            if is_covered_by_any {
+                                split.push(ctor);
+                            } else {
+                                missing.push(ctor);
+                            }
+                        }
+                    }
+                }
+            }
+            ConstructorSet::Unlistable => {
+                // Since we can't list constructors, we take the ones in the matrix. This might list
+                // some constructors several times but there's not much we can do.
+                split.extend(seen);
+                missing.push(NonExhaustive);
+            }
+            ConstructorSet::Uninhabited => {}
+        }
+        if !missing.is_empty() {
+            let report_when_all_missing = pcx.is_top_level && !IntRange::is_integral(pcx.ty);
+            if seen_any_non_wildcard || report_when_all_missing {
+                split.push(Missing);
+            } else {
+                split.push(Wildcard);
+            }
+        }
+        (split, missing)
     }
 }
 
