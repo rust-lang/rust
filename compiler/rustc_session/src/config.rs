@@ -786,7 +786,7 @@ pub fn host_triple() -> &'static str {
     // Instead of grabbing the host triple (for the current host), we grab (at
     // compile time) the target triple that this rustc is built with and
     // calling that (at runtime) the host triple.
-    (option_env!("CFG_COMPILER_HOST_TRIPLE")).expect("CFG_COMPILER_HOST_TRIPLE")
+    env!("CFG_COMPILER_HOST_TRIPLE")
 }
 
 impl Default for Options {
