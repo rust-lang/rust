@@ -626,11 +626,11 @@ fn main() {
                     InlayHint {
                         range: 124..130,
                         position: After,
-                        pad_left: false,
+                        pad_left: true,
                         pad_right: false,
                         kind: Type,
                         label: [
-                            ": ",
+                            "",
                             InlayHintLabelPart {
                                 text: "Struct",
                                 linked_location: Some(
