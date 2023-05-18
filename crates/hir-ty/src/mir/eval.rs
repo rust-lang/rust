@@ -759,25 +759,38 @@ impl Evaluator<'_> {
                     let size = self.size_of_sized(&ty, locals, "operand of unary op")?;
                     c = self.read_memory(Address::from_bytes(c)?, size)?;
                 }
-                let mut c = c.to_vec();
-                if ty.as_builtin() == Some(BuiltinType::Bool) {
-                    c[0] = 1 - c[0];
+                if let TyKind::Scalar(chalk_ir::Scalar::Float(f)) = ty.kind(Interner) {
+                    match f {
+                        chalk_ir::FloatTy::F32 => {
+                            let c = -from_bytes!(f32, c);
+                            Owned(c.to_le_bytes().into())
+                        }
+                        chalk_ir::FloatTy::F64 => {
+                            let c = -from_bytes!(f32, c);
+                            Owned(c.to_le_bytes().into())
+                        }
+                    }
                 } else {
-                    match op {
-                        UnOp::Not => c.iter_mut().for_each(|x| *x = !*x),
-                        UnOp::Neg => {
-                            c.iter_mut().for_each(|x| *x = !*x);
-                            for k in c.iter_mut() {
-                                let o;
-                                (*k, o) = k.overflowing_add(1);
-                                if !o {
-                                    break;
+                    let mut c = c.to_vec();
+                    if ty.as_builtin() == Some(BuiltinType::Bool) {
+                        c[0] = 1 - c[0];
+                    } else {
+                        match op {
+                            UnOp::Not => c.iter_mut().for_each(|x| *x = !*x),
+                            UnOp::Neg => {
+                                c.iter_mut().for_each(|x| *x = !*x);
+                                for k in c.iter_mut() {
+                                    let o;
+                                    (*k, o) = k.overflowing_add(1);
+                                    if !o {
+                                        break;
+                                    }
                                 }
                             }
                         }
                     }
+                    Owned(c)
                 }
-                Owned(c)
             }
             Rvalue::CheckedBinaryOp(op, lhs, rhs) => {
                 let lc = self.eval_operand(lhs, locals)?;

@@ -113,6 +113,10 @@ fn floating_point() {
         r#"const GOAL: f32 = 2.0 + 3.0 * 5.5 - 8.;"#,
         i128::from_le_bytes(pad16(&f32::to_le_bytes(10.5), true)),
     );
+    check_number(
+        r#"const GOAL: f32 = -90.0 + 36.0;"#,
+        i128::from_le_bytes(pad16(&f32::to_le_bytes(-54.0), true)),
+    );
 }
 
 #[test]
