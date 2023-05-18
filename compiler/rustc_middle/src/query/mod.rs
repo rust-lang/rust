@@ -18,7 +18,6 @@ use crate::middle::privacy::EffectiveVisibilities;
 use crate::middle::resolve_bound_vars::{ObjectLifetimeDefault, ResolveBoundVars, ResolvedArg};
 use crate::middle::stability::{self, DeprecationEntry};
 use crate::mir;
-use crate::mir::interpret::GlobalId;
 use crate::mir::interpret::{
     ConstValue, EvalToAllocationRawResult, EvalToConstValueResult, EvalToValTreeResult,
 };
@@ -1028,11 +1027,11 @@ rustc_queries! {
     /// Evaluates a constant and returns the computed allocation.
     ///
     /// **Do not use this** directly, use the `tcx.eval_static_initializer` wrapper.
-    query eval_to_allocation_raw(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
+    query eval_to_allocation_raw(key: ty::ParamEnvAnd<'tcx, ty::Instance<'tcx>>)
         -> EvalToAllocationRawResult<'tcx> {
         desc { |tcx|
             "const-evaluating + checking `{}`",
-            key.value.display(tcx)
+            tcx.def_path_str(key.value.def_id()),
         }
         cache_on_disk_if { true }
     }
@@ -1043,11 +1042,11 @@ rustc_queries! {
     ///
     /// **Do not use this** directly, use one of the following wrappers: `tcx.const_eval_poly`,
     /// `tcx.const_eval_resolve`, `tcx.const_eval_instance`, or `tcx.const_eval_global_id`.
-    query eval_to_const_value_raw(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
+    query eval_to_const_value_raw(key: ty::ParamEnvAnd<'tcx, ty::Instance<'tcx>>)
         -> EvalToConstValueResult<'tcx> {
         desc { |tcx|
             "simplifying constant for the type system `{}`",
-            key.value.display(tcx)
+            tcx.def_path_str(key.value.def_id()),
         }
         cache_on_disk_if { true }
     }
@@ -1055,7 +1054,7 @@ rustc_queries! {
     /// Evaluate a constant and convert it to a type level constant or
     /// return `None` if that is not possible.
     query eval_to_valtree(
-        key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>
+        key: ty::ParamEnvAnd<'tcx, ty::Instance<'tcx>>
     ) -> EvalToValTreeResult<'tcx> {
         desc { "evaluating type-level constant" }
     }

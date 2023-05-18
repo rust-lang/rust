@@ -5,9 +5,7 @@
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{
     self,
-    interpret::{
-        Allocation, ConstAllocation, ConstValue, GlobalId, InterpResult, PointerArithmetic, Scalar,
-    },
+    interpret::{Allocation, ConstAllocation, ConstValue, InterpResult, PointerArithmetic, Scalar},
     BinOp, NonDivergingIntrinsic,
 };
 use rustc_middle::ty;
@@ -163,7 +161,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | sym::type_id
             | sym::type_name
             | sym::variant_count => {
-                let gid = GlobalId { instance };
                 let ty = match intrinsic_name {
                     sym::pref_align_of | sym::variant_count => self.tcx.types.usize,
                     sym::needs_drop => self.tcx.types.bool,
@@ -172,7 +169,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     _ => bug!(),
                 };
                 let val = self.ctfe_query(None, |tcx| {
-                    tcx.const_eval_global_id(self.param_env, gid, Some(tcx.span))
+                    tcx.const_eval_global_id(self.param_env, instance, Some(tcx.span))
                 })?;
                 let val = self.const_val_to_op(val, ty, Some(dest.layout))?;
                 self.copy_op(&val, dest, /*allow_transmute*/ false)?;

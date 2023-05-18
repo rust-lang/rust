@@ -307,7 +307,6 @@ tcx_lifetime! {
     rustc_middle::mir::DestructuredConstant,
     rustc_middle::mir::interpret::ConstAlloc,
     rustc_middle::mir::interpret::ConstValue,
-    rustc_middle::mir::interpret::GlobalId,
     rustc_middle::mir::interpret::LitToConstInput,
     rustc_middle::traits::ChalkEnvironmentAndGoal,
     rustc_middle::traits::query::MethodAutoderefStepsResult,

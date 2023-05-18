@@ -1,4 +1,4 @@
-use super::{ErrorHandled, EvalToConstValueResult, EvalToValTreeResult, GlobalId};
+use super::{ErrorHandled, EvalToConstValueResult, EvalToValTreeResult};
 
 use crate::mir;
 use crate::query::{TyCtxtAt, TyCtxtEnsure};
@@ -22,9 +22,8 @@ impl<'tcx> TyCtxt<'tcx> {
         // encountered.
         let substs = InternalSubsts::identity_for_item(self, def_id);
         let instance = ty::Instance::new(def_id, substs);
-        let cid = GlobalId { instance };
         let param_env = self.param_env(def_id).with_reveal_all_normalized(self);
-        self.const_eval_global_id(param_env, cid, None)
+        self.const_eval_global_id(param_env, instance, None)
     }
     /// Resolves and evaluates a constant.
     ///
@@ -57,10 +56,7 @@ impl<'tcx> TyCtxt<'tcx> {
             // FIXME: maybe have a separate version for resolving mir::UnevaluatedConst?
             ct.def, ct.substs,
         ) {
-            Ok(Some(instance)) => {
-                let cid = GlobalId { instance };
-                self.const_eval_global_id(param_env, cid, span)
-            }
+            Ok(Some(instance)) => self.const_eval_global_id(param_env, instance, span),
             Ok(None) => Err(ErrorHandled::TooGeneric),
             Err(err) => Err(ErrorHandled::Reported(err.into())),
         }
@@ -85,8 +81,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         match ty::Instance::resolve(self, param_env, ct.def, ct.substs) {
             Ok(Some(instance)) => {
-                let cid = GlobalId { instance };
-                self.const_eval_global_id_for_typeck(param_env, cid, span).inspect(|_| {
+                self.const_eval_global_id_for_typeck(param_env, instance, span).inspect(|_| {
                     // We are emitting the lint here instead of in `is_const_evaluatable`
                     // as we normalize obligations before checking them, and normalization
                     // uses this function to evaluate this constant.
@@ -121,7 +116,7 @@ impl<'tcx> TyCtxt<'tcx> {
         instance: ty::Instance<'tcx>,
         span: Option<Span>,
     ) -> EvalToConstValueResult<'tcx> {
-        self.const_eval_global_id(param_env, GlobalId { instance }, span)
+        self.const_eval_global_id(param_env, instance, span)
     }
 
     /// Evaluate a constant to a `ConstValue`.
@@ -129,13 +124,13 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn const_eval_global_id(
         self,
         param_env: ty::ParamEnv<'tcx>,
-        cid: GlobalId<'tcx>,
+        instance: ty::Instance<'tcx>,
         span: Option<Span>,
     ) -> EvalToConstValueResult<'tcx> {
         let param_env = param_env.with_const();
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
         // improve caching of queries.
-        let inputs = self.erase_regions(param_env.and(cid));
+        let inputs = self.erase_regions(param_env.and(instance));
         if let Some(span) = span {
             self.at(span).eval_to_const_value_raw(inputs)
         } else {
@@ -148,14 +143,14 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn const_eval_global_id_for_typeck(
         self,
         param_env: ty::ParamEnv<'tcx>,
-        cid: GlobalId<'tcx>,
+        instance: ty::Instance<'tcx>,
         span: Option<Span>,
     ) -> EvalToValTreeResult<'tcx> {
         let param_env = param_env.with_const();
         debug!(?param_env);
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
         // improve caching of queries.
-        let inputs = self.erase_regions(param_env.and(cid));
+        let inputs = self.erase_regions(param_env.and(instance));
         debug!(?inputs);
         if let Some(span) = span {
             self.at(span).eval_to_valtree(inputs)
@@ -185,8 +180,7 @@ impl<'tcx> TyCtxtAt<'tcx> {
         trace!("eval_static_initializer: Need to compute {:?}", def_id);
         assert!(self.is_static(def_id));
         let instance = ty::Instance::mono(*self, def_id);
-        let gid = GlobalId { instance };
-        self.eval_to_allocation(gid, ty::ParamEnv::reveal_all())
+        self.eval_to_allocation(instance, ty::ParamEnv::reveal_all())
     }
 
     /// Evaluate anything constant-like, returning the allocation of the final memory.
@@ -194,12 +188,12 @@ impl<'tcx> TyCtxtAt<'tcx> {
     /// The span is entirely ignored here, but still helpful for better query cycle errors.
     fn eval_to_allocation(
         self,
-        gid: GlobalId<'tcx>,
+        instance: ty::Instance<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Result<mir::ConstAllocation<'tcx>, ErrorHandled> {
         let param_env = param_env.with_const();
-        trace!("eval_to_allocation: Need to compute {:?}", gid);
-        let raw_const = self.eval_to_allocation_raw(param_env.and(gid))?;
+        trace!("eval_to_allocation: Need to compute {:?}", instance);
+        let raw_const = self.eval_to_allocation_raw(param_env.and(instance))?;
         Ok(self.global_alloc(raw_const.alloc_id).unwrap_memory())
     }
 }
@@ -216,12 +210,11 @@ impl<'tcx> TyCtxtEnsure<'tcx> {
         // encountered.
         let substs = InternalSubsts::identity_for_item(self.tcx, def_id);
         let instance = ty::Instance::new(def_id, substs);
-        let cid = GlobalId { instance };
         let param_env =
             self.tcx.param_env(def_id).with_reveal_all_normalized(self.tcx).with_const();
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
         // improve caching of queries.
-        let inputs = self.tcx.erase_regions(param_env.and(cid));
+        let inputs = self.tcx.erase_regions(param_env.and(instance));
         self.eval_to_const_value_raw(inputs)
     }
 
@@ -230,10 +223,9 @@ impl<'tcx> TyCtxtEnsure<'tcx> {
         trace!("eval_static_initializer: Need to compute {:?}", def_id);
         assert!(self.tcx.is_static(def_id));
         let instance = ty::Instance::mono(self.tcx, def_id);
-        let gid = GlobalId { instance };
         let param_env = ty::ParamEnv::reveal_all().with_const();
-        trace!("eval_to_allocation: Need to compute {:?}", gid);
-        self.eval_to_allocation_raw(param_env.and(gid))
+        trace!("eval_to_allocation: Need to compute {:?}", instance);
+        self.eval_to_allocation_raw(param_env.and(instance))
     }
 }
 

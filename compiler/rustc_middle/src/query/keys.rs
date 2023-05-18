@@ -87,14 +87,6 @@ impl<'tcx> Key for ty::Instance<'tcx> {
     }
 }
 
-impl<'tcx> Key for mir::interpret::GlobalId<'tcx> {
-    type CacheSelector = DefaultCacheSelector<Self>;
-
-    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
-        self.instance.default_span(tcx)
-    }
-}
-
 impl<'tcx> Key for (Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>) {
     type CacheSelector = DefaultCacheSelector<Self>;
 

@@ -108,7 +108,6 @@ use rustc_data_structures::tiny_list::TinyList;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
-use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_target::abi::{AddressSpace, Endian, HasDataLayout};
 
@@ -131,23 +130,6 @@ pub use self::allocation::{
 };
 
 pub use self::pointer::{Pointer, PointerArithmetic, Provenance};
-
-/// Uniquely identifies one of the following:
-/// - A constant
-/// - A static
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, Lift, TypeFoldable, TypeVisitable)]
-pub struct GlobalId<'tcx> {
-    /// For a constant or static, the `Instance` of the item itself.
-    /// For a promoted global, the `Instance` of the function they belong to.
-    pub instance: ty::Instance<'tcx>,
-}
-
-impl<'tcx> GlobalId<'tcx> {
-    pub fn display(self, tcx: TyCtxt<'tcx>) -> String {
-        with_no_trimmed_paths!(tcx.def_path_str(self.instance.def.def_id()))
-    }
-}
 
 /// Input argument for `tcx.lit_to_const`.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, HashStable)]

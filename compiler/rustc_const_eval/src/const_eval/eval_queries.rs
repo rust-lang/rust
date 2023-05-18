@@ -17,7 +17,7 @@ use rustc_target::abi::{self, Abi};
 use super::{CompileTimeEvalContext, CompileTimeInterpreter, ConstEvalErr};
 use crate::interpret::eval_nullary_intrinsic;
 use crate::interpret::{
-    intern_const_alloc_recursive, Allocation, ConstAlloc, ConstValue, CtfeValidationMode, GlobalId,
+    intern_const_alloc_recursive, Allocation, ConstAlloc, ConstValue, CtfeValidationMode,
     Immediate, InternKind, InterpCx, InterpError, InterpResult, MPlaceTy, MemoryKind, OpTy,
     RefTracking, StackPopCleanup,
 };
@@ -29,14 +29,14 @@ const NOTE_ON_UNDEFINED_BEHAVIOR_ERROR: &str = "The rules on what exactly is und
 // Returns a pointer to where the result lives
 fn eval_body_using_ecx<'mir, 'tcx>(
     ecx: &mut CompileTimeEvalContext<'mir, 'tcx>,
-    cid: GlobalId<'tcx>,
+    instance: ty::Instance<'tcx>,
     body: &'mir mir::Body<'tcx>,
 ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
-    debug!("eval_body_using_ecx: {:?}, {:?}", cid, ecx.param_env);
+    debug!("eval_body_using_ecx: {:?}, {:?}", instance, ecx.param_env);
     let tcx = *ecx.tcx;
     assert!(
         matches!(
-            ecx.tcx.def_kind(cid.instance.def_id()),
+            ecx.tcx.def_kind(instance.def_id()),
             DefKind::Const
                 | DefKind::Static(_)
                 | DefKind::ConstParam
@@ -46,29 +46,21 @@ fn eval_body_using_ecx<'mir, 'tcx>(
                 | DefKind::Promoted
         ),
         "Unexpected DefKind: {:?}",
-        ecx.tcx.def_kind(cid.instance.def_id())
+        ecx.tcx.def_kind(instance.def_id())
     );
-    let layout = ecx.layout_of(body.bound_return_ty().subst(tcx, cid.instance.substs))?;
+    let layout = ecx.layout_of(body.bound_return_ty().subst(tcx, instance.substs))?;
     assert!(layout.is_sized());
     let ret = ecx.allocate(layout, MemoryKind::Stack)?;
 
-    trace!(
-        "eval_body_using_ecx: pushing stack frame for global: {}",
-        with_no_trimmed_paths!(ecx.tcx.def_path_str(cid.instance.def_id())),
-    );
+    trace!("eval_body_using_ecx: pushing stack frame for global: {:?}", instance.def_id());
 
-    ecx.push_stack_frame(
-        cid.instance,
-        body,
-        &ret.into(),
-        StackPopCleanup::Root { cleanup: false },
-    )?;
+    ecx.push_stack_frame(instance, body, &ret.into(), StackPopCleanup::Root { cleanup: false })?;
 
     // The main interpreter loop.
     while ecx.step()? {}
 
     // Intern the result
-    let intern_kind = match tcx.def_kind(cid.instance.def_id()) {
+    let intern_kind = match tcx.def_kind(instance.def_id()) {
         DefKind::Promoted => InternKind::Promoted,
         DefKind::Static(m) => InternKind::Static(m),
         _ => InternKind::Constant,
@@ -196,15 +188,15 @@ pub(super) fn op_to_const<'tcx>(
 pub(crate) fn turn_into_const_value<'tcx>(
     tcx: TyCtxt<'tcx>,
     constant: ConstAlloc<'tcx>,
-    key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
+    key: ty::ParamEnvAnd<'tcx, ty::Instance<'tcx>>,
 ) -> ConstValue<'tcx> {
-    let cid = key.value;
-    let def_id = cid.instance.def.def_id();
+    let instance = key.value;
+    let def_id = instance.def.def_id();
     let is_static = tcx.is_static(def_id);
     // This is just accessing an already computed constant, so no need to check alignment here.
     let ecx = mk_eval_cx(
         tcx,
-        tcx.def_span(key.value.instance.def_id()),
+        tcx.def_span(def_id),
         key.param_env,
         /*can_access_statics:*/ is_static,
     );
@@ -225,7 +217,7 @@ pub(crate) fn turn_into_const_value<'tcx>(
 #[instrument(skip(tcx), level = "debug")]
 pub fn eval_to_const_value_raw_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
-    key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
+    key: ty::ParamEnvAnd<'tcx, ty::Instance<'tcx>>,
 ) -> ::rustc_middle::mir::interpret::EvalToConstValueResult<'tcx> {
     assert!(key.param_env.is_const());
     // see comment in eval_to_allocation_raw_provider for what we're doing here
@@ -242,8 +234,8 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
 
     // We call `const_eval` for zero arg intrinsics, too, in order to cache their value.
     // Catch such calls and evaluate them instead of trying to load a constant's MIR.
-    if let ty::InstanceDef::Intrinsic(def_id) = key.value.instance.def {
-        let ty = key.value.instance.ty(tcx, key.param_env);
+    if let ty::InstanceDef::Intrinsic(def_id) = key.value.def {
+        let ty = key.value.ty(tcx, key.param_env);
         let ty::FnDef(_, substs) = ty.kind() else {
             bug!("intrinsic with type {:?}", ty);
         };
@@ -260,7 +252,7 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
 #[instrument(skip(tcx), level = "debug")]
 pub fn eval_to_allocation_raw_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
-    key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
+    key: ty::ParamEnvAnd<'tcx, ty::Instance<'tcx>>,
 ) -> ::rustc_middle::mir::interpret::EvalToAllocationRawResult<'tcx> {
     assert!(key.param_env.is_const());
     // Because the constant is computed twice (once per value of `Reveal`), we are at risk of
@@ -281,18 +273,10 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
             other => return other,
         }
     }
-    if cfg!(debug_assertions) {
-        // Make sure we format the instance even if we do not print it.
-        // This serves as a regression test against an ICE on printing.
-        // The next two lines concatenated contain some discussion:
-        // https://rust-lang.zulipchat.com/#narrow/stream/146212-t-compiler.2Fconst-eval/
-        // subject/anon_const_instance_printing/near/135980032
-        let instance = with_no_trimmed_paths!(key.value.instance.to_string());
-        trace!("const eval: {:?} ({})", key, instance);
-    }
+    trace!("const eval: {:?}", key);
 
-    let cid = key.value;
-    let def = cid.instance.def.def_id();
+    let instance = key.value;
+    let def = instance.def.def_id();
     let within_static = match tcx.def_kind(def) {
         DefKind::Promoted => tcx.is_static(tcx.parent(def)),
         DefKind::Static(_) => true,
@@ -316,8 +300,8 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
         ),
     );
 
-    let res = ecx.load_mir(cid.instance.def);
-    match res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, &body)) {
+    let res = ecx.load_mir(instance.def);
+    match res.and_then(|body| eval_body_using_ecx(&mut ecx, instance, &body)) {
         Err(error) => {
             let err = ConstEvalErr::new(&ecx, error, None);
             let msg = if within_static {
@@ -326,7 +310,6 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                 // If the current item has generics, we'd like to enrich the message with the
                 // instance and its substs: to show the actual compile-time values, in addition to
                 // the expression, leading to the const eval error.
-                let instance = &key.value.instance;
                 if !instance.substs.is_empty() {
                     let instance = with_no_trimmed_paths!(instance.to_string());
                     let msg = format!("evaluation of `{}` failed", instance);

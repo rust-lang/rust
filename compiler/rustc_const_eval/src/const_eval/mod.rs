@@ -7,7 +7,7 @@ use crate::interpret::{
 };
 use rustc_hir::Mutability;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId};
+use rustc_middle::mir::interpret::EvalToValTreeResult;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{source_map::DUMMY_SP, symbol::Symbol};
 
@@ -51,9 +51,9 @@ pub(crate) type ValTreeCreationResult<'tcx> = Result<ty::ValTree<'tcx>, ValTreeC
 pub(crate) fn eval_to_valtree<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    cid: GlobalId<'tcx>,
+    instance: ty::Instance<'tcx>,
 ) -> EvalToValTreeResult<'tcx> {
-    let const_alloc = tcx.eval_to_allocation_raw(param_env.and(cid))?;
+    let const_alloc = tcx.eval_to_allocation_raw(param_env.and(instance))?;
 
     // FIXME Need to provide a span to `eval_to_valtree`
     let ecx = mk_eval_cx(
@@ -71,10 +71,10 @@ pub(crate) fn eval_to_valtree<'tcx>(
     match valtree_result {
         Ok(valtree) => Ok(Some(valtree)),
         Err(err) => {
-            let did = cid.instance.def_id();
-            let global_const_id = cid.display(tcx);
+            let did = instance.def_id();
             match err {
                 ValTreeCreationError::NodesOverflow => {
+                    let global_const_id = tcx.def_path_str(did);
                     let msg = format!(
                         "maximum number of nodes exceeded in constant {}",
                         &global_const_id

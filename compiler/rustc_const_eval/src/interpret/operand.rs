@@ -12,9 +12,9 @@ use rustc_span::Span;
 use rustc_target::abi::{self, Abi, Align, HasDataLayout, Size};
 
 use super::{
-    alloc_range, from_known_layout, mir_assign_valid_types, AllocId, ConstValue, Frame, GlobalId,
-    InterpCx, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Place, PlaceTy, Pointer,
-    Provenance, Scalar,
+    alloc_range, from_known_layout, mir_assign_valid_types, AllocId, ConstValue, Frame, InterpCx,
+    InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Place, PlaceTy, Pointer, Provenance,
+    Scalar,
 };
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
@@ -599,9 +599,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             ty::ConstKind::Unevaluated(uv) => {
                 let instance = self.resolve(uv.def, uv.substs)?;
-                let cid = GlobalId { instance };
                 self.ctfe_query(span, |tcx| {
-                    tcx.eval_to_valtree(self.param_env.with_const().and(cid))
+                    tcx.eval_to_valtree(self.param_env.with_const().and(instance))
                 })?
                 .unwrap_or_else(|| bug!("unable to create ValTree for {uv:?}"))
             }
@@ -628,7 +627,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             mir::ConstantKind::Val(val, ty) => self.const_val_to_op(val, ty, layout),
             mir::ConstantKind::Unevaluated(uv, _) => {
                 let instance = self.resolve(uv.def, uv.substs)?;
-                Ok(self.eval_global(GlobalId { instance }, span)?.into())
+                Ok(self.eval_global(instance, span)?.into())
             }
         }
     }

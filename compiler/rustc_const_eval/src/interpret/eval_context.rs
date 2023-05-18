@@ -20,9 +20,9 @@ use rustc_span::Span;
 use rustc_target::abi::{call::FnAbi, Align, HasDataLayout, Size, TargetDataLayout};
 
 use super::{
-    AllocId, GlobalId, Immediate, InterpErrorInfo, InterpResult, MPlaceTy, Machine, MemPlace,
-    MemPlaceMeta, Memory, MemoryKind, Operand, Place, PlaceTy, PointerArithmetic, Provenance,
-    Scalar, StackPopJump,
+    AllocId, Immediate, InterpErrorInfo, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta,
+    Memory, MemoryKind, Operand, Place, PlaceTy, PointerArithmetic, Provenance, Scalar,
+    StackPopJump,
 };
 use crate::util;
 
@@ -911,7 +911,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     pub fn eval_global(
         &self,
-        gid: GlobalId<'tcx>,
+        instance: ty::Instance<'tcx>,
         span: Option<Span>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
         // For statics we pick `ParamEnv::reveal_all`, because statics don't have generics
@@ -919,13 +919,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // `self.param_env`, that would mean we invoke the query to evaluate the static
         // with different parameter environments, thus causing the static to be evaluated
         // multiple times.
-        let param_env = if self.tcx.is_static(gid.instance.def_id()) {
+        let param_env = if self.tcx.is_static(instance.def_id()) {
             ty::ParamEnv::reveal_all()
         } else {
             self.param_env
         };
         let param_env = param_env.with_const();
-        let val = self.ctfe_query(span, |tcx| tcx.eval_to_allocation_raw(param_env.and(gid)))?;
+        let val =
+            self.ctfe_query(span, |tcx| tcx.eval_to_allocation_raw(param_env.and(instance)))?;
         self.raw_const_to_mplace(val)
     }
 
