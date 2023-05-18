@@ -282,6 +282,11 @@ impl TableLayout {
     }
 }
 
+/// A reference to an empty bucket into which an can be inserted.
+pub struct InsertSlot {
+    index: usize,
+}
+
 /// A reference to a hash table bucket containing a `T`.
 ///
 /// This is usually just a pointer to the element itself. However if the element
@@ -1001,11 +1006,18 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     }
 
     /// Removes an element from the table, returning it.
+    ///
+    /// This also returns an `InsertSlot` pointing to the newly free bucket.
     #[cfg_attr(feature = "inline-more", inline)]
     #[allow(clippy::needless_pass_by_value)]
-    pub unsafe fn remove(&mut self, item: Bucket<T>) -> T {
+    pub unsafe fn remove(&mut self, item: Bucket<T>) -> (T, InsertSlot) {
         self.erase_no_drop(&item);
-        item.read()
+        (
+            item.read(),
+            InsertSlot {
+                index: self.bucket_index(&item),
+            },
+        )
     }
 
     /// Finds and removes an element from the table, returning it.
@@ -1013,7 +1025,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     pub fn remove_entry(&mut self, hash: u64, eq: impl FnMut(&T) -> bool) -> Option<T> {
         // Avoid `Option::map` because it bloats LLVM IR.
         match self.find(hash, eq) {
-            Some(bucket) => Some(unsafe { self.remove(bucket) }),
+            Some(bucket) => Some(unsafe { self.remove(bucket).0 }),
             None => None,
         }
     }
@@ -1161,22 +1173,18 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn insert(&mut self, hash: u64, value: T, hasher: impl Fn(&T) -> u64) -> Bucket<T> {
         unsafe {
-            let mut index = self.table.find_insert_slot(hash);
+            let mut slot = self.table.find_insert_slot(hash);
 
             // We can avoid growing the table once we have reached our load
             // factor if we are replacing a tombstone. This works since the
             // number of EMPTY slots does not change in this case.
-            let old_ctrl = *self.table.ctrl(index);
+            let old_ctrl = *self.table.ctrl(slot.index);
             if unlikely(self.table.growth_left == 0 && special_is_empty(old_ctrl)) {
                 self.reserve(1, hasher);
-                index = self.table.find_insert_slot(hash);
+                slot = self.table.find_insert_slot(hash);
             }
 
-            self.table.record_item_insert_at(index, old_ctrl, hash);
-
-            let bucket = self.bucket(index);
-            bucket.write(value);
-            bucket
+            self.insert_in_slot(hash, slot, value)
         }
     }
 
@@ -1244,7 +1252,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
         let old_ctrl = *self.table.ctrl(index);
         debug_assert!(self.is_bucket_full(index));
         let old_growth_left = self.table.growth_left;
-        let item = self.remove(bucket);
+        let item = self.remove(bucket).0;
         if let Some(new_item) = f(item) {
             self.table.growth_left = old_growth_left;
             self.table.set_ctrl(index, old_ctrl);
@@ -1256,20 +1264,47 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
         }
     }
 
-    /// Searches for an element in the table,
-    /// or a potential slot where that element could be inserted.
+    /// Searches for an element in the table. If the element is not found,
+    /// returns `Err` with the position of a slot where an element with the
+    /// same hash could be inserted.
+    ///
+    /// This function may resize the table if additional space is required for
+    /// inserting an element.
     #[inline]
-    pub fn find_potential(&self, hash: u64, mut eq: impl FnMut(&T) -> bool) -> (usize, bool) {
-        self.table.find_potential_inner(hash, &mut |index| unsafe {
-            eq(self.bucket(index).as_ref())
-        })
+    pub fn find_or_find_insert_slot(
+        &mut self,
+        hash: u64,
+        mut eq: impl FnMut(&T) -> bool,
+        hasher: impl Fn(&T) -> u64,
+    ) -> Result<Bucket<T>, InsertSlot> {
+        self.reserve(1, hasher);
+
+        match self
+            .table
+            .find_or_find_insert_slot_inner(hash, &mut |index| unsafe {
+                eq(self.bucket(index).as_ref())
+            }) {
+            Ok(index) => Ok(unsafe { self.bucket(index) }),
+            Err(slot) => Err(slot),
+        }
     }
 
-    /// Marks an element in the table as inserted.
+    /// Inserts a new element into the table in the given slot, and returns its
+    /// raw bucket.
+    ///
+    /// # Safety
+    ///
+    /// `slot` must point to a slot previously returned by
+    /// `find_or_find_insert_slot`, and no mutation of the table must have
+    /// occurred since that call.
     #[inline]
-    pub unsafe fn mark_inserted(&mut self, index: usize, hash: u64) {
-        let old_ctrl = *self.table.ctrl(index);
-        self.table.record_item_insert_at(index, old_ctrl, hash);
+    pub unsafe fn insert_in_slot(&mut self, hash: u64, slot: InsertSlot, value: T) -> Bucket<T> {
+        let old_ctrl = *self.table.ctrl(slot.index);
+        self.table.record_item_insert_at(slot.index, old_ctrl, hash);
+
+        let bucket = self.bucket(slot.index);
+        bucket.write(value);
+        bucket
     }
 
     /// Searches for an element in the table.
@@ -1608,7 +1643,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
     /// Fixes up an insertion slot due to false positives for groups smaller than the group width.
     /// This must only be used on insertion slots found by `find_insert_slot_in_group`.
     #[inline]
-    unsafe fn fix_insert_slot(&self, index: usize) -> usize {
+    unsafe fn fix_insert_slot(&self, mut index: usize) -> InsertSlot {
         // In tables smaller than the group width
         // (self.buckets() < Group::WIDTH), trailing control
         // bytes outside the range of the table are filled with
@@ -1636,12 +1671,11 @@ impl<A: Allocator + Clone> RawTableInner<A> {
             //   with EMPTY bytes, so this second scan either finds an empty slot (due to the
             //   load factor) or hits the trailing control bytes (containing EMPTY). See
             //   `intrinsics::cttz_nonzero` for more information.
-            Group::load_aligned(self.ctrl(0))
+            index = Group::load_aligned(self.ctrl(0))
                 .match_empty_or_deleted()
-                .lowest_set_bit_nonzero()
-        } else {
-            index
+                .lowest_set_bit_nonzero();
         }
+        InsertSlot { index }
     }
 
     /// Finds the position to insert something in a group.
@@ -1663,11 +1697,11 @@ impl<A: Allocator + Clone> RawTableInner<A> {
     /// This uses dynamic dispatch to reduce the amount of code generated, but that is
     /// eliminated by LLVM optimizations.
     #[inline]
-    pub fn find_potential_inner(
+    fn find_or_find_insert_slot_inner(
         &self,
         hash: u64,
         eq: &mut dyn FnMut(usize) -> bool,
-    ) -> (usize, bool) {
+    ) -> Result<usize, InsertSlot> {
         let mut insert_slot = None;
 
         let h2_hash = h2(hash);
@@ -1680,7 +1714,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
                 let index = (probe_seq.pos + bit) & self.bucket_mask;
 
                 if likely(eq(index)) {
-                    return (index, true);
+                    return Ok(index);
                 }
             }
 
@@ -1697,7 +1731,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
                 // least one. For tables smaller than the group width, there will still be an
                 // empty element in the current (and only) group due to the load factor.
                 unsafe {
-                    return (self.fix_insert_slot(insert_slot.unwrap_unchecked()), false);
+                    return Err(self.fix_insert_slot(insert_slot.unwrap_unchecked()));
                 }
             }
 
@@ -1711,7 +1745,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
     /// There must be at least 1 empty bucket in the table.
     #[inline]
     unsafe fn prepare_insert_slot(&self, hash: u64) -> (usize, u8) {
-        let index = self.find_insert_slot(hash);
+        let index = self.find_insert_slot(hash).index;
         let old_ctrl = *self.ctrl(index);
         self.set_ctrl_h2(index, hash);
         (index, old_ctrl)
@@ -1739,7 +1773,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
     ///
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[inline]
-    fn find_insert_slot(&self, hash: u64) -> usize {
+    fn find_insert_slot(&self, hash: u64) -> InsertSlot {
         let mut probe_seq = self.probe_seq(hash);
         loop {
             // SAFETY:
@@ -1922,7 +1956,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
     #[cfg(feature = "raw")]
     #[inline]
     unsafe fn prepare_insert_no_grow(&mut self, hash: u64) -> Result<usize, ()> {
-        let index = self.find_insert_slot(hash);
+        let index = self.find_insert_slot(hash).index;
         let old_ctrl = *self.ctrl(index);
         if unlikely(self.growth_left == 0 && special_is_empty(old_ctrl)) {
             Err(())
@@ -2293,7 +2327,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
                 let hash = hasher(*guard, i);
 
                 // Search for a suitable place to put it
-                let new_i = guard.find_insert_slot(hash);
+                let new_i = guard.find_insert_slot(hash).index;
 
                 // Probing works by scanning through all of the control
                 // bytes in groups, which may not be aligned to the group
@@ -2895,7 +2929,7 @@ impl<T> RawIter<T> {
     /// This method should be called _before_ the removal is made. It is not necessary to call this
     /// method if you are removing an item that this iterator yielded in the past.
     #[cfg(feature = "raw")]
-    pub fn reflect_remove(&mut self, b: &Bucket<T>) {
+    pub unsafe fn reflect_remove(&mut self, b: &Bucket<T>) {
         self.reflect_toggle_full(b, false);
     }
 
@@ -2909,36 +2943,76 @@ impl<T> RawIter<T> {
     ///
     /// This method should be called _after_ the given insert is made.
     #[cfg(feature = "raw")]
-    pub fn reflect_insert(&mut self, b: &Bucket<T>) {
+    pub unsafe fn reflect_insert(&mut self, b: &Bucket<T>) {
         self.reflect_toggle_full(b, true);
     }
 
     /// Refresh the iterator so that it reflects a change to the state of the given bucket.
     #[cfg(feature = "raw")]
-    fn reflect_toggle_full(&mut self, b: &Bucket<T>, is_insert: bool) {
-        unsafe {
-            if b.as_ptr() > self.iter.data.as_ptr() {
-                // The iterator has already passed the bucket's group.
-                // So the toggle isn't relevant to this iterator.
-                return;
+    unsafe fn reflect_toggle_full(&mut self, b: &Bucket<T>, is_insert: bool) {
+        if b.as_ptr() > self.iter.data.as_ptr() {
+            // The iterator has already passed the bucket's group.
+            // So the toggle isn't relevant to this iterator.
+            return;
+        }
+
+        if self.iter.next_ctrl < self.iter.end
+            && b.as_ptr() <= self.iter.data.next_n(Group::WIDTH).as_ptr()
+        {
+            // The iterator has not yet reached the bucket's group.
+            // We don't need to reload anything, but we do need to adjust the item count.
+
+            if cfg!(debug_assertions) {
+                // Double-check that the user isn't lying to us by checking the bucket state.
+                // To do that, we need to find its control byte. We know that self.iter.data is
+                // at self.iter.next_ctrl - Group::WIDTH, so we work from there:
+                let offset = offset_from(self.iter.data.as_ptr(), b.as_ptr());
+                let ctrl = self.iter.next_ctrl.sub(Group::WIDTH).add(offset);
+                // This method should be called _before_ a removal, or _after_ an insert,
+                // so in both cases the ctrl byte should indicate that the bucket is full.
+                assert!(is_full(*ctrl));
             }
 
-            if self.iter.next_ctrl < self.iter.end
-                && b.as_ptr() <= self.iter.data.next_n(Group::WIDTH).as_ptr()
-            {
-                // The iterator has not yet reached the bucket's group.
-                // We don't need to reload anything, but we do need to adjust the item count.
+            if is_insert {
+                self.items += 1;
+            } else {
+                self.items -= 1;
+            }
 
-                if cfg!(debug_assertions) {
-                    // Double-check that the user isn't lying to us by checking the bucket state.
-                    // To do that, we need to find its control byte. We know that self.iter.data is
-                    // at self.iter.next_ctrl - Group::WIDTH, so we work from there:
-                    let offset = offset_from(self.iter.data.as_ptr(), b.as_ptr());
-                    let ctrl = self.iter.next_ctrl.sub(Group::WIDTH).add(offset);
-                    // This method should be called _before_ a removal, or _after_ an insert,
-                    // so in both cases the ctrl byte should indicate that the bucket is full.
-                    assert!(is_full(*ctrl));
-                }
+            return;
+        }
+
+        // The iterator is at the bucket group that the toggled bucket is in.
+        // We need to do two things:
+        //
+        //  - Determine if the iterator already yielded the toggled bucket.
+        //    If it did, we're done.
+        //  - Otherwise, update the iterator cached group so that it won't
+        //    yield a to-be-removed bucket, or _will_ yield a to-be-added bucket.
+        //    We'll also need to update the item count accordingly.
+        if let Some(index) = self.iter.current_group.lowest_set_bit() {
+            let next_bucket = self.iter.data.next_n(index);
+            if b.as_ptr() > next_bucket.as_ptr() {
+                // The toggled bucket is "before" the bucket the iterator would yield next. We
+                // therefore don't need to do anything --- the iterator has already passed the
+                // bucket in question.
+                //
+                // The item count must already be correct, since a removal or insert "prior" to
+                // the iterator's position wouldn't affect the item count.
+            } else {
+                // The removed bucket is an upcoming bucket. We need to make sure it does _not_
+                // get yielded, and also that it's no longer included in the item count.
+                //
+                // NOTE: We can't just reload the group here, both since that might reflect
+                // inserts we've already passed, and because that might inadvertently unset the
+                // bits for _other_ removals. If we do that, we'd have to also decrement the
+                // item count for those other bits that we unset. But the presumably subsequent
+                // call to reflect for those buckets might _also_ decrement the item count.
+                // Instead, we _just_ flip the bit for the particular bucket the caller asked
+                // us to reflect.
+                let our_bit = offset_from(self.iter.data.as_ptr(), b.as_ptr());
+                let was_full = self.iter.current_group.flip(our_bit);
+                debug_assert_ne!(was_full, is_insert);
 
                 if is_insert {
                     self.items += 1;
@@ -2946,60 +3020,18 @@ impl<T> RawIter<T> {
                     self.items -= 1;
                 }
 
-                return;
-            }
-
-            // The iterator is at the bucket group that the toggled bucket is in.
-            // We need to do two things:
-            //
-            //  - Determine if the iterator already yielded the toggled bucket.
-            //    If it did, we're done.
-            //  - Otherwise, update the iterator cached group so that it won't
-            //    yield a to-be-removed bucket, or _will_ yield a to-be-added bucket.
-            //    We'll also need to update the item count accordingly.
-            if let Some(index) = self.iter.current_group.lowest_set_bit() {
-                let next_bucket = self.iter.data.next_n(index);
-                if b.as_ptr() > next_bucket.as_ptr() {
-                    // The toggled bucket is "before" the bucket the iterator would yield next. We
-                    // therefore don't need to do anything --- the iterator has already passed the
-                    // bucket in question.
-                    //
-                    // The item count must already be correct, since a removal or insert "prior" to
-                    // the iterator's position wouldn't affect the item count.
-                } else {
-                    // The removed bucket is an upcoming bucket. We need to make sure it does _not_
-                    // get yielded, and also that it's no longer included in the item count.
-                    //
-                    // NOTE: We can't just reload the group here, both since that might reflect
-                    // inserts we've already passed, and because that might inadvertently unset the
-                    // bits for _other_ removals. If we do that, we'd have to also decrement the
-                    // item count for those other bits that we unset. But the presumably subsequent
-                    // call to reflect for those buckets might _also_ decrement the item count.
-                    // Instead, we _just_ flip the bit for the particular bucket the caller asked
-                    // us to reflect.
-                    let our_bit = offset_from(self.iter.data.as_ptr(), b.as_ptr());
-                    let was_full = self.iter.current_group.flip(our_bit);
-                    debug_assert_ne!(was_full, is_insert);
-
-                    if is_insert {
-                        self.items += 1;
+                if cfg!(debug_assertions) {
+                    if b.as_ptr() == next_bucket.as_ptr() {
+                        // The removed bucket should no longer be next
+                        debug_assert_ne!(self.iter.current_group.lowest_set_bit(), Some(index));
                     } else {
-                        self.items -= 1;
-                    }
-
-                    if cfg!(debug_assertions) {
-                        if b.as_ptr() == next_bucket.as_ptr() {
-                            // The removed bucket should no longer be next
-                            debug_assert_ne!(self.iter.current_group.lowest_set_bit(), Some(index));
-                        } else {
-                            // We should not have changed what bucket comes next.
-                            debug_assert_eq!(self.iter.current_group.lowest_set_bit(), Some(index));
-                        }
+                        // We should not have changed what bucket comes next.
+                        debug_assert_eq!(self.iter.current_group.lowest_set_bit(), Some(index));
                     }
                 }
-            } else {
-                // We must have already iterated past the removed item.
             }
+        } else {
+            // We must have already iterated past the removed item.
         }
     }
 

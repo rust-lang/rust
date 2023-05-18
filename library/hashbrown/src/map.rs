@@ -1783,19 +1783,16 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {
         let hash = make_insert_hash::<K, S>(&self.hash_builder, &k);
-        self.table
-            .reserve(1, make_hasher::<_, V, S>(&self.hash_builder));
-
-        unsafe {
-            let (index, found) = self.table.find_potential(hash, equivalent_key(&k));
-
-            let bucket = self.table.bucket(index);
-
-            if found {
-                Some(mem::replace(&mut bucket.as_mut().1, v))
-            } else {
-                self.table.mark_inserted(index, hash);
-                bucket.write((k, v));
+        let hasher = make_hasher::<_, V, S>(&self.hash_builder);
+        match self
+            .table
+            .find_or_find_insert_slot(hash, equivalent_key(&k), hasher)
+        {
+            Ok(bucket) => Some(mem::replace(unsafe { &mut bucket.as_mut().1 }, v)),
+            Err(slot) => {
+                unsafe {
+                    self.table.insert_in_slot(hash, slot, (k, v));
+                }
                 None
             }
         }
@@ -2178,7 +2175,7 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// {
     ///     let raw_table = map.raw_table_mut();
     ///     match raw_table.find(hash, is_match) {
-    ///         Some(bucket) => Some(unsafe { raw_table.remove(bucket) }),
+    ///         Some(bucket) => Some(unsafe { raw_table.remove(bucket).0 }),
     ///         None => None,
     ///     }
     /// }
@@ -2801,7 +2798,7 @@ impl<K, V, A: Allocator + Clone> ExtractIfInner<'_, K, V, A> {
             for item in &mut self.iter {
                 let &mut (ref key, ref mut value) = item.as_mut();
                 if f(key, value) {
-                    return Some(self.table.remove(item));
+                    return Some(self.table.remove(item).0);
                 }
             }
         }
@@ -3922,7 +3919,7 @@ impl<'a, K, V, S, A: Allocator + Clone> RawOccupiedEntryMut<'a, K, V, S, A> {
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn remove_entry(self) -> (K, V) {
-        unsafe { self.table.remove(self.elem) }
+        unsafe { self.table.remove(self.elem).0 }
     }
 
     /// Provides shared access to the key and owned access to the value of
@@ -5295,7 +5292,7 @@ impl<'a, K, V, S, A: Allocator + Clone> OccupiedEntry<'a, K, V, S, A> {
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn remove_entry(self) -> (K, V) {
-        unsafe { self.table.table.remove(self.elem) }
+        unsafe { self.table.table.remove(self.elem).0 }
     }
 
     /// Gets a reference to the value in the entry.
@@ -6017,7 +6014,7 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> OccupiedEntryRef<'a, 'b, 
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn remove_entry(self) -> (K, V) {
-        unsafe { self.table.table.remove(self.elem) }
+        unsafe { self.table.table.remove(self.elem).0 }
     }
 
     /// Gets a reference to the value in the entry.
@@ -8365,7 +8362,7 @@ mod test_map {
                         let e = map.table.find(hash_value, |q| q.0.eq(&i));
                         if let Some(e) = e {
                             it.reflect_remove(&e);
-                            let t = map.table.remove(e);
+                            let t = map.table.remove(e).0;
                             removed.push(t);
                             left -= 1;
                         } else {
