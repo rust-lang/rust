@@ -1,13 +1,13 @@
 use std::fmt;
 
-use rustc_infer::infer::{canonical::Canonical, InferOk};
+use rustc_infer::infer::canonical::Canonical;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::type_op::{self, TypeOpOutput};
 use rustc_trait_selection::traits::query::{Fallible, NoSolution};
-use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
+use rustc_trait_selection::traits::ObligationCause;
 
 use crate::diagnostics::{ToUniverseInfo, UniverseInfo};
 
@@ -219,20 +219,17 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
         let cause = ObligationCause::dummy_with_span(span);
         let param_env = self.param_env;
-        let op = |infcx: &'_ _| {
-            let ocx = ObligationCtxt::new_in_snapshot(infcx);
-            let user_ty = ocx.normalize(&cause, param_env, user_ty);
-            ocx.eq(&cause, param_env, user_ty, mir_ty)?;
-            if !ocx.select_all_or_error().is_empty() {
-                return Err(NoSolution);
-            }
-            Ok(InferOk { value: (), obligations: vec![] })
-        };
-
         self.fully_perform_op(
             Locations::All(span),
             ConstraintCategory::Boring,
-            type_op::custom::CustomTypeOp::new(op, || "ascribe_user_type_skip_wf".to_string()),
+            type_op::custom::CustomTypeOp::new(
+                |ocx| {
+                    let user_ty = ocx.normalize(&cause, param_env, user_ty);
+                    ocx.eq(&cause, param_env, user_ty, mir_ty)?;
+                    Ok(())
+                },
+                "ascribe_user_type_skip_wf",
+            ),
         )
         .unwrap_or_else(|err| {
             span_mirbug!(
