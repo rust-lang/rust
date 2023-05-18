@@ -2,7 +2,6 @@
 // compile-flags: -C no-prepopulate-passes
 
 #![crate_type = "lib"]
-
 #![allow(non_camel_case_types)]
 #![feature(repr_simd, platform_intrinsics)]
 #![feature(inline_const)]
@@ -44,7 +43,7 @@ pub fn build_array_s(x: [f32; 4]) -> S<4> {
 #[no_mangle]
 pub fn build_array_transmute_s(x: [f32; 4]) -> S<4> {
     // CHECK: %[[VAL:.+]] = load <4 x float>, {{ptr %x|.+>\* %.+}}, align [[ARRAY_ALIGN]]
-    // CHECK: store <4 x float> %[[VAL:.+]], {{ptr %0|.+>\* %.+}}, align [[VECTOR_ALIGN]]
+    // CHECK: store <4 x float> %[[VAL:.+]], {{ptr %_0|.+>\* %.+}}, align [[VECTOR_ALIGN]]
     unsafe { std::mem::transmute(x) }
 }
 
@@ -59,7 +58,7 @@ pub fn build_array_t(x: [f32; 4]) -> T {
 #[no_mangle]
 pub fn build_array_transmute_t(x: [f32; 4]) -> T {
     // CHECK: %[[VAL:.+]] = load <4 x float>, {{ptr %x|.+>\* %.+}}, align [[ARRAY_ALIGN]]
-    // CHECK: store <4 x float> %[[VAL:.+]], {{ptr %0|.+>\* %.+}}, align [[VECTOR_ALIGN]]
+    // CHECK: store <4 x float> %[[VAL:.+]], {{ptr %_0|.+>\* %.+}}, align [[VECTOR_ALIGN]]
     unsafe { std::mem::transmute(x) }
 }
 
@@ -78,6 +77,6 @@ pub fn build_array_u(x: [f32; 4]) -> U {
 #[no_mangle]
 pub fn build_array_transmute_u(x: [f32; 4]) -> U {
     // CHECK: %[[VAL:.+]] = load <4 x float>, {{ptr %x|.+>\* %.+}}, align [[ARRAY_ALIGN]]
-    // CHECK: store <4 x float> %[[VAL:.+]], {{ptr %0|.+>\* %.+}}, align [[VECTOR_ALIGN]]
+    // CHECK: store <4 x float> %[[VAL:.+]], {{ptr %_0|.+>\* %.+}}, align [[VECTOR_ALIGN]]
     unsafe { std::mem::transmute(x) }
 }

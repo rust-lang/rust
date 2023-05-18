@@ -116,7 +116,7 @@ pub enum Either<T, U> { A(T), B(U) }
 // with the `ptr` field representing both `&i32` and `fn()` depending on the variant.
 // This is incorrect, because `fn()` should be `ptr addrspace(1)`, not `ptr`.
 
-// CHECK: define{{.+}}void @should_not_combine_addrspace({{.+\*|ptr}}{{.+}}sret{{.+}}%0, {{.+\*|ptr}}{{.+}}%x)
+// CHECK: define{{.+}}void @should_not_combine_addrspace({{.+\*|ptr}}{{.+}}sret{{.+}}%_0, {{.+\*|ptr}}{{.+}}%x)
 #[no_mangle]
 #[inline(never)]
 pub fn should_not_combine_addrspace(x: Either<&i32, fn()>) -> Either<&i32, fn()> {
