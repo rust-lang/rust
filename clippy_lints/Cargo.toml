@@ -17,7 +17,7 @@ if_chain = "1.0"
 itertools = "0.10.1"
 pulldown-cmark = { version = "0.9", default-features = false }
 quine-mc_cluskey = "0.2"
-regex-syntax = "0.6"
+regex-syntax = "0.7"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", optional = true }
 tempfile = { version = "3.3.0", optional = true }
