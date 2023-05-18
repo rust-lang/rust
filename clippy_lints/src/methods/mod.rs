@@ -3133,8 +3133,11 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust
     /// # let iterator = vec![1].into_iter();
-    /// let len = iterator.clone().collect::<Vec<_>>().len();
-    /// // should be
+    /// let len = iterator.collect::<Vec<_>>().len();
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// # let iterator = vec![1].into_iter();
     /// let len = iterator.count();
     /// ```
     #[clippy::version = "1.30.0"]
