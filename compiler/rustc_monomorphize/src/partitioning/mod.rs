@@ -365,14 +365,14 @@ where
                 let symbol_hash_start = symbol_name.rfind('h');
                 let symbol_hash = symbol_hash_start.map_or("<no hash>", |i| &symbol_name[i..]);
 
-                let _ = writeln!(
+                let _ = with_no_trimmed_paths!(writeln!(
                     s,
                     " - {} [{:?}] [{}] estimated size {}",
                     mono_item,
                     linkage,
                     symbol_hash,
                     mono_item.size_estimate(tcx)
-                );
+                ));
             }
 
             let _ = writeln!(s);
