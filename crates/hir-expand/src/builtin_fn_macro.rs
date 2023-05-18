@@ -287,16 +287,27 @@ fn format_args_expand_general(
         match token_tree {
             tt::TokenTree::Leaf(l) => match l {
                 tt::Leaf::Literal(l) => {
-                    let text = l.text.strip_prefix('"')?.strip_suffix('"')?;
-                    let span = l.span;
-                    Some((text, span))
+                    if let Some(mut text) = l.text.strip_prefix('r') {
+                        let mut raw_sharps = String::new();
+                        while let Some(t) = text.strip_prefix('#') {
+                            text = t;
+                            raw_sharps.push('#');
+                        }
+                        text =
+                            text.strip_suffix(&raw_sharps)?.strip_prefix('"')?.strip_suffix('"')?;
+                        Some((text, l.span, Some(raw_sharps)))
+                    } else {
+                        let text = l.text.strip_prefix('"')?.strip_suffix('"')?;
+                        let span = l.span;
+                        Some((text, span, None))
+                    }
                 }
                 _ => None,
             },
             tt::TokenTree::Subtree(_) => None,
         }
     })();
-    let Some((format_string, _format_string_span)) = format_string else {
+    let Some((format_string, _format_string_span, raw_sharps)) = format_string else {
         return expand_error;
     };
     let mut format_iter = format_string.chars().peekable();
@@ -379,7 +390,12 @@ fn format_args_expand_general(
         parts.push(last_part);
     }
     let part_tts = parts.into_iter().map(|x| {
-        let l = tt::Literal { span: tt::TokenId::unspecified(), text: format!("\"{}\"", x).into() };
+        let text = if let Some(raw) = &raw_sharps {
+            format!("r{raw}\"{}\"{raw}", x).into()
+        } else {
+            format!("\"{}\"", x).into()
+        };
+        let l = tt::Literal { span: tt::TokenId::unspecified(), text };
         quote!(#l ,)
     });
     let arg_tts = arg_tts.into_iter().flat_map(|arg| arg.token_trees);
