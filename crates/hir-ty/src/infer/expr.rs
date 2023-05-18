@@ -13,7 +13,7 @@ use hir_def::{
     hir::{
         ArithOp, Array, BinaryOp, ClosureKind, Expr, ExprId, LabelId, Literal, Statement, UnaryOp,
     },
-    lang_item::LangItem,
+    lang_item::{LangItem, LangItemTarget},
     path::{GenericArg, GenericArgs},
     BlockId, ConstParamId, FieldId, ItemContainerId, Lookup,
 };
@@ -815,7 +815,7 @@ impl<'a> InferenceContext<'a> {
             Expr::Array(array) => self.infer_expr_array(array, expected),
             Expr::Literal(lit) => match lit {
                 Literal::Bool(..) => self.result.standard_types.bool_.clone(),
-                Literal::String(..) | Literal::CString(..) => {
+                Literal::String(..) => {
                     TyKind::Ref(Mutability::Not, static_lifetime(), TyKind::Str.intern(Interner))
                         .intern(Interner)
                 }
@@ -831,6 +831,20 @@ impl<'a> InferenceContext<'a> {
                     let array_type = TyKind::Array(byte_type, len).intern(Interner);
                     TyKind::Ref(Mutability::Not, static_lifetime(), array_type).intern(Interner)
                 }
+                Literal::CString(..) => TyKind::Ref(
+                    Mutability::Not,
+                    static_lifetime(),
+                    self.resolve_lang_item(LangItem::CStr)
+                        .and_then(LangItemTarget::as_struct)
+                        .map_or_else(
+                            || self.err_ty(),
+                            |strukt| {
+                                TyKind::Adt(AdtId(strukt.into()), Substitution::empty(Interner))
+                                    .intern(Interner)
+                            },
+                        ),
+                )
+                .intern(Interner),
                 Literal::Char(..) => TyKind::Scalar(Scalar::Char).intern(Interner),
                 Literal::Int(_v, ty) => match ty {
                     Some(int_ty) => {
