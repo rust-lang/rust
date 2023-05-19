@@ -30,7 +30,7 @@
 #![allow(clippy::invisible_characters)]
 #![allow(suspicious_double_ref_op)]
 #![allow(drop_bounds)]
-#![allow(drop_copy)]
+#![allow(dropping_copy_types)]
 #![allow(drop_ref)]
 #![allow(for_loops_over_fallibles)]
 #![allow(forget_copy)]
