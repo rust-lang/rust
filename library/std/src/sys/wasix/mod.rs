@@ -30,7 +30,8 @@ pub mod process;
 pub mod stdio;
 #[path = "../unsupported/thread_local_dtor.rs"]
 pub mod thread_local_dtor;
-#[path = "atomics/thread_local_key.rs"]
+#[path = "../unix/thread_local_key.rs"]
+//#[path = "atomics/thread_local_key.rs"]
 pub mod thread_local_key;
 #[path = "../wasi/time.rs"]
 pub mod time;
@@ -111,6 +112,7 @@ pub use super::common::cvt::{
     cvt_r
 };
 
-pub(crate) fn err2io(err: wasi::Errno) -> std_io::Error {
-    std_io::Error::from_raw_os_error(err.raw().into())
+pub(crate) fn err2io<I>(err: I) -> std_io::Error
+where I: Into<wasi::Errno> {
+    std_io::Error::from_raw_os_error(err.into().raw().into())
 }

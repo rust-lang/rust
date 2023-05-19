@@ -22,7 +22,7 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 pub use crate::sys_common::fs::try_exists;
 
 pub struct File {
-    fd: WasiFd,
+    pub(crate) fd: WasiFd,
 }
 
 #[derive(Clone)]
@@ -91,7 +91,7 @@ impl FileAttr {
     }
 
     pub fn file_type(&self) -> FileType {
-        FileType { bits: self.meta.filetype }
+        FileType { bits: self.meta.filetype.into() }
     }
 
     pub fn modified(&self) -> io::Result<SystemTime> {
@@ -258,7 +258,7 @@ impl DirEntry {
     }
 
     pub fn file_type(&self) -> io::Result<FileType> {
-        Ok(FileType { bits: self.meta.d_type })
+        Ok(FileType { bits: self.meta.d_type.into() })
     }
 
     pub fn ino(&self) -> wasi::Inode {

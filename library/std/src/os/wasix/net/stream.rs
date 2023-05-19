@@ -5,15 +5,13 @@ use crate::io::{self, IoSlice, IoSliceMut};
 use crate::net::Shutdown;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::path::Path;
-use crate::sys::net::Socket;
-use crate::sys_common::{FromInner};
 use crate::time::Duration;
 
 /// A Unix stream socket.
 ///
 /// Not supported on this platform
 #[stable(feature = "unix_socket", since = "1.10.0")]
-pub struct UnixStream(pub(super) Socket);
+pub struct UnixStream(crate::sys::fs::File);
 
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl fmt::Debug for UnixStream {
@@ -51,10 +49,17 @@ impl UnixStream {
     /// Not currently supported on this platform
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn pair() -> io::Result<(UnixStream, UnixStream)> {
-        Err(crate::io::const_io_error!(
-            crate::io::ErrorKind::Unsupported,
-            "unix sockets are not supported on this platform",
-        ))
+        use crate::sys::err2io;
+        use crate::sys::fd::WasiFd;
+
+        let (fd1, fd2) = unsafe {
+            wasi::fd_pipe().map_err(err2io)?
+        };
+        unsafe {
+            let fd1 = UnixStream(crate::sys::fs::File { fd: WasiFd::from_raw_fd(fd1 as RawFd)});
+            let fd2 = UnixStream(crate::sys::fs::File { fd: WasiFd::from_raw_fd(fd2 as RawFd)});
+            Ok((fd1, fd2))
+        }
     }
 
     /// Creates a new independently owned handle to the underlying socket.
@@ -62,10 +67,7 @@ impl UnixStream {
     /// Not currently supported on this platform
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn try_clone(&self) -> io::Result<UnixStream> {
-        Err(crate::io::const_io_error!(
-            crate::io::ErrorKind::Unsupported,
-            "unix sockets are not supported on this platform",
-        ))
+        self.0.duplicate().map(UnixStream)
     }
 
     /// Returns the socket address of the local half of this connection.
@@ -139,10 +141,26 @@ impl UnixStream {
     /// Not currently supported on this platform
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
-        Err(crate::io::const_io_error!(
-            crate::io::ErrorKind::Unsupported,
-            "unix sockets are not supported on this platform",
-        ))
+        use crate::sys::err2io;
+
+        let fdstat = unsafe {
+            wasi::fd_fdstat_get(self.0.fd.as_raw_fd() as u32).map_err(err2io)?
+        };
+
+        let mut flags = fdstat.fs_flags;
+
+        if nonblocking {
+            flags |= wasi::FDFLAGS_NONBLOCK;
+        } else {
+            flags &= !wasi::FDFLAGS_NONBLOCK;
+        }
+
+        unsafe {
+            wasi::fd_fdstat_set_flags(self.0.fd.as_raw_fd() as u32, flags)
+                .map_err(err2io)?;
+        }
+
+        Ok(())
     }
 
     /// Returns the value of the `SO_ERROR` option.
@@ -264,10 +282,8 @@ impl AsRawFd for UnixStream {
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl FromRawFd for UnixStream {
     #[inline]
-    unsafe fn from_raw_fd(fd: RawFd) -> UnixStream {
-        unsafe {
-            UnixStream(Socket::from_inner(FromInner::from_inner(OwnedFd::from_raw_fd(fd))))
-        }
+    unsafe fn from_raw_fd(_fd: RawFd) -> UnixStream {
+        unimplemented!();
     }
 }
 

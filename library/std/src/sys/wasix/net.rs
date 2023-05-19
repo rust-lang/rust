@@ -1,4 +1,5 @@
 #![deny(unsafe_op_in_unsafe_fn)]
+#![allow(dead_code)]
 
 use super::err2io;
 use super::fd::WasiFd;
@@ -72,7 +73,6 @@ impl Socket
         }
     }
 
-    #[allow(dead_code)]
     pub fn new_pair(fam: c_int, _ty: c_int) -> io::Result<(Socket, Socket)> {
         let ip = match fam {
             AF_INET6 => IpAddr::V6(Ipv6Addr::UNSPECIFIED),
@@ -175,7 +175,7 @@ impl Socket
 
     pub fn accept(&self) -> io::Result<Socket> {
         let (fd, addr) = unsafe {
-            wasi::sock_accept(self.fd(), 0).map_err(err2io)?
+            wasi::sock_accept2(self.fd(), 0).map_err(err2io)?
         };
         let addr = conv_addr_port(addr);
         Ok(Socket {
@@ -222,7 +222,7 @@ impl Socket
             }
             
             unsafe {
-                match wasi::sock_accept(self.fd(), 0) {
+                match wasi::sock_accept2(self.fd(), 0) {
                     Ok((fd, addr)) => {
                         let addr = conv_addr_port(addr);
                         return Ok(Socket {
@@ -231,7 +231,7 @@ impl Socket
                             peer: Arc::new(Mutex::new(Some(addr))),
                         });
                     }
-                    Err(wasi::ERRNO_AGAIN) => {
+                    Err(wasi::x::ERRNO_AGAIN) => {
                         crate::thread::yield_now();
                         continue;
                     }
@@ -324,7 +324,6 @@ impl Socket
         Ok((ret.0, ret.2))
     }
 
-    #[allow(dead_code)]
     pub fn recv_msg(&self, msg: &mut libc::msghdr) -> io::Result<usize> {
         let n = cvt(unsafe { libc::recvmsg(self.as_raw_fd(), msg, libc::MSG_CMSG_CLOEXEC) })?;
         Ok(n as usize)
@@ -390,12 +389,10 @@ impl Socket
         self.send_to_with_flags(&data, 0, addr)
     }
 
-    #[allow(dead_code)]
     pub fn send_to_vectored(&self, bufs: &[IoSlice<'_>], addr: SocketAddr) -> io::Result<usize> {
         self.send_to_with_flags(bufs, 0, addr)
     }
 
-    #[allow(dead_code)]
     pub fn send_msg(&self, msg: &mut libc::msghdr) -> io::Result<usize> {
         let n = cvt(unsafe { libc::sendmsg(self.as_raw_fd(), msg, 0) })?;
         Ok(n as usize)
@@ -490,22 +487,18 @@ impl Socket
         unsafe { wasi::sock_shutdown(self.fd(), how).map_err(err2io) }
     }
 
-    #[allow(dead_code)]
     pub fn set_reuse_addr(&self, reuse: bool) -> io::Result<()> {
         self.set_opt_flag(wasi::SOCK_OPTION_REUSE_ADDR, reuse)
     }
 
-    #[allow(dead_code)]
     pub fn reuse_addr(&self) -> io::Result<bool> {
         self.get_opt_flag(wasi::SOCK_OPTION_REUSE_ADDR)
     }
 
-    #[allow(dead_code)]
     pub fn set_reuse_port(&self, reuse: bool) -> io::Result<()> {
         self.set_opt_flag(wasi::SOCK_OPTION_REUSE_PORT, reuse)
     }
 
-    #[allow(dead_code)]
     pub fn reuse_port(&self) -> io::Result<bool> {
         self.get_opt_flag(wasi::SOCK_OPTION_REUSE_PORT)
     }
@@ -691,7 +684,6 @@ impl Socket
         Ok(None)
     }
 
-    #[allow(dead_code)]
     pub fn as_raw(&self) -> RawFd {
         self.as_raw_fd()
     }
@@ -1366,7 +1358,6 @@ impl<'a> TryFrom<(&'a str, u16)> for LookupHost {
     }
 }
 
-#[allow(dead_code)]
 #[allow(nonstandard_style)]
 pub mod netc {
     pub const AF_UNSPEC: i32 = 0;
