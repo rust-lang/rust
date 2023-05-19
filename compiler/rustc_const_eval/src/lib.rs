@@ -32,6 +32,8 @@ pub mod interpret;
 pub mod transform;
 pub mod util;
 
+use std::sync::atomic::AtomicBool;
+
 pub use errors::ReportErrorExt;
 
 use rustc_middle::{ty, util::Providers};
@@ -57,3 +59,8 @@ pub fn provide(providers: &mut Providers) {
         util::check_validity_requirement(tcx, init_kind, param_env_and_ty)
     };
 }
+
+/// `rustc_driver::main` installs a handler that will set this to `true` if
+/// the compiler has been sent a request to shut down, such as by a Ctrl-C.
+/// This static lives here because it is only read by the interpreter.
+pub static CTRL_C_RECEIVED: AtomicBool = AtomicBool::new(false);

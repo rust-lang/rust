@@ -482,6 +482,8 @@ pub enum ResourceExhaustionInfo {
     MemoryExhausted,
     /// The address space (of the target) is full.
     AddressSpaceFull,
+    /// The compiler got an interrupt signal (a user ran out of patience).
+    Interrupted,
 }
 
 /// A trait for machine-specific errors (or other "machine stop" conditions).

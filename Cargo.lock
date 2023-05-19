@@ -3771,6 +3771,7 @@ dependencies = [
 name = "rustc_driver_impl"
 version = "0.0.0"
 dependencies = [
+ "ctrlc",
  "libc",
  "rustc_ast",
  "rustc_ast_lowering",
