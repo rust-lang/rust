@@ -274,6 +274,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::InlineAsm(asm) => {
                     hir::ExprKind::InlineAsm(self.lower_inline_asm(e.span, asm))
                 }
+                ExprKind::Matches(expr, true_arm, false_arm) => hir::ExprKind::Match(
+                    self.lower_expr(expr),
+                    self.arena.alloc_from_iter(
+                        [true_arm, false_arm].iter().map(|elem| self.lower_arm(elem)),
+                    ),
+                    hir::MatchSource::Normal,
+                ),
                 ExprKind::FormatArgs(fmt) => self.lower_format_args(e.span, fmt),
                 ExprKind::OffsetOf(container, fields) => hir::ExprKind::OffsetOf(
                     self.lower_ty(

@@ -1,3 +1,5 @@
+#![allow(unreachable_patterns)]
+
 // run-pass
 // edition:2021
 

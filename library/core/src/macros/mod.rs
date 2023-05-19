@@ -336,15 +336,41 @@ pub macro debug_assert_matches($($arg:tt)*) {
 /// let bar = Some(4);
 /// assert!(matches!(bar, Some(x) if x > 2));
 /// ```
+#[cfg(bootstrap)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "matches_macro")]
 #[macro_export]
 #[stable(feature = "matches_macro", since = "1.42.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "matches_macro")]
 macro_rules! matches {
     ($expression:expr, $pattern:pat $(if $guard:expr)? $(,)?) => {
         match $expression {
             $pattern $(if $guard)? => true,
             _ => false
         }
+    };
+}
+
+/// Returns whether the given expression matches any of the given patterns.
+///
+/// Like in a `match` expression, the pattern can be optionally followed by `if`
+/// and a guard expression that has access to names bound by the pattern.
+///
+/// # Examples
+///
+/// ```
+/// let foo = 'f';
+/// assert!(matches!(foo, 'A'..='Z' | 'a'..='z'));
+///
+/// let bar = Some(4);
+/// assert!(matches!(bar, Some(x) if x > 2));
+/// ```
+#[allow_internal_unstable(builtin_syntax)]
+#[cfg(not(bootstrap))]
+#[cfg_attr(not(test), rustc_diagnostic_item = "matches_macro")]
+#[macro_export]
+#[stable(feature = "matches_macro", since = "1.42.0")]
+macro_rules! matches {
+    ($expression:expr, $pattern:pat $(if $guard:expr)? $(,)?) => {
+        builtin # matches($expression, $pattern $(if $guard)?)
     };
 }
 
@@ -782,7 +808,6 @@ macro_rules! todo {
 /// with exception of expansion functions transforming macro inputs into outputs,
 /// those functions are provided by the compiler.
 pub(crate) mod builtin {
-
     /// Causes compilation to fail with the given error message when encountered.
     ///
     /// This macro should be used when a crate uses a conditional compilation strategy to provide

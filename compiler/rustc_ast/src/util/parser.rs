@@ -267,6 +267,7 @@ pub enum ExprPrecedence {
     InlineAsm,
     OffsetOf,
     Mac,
+    Matches,
     FormatArgs,
 
     Array,
@@ -329,6 +330,7 @@ impl ExprPrecedence {
             | ExprPrecedence::Field
             | ExprPrecedence::Index
             | ExprPrecedence::Try
+            | ExprPrecedence::Matches
             | ExprPrecedence::InlineAsm
             | ExprPrecedence::Mac
             | ExprPrecedence::FormatArgs

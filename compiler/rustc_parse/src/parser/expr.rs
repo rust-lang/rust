@@ -9,6 +9,7 @@ use super::{
 use crate::errors;
 use crate::maybe_recover_from_interpolated_ty_qpath;
 use ast::{Path, PathSegment};
+use core::borrow::BorrowMut;
 use core::mem;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
@@ -1473,17 +1474,34 @@ impl<'a> Parser<'a> {
         };
 
         // `!`, as an operator, is prefix, so we know this isn't that.
-        let (span, kind) = if self.eat(&token::Not) {
+        let expr = if self.eat(&token::Not) {
+            fn mac_call_expr(args: P<ast::DelimArgs>, lo: Span, path: Path, this: &mut Parser<'_>) -> P<Expr> {
+                this.mk_expr(
+                    lo.to(this.prev_token.span),
+                    ExprKind::MacCall(P(MacCall { path, args }))
+                )
+            }
             // MACRO INVOCATION expression
             if qself.is_some() {
                 self.sess.emit_err(errors::MacroInvocationWithQualifiedPath(path.span));
             }
+            let args = self.parse_delim_args()?;
             let lo = path.span;
-            let mac = P(MacCall {
-                path,
-                args: self.parse_delim_args()?,
-            });
-            (lo.to(self.prev_token.span), ExprKind::MacCall(mac))
+            if let Some(first_segment) = path.segments.first() {
+                match parse_builtin_mac(&first_segment.ident, lo, || {
+                    Parser::new(&self.sess, args.tokens.clone(), false, None)
+                }) {
+                    Err(err) => {
+                        err.cancel();
+                        mac_call_expr(args, lo, path, self)
+                    },
+                    Ok(None) => mac_call_expr(args, lo, path, self),
+                    Ok(Some(builtin_expr)) => builtin_expr,
+                }
+            }
+            else {
+                mac_call_expr(args, lo, path, self)
+            }
         } else if self.check(&token::OpenDelim(Delimiter::Brace))
             && let Some(expr) = self.maybe_parse_struct_expr(&qself, &path)
         {
@@ -1492,10 +1510,9 @@ impl<'a> Parser<'a> {
             }
             return expr;
         } else {
-            (path.span, ExprKind::Path(qself, path))
+            self.mk_expr(path.span, ExprKind::Path(qself, path))
         };
 
-        let expr = self.mk_expr(span, kind);
         self.maybe_recover_from_bad_qpath(expr)
     }
 
@@ -1774,13 +1791,7 @@ impl<'a> Parser<'a> {
 
     /// Parse `builtin # ident(args,*)`.
     fn parse_expr_builtin(&mut self) -> PResult<'a, P<Expr>> {
-        self.parse_builtin(|this, lo, ident| {
-            if ident.name == sym::offset_of {
-                return Ok(Some(this.parse_expr_offset_of(lo)?));
-            }
-
-            Ok(None)
-        })
+        self.parse_builtin(|this, lo, ident| parse_builtin_mac(&ident, lo, || this))
     }
 
     pub(crate) fn parse_builtin<T>(
@@ -1825,6 +1836,55 @@ impl<'a> Parser<'a> {
         )?;
         let span = lo.to(self.token.span);
         Ok(self.mk_expr(span, ExprKind::OffsetOf(container, fields.to_vec().into())))
+    }
+
+    pub(crate) fn parse_expr_matches(&mut self, lo: Span) -> PResult<'a, P<Expr>> {
+        let expr = self.parse_expr()?;
+        self.expect(&TokenKind::Comma)?;
+        let pat = self.parse_pat_allow_top_alt(
+            None,
+            RecoverComma::No,
+            RecoverColon::Yes,
+            CommaRecoveryMode::LikelyTuple,
+        )?;
+        let guard = if self.eat_keyword(kw::If) {
+            let guard = self.parse_expr()?;
+            Some(guard)
+        } else {
+            None
+        };
+        let _ = self.eat(&token::Comma);
+        let span = lo.to(self.token.span);
+        let true_arm = Arm {
+            attrs: <_>::default(),
+            pat,
+            guard,
+            body: self.mk_expr(
+                span,
+                ExprKind::Lit(token::Lit::new(token::LitKind::Bool, kw::True, None)),
+            ),
+            span,
+            id: DUMMY_NODE_ID,
+            is_placeholder: false,
+        };
+        let false_arm = Arm {
+            attrs: <_>::default(),
+            pat: P(ast::Pat {
+                id: DUMMY_NODE_ID,
+                kind: ast::PatKind::Wild,
+                span,
+                tokens: <_>::default(),
+            }),
+            guard: None,
+            body: self.mk_expr(
+                span,
+                ExprKind::Lit(token::Lit::new(token::LitKind::Bool, kw::False, None)),
+            ),
+            span,
+            id: DUMMY_NODE_ID,
+            is_placeholder: false,
+        };
+        Ok(self.mk_expr(lo.to(self.token.span), ExprKind::Matches(expr, P(true_arm), P(false_arm))))
     }
 
     /// Returns a string literal if the next token is a string literal.
@@ -3317,7 +3377,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, P<Expr>> {
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
             let res = f(this, attrs)?;
-            let trailing = if this.restrictions.contains(Restrictions::STMT_EXPR)
+            let trailing = if this.restrictions.contains(Restrictions::STMT_EXPRPAr)
                 && this.token.kind == token::Semi
             {
                 TrailingToken::Semi
@@ -3332,4 +3392,22 @@ impl<'a> Parser<'a> {
             Ok((res, trailing))
         })
     }
+}
+
+/// `parser` is a callback to avoid unecessary clones of `Parser`.
+pub(crate) fn parse_builtin_mac<'any, B>(
+    ident: &Ident,
+    lo: Span,
+    parser: impl FnOnce() -> B,
+) -> PResult<'any, Option<P<Expr>>>
+where
+    B: BorrowMut<Parser<'any>>,
+{
+    if ident.name == sym::matches {
+        return Ok(Some(parser().borrow_mut().parse_expr_matches(lo)?));
+    }
+    if ident.name == sym::offset_of {
+        return Ok(Some(parser().borrow_mut().parse_expr_offset_of(lo)?));
+    }
+    Ok(None)
 }

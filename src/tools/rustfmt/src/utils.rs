@@ -500,6 +500,7 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         | ast::ExprKind::IncludedBytes(..)
         | ast::ExprKind::InlineAsm(..)
         | ast::ExprKind::OffsetOf(..)
+        | ast::ExprKind::Matches(..)
         | ast::ExprKind::Let(..)
         | ast::ExprKind::Path(..)
         | ast::ExprKind::Range(..)

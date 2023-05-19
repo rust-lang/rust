@@ -217,6 +217,7 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::Try(..)
             | ast::ExprKind::TryBlock(..)
             | ast::ExprKind::Tup(..)
+            | ast::ExprKind::Matches(..)
             | ast::ExprKind::Array(..)
             | ast::ExprKind::While(..)
             | ast::ExprKind::Await(..)

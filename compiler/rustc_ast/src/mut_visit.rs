@@ -148,6 +148,10 @@ pub trait MutVisitor: Sized {
         noop_visit_anon_const(c, self);
     }
 
+    fn visit_arm(&mut self, arm: &mut P<Arm>) {
+        noop_visit_arm(arm, self)
+    }
+
     fn visit_expr(&mut self, e: &mut P<Expr>) {
         noop_visit_expr(e, self);
     }
@@ -443,13 +447,7 @@ pub fn noop_visit_use_tree<T: MutVisitor>(use_tree: &mut UseTree, vis: &mut T) {
 }
 
 pub fn noop_flat_map_arm<T: MutVisitor>(mut arm: Arm, vis: &mut T) -> SmallVec<[Arm; 1]> {
-    let Arm { attrs, pat, guard, body, span, id, is_placeholder: _ } = &mut arm;
-    visit_attrs(attrs, vis);
-    vis.visit_id(id);
-    vis.visit_pat(pat);
-    visit_opt(guard, |guard| vis.visit_expr(guard));
-    vis.visit_expr(body);
-    vis.visit_span(span);
+    noop_visit_arm(&mut arm, vis);
     smallvec![arm]
 }
 
@@ -693,6 +691,16 @@ pub fn visit_attr_tt<T: MutVisitor>(tt: &mut AttrTokenTree, vis: &mut T) {
             visit_lazy_tts_opt_mut(Some(&mut data.tokens), vis);
         }
     }
+}
+
+fn noop_visit_arm<T: MutVisitor>(arm: &mut Arm, vis: &mut T) {
+    let Arm { attrs, pat, guard, body, span, id, is_placeholder: _ } = arm;
+    visit_attrs(attrs, vis);
+    vis.visit_id(id);
+    vis.visit_pat(pat);
+    visit_opt(guard, |guard| vis.visit_expr(guard));
+    vis.visit_expr(body);
+    vis.visit_span(span);
 }
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
@@ -1333,6 +1341,11 @@ pub fn noop_visit_expr<T: MutVisitor>(
         ExprKind::Call(f, args) => {
             vis.visit_expr(f);
             visit_thin_exprs(args, vis);
+        }
+        ExprKind::Matches(expr, true_arm, false_arm) => {
+            vis.visit_expr(expr);
+            vis.visit_arm(true_arm);
+            vis.visit_arm(false_arm);
         }
         ExprKind::MethodCall(box MethodCall {
             seg: PathSegment { ident, id, args: seg_args },

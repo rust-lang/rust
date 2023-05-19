@@ -86,6 +86,9 @@ fn main() {
     // index
     [ [1i32, 1][elem as usize] == 3 ] => "Assertion failed: [1i32, 1][elem as usize] == 3\nWith captures:\n  elem = 1\n"
 
+    // matches
+    [ matches!(Some(elem == 1i32), None) ] => "Assertion failed: builtin # matches(Some(elem == 1i32), None)\nWith captures:\n  elem = 1\n"
+
     // method call
     [ FOO.add(elem, elem) == 3 ] => "Assertion failed: FOO.add(elem, elem) == 3\nWith captures:\n  elem = 1\n"
 

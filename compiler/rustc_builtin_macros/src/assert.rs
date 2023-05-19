@@ -31,31 +31,13 @@ pub fn expand_assert<'cx>(
     // context to pick up whichever is currently in scope.
     let call_site_span = cx.with_call_site_ctxt(span);
 
-    let panic_path = || {
-        if use_panic_2021(span) {
-            // On edition 2021, we always call `$crate::panic::panic_2021!()`.
-            Path {
-                span: call_site_span,
-                segments: cx
-                    .std_path(&[sym::panic, sym::panic_2021])
-                    .into_iter()
-                    .map(|ident| PathSegment::from_ident(ident))
-                    .collect(),
-                tokens: None,
-            }
-        } else {
-            // Before edition 2021, we call `panic!()` unqualified,
-            // such that it calls either `std::panic!()` or `core::panic!()`.
-            Path::from_ident(Ident::new(sym::panic, call_site_span))
-        }
-    };
-
     // Simply uses the user provided message instead of generating custom outputs
     let expr = if let Some(tokens) = custom_message {
+        let panic_path = panic_path(call_site_span, cx, span);
         let then = cx.expr(
             call_site_span,
             ExprKind::MacCall(P(MacCall {
-                path: panic_path(),
+                path: panic_path,
                 args: P(DelimArgs {
                     dspan: DelimSpan::from_single(call_site_span),
                     delim: MacDelimiter::Parenthesis,
@@ -69,7 +51,8 @@ pub fn expand_assert<'cx>(
     //
     // FIXME(c410-f3r) See https://github.com/rust-lang/rust/issues/96949
     else if let Some(features) = cx.ecfg.features && features.generic_assert {
-        context::Context::new(cx, call_site_span).build(cond_expr, panic_path())
+        let panic_path = panic_path(call_site_span, cx, span);
+        context::Context::new(cx, call_site_span).build(cond_expr, panic_path)
     }
     // If `generic_assert` is not enabled, only outputs a literal "assertion failed: ..."
     // string
@@ -108,6 +91,25 @@ fn expr_if_not(
     els: Option<P<Expr>>,
 ) -> P<Expr> {
     cx.expr_if(span, cx.expr(span, ExprKind::Unary(UnOp::Not, cond)), then, els)
+}
+
+fn panic_path(call_site_span: Span, cx: &mut ExtCtxt<'_>, span: Span) -> Path {
+    if use_panic_2021(span) {
+        // On edition 2021, we always call `$crate::panic::panic_2021!()`.
+        Path {
+            span: call_site_span,
+            segments: cx
+                .std_path(&[sym::panic, sym::panic_2021])
+                .into_iter()
+                .map(|ident| PathSegment::from_ident(ident))
+                .collect(),
+            tokens: None,
+        }
+    } else {
+        // Before edition 2021, we call `panic!()` unqualified,
+        // such that it calls either `std::panic!()` or `core::panic!()`.
+        Path::from_ident(Ident::new(sym::panic, call_site_span))
+    }
 }
 
 fn parse_assert<'a>(cx: &mut ExtCtxt<'a>, sp: Span, stream: TokenStream) -> PResult<'a, Assert> {

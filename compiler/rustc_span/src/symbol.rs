@@ -923,6 +923,7 @@ symbols! {
         masked,
         match_beginning_vert,
         match_default_bindings,
+        matches,
         matches_macro,
         maxnumf32,
         maxnumf64,

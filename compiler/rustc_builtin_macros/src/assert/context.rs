@@ -22,7 +22,7 @@ pub(super) struct Context<'cx, 'a> {
     best_case_captures: Vec<Stmt>,
     // Top-level `let captureN = Capture::new()` statements
     capture_decls: Vec<Capture>,
-    cx: &'cx ExtCtxt<'a>,
+    cx: &'cx mut ExtCtxt<'a>,
     // Formatting string used for debugging
     fmt_string: String,
     // If the current expression being visited consumes itself. Used to construct
@@ -41,7 +41,7 @@ pub(super) struct Context<'cx, 'a> {
 }
 
 impl<'cx, 'a> Context<'cx, 'a> {
-    pub(super) fn new(cx: &'cx ExtCtxt<'a>, span: Span) -> Self {
+    pub(super) fn new(cx: &'cx mut ExtCtxt<'a>, span: Span) -> Self {
         Self {
             best_case_captures: <_>::default(),
             capture_decls: <_>::default(),
@@ -85,8 +85,8 @@ impl<'cx, 'a> Context<'cx, 'a> {
 
         let mut assert_then_stmts = ThinVec::with_capacity(2);
         assert_then_stmts.extend(best_case_captures);
-        assert_then_stmts.push(self.cx.stmt_expr(panic));
-        let assert_then = self.cx.block(span, assert_then_stmts);
+        assert_then_stmts.push(cx.stmt_expr(panic));
+        let assert_then = cx.block(span, assert_then_stmts);
 
         let mut stmts = ThinVec::with_capacity(4);
         stmts.push(initial_imports);
@@ -237,6 +237,9 @@ impl<'cx, 'a> Context<'cx, 'a> {
                 self.manage_cond_expr(prefix);
                 self.manage_cond_expr(suffix);
             }
+            ExprKind::Matches(expr, _, _) => {
+                self.manage_cond_expr(expr);
+            }
             ExprKind::MethodCall(call) => {
                 for arg in &mut call.args {
                     self.manage_cond_expr(arg);
@@ -295,17 +298,17 @@ impl<'cx, 'a> Context<'cx, 'a> {
             | ExprKind::Continue(_)
             | ExprKind::Err
             | ExprKind::Field(_, _)
-            | ExprKind::FormatArgs(_)
             | ExprKind::ForLoop(_, _, _, _)
+            | ExprKind::FormatArgs(_)
             | ExprKind::If(_, _, _)
             | ExprKind::IncludedBytes(..)
             | ExprKind::InlineAsm(_)
-            | ExprKind::OffsetOf(_, _)
             | ExprKind::Let(_, _, _)
             | ExprKind::Lit(_)
             | ExprKind::Loop(_, _, _)
             | ExprKind::MacCall(_)
             | ExprKind::Match(_, _)
+            | ExprKind::OffsetOf(_, _)
             | ExprKind::Path(_, _)
             | ExprKind::Ret(_)
             | ExprKind::Try(_)

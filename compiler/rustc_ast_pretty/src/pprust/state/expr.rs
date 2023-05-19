@@ -555,6 +555,20 @@ impl<'a> State<'a> {
                 self.end();
                 self.pclose();
             }
+            ast::ExprKind::Matches(expr, true_arm, _) => {
+                self.word("builtin # matches");
+                self.popen();
+                self.rbox(0, Inconsistent);
+                self.print_expr(expr);
+                self.word(", ");
+                self.print_pat(&true_arm.pat);
+                if let Some(elem) = &true_arm.guard {
+                    self.word("if");
+                    self.print_expr(elem);
+                }
+                self.pclose();
+                self.end();
+            }
             ast::ExprKind::OffsetOf(container, fields) => {
                 self.word("builtin # offset_of");
                 self.popen();

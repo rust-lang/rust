@@ -1291,6 +1291,7 @@ impl Expr {
             ExprKind::Struct(..) => ExprPrecedence::Struct,
             ExprKind::Repeat(..) => ExprPrecedence::Repeat,
             ExprKind::Paren(..) => ExprPrecedence::Paren,
+            ExprKind::Matches(..) => ExprPrecedence::Matches,
             ExprKind::Try(..) => ExprPrecedence::Try,
             ExprKind::Yield(..) => ExprPrecedence::Yield,
             ExprKind::Yeet(..) => ExprPrecedence::Yeet,
@@ -1487,6 +1488,9 @@ pub enum ExprKind {
 
     /// Output of the `offset_of!()` macro.
     OffsetOf(P<Ty>, P<[Ident]>),
+
+    /// Output of the `matches!()` macro.
+    Matches(P<Expr>, P<Arm>, P<Arm>),
 
     /// A macro invocation; pre-expansion.
     MacCall(P<MacCall>),

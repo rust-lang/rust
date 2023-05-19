@@ -803,6 +803,11 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             visitor.visit_expr(callee_expression);
             walk_list!(visitor, visit_expr, arguments);
         }
+        ExprKind::Matches(expr, true_arm, false_arm) => {
+            visitor.visit_expr(expr);
+            visitor.visit_arm(true_arm);
+            visitor.visit_arm(false_arm);
+        }
         ExprKind::MethodCall(box MethodCall { seg, receiver, args, span: _ }) => {
             visitor.visit_path_segment(seg);
             visitor.visit_expr(receiver);
