@@ -40,7 +40,7 @@ fn function_from_issue_111583(_1: f64) -> () {
         _9 = _1;                         // scope 2 at $DIR/logical_and_in_conditional.rs:+3:9: +3:10
         _8 = core::f64::<impl f64>::to_bits(move _9) -> [return: bb1, unwind: bb10]; // scope 2 at $DIR/logical_and_in_conditional.rs:+3:9: +3:20
                                          // mir::Constant
-                                         // + span: $DIR/logical_and_in_conditional.rs:28:11: 28:18
+                                         // + span: $DIR/logical_and_in_conditional.rs:19:11: 19:18
                                          // + literal: Const { ty: fn(f64) -> u64 {core::f64::<impl f64>::to_bits}, val: Value(<ZST>) }
     }
 

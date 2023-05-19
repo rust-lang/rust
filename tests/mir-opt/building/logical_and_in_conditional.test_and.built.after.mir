@@ -5,106 +5,133 @@ fn test_and(_1: i32, _2: i32, _3: i32) -> () {
     debug b => _2;                       // in scope 0 at $DIR/logical_and_in_conditional.rs:+0:21: +0:22
     debug c => _3;                       // in scope 0 at $DIR/logical_and_in_conditional.rs:+0:29: +0:30
     let mut _0: ();                      // return place in scope 0 at $DIR/logical_and_in_conditional.rs:+0:37: +0:37
-    let mut _4: bool;                    // in scope 0 at $DIR/logical_and_in_conditional.rs:+1:8: +4:6
-    let _5: Droppy;                      // in scope 0 at $DIR/logical_and_in_conditional.rs:+2:13: +2:15
-    let mut _6: i32;                     // in scope 0 at $DIR/logical_and_in_conditional.rs:+3:9: +3:10
-    let mut _7: bool;                    // in scope 0 at $DIR/logical_and_in_conditional.rs:+4:10: +7:6
-    let _8: Droppy;                      // in scope 0 at $DIR/logical_and_in_conditional.rs:+5:13: +5:15
-    let mut _9: i32;                     // in scope 0 at $DIR/logical_and_in_conditional.rs:+6:9: +6:10
-    let mut _10: bool;                   // in scope 0 at $DIR/logical_and_in_conditional.rs:+7:10: +10:6
-    let _11: Droppy;                     // in scope 0 at $DIR/logical_and_in_conditional.rs:+8:13: +8:15
-    let mut _12: i32;                    // in scope 0 at $DIR/logical_and_in_conditional.rs:+9:9: +9:10
-    scope 1 {
-        debug _t => _5;                  // in scope 1 at $DIR/logical_and_in_conditional.rs:+2:13: +2:15
-    }
-    scope 2 {
-        debug _t => _8;                  // in scope 2 at $DIR/logical_and_in_conditional.rs:+5:13: +5:15
-    }
-    scope 3 {
-        debug _t => _11;                 // in scope 3 at $DIR/logical_and_in_conditional.rs:+8:13: +8:15
-    }
+    let mut _4: bool;                    // in scope 0 at $DIR/logical_and_in_conditional.rs:+1:8: +1:24
+    let mut _5: Droppy;                  // in scope 0 at $DIR/logical_and_in_conditional.rs:+1:8: +1:22
+    let mut _6: bool;                    // in scope 0 at $DIR/logical_and_in_conditional.rs:+1:15: +1:21
+    let mut _7: i32;                     // in scope 0 at $DIR/logical_and_in_conditional.rs:+1:15: +1:16
+    let mut _8: bool;                    // in scope 0 at $DIR/logical_and_in_conditional.rs:+1:28: +1:44
+    let mut _9: Droppy;                  // in scope 0 at $DIR/logical_and_in_conditional.rs:+1:28: +1:42
+    let mut _10: bool;                   // in scope 0 at $DIR/logical_and_in_conditional.rs:+1:35: +1:41
+    let mut _11: i32;                    // in scope 0 at $DIR/logical_and_in_conditional.rs:+1:35: +1:36
+    let mut _12: bool;                   // in scope 0 at $DIR/logical_and_in_conditional.rs:+1:48: +1:64
+    let mut _13: Droppy;                 // in scope 0 at $DIR/logical_and_in_conditional.rs:+1:48: +1:62
+    let mut _14: bool;                   // in scope 0 at $DIR/logical_and_in_conditional.rs:+1:55: +1:61
+    let mut _15: i32;                    // in scope 0 at $DIR/logical_and_in_conditional.rs:+1:55: +1:56
 
     bb0: {
-        StorageLive(_4);                 // scope 0 at $DIR/logical_and_in_conditional.rs:+1:8: +4:6
-        StorageLive(_5);                 // scope 0 at $DIR/logical_and_in_conditional.rs:+2:13: +2:15
-        _5 = Droppy;                     // scope 0 at $DIR/logical_and_in_conditional.rs:+2:18: +2:24
-        FakeRead(ForLet(None), _5);      // scope 0 at $DIR/logical_and_in_conditional.rs:+2:13: +2:15
-        StorageLive(_6);                 // scope 1 at $DIR/logical_and_in_conditional.rs:+3:9: +3:10
-        _6 = _1;                         // scope 1 at $DIR/logical_and_in_conditional.rs:+3:9: +3:10
-        _4 = Eq(move _6, const 0_i32);   // scope 1 at $DIR/logical_and_in_conditional.rs:+3:9: +3:15
-        StorageDead(_6);                 // scope 1 at $DIR/logical_and_in_conditional.rs:+3:14: +3:15
-        drop(_5) -> [return: bb1, unwind: bb12]; // scope 0 at $DIR/logical_and_in_conditional.rs:+4:5: +4:6
+        StorageLive(_4);                 // scope 0 at $DIR/logical_and_in_conditional.rs:+1:8: +1:24
+        StorageLive(_5);                 // scope 0 at $DIR/logical_and_in_conditional.rs:+1:8: +1:22
+        StorageLive(_6);                 // scope 0 at $DIR/logical_and_in_conditional.rs:+1:15: +1:21
+        StorageLive(_7);                 // scope 0 at $DIR/logical_and_in_conditional.rs:+1:15: +1:16
+        _7 = _1;                         // scope 0 at $DIR/logical_and_in_conditional.rs:+1:15: +1:16
+        _6 = Eq(move _7, const 0_i32);   // scope 0 at $DIR/logical_and_in_conditional.rs:+1:15: +1:21
+        StorageDead(_7);                 // scope 0 at $DIR/logical_and_in_conditional.rs:+1:20: +1:21
+        _5 = Droppy(move _6);            // scope 0 at $DIR/logical_and_in_conditional.rs:+1:8: +1:22
+        StorageDead(_6);                 // scope 0 at $DIR/logical_and_in_conditional.rs:+1:21: +1:22
+        _4 = (_5.0: bool);               // scope 0 at $DIR/logical_and_in_conditional.rs:+1:8: +1:24
+        switchInt(move _4) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/logical_and_in_conditional.rs:+1:8: +1:24
     }
 
     bb1: {
-        StorageDead(_5);                 // scope 0 at $DIR/logical_and_in_conditional.rs:+4:5: +4:6
-        switchInt(move _4) -> [0: bb3, otherwise: bb2]; // scope 0 at $DIR/logical_and_in_conditional.rs:+1:8: +4:6
+        drop(_5) -> [return: bb3, unwind: bb18]; // scope 0 at $DIR/logical_and_in_conditional.rs:+1:23: +1:24
     }
 
     bb2: {
-        StorageLive(_7);                 // scope 0 at $DIR/logical_and_in_conditional.rs:+4:10: +7:6
-        StorageLive(_8);                 // scope 0 at $DIR/logical_and_in_conditional.rs:+5:13: +5:15
-        _8 = Droppy;                     // scope 0 at $DIR/logical_and_in_conditional.rs:+5:18: +5:24
-        FakeRead(ForLet(None), _8);      // scope 0 at $DIR/logical_and_in_conditional.rs:+5:13: +5:15
-        StorageLive(_9);                 // scope 2 at $DIR/logical_and_in_conditional.rs:+6:9: +6:10
-        _9 = _2;                         // scope 2 at $DIR/logical_and_in_conditional.rs:+6:9: +6:10
-        _7 = Eq(move _9, const 0_i32);   // scope 2 at $DIR/logical_and_in_conditional.rs:+6:9: +6:15
-        StorageDead(_9);                 // scope 2 at $DIR/logical_and_in_conditional.rs:+6:14: +6:15
-        drop(_8) -> [return: bb4, unwind: bb12]; // scope 0 at $DIR/logical_and_in_conditional.rs:+7:5: +7:6
+        goto -> bb14;                    // scope 0 at $DIR/logical_and_in_conditional.rs:+1:8: +1:24
     }
 
     bb3: {
-        goto -> bb10;                    // scope 0 at $DIR/logical_and_in_conditional.rs:+1:8: +4:6
+        StorageDead(_5);                 // scope 0 at $DIR/logical_and_in_conditional.rs:+1:23: +1:24
+        StorageLive(_8);                 // scope 0 at $DIR/logical_and_in_conditional.rs:+1:28: +1:44
+        StorageLive(_9);                 // scope 0 at $DIR/logical_and_in_conditional.rs:+1:28: +1:42
+        StorageLive(_10);                // scope 0 at $DIR/logical_and_in_conditional.rs:+1:35: +1:41
+        StorageLive(_11);                // scope 0 at $DIR/logical_and_in_conditional.rs:+1:35: +1:36
+        _11 = _2;                        // scope 0 at $DIR/logical_and_in_conditional.rs:+1:35: +1:36
+        _10 = Eq(move _11, const 0_i32); // scope 0 at $DIR/logical_and_in_conditional.rs:+1:35: +1:41
+        StorageDead(_11);                // scope 0 at $DIR/logical_and_in_conditional.rs:+1:40: +1:41
+        _9 = Droppy(move _10);           // scope 0 at $DIR/logical_and_in_conditional.rs:+1:28: +1:42
+        StorageDead(_10);                // scope 0 at $DIR/logical_and_in_conditional.rs:+1:41: +1:42
+        _8 = (_9.0: bool);               // scope 0 at $DIR/logical_and_in_conditional.rs:+1:28: +1:44
+        switchInt(move _8) -> [0: bb5, otherwise: bb4]; // scope 0 at $DIR/logical_and_in_conditional.rs:+1:28: +1:44
     }
 
     bb4: {
-        StorageDead(_8);                 // scope 0 at $DIR/logical_and_in_conditional.rs:+7:5: +7:6
-        switchInt(move _7) -> [0: bb6, otherwise: bb5]; // scope 0 at $DIR/logical_and_in_conditional.rs:+4:10: +7:6
+        drop(_9) -> [return: bb6, unwind: bb18]; // scope 0 at $DIR/logical_and_in_conditional.rs:+1:43: +1:44
     }
 
     bb5: {
-        StorageLive(_10);                // scope 0 at $DIR/logical_and_in_conditional.rs:+7:10: +10:6
-        StorageLive(_11);                // scope 0 at $DIR/logical_and_in_conditional.rs:+8:13: +8:15
-        _11 = Droppy;                    // scope 0 at $DIR/logical_and_in_conditional.rs:+8:18: +8:24
-        FakeRead(ForLet(None), _11);     // scope 0 at $DIR/logical_and_in_conditional.rs:+8:13: +8:15
-        StorageLive(_12);                // scope 3 at $DIR/logical_and_in_conditional.rs:+9:9: +9:10
-        _12 = _3;                        // scope 3 at $DIR/logical_and_in_conditional.rs:+9:9: +9:10
-        _10 = Eq(move _12, const 0_i32); // scope 3 at $DIR/logical_and_in_conditional.rs:+9:9: +9:15
-        StorageDead(_12);                // scope 3 at $DIR/logical_and_in_conditional.rs:+9:14: +9:15
-        drop(_11) -> [return: bb7, unwind: bb12]; // scope 0 at $DIR/logical_and_in_conditional.rs:+10:5: +10:6
+        goto -> bb12;                    // scope 0 at $DIR/logical_and_in_conditional.rs:+1:28: +1:44
     }
 
     bb6: {
-        goto -> bb10;                    // scope 0 at $DIR/logical_and_in_conditional.rs:+4:10: +7:6
+        StorageDead(_9);                 // scope 0 at $DIR/logical_and_in_conditional.rs:+1:43: +1:44
+        StorageLive(_12);                // scope 0 at $DIR/logical_and_in_conditional.rs:+1:48: +1:64
+        StorageLive(_13);                // scope 0 at $DIR/logical_and_in_conditional.rs:+1:48: +1:62
+        StorageLive(_14);                // scope 0 at $DIR/logical_and_in_conditional.rs:+1:55: +1:61
+        StorageLive(_15);                // scope 0 at $DIR/logical_and_in_conditional.rs:+1:55: +1:56
+        _15 = _3;                        // scope 0 at $DIR/logical_and_in_conditional.rs:+1:55: +1:56
+        _14 = Eq(move _15, const 0_i32); // scope 0 at $DIR/logical_and_in_conditional.rs:+1:55: +1:61
+        StorageDead(_15);                // scope 0 at $DIR/logical_and_in_conditional.rs:+1:60: +1:61
+        _13 = Droppy(move _14);          // scope 0 at $DIR/logical_and_in_conditional.rs:+1:48: +1:62
+        StorageDead(_14);                // scope 0 at $DIR/logical_and_in_conditional.rs:+1:61: +1:62
+        _12 = (_13.0: bool);             // scope 0 at $DIR/logical_and_in_conditional.rs:+1:48: +1:64
+        switchInt(move _12) -> [0: bb8, otherwise: bb7]; // scope 0 at $DIR/logical_and_in_conditional.rs:+1:48: +1:64
     }
 
     bb7: {
-        StorageDead(_11);                // scope 0 at $DIR/logical_and_in_conditional.rs:+10:5: +10:6
-        switchInt(move _10) -> [0: bb9, otherwise: bb8]; // scope 0 at $DIR/logical_and_in_conditional.rs:+7:10: +10:6
+        drop(_13) -> [return: bb9, unwind: bb18]; // scope 0 at $DIR/logical_and_in_conditional.rs:+1:63: +1:64
     }
 
     bb8: {
-        _0 = const ();                   // scope 0 at $DIR/logical_and_in_conditional.rs:+10:7: +10:9
-        goto -> bb11;                    // scope 0 at $DIR/logical_and_in_conditional.rs:+1:5: +10:9
+        goto -> bb10;                    // scope 0 at $DIR/logical_and_in_conditional.rs:+1:48: +1:64
     }
 
     bb9: {
-        goto -> bb10;                    // scope 0 at $DIR/logical_and_in_conditional.rs:+7:10: +10:6
+        StorageDead(_13);                // scope 0 at $DIR/logical_and_in_conditional.rs:+1:63: +1:64
+        _0 = const ();                   // scope 0 at $DIR/logical_and_in_conditional.rs:+1:65: +1:67
+        goto -> bb17;                    // scope 0 at $DIR/logical_and_in_conditional.rs:+1:5: +1:67
     }
 
     bb10: {
-        _0 = const ();                   // scope 0 at $DIR/logical_and_in_conditional.rs:+10:9: +10:9
-        goto -> bb11;                    // scope 0 at $DIR/logical_and_in_conditional.rs:+1:5: +10:9
+        drop(_13) -> [return: bb11, unwind: bb18]; // scope 0 at $DIR/logical_and_in_conditional.rs:+1:63: +1:64
     }
 
     bb11: {
-        StorageDead(_10);                // scope 0 at $DIR/logical_and_in_conditional.rs:+10:8: +10:9
-        StorageDead(_7);                 // scope 0 at $DIR/logical_and_in_conditional.rs:+10:8: +10:9
-        StorageDead(_4);                 // scope 0 at $DIR/logical_and_in_conditional.rs:+10:8: +10:9
-        return;                          // scope 0 at $DIR/logical_and_in_conditional.rs:+11:2: +11:2
+        StorageDead(_13);                // scope 0 at $DIR/logical_and_in_conditional.rs:+1:63: +1:64
+        goto -> bb16;                    // scope 0 at no-location
     }
 
-    bb12 (cleanup): {
-        resume;                          // scope 0 at $DIR/logical_and_in_conditional.rs:+0:1: +11:2
+    bb12: {
+        drop(_9) -> [return: bb13, unwind: bb18]; // scope 0 at $DIR/logical_and_in_conditional.rs:+1:43: +1:44
+    }
+
+    bb13: {
+        StorageDead(_9);                 // scope 0 at $DIR/logical_and_in_conditional.rs:+1:43: +1:44
+        goto -> bb16;                    // scope 0 at no-location
+    }
+
+    bb14: {
+        drop(_5) -> [return: bb15, unwind: bb18]; // scope 0 at $DIR/logical_and_in_conditional.rs:+1:23: +1:24
+    }
+
+    bb15: {
+        StorageDead(_5);                 // scope 0 at $DIR/logical_and_in_conditional.rs:+1:23: +1:24
+        goto -> bb16;                    // scope 0 at no-location
+    }
+
+    bb16: {
+        _0 = const ();                   // scope 0 at $DIR/logical_and_in_conditional.rs:+1:67: +1:67
+        goto -> bb17;                    // scope 0 at $DIR/logical_and_in_conditional.rs:+1:5: +1:67
+    }
+
+    bb17: {
+        StorageDead(_12);                // scope 0 at $DIR/logical_and_in_conditional.rs:+1:66: +1:67
+        StorageDead(_8);                 // scope 0 at $DIR/logical_and_in_conditional.rs:+1:66: +1:67
+        StorageDead(_4);                 // scope 0 at $DIR/logical_and_in_conditional.rs:+1:66: +1:67
+        return;                          // scope 0 at $DIR/logical_and_in_conditional.rs:+2:2: +2:2
+    }
+
+    bb18 (cleanup): {
+        resume;                          // scope 0 at $DIR/logical_and_in_conditional.rs:+0:1: +2:2
     }
 }

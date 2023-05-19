@@ -1,4 +1,4 @@
-struct Droppy;
+struct Droppy(bool);
 
 impl Drop for Droppy {
     fn drop(&mut self) {
@@ -8,16 +8,7 @@ impl Drop for Droppy {
 
 // EMIT_MIR logical_and_in_conditional.test_and.built.after.mir
 fn test_and(a: i32, b: i32, c: i32) {
-    if {
-        let _t = Droppy;
-        a == 0
-    } && {
-        let _t = Droppy;
-        b == 0
-    } && {
-        let _t = Droppy;
-        c == 0
-    } {}
+    if Droppy(a == 0).0 && Droppy(b == 0).0 && Droppy(c == 0).0 {}
 }
 
 // https://github.com/rust-lang/rust/issues/111583
