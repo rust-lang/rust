@@ -40,6 +40,15 @@ fn foobar() {
             // lint blocks as well
             15 => true || { return; },
             16 => false || { return; },
+            // ... and when it's a single expression
+            17 => true || { return },
+            18 => false || { return },
+            // ... but not when there's both an expression and a statement
+            19 => true || { _ = 1; return },
+            20 => false || { _ = 1; return },
+            // ... or multiple statements
+            21 => true || { _ = 1; return; },
+            22 => false || { _ = 1; return; },
             _ => true || break,
         };
     }
