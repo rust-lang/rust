@@ -785,6 +785,9 @@ fn compute_usefulness<'p, 'tcx>(
         for row_id in 0..matrix.len() {
             let v = &matrix.rows[row_id];
             if let Constructor::IntRange(ctor_range) = v.head().ctor() {
+                if ctor_range.is_singleton() {
+                    continue;
+                }
                 // Lint on likely incorrect range patterns (#63987)
                 let pcx = &PatCtxt { span: v.head().span(), ..*pcx };
                 let compare_against = matrix

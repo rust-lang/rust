@@ -112,7 +112,7 @@ impl IntRange {
         matches!(ty.kind(), ty::Char | ty::Int(_) | ty::Uint(_) | ty::Bool)
     }
 
-    fn is_singleton(&self) -> bool {
+    pub(super) fn is_singleton(&self) -> bool {
         self.range.start() == self.range.end()
     }
 
