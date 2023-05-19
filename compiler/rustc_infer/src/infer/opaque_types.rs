@@ -530,19 +530,18 @@ impl<'tcx> InferCtxt<'tcx> {
         // these are the same span, but not in cases like `-> (impl
         // Foo, impl Bar)`.
         let span = cause.span;
-
-        let mut obligations = vec![];
         let prev = self.inner.borrow_mut().opaque_types().register(
             OpaqueTypeKey { def_id, substs },
             OpaqueHiddenType { ty: hidden_ty, span },
             origin,
         );
-        if let Some(prev) = prev {
-            obligations = self
-                .at(&cause, param_env)
+        let mut obligations = if let Some(prev) = prev {
+            self.at(&cause, param_env)
                 .eq_exp(DefineOpaqueTypes::Yes, a_is_expected, prev, hidden_ty)?
-                .obligations;
-        }
+                .obligations
+        } else {
+            Vec::new()
+        };
 
         let item_bounds = tcx.explicit_item_bounds(def_id);
 
