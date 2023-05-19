@@ -1,7 +1,7 @@
 // run-pass
 
 #![warn(rust_2021_incompatible_closure_captures)]
-#![allow(drop_ref, drop_copy)]
+#![allow(drop_ref, dropping_copy_types)]
 
 fn main() {
     if let a = "" {

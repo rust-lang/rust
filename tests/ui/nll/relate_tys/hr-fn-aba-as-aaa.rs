@@ -5,7 +5,7 @@
 // check-pass
 // compile-flags:-Zno-leak-check
 
-#![allow(drop_copy)]
+#![allow(dropping_copy_types)]
 
 fn make_it() -> for<'a, 'b> fn(&'a u32, &'b u32) -> &'a u32 {
     panic!()

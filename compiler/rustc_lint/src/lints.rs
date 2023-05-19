@@ -673,7 +673,7 @@ pub struct DropRefDiag<'a> {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_drop_copy)]
+#[diag(lint_dropping_copy_types)]
 #[note]
 pub struct DropCopyDiag<'a> {
     pub arg_ty: Ty<'a>,

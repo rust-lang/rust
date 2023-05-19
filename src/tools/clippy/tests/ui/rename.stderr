@@ -186,11 +186,11 @@ error: lint `clippy::drop_bounds` has been renamed to `drop_bounds`
 LL | #![warn(clippy::drop_bounds)]
    |         ^^^^^^^^^^^^^^^^^^^ help: use the new name: `drop_bounds`
 
-error: lint `clippy::drop_copy` has been renamed to `drop_copy`
+error: lint `clippy::drop_copy` has been renamed to `dropping_copy_types`
   --> $DIR/rename.rs:80:9
    |
 LL | #![warn(clippy::drop_copy)]
-   |         ^^^^^^^^^^^^^^^^^ help: use the new name: `drop_copy`
+   |         ^^^^^^^^^^^^^^^^^ help: use the new name: `dropping_copy_types`
 
 error: lint `clippy::drop_ref` has been renamed to `drop_ref`
   --> $DIR/rename.rs:81:9

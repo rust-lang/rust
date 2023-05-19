@@ -58,7 +58,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `drop_copy` lint checks for calls to `std::mem::drop` with a value
+    /// The `dropping_copy_types` lint checks for calls to `std::mem::drop` with a value
     /// that derives the Copy trait.
     ///
     /// ### Example
@@ -76,7 +76,7 @@ declare_lint! {
     /// Calling `std::mem::drop` [does nothing for types that
     /// implement Copy](https://doc.rust-lang.org/std/mem/fn.drop.html), since the
     /// value will be copied and moved into the function on invocation.
-    pub DROP_COPY,
+    pub DROPPING_COPY_TYPES,
     Warn,
     "calls to `std::mem::drop` with a value that implements Copy"
 }
@@ -109,7 +109,7 @@ declare_lint! {
     "calls to `std::mem::forget` with a value that implements Copy"
 }
 
-declare_lint_pass!(DropForgetUseless => [DROP_REF, FORGET_REF, DROP_COPY, FORGET_COPY]);
+declare_lint_pass!(DropForgetUseless => [DROP_REF, FORGET_REF, DROPPING_COPY_TYPES, FORGET_COPY]);
 
 impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
@@ -129,7 +129,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
                     cx.emit_spanned_lint(FORGET_REF, expr.span, ForgetRefDiag { arg_ty, label: arg.span });
                 },
                 sym::mem_drop if is_copy && !drop_is_single_call_in_arm => {
-                    cx.emit_spanned_lint(DROP_COPY, expr.span, DropCopyDiag { arg_ty, label: arg.span });
+                    cx.emit_spanned_lint(DROPPING_COPY_TYPES, expr.span, DropCopyDiag { arg_ty, label: arg.span });
                 }
                 sym::mem_forget if is_copy => {
                     cx.emit_spanned_lint(FORGET_COPY, expr.span, ForgetCopyDiag { arg_ty, label: arg.span });

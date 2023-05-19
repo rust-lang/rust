@@ -6,7 +6,7 @@
 
 // Avoid emitting panic handlers, like the rest of these tests...
 #![feature(generators)]
-#![allow(drop_copy)]
+#![allow(dropping_copy_types)]
 
 pub fn foo() {
     let a = || {

@@ -3,7 +3,7 @@
 // check-pass
 
 #![allow(irrefutable_let_patterns)]
-#![allow(drop_copy)]
+#![allow(dropping_copy_types)]
 #![allow(drop_ref)]
 
 fn main() {

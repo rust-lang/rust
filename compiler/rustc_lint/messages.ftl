@@ -525,7 +525,7 @@ lint_drop_ref = calls to `std::mem::drop` with a reference instead of an owned v
     .label = argument has type `{$arg_ty}`
     .note = use `let _ = ...` to ignore the expression or result
 
-lint_drop_copy = calls to `std::mem::drop` with a value that implements `Copy` does nothing
+lint_dropping_copy_types = calls to `std::mem::drop` with a value that implements `Copy` does nothing
     .label = argument has type `{$arg_ty}`
     .note = use `let _ = ...` to ignore the expression or result
 

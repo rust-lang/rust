@@ -6,7 +6,7 @@
 
 // check-pass
 
-#![allow(drop_copy)]
+#![allow(dropping_copy_types)]
 
 trait A {
     type B;
