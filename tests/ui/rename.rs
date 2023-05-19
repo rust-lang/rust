@@ -34,7 +34,7 @@
 #![allow(dropping_references)]
 #![allow(for_loops_over_fallibles)]
 #![allow(forgetting_copy_types)]
-#![allow(forget_ref)]
+#![allow(forgetting_references)]
 #![allow(array_into_iter)]
 #![allow(invalid_atomic_ordering)]
 #![allow(invalid_value)]
