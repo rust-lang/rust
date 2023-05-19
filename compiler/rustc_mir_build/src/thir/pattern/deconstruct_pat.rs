@@ -332,7 +332,7 @@ enum IntBorder {
     AfterMax,
 }
 
-/// A range of integers that is partitioned into disjoint subranges. This does constructor
+/// A range of integers that is to be partitioned into disjoint subranges. This does constructor
 /// splitting for integer ranges as explained at the top of the file.
 ///
 /// This is fed multiple ranges, and returns an output that covers the input, but is split so that
@@ -353,14 +353,11 @@ enum IntBorder {
 struct SplitIntRange {
     /// The range we are splitting
     range: IntRange,
-    /// The borders of ranges we have seen. They are all contained within `range`. This is kept
-    /// sorted.
-    borders: Vec<IntBorder>,
 }
 
 impl SplitIntRange {
     fn new(range: IntRange) -> Self {
-        SplitIntRange { range, borders: Vec::new() }
+        SplitIntRange { range }
     }
 
     /// Internal use
@@ -375,30 +372,26 @@ impl SplitIntRange {
         [lo, hi]
     }
 
-    /// Add ranges relative to which we split.
-    fn split(&mut self, ranges: impl Iterator<Item = IntRange>) {
-        let this_range = &self.range;
-        let included_ranges = ranges.filter_map(|r| this_range.intersection(&r));
-        let included_borders = included_ranges.flat_map(|r| {
-            let borders = Self::to_borders(r);
-            once(borders[0]).chain(once(borders[1]))
-        });
-        self.borders.extend(included_borders);
-        self.borders.sort_unstable();
-    }
-
-    /// Iterate over the contained ranges.
-    fn iter(&self) -> impl Iterator<Item = IntRange> + Captures<'_> {
+    /// Iterate over the split ranges.
+    fn split(self, ranges: impl Iterator<Item = IntRange>) -> impl Iterator<Item = IntRange> {
         use IntBorder::*;
 
-        let self_range = Self::to_borders(self.range.clone());
+        // The borders of ranges we have seen. They are all contained within `range`. This is kept
+        // sorted.
+        let mut borders: Vec<_> = ranges
+            .filter_map(|r| self.range.intersection(&r))
+            .flat_map(|r| Self::to_borders(r))
+            .collect();
+        borders.sort_unstable();
+
+        let self_bias = self.range.bias;
+        let [self_lo, self_hi] = Self::to_borders(self.range);
         // Start with the start of the range.
-        let mut prev_border = self_range[0];
-        self.borders
-            .iter()
-            .copied()
+        let mut prev_border = self_lo;
+        borders
+            .into_iter()
             // End with the end of the range.
-            .chain(once(self_range[1]))
+            .chain(once(self_hi))
             // List pairs of adjacent borders.
             .map(move |border| {
                 let ret = (prev_border, border);
@@ -414,7 +407,7 @@ impl SplitIntRange {
                     (JustBefore(n), AfterMax) => n..=u128::MAX,
                     _ => unreachable!(), // Ruled out by the sorting and filtering we did
                 };
-                IntRange { range, bias: self.range.bias }
+                IntRange { range, bias: self_bias }
             })
     }
 }
@@ -1028,9 +1021,9 @@ impl ConstructorSet {
             ConstructorSet::Range { range: base_range, non_exhaustive } => {
                 // FIXME: splitting and collecting should be done in one pass.
                 let seen_ranges = seen.iter().map(|ctor| ctor.as_int_range().unwrap());
-                let mut split_base_range = SplitIntRange::new(base_range);
-                split_base_range.split(seen_ranges.clone().cloned());
-                for splitted_range in split_base_range.iter() {
+                let splitted_ranges =
+                    SplitIntRange::new(base_range).split(seen_ranges.clone().cloned());
+                for splitted_range in splitted_ranges {
                     let is_covered_by_any =
                         seen_ranges.clone().any(|other| splitted_range.is_covered_by(other));
                     let ctor = IntRange(splitted_range);
@@ -1051,9 +1044,9 @@ impl ConstructorSet {
                 // FIXME: splitting and collecting should be done in one pass.
                 let seen_ranges = seen.iter().map(|ctor| ctor.as_int_range().unwrap());
                 for base_range in base_ranges {
-                    let mut split_base_range = SplitIntRange::new(base_range);
-                    split_base_range.split(seen_ranges.clone().cloned());
-                    for splitted_range in split_base_range.iter() {
+                    let splitted_ranges =
+                        SplitIntRange::new(base_range).split(seen_ranges.clone().cloned());
+                    for splitted_range in splitted_ranges {
                         let is_covered_by_any =
                             seen_ranges.clone().any(|other| splitted_range.is_covered_by(other));
                         let ctor = IntRange(splitted_range);
