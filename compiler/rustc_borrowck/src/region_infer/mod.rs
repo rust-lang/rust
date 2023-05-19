@@ -246,9 +246,10 @@ pub enum ExtraConstraintInfo {
 }
 
 #[instrument(skip(infcx, sccs), level = "debug")]
+#[inline(never)] // This is a debugging tool, we need to discard it from profiles.
 fn sccs_info<'cx, 'tcx>(
     infcx: &'cx BorrowckInferCtxt<'cx, 'tcx>,
-    sccs: Rc<Sccs<RegionVid, ConstraintSccIndex>>,
+    sccs: &Sccs<RegionVid, ConstraintSccIndex>,
 ) {
     use crate::renumber::RegionCtxt;
 
@@ -348,7 +349,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let constraint_sccs = Rc::new(constraints.compute_sccs(&constraint_graph, fr_static));
 
         if cfg!(debug_assertions) {
-            sccs_info(_infcx, constraint_sccs.clone());
+            sccs_info(_infcx, &*constraint_sccs);
         }
 
         let mut scc_values =
