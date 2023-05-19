@@ -29,7 +29,7 @@ pub use self::drop_flag_effects::{
 pub use self::framework::{
     fmt, graphviz, lattice, visit_results, Analysis, AnalysisDomain, AnalysisResults, Backward,
     CloneAnalysis, Direction, Engine, Forward, GenKill, GenKillAnalysis, JoinSemiLattice,
-    MaybeUnreachable, Results, ResultsCloned, ResultsClonedCursor, ResultsCursor, ResultsRefCursor,
+    MaybeReachable, Results, ResultsCloned, ResultsClonedCursor, ResultsCursor, ResultsRefCursor,
     ResultsVisitable, ResultsVisitor, SwitchIntEdgeEffects,
 };
 

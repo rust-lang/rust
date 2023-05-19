@@ -11,7 +11,7 @@ use crate::move_paths::{HasMoveData, InitIndex, InitKind, LookupResult, MoveData
 use crate::on_lookup_result_bits;
 use crate::MoveDataParamEnv;
 use crate::{drop_flag_effects, on_all_children_bits, on_all_drop_children_bits};
-use crate::{lattice, AnalysisDomain, GenKill, GenKillAnalysis, MaybeUnreachable};
+use crate::{lattice, AnalysisDomain, GenKill, GenKillAnalysis, MaybeReachable};
 
 /// `MaybeInitializedPlaces` tracks all places that might be
 /// initialized upon reaching a particular point in the control flow
@@ -68,7 +68,7 @@ impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
     pub fn is_unwind_dead(
         &self,
         place: mir::Place<'tcx>,
-        state: &MaybeUnreachable<ChunkedBitSet<MovePathIndex>>,
+        state: &MaybeReachable<ChunkedBitSet<MovePathIndex>>,
     ) -> bool {
         if let LookupResult::Exact(path) = self.move_data().rev_lookup.find(place.as_ref()) {
             let mut maybe_live = false;
@@ -308,18 +308,17 @@ impl<'a, 'tcx> DefinitelyInitializedPlaces<'a, 'tcx> {
 }
 
 impl<'tcx> AnalysisDomain<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
-    type Domain = MaybeUnreachable<ChunkedBitSet<MovePathIndex>>;
+    type Domain = MaybeReachable<ChunkedBitSet<MovePathIndex>>;
     const NAME: &'static str = "maybe_init";
 
     fn bottom_value(&self, _: &mir::Body<'tcx>) -> Self::Domain {
         // bottom = uninitialized
-        MaybeUnreachable::Unreachable
+        MaybeReachable::Unreachable
     }
 
     fn initialize_start_block(&self, _: &mir::Body<'tcx>, state: &mut Self::Domain) {
-        *state = MaybeUnreachable::Reachable(ChunkedBitSet::new_empty(
-            self.move_data().move_paths.len(),
-        ));
+        *state =
+            MaybeReachable::Reachable(ChunkedBitSet::new_empty(self.move_data().move_paths.len()));
         drop_flag_effects_for_function_entry(self.tcx, self.body, self.mdpe, |path, s| {
             assert!(s == DropFlagState::Present);
             state.gen(path);

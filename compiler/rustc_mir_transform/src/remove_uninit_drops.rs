@@ -5,7 +5,7 @@ use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, VariantDef};
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
 use rustc_mir_dataflow::{
-    self, move_path_children_matching, Analysis, MaybeUnreachable, MoveDataParamEnv,
+    self, move_path_children_matching, Analysis, MaybeReachable, MoveDataParamEnv,
 };
 use rustc_target::abi::FieldIdx;
 
@@ -43,7 +43,7 @@ impl<'tcx> MirPass<'tcx> for RemoveUninitDrops {
             let TerminatorKind::Drop { place, .. } = &terminator.kind else { continue };
 
             maybe_inits.seek_before_primary_effect(body.terminator_loc(bb));
-            let MaybeUnreachable::Reachable(maybe_inits) = maybe_inits.get() else { continue };
+            let MaybeReachable::Reachable(maybe_inits) = maybe_inits.get() else { continue };
 
             // If there's no move path for the dropped place, it's probably a `Deref`. Let it alone.
             let LookupResult::Exact(mpi) = mdpe.move_data.rev_lookup.find(place.as_ref()) else {
