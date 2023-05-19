@@ -301,6 +301,33 @@ fn main() {
             * `(*x.f2.0.0).f` by mutable borrow
         "#]],
     );
+    check(
+        r#"
+//- minicore: copy, option
+
+fn do_char(c: char) {}
+
+fn main() {
+    let x = None;
+    let y = |$0| {
+        match x {
+            Some(c) => do_char(c),
+            None => x = None,
+        }
+    };
+}
+"#,
+        expect![[r#"
+            *|*
+            ```rust
+            {closure#0} // size = 8, align = 8
+            impl FnMut()
+            ```
+
+            ## Captures
+            * `x` by mutable borrow
+        "#]],
+    );
 }
 
 #[test]

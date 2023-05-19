@@ -236,9 +236,9 @@ impl SourceAnalyzer {
         _db: &dyn HirDatabase,
         pat: &ast::IdentPat,
     ) -> Option<BindingMode> {
-        let pat_id = self.pat_id(&pat.clone().into())?;
+        let binding_id = self.binding_id_of_pat(pat)?;
         let infer = self.infer.as_ref()?;
-        infer.pat_binding_modes.get(&pat_id).map(|bm| match bm {
+        infer.binding_modes.get(binding_id).map(|bm| match bm {
             hir_ty::BindingMode::Move => BindingMode::Move,
             hir_ty::BindingMode::Ref(hir_ty::Mutability::Mut) => BindingMode::Ref(Mutability::Mut),
             hir_ty::BindingMode::Ref(hir_ty::Mutability::Not) => {

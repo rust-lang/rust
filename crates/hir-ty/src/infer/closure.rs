@@ -504,9 +504,27 @@ impl InferenceContext<'_> {
                 self.consume_exprs(args.iter().copied());
             }
             Expr::Match { expr, arms } => {
-                self.consume_expr(*expr);
                 for arm in arms.iter() {
                     self.consume_expr(arm.expr);
+                    if let Some(guard) = arm.guard {
+                        self.consume_expr(guard);
+                    }
+                }
+                self.walk_expr(*expr);
+                if let Some(discr_place) = self.place_of_expr(*expr) {
+                    if self.is_upvar(&discr_place) {
+                        let mut capture_mode = None;
+                        for arm in arms.iter() {
+                            self.walk_pat(&mut capture_mode, arm.pat);
+                        }
+                        if let Some(c) = capture_mode {
+                            self.push_capture(CapturedItemWithoutTy {
+                                place: discr_place,
+                                kind: c,
+                                span: (*expr).into(),
+                            })
+                        }
+                    }
                 }
             }
             Expr::Break { expr, label: _ }
@@ -618,6 +636,57 @@ impl InferenceContext<'_> {
         }
     }
 
+    fn walk_pat(&mut self, result: &mut Option<CaptureKind>, pat: PatId) {
+        let mut update_result = |ck: CaptureKind| match result {
+            Some(r) => {
+                *r = cmp::max(*r, ck);
+            }
+            None => *result = Some(ck),
+        };
+        self.body.walk_pats(pat, &mut |p| match &self.body[p] {
+            Pat::Ref { .. }
+            | Pat::Box { .. }
+            | Pat::Missing
+            | Pat::Wild
+            | Pat::Tuple { .. }
+            | Pat::Or(_) => (),
+            Pat::TupleStruct { .. } | Pat::Record { .. } => {
+                if let Some(variant) = self.result.variant_resolution_for_pat(p) {
+                    let adt = variant.adt_id();
+                    let is_multivariant = match adt {
+                        hir_def::AdtId::EnumId(e) => self.db.enum_data(e).variants.len() != 1,
+                        _ => false,
+                    };
+                    if is_multivariant {
+                        update_result(CaptureKind::ByRef(BorrowKind::Shared));
+                    }
+                }
+            }
+            Pat::Slice { .. }
+            | Pat::ConstBlock(_)
+            | Pat::Path(_)
+            | Pat::Lit(_)
+            | Pat::Range { .. } => {
+                update_result(CaptureKind::ByRef(BorrowKind::Shared));
+            }
+            Pat::Bind { id, .. } => match self.result.binding_modes[*id] {
+                crate::BindingMode::Move => {
+                    if self.is_ty_copy(self.result.type_of_binding[*id].clone()) {
+                        update_result(CaptureKind::ByRef(BorrowKind::Shared));
+                    } else {
+                        update_result(CaptureKind::ByValue);
+                    }
+                }
+                crate::BindingMode::Ref(r) => match r {
+                    Mutability::Mut => update_result(CaptureKind::ByRef(BorrowKind::Mut {
+                        allow_two_phase_borrow: false,
+                    })),
+                    Mutability::Not => update_result(CaptureKind::ByRef(BorrowKind::Shared)),
+                },
+            },
+        });
+    }
+
     fn expr_ty(&self, expr: ExprId) -> Ty {
         self.result[expr].clone()
     }
@@ -641,14 +710,14 @@ impl InferenceContext<'_> {
         false
     }
 
-    fn is_ty_copy(&self, ty: Ty) -> bool {
+    fn is_ty_copy(&mut self, ty: Ty) -> bool {
         if let TyKind::Closure(id, _) = ty.kind(Interner) {
             // FIXME: We handle closure as a special case, since chalk consider every closure as copy. We
             // should probably let chalk know which closures are copy, but I don't know how doing it
             // without creating query cycles.
             return self.result.closure_info.get(id).map(|x| x.1 == FnTrait::Fn).unwrap_or(true);
         }
-        ty.is_copy(self.db, self.owner)
+        self.table.resolve_completely(ty).is_copy(self.db, self.owner)
     }
 
     fn select_from_expr(&mut self, expr: ExprId) {
