@@ -662,9 +662,9 @@ pub struct ForLoopsOverFalliblesSuggestion<'a> {
     pub end_span: Span,
 }
 
-// drop_ref.rs
+// drop_forget_useless.rs
 #[derive(LintDiagnostic)]
-#[diag(lint_drop_ref)]
+#[diag(lint_dropping_references)]
 #[note]
 pub struct DropRefDiag<'a> {
     pub arg_ty: Ty<'a>,

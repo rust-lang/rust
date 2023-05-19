@@ -32,7 +32,7 @@ LL |     drop(s3);
    |          argument has type `&SomeStruct`
    |
    = note: use `let _ = ...` to ignore the expression or result
-   = note: `#[warn(drop_ref)]` on by default
+   = note: `#[warn(dropping_references)]` on by default
 
 warning: calls to `std::mem::drop` with a value that implements `Copy` does nothing
   --> $DIR/dropping_copy_types.rs:37:5

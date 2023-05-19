@@ -7,7 +7,7 @@ use crate::{
 };
 
 declare_lint! {
-    /// The `drop_ref` lint checks for calls to `std::mem::drop` with a reference
+    /// The `dropping_references` lint checks for calls to `std::mem::drop` with a reference
     /// instead of an owned value.
     ///
     /// ### Example
@@ -29,7 +29,7 @@ declare_lint! {
     /// reference itself, which is a no-op. It will not call the `drop` method (from
     /// the `Drop` trait implementation) on the underlying referenced value, which
     /// is likely what was intended.
-    pub DROP_REF,
+    pub DROPPING_REFERENCES,
     Warn,
     "calls to `std::mem::drop` with a reference instead of an owned value"
 }
@@ -109,7 +109,7 @@ declare_lint! {
     "calls to `std::mem::forget` with a value that implements Copy"
 }
 
-declare_lint_pass!(DropForgetUseless => [DROP_REF, FORGET_REF, DROPPING_COPY_TYPES, FORGETTING_COPY_TYPES]);
+declare_lint_pass!(DropForgetUseless => [DROPPING_REFERENCES, FORGET_REF, DROPPING_COPY_TYPES, FORGETTING_COPY_TYPES]);
 
 impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
@@ -123,7 +123,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
             let drop_is_single_call_in_arm = is_single_call_in_arm(cx, arg, expr);
             match fn_name {
                 sym::mem_drop if arg_ty.is_ref() && !drop_is_single_call_in_arm => {
-                    cx.emit_spanned_lint(DROP_REF, expr.span, DropRefDiag { arg_ty, label: arg.span });
+                    cx.emit_spanned_lint(DROPPING_REFERENCES, expr.span, DropRefDiag { arg_ty, label: arg.span });
                 },
                 sym::mem_forget if arg_ty.is_ref() => {
                     cx.emit_spanned_lint(FORGET_REF, expr.span, ForgetRefDiag { arg_ty, label: arg.span });

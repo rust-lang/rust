@@ -2,7 +2,7 @@
 
 // Test `@` patterns combined with `box` patterns.
 
-#![allow(drop_ref)]
+#![allow(dropping_references)]
 #![allow(dropping_copy_types)]
 
 #![feature(box_patterns)]

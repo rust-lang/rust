@@ -4,7 +4,7 @@
 
 #![allow(irrefutable_let_patterns)]
 #![allow(dropping_copy_types)]
-#![allow(drop_ref)]
+#![allow(dropping_references)]
 
 fn main() {
     // A regression test for a mistake we made at one point:

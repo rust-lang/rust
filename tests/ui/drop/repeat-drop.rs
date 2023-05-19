@@ -1,7 +1,7 @@
 // run-pass
 // needs-unwind
 
-#![allow(drop_ref, dropping_copy_types)]
+#![allow(dropping_references, dropping_copy_types)]
 
 static mut CHECK: usize = 0;
 

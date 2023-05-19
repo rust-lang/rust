@@ -31,7 +31,7 @@
 #![allow(suspicious_double_ref_op)]
 #![allow(drop_bounds)]
 #![allow(dropping_copy_types)]
-#![allow(drop_ref)]
+#![allow(dropping_references)]
 #![allow(for_loops_over_fallibles)]
 #![allow(forgetting_copy_types)]
 #![allow(forget_ref)]
