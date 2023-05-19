@@ -324,12 +324,19 @@ impl fmt::Debug for IntRange {
     }
 }
 
-/// Represents a border between 2 integers. Because the intervals spanning borders must be able to
-/// cover every integer, we need to be able to represent 2^128 + 1 such borders.
+/// Represents a boundary between 2 integers. Because the intervals spanning bdys must be able to
+/// cover every integer, we need to be able to represent 2^128 + 1 such bdys.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-enum IntBorder {
+enum IntBoundary {
     JustBefore(u128),
     AfterMax,
+}
+
+/// Whether we have seen a constructor in the matrix or not.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum Presence {
+    Unseen,
+    Seen,
 }
 
 /// A range of integers that is to be partitioned into disjoint subranges. This does constructor
@@ -361,8 +368,8 @@ impl SplitIntRange {
     }
 
     /// Internal use
-    fn to_borders(r: IntRange) -> [IntBorder; 2] {
-        use IntBorder::*;
+    fn to_boundaries(r: &IntRange) -> [IntBoundary; 2] {
+        use IntBoundary::*;
         let (lo, hi) = r.boundaries();
         let lo = JustBefore(lo);
         let hi = match hi.checked_add(1) {
@@ -373,41 +380,56 @@ impl SplitIntRange {
     }
 
     /// Iterate over the split ranges.
-    fn split(self, ranges: impl Iterator<Item = IntRange>) -> impl Iterator<Item = IntRange> {
-        use IntBorder::*;
-
-        // The borders of ranges we have seen. They are all contained within `range`. This is kept
-        // sorted.
-        let mut borders: Vec<_> = ranges
-            .filter_map(|r| self.range.intersection(&r))
-            .flat_map(|r| Self::to_borders(r))
-            .collect();
-        borders.sort_unstable();
+    fn split(
+        self,
+        ranges: impl Iterator<Item = IntRange>,
+    ) -> impl Iterator<Item = (Presence, IntRange)> {
+        use IntBoundary::*;
+        use Presence::*;
 
         let self_bias = self.range.bias;
-        let [self_lo, self_hi] = Self::to_borders(self.range);
+        let [self_lo, self_hi] = Self::to_boundaries(&self.range);
+
+        let ranges: Vec<[IntBoundary; 2]> = ranges
+            .map(|r| Self::to_boundaries(&r))
+            .filter_map(|&[other_lo, other_hi]| {
+                // Intersect with `self`
+                if self_lo <= other_hi && other_lo <= self_hi {
+                    Some([max(self_lo, other_lo), min(self_hi, other_hi)])
+                } else {
+                    None
+                }
+            })
+            .collect();
+        let mut bdys: Vec<IntBoundary> = ranges.iter().flat_map(|[lo, hi]| [lo, hi]).collect();
+        bdys.sort_unstable();
+
         // Start with the start of the range.
-        let mut prev_border = self_lo;
-        borders
-            .into_iter()
+        let mut prev_bdy = self_lo;
+        bdys.into_iter()
             // End with the end of the range.
             .chain(once(self_hi))
-            // List pairs of adjacent borders.
-            .map(move |border| {
-                let ret = (prev_border, border);
-                prev_border = border;
+            // List pairs of adjacent bdys.
+            .map(move |bdy| {
+                let ret = (prev_bdy, bdy);
+                prev_bdy = bdy;
                 ret
             })
-            // Skip duplicates.
-            .filter(|(prev_border, border)| prev_border != border)
+            // Skip duplicate boundaries.
+            .filter(|(prev_bdy, bdy)| prev_bdy != bdy)
             // Finally, convert to ranges.
-            .map(move |(prev_border, border)| {
-                let range = match (prev_border, border) {
-                    (JustBefore(n), JustBefore(m)) if n < m => n..=(m - 1),
+            .map(move |(prev_bdy, bdy)| {
+                let is_covered_by_any = ranges
+                    .iter()
+                    .any(|&[other_lo, other_hi]| other_lo <= prev_bdy && bdy <= other_hi);
+                let presence = if is_covered_by_any { Seen } else { Unseen };
+                let range = match (prev_bdy, bdy) {
+                    (JustBefore(n), JustBefore(m)) if n < m => n..=m - 1,
                     (JustBefore(n), AfterMax) => n..=u128::MAX,
                     _ => unreachable!(), // Ruled out by the sorting and filtering we did
                 };
-                IntRange { range, bias: self_bias }
+                let range = IntRange { range, bias: self_bias };
+                (presence, range)
             })
     }
 }
@@ -1019,18 +1041,15 @@ impl ConstructorSet {
                 }
             }
             ConstructorSet::Range { range: base_range, non_exhaustive } => {
-                // FIXME: splitting and collecting should be done in one pass.
                 let seen_ranges = seen.iter().map(|ctor| ctor.as_int_range().unwrap());
-                let splitted_ranges =
-                    SplitIntRange::new(base_range).split(seen_ranges.clone().cloned());
-                for splitted_range in splitted_ranges {
-                    let is_covered_by_any =
-                        seen_ranges.clone().any(|other| splitted_range.is_covered_by(other));
+                let splitted_ranges = SplitIntRange::new(base_range).split(seen_ranges.cloned());
+                for (seen, splitted_range) in splitted_ranges {
                     let ctor = IntRange(splitted_range);
-                    if is_covered_by_any {
-                        split.push(ctor);
-                    } else if !non_exhaustive {
-                        missing.push(ctor);
+                    match seen {
+                        // We don't report missing constructors in this case
+                        Presence::Unseen if non_exhaustive => {}
+                        Presence::Unseen => missing.push(ctor),
+                        Presence::Seen => split.push(ctor),
                     }
                 }
                 if non_exhaustive {
@@ -1041,19 +1060,15 @@ impl ConstructorSet {
                 missing.extend(base_ranges.into_iter().map(IntRange));
             }
             ConstructorSet::Ranges(base_ranges) => {
-                // FIXME: splitting and collecting should be done in one pass.
                 let seen_ranges = seen.iter().map(|ctor| ctor.as_int_range().unwrap());
                 for base_range in base_ranges {
                     let splitted_ranges =
                         SplitIntRange::new(base_range).split(seen_ranges.clone().cloned());
-                    for splitted_range in splitted_ranges {
-                        let is_covered_by_any =
-                            seen_ranges.clone().any(|other| splitted_range.is_covered_by(other));
+                    for (seen, splitted_range) in splitted_ranges {
                         let ctor = IntRange(splitted_range);
-                        if is_covered_by_any {
-                            split.push(ctor);
-                        } else {
-                            missing.push(ctor);
+                        match seen {
+                            Presence::Unseen => missing.push(ctor),
+                            Presence::Seen => split.push(ctor),
                         }
                     }
                 }
