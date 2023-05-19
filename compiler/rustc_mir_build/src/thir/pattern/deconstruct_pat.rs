@@ -357,18 +357,15 @@ enum Presence {
 ///   ||---|--||-|---|---|---|--|
 /// ```
 #[derive(Debug, Clone)]
-struct SplitIntRange {
-    /// The range we are splitting
-    range: IntRange,
+enum SplitIntRange {
+    Single(IntRange),
+    // For chars
+    Double([IntRange; 2]),
 }
 
 impl SplitIntRange {
-    fn new(range: IntRange) -> Self {
-        SplitIntRange { range }
-    }
-
     /// Internal use
-    fn to_boundaries(r: &IntRange) -> [IntBoundary; 2] {
+    fn into_boundaries(r: IntRange) -> [IntBoundary; 2] {
         use IntBoundary::*;
         let (lo, hi) = r.boundaries();
         let lo = JustBefore(lo);
@@ -380,6 +377,15 @@ impl SplitIntRange {
     }
 
     /// Iterate over the split ranges.
+    /// We have in `self` one or two base ranges of valid values.
+    /// We have in `ranges` a set of ranges that count as "seen".
+    /// We partition the `self` ranges into subranges such that:
+    /// - each output subrange is either included or disjoint with each output subrange
+    /// - we track whether a given output subrange is included in some input range or not
+    ///
+    /// We do this with a parenthesis matching algorithm. We go through all the range boundaries and
+    /// keep track in parallel of 1/ whether we are within some base range and 2/ whether we are
+    /// within some seen range.
     fn split(
         self,
         ranges: impl Iterator<Item = IntRange>,
@@ -387,47 +393,59 @@ impl SplitIntRange {
         use IntBoundary::*;
         use Presence::*;
 
-        let self_bias = self.range.bias;
-        let [self_lo, self_hi] = Self::to_boundaries(&self.range);
-
-        // Boundary counts as +1 if it starts a range and -1 if it ends it.
-        let mut bdys: Vec<(IntBoundary, isize)> = ranges
-            .map(|r| Self::to_boundaries(&r))
-            .filter_map(|[other_lo, other_hi]| {
-                // Intersect with `self`
-                if self_lo <= other_hi && other_lo <= self_hi {
-                    Some([max(self_lo, other_lo), min(self_hi, other_hi)])
-                } else {
-                    None
-                }
-            })
-            .flat_map(|[lo, hi]| [(lo, 1), (hi, -1)])
+        // We do a double parenthesis matching. We have two counters. The first is for `self`
+        // ranges, the second for `ranges` ranges.
+        // A boundary counts as +1 if it starts a range and -1 if it ends it. When the count is > 0
+        // between two boundaries, we are within a range.
+        let mut bdys: Vec<(IntBoundary, isize, isize)> = ranges
+            .map(|r| Self::into_boundaries(r))
+            .flat_map(|[lo, hi]| [(lo, 0, 1), (hi, 0, -1)])
             .collect();
+        let self_bias;
+        match self {
+            Self::Single(self_range) => {
+                self_bias = self_range.bias;
+
+                let [lo, hi] = Self::into_boundaries(self_range);
+                bdys.push((lo, 1, 0));
+                bdys.push((hi, -1, 0));
+            }
+            Self::Double([range_1, range_2]) => {
+                self_bias = range_1.bias;
+
+                let [lo, hi] = Self::into_boundaries(range_1);
+                bdys.push((lo, 1, 0));
+                bdys.push((hi, -1, 0));
+                let [lo, hi] = Self::into_boundaries(range_2);
+                bdys.push((lo, 1, 0));
+                bdys.push((hi, -1, 0));
+            }
+        }
         bdys.sort_unstable();
 
-        // Start with the start of the range.
-        let mut prev_bdy = (self_lo, 0);
-        let mut count = 0isize;
-        bdys.into_iter()
-            // End with the end of the range.
-            .chain(once((self_hi, 0)))
-            // Accumulate deltas. This does the equivalent of parenthesis matching: if the count is
-            // > 0 between two boundaries, we are within one of the seen ranges.
-            .map(move |(bdy, delta)| {
-                count += delta;
-                (bdy, count)
-            })
+        let mut base_counter = 0isize;
+        let mut seen_counter = 0isize;
+        let mut iter = bdys
+            .into_iter()
+            // Accumulate deltas.
+            .map(move |(bdy, base_delta, seen_delta)| {
+                base_counter += base_delta;
+                seen_counter += seen_delta;
+                (bdy, base_counter, seen_counter)
+            });
+        let mut prev_bdy = iter.next().unwrap();
+        iter
             // List pairs of adjacent bdys.
             .map(move |bdy| {
                 let ret = (prev_bdy, bdy);
                 prev_bdy = bdy;
                 ret
             })
-            // Skip duplicate boundaries.
-            .filter(|((prev_bdy, _), (bdy, _))| prev_bdy != bdy)
+            // Skip duplicate boundaries and boundaries not within base ranges.
+            .filter(|&((prev_bdy, base_count, _), (bdy, ..))| prev_bdy != bdy && base_count > 0)
             // Finally, convert to ranges.
-            .map(move |((prev_bdy, prev_count), (bdy, _))| {
-                let presence = if prev_count > 0 { Seen } else { Unseen };
+            .map(move |((prev_bdy, _, seen_count), (bdy, ..))| {
+                let presence = if seen_count > 0 { Seen } else { Unseen };
                 let range = match (prev_bdy, bdy) {
                     (JustBefore(n), JustBefore(m)) if n < m => n..=m - 1,
                     (JustBefore(n), AfterMax) => n..=u128::MAX,
@@ -844,12 +862,12 @@ pub(super) enum ConstructorSet {
     Single,
     /// This type has the following list of constructors.
     Variants { variants: Vec<VariantIdx>, non_exhaustive: bool },
-    /// The type is spanned by a range of integer values, e.g. all number types.
+    /// The type is spanned by integer values. The range or ranges give the set of allowed values.
+    /// The second range is only useful for `char`.
+    /// This is reused for bool. FIXME: don't.
     /// `non_exhaustive` is used when the range is not allowed to be matched exhaustively (that's
     /// for usize/isize).
-    Range { range: IntRange, non_exhaustive: bool },
-    /// The type is spanned by two ranges of integer values. This is special for chars.
-    Ranges([IntRange; 2]),
+    Integers { range_1: IntRange, range_2: Option<IntRange>, non_exhaustive: bool },
     /// The type is matched by slices.
     Slice(Slice),
     /// The constructors cannot be listed, and the type cannot be matched exhaustively. E.g. `str`,
@@ -876,13 +894,16 @@ impl ConstructorSet {
         // Invariant: this is `Uninhabited` if and only if the type is uninhabited (as determined by
         // `cx.is_uninhabited()`).
         match pcx.ty.kind() {
-            ty::Bool => Self::Range { range: make_range(0, 1), non_exhaustive: false },
+            ty::Bool => {
+                Self::Integers { range_1: make_range(0, 1), range_2: None, non_exhaustive: false }
+            }
             ty::Char => {
-                Self::Ranges([
-                    // The valid Unicode Scalar Value ranges.
-                    make_range('\u{0000}' as u128, '\u{D7FF}' as u128),
-                    make_range('\u{E000}' as u128, '\u{10FFFF}' as u128),
-                ])
+                // The valid Unicode Scalar Value ranges.
+                Self::Integers {
+                    range_1: make_range('\u{0000}' as u128, '\u{D7FF}' as u128),
+                    range_2: Some(make_range('\u{E000}' as u128, '\u{10FFFF}' as u128)),
+                    non_exhaustive: false,
+                }
             }
             &ty::Int(ity) => {
                 // `usize`/`isize` are not allowed to be matched exhaustively unless the
@@ -892,7 +913,7 @@ impl ConstructorSet {
                 let bits = Integer::from_int_ty(&cx.tcx, ity).size().bits() as u128;
                 let min = 1u128 << (bits - 1);
                 let max = min - 1;
-                Self::Range { range: make_range(min, max), non_exhaustive }
+                Self::Integers { range_1: make_range(min, max), non_exhaustive, range_2: None }
             }
             &ty::Uint(uty) => {
                 // `usize`/`isize` are not allowed to be matched exhaustively unless the
@@ -901,7 +922,7 @@ impl ConstructorSet {
                     && !cx.tcx.features().precise_pointer_size_matching;
                 let size = Integer::from_uint_ty(&cx.tcx, uty).size();
                 let max = size.truncate(u128::MAX);
-                Self::Range { range: make_range(0, max), non_exhaustive }
+                Self::Integers { range_1: make_range(0, max), non_exhaustive, range_2: None }
             }
             ty::Array(sub_ty, len) if len.try_eval_target_usize(cx.tcx, cx.param_env).is_some() => {
                 let len = len.eval_target_usize(cx.tcx, cx.param_env) as usize;
@@ -1038,16 +1059,23 @@ impl ConstructorSet {
                     missing.push(NonExhaustive);
                 }
             }
-            ConstructorSet::Range { range: base_range, non_exhaustive } if seen.is_empty() => {
+            ConstructorSet::Integers { range_1, range_2, non_exhaustive } if seen.is_empty() => {
                 if non_exhaustive {
                     missing.push(NonExhaustive);
                 } else {
-                    missing.push(IntRange(base_range));
+                    missing.push(IntRange(range_1));
+                    if let Some(range_2) = range_2 {
+                        missing.push(IntRange(range_2));
+                    }
                 }
             }
-            ConstructorSet::Range { range: base_range, non_exhaustive } => {
+            ConstructorSet::Integers { range_1, range_2, non_exhaustive } => {
+                let range = match range_2 {
+                    None => SplitIntRange::Single(range_1),
+                    Some(range_2) => SplitIntRange::Double([range_1, range_2]),
+                };
                 let seen_ranges = seen.iter().map(|ctor| ctor.as_int_range().unwrap());
-                let splitted_ranges = SplitIntRange::new(base_range).split(seen_ranges.cloned());
+                let splitted_ranges = range.split(seen_ranges.cloned());
                 for (seen, splitted_range) in splitted_ranges {
                     let ctor = IntRange(splitted_range);
                     match seen {
@@ -1059,23 +1087,6 @@ impl ConstructorSet {
                 }
                 if non_exhaustive {
                     missing.push(NonExhaustive);
-                }
-            }
-            ConstructorSet::Ranges(base_ranges) if seen.is_empty() => {
-                missing.extend(base_ranges.into_iter().map(IntRange));
-            }
-            ConstructorSet::Ranges(base_ranges) => {
-                let seen_ranges = seen.iter().map(|ctor| ctor.as_int_range().unwrap());
-                for base_range in base_ranges {
-                    let splitted_ranges =
-                        SplitIntRange::new(base_range).split(seen_ranges.clone().cloned());
-                    for (seen, splitted_range) in splitted_ranges {
-                        let ctor = IntRange(splitted_range);
-                        match seen {
-                            Presence::Unseen => missing.push(ctor),
-                            Presence::Seen => split.push(ctor),
-                        }
-                    }
                 }
             }
             ConstructorSet::Slice(base_slice) if seen.is_empty() => {
