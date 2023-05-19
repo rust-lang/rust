@@ -35,7 +35,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `forget_ref` lint checks for calls to `std::mem::forget` with a reference
+    /// The `forgetting_references` lint checks for calls to `std::mem::forget` with a reference
     /// instead of an owned value.
     ///
     /// ### Example
@@ -52,7 +52,7 @@ declare_lint! {
     /// Calling `forget` on a reference will only forget the
     /// reference itself, which is a no-op. It will not forget the underlying
     /// referenced value, which is likely what was intended.
-    pub FORGET_REF,
+    pub FORGETTING_REFERENCES,
     Warn,
     "calls to `std::mem::forget` with a reference instead of an owned value"
 }
@@ -109,7 +109,7 @@ declare_lint! {
     "calls to `std::mem::forget` with a value that implements Copy"
 }
 
-declare_lint_pass!(DropForgetUseless => [DROPPING_REFERENCES, FORGET_REF, DROPPING_COPY_TYPES, FORGETTING_COPY_TYPES]);
+declare_lint_pass!(DropForgetUseless => [DROPPING_REFERENCES, FORGETTING_REFERENCES, DROPPING_COPY_TYPES, FORGETTING_COPY_TYPES]);
 
 impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
@@ -126,7 +126,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
                     cx.emit_spanned_lint(DROPPING_REFERENCES, expr.span, DropRefDiag { arg_ty, label: arg.span });
                 },
                 sym::mem_forget if arg_ty.is_ref() => {
-                    cx.emit_spanned_lint(FORGET_REF, expr.span, ForgetRefDiag { arg_ty, label: arg.span });
+                    cx.emit_spanned_lint(FORGETTING_REFERENCES, expr.span, ForgetRefDiag { arg_ty, label: arg.span });
                 },
                 sym::mem_drop if is_copy && !drop_is_single_call_in_arm => {
                     cx.emit_spanned_lint(DROPPING_COPY_TYPES, expr.span, DropCopyDiag { arg_ty, label: arg.span });

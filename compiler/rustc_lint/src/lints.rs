@@ -682,7 +682,7 @@ pub struct DropCopyDiag<'a> {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_forget_ref)]
+#[diag(lint_forgetting_references)]
 #[note]
 pub struct ForgetRefDiag<'a> {
     pub arg_ty: Ty<'a>,

@@ -529,7 +529,7 @@ lint_dropping_copy_types = calls to `std::mem::drop` with a value that implement
     .label = argument has type `{$arg_ty}`
     .note = use `let _ = ...` to ignore the expression or result
 
-lint_forget_ref = calls to `std::mem::forget` with a reference instead of an owned value does nothing
+lint_forgetting_references = calls to `std::mem::forget` with a reference instead of an owned value does nothing
     .label = argument has type `{$arg_ty}`
     .note = use `let _ = ...` to ignore the expression or result
 

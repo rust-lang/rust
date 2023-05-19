@@ -222,11 +222,11 @@ error: lint `clippy::forget_copy` has been renamed to `forgetting_copy_types`
 LL | #![warn(clippy::forget_copy)]
    |         ^^^^^^^^^^^^^^^^^^^ help: use the new name: `forgetting_copy_types`
 
-error: lint `clippy::forget_ref` has been renamed to `forget_ref`
+error: lint `clippy::forget_ref` has been renamed to `forgetting_references`
   --> $DIR/rename.rs:86:9
    |
 LL | #![warn(clippy::forget_ref)]
-   |         ^^^^^^^^^^^^^^^^^^ help: use the new name: `forget_ref`
+   |         ^^^^^^^^^^^^^^^^^^ help: use the new name: `forgetting_references`
 
 error: lint `clippy::into_iter_on_array` has been renamed to `array_into_iter`
   --> $DIR/rename.rs:87:9
