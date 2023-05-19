@@ -183,6 +183,43 @@ fn capture_specific_fields() {
 }
 
 #[test]
+fn match_pattern() {
+    size_and_align_expr! {
+        struct X(i64, i32, (u8, i128));
+        let y: X = X(2, 5, (7, 3));
+        move |x: i64| {
+            match y {
+                _ => x,
+            }
+        }
+    }
+    size_and_align_expr! {
+        minicore: copy;
+        stmts: [
+            struct X(i64, i32, (u8, i128));
+            let y: X = X(2, 5, (7, 3));
+        ]
+        |x: i64| {
+            match y {
+                X(_a, _b, _c) => x,
+            }
+        }
+    }
+    size_and_align_expr! {
+        minicore: copy;
+        stmts: [
+            struct X(i64, i32, (u8, i128));
+            let y: X = X(2, 5, (7, 3));
+        ]
+        |x: i64| {
+            match y {
+                _y => x,
+            }
+        }
+    }
+}
+
+#[test]
 fn ellipsis_pattern() {
     size_and_align_expr! {
         struct X(i8, u16, i32, u64, i128, u8);

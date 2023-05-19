@@ -389,7 +389,7 @@ pub struct InferenceResult {
     standard_types: InternedStandardTypes,
     /// Stores the types which were implicitly dereferenced in pattern binding modes.
     pub pat_adjustments: FxHashMap<PatId, Vec<Ty>>,
-    pub pat_binding_modes: FxHashMap<PatId, BindingMode>,
+    pub binding_modes: ArenaMap<BindingId, BindingMode>,
     pub expr_adjustments: FxHashMap<ExprId, Vec<Adjustment>>,
     pub(crate) closure_info: FxHashMap<ClosureId, (Vec<CapturedItem>, FnTrait)>,
     // FIXME: remove this field

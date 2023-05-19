@@ -340,7 +340,7 @@ impl<'a> InferenceContext<'a> {
         } else {
             BindingMode::convert(mode)
         };
-        self.result.pat_binding_modes.insert(pat, mode);
+        self.result.binding_modes.insert(binding, mode);
 
         let inner_ty = match subpat {
             Some(subpat) => self.infer_pat(subpat, &expected, default_bm),
@@ -439,7 +439,7 @@ fn is_non_ref_pat(body: &hir_def::body::Body, pat: PatId) -> bool {
 pub(super) fn contains_explicit_ref_binding(body: &Body, pat_id: PatId) -> bool {
     let mut res = false;
     body.walk_pats(pat_id, &mut |pat| {
-        res |= matches!(pat, Pat::Bind { id, .. } if body.bindings[*id].mode == BindingAnnotation::Ref);
+        res |= matches!(body[pat], Pat::Bind { id, .. } if body.bindings[id].mode == BindingAnnotation::Ref);
     });
     res
 }

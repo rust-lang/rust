@@ -221,15 +221,15 @@ impl Body {
 
     pub fn walk_bindings_in_pat(&self, pat_id: PatId, mut f: impl FnMut(BindingId)) {
         self.walk_pats(pat_id, &mut |pat| {
-            if let Pat::Bind { id, .. } = pat {
+            if let Pat::Bind { id, .. } = &self[pat] {
                 f(*id);
             }
         });
     }
 
-    pub fn walk_pats(&self, pat_id: PatId, f: &mut impl FnMut(&Pat)) {
+    pub fn walk_pats(&self, pat_id: PatId, f: &mut impl FnMut(PatId)) {
         let pat = &self[pat_id];
-        f(pat);
+        f(pat_id);
         match pat {
             Pat::Range { .. }
             | Pat::Lit(..)

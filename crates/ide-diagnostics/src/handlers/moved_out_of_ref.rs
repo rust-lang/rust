@@ -151,4 +151,25 @@ fn f(x: &mut X<'_>) {
 "#,
         );
     }
+
+    #[test]
+    fn no_false_positive_match_and_closure_capture() {
+        check_diagnostics(
+            r#"
+//- minicore: copy, fn
+enum X {
+    Foo(u16),
+    Bar,
+}
+
+fn main() {
+    let x = &X::Bar;
+    let c = || match *x {
+        X::Foo(t) => t,
+        _ => 5,
+    };
+}
+            "#,
+        );
+    }
 }
