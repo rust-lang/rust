@@ -174,7 +174,6 @@ fn generate_rust_program(notices: &str, intrinsic: &Intrinsic, a32: bool) -> Str
 #![cfg_attr(target_arch = "aarch64", feature(stdarch_neon_sha3))]
 #![cfg_attr(target_arch = "aarch64", feature(stdarch_neon_sm4))]
 #![cfg_attr(target_arch = "aarch64", feature(stdarch_neon_ftts))]
-#![allow(overflowing_literals)]
 #![allow(non_upper_case_globals)]
 use core_arch::arch::{target_arch}::*;
 

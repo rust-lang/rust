@@ -305,23 +305,38 @@ impl IntrinsicType {
         match self {
             IntrinsicType::Ptr { child, .. } => child.populate_random(loads, language),
             IntrinsicType::Type {
-                bit_len: Some(bit_len),
-                kind: TypeKind::Int | TypeKind::UInt | TypeKind::Poly,
+                bit_len: Some(bit_len @ (8 | 16 | 32 | 64)),
+                kind: kind @ (TypeKind::Int | TypeKind::UInt | TypeKind::Poly),
                 simd_len,
                 vec_len,
                 ..
             } => {
-                let (prefix, as_type, suffix) = match language {
-                    &Language::Rust => ("[", format!(" as {}", self.rust_scalar_type()), "]"),
-                    &Language::C => ("{", "".into(), "}"),
+                let (prefix, suffix) = match language {
+                    &Language::Rust => ("[", "]"),
+                    &Language::C => ("{", "}"),
                 };
                 format!(
                     "{prefix}{body}{suffix}",
                     body = (0..(simd_len.unwrap_or(1) * vec_len.unwrap_or(1) + loads - 1))
-                        .format_with(", ", |i, fmt| fmt(&format_args!(
-                            "{src}{as_type}",
-                            src = value_for_array(*bit_len, i)
-                        )))
+                        .format_with(", ", |i, fmt| {
+                            let src = value_for_array(*bit_len, i);
+                            assert!(src == 0 || src.ilog2() < *bit_len);
+                            if *kind == TypeKind::Int && (src >> (*bit_len - 1)) != 0 {
+                                // `src` is a two's complement representation of a negative value.
+                                let mask = !0u64 >> (64 - *bit_len);
+                                let ones_compl = src ^ mask;
+                                let twos_compl = ones_compl + 1;
+                                if (twos_compl == src) && (language == &Language::C) {
+                                    // `src` is INT*_MIN. C requires `-0x7fffffff - 1` to avoid
+                                    // undefined literal overflow behaviour.
+                                    fmt(&format_args!("-{ones_compl:#x} - 1"))
+                                } else {
+                                    fmt(&format_args!("-{twos_compl:#x}"))
+                                }
+                            } else {
+                                fmt(&format_args!("{src:#x}"))
+                            }
+                        })
                 )
             }
             IntrinsicType::Type {
@@ -342,7 +357,7 @@ impl IntrinsicType {
                     "{prefix}{body}{suffix}",
                     body = (0..(simd_len.unwrap_or(1) * vec_len.unwrap_or(1) + loads - 1))
                         .format_with(", ", |i, fmt| fmt(&format_args!(
-                            "{cast_prefix}{src}{cast_suffix}",
+                            "{cast_prefix}{src:#x}{cast_suffix}",
                             src = value_for_array(*bit_len, i)
                         )))
                 )
