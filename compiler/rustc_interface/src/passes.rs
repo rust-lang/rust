@@ -487,6 +487,11 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
             files.push(normalize_path(profile_sample.as_path().to_path_buf()));
         }
 
+        // Debugger visualizer files
+        for debugger_visualizer in tcx.debugger_visualizers(LOCAL_CRATE) {
+            files.push(normalize_path(debugger_visualizer.path.clone().unwrap()));
+        }
+
         if sess.binary_dep_depinfo() {
             if let Some(ref backend) = sess.opts.unstable_opts.codegen_backend {
                 if backend.contains('.') {
