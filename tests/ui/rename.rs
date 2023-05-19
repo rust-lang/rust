@@ -33,7 +33,7 @@
 #![allow(dropping_copy_types)]
 #![allow(drop_ref)]
 #![allow(for_loops_over_fallibles)]
-#![allow(forget_copy)]
+#![allow(forgetting_copy_types)]
 #![allow(forget_ref)]
 #![allow(array_into_iter)]
 #![allow(invalid_atomic_ordering)]
