@@ -825,11 +825,11 @@ pub(super) enum ConstructorSet {
     /// This type has the following list of constructors.
     Variants { variants: Vec<VariantIdx>, non_exhaustive: bool },
     /// The type is spanned by a range of integer values, e.g. all number types.
-    Range(IntRange),
+    /// `non_exhaustive` is used when the range is not allowed to be matched exhaustively (that's
+    /// for usize/isize).
+    Range { range: IntRange, non_exhaustive: bool },
     /// The type is spanned by two ranges of integer values. This is special for chars.
     Ranges([IntRange; 2]),
-    /// The type is spanned by a range of integer values of unknown boundaries.
-    UnlistableRange,
     /// The type is matched by slices.
     Slice(Slice),
     /// The constructors cannot be listed, and the type cannot be matched exhaustively. E.g. `str`,
@@ -856,7 +856,7 @@ impl ConstructorSet {
         // Invariant: this is `Uninhabited` if and only if the type is uninhabited (as determined by
         // `cx.is_uninhabited()`).
         match pcx.ty.kind() {
-            ty::Bool => Self::Range(make_range(0, 1)),
+            ty::Bool => Self::Range { range: make_range(0, 1), non_exhaustive: false },
             ty::Char => {
                 Self::Ranges([
                     // The valid Unicode Scalar Value ranges.
@@ -864,24 +864,24 @@ impl ConstructorSet {
                     make_range('\u{E000}' as u128, '\u{10FFFF}' as u128),
                 ])
             }
-            ty::Int(_) | ty::Uint(_)
-                if pcx.ty.is_ptr_sized_integral()
-                    && !cx.tcx.features().precise_pointer_size_matching =>
-            {
+            &ty::Int(ity) => {
                 // `usize`/`isize` are not allowed to be matched exhaustively unless the
                 // `precise_pointer_size_matching` feature is enabled.
-                Self::UnlistableRange
-            }
-            &ty::Int(ity) => {
+                let non_exhaustive = pcx.ty.is_ptr_sized_integral()
+                    && !cx.tcx.features().precise_pointer_size_matching;
                 let bits = Integer::from_int_ty(&cx.tcx, ity).size().bits() as u128;
                 let min = 1u128 << (bits - 1);
                 let max = min - 1;
-                Self::Range(make_range(min, max))
+                Self::Range { range: make_range(min, max), non_exhaustive }
             }
             &ty::Uint(uty) => {
+                // `usize`/`isize` are not allowed to be matched exhaustively unless the
+                // `precise_pointer_size_matching` feature is enabled.
+                let non_exhaustive = pcx.ty.is_ptr_sized_integral()
+                    && !cx.tcx.features().precise_pointer_size_matching;
                 let size = Integer::from_uint_ty(&cx.tcx, uty).size();
                 let max = size.truncate(u128::MAX);
-                Self::Range(make_range(0, max))
+                Self::Range { range: make_range(0, max), non_exhaustive }
             }
             ty::Array(sub_ty, len) if len.try_eval_target_usize(cx.tcx, cx.param_env).is_some() => {
                 let len = len.eval_target_usize(cx.tcx, cx.param_env) as usize;
@@ -1018,10 +1018,14 @@ impl ConstructorSet {
                     missing.push(NonExhaustive);
                 }
             }
-            ConstructorSet::Range(base_range) if seen.is_empty() => {
-                missing.push(IntRange(base_range));
+            ConstructorSet::Range { range: base_range, non_exhaustive } if seen.is_empty() => {
+                if non_exhaustive {
+                    missing.push(NonExhaustive);
+                } else {
+                    missing.push(IntRange(base_range));
+                }
             }
-            ConstructorSet::Range(base_range) => {
+            ConstructorSet::Range { range: base_range, non_exhaustive } => {
                 // FIXME: splitting and collecting should be done in one pass.
                 let seen_ranges = seen.iter().map(|ctor| ctor.as_int_range().unwrap());
                 let mut split_base_range = SplitIntRange::new(base_range);
@@ -1032,9 +1036,12 @@ impl ConstructorSet {
                     let ctor = IntRange(splitted_range);
                     if is_covered_by_any {
                         split.push(ctor);
-                    } else {
+                    } else if !non_exhaustive {
                         missing.push(ctor);
                     }
+                }
+                if non_exhaustive {
+                    missing.push(NonExhaustive);
                 }
             }
             ConstructorSet::Ranges(base_ranges) if seen.is_empty() => {
@@ -1057,25 +1064,6 @@ impl ConstructorSet {
                         }
                     }
                 }
-            }
-            ConstructorSet::UnlistableRange if seen.is_empty() => {
-                missing.push(NonExhaustive);
-            }
-            ConstructorSet::UnlistableRange => {
-                // Since we can't list constructors, we need to take the ones in the matrix.
-                // FIXME: would be nice to reuse the `Range` case somehow instead of this quadratic
-                // splitting.
-                let seen_ranges = seen.iter().map(|ctor| ctor.as_int_range().unwrap()).cloned();
-                for seen_range in seen_ranges.clone() {
-                    if seen_range.is_singleton() {
-                        split.push(IntRange(seen_range))
-                    } else {
-                        let mut split_range = SplitIntRange::new(seen_range);
-                        split_range.split(seen_ranges.clone());
-                        split.extend(split_range.iter().map(IntRange));
-                    }
-                }
-                missing.push(NonExhaustive);
             }
             ConstructorSet::Slice(base_slice) if seen.is_empty() => {
                 missing.push(Slice(base_slice));
