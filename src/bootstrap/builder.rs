@@ -942,7 +942,6 @@ impl<'a> Builder<'a> {
         self.run_step_descriptions(&Builder::get_step_descriptions(Kind::Doc), paths);
     }
 
-    /// NOTE: keep this in sync with `rustdoc::clean::utils::doc_rust_lang_org_channel`, or tests will fail on beta/stable.
     pub fn doc_rust_lang_org_channel(&self) -> String {
         let channel = match &*self.config.channel {
             "stable" => &self.version,
