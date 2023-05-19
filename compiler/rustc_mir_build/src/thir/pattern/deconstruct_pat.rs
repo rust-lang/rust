@@ -390,9 +390,10 @@ impl SplitIntRange {
         let self_bias = self.range.bias;
         let [self_lo, self_hi] = Self::to_boundaries(&self.range);
 
-        let ranges: Vec<[IntBoundary; 2]> = ranges
+        // Boundary counts as +1 if it starts a range and -1 if it ends it.
+        let mut bdys: Vec<(IntBoundary, isize)> = ranges
             .map(|r| Self::to_boundaries(&r))
-            .filter_map(|&[other_lo, other_hi]| {
+            .filter_map(|[other_lo, other_hi]| {
                 // Intersect with `self`
                 if self_lo <= other_hi && other_lo <= self_hi {
                     Some([max(self_lo, other_lo), min(self_hi, other_hi)])
@@ -400,15 +401,22 @@ impl SplitIntRange {
                     None
                 }
             })
+            .flat_map(|[lo, hi]| [(lo, 1), (hi, -1)])
             .collect();
-        let mut bdys: Vec<IntBoundary> = ranges.iter().flat_map(|[lo, hi]| [lo, hi]).collect();
         bdys.sort_unstable();
 
         // Start with the start of the range.
-        let mut prev_bdy = self_lo;
+        let mut prev_bdy = (self_lo, 0);
+        let mut count = 0isize;
         bdys.into_iter()
             // End with the end of the range.
-            .chain(once(self_hi))
+            .chain(once((self_hi, 0)))
+            // Accumulate deltas. This does the equivalent of parenthesis matching: if the count is
+            // > 0 between two boundaries, we are within one of the seen ranges.
+            .map(move |(bdy, delta)| {
+                count += delta;
+                (bdy, count)
+            })
             // List pairs of adjacent bdys.
             .map(move |bdy| {
                 let ret = (prev_bdy, bdy);
@@ -416,13 +424,10 @@ impl SplitIntRange {
                 ret
             })
             // Skip duplicate boundaries.
-            .filter(|(prev_bdy, bdy)| prev_bdy != bdy)
+            .filter(|((prev_bdy, _), (bdy, _))| prev_bdy != bdy)
             // Finally, convert to ranges.
-            .map(move |(prev_bdy, bdy)| {
-                let is_covered_by_any = ranges
-                    .iter()
-                    .any(|&[other_lo, other_hi]| other_lo <= prev_bdy && bdy <= other_hi);
-                let presence = if is_covered_by_any { Seen } else { Unseen };
+            .map(move |((prev_bdy, prev_count), (bdy, _))| {
+                let presence = if prev_count > 0 { Seen } else { Unseen };
                 let range = match (prev_bdy, bdy) {
                     (JustBefore(n), JustBefore(m)) if n < m => n..=m - 1,
                     (JustBefore(n), AfterMax) => n..=u128::MAX,
