@@ -710,14 +710,14 @@ impl InferenceContext<'_> {
         false
     }
 
-    fn is_ty_copy(&self, ty: Ty) -> bool {
+    fn is_ty_copy(&mut self, ty: Ty) -> bool {
         if let TyKind::Closure(id, _) = ty.kind(Interner) {
             // FIXME: We handle closure as a special case, since chalk consider every closure as copy. We
             // should probably let chalk know which closures are copy, but I don't know how doing it
             // without creating query cycles.
             return self.result.closure_info.get(id).map(|x| x.1 == FnTrait::Fn).unwrap_or(true);
         }
-        ty.is_copy(self.db, self.owner)
+        self.table.resolve_completely(ty).is_copy(self.db, self.owner)
     }
 
     fn select_from_expr(&mut self, expr: ExprId) {
