@@ -1,6 +1,8 @@
 use std::fmt;
 use std::str::FromStr;
 
+use itertools::Itertools as _;
+
 use crate::values::value_for_array;
 use crate::Language;
 
@@ -288,82 +290,64 @@ impl IntrinsicType {
         }
     }
 
-    /// Generates a comma list of values that can be used to initialize the array that
-    /// an argument for the intrinsic call is loaded from.
+    /// Generates an initialiser for an array, which can be used to initialise an argument for the
+    /// intrinsic call.
+    ///
     /// This is determistic based on the pass number.
     ///
     /// * `loads`: The number of values that need to be loaded from the argument array
     /// * e.g for argument type uint32x2, loads=2 results in a string representing 4 32-bit values
     ///
     /// Returns a string such as
-    /// * `0x1, 0x7F, 0xFF` if `language` is `Language::C`
-    /// * `0x1 as _, 0x7F as _, 0xFF as _` if `language` is `Language::Rust`
+    /// * `{0x1, 0x7F, 0xFF}` if `language` is `Language::C`
+    /// * `[0x1 as _, 0x7F as _, 0xFF as _]` if `language` is `Language::Rust`
     pub fn populate_random(&self, loads: u32, language: &Language) -> String {
         match self {
             IntrinsicType::Ptr { child, .. } => child.populate_random(loads, language),
             IntrinsicType::Type {
                 bit_len: Some(bit_len),
-                kind,
+                kind: TypeKind::Int | TypeKind::UInt | TypeKind::Poly,
                 simd_len,
                 vec_len,
                 ..
-            } if kind == &TypeKind::Int || kind == &TypeKind::UInt || kind == &TypeKind::Poly => (0
-                ..(simd_len.unwrap_or(1) * vec_len.unwrap_or(1) + loads - 1))
-                .map(|i| {
-                    format!(
-                        "{}{}",
-                        value_for_array(*bit_len, i),
-                        match language {
-                            &Language::Rust => format!(" as {ty} ", ty = self.rust_scalar_type()),
-                            &Language::C => String::from(""),
-                        }
-                    )
-                })
-                .collect::<Vec<_>>()
-                .join(","),
+            } => {
+                let (prefix, as_type, suffix) = match language {
+                    &Language::Rust => ("[", format!(" as {}", self.rust_scalar_type()), "]"),
+                    &Language::C => ("{", "".into(), "}"),
+                };
+                format!(
+                    "{prefix}{body}{suffix}",
+                    body = (0..(simd_len.unwrap_or(1) * vec_len.unwrap_or(1) + loads - 1))
+                        .format_with(", ", |i, fmt| fmt(&format_args!(
+                            "{src}{as_type}",
+                            src = value_for_array(*bit_len, i)
+                        )))
+                )
+            }
             IntrinsicType::Type {
                 kind: TypeKind::Float,
-                bit_len: Some(32),
+                bit_len: Some(bit_len @ (32 | 64)),
                 simd_len,
                 vec_len,
                 ..
-            } => (0..(simd_len.unwrap_or(1) * vec_len.unwrap_or(1) + loads - 1))
-                .map(|i| {
-                    format!(
-                        "{}({})",
-                        match language {
-                            &Language::Rust => "std::mem::transmute",
-                            &Language::C => "cast<float, uint32_t>",
-                        },
-                        value_for_array(32, i),
-                    )
-                })
-                .collect::<Vec<_>>()
-                .join(","),
-            IntrinsicType::Type {
-                kind: TypeKind::Float,
-                bit_len: Some(64),
-                simd_len,
-                vec_len,
-                ..
-            } => (0..(simd_len.unwrap_or(1) * vec_len.unwrap_or(1) + loads - 1))
-                .map(|i| {
-                    format!(
-                        "{}({}{})",
-                        match language {
-                            &Language::Rust => "std::mem::transmute",
-                            &Language::C => "cast<double, uint64_t>",
-                        },
-                        value_for_array(64, i),
-                        match language {
-                            &Language::Rust => " as u64",
-                            &Language::C => "",
-                        }
-                    )
-                })
-                .collect::<Vec<_>>()
-                .join(","),
-            _ => unreachable!("populate random: {:#?}", self),
+            } => {
+                let (prefix, cast_prefix, cast_suffix, suffix) = match (language, bit_len) {
+                    (&Language::Rust, 32) => ("[", "f32::from_bits(", ")", "]"),
+                    (&Language::Rust, 64) => ("[", "f64::from_bits(", ")", "]"),
+                    (&Language::C, 32) => ("{", "cast<float, uint32_t>(", ")", "}"),
+                    (&Language::C, 64) => ("{", "cast<double, uint64_t>(", ")", "}"),
+                    _ => unreachable!(),
+                };
+                format!(
+                    "{prefix}{body}{suffix}",
+                    body = (0..(simd_len.unwrap_or(1) * vec_len.unwrap_or(1) + loads - 1))
+                        .format_with(", ", |i, fmt| fmt(&format_args!(
+                            "{cast_prefix}{src}{cast_suffix}",
+                            src = value_for_array(*bit_len, i)
+                        )))
+                )
+            }
+            _ => unimplemented!("populate random: {:#?}", self),
         }
     }
 

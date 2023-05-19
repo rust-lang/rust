@@ -178,9 +178,8 @@ fn generate_rust_program(notices: &str, intrinsic: &Intrinsic, a32: bool) -> Str
 #![allow(non_upper_case_globals)]
 use core_arch::arch::{target_arch}::*;
 
-{arglists}
-
 fn main() {{
+{arglists}
 {passes}
 }}
 "#,

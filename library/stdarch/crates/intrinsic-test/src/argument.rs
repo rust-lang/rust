@@ -92,6 +92,37 @@ impl Argument {
             constraints: constraint.map_or(vec![], |r| vec![r]),
         }
     }
+
+    fn is_rust_vals_array_const(&self) -> bool {
+        use TypeKind::*;
+        match self.ty {
+            // Floats have to be loaded at runtime for stable NaN conversion.
+            IntrinsicType::Type { kind: Float, .. } => false,
+            IntrinsicType::Type {
+                kind: Int | UInt | Poly,
+                ..
+            } => true,
+            _ => unimplemented!(),
+        }
+    }
+
+    /// The binding keyword (e.g. "const" or "let") for the array of possible test inputs.
+    pub fn rust_vals_array_binding(&self) -> impl std::fmt::Display {
+        if self.is_rust_vals_array_const() {
+            "const"
+        } else {
+            "let"
+        }
+    }
+
+    /// The name (e.g. "A_VALS" or "a_vals") for the array of possible test inputs.
+    pub fn rust_vals_array_name(&self) -> impl std::fmt::Display {
+        if self.is_rust_vals_array_const() {
+            format!("{}_VALS", self.name.to_uppercase())
+        } else {
+            format!("{}_vals", self.name.to_lowercase())
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -143,7 +174,7 @@ impl ArgumentList {
             .filter_map(|arg| {
                 (!arg.has_constraint()).then(|| {
                     format!(
-                        "const {ty} {name}_vals[] = {{ {values} }};",
+                        "const {ty} {name}_vals[] = {values};",
                         ty = arg.ty.c_scalar_type(),
                         name = arg.name,
                         values = arg.ty.populate_random(loads, &Language::C)
@@ -161,8 +192,9 @@ impl ArgumentList {
             .filter_map(|arg| {
                 (!arg.has_constraint()).then(|| {
                     format!(
-                        "const {upper_name}_VALS: [{ty}; {load_size}] = unsafe{{ [{values}] }};",
-                        upper_name = arg.name.to_uppercase(),
+                        "{bind} {name}: [{ty}; {load_size}] = {values};",
+                        bind = arg.rust_vals_array_binding(),
+                        name = arg.rust_vals_array_name(),
                         ty = arg.ty.rust_scalar_type(),
                         load_size = arg.ty.num_lanes() * arg.ty.num_vectors() + loads - 1,
                         values = arg.ty.populate_random(loads, &Language::Rust)
@@ -222,9 +254,9 @@ impl ArgumentList {
             .filter_map(|arg| {
                 (!arg.has_constraint()).then(|| {
                     format!(
-                        "let {name} = {load}({upper_name}_VALS.as_ptr().offset(i));",
+                        "let {name} = {load}({vals_name}.as_ptr().offset(i));",
                         name = arg.name,
-                        upper_name = arg.name.to_uppercase(),
+                        vals_name = arg.rust_vals_array_name(),
                         load = if arg.is_simd() {
                             arg.ty.get_load_function(false)
                         } else {
