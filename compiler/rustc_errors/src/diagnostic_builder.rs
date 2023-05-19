@@ -115,36 +115,22 @@ pub trait EmissionGuarantee: Sized {
     ) -> DiagnosticBuilder<'_, Self>;
 }
 
-/// Private module for sealing the `IsError` helper trait.
-mod sealed_level_is_error {
-    use crate::Level;
-
-    /// Sealed helper trait for statically checking that a `Level` is an error.
-    pub(crate) trait IsError<const L: Level> {}
-
-    impl IsError<{ Level::Bug }> for () {}
-    impl IsError<{ Level::DelayedBug }> for () {}
-    impl IsError<{ Level::Fatal }> for () {}
-    // NOTE(eddyb) `Level::Error { lint: true }` is also an error, but lints
-    // don't need error guarantees, as their levels are always dynamic.
-    impl IsError<{ Level::Error { lint: false } }> for () {}
-}
-
 impl<'a> DiagnosticBuilder<'a, ErrorGuaranteed> {
     /// Convenience function for internal use, clients should use one of the
     /// `struct_*` methods on [`Handler`].
     #[track_caller]
-    pub(crate) fn new_guaranteeing_error<M: Into<DiagnosticMessage>, const L: Level>(
+    pub(crate) fn new_guaranteeing_error<M: Into<DiagnosticMessage>>(
         handler: &'a Handler,
         message: M,
-    ) -> Self
-    where
-        (): sealed_level_is_error::IsError<L>,
-    {
+    ) -> Self {
         Self {
             inner: DiagnosticBuilderInner {
                 state: DiagnosticBuilderState::Emittable(handler),
-                diagnostic: Box::new(Diagnostic::new_with_code(L, None, message)),
+                diagnostic: Box::new(Diagnostic::new_with_code(
+                    Level::Error { lint: false },
+                    None,
+                    message,
+                )),
             },
             _marker: PhantomData,
         }
@@ -203,9 +189,7 @@ impl EmissionGuarantee for ErrorGuaranteed {
         handler: &Handler,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, Self> {
-        DiagnosticBuilder::new_guaranteeing_error::<_, { Level::Error { lint: false } }>(
-            handler, msg,
-        )
+        DiagnosticBuilder::new_guaranteeing_error(handler, msg)
     }
 }
 
