@@ -351,7 +351,6 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
         let tcx = self.tcx;
         let body = self.body;
         let borrow_set = self.borrow_set;
-        let indices = self.borrow_set.indices();
         each_borrow_involving_path(
             self,
             tcx,
@@ -359,7 +358,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
             location,
             (sd, place),
             borrow_set,
-            indices,
+            |_| true,
             |this, borrow_index, borrow| {
                 match (rw, borrow.kind) {
                     // Obviously an activation is compatible with its own
