@@ -106,7 +106,7 @@ impl Determinacy {
 /// A specific scope in which a name can be looked up.
 /// This enum is currently used only for early resolution (imports and macros),
 /// but not for late resolution yet.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 enum Scope<'a> {
     DeriveHelpers(LocalExpnId),
     DeriveHelpersCompat,
