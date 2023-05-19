@@ -122,9 +122,12 @@ impl FileDesc {
     }
 
     pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
-        #[cfg(not(any(target_os = "linux", target_os = "android")))]
+        #[cfg(not(any(
+            all(target_os = "linux", not(target_env = "musl")),
+            target_os = "android"
+        )))]
         use libc::pread as pread64;
-        #[cfg(any(target_os = "linux", target_os = "android"))]
+        #[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "android"))]
         use libc::pread64;
 
         unsafe {
@@ -277,9 +280,12 @@ impl FileDesc {
     }
 
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
-        #[cfg(not(any(target_os = "linux", target_os = "android")))]
+        #[cfg(not(any(
+            all(target_os = "linux", not(target_env = "musl")),
+            target_os = "android"
+        )))]
         use libc::pwrite as pwrite64;
-        #[cfg(any(target_os = "linux", target_os = "android"))]
+        #[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "android"))]
         use libc::pwrite64;
 
         unsafe {

@@ -47,9 +47,13 @@ use libc::{c_int, mode_t};
     all(target_os = "linux", target_env = "gnu")
 ))]
 use libc::c_char;
-#[cfg(any(target_os = "linux", target_os = "emscripten", target_os = "android"))]
+#[cfg(any(
+    all(target_os = "linux", not(target_env = "musl")),
+    target_os = "emscripten",
+    target_os = "android"
+))]
 use libc::dirfd;
-#[cfg(any(target_os = "linux", target_os = "emscripten"))]
+#[cfg(any(not(target_env = "musl"), target_os = "emscripten"))]
 use libc::fstatat64;
 #[cfg(any(
     target_os = "android",
@@ -58,9 +62,10 @@ use libc::fstatat64;
     target_os = "redox",
     target_os = "illumos",
     target_os = "nto",
+    target_env = "musl",
 ))]
 use libc::readdir as readdir64;
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", not(target_env = "musl")))]
 use libc::readdir64;
 #[cfg(any(target_os = "emscripten", target_os = "l4re"))]
 use libc::readdir64_r;
@@ -81,7 +86,13 @@ use libc::{
     dirent as dirent64, fstat as fstat64, fstatat as fstatat64, ftruncate64, lseek64,
     lstat as lstat64, off64_t, open as open64, stat as stat64,
 };
+#[cfg(target_env = "musl")]
+use libc::{
+    dirent as dirent64, fstat as fstat64, ftruncate as ftruncate64, lseek as lseek64,
+    lstat as lstat64, off_t as off64_t, open as open64, stat as stat64,
+};
 #[cfg(not(any(
+    target_env = "musl",
     target_os = "linux",
     target_os = "emscripten",
     target_os = "l4re",
@@ -91,7 +102,7 @@ use libc::{
     dirent as dirent64, fstat as fstat64, ftruncate as ftruncate64, lseek as lseek64,
     lstat as lstat64, off_t as off64_t, open as open64, stat as stat64,
 };
-#[cfg(any(target_os = "linux", target_os = "emscripten", target_os = "l4re"))]
+#[cfg(any(not(target_env = "musl"), target_os = "emscripten", target_os = "l4re"))]
 use libc::{dirent64, fstat64, ftruncate64, lseek64, lstat64, off64_t, open64, stat64};
 
 pub use crate::sys_common::fs::try_exists;
@@ -278,6 +289,7 @@ unsafe impl Sync for Dir {}
 #[cfg(any(
     target_os = "android",
     target_os = "linux",
+    not(target_env = "musl"),
     target_os = "solaris",
     target_os = "illumos",
     target_os = "fuchsia",
@@ -312,6 +324,7 @@ struct dirent64_min {
 }
 
 #[cfg(not(any(
+    target_env = "musl",
     target_os = "android",
     target_os = "linux",
     target_os = "solaris",
@@ -798,7 +811,7 @@ impl DirEntry {
     }
 
     #[cfg(all(
-        any(target_os = "linux", target_os = "emscripten", target_os = "android"),
+        any(not(target_env = "musl"), target_os = "emscripten", target_os = "android"),
         not(miri)
     ))]
     pub fn metadata(&self) -> io::Result<FileAttr> {
@@ -822,7 +835,7 @@ impl DirEntry {
     }
 
     #[cfg(any(
-        not(any(target_os = "linux", target_os = "emscripten", target_os = "android")),
+        not(any(not(target_env = "musl"), target_os = "emscripten", target_os = "android")),
         miri
     ))]
     pub fn metadata(&self) -> io::Result<FileAttr> {
