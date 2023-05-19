@@ -693,6 +693,29 @@ pub async$0 fn foo() {
     }
 
     #[test]
+    fn test_hl_let_else_yield_points() {
+        check(
+            r#"
+pub async fn foo() {
+ // ^^^^^
+    let x = foo()
+        .await$0
+      // ^^^^^
+        .await;
+      // ^^^^^
+    || { 0.await };
+    let Some(_) = None else {
+        foo().await
+           // ^^^^^
+    };
+    (async { 0.await }).await
+                     // ^^^^^
+}
+"#,
+        );
+    }
+
+    #[test]
     fn test_hl_yield_nested_fn() {
         check(
             r#"
@@ -778,6 +801,26 @@ async fn foo() {
         return 0;
      // ^^^^^^
     }
+
+    0?;
+  // ^
+    0xDEAD_BEEF
+ // ^^^^^^^^^^^
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_hl_let_else_exit_points() {
+        check(
+            r#"
+  fn$0 foo() -> u32 {
+//^^
+    let Some(bar) = None else {
+        return 0;
+     // ^^^^^^
+    };
 
     0?;
   // ^
