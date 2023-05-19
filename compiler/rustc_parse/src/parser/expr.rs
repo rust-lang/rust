@@ -3377,7 +3377,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, P<Expr>> {
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
             let res = f(this, attrs)?;
-            let trailing = if this.restrictions.contains(Restrictions::STMT_EXPRPAr)
+            let trailing = if this.restrictions.contains(Restrictions::STMT_EXPR)
                 && this.token.kind == token::Semi
             {
                 TrailingToken::Semi
