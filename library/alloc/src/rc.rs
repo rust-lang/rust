@@ -258,12 +258,12 @@ use core::iter;
 use core::marker::{PhantomData, Unsize};
 #[cfg(not(no_global_oom_handling))]
 use core::mem::size_of_val;
-use core::mem::{self, align_of_val_raw, forget};
-use core::ops::{CoerceUnsized, Deref, DispatchFromDyn, Receiver};
+use core::mem::{self, align_of_val_raw, forget, ManuallyDrop};
+use core::ops::{CoerceUnsized, Deref, DerefMut, DispatchFromDyn, Receiver};
 use core::panic::{RefUnwindSafe, UnwindSafe};
 #[cfg(not(no_global_oom_handling))]
 use core::pin::Pin;
-use core::ptr::{self, NonNull};
+use core::ptr::{self, drop_in_place, NonNull};
 #[cfg(not(no_global_oom_handling))]
 use core::slice::from_raw_parts_mut;
 
@@ -2743,4 +2743,140 @@ unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> usize {
 fn data_offset_align(align: usize) -> usize {
     let layout = Layout::new::<RcBox<()>>();
     layout.size() + layout.padding_needed_for(align)
+}
+
+/// A uniquely owned `Rc`
+///
+/// This represents an `Rc` that is known to be uniquely owned -- that is, have exactly one strong
+/// reference. Multiple weak pointers can be created, but attempts to upgrade those to strong
+/// references will fail unless the `UniqueRc` they point to has been converted into a regular `Rc`.
+///
+/// Because they are uniquely owned, the contents of a `UniqueRc` can be freely mutated. A common
+/// use case is to have an object be mutable during its initialization phase but then have it become
+/// immutable and converted to a normal `Rc`.
+///
+/// This can be used as a flexible way to create cyclic data structures, as in the example below.
+///
+/// ```
+/// #![feature(unique_rc_arc)]
+/// use std::rc::{Rc, Weak, UniqueRc};
+///
+/// struct Gadget {
+///     #[allow(dead_code)]
+///     me: Weak<Gadget>,
+/// }
+///
+/// fn create_gadget() -> Option<Rc<Gadget>> {
+///     let mut rc = UniqueRc::new(Gadget {
+///         me: Weak::new(),
+///     });
+///     rc.me = UniqueRc::downgrade(&rc);
+///     Some(UniqueRc::into_rc(rc))
+/// }
+///
+/// create_gadget().unwrap();
+/// ```
+///
+/// An advantage of using `UniqueRc` over [`Rc::new_cyclic`] to build cyclic data structures is that
+/// [`Rc::new_cyclic`]'s `data_fn` parameter cannot be async or return a [`Result`]. As shown in the
+/// previous example, `UniqueRc` allows for more flexibility in the construction of cyclic data,
+/// including fallible or async constructors.
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+#[derive(Debug)]
+pub struct UniqueRc<T> {
+    ptr: NonNull<RcBox<T>>,
+    phantom: PhantomData<RcBox<T>>,
+}
+
+impl<T> UniqueRc<T> {
+    /// Creates a new `UniqueRc`
+    ///
+    /// Weak references to this `UniqueRc` can be created with [`UniqueRc::downgrade`]. Upgrading
+    /// these weak references will fail before the `UniqueRc` has been converted into an [`Rc`].
+    /// After converting the `UniqueRc` into an [`Rc`], any weak references created beforehand will
+    /// point to the new [`Rc`].
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "unique_rc_arc", issue = "112566")]
+    pub fn new(value: T) -> Self {
+        Self {
+            ptr: Box::leak(Box::new(RcBox {
+                strong: Cell::new(0),
+                // keep one weak reference so if all the weak pointers that are created are dropped
+                // the UniqueRc still stays valid.
+                weak: Cell::new(1),
+                value,
+            }))
+            .into(),
+            phantom: PhantomData,
+        }
+    }
+
+    /// Creates a new weak reference to the `UniqueRc`
+    ///
+    /// Attempting to upgrade this weak reference will fail before the `UniqueRc` has been converted
+    /// to a [`Rc`] using [`UniqueRc::into_rc`].
+    #[unstable(feature = "unique_rc_arc", issue = "112566")]
+    pub fn downgrade(this: &Self) -> Weak<T> {
+        // SAFETY: This pointer was allocated at creation time and we guarantee that we only have
+        // one strong reference before converting to a regular Rc.
+        unsafe {
+            this.ptr.as_ref().inc_weak();
+        }
+        Weak { ptr: this.ptr }
+    }
+
+    /// Converts the `UniqueRc` into a regular [`Rc`]
+    ///
+    /// This consumes the `UniqueRc` and returns a regular [`Rc`] that contains the `value` that
+    /// is passed to `into_rc`.
+    ///
+    /// Any weak references created before this method is called can now be upgraded to strong
+    /// references.
+    #[unstable(feature = "unique_rc_arc", issue = "112566")]
+    pub fn into_rc(this: Self) -> Rc<T> {
+        let mut this = ManuallyDrop::new(this);
+        // SAFETY: This pointer was allocated at creation time so we know it is valid.
+        unsafe {
+            // Convert our weak reference into a strong reference
+            this.ptr.as_mut().strong.set(1);
+            Rc::from_inner(this.ptr)
+        }
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T> Deref for UniqueRc<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        // SAFETY: This pointer was allocated at creation time so we know it is valid.
+        unsafe { &self.ptr.as_ref().value }
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T> DerefMut for UniqueRc<T> {
+    fn deref_mut(&mut self) -> &mut T {
+        // SAFETY: This pointer was allocated at creation time so we know it is valid. We know we
+        // have unique ownership and therefore it's safe to make a mutable reference because
+        // `UniqueRc` owns the only strong reference to itself.
+        unsafe { &mut (*self.ptr.as_ptr()).value }
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+unsafe impl<#[may_dangle] T> Drop for UniqueRc<T> {
+    fn drop(&mut self) {
+        unsafe {
+            // destroy the contained object
+            drop_in_place(DerefMut::deref_mut(self));
+
+            // remove the implicit "strong weak" pointer now that we've destroyed the contents.
+            self.ptr.as_ref().dec_weak();
+
+            if self.ptr.as_ref().weak() == 0 {
+                Global.deallocate(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()));
+            }
+        }
+    }
 }
