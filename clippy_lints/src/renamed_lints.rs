@@ -34,7 +34,7 @@ pub static RENAMED_LINTS: &[(&str, &str)] = &[
     ("clippy::clone_double_ref", "suspicious_double_ref_op"),
     ("clippy::drop_bounds", "drop_bounds"),
     ("clippy::drop_copy", "dropping_copy_types"),
-    ("clippy::drop_ref", "drop_ref"),
+    ("clippy::drop_ref", "dropping_references"),
     ("clippy::for_loop_over_option", "for_loops_over_fallibles"),
     ("clippy::for_loop_over_result", "for_loops_over_fallibles"),
     ("clippy::for_loops_over_fallibles", "for_loops_over_fallibles"),
