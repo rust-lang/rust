@@ -308,9 +308,8 @@
 use super::deconstruct_pat::{Constructor, ConstructorSet, DeconstructedPat, Fields};
 use crate::errors::{NonExhaustiveOmittedPattern, Uncovered};
 
-use rustc_data_structures::captures::Captures;
-
 use rustc_arena::TypedArena;
+use rustc_data_structures::captures::Captures;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::DefId;
 use rustc_hir::HirId;
@@ -471,10 +470,6 @@ struct Matrix<'p, 'tcx> {
 impl<'p, 'tcx> Matrix<'p, 'tcx> {
     fn empty() -> Self {
         Matrix { rows: vec![] }
-    }
-
-    fn len(&self) -> usize {
-        self.rows.len()
     }
 
     /// Pushes a new row to the matrix. If the row starts with an or-pattern, this recursively
@@ -781,35 +776,12 @@ fn compute_usefulness<'p, 'tcx>(
     let is_non_exhaustive = cx.is_foreign_non_exhaustive_enum(ty);
     let pcx = &PatCtxt { cx, ty, span: DUMMY_SP, is_top_level, is_non_exhaustive };
 
-    if super::deconstruct_pat::IntRange::is_integral(ty) {
-        for row_id in 0..matrix.len() {
-            let v = &matrix.rows[row_id];
-            if let Constructor::IntRange(ctor_range) = v.head().ctor() {
-                if ctor_range.is_singleton() {
-                    continue;
-                }
-                // Lint on likely incorrect range patterns (#63987)
-                let pcx = &PatCtxt { span: v.head().span(), ..*pcx };
-                let compare_against = matrix
-                    .rows()
-                    .take(row_id)
-                    .filter(|row| !row.is_under_guard)
-                    .map(|row| row.head());
-                ctor_range.lint_overlapping_range_endpoints(
-                    pcx,
-                    compare_against,
-                    v.len(),
-                    lint_root,
-                )
-            }
-        }
-    }
-
     let set = ConstructorSet::new(pcx);
     let (split_ctors, missing_ctors) = set.split(pcx, matrix.heads().map(|p| p.ctor()));
     // For each constructor, we compute whether there's a value that starts with it that would
     // witness the usefulness of `v`.
     let mut ret = WitnessMatrix::new_empty();
+    let orig_column_count = v.len();
     for ctor in split_ctors {
         // If some ctors are missing we only report those. Could report all if that's useful for
         // some applications.
@@ -825,6 +797,23 @@ fn compute_usefulness<'p, 'tcx>(
         if collect_witnesses {
             witnesses.apply_constructor(pcx, &missing_ctors, &ctor);
             ret.extend(witnesses);
+        }
+
+        // Lint on likely incorrect range patterns (#63987)
+        if let Constructor::IntRange(overlap_range) = ctor {
+            // If two ranges overlap on their boundaries, that boundary will be found as a singleton
+            // range after splitting.
+            if overlap_range.is_singleton() && orig_column_count == 1 {
+                overlap_range.lint_overlapping_range_endpoints(
+                    pcx,
+                    spec_matrix
+                        .rows()
+                        .map(|child_row| &matrix.rows[child_row.parent_row])
+                        .map(|parent_row| (parent_row.head(), parent_row.is_under_guard)),
+                    orig_column_count,
+                    lint_root,
+                );
+            }
         }
 
         for child_row in spec_matrix.rows() {

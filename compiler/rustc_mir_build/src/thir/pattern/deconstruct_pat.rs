@@ -212,23 +212,6 @@ impl IntRange {
         }
     }
 
-    fn suspicious_intersection(&self, other: &Self) -> bool {
-        // `false` in the following cases:
-        // 1     ----      // 1  ----------   // 1 ----        // 1       ----
-        // 2  ----------   // 2     ----      // 2       ----  // 2 ----
-        //
-        // The following are currently `false`, but could be `true` in the future (#64007):
-        // 1 ---------       // 1     ---------
-        // 2     ----------  // 2 ----------
-        //
-        // `true` in the following cases:
-        // 1 -------          // 1       -------
-        // 2       --------   // 2 -------
-        let (lo, hi) = self.boundaries();
-        let (other_lo, other_hi) = other.boundaries();
-        (lo == other_hi || hi == other_lo) && !self.is_singleton() && !other.is_singleton()
-    }
-
     /// Only used for displaying the range properly.
     fn to_pat<'tcx>(&self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Pat<'tcx> {
         let (lo, hi) = self.boundaries();
@@ -257,44 +240,67 @@ impl IntRange {
     pub(super) fn lint_overlapping_range_endpoints<'a, 'p: 'a, 'tcx: 'a>(
         &self,
         pcx: &PatCtxt<'_, 'p, 'tcx>,
-        pats: impl Iterator<Item = &'a DeconstructedPat<'p, 'tcx>>,
+        pats: impl Iterator<Item = (&'a DeconstructedPat<'p, 'tcx>, bool)>,
         column_count: usize,
         lint_root: HirId,
     ) {
-        if self.is_singleton() {
+        // FIXME: for now, only check for overlapping ranges on non-nested range patterns. Otherwise
+        // with the current logic the following is detected as overlapping:
+        // ```
+        // match (0u8, true) {
+        //   (0 ..= 125, false) => {}
+        //   (125 ..= 255, true) => {}
+        //   _ => {}
+        // }
+        // ```
+        if !self.is_singleton() || column_count != 1 {
             return;
         }
 
-        if column_count != 1 {
-            // FIXME: for now, only check for overlapping ranges on simple range
-            // patterns. Otherwise with the current logic the following is detected
-            // as overlapping:
-            // ```
-            // match (0u8, true) {
-            //   (0 ..= 125, false) => {}
-            //   (125 ..= 255, true) => {}
-            //   _ => {}
-            // }
-            // ```
-            return;
-        }
-
-        let overlap: Vec<_> = pats
-            .filter_map(|pat| Some((pat.ctor().as_int_range()?, pat.span())))
-            .filter(|(range, _)| self.suspicious_intersection(range))
-            .map(|(range, span)| Overlap {
-                range: self.intersection(&range).unwrap().to_pat(pcx.cx.tcx, pcx.ty),
-                span,
-            })
-            .collect();
-
-        if !overlap.is_empty() {
-            pcx.cx.tcx.emit_spanned_lint(
-                lint::builtin::OVERLAPPING_RANGE_ENDPOINTS,
-                lint_root,
-                pcx.span,
-                OverlappingRangeEndpoints { overlap, range: pcx.span },
-            );
+        let overlap: u128 = self.boundaries().0;
+        // Spans of ranges that start or end with the overlap.
+        let mut prefixes: SmallVec<[_; 1]> = Default::default();
+        let mut suffixes: SmallVec<[_; 1]> = Default::default();
+        // Iterate on rows that contained `overlap`.
+        for (range, this_span, is_under_guard) in pats.filter_map(|(pat, under_guard)| {
+            Some((pat.ctor().as_int_range()?, pat.span(), under_guard))
+        }) {
+            if range.is_singleton() {
+                continue;
+            }
+            let mut overlaps: SmallVec<[_; 1]> = Default::default();
+            if *range.range.start() == overlap {
+                if !prefixes.is_empty() {
+                    overlaps = prefixes.clone();
+                }
+                if !is_under_guard {
+                    suffixes.push(this_span)
+                }
+            } else if *range.range.end() == overlap {
+                if !suffixes.is_empty() {
+                    overlaps = suffixes.clone();
+                }
+                if !is_under_guard {
+                    prefixes.push(this_span)
+                }
+            }
+            if !overlaps.is_empty() {
+                let overlap_as_pat = (super::deconstruct_pat::IntRange {
+                    range: overlap..=overlap,
+                    bias: self.bias,
+                })
+                .to_pat(pcx.cx.tcx, pcx.ty);
+                let overlaps: Vec<_> = overlaps
+                    .into_iter()
+                    .map(|span| Overlap { range: overlap_as_pat.clone(), span })
+                    .collect();
+                pcx.cx.tcx.emit_spanned_lint(
+                    lint::builtin::OVERLAPPING_RANGE_ENDPOINTS,
+                    lint_root,
+                    this_span,
+                    OverlappingRangeEndpoints { overlap: overlaps, range: this_span },
+                );
+            }
         }
     }
 
