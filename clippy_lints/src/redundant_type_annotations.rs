@@ -59,10 +59,8 @@ fn func_hir_id_to_func_ty<'tcx>(cx: &LateContext<'tcx>, hir_id: hir::hir_id::Hir
 }
 
 fn func_ty_to_return_type<'tcx>(cx: &LateContext<'tcx>, func_ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
-    if func_ty.is_fn()
-        && let Some(return_type) = func_ty.fn_sig(cx.tcx).output().no_bound_vars()
-    {
-        Some(return_type)
+    if func_ty.is_fn() {
+        Some(func_ty.fn_sig(cx.tcx).output().skip_binder())
     } else {
         None
     }
@@ -111,7 +109,7 @@ fn is_redundant_in_func_call<'tcx>(
     false
 }
 
-fn extract_primty<'tcx>(ty_kind: &hir::TyKind<'tcx>) -> Option<hir::PrimTy> {
+fn extract_primty(ty_kind: &hir::TyKind<'_>) -> Option<hir::PrimTy> {
     if let hir::TyKind::Path(ty_path) = ty_kind
         && let hir::QPath::Resolved(_, resolved_path_ty) = ty_path
         && let hir::def::Res::PrimTy(primty) = resolved_path_ty.res
@@ -142,12 +140,24 @@ impl LateLintPass<'_> for RedundantTypeAnnotations {
                     }
                 },
                 hir::ExprKind::MethodCall(_, _, _, _) => {
-                    if let hir::TyKind::Path(ty_path) = &ty.kind
-                        && let hir::QPath::Resolved(_, resolved_path_ty) = ty_path
+                    let mut is_ref = false;
+                    let mut ty_kind = &ty.kind;
 
+                    // If the annotation is a ref we "peel" it
+                    if let hir::TyKind::Ref(_, mut_ty) = &ty.kind {
+                        is_ref = true;
+                        ty_kind = &mut_ty.ty.kind;
+                    }
+
+                    if let hir::TyKind::Path(ty_path) = ty_kind
+                        && let hir::QPath::Resolved(_, resolved_path_ty) = ty_path
                         && let Some(func_ty) = func_hir_id_to_func_ty(cx, init.hir_id)
                         && let Some(return_type) = func_ty_to_return_type(cx, func_ty)
-                        && is_same_type(cx, resolved_path_ty.res, return_type)
+                        && is_same_type(cx, resolved_path_ty.res, if is_ref {
+                            return_type.peel_refs()
+                        } else {
+                            return_type
+                        })
                     {
                         span_lint(cx, REDUNDANT_TYPE_ANNOTATIONS, local.span, "redundant type annotation");
                     }

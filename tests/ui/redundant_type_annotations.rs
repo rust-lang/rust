@@ -18,8 +18,15 @@ fn plus_one<T: std::ops::Add<u8, Output = T>>(val: T) -> T {
     val + 1
 }
 
+#[derive(Default)]
+struct Slice {
+    inner: u32,
+}
+
+#[derive(Default)]
 struct Pie {
     inner: u32,
+    inner_struct: Slice,
 }
 
 enum Pizza {
@@ -32,7 +39,7 @@ fn return_a_string() -> String {
 }
 
 fn return_a_struct() -> Pie {
-    Pie { inner: 5 }
+    Pie::default()
 }
 
 fn return_an_enum() -> Pizza {
@@ -48,12 +55,20 @@ impl Pie {
         self.inner
     }
 
+    fn return_a_ref(&self) -> &u32 {
+        &self.inner
+    }
+
+    fn return_a_ref_to_struct(&self) -> &Slice {
+        &self.inner_struct
+    }
+
     fn associated_return_an_int() -> u32 {
         5
     }
 
     fn new() -> Self {
-        Self { inner: 5 }
+        Self::default()
     }
 
     fn associated_return_a_string() -> String {
@@ -61,7 +76,11 @@ impl Pie {
     }
 
     fn test_method_call(&self) {
-        let v: u32 = self.return_an_int(); // Should lint
+        // Everything here should be lint
+
+        let v: u32 = self.return_an_int();
+        let v: &u32 = self.return_a_ref();
+        let v: &Slice = self.return_a_ref_to_struct();
     }
 }
 
@@ -72,21 +91,24 @@ fn test_generics() {
     // The type annotation is needed to determine the topic
     let _c: Cake<u8> = make_cake();
 
-    // This should lint (doesn't)
+    // This could be lint, but currently doesn't
     let _c: Cake<u8> = make_cake::<u8>();
 
-    // This should lint (doesn't)
+    // This could be lint, but currently doesn't
     let _c: u8 = make_something::<u8>();
 
-    // This should lint (doesn't)
+    // This could be lint, but currently doesn't
     let _c: u8 = plus_one(5_u8);
 
     // Annotation needed otherwise T is i32
     let _c: u8 = plus_one(5);
+
+    // This could be lint, but currently doesn't
+    let _return: String = String::from("test");
 }
 
 fn test_non_locals() {
-    // This shouldn't lint
+    // This shouldn't be lint
     fn _arg(x: u32) -> u32 {
         x
     }
@@ -96,27 +118,27 @@ fn test_non_locals() {
 }
 
 fn test_complex_types() {
-    // Shouldn't lint, since the literal will be i32 otherwise
+    // Shouldn't be lint, since the literal will be i32 otherwise
     let _u8: u8 = 128;
 
-    // Should lint (doesn't)
+    // This could be lint, but currently doesn't
     let _tuple_i32: (i32, i32) = (12, 13);
 
-    // Shouldn't lint, since the tuple will be i32 otherwise
+    // Shouldn't be lint, since the tuple will be i32 otherwise
     let _tuple_u32: (u32, u32) = (1, 2);
 
-    // Should lint, since the type is determined by the init value (doesn't)
+    // Should be lint, since the type is determined by the init value, but currently doesn't
     let _tuple_u32: (u32, u32) = (3_u32, 4_u32);
 
-    // Should lint (doesn't)
+    // This could be lint, but currently doesn't
     let _array: [i32; 3] = [5, 6, 7];
 
-    // Shouldn't lint
+    // Shouldn't be lint
     let _array: [u32; 2] = [8, 9];
 }
 
 fn test_functions() {
-    // Everything here should lint
+    // Everything here should be lint
 
     let _return: String = return_a_string();
 
@@ -132,29 +154,23 @@ fn test_functions() {
 
     let _return: u32 = new_pie.return_an_int();
 
-    let _return: String = String::from("test");
-
     let _return: u32 = Pie::associated_return_an_int();
 
     let _return: String = Pie::associated_return_a_string();
 }
 
 fn test_simple_types() {
+    // Everything here should be lint
+
     let _var: u32 = u32::MAX;
 
-    // Should lint
     let _var: u32 = 5_u32;
 
-    // Should lint
     let _var: &str = "test";
 
-    // Should lint
     let _var: &[u8] = b"test";
 
-    // Should lint
     let _var: bool = false;
 }
 
 fn main() {}
-
-// TODO: test refs
