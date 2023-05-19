@@ -1,6 +1,6 @@
 // check-pass
 
-#![allow(forget_copy)]
+#![allow(forgetting_copy_types)]
 
 const _: () = core::mem::forget(Box::<u32>::default);
 const _: () = core::mem::forget(|| Box::<u32>::default());

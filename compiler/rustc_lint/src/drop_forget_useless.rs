@@ -82,7 +82,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `forget_copy` lint checks for calls to `std::mem::forget` with a value
+    /// The `forgetting_copy_types` lint checks for calls to `std::mem::forget` with a value
     /// that derives the Copy trait.
     ///
     /// ### Example
@@ -104,12 +104,12 @@ declare_lint! {
     /// An alternative, but also valid, explanation is that Copy types do not
     /// implement the Drop trait, which means they have no destructors. Without a
     /// destructor, there is nothing for `std::mem::forget` to ignore.
-    pub FORGET_COPY,
+    pub FORGETTING_COPY_TYPES,
     Warn,
     "calls to `std::mem::forget` with a value that implements Copy"
 }
 
-declare_lint_pass!(DropForgetUseless => [DROP_REF, FORGET_REF, DROPPING_COPY_TYPES, FORGET_COPY]);
+declare_lint_pass!(DropForgetUseless => [DROP_REF, FORGET_REF, DROPPING_COPY_TYPES, FORGETTING_COPY_TYPES]);
 
 impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
@@ -132,7 +132,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
                     cx.emit_spanned_lint(DROPPING_COPY_TYPES, expr.span, DropCopyDiag { arg_ty, label: arg.span });
                 }
                 sym::mem_forget if is_copy => {
-                    cx.emit_spanned_lint(FORGET_COPY, expr.span, ForgetCopyDiag { arg_ty, label: arg.span });
+                    cx.emit_spanned_lint(FORGETTING_COPY_TYPES, expr.span, ForgetCopyDiag { arg_ty, label: arg.span });
                 }
                 _ => return,
             };

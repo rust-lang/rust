@@ -216,11 +216,11 @@ error: lint `clippy::for_loops_over_fallibles` has been renamed to `for_loops_ov
 LL | #![warn(clippy::for_loops_over_fallibles)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `for_loops_over_fallibles`
 
-error: lint `clippy::forget_copy` has been renamed to `forget_copy`
+error: lint `clippy::forget_copy` has been renamed to `forgetting_copy_types`
   --> $DIR/rename.rs:85:9
    |
 LL | #![warn(clippy::forget_copy)]
-   |         ^^^^^^^^^^^^^^^^^^^ help: use the new name: `forget_copy`
+   |         ^^^^^^^^^^^^^^^^^^^ help: use the new name: `forgetting_copy_types`
 
 error: lint `clippy::forget_ref` has been renamed to `forget_ref`
   --> $DIR/rename.rs:86:9

@@ -691,7 +691,7 @@ pub struct ForgetRefDiag<'a> {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_forget_copy)]
+#[diag(lint_forgetting_copy_types)]
 #[note]
 pub struct ForgetCopyDiag<'a> {
     pub arg_ty: Ty<'a>,
