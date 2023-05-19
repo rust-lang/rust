@@ -266,7 +266,7 @@ fn build_rust(notices: &str, intrinsics: &[Intrinsic], toolchain: &str, a32: boo
                 r#"[package]
 name = "intrinsic-test-programs"
 version = "{version}"
-authors = ["{authors}"]
+authors = [{authors}]
 license = "{license}"
 edition = "2018"
 [workspace]
@@ -274,7 +274,9 @@ edition = "2018"
 core_arch = {{ path = "../crates/core_arch" }}
 {binaries}"#,
                 version = env!("CARGO_PKG_VERSION"),
-                authors = env!("CARGO_PKG_AUTHORS"),
+                authors = env!("CARGO_PKG_AUTHORS")
+                    .split(":")
+                    .format_with(", ", |author, fmt| fmt(&format_args!("\"{author}\""))),
                 license = env!("CARGO_PKG_LICENSE"),
                 binaries = intrinsics
                     .iter()

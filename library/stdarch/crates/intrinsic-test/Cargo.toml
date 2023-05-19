@@ -3,7 +3,8 @@ name = "intrinsic-test"
 version = "0.1.0"
 authors = ["Jamie Cunliffe <Jamie.Cunliffe@arm.com>",
     "James McGregor <James.McGregor2@arm.com",
-    "Adam Gemmell <Adam.Gemmell@arm.com"]
+    "Adam Gemmell <Adam.Gemmell@arm.com",
+    "Jacob Bramley <jacob.bramley@arm.com>"]
 license = "MIT OR Apache-2.0"
 edition = "2021"
 
