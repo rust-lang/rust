@@ -93,7 +93,7 @@ fn moved_out_of_ref(db: &dyn HirDatabase, body: &MirBody) -> Vec<MovedOutOfRef> 
         Operand::Copy(p) | Operand::Move(p) => {
             let mut ty: Ty = body.locals[p.local].ty.clone();
             let mut is_dereference_of_ref = false;
-            for proj in &p.projection {
+            for proj in &*p.projection {
                 if *proj == ProjectionElem::Deref && ty.as_reference().is_some() {
                     is_dereference_of_ref = true;
                 }
@@ -143,7 +143,7 @@ fn moved_out_of_ref(db: &dyn HirDatabase, body: &MirBody) -> Vec<MovedOutOfRef> 
                         for_operand(o2, statement.span);
                     }
                     Rvalue::Aggregate(_, ops) => {
-                        for op in ops {
+                        for op in ops.iter() {
                             for_operand(op, statement.span);
                         }
                     }
