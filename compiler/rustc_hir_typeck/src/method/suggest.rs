@@ -288,8 +288,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mode = no_match_data.mode;
         let tcx = self.tcx;
         let rcvr_ty = self.resolve_vars_if_possible(rcvr_ty);
-        let (mut ty_str, ty_file) = tcx.short_ty_string(rcvr_ty);
-        let mut short_ty_str = with_forced_trimmed_paths!(rcvr_ty.to_string());
+        let ((mut ty_str, ty_file), short_ty_str) = if trait_missing_method
+            && let ty::Dynamic(predicates, _, _) = rcvr_ty.kind() {
+                ((predicates.to_string(), None), with_forced_trimmed_paths!(predicates.to_string()))
+            } else {
+                (tcx.short_ty_string(rcvr_ty), with_forced_trimmed_paths!(rcvr_ty.to_string()))
+            };
         let is_method = mode == Mode::MethodCall;
         let unsatisfied_predicates = &no_match_data.unsatisfied_predicates;
         let similar_candidate = no_match_data.similar_candidate;
@@ -327,11 +331,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         }
         span = item_name.span;
-
-        if trait_missing_method && let ty::Dynamic(predicates, _, _) = rcvr_ty.kind() {
-            ty_str = predicates.to_string();
-            short_ty_str = with_forced_trimmed_paths!(predicates.to_string());
-        }
 
         // Don't show generic arguments when the method can't be found in any implementation (#81576).
         let mut ty_str_reported = ty_str.clone();
