@@ -504,6 +504,35 @@ fn trait_method() {
 }
 
 #[test]
+fn trait_method_inside_block() {
+    check_number(
+        r#"
+trait Twait {
+    fn a(&self) -> i32;
+}
+
+fn outer() -> impl Twait {
+    struct Stwuct;
+
+    impl Twait for Stwuct {
+        fn a(&self) -> i32 {
+            5
+        }
+    }
+    fn f() -> impl Twait {
+        let s = Stwuct;
+        s
+    }
+    f()
+}
+
+const GOAL: i32 = outer().a();
+        "#,
+        5,
+    );
+}
+
+#[test]
 fn generic_fn() {
     check_number(
         r#"

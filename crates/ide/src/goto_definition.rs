@@ -1497,6 +1497,29 @@ fn f() {
             );
         }
         #[test]
+        fn method_call_inside_block() {
+            check(
+                r#"
+trait Twait {
+    fn a(&self);
+}
+
+fn outer() {
+    struct Stwuct;
+
+    impl Twait for Stwuct {
+        fn a(&self){}
+         //^
+    }
+    fn f() {
+        let s = Stwuct;
+        s.a$0();
+    }
+}
+        "#,
+            );
+        }
+        #[test]
         fn path_call() {
             check(
                 r#"
