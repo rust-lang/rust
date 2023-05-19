@@ -32,20 +32,12 @@ impl QueryKeyStringCache {
     }
 }
 
-#[derive(Clone, Copy)]
-pub struct QueryStruct<'tcx> {
-    pub try_collect_active_jobs: fn(TyCtxt<'tcx>, &mut QueryMap<DepKind>) -> Option<()>,
-    pub alloc_self_profile_query_strings: fn(TyCtxt<'tcx>, &mut QueryKeyStringCache),
-    pub encode_query_results:
-        Option<fn(TyCtxt<'tcx>, &mut CacheEncoder<'_, 'tcx>, &mut EncodedDepNodeIndex)>,
-}
-
 pub struct DynamicQuery<'tcx, C: QueryCache> {
     pub name: &'static str,
     pub eval_always: bool,
-    pub dep_kind: rustc_middle::dep_graph::DepKind,
+    pub dep_kind: DepKind,
     pub handle_cycle_error: HandleCycleError,
-    pub query_state: FieldOffset<QueryStates<'tcx>, QueryState<C::Key, crate::dep_graph::DepKind>>,
+    pub query_state: FieldOffset<QueryStates<'tcx>, QueryState<C::Key, DepKind>>,
     pub query_cache: FieldOffset<QueryCaches<'tcx>, C>,
     pub cache_on_disk: fn(tcx: TyCtxt<'tcx>, key: &C::Key) -> bool,
     pub execute_query: fn(tcx: TyCtxt<'tcx>, k: C::Key) -> C::Value,
@@ -60,8 +52,7 @@ pub struct DynamicQuery<'tcx, C: QueryCache> {
     pub loadable_from_disk:
         fn(tcx: TyCtxt<'tcx>, key: &C::Key, index: SerializedDepNodeIndex) -> bool,
     pub hash_result: HashResult<C::Value>,
-    pub value_from_cycle_error:
-        fn(tcx: TyCtxt<'tcx>, cycle: &[QueryInfo<crate::dep_graph::DepKind>]) -> C::Value,
+    pub value_from_cycle_error: fn(tcx: TyCtxt<'tcx>, cycle: &[QueryInfo<DepKind>]) -> C::Value,
     pub format_value: fn(&C::Value) -> String,
 }
 
@@ -69,7 +60,6 @@ pub struct QuerySystemFns<'tcx> {
     pub engine: QueryEngine,
     pub local_providers: Providers,
     pub extern_providers: ExternProviders,
-    pub query_structs: Vec<QueryStruct<'tcx>>,
     pub encode_query_results: fn(
         tcx: TyCtxt<'tcx>,
         encoder: &mut CacheEncoder<'_, 'tcx>,

@@ -23,8 +23,10 @@ use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepNodeIndex;
 use rustc_middle::dep_graph::{self, DepKind, DepKindStruct};
 use rustc_middle::query::erase::{erase, restore, Erase};
-use rustc_middle::query::on_disk_cache::OnDiskCache;
-use rustc_middle::query::plumbing::{DynamicQuery, QuerySystem, QuerySystemFns};
+use rustc_middle::query::on_disk_cache::{CacheEncoder, EncodedDepNodeIndex, OnDiskCache};
+use rustc_middle::query::plumbing::{
+    DynamicQuery, QueryKeyStringCache, QuerySystem, QuerySystemFns,
+};
 use rustc_middle::query::AsLocalKey;
 use rustc_middle::query::{
     queries, DynamicQueries, ExternProviders, Providers, QueryCaches, QueryEngine, QueryStates,
@@ -215,7 +217,6 @@ pub fn query_system<'tcx>(
             engine: engine(incremental),
             local_providers,
             extern_providers,
-            query_structs: make_dep_kind_array!(query_structs).to_vec(),
             encode_query_results: encode_all_query_results,
             try_mark_green: try_mark_green,
         },
