@@ -10,7 +10,8 @@ use super::super::{ArrayChunks, Chain, Cloned, Copied, Cycle, Enumerate, Filter,
 use super::super::{FlatMap, Flatten};
 use super::super::{FromIterator, Intersperse, IntersperseWith, Product, Sum, Zip};
 use super::super::{
-    Inspect, Map, MapWhile, Peekable, Rev, Scan, Skip, SkipWhile, StepBy, Take, TakeWhile,
+    Inspect, Map, MapWhile, MapWindows, Peekable, Rev, Scan, Skip, SkipWhile, StepBy, Take,
+    TakeWhile,
 };
 
 fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
@@ -1589,6 +1590,163 @@ pub trait Iterator {
         Self::Item: IntoIterator,
     {
         Flatten::new(self)
+    }
+
+    /// Calls the given function `f` for each contiguous window of size `N` over
+    /// `self` and returns an iterator over the outputs of `f`. Like [`slice::windows()`],
+    /// the windows during mapping overlap as well.
+    ///
+    /// In the following example, the closure is called three times with the
+    /// arguments `&['a', 'b']`, `&['b', 'c']` and `&['c', 'd']` respectively.
+    ///
+    /// ```
+    /// #![feature(iter_map_windows)]
+    ///
+    /// let strings = "abcd".chars()
+    ///     .map_windows(|[x, y]| format!("{}+{}", x, y))
+    ///     .collect::<Vec<String>>();
+    ///
+    /// assert_eq!(strings, vec!["a+b", "b+c", "c+d"]);
+    /// ```
+    ///
+    /// Note that the const parameter `N` is usually inferred by the
+    /// destructured argument in the closure.
+    ///
+    /// The returned iterator yields 𝑘 − `N` + 1 items (where 𝑘 is the number of
+    /// items yielded by `self`). If 𝑘 is less than `N`, this method yields an
+    /// empty iterator.
+    ///
+    /// The returned iterator implements [`FusedIterator`], because once `self`
+    /// returns `None`, even if it returns a `Some(T)` again in the next iterations,
+    /// we cannot put it into a contigious array buffer, and thus the returned iterator
+    /// should be fused.
+    ///
+    /// [`slice::windows()`]: slice::windows
+    /// [`FusedIterator`]: crate::iter::FusedIterator
+    ///
+    /// # Panics
+    ///
+    /// Panics if `N` is 0. This check will most probably get changed to a
+    /// compile time error before this method gets stabilized.
+    ///
+    /// ```should_panic
+    /// #![feature(iter_map_windows)]
+    ///
+    /// let iter = std::iter::repeat(0).map_windows(|&[]| ());
+    /// ```
+    ///
+    /// # Examples
+    ///
+    /// Building the sums of neighboring numbers.
+    ///
+    /// ```
+    /// #![feature(iter_map_windows)]
+    ///
+    /// let mut it = [1, 3, 8, 1].iter().map_windows(|&[a, b]| a + b);
+    /// assert_eq!(it.next(), Some(4));  // 1 + 3
+    /// assert_eq!(it.next(), Some(11)); // 3 + 8
+    /// assert_eq!(it.next(), Some(9));  // 8 + 1
+    /// assert_eq!(it.next(), None);
+    /// ```
+    ///
+    /// Since the elements in the following example implement `Copy`, we can
+    /// just copy the array and get an iterator over the windows.
+    ///
+    /// ```
+    /// #![feature(iter_map_windows)]
+    ///
+    /// let mut it = "ferris".chars().map_windows(|w: &[_; 3]| *w);
+    /// assert_eq!(it.next(), Some(['f', 'e', 'r']));
+    /// assert_eq!(it.next(), Some(['e', 'r', 'r']));
+    /// assert_eq!(it.next(), Some(['r', 'r', 'i']));
+    /// assert_eq!(it.next(), Some(['r', 'i', 's']));
+    /// assert_eq!(it.next(), None);
+    /// ```
+    ///
+    /// You can also use this function to check the sortedness of an iterator.
+    /// For the simple case, rather use [`Iterator::is_sorted`].
+    ///
+    /// ```
+    /// #![feature(iter_map_windows)]
+    ///
+    /// let mut it = [0.5, 1.0, 3.5, 3.0, 8.5, 8.5, f32::NAN].iter()
+    ///     .map_windows(|[a, b]| a <= b);
+    ///
+    /// assert_eq!(it.next(), Some(true));  // 0.5 <= 1.0
+    /// assert_eq!(it.next(), Some(true));  // 1.0 <= 3.5
+    /// assert_eq!(it.next(), Some(false)); // 3.5 <= 3.0
+    /// assert_eq!(it.next(), Some(true));  // 3.0 <= 8.5
+    /// assert_eq!(it.next(), Some(true));  // 8.5 <= 8.5
+    /// assert_eq!(it.next(), Some(false)); // 8.5 <= NAN
+    /// assert_eq!(it.next(), None);
+    /// ```
+    ///
+    /// For non-fused iterators, they are fused after `map_windows`.
+    ///
+    /// ```
+    /// #![feature(iter_map_windows)]
+    ///
+    /// #[derive(Default)]
+    /// struct NonFusedIterator {
+    ///     state: i32,
+    /// }
+    ///
+    /// impl Iterator for NonFusedIterator {
+    ///     type Item = i32;
+    ///
+    ///     fn next(&mut self) -> Option<i32> {
+    ///         let val = self.state;
+    ///         self.state = self.state + 1;
+    ///
+    ///         // yields `0..5` first, then only even numbers since `6..`.
+    ///         if val < 5 || val % 2 == 0 {
+    ///             Some(val)
+    ///         } else {
+    ///             None
+    ///         }
+    ///     }
+    /// }
+    ///
+    ///
+    /// let mut iter = NonFusedIterator::default();
+    ///
+    /// // yields 0..5 first.
+    /// assert_eq!(iter.next(), Some(0));
+    /// assert_eq!(iter.next(), Some(1));
+    /// assert_eq!(iter.next(), Some(2));
+    /// assert_eq!(iter.next(), Some(3));
+    /// assert_eq!(iter.next(), Some(4));
+    /// // then we can see our iterator going back and forth
+    /// assert_eq!(iter.next(), None);
+    /// assert_eq!(iter.next(), Some(6));
+    /// assert_eq!(iter.next(), None);
+    /// assert_eq!(iter.next(), Some(8));
+    /// assert_eq!(iter.next(), None);
+    ///
+    /// // however, with `.map_windows()`, it is fused.
+    /// let mut iter = NonFusedIterator::default()
+    ///     .map_windows(|arr: &[_; 2]| *arr);
+    ///
+    /// assert_eq!(iter.next(), Some([0, 1]));
+    /// assert_eq!(iter.next(), Some([1, 2]));
+    /// assert_eq!(iter.next(), Some([2, 3]));
+    /// assert_eq!(iter.next(), Some([3, 4]));
+    /// assert_eq!(iter.next(), None);
+    ///
+    /// // it will always return `None` after the first time.
+    /// assert_eq!(iter.next(), None);
+    /// assert_eq!(iter.next(), None);
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    #[inline]
+    #[unstable(feature = "iter_map_windows", reason = "recently added", issue = "87155")]
+    #[rustc_do_not_const_check]
+    fn map_windows<F, R, const N: usize>(self, f: F) -> MapWindows<Self, F, N>
+    where
+        Self: Sized,
+        F: FnMut(&[Self::Item; N]) -> R,
+    {
+        MapWindows::new(self, f)
     }
 
     /// Creates an iterator which ends after the first [`None`].
