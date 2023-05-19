@@ -196,6 +196,7 @@ pub enum AttributeKind {
     AllocSize = 37,
     AllocatedPointer = 38,
     AllocAlign = 39,
+    SanitizeSafeStack = 40,
 }
 
 /// LLVMIntPredicate

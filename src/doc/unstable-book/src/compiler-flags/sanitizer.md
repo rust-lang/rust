@@ -21,7 +21,8 @@ This feature allows for use of one of following sanitizers:
 * [MemorySanitizer](#memorysanitizer) a detector of uninitialized reads.
 * [MemTagSanitizer](#memtagsanitizer) fast memory error detector based on
   Armv8.5-A Memory Tagging Extension.
-* [ShadowCallStack](#shadowcallstack) provides backward-edge control flow protection.
+* [SafeStack](#safestack) provides backward-edge control flow protection by separating the stack into safe and unsafe regions.
+* [ShadowCallStack](#shadowcallstack) provides backward-edge control flow protection (aarch64 only).
 * [ThreadSanitizer](#threadsanitizer) a fast data race detector.
 
 To enable a sanitizer compile with `-Zsanitizer=address`,`-Zsanitizer=cfi`,
@@ -712,6 +713,16 @@ To enable this target feature compile with `-C target-feature="+mte"`.
 
 See the [LLVM MemTagSanitizer documentation][llvm-memtag] for more details.
 
+# SafeStack
+
+SafeStack provides backward edge control flow protection by separating the stack into data which is only accessed safely (the safe stack) and all other data (the unsafe stack).
+
+SafeStack can be enabled with the `-Zsanitizer=safestack` option and is supported on the following targets:
+
+* `x86_64-unknown-linux-gnu`
+
+See the [Clang SafeStack documentation][clang-safestack] for more details.
+
 # ShadowCallStack
 
 ShadowCallStack provides backward edge control flow protection by storing a function's return address in a separately allocated 'shadow call stack' and loading the return address from that shadow call stack.
@@ -828,6 +839,7 @@ Sanitizers produce symbolized stacktraces when llvm-symbolizer binary is in `PAT
 [clang-kcfi]: https://clang.llvm.org/docs/ControlFlowIntegrity.html#fsanitize-kcfi
 [clang-lsan]: https://clang.llvm.org/docs/LeakSanitizer.html
 [clang-msan]: https://clang.llvm.org/docs/MemorySanitizer.html
+[clang-safestack]: https://clang.llvm.org/docs/SafeStack.html
 [clang-scs]: https://clang.llvm.org/docs/ShadowCallStack.html
 [clang-tsan]: https://clang.llvm.org/docs/ThreadSanitizer.html
 [linux-kasan]: https://www.kernel.org/doc/html/latest/dev-tools/kasan.html
