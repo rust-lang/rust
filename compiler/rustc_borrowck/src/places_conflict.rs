@@ -7,33 +7,43 @@
 //! have the same type, and that they only overlap if they are the identical.
 //!
 //! For example, if we are comparing these:
+//! ```text
 //! BORROW:  (*x1[2].y).z.a
 //! ACCESS:  (*x1[i].y).w.b
+//! ```
 //!
 //! Then our steps are:
+//! ```text
 //!       x1         |   x1          -- places are the same
 //!       x1[2]      |   x1[i]       -- equal or disjoint (disjoint if indexes differ)
 //!       x1[2].y    |   x1[i].y     -- equal or disjoint
 //!      *x1[2].y    |  *x1[i].y     -- equal or disjoint
 //!     (*x1[2].y).z | (*x1[i].y).w  -- we are disjoint and don't need to check more!
+//! ```
 //!
 //! Because `zip` does potentially bad things to the iterator inside, this loop
 //! also handles the case where the access might be a *prefix* of the borrow, e.g.
 //!
+//! ```text
 //! BORROW:  (*x1[2].y).z.a
 //! ACCESS:  x1[i].y
+//! ```
 //!
 //! Then our steps are:
+//! ```text
 //!       x1         |   x1          -- places are the same
 //!       x1[2]      |   x1[i]       -- equal or disjoint (disjoint if indexes differ)
 //!       x1[2].y    |   x1[i].y     -- equal or disjoint
+//! ```
 //!
 //! -- here we run out of access - the borrow can access a part of it. If this
 //! is a full deep access, then we *know* the borrow conflicts with it. However,
 //! if the access is shallow, then we can proceed:
 //!
+//! ```text
 //!       x1[2].y    | (*x1[i].y)    -- a deref! the access can't get past this, so we
 //!                                     are disjoint
+//! ```
 //!
 //! Our invariant is, that at each step of the iteration:
 //!  - If we didn't run out of access to match, our borrow and access are comparable
