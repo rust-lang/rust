@@ -111,6 +111,17 @@ fn is_redundant_in_func_call<'tcx>(
     false
 }
 
+fn extract_primty<'tcx>(ty_kind: &hir::TyKind<'tcx>) -> Option<hir::PrimTy> {
+    if let hir::TyKind::Path(ty_path) = ty_kind
+        && let hir::QPath::Resolved(_, resolved_path_ty) = ty_path
+        && let hir::def::Res::PrimTy(primty) = resolved_path_ty.res
+    {
+        Some(primty)
+    } else {
+        None
+    }
+}
+
 impl LateLintPass<'_> for RedundantTypeAnnotations {
     fn check_local<'tcx>(&mut self, cx: &LateContext<'tcx>, local: &'tcx rustc_hir::Local<'tcx>) {
         // type annotation part
@@ -144,14 +155,10 @@ impl LateLintPass<'_> for RedundantTypeAnnotations {
                 // When the initialization is a path for example u32::MAX
                 hir::ExprKind::Path(init_path) => {
                     // TODO: check for non primty
-                    if let hir::TyKind::Path(ty_path) = &ty.kind
-                        && let hir::QPath::Resolved(_, resolved_path_ty) = ty_path
-                        && let hir::def::Res::PrimTy(primty) = resolved_path_ty.res
+                    if let Some(primty) = extract_primty(&ty.kind)
 
                         && let hir::QPath::TypeRelative(init_ty, _) = init_path
-                        && let hir::TyKind::Path(init_ty_path) = &init_ty.kind
-                        && let hir::QPath::Resolved(_, resolved_init_ty_path) = init_ty_path
-                        && let hir::def::Res::PrimTy(primty_init) = resolved_init_ty_path.res
+                        && let Some(primty_init) = extract_primty(&init_ty.kind)
 
                         && primty == primty_init
                     {
