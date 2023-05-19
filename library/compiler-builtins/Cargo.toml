@@ -65,6 +65,17 @@ rustc-dep-of-std = ['compiler-builtins', 'core']
 # are not normally public but are required by the `testcrate`
 public-test-deps = []
 
+# Marks all intrinsics functions with weak linkage so that they can be
+# replaced at link time by another implementation. This is particularly useful
+# for mixed Rust/C++ binaries that want to use the C++ intrinsics, otherwise
+# linking against the Rust stdlib will replace those from the compiler-rt
+# library.
+#
+# Unlike the "c" feature, the intrinsics are still provided by the Rust
+# implementations and each will be used unless a stronger symbol replaces
+# it during linking.
+weak-intrinsics = []
+
 [[example]]
 name = "intrinsics"
 required-features = ["compiler-builtins"]
