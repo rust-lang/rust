@@ -181,6 +181,30 @@ impl<I: Idx> IntervalSet<I> {
         self.map.is_empty()
     }
 
+    /// Equivalent to `range.iter().find(|i| !self.contains(i))`.
+    pub fn first_unset_in(&self, range: impl RangeBounds<I> + Clone) -> Option<I> {
+        let start = inclusive_start(range.clone());
+        let Some(end) = inclusive_end(self.domain, range) else {
+            // empty range
+            return None;
+        };
+        if start > end {
+            return None;
+        }
+        let Some(last) = self.map.partition_point(|r| r.0 <= start).checked_sub(1) else {
+            // All ranges in the map start after the new range's end
+            return Some(I::new(start as usize));
+        };
+        let (_, prev_end) = self.map[last];
+        if start > prev_end {
+            Some(I::new(start as usize))
+        } else if prev_end < end {
+            Some(I::new(prev_end as usize + 1))
+        } else {
+            None
+        }
+    }
+
     /// Returns the maximum (last) element present in the set from `range`.
     pub fn last_set_in(&self, range: impl RangeBounds<I> + Clone) -> Option<I> {
         let start = inclusive_start(range.clone());
