@@ -125,15 +125,9 @@ pub struct Borrows<'a, 'tcx> {
     borrows_out_of_scope_at_location: FxIndexMap<Location, Vec<BorrowIndex>>,
 }
 
-struct StackEntry {
-    bb: mir::BasicBlock,
-    lo: usize,
-    hi: usize,
-}
-
 struct OutOfScopePrecomputer<'a, 'tcx> {
     visited: BitSet<mir::BasicBlock>,
-    visit_stack: Vec<StackEntry>,
+    visit_stack: Vec<mir::BasicBlock>,
     body: &'a Body<'tcx>,
     regioncx: &'a RegionInferenceContext<'tcx>,
     borrows_out_of_scope_at_location: FxIndexMap<Location, Vec<BorrowIndex>>,
@@ -158,29 +152,50 @@ impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
         borrow_region: RegionVid,
         first_location: Location,
     ) {
-        // We visit one BB at a time. The complication is that we may start in the
-        // middle of the first BB visited (the one containing `first_location`), in which
-        // case we may have to later on process the first part of that BB if there
-        // is a path back to its start.
-
-        // For visited BBs, we record the index of the first statement processed.
-        // (In fully processed BBs this index is 0.) Note also that we add BBs to
-        // `visited` once they are added to `stack`, before they are actually
-        // processed, because this avoids the need to look them up again on
-        // completion.
-        self.visited.insert(first_location.block);
-
         let first_block = first_location.block;
-        let mut first_lo = first_location.statement_index;
-        let first_hi = self.body[first_block].statements.len();
+        let first_bb_data = &self.body.basic_blocks[first_block];
 
-        self.visit_stack.push(StackEntry { bb: first_block, lo: first_lo, hi: first_hi });
+        // This is the first block, we only want to visit it from the creation of the borrow at
+        // `first_location`.
+        let first_lo = first_location.statement_index;
+        let first_hi = first_bb_data.statements.len();
 
-        'preorder: while let Some(StackEntry { bb, lo, hi }) = self.visit_stack.pop() {
+        if let Some(kill_stmt) = self.regioncx.first_non_contained_inclusive(
+            borrow_region,
+            first_block,
+            first_lo,
+            first_hi,
+        ) {
+            let kill_location = Location { block: first_block, statement_index: kill_stmt };
+            // If region does not contain a point at the location, then add to list and skip
+            // successor locations.
+            debug!("borrow {:?} gets killed at {:?}", borrow_index, kill_location);
+            self.borrows_out_of_scope_at_location
+                .entry(kill_location)
+                .or_default()
+                .push(borrow_index);
+
+            // The borrow is already dead, there is no need to visit other blocks.
+            return;
+        }
+
+        // The borrow is not dead. Add successor BBs to the work list, if necessary.
+        for succ_bb in first_bb_data.terminator().successors() {
+            if self.visited.insert(succ_bb) {
+                self.visit_stack.push(succ_bb);
+            }
+        }
+
+        // We may end up visiting `first_block` again. This is not an issue: we know at this point
+        // that it does not kill the borrow in the `first_lo..=first_hi` range, so checking the
+        // `0..first_lo` range and the `0..first_hi` range give the same result.
+        while let Some(block) = self.visit_stack.pop() {
+            let bb_data = &self.body[block];
+            let num_stmts = bb_data.statements.len();
             if let Some(kill_stmt) =
-                self.regioncx.first_non_contained_inclusive(borrow_region, bb, lo, hi)
+                self.regioncx.first_non_contained_inclusive(borrow_region, block, 0, num_stmts)
             {
-                let kill_location = Location { block: bb, statement_index: kill_stmt };
+                let kill_location = Location { block, statement_index: kill_stmt };
                 // If region does not contain a point at the location, then add to list and skip
                 // successor locations.
                 debug!("borrow {:?} gets killed at {:?}", borrow_index, kill_location);
@@ -188,38 +203,15 @@ impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
                     .entry(kill_location)
                     .or_default()
                     .push(borrow_index);
-                continue 'preorder;
-            }
 
-            // If we process the first part of the first basic block (i.e. we encounter that block
-            // for the second time), we no longer have to visit its successors again.
-            if bb == first_block && hi != first_hi {
+                // We killed the borrow, so we do not visit this block's successors.
                 continue;
             }
 
             // Add successor BBs to the work list, if necessary.
-            let bb_data = &self.body[bb];
-            debug_assert!(hi == bb_data.statements.len());
             for succ_bb in bb_data.terminator().successors() {
-                if !self.visited.insert(succ_bb) {
-                    if succ_bb == first_block && first_lo > 0 {
-                        // `succ_bb` has been seen before. If it wasn't
-                        // fully processed, add its first part to `stack`
-                        // for processing.
-                        self.visit_stack.push(StackEntry { bb: succ_bb, lo: 0, hi: first_lo - 1 });
-
-                        // And update this entry with 0, to represent the
-                        // whole BB being processed.
-                        first_lo = 0;
-                    }
-                } else {
-                    // succ_bb hasn't been seen before. Add it to
-                    // `stack` for processing.
-                    self.visit_stack.push(StackEntry {
-                        bb: succ_bb,
-                        lo: 0,
-                        hi: self.body[succ_bb].statements.len(),
-                    });
+                if self.visited.insert(succ_bb) {
+                    self.visit_stack.push(succ_bb);
                 }
             }
         }
