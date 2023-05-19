@@ -1250,7 +1250,8 @@ pub fn install_ice_hook(bug_report_url: &'static str, extra_info: fn(&Handler)) 
         #[cfg(windows)]
         if let Some(msg) = info.payload().downcast_ref::<String>() {
             if msg.starts_with("failed printing to stdout: ") && msg.ends_with("(os error 232)") {
-                early_error_no_abort(ErrorOutputType::default(), msg.as_str());
+                // the error code is already going to be reported when the panic unwinds up the stack
+                let _ = early_error_no_abort(ErrorOutputType::default(), msg.as_str());
                 return;
             }
         };

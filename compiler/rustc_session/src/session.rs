@@ -1732,6 +1732,7 @@ fn early_error_handler(output: config::ErrorOutputType) -> rustc_errors::Handler
 
 #[allow(rustc::untranslatable_diagnostic)]
 #[allow(rustc::diagnostic_outside_of_impl)]
+#[must_use = "ErrorGuaranteed must be returned from `run_compiler` in order to exit with a non-zero status code"]
 pub fn early_error_no_abort(
     output: config::ErrorOutputType,
     msg: impl Into<DiagnosticMessage>,
