@@ -25,6 +25,7 @@ use rustc_data_structures::profiling::{
     get_resident_set_size, print_time_passes_entry, TimePassesFormat,
 };
 use rustc_data_structures::sync::SeqCst;
+use rustc_data_structures::CTRL_C_RECEIVED;
 use rustc_errors::registry::{InvalidErrorCode, Registry};
 use rustc_errors::{markdown, ColorConfig};
 use rustc_errors::{DiagnosticMessage, ErrorGuaranteed, Handler, PResult, SubdiagnosticMessage};
@@ -1518,6 +1519,19 @@ pub fn main() -> ! {
     signal_handler::install();
     let mut callbacks = TimePassesCallbacks::default();
     install_ice_hook(DEFAULT_BUG_REPORT_URL, |_| ());
+
+    ctrlc::set_handler(move || {
+        // Indicate that we have been signaled to stop. If we were already signaled, exit
+        // immediately. In our interpreter loop we try to consult this value often, but if for
+        // whatever reason we don't get to that check or the cleanup we do upon finding that
+        // this bool has become true takes a long time, the exit here will promptly exit the
+        // process on the second Ctrl-C.
+        if CTRL_C_RECEIVED.swap(true, Ordering::Relaxed) {
+            std::process::exit(1);
+        }
+    })
+    .expect("Unable to install ctrlc handler");
+
     let exit_code = catch_with_exit_code(|| {
         let args = env::args_os()
             .enumerate()
