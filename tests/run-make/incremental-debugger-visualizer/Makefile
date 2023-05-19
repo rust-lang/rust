@@ -7,14 +7,12 @@ include ../tools.mk
 # directory as readonly. We need to apply modifications to some of the source
 # file.
 SRC_DIR := $(TMPDIR)/src
-
 INCR_CACHE_DIR := $(TMPDIR)/incremental
-
 
 all:
 	rm -rf $(TMPDIR)/*
 	mkdir $(SRC_DIR)
-	cp -t $(SRC_DIR) ./foo.rs
+	cp ./foo.rs $(SRC_DIR)
 	echo "GDB script v1" > $(SRC_DIR)/foo.py
 	echo "Natvis v1" > $(SRC_DIR)/foo.natvis
 	$(RUSTC) $(SRC_DIR)/foo.rs \
