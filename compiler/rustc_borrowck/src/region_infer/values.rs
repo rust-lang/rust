@@ -283,6 +283,22 @@ impl<N: Idx> RegionValues<N> {
         elem.contained_in_row(self, r)
     }
 
+    /// Returns the lowest statement index in `start..=end` which is not contained by `r`.
+    pub(crate) fn first_non_contained_inclusive(
+        &self,
+        r: N,
+        block: BasicBlock,
+        start: usize,
+        end: usize,
+    ) -> Option<usize> {
+        let row = self.points.row(r)?;
+        let block = self.elements.entry_point(block);
+        let start = block.plus(start);
+        let end = block.plus(end);
+        let first_unset = row.first_unset_in(start..=end)?;
+        Some(first_unset.index() - block.index())
+    }
+
     /// `self[to] |= values[from]`, essentially: that is, take all the
     /// elements for the region `from` from `values` and add them to
     /// the region `to` in `self`.
