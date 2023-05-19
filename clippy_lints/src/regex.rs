@@ -122,7 +122,7 @@ fn lint_syntax_error(cx: &LateContext<'_>, error: &regex_syntax::Error, unescape
 }
 
 fn const_str<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> Option<String> {
-    constant(cx, cx.typeck_results(), e).and_then(|(c, _)| match c {
+    constant(cx, cx.typeck_results(), e).and_then(|c| match c {
         Constant::Str(s) => Some(s),
         _ => None,
     })
