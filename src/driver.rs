@@ -11,7 +11,6 @@
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
 extern crate rustc_driver;
-extern crate rustc_errors;
 extern crate rustc_interface;
 extern crate rustc_session;
 extern crate rustc_span;
@@ -20,13 +19,10 @@ use rustc_interface::interface;
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::Symbol;
 
-use std::borrow::Cow;
 use std::env;
 use std::ops::Deref;
-use std::panic;
 use std::path::Path;
 use std::process::exit;
-use std::sync::LazyLock;
 
 /// If a command-line option matches `find_arg`, then apply the predicate `pred` on its value. If
 /// true, then return it. The parameter is assumed to be either `--arg=value` or `--arg value`.
@@ -198,66 +194,18 @@ You can use tool lints to allow or deny lints from your code, eg.:
 
 const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust-clippy/issues/new";
 
-type PanicCallback = dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static;
-static ICE_HOOK: LazyLock<Box<PanicCallback>> = LazyLock::new(|| {
-    let hook = panic::take_hook();
-    panic::set_hook(Box::new(|info| report_clippy_ice(info, BUG_REPORT_URL)));
-    hook
-});
-
-fn report_clippy_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
-    // Invoke our ICE handler, which prints the actual panic message and optionally a backtrace
-    (*ICE_HOOK)(info);
-
-    // Separate the output with an empty line
-    eprintln!();
-
-    let fallback_bundle = rustc_errors::fallback_fluent_bundle(rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(), false);
-    let emitter = Box::new(rustc_errors::emitter::EmitterWriter::stderr(
-        rustc_errors::ColorConfig::Auto,
-        None,
-        None,
-        fallback_bundle,
-        false,
-        false,
-        None,
-        false,
-        false,
-        rustc_errors::TerminalUrl::No,
-    ));
-    let handler = rustc_errors::Handler::with_emitter(true, None, emitter);
-
-    // a .span_bug or .bug call has already printed what
-    // it wants to print.
-    if !info.payload().is::<rustc_errors::ExplicitBug>() {
-        let mut d = rustc_errors::Diagnostic::new(rustc_errors::Level::Bug, "unexpected panic");
-        handler.emit_diagnostic(&mut d);
-    }
-
-    let version_info = rustc_tools_util::get_version_info!();
-
-    let xs: Vec<Cow<'static, str>> = vec![
-        "the compiler unexpectedly panicked. this is a bug.".into(),
-        format!("we would appreciate a bug report: {bug_report_url}").into(),
-        format!("Clippy version: {version_info}").into(),
-    ];
-
-    for note in &xs {
-        handler.note_without_error(note.as_ref());
-    }
-
-    // If backtraces are enabled, also print the query stack
-    let backtrace = env::var_os("RUST_BACKTRACE").map_or(false, |x| &x != "0");
-
-    let num_frames = if backtrace { None } else { Some(2) };
-
-    interface::try_print_query_stack(&handler, num_frames);
-}
-
 #[allow(clippy::too_many_lines)]
 pub fn main() {
     rustc_driver::init_rustc_env_logger();
-    LazyLock::force(&ICE_HOOK);
+
+    rustc_driver::install_ice_hook(BUG_REPORT_URL, |handler| {
+        // FIXME: this macro calls unwrap internally but is called in a panicking context!  It's not
+        // as simple as moving the call from the hook to main, because `install_ice_hook` doesn't
+        // accept a generic closure.
+        let version_info = rustc_tools_util::get_version_info!();
+        handler.note_without_error(format!("Clippy version: {version_info}"));
+    });
+
     exit(rustc_driver::catch_with_exit_code(move || {
         let mut orig_args: Vec<String> = env::args().collect();
         let has_sysroot_arg = arg_value(&orig_args, "--sysroot", |_| true).is_some();

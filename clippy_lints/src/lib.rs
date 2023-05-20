@@ -392,7 +392,7 @@ pub fn read_conf(sess: &Session, path: &io::Result<(Option<PathBuf>, Vec<String>
     conf
 }
 
-#[derive(Default)] //~ ERROR no such field
+#[derive(Default)]
 struct RegistrationGroups {
     all: Vec<LintId>,
     cargo: Vec<LintId>,

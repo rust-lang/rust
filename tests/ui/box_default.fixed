@@ -1,6 +1,6 @@
 //@run-rustfix
 #![warn(clippy::box_default)]
-#![allow(unused, clippy::default_constructed_unit_structs)]
+#![allow(clippy::default_constructed_unit_structs)]
 
 #[derive(Default)]
 struct ImplementsDefault;
