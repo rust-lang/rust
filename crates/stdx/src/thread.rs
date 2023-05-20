@@ -62,8 +62,7 @@ impl Builder {
 
 pub struct JoinHandle<T = ()> {
     // `inner` is an `Option` so that we can
-    // take ownership of the contained `JoinHandle`
-    // in the `Drop` impl below.
+    // take ownership of the contained `JoinHandle`.
     inner: Option<jod_thread::JoinHandle<T>>,
     allow_leak: bool,
 }
@@ -93,8 +92,8 @@ impl<T> fmt::Debug for JoinHandle<T> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+// Please maintain order from least to most priority for the derived `Ord` impl.
 pub enum QoSClass {
-    // Maintain order in priority from least to most.
     Background,
     Utility,
     UserInitiated,
@@ -132,9 +131,8 @@ pub fn set_current_thread_qos_class(class: QoSClass) {
             // due to a previous call to a function such as `pthread_setschedparam`
             // which is incompatible with QoS.
             //
-            // Let’s just panic here because rust-analyzer as a system
-            // should have the property that QoS is used consistently
-            // instead of old manual scheduling management APIs.
+            // Panic instead of returning an error
+            // to maintain the invariant that we only use QoS APIs.
             panic!("tried to set QoS of thread which has opted out of QoS (os error {errno})")
         }
 
@@ -187,8 +185,14 @@ pub fn get_current_thread_qos_class() -> Option<QoSClass> {
         libc::qos_class_t::QOS_CLASS_DEFAULT => None, // QoS has never been set
         libc::qos_class_t::QOS_CLASS_UTILITY => Some(QoSClass::Utility),
         libc::qos_class_t::QOS_CLASS_BACKGROUND => Some(QoSClass::Background),
+
         libc::qos_class_t::QOS_CLASS_UNSPECIFIED => {
-            // We panic here because rust-analyzer should never use
+            // Using manual scheduling APIs causes threads to “opt out” of QoS.
+            // At this point they become incompatible with QoS,
+            // and as such have the “unspecified” QoS class.
+            //
+            // Panic instead of returning an error
+            // to maintain the invariant that we only use QoS APIs.
             panic!("tried to get QoS of thread which has opted out of QoS")
         }
     }
