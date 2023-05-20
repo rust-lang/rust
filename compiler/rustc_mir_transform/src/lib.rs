@@ -556,7 +556,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &match_branches::MatchBranchSimplification,
             // inst combine is after MatchBranchSimplification to clean up Ne(_1, false)
             &multiple_return_terminators::MultipleReturnTerminators,
-            &instsimplify::InstSimplify,
+            // &instsimplify::InstSimplify,
             &separate_const_switch::SeparateConstSwitch,
             &simplify::SimplifyLocals::BeforeConstProp,
             &copy_prop::CopyProp,
