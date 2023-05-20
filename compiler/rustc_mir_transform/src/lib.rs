@@ -559,7 +559,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &instsimplify::InstSimplify,
             &separate_const_switch::SeparateConstSwitch,
             &simplify::SimplifyLocals::BeforeConstProp,
-            &copy_prop::CopyProp,
+            // &copy_prop::CopyProp,
             &ref_prop::ReferencePropagation,
             &const_prop::ConstProp,
             &dataflow_const_prop::DataflowConstProp,
