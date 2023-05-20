@@ -115,6 +115,15 @@ fn pattern_to_vec(pattern: &str) -> Vec<String> {
         .collect::<Vec<_>>()
 }
 
+// #10335
+fn test_result_impure_else(variable: Result<u32, &str>) {
+    if let Ok(binding) = variable {
+        println!("Ok {binding}");
+    } else {
+        println!("Err");
+    }
+}
+
 enum DummyEnum {
     One(u8),
     Two,
@@ -136,6 +145,7 @@ fn main() {
     unop_bad(&None, None);
     let _ = longer_body(None);
     test_map_or_else(None);
+    test_result_impure_else(Ok(42));
     let _ = negative_tests(None);
     let _ = impure_else(None);
 

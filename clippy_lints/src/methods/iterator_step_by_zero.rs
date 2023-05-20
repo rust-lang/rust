@@ -9,7 +9,7 @@ use super::ITERATOR_STEP_BY_ZERO;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, arg: &'tcx hir::Expr<'_>) {
     if is_trait_method(cx, expr, sym::Iterator) {
-        if let Some((Constant::Int(0), _)) = constant(cx, cx.typeck_results(), arg) {
+        if let Some(Constant::Int(0)) = constant(cx, cx.typeck_results(), arg) {
             span_lint(
                 cx,
                 ITERATOR_STEP_BY_ZERO,

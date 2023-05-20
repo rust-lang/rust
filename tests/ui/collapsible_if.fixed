@@ -1,5 +1,10 @@
 //@run-rustfix
-#![allow(clippy::assertions_on_constants, clippy::equatable_if_let)]
+#![allow(
+    clippy::assertions_on_constants,
+    clippy::equatable_if_let,
+    clippy::nonminimal_bool,
+    clippy::eq_op
+)]
 
 #[rustfmt::skip]
 #[warn(clippy::collapsible_if)]

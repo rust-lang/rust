@@ -62,4 +62,16 @@ fn main() {
 
     let _ = sample.iter().next().is_none();
     let _ = sample.iter().any(|x| x == &0);
+
+    #[allow(clippy::double_parens)]
+    {
+        Vec::<u8>::new().extend((0..10));
+        foo((0..10));
+        bar((0..10).collect::<Vec<_>>(), (0..10));
+        baz((0..10), (), ('a'..='z'))
+    }
 }
+
+fn foo(_: impl IntoIterator<Item = usize>) {}
+fn bar<I: IntoIterator<Item = usize>>(_: Vec<usize>, _: I) {}
+fn baz<I: IntoIterator<Item = usize>>(_: I, _: (), _: impl IntoIterator<Item = char>) {}

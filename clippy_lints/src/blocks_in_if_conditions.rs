@@ -85,8 +85,7 @@ impl<'tcx> LateLintPass<'tcx> for BlocksInIfConditions {
                             );
                         }
                     } else {
-                        let span =
-                            block.expr.as_ref().map_or_else(|| block.stmts[0].span, |e| e.span);
+                        let span = block.expr.as_ref().map_or_else(|| block.stmts[0].span, |e| e.span);
                         if span.from_expansion() || expr.span.from_expansion() {
                             return;
                         }

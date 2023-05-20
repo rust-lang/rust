@@ -146,7 +146,7 @@ fn is_parent_stmt(cx: &LateContext<'_>, id: HirId) -> bool {
 impl<'tcx> LateLintPass<'tcx> for NeedlessBool {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         use self::Expression::{Bool, RetBool};
-        if e.span.from_expansion() {
+        if e.span.from_expansion() || !span_extract_comment(cx.tcx.sess.source_map(), e.span).is_empty() {
             return;
         }
         if let Some(higher::If {
@@ -209,8 +209,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBool {
             }
             if let Some((lhs_a, a)) = fetch_assign(then) &&
                 let Some((lhs_b, b)) = fetch_assign(r#else) &&
-                SpanlessEq::new(cx).eq_expr(lhs_a, lhs_b) &&
-                span_extract_comment(cx.tcx.sess.source_map(), e.span).is_empty()
+                SpanlessEq::new(cx).eq_expr(lhs_a, lhs_b)
             {
                 let mut applicability = Applicability::MachineApplicable;
                 let cond = Sugg::hir_with_applicability(cx, cond, "..", &mut applicability);
