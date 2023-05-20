@@ -266,6 +266,7 @@ mod redundant_pub_crate;
 mod redundant_slicing;
 mod redundant_static_lifetimes;
 mod ref_option_ref;
+mod ref_patterns;
 mod reference;
 mod regex;
 mod return_self_not_must_use;
@@ -331,8 +332,11 @@ mod zero_div_zero;
 mod zero_sized_map_values;
 // end lints modules, do not remove this comment, it’s used in `update_lints`
 
-use crate::utils::conf::{format_error, TryConf};
 pub use crate::utils::conf::{lookup_conf_file, Conf};
+use crate::utils::{
+    conf::{format_error, metadata::get_configuration_metadata, TryConf},
+    FindAll,
+};
 
 /// Register all pre expansion lints
 ///
@@ -471,7 +475,22 @@ pub(crate) struct LintInfo {
 pub fn explain(name: &str) {
     let target = format!("clippy::{}", name.to_ascii_uppercase());
     match declared_lints::LINTS.iter().find(|info| info.lint.name == target) {
-        Some(info) => print!("{}", info.explanation),
+        Some(info) => {
+            println!("{}", info.explanation);
+            // Check if the lint has configuration
+            let mdconf = get_configuration_metadata();
+            if let Some(config_vec_positions) = mdconf
+                .iter()
+                .find_all(|cconf| cconf.lints.contains(&info.lint.name_lower()[8..].to_owned()))
+            {
+                // If it has, print it
+                println!("### Configuration for {}:\n", info.lint.name_lower());
+                for position in config_vec_positions {
+                    let conf = &mdconf[position];
+                    println!("  - {}: {} (default: {})", conf.name, conf.doc, conf.default);
+                }
+            }
+        },
         None => println!("unknown lint: {name}"),
     }
 }
@@ -971,6 +990,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(manual_slice_size_calculation::ManualSliceSizeCalculation));
     store.register_early_pass(|| Box::new(suspicious_doc_comments::SuspiciousDocComments));
     store.register_late_pass(|_| Box::new(items_after_test_module::ItemsAfterTestModule));
+    store.register_early_pass(|| Box::new(ref_patterns::RefPatterns));
     store.register_late_pass(|_| Box::new(default_constructed_unit_structs::DefaultConstructedUnitStructs));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }

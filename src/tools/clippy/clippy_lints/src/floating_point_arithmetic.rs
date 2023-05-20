@@ -114,7 +114,7 @@ declare_lint_pass!(FloatingPointArithmetic => [
 // Returns the specialized log method for a given base if base is constant
 // and is one of 2, 10 and e
 fn get_specialized_log_method(cx: &LateContext<'_>, base: &Expr<'_>) -> Option<&'static str> {
-    if let Some((value, _)) = constant(cx, cx.typeck_results(), base) {
+    if let Some(value) = constant(cx, cx.typeck_results(), base) {
         if F32(2.0) == value || F64(2.0) == value {
             return Some("log2");
         } else if F32(10.0) == value || F64(10.0) == value {
@@ -193,8 +193,8 @@ fn check_ln1p(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>) {
             constant(cx, cx.typeck_results(), lhs),
             constant(cx, cx.typeck_results(), rhs),
         ) {
-            (Some((value, _)), _) if F32(1.0) == value || F64(1.0) == value => rhs,
-            (_, Some((value, _))) if F32(1.0) == value || F64(1.0) == value => lhs,
+            (Some(value), _) if F32(1.0) == value || F64(1.0) == value => rhs,
+            (_, Some(value)) if F32(1.0) == value || F64(1.0) == value => lhs,
             _ => return,
         };
 
@@ -237,7 +237,7 @@ fn get_integer_from_float_constant(value: &Constant) -> Option<i32> {
 
 fn check_powf(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, args: &[Expr<'_>]) {
     // Check receiver
-    if let Some((value, _)) = constant(cx, cx.typeck_results(), receiver) {
+    if let Some(value) = constant(cx, cx.typeck_results(), receiver) {
         if let Some(method) = if F32(f32_consts::E) == value || F64(f64_consts::E) == value {
             Some("exp")
         } else if F32(2.0) == value || F64(2.0) == value {
@@ -258,7 +258,7 @@ fn check_powf(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, args: 
     }
 
     // Check argument
-    if let Some((value, _)) = constant(cx, cx.typeck_results(), &args[0]) {
+    if let Some(value) = constant(cx, cx.typeck_results(), &args[0]) {
         let (lint, help, suggestion) = if F32(1.0 / 2.0) == value || F64(1.0 / 2.0) == value {
             (
                 SUBOPTIMAL_FLOPS,
@@ -298,7 +298,7 @@ fn check_powf(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, args: 
 }
 
 fn check_powi(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, args: &[Expr<'_>]) {
-    if let Some((value, _)) = constant(cx, cx.typeck_results(), &args[0]) {
+    if let Some(value) = constant(cx, cx.typeck_results(), &args[0]) {
         if value == Int(2) {
             if let Some(parent) = get_parent_expr(cx, expr) {
                 if let Some(grandparent) = get_parent_expr(cx, parent) {
@@ -384,8 +384,8 @@ fn detect_hypot(cx: &LateContext<'_>, receiver: &Expr<'_>) -> Option<String> {
                 _
             ) = &add_rhs.kind;
             if lmethod_name.as_str() == "powi" && rmethod_name.as_str() == "powi";
-            if let Some((lvalue, _)) = constant(cx, cx.typeck_results(), largs_1);
-            if let Some((rvalue, _)) = constant(cx, cx.typeck_results(), rargs_1);
+            if let Some(lvalue) = constant(cx, cx.typeck_results(), largs_1);
+            if let Some(rvalue) = constant(cx, cx.typeck_results(), rargs_1);
             if Int(2) == lvalue && Int(2) == rvalue;
             then {
                 return Some(format!("{}.hypot({})", Sugg::hir(cx, largs_0, "..").maybe_par(), Sugg::hir(cx, rargs_0, "..")));
@@ -416,7 +416,7 @@ fn check_expm1(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if_chain! {
         if let ExprKind::Binary(Spanned { node: BinOpKind::Sub, .. }, lhs, rhs) = expr.kind;
         if cx.typeck_results().expr_ty(lhs).is_floating_point();
-        if let Some((value, _)) = constant(cx, cx.typeck_results(), rhs);
+        if let Some(value) = constant(cx, cx.typeck_results(), rhs);
         if F32(1.0) == value || F64(1.0) == value;
         if let ExprKind::MethodCall(path, self_arg, ..) = &lhs.kind;
         if cx.typeck_results().expr_ty(self_arg).is_floating_point();
@@ -669,8 +669,8 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
             mul_lhs,
             mul_rhs,
         ) = &div_lhs.kind;
-        if let Some((rvalue, _)) = constant(cx, cx.typeck_results(), div_rhs);
-        if let Some((lvalue, _)) = constant(cx, cx.typeck_results(), mul_rhs);
+        if let Some(rvalue) = constant(cx, cx.typeck_results(), div_rhs);
+        if let Some(lvalue) = constant(cx, cx.typeck_results(), mul_rhs);
         then {
             // TODO: also check for constant values near PI/180 or 180/PI
             if (F32(f32_consts::PI) == rvalue || F64(f64_consts::PI) == rvalue) &&

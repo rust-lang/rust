@@ -2,14 +2,64 @@
 
 #![allow(clippy::module_name_repetitions)]
 
+use rustc_data_structures::sync::Lrc;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LintContext};
 use rustc_session::Session;
-use rustc_span::hygiene;
 use rustc_span::source_map::{original_sp, SourceMap};
+use rustc_span::{hygiene, SourceFile};
 use rustc_span::{BytePos, Pos, Span, SpanData, SyntaxContext, DUMMY_SP};
 use std::borrow::Cow;
+use std::ops::Range;
+
+/// A type which can be converted to the range portion of a `Span`.
+pub trait SpanRange {
+    fn into_range(self) -> Range<BytePos>;
+}
+impl SpanRange for Span {
+    fn into_range(self) -> Range<BytePos> {
+        let data = self.data();
+        data.lo..data.hi
+    }
+}
+impl SpanRange for SpanData {
+    fn into_range(self) -> Range<BytePos> {
+        self.lo..self.hi
+    }
+}
+impl SpanRange for Range<BytePos> {
+    fn into_range(self) -> Range<BytePos> {
+        self
+    }
+}
+
+pub struct SourceFileRange {
+    pub sf: Lrc<SourceFile>,
+    pub range: Range<usize>,
+}
+impl SourceFileRange {
+    /// Attempts to get the text from the source file. This can fail if the source text isn't
+    /// loaded.
+    pub fn as_str(&self) -> Option<&str> {
+        self.sf.src.as_ref().and_then(|x| x.get(self.range.clone()))
+    }
+}
+
+/// Gets the source file, and range in the file, of the given span. Returns `None` if the span
+/// extends through multiple files, or is malformed.
+pub fn get_source_text(cx: &impl LintContext, sp: impl SpanRange) -> Option<SourceFileRange> {
+    fn f(sm: &SourceMap, sp: Range<BytePos>) -> Option<SourceFileRange> {
+        let start = sm.lookup_byte_offset(sp.start);
+        let end = sm.lookup_byte_offset(sp.end);
+        if !Lrc::ptr_eq(&start.sf, &end.sf) || start.pos > end.pos {
+            return None;
+        }
+        let range = start.pos.to_usize()..end.pos.to_usize();
+        Some(SourceFileRange { sf: start.sf, range })
+    }
+    f(cx.sess().source_map(), sp.into_range())
+}
 
 /// Like `snippet_block`, but add braces if the expr is not an `ExprKind::Block`.
 pub fn expr_block<T: LintContext>(
