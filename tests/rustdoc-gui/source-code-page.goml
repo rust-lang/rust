@@ -40,24 +40,24 @@ define-function: (
 
 call-function: ("check-colors", {
     "theme": "ayu",
-    "color": "rgb(92, 103, 115)",
-    "background_color": "rgba(0, 0, 0, 0)",
-    "highlight_color": "rgb(112, 128, 144)",
+    "color": "#5c6773",
+    "background_color": "transparent",
+    "highlight_color": "#708090",
     "highlight_background_color": "rgba(255, 236, 164, 0.06)",
 })
 call-function: ("check-colors", {
     "theme": "dark",
-    "color": "rgb(59, 145, 226)",
-    "background_color": "rgba(0, 0, 0, 0)",
-    "highlight_color": "rgb(59, 145, 226)",
-    "highlight_background_color": "rgb(10, 4, 47)",
+    "color": "#3b91e2",
+    "background_color": "transparent",
+    "highlight_color": "#3b91e2",
+    "highlight_background_color": "#0a042f",
 })
 call-function: ("check-colors", {
     "theme": "light",
-    "color": "rgb(198, 126, 45)",
-    "background_color": "rgba(0, 0, 0, 0)",
-    "highlight_color": "rgb(198, 126, 45)",
-    "highlight_background_color": "rgb(253, 255, 211)",
+    "color": "#c67e2d",
+    "background_color": "transparent",
+    "highlight_color": "#c67e2d",
+    "highlight_background_color": "#fdffd3",
 })
 
 // This is to ensure that the content is correctly align with the line numbers.
