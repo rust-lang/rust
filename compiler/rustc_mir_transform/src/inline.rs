@@ -42,19 +42,7 @@ struct CallSite<'tcx> {
 
 impl<'tcx> MirPass<'tcx> for Inline {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        if let Some(enabled) = sess.opts.unstable_opts.inline_mir {
-            return enabled;
-        }
-
-        match sess.mir_opt_level() {
-            0 | 1 => false,
-            2 => {
-                (sess.opts.optimize == OptLevel::Default
-                    || sess.opts.optimize == OptLevel::Aggressive)
-                    && sess.opts.incremental == None
-            }
-            _ => true,
-        }
+        InlinerConfig::new(sess).is_ok()
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -68,6 +56,67 @@ impl<'tcx> MirPass<'tcx> for Inline {
         }
     }
 }
+
+impl Inline {
+    pub fn is_enabled_and_needs_mir_inliner_callees(sess: &rustc_session::Session) -> bool {
+        match InlinerConfig::new(sess) {
+            Ok(config) => config.inline_local_fns,
+            Err(_) => false,
+        }
+    }
+}
+
+struct InlinerConfig {
+    /// Inline functions with `#[inline(always)]` attribute
+    inline_fns_with_inline_always_hint: bool,
+    /// Inline functions with `#[inline]` attribute
+    inline_fns_with_inline_hint: bool,
+    /// Inline functions without `#[inline]` attribute
+    /// Inline functions with `#[inline(always)]` attribute
+    inline_fns_without_hint: bool,
+    /// Inline function from current crate (much heavier during incremental compilation)
+    inline_local_fns: bool,
+}
+
+impl InlinerConfig {
+    fn new(sess: &rustc_session::Session) -> Result<InlinerConfig, InliningIsDisabled> {
+        match sess.opts.unstable_opts.inline_mir {
+            Some(true) => return Ok(InlinerConfig::full()),
+            Some(false) => return Err(InliningIsDisabled),
+            None => {}
+        }
+        match sess.mir_opt_level() {
+            0 | 1 => Err(InliningIsDisabled),
+            2 => {
+                let optimize = sess.opts.optimize;
+                if optimize == OptLevel::Default || optimize == OptLevel::Aggressive {
+                    let is_non_incremental = sess.opts.incremental == None;
+                    Ok(InlinerConfig {
+                        inline_fns_with_inline_always_hint: true,
+                        inline_fns_with_inline_hint: is_non_incremental,
+                        inline_fns_without_hint: is_non_incremental,
+                        inline_local_fns: is_non_incremental,
+                    })
+                } else {
+                    Err(InliningIsDisabled)
+                }
+            }
+            _ => Ok(InlinerConfig::full()),
+        }
+    }
+
+    fn full() -> InlinerConfig {
+        InlinerConfig {
+            inline_fns_with_inline_always_hint: true,
+            inline_fns_with_inline_hint: true,
+            inline_fns_without_hint: true,
+            inline_local_fns: true,
+        }
+    }
+}
+
+#[derive(Debug)]
+struct InliningIsDisabled;
 
 fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
     let def_id = body.source.def_id().expect_local();
@@ -91,6 +140,7 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
     let mut this = Inliner {
         tcx,
         param_env,
+        config: InlinerConfig::new(tcx.sess).unwrap_or_else(|_| InlinerConfig::full()),
         codegen_fn_attrs: tcx.codegen_fn_attrs(def_id),
         history: Vec::new(),
         changed: false,
@@ -103,6 +153,7 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
 struct Inliner<'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
+    config: InlinerConfig,
     /// Caller codegen attributes.
     codegen_fn_attrs: &'tcx CodegenFnAttrs,
     /// Stack of inlined instances.
@@ -352,11 +403,35 @@ impl<'tcx> Inliner<'tcx> {
         if let InlineAttr::Never = callee_attrs.inline {
             return Err("never inline hint");
         }
+        match callee_attrs.inline {
+            InlineAttr::Never => return Err("never inline hint"),
+            InlineAttr::Always => {
+                if !self.config.inline_fns_with_inline_always_hint {
+                    return Err("inliner is configured to ignore #[inline(always)] functions");
+                }
+            }
+            InlineAttr::Hint => {
+                if !self.config.inline_fns_with_inline_hint {
+                    return Err("inliner is configured to ignore #[inline] functions");
+                }
+            }
+            _ => {
+                if !self.config.inline_fns_without_hint {
+                    return Err("inliner is configured to ignore functions without #[inline]");
+                }
+            }
+        }
+
+        let callee_is_local = callsite.callee.def_id().is_local();
+
+        if callee_is_local && !self.config.inline_local_fns {
+            return Err("inliner is configured to ignore local functions");
+        }
 
         // Only inline local functions if they would be eligible for cross-crate
         // inlining. This is to ensure that the final crate doesn't have MIR that
         // reference unexported symbols
-        if callsite.callee.def_id().is_local() {
+        if callee_is_local {
             let is_generic = callsite.callee.substs.non_erasable_generics().next().is_some();
             if !is_generic && !callee_attrs.requests_inline() {
                 return Err("not exported");
