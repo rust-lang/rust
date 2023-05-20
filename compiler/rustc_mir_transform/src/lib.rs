@@ -93,6 +93,7 @@ mod multiple_return_terminators;
 mod normalize_array_len;
 mod nrvo;
 mod prettify;
+mod promote_consts;
 mod ref_prop;
 mod remove_noop_landing_pads;
 mod remove_storage_markers;
@@ -114,7 +115,6 @@ mod uninhabited_enum_branching;
 mod unreachable_prop;
 
 use rustc_const_eval::transform::check_consts::{self, ConstCx};
-use rustc_const_eval::transform::promote_consts;
 use rustc_const_eval::transform::validate;
 use rustc_mir_dataflow::rustc_peek;
 

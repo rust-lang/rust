@@ -25,7 +25,7 @@ use rustc_index::{Idx, IndexSlice, IndexVec};
 use std::cell::Cell;
 use std::{cmp, iter, mem};
 
-use crate::transform::check_consts::{qualifs, ConstCx};
+use rustc_const_eval::transform::check_consts::{qualifs, ConstCx};
 
 /// A `MirPass` for promotion.
 ///
@@ -64,7 +64,7 @@ impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
 
 /// State of a temporary during collection and promotion.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum TempState {
+enum TempState {
     /// No references to this temp.
     Undefined,
     /// One direct assignment and any number of direct uses.
@@ -78,18 +78,11 @@ pub enum TempState {
     PromotedOut,
 }
 
-impl TempState {
-    pub fn is_promotable(&self) -> bool {
-        debug!("is_promotable: self={:?}", self);
-        matches!(self, TempState::Defined { .. })
-    }
-}
-
 /// A "root candidate" for promotion, which will become the
 /// returned value in a promoted MIR, unless it's a subset
 /// of a larger candidate.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub struct Candidate {
+struct Candidate {
     location: Location,
 }
 
@@ -162,7 +155,7 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
     }
 }
 
-pub fn collect_temps_and_candidates<'tcx>(
+fn collect_temps_and_candidates<'tcx>(
     ccx: &ConstCx<'_, 'tcx>,
 ) -> (IndexVec<Local, TempState>, Vec<Candidate>) {
     let mut collector = Collector {
@@ -676,7 +669,7 @@ impl<'tcx> Validator<'_, 'tcx> {
 }
 
 // FIXME(eddyb) remove the differences for promotability in `static`, `const`, `const fn`.
-pub fn validate_candidates(
+fn validate_candidates(
     ccx: &ConstCx<'_, '_>,
     temps: &mut IndexSlice<Local, TempState>,
     candidates: &[Candidate],
@@ -930,7 +923,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
     }
 }
 
-pub fn promote_candidates<'tcx>(
+fn promote_candidates<'tcx>(
     body: &mut Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     mut temps: IndexVec<Local, TempState>,
