@@ -2282,7 +2282,7 @@ declare_lint! {
     /// to themselves" or pointers to different functions compare as equal during runtime.
     /// This is because LLVM optimizations can deduplicate functions if their bodies are the same,
     /// thus also making pointers to these functions point to the same location.
-    /// Additionally, functions may get duplicated if they are instantiated
+    /// Additionally, functions and vtables may get duplicated if they are instantiated
     /// in different crates and not deduplicated again via LTO.
     pub POINTER_STRUCTURAL_MATCH,
     Warn,
