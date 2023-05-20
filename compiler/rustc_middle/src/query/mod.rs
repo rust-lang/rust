@@ -518,7 +518,6 @@ rustc_queries! {
         &'tcx Steal<mir::Body<'tcx>>,
         &'tcx IndexVec<mir::Promoted, LocalDefId>,
     ) {
-        no_hash
         desc { |tcx| "promoting constants in MIR for `{}`", tcx.def_path_str(key) }
     }
 
