@@ -572,7 +572,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &dead_store_elimination::DeadStoreElimination,
             &dest_prop::DestinationPropagation,
             &o1(simplify_branches::SimplifyConstCondition::Final),
-            &o1(remove_noop_landing_pads::RemoveNoopLandingPads),
+            // &o1(remove_noop_landing_pads::RemoveNoopLandingPads),
             &o1(simplify::SimplifyCfg::Final),
             &nrvo::RenameReturnPlace,
             &simplify::SimplifyLocals::Final,
