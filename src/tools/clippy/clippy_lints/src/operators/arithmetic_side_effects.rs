@@ -21,7 +21,7 @@ const HARD_CODED_ALLOWED_BINARY: &[[&str; 2]] = &[
     ["f64", "f64"],
     ["std::num::Saturating", "std::num::Saturating"],
     ["std::num::Wrapping", "std::num::Wrapping"],
-    ["std::string::String", "&str"],
+    ["std::string::String", "str"],
 ];
 const HARD_CODED_ALLOWED_UNARY: &[&str] = &["f32", "f64", "std::num::Saturating", "std::num::Wrapping"];
 const INTEGER_METHODS: &[&str] = &["saturating_div", "wrapping_div", "wrapping_rem", "wrapping_rem_euclid"];
@@ -113,7 +113,7 @@ impl ArithmeticSideEffects {
         if let hir::ExprKind::Lit(lit) = actual.kind && let ast::LitKind::Int(n, _) = lit.node {
             return Some(n)
         }
-        if let Some((Constant::Int(n), _)) = constant(cx, cx.typeck_results(), expr) {
+        if let Some(Constant::Int(n)) = constant(cx, cx.typeck_results(), expr) {
             return Some(n);
         }
         None
@@ -144,8 +144,10 @@ impl ArithmeticSideEffects {
         ) {
             return;
         };
-        let lhs_ty = cx.typeck_results().expr_ty(lhs);
-        let rhs_ty = cx.typeck_results().expr_ty(rhs);
+        let (actual_lhs, lhs_ref_counter) = peel_hir_expr_refs(lhs);
+        let (actual_rhs, rhs_ref_counter) = peel_hir_expr_refs(rhs);
+        let lhs_ty = cx.typeck_results().expr_ty(actual_lhs).peel_refs();
+        let rhs_ty = cx.typeck_results().expr_ty(actual_rhs).peel_refs();
         if self.has_allowed_binary(lhs_ty, rhs_ty) {
             return;
         }
@@ -154,8 +156,6 @@ impl ArithmeticSideEffects {
                 // At least for integers, shifts are already handled by the CTFE
                 return;
             }
-            let (actual_lhs, lhs_ref_counter) = peel_hir_expr_refs(lhs);
-            let (actual_rhs, rhs_ref_counter) = peel_hir_expr_refs(rhs);
             match (
                 Self::literal_integer(cx, actual_lhs),
                 Self::literal_integer(cx, actual_rhs),

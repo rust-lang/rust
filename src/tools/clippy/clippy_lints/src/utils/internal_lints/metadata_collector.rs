@@ -8,7 +8,11 @@
 //! a simple mistake)
 
 use crate::renamed_lints::RENAMED_LINTS;
-use crate::utils::internal_lints::lint_without_lint_pass::{extract_clippy_version_value, is_lint_ref_type};
+use crate::utils::{
+    collect_configs,
+    internal_lints::lint_without_lint_pass::{extract_clippy_version_value, is_lint_ref_type},
+    ClippyConfiguration,
+};
 
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::{match_type, walk_ptrs_ty_depth};
@@ -518,111 +522,6 @@ impl Serialize for ApplicabilityInfo {
         }
         s.end()
     }
-}
-
-// ==================================================================
-// Configuration
-// ==================================================================
-#[derive(Debug, Clone, Default)]
-pub struct ClippyConfiguration {
-    name: String,
-    config_type: &'static str,
-    default: String,
-    lints: Vec<String>,
-    doc: String,
-    #[allow(dead_code)]
-    deprecation_reason: Option<&'static str>,
-}
-
-impl ClippyConfiguration {
-    pub fn new(
-        name: &'static str,
-        config_type: &'static str,
-        default: String,
-        doc_comment: &'static str,
-        deprecation_reason: Option<&'static str>,
-    ) -> Self {
-        let (lints, doc) = parse_config_field_doc(doc_comment)
-            .unwrap_or_else(|| (vec![], "[ERROR] MALFORMED DOC COMMENT".to_string()));
-
-        Self {
-            name: to_kebab(name),
-            lints,
-            doc,
-            config_type,
-            default,
-            deprecation_reason,
-        }
-    }
-
-    fn to_markdown_paragraph(&self) -> String {
-        format!(
-            "### {}\n{}\n\n**Default Value:** `{}` (`{}`)\n\n{}\n\n",
-            self.name,
-            self.doc
-                .lines()
-                .map(|line| line.strip_prefix("    ").unwrap_or(line))
-                .join("\n"),
-            self.default,
-            self.config_type,
-            self.lints
-                .iter()
-                .map(|name| name.to_string().split_whitespace().next().unwrap().to_string())
-                .map(|name| format!("* [{name}](https://rust-lang.github.io/rust-clippy/master/index.html#{name})"))
-                .join("\n"),
-        )
-    }
-
-    fn to_markdown_table_entry(&self) -> String {
-        format!("| [{}](#{}) | `{}` |", self.name, self.name, self.default)
-    }
-}
-
-fn collect_configs() -> Vec<ClippyConfiguration> {
-    crate::utils::conf::metadata::get_configuration_metadata()
-}
-
-/// This parses the field documentation of the config struct.
-///
-/// ```rust, ignore
-/// parse_config_field_doc(cx, "Lint: LINT_NAME_1, LINT_NAME_2. Papa penguin, papa penguin")
-/// ```
-///
-/// Would yield:
-/// ```rust, ignore
-/// Some(["lint_name_1", "lint_name_2"], "Papa penguin, papa penguin")
-/// ```
-fn parse_config_field_doc(doc_comment: &str) -> Option<(Vec<String>, String)> {
-    const DOC_START: &str = " Lint: ";
-    if_chain! {
-        if doc_comment.starts_with(DOC_START);
-        if let Some(split_pos) = doc_comment.find('.');
-        then {
-            let mut doc_comment = doc_comment.to_string();
-            let mut documentation = doc_comment.split_off(split_pos);
-
-            // Extract lints
-            doc_comment.make_ascii_lowercase();
-            let lints: Vec<String> = doc_comment
-                .split_off(DOC_START.len())
-                .split(", ")
-                .map(str::to_string)
-                .collect();
-
-            // Format documentation correctly
-            // split off leading `.` from lint name list and indent for correct formatting
-            documentation = documentation.trim_start_matches('.').trim().replace("\n ", "\n    ");
-
-            Some((lints, documentation))
-        } else {
-            None
-        }
-    }
-}
-
-/// Transforms a given `snake_case_string` to a tasty `kebab-case-string`
-fn to_kebab(config_name: &str) -> String {
-    config_name.replace('_', "-")
 }
 
 impl fmt::Display for ClippyConfiguration {

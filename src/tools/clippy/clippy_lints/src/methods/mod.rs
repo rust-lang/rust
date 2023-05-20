@@ -45,6 +45,7 @@ mod iter_overeager_cloned;
 mod iter_skip_next;
 mod iter_with_drain;
 mod iterator_step_by_zero;
+mod manual_next_back;
 mod manual_ok_or;
 mod manual_saturating_arithmetic;
 mod manual_str_repeat;
@@ -3132,8 +3133,11 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust
     /// # let iterator = vec![1].into_iter();
-    /// let len = iterator.clone().collect::<Vec<_>>().len();
-    /// // should be
+    /// let len = iterator.collect::<Vec<_>>().len();
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// # let iterator = vec![1].into_iter();
     /// let len = iterator.count();
     /// ```
     #[clippy::version = "1.30.0"]
@@ -3191,6 +3195,29 @@ declare_clippy_lint! {
     pub CLEAR_WITH_DRAIN,
     nursery,
     "calling `drain` in order to `clear` a container"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `.rev().next()` on a `DoubleEndedIterator`
+    ///
+    /// ### Why is this bad?
+    /// `.next_back()` is cleaner.
+    ///
+    /// ### Example
+    /// ```rust
+    /// # let foo = [0; 10];
+    /// foo.iter().rev().next();
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// # let foo = [0; 10];
+    /// foo.iter().next_back();
+    /// ```
+    #[clippy::version = "1.71.0"]
+    pub MANUAL_NEXT_BACK,
+    style,
+    "manual reverse iteration of `DoubleEndedIterator`"
 }
 
 pub struct Methods {
@@ -3321,6 +3348,7 @@ impl_lint_pass!(Methods => [
     NEEDLESS_COLLECT,
     SUSPICIOUS_COMMAND_ARG_SPACE,
     CLEAR_WITH_DRAIN,
+    MANUAL_NEXT_BACK,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -3677,6 +3705,7 @@ impl Methods {
                             ("iter", []) => iter_next_slice::check(cx, expr, recv2),
                             ("skip", [arg]) => iter_skip_next::check(cx, expr, recv2, arg),
                             ("skip_while", [_]) => skip_while_next::check(cx, expr),
+                            ("rev", [])=> manual_next_back::check(cx, expr, recv, recv2),
                             _ => {},
                         }
                     }
@@ -3741,13 +3770,13 @@ impl Methods {
                     unnecessary_sort_by::check(cx, expr, recv, arg, true);
                 },
                 ("splitn" | "rsplitn", [count_arg, pat_arg]) => {
-                    if let Some((Constant::Int(count), _)) = constant(cx, cx.typeck_results(), count_arg) {
+                    if let Some(Constant::Int(count)) = constant(cx, cx.typeck_results(), count_arg) {
                         suspicious_splitn::check(cx, name, expr, recv, count);
                         str_splitn::check(cx, name, expr, recv, pat_arg, count, &self.msrv);
                     }
                 },
                 ("splitn_mut" | "rsplitn_mut", [count_arg, _]) => {
-                    if let Some((Constant::Int(count), _)) = constant(cx, cx.typeck_results(), count_arg) {
+                    if let Some(Constant::Int(count)) = constant(cx, cx.typeck_results(), count_arg) {
                         suspicious_splitn::check(cx, name, expr, recv, count);
                     }
                 },

@@ -1,10 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::is_from_proc_macro;
 use clippy_utils::ty::{implements_trait, is_must_use_ty, match_type};
 use clippy_utils::{is_must_use_func_call, paths};
-use rustc_hir::{ExprKind, Local, PatKind};
+use rustc_hir::{Local, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::subst::GenericArgKind;
+use rustc_middle::ty::IsSuggestable;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{BytePos, Span};
 
@@ -138,7 +140,7 @@ const SYNC_GUARD_PATHS: [&[&str]; 3] = [
 ];
 
 impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
-    fn check_local(&mut self, cx: &LateContext<'_>, local: &Local<'_>) {
+    fn check_local(&mut self, cx: &LateContext<'tcx>, local: &Local<'tcx>) {
         if !in_external_macro(cx.tcx.sess, local.span)
             && let PatKind::Wild = local.pat.kind
             && let Some(init) = local.init
@@ -191,15 +193,17 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
             if local.pat.default_binding_modes && local.ty.is_none() {
                 // When `default_binding_modes` is true, the `let` keyword is present.
 
-				// Ignore function calls that return impl traits...
-				if let Some(init) = local.init &&
-				matches!(init.kind, ExprKind::Call(_, _) | ExprKind::MethodCall(_, _, _, _)) {
-					let expr_ty = cx.typeck_results().expr_ty(init);
-					if expr_ty.is_impl_trait() {
-						return;
-					}
-				}
+                // Ignore unnameable types
+                if let Some(init) = local.init
+                    && !cx.typeck_results().expr_ty(init).is_suggestable(cx.tcx, true)
+                {
+                    return;
+                }
 
+                // Ignore if it is from a procedural macro...
+                if is_from_proc_macro(cx, init) {
+                    return;
+                }
 
 				span_lint_and_help(
                     cx,
