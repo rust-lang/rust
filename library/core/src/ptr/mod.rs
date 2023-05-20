@@ -443,8 +443,10 @@ mod mut_ptr;
 /// ```
 /// # struct Foo { x: i32 }
 /// unsafe fn drop_in_place(to_drop: *mut Foo) {
-///     let mut value = &mut *to_drop;
-///     // ... drop the fields of `value` ...
+///     drop_in_place_inner(&mut *to_drop);
+///     unsafe fn drop_in_place_inner(to_drop: &mut Foo) {
+///         // ... drop the fields of `value` ...
+///     }
 /// }
 /// ```
 ///
@@ -453,9 +455,9 @@ mod mut_ptr;
 ///
 /// * `to_drop` must be [valid] for both reads and writes.
 ///
-/// * `to_drop` must be properly aligned, even if T has size 0.
+/// * `to_drop` must be properly aligned, even if `T` has size 0.
 ///
-/// * `to_drop` must be nonnull, even if T has size 0.
+/// * `to_drop` must be nonnull, even if `T` has size 0.
 ///
 /// * The value `to_drop` points to must be valid for dropping, which may mean
 ///   it must uphold additional invariants. These invariants depend on the type
