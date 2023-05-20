@@ -1,6 +1,6 @@
 use crate::simd::{
-    intrinsics, LaneCount, Mask, MaskElement, SimdCast, SimdCastPtr, SimdConstPtr, SimdMutPtr,
-    SimdPartialOrd, SupportedLaneCount, Swizzle,
+    intrinsics, LaneCount, Mask, MaskElement, SimdConstPtr, SimdMutPtr, SimdPartialOrd,
+    SupportedLaneCount, Swizzle,
 };
 use core::convert::{TryFrom, TryInto};
 
@@ -295,77 +295,6 @@ where
         // SAFETY: We just checked that the slice contains
         // at least `N` elements.
         unsafe { self.store(slice.as_mut_ptr().cast()) }
-    }
-
-    /// Performs elementwise conversion of a SIMD vector's elements to another SIMD-valid type.
-    ///
-    /// This follows the semantics of Rust's `as` conversion for casting integers between
-    /// signed and unsigned (interpreting integers as 2s complement, so `-1` to `U::MAX` and
-    /// `1 << (U::BITS -1)` becoming `I::MIN` ), and from floats to integers (truncating,
-    /// or saturating at the limits) for each element.
-    ///
-    /// # Examples
-    /// ```
-    /// # #![feature(portable_simd)]
-    /// # use core::simd::Simd;
-    /// let floats: Simd<f32, 4> = Simd::from_array([1.9, -4.5, f32::INFINITY, f32::NAN]);
-    /// let ints = floats.cast::<i32>();
-    /// assert_eq!(ints, Simd::from_array([1, -4, i32::MAX, 0]));
-    ///
-    /// // Formally equivalent, but `Simd::cast` can optimize better.
-    /// assert_eq!(ints, Simd::from_array(floats.to_array().map(|x| x as i32)));
-    ///
-    /// // The float conversion does not round-trip.
-    /// let floats_again = ints.cast();
-    /// assert_ne!(floats, floats_again);
-    /// assert_eq!(floats_again, Simd::from_array([1.0, -4.0, 2147483647.0, 0.0]));
-    /// ```
-    #[must_use]
-    #[inline]
-    #[cfg(not(bootstrap))]
-    pub fn cast<U: SimdCast>(self) -> Simd<U, N>
-    where
-        T: SimdCast,
-    {
-        // Safety: supported types are guaranteed by SimdCast
-        unsafe { intrinsics::simd_as(self) }
-    }
-
-    /// Casts a vector of pointers to another pointer type.
-    #[must_use]
-    #[inline]
-    pub fn cast_ptr<U>(self) -> Simd<U, N>
-    where
-        T: SimdCastPtr<U>,
-        U: SimdElement,
-    {
-        // Safety: supported types are guaranteed by SimdCastPtr
-        unsafe { intrinsics::simd_cast_ptr(self) }
-    }
-
-    /// Rounds toward zero and converts to the same-width integer type, assuming that
-    /// the value is finite and fits in that type.
-    ///
-    /// # Safety
-    /// The value must:
-    ///
-    /// * Not be NaN
-    /// * Not be infinite
-    /// * Be representable in the return type, after truncating off its fractional part
-    ///
-    /// If these requirements are infeasible or costly, consider using the safe function [cast],
-    /// which saturates on conversion.
-    ///
-    /// [cast]: Simd::cast
-    #[inline]
-    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-    pub unsafe fn to_int_unchecked<I>(self) -> Simd<I, N>
-    where
-        T: core::convert::FloatToInt<I> + SimdCast,
-        I: SimdCast,
-    {
-        // Safety: supported types are guaranteed by SimdCast, the caller is responsible for the extra invariants
-        unsafe { intrinsics::simd_cast(self) }
     }
 
     /// Reads from potentially discontiguous indices in `slice` to construct a SIMD vector.
