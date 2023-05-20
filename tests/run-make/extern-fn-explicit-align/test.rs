@@ -1,9 +1,9 @@
 // Issue #80127: Passing structs via FFI should work with explicit alignment.
 
-use std::ffi::{CString, c_char};
+use std::ffi::{CStr, c_char};
 use std::ptr::null_mut;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Copy, Clone)]
 #[repr(C)]
 #[repr(align(16))]
 pub struct TwoU64s {
@@ -12,7 +12,7 @@ pub struct TwoU64s {
 }
 
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct BoolAndU32 {
     pub a: bool,
     pub b: u32,
@@ -37,10 +37,12 @@ extern "C" {
     ) -> i32;
 }
 
+const STRING: &CStr = unsafe { CStr::from_bytes_with_nul_unchecked(b"Hello world\0") };
+
 fn main() {
     let two_u64s = TwoU64s { a: 1, b: 2 };
     let bool_and_u32 = BoolAndU32 { a: true, b: 3 };
-    let string = CString::new("Hello world").unwrap();
+    let string = STRING;
     unsafe {
         many_args(
             null_mut(),
