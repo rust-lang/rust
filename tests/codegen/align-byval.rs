@@ -29,32 +29,84 @@
 impl Copy for i32 {}
 impl Copy for i64 {}
 
+// on i686-windows, this should be passed on stack using `byval`
+#[repr(C)]
+pub struct NaturalAlign8 {
+    a: i64,
+    b: i64,
+    c: i64
+}
+
+// on i686-windows, this should be passed by reference (because the alignment is requested/forced),
+// even though it has the exact same layout as `NaturalAlign8` (!!!)
+#[repr(C)]
+#[repr(align(8))]
+pub struct ForceAlign8 {
+    a: i64,
+    b: i64,
+    c: i64
+}
+
 #[repr(C)]
 #[repr(align(16))]
-struct Foo {
+pub struct ForceAlign16 {
     a: [i32; 16],
     b: i8
 }
 
 extern "C" {
-    // m68k: declare void @f({{.*}}byval(%Foo) align 16{{.*}})
+    // m68k: declare void @natural_align_8({{.*}}byval(%NaturalAlign8) align 4{{.*}})
 
-    // wasm: declare void @f({{.*}}byval(%Foo) align 16{{.*}})
+    // wasm: declare void @natural_align_8({{.*}}byval(%NaturalAlign8) align 8{{.*}})
 
-    // x86_64-linux: declare void @f({{.*}}byval(%Foo) align 16{{.*}})
+    // x86_64-linux: declare void @natural_align_8({{.*}}byval(%NaturalAlign8) align 8{{.*}})
 
-    // x86_64-windows: declare void @f(
+    // x86_64-windows: declare void @natural_align_8(
+    // x86_64-windows-NOT: byval
+    // x86_64-windows-SAME: align 8{{.*}})
+
+    // i686-linux: declare void @natural_align_8({{.*}}byval(%NaturalAlign8) align 4{{.*}})
+
+    // i686-windows: declare void @natural_align_8({{.*}}byval(%NaturalAlign8) align 4{{.*}})
+    fn natural_align_8(x: NaturalAlign8);
+
+    // m68k: declare void @force_align_8({{.*}}byval(%ForceAlign8) align 8{{.*}})
+
+    // wasm: declare void @force_align_8({{.*}}byval(%ForceAlign8) align 8{{.*}})
+
+    // x86_64-linux: declare void @force_align_8({{.*}}byval(%ForceAlign8) align 8{{.*}})
+
+    // x86_64-windows: declare void @force_align_8(
+    // x86_64-windows-NOT: byval
+    // x86_64-windows-SAME: align 8{{.*}})
+
+    // i686-linux: declare void @force_align_8({{.*}}byval(%ForceAlign8) align 4{{.*}})
+
+    // i686-windows: declare void @force_align_8(
+    // i686-windows-NOT: byval
+    // i686-windows-SAME: align 8{{.*}})
+    fn force_align_8(y: ForceAlign8);
+
+    // m68k: declare void @force_align_16({{.*}}byval(%ForceAlign16) align 16{{.*}})
+
+    // wasm: declare void @force_align_16({{.*}}byval(%ForceAlign16) align 16{{.*}})
+
+    // x86_64-linux: declare void @force_align_16({{.*}}byval(%ForceAlign16) align 16{{.*}})
+
+    // x86_64-windows: declare void @force_align_16(
     // x86_64-windows-NOT: byval
     // x86_64-windows-SAME: align 16{{.*}})
 
-    // i686-linux: declare void @f({{.*}}byval(%Foo) align 4{{.*}})
+    // i686-linux: declare void @force_align_16({{.*}}byval(%ForceAlign16) align 4{{.*}})
 
-    // i686-windows: declare void @f(
+    // i686-windows: declare void @force_align_16(
     // i686-windows-NOT: byval
     // i686-windows-SAME: align 16{{.*}})
-    fn f(foo: Foo);
+    fn force_align_16(z: ForceAlign16);
 }
 
-pub fn main() {
-    unsafe { f(Foo { a: [1; 16], b: 2 }) }
+pub unsafe fn main(x: NaturalAlign8, y: ForceAlign8, z: ForceAlign16) {
+    natural_align_8(x);
+    force_align_8(y);
+    force_align_16(z);
 }
