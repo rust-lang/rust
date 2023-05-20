@@ -392,13 +392,13 @@ impl char {
     #[inline]
     pub(crate) fn escape_debug_ext(self, args: EscapeDebugExtArgs) -> EscapeDebug {
         match self {
-            '\0' => EscapeDebug::backslash(b'0'),
-            '\t' => EscapeDebug::backslash(b't'),
-            '\r' => EscapeDebug::backslash(b'r'),
-            '\n' => EscapeDebug::backslash(b'n'),
-            '\\' => EscapeDebug::backslash(b'\\'),
-            '"' if args.escape_double_quote => EscapeDebug::backslash(b'"'),
-            '\'' if args.escape_single_quote => EscapeDebug::backslash(b'\''),
+            '\0' => EscapeDebug::backslash(ascii::Char::Digit0),
+            '\t' => EscapeDebug::backslash(ascii::Char::SmallT),
+            '\r' => EscapeDebug::backslash(ascii::Char::SmallR),
+            '\n' => EscapeDebug::backslash(ascii::Char::SmallN),
+            '\\' => EscapeDebug::backslash(ascii::Char::ReverseSolidus),
+            '\"' if args.escape_double_quote => EscapeDebug::backslash(ascii::Char::QuotationMark),
+            '\'' if args.escape_single_quote => EscapeDebug::backslash(ascii::Char::Apostrophe),
             _ if args.escape_grapheme_extended && self.is_grapheme_extended() => {
                 EscapeDebug::from_unicode(self.escape_unicode())
             }
@@ -503,11 +503,11 @@ impl char {
     #[inline]
     pub fn escape_default(self) -> EscapeDefault {
         match self {
-            '\t' => EscapeDefault::backslash(b't'),
-            '\r' => EscapeDefault::backslash(b'r'),
-            '\n' => EscapeDefault::backslash(b'n'),
-            '\\' | '\'' | '"' => EscapeDefault::backslash(self as u8),
-            '\x20'..='\x7e' => EscapeDefault::printable(self as u8),
+            '\t' => EscapeDefault::backslash(ascii::Char::SmallT),
+            '\r' => EscapeDefault::backslash(ascii::Char::SmallR),
+            '\n' => EscapeDefault::backslash(ascii::Char::SmallN),
+            '\\' | '\'' | '"' => EscapeDefault::backslash(self.as_ascii().unwrap()),
+            '\x20'..='\x7e' => EscapeDefault::printable(self.as_ascii().unwrap()),
             _ => EscapeDefault::from_unicode(self.escape_unicode()),
         }
     }
