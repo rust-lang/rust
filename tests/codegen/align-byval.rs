@@ -1,4 +1,4 @@
-// revisions:m68k wasm x86_64-linux x86_64-windows
+// revisions:m68k wasm x86_64-linux x86_64-windows i686-linux i686-windows
 
 //[m68k] compile-flags: --target m68k-unknown-linux-gnu
 //[m68k] needs-llvm-components: m68k
@@ -8,10 +8,13 @@
 //[x86_64-linux] needs-llvm-components: x86
 //[x86_64-windows] compile-flags: --target x86_64-pc-windows-msvc
 //[x86_64-windows] needs-llvm-components: x86
+//[i686-linux] compile-flags: --target i686-unknown-linux-gnu
+//[i686-linux] needs-llvm-components: x86
+//[i686-windows] compile-flags: --target i686-pc-windows-msvc
+//[i686-windows] needs-llvm-components: x86
 
 // Tests that `byval` alignment is properly specified (#80127).
-// The only targets that use `byval` are m68k, wasm, x86-64, and x86. Note that
-// x86 has special rules (see #103830), and it's therefore ignored here.
+// The only targets that use `byval` are m68k, wasm, x86-64, and x86.
 // Note also that Windows mandates a by-ref ABI here, so it does not use byval.
 
 #![feature(no_core, lang_items)]
@@ -43,6 +46,12 @@ extern "C" {
     // x86_64-windows: declare void @f(
     // x86_64-windows-NOT: byval
     // x86_64-windows-SAME: align 16{{.*}})
+
+    // i686-linux: declare void @f({{.*}}byval(%Foo) align 4{{.*}})
+
+    // i686-windows: declare void @f(
+    // i686-windows-NOT: byval
+    // i686-windows-SAME: align 16{{.*}})
     fn f(foo: Foo);
 }
 
