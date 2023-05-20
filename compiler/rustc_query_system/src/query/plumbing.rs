@@ -676,6 +676,10 @@ pub(crate) fn incremental_verify_ich<Tcx, V>(
     });
 
     let old_hash = dep_graph_data.prev_fingerprint_of(prev_index);
+    debug!(
+        dep_node = ?tcx.dep_graph().data().unwrap().prev_node_of(prev_index),
+        ?new_hash, ?old_hash,
+    );
 
     if new_hash != old_hash {
         incremental_verify_ich_failed(tcx, prev_index, &|| format_value(&result));

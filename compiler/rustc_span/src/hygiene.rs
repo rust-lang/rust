@@ -180,7 +180,9 @@ impl LocalExpnId {
         ExpnIndex::from_u32(self.as_u32())
     }
 
-    pub fn fresh_empty() -> LocalExpnId {
+    /// Create a new expansions without any information. This method must not be used outside of
+    /// the resolver.
+    pub fn reserve_expansion_id() -> LocalExpnId {
         HygieneData::with(|data| {
             let expn_id = data.local_expn_data.push(None);
             let _eid = data.local_expn_hashes.push(ExpnHash(Fingerprint::ZERO));
@@ -189,7 +191,12 @@ impl LocalExpnId {
         })
     }
 
-    pub fn fresh(mut expn_data: ExpnData, ctx: impl HashStableContext) -> LocalExpnId {
+    /// This method is an implementation detail of `TyCtxt::create_expansion`.
+    #[instrument(level = "trace", skip(ctx), ret)]
+    pub fn create_untracked_expansion(
+        mut expn_data: ExpnData,
+        ctx: impl HashStableContext,
+    ) -> LocalExpnId {
         debug_assert_eq!(expn_data.parent.krate, LOCAL_CRATE);
         let expn_hash = update_disambiguator(&mut expn_data, ctx);
         HygieneData::with(|data| {
@@ -200,6 +207,23 @@ impl LocalExpnId {
             debug_assert!(_old_id.is_none());
             expn_id
         })
+    }
+
+    /// Implementation detail of `TyCtxt::finalize_expansion`.
+    #[inline]
+    #[instrument(level = "trace", skip(ctx))]
+    pub fn set_untracked_expn_data(self, mut expn_data: ExpnData, ctx: impl HashStableContext) {
+        debug_assert_eq!(expn_data.parent.krate, LOCAL_CRATE);
+        let expn_hash = update_disambiguator(&mut expn_data, ctx);
+        HygieneData::with(|data| {
+            let old_expn_data = &mut data.local_expn_data[self];
+            assert!(old_expn_data.is_none(), "expansion data is reset for an expansion ID");
+            *old_expn_data = Some(expn_data);
+            debug_assert_eq!(data.local_expn_hashes[self].0, Fingerprint::ZERO);
+            data.local_expn_hashes[self] = expn_hash;
+            let _old_id = data.expn_hash_to_expn_id.insert(expn_hash, self.to_expn_id());
+            debug_assert!(_old_id.is_none());
+        });
     }
 
     #[inline]
@@ -215,21 +239,6 @@ impl LocalExpnId {
     #[inline]
     pub fn to_expn_id(self) -> ExpnId {
         ExpnId { krate: LOCAL_CRATE, local_id: self.as_raw() }
-    }
-
-    #[inline]
-    pub fn set_expn_data(self, mut expn_data: ExpnData, ctx: impl HashStableContext) {
-        debug_assert_eq!(expn_data.parent.krate, LOCAL_CRATE);
-        let expn_hash = update_disambiguator(&mut expn_data, ctx);
-        HygieneData::with(|data| {
-            let old_expn_data = &mut data.local_expn_data[self];
-            assert!(old_expn_data.is_none(), "expansion data is reset for an expansion ID");
-            *old_expn_data = Some(expn_data);
-            debug_assert_eq!(data.local_expn_hashes[self].0, Fingerprint::ZERO);
-            data.local_expn_hashes[self] = expn_hash;
-            let _old_id = data.expn_hash_to_expn_id.insert(expn_hash, self.to_expn_id());
-            debug_assert!(_old_id.is_none());
-        });
     }
 
     #[inline]
@@ -884,23 +893,6 @@ impl Span {
                 Transparency::Transparent,
             ))
         })
-    }
-
-    /// Reuses the span but adds information like the kind of the desugaring and features that are
-    /// allowed inside this span.
-    pub fn mark_with_reason(
-        self,
-        allow_internal_unstable: Option<Lrc<[Symbol]>>,
-        reason: DesugaringKind,
-        edition: Edition,
-        ctx: impl HashStableContext,
-    ) -> Span {
-        let expn_data = ExpnData {
-            allow_internal_unstable,
-            ..ExpnData::default(ExpnKind::Desugaring(reason), self, edition, None, None)
-        };
-        let expn_id = LocalExpnId::fresh(expn_data, ctx);
-        self.fresh_expansion(expn_id)
     }
 }
 

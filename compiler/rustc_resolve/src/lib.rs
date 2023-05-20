@@ -51,7 +51,6 @@ use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, MainDefinition, RegisteredTools, TyCtxt};
 use rustc_middle::ty::{ResolverGlobalCtxt, ResolverOutputs};
-use rustc_query_system::ich::StableHashingContext;
 use rustc_session::lint::LintBuffer;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -1443,10 +1442,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             lint_buffer: Steal::new(self.lint_buffer),
         };
         ResolverOutputs { global_ctxt, ast_lowering }
-    }
-
-    fn create_stable_hashing_context(&self) -> StableHashingContext<'_> {
-        StableHashingContext::new(self.tcx.sess, self.tcx.untracked())
     }
 
     fn crate_loader<T>(&mut self, f: impl FnOnce(&mut CrateLoader<'_, '_>) -> T) -> T {

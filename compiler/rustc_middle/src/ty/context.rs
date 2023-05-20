@@ -65,6 +65,7 @@ use rustc_session::Limit;
 use rustc_session::Session;
 use rustc_span::def_id::{DefPathHash, StableCrateId};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::{DesugaringKind, ExpnData, ExpnKind, LocalExpnId};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, Layout, LayoutS, TargetDataLayout, VariantIdx};
 use rustc_target::spec::abi;
@@ -898,6 +899,38 @@ impl<'tcx> TyCtxt<'tcx> {
             stable_crate_id.as_u64() >> (8 * 6),
             self.def_path(def_id).to_string_no_crate_verbose()
         )
+    }
+}
+
+impl<'tcx> TyCtxt<'tcx> {
+    #[instrument(level = "trace", skip(self), ret)]
+    pub fn create_expansion(self, expn_data: ExpnData) -> LocalExpnId {
+        self.with_stable_hashing_context(|ctx| {
+            LocalExpnId::create_untracked_expansion(expn_data, ctx)
+        })
+    }
+
+    /// Fill an empty expansion. This method must not be used outside of the resolver.
+    #[inline]
+    #[instrument(level = "trace", skip(self))]
+    pub fn finalize_expansion(self, expn_id: LocalExpnId, expn_data: ExpnData) {
+        self.with_stable_hashing_context(|ctx| expn_id.set_untracked_expn_data(expn_data, ctx));
+    }
+
+    /// Reuses the span but adds information like the kind of the desugaring and features that are
+    /// allowed inside this span.
+    pub fn mark_span_with_reason(
+        self,
+        reason: DesugaringKind,
+        span: Span,
+        allow_internal_unstable: Option<Lrc<[Symbol]>>,
+    ) -> Span {
+        let edition = self.sess.edition();
+        let mut expn_data =
+            ExpnData::default(ExpnKind::Desugaring(reason), span, edition, None, None);
+        expn_data.allow_internal_unstable = allow_internal_unstable;
+        let expn_id = self.create_expansion(expn_data);
+        span.fresh_expansion(expn_id)
     }
 }
 

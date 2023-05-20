@@ -160,7 +160,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.lower_expr_if(cond, then, else_opt.as_deref())
                 }
                 ExprKind::While(cond, body, opt_label) => self.with_loop_scope(e.id, |this| {
-                    let span = this.mark_span_with_reason(DesugaringKind::WhileLoop, e.span, None);
+                    let span =
+                        this.tcx.mark_span_with_reason(DesugaringKind::WhileLoop, e.span, None);
                     this.lower_expr_while_in_loop_scope(span, cond, body, *opt_label)
                 }),
                 ExprKind::Loop(body, opt_label, span) => self.with_loop_scope(e.id, |this| {
@@ -448,7 +449,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             _ => {
                 let cond = self.lower_expr(cond);
                 let reason = DesugaringKind::CondTemporary;
-                let span_block = self.mark_span_with_reason(reason, cond.span, None);
+                let span_block = self.tcx.mark_span_with_reason(reason, cond.span, None);
                 self.expr_drop_temps(span_block, cond)
             }
         }
@@ -501,7 +502,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // Final expression of the block (if present) or `()` with span at the end of block
             let (try_span, tail_expr) = if let Some(expr) = block.expr.take() {
                 (
-                    this.mark_span_with_reason(
+                    this.tcx.mark_span_with_reason(
                         DesugaringKind::TryBlock,
                         expr.span,
                         this.allow_try_trait.clone(),
@@ -509,7 +510,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     expr,
                 )
             } else {
-                let try_span = this.mark_span_with_reason(
+                let try_span = this.tcx.mark_span_with_reason(
                     DesugaringKind::TryBlock,
                     this.tcx.sess.source_map().end_point(body.span),
                     this.allow_try_trait.clone(),
@@ -519,7 +520,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             };
 
             let ok_wrapped_span =
-                this.mark_span_with_reason(DesugaringKind::TryBlock, tail_expr.span, None);
+                this.tcx.mark_span_with_reason(DesugaringKind::TryBlock, tail_expr.span, None);
 
             // `::std::ops::Try::from_output($tail_expr)`
             block.expr = Some(this.wrap_in_try_constructor(
@@ -591,8 +592,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let output = ret_ty.unwrap_or_else(|| hir::FnRetTy::DefaultReturn(self.lower_span(span)));
 
         // Resume argument type: `ResumeTy`
-        let unstable_span =
-            self.mark_span_with_reason(DesugaringKind::Async, span, self.allow_gen_future.clone());
+        let unstable_span = self.tcx.mark_span_with_reason(
+            DesugaringKind::Async,
+            span,
+            self.allow_gen_future.clone(),
+        );
         let resume_ty = hir::QPath::LangItem(hir::LangItem::ResumeTy, unstable_span, None);
         let input_ty = hir::Ty {
             hir_id: self.next_id(),
@@ -661,7 +665,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             && attrs.into_iter().any(|attr| attr.has_name(sym::track_caller))
         {
             let unstable_span =
-                self.mark_span_with_reason(DesugaringKind::Async, span, self.allow_gen_future.clone());
+                self.tcx.mark_span_with_reason(DesugaringKind::Async, span, self.allow_gen_future.clone());
             self.lower_attrs(
                 inner_hir_id,
                 &[Attribute {
@@ -707,8 +711,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 });
             }
         }
-        let span = self.mark_span_with_reason(DesugaringKind::Await, await_kw_span, None);
-        let gen_future_span = self.mark_span_with_reason(
+        let span = self.tcx.mark_span_with_reason(DesugaringKind::Await, await_kw_span, None);
+        let gen_future_span = self.tcx.mark_span_with_reason(
             DesugaringKind::Await,
             full_span,
             self.allow_gen_future.clone(),
@@ -1466,9 +1470,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let head = self.lower_expr_mut(head);
         let pat = self.lower_pat(pat);
         let for_span =
-            self.mark_span_with_reason(DesugaringKind::ForLoop, self.lower_span(e.span), None);
-        let head_span = self.mark_span_with_reason(DesugaringKind::ForLoop, head.span, None);
-        let pat_span = self.mark_span_with_reason(DesugaringKind::ForLoop, pat.span, None);
+            self.tcx.mark_span_with_reason(DesugaringKind::ForLoop, self.lower_span(e.span), None);
+        let head_span = self.tcx.mark_span_with_reason(DesugaringKind::ForLoop, head.span, None);
+        let pat_span = self.tcx.mark_span_with_reason(DesugaringKind::ForLoop, pat.span, None);
 
         // `None => break`
         let none_arm = {
@@ -1562,13 +1566,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// }
     /// ```
     fn lower_expr_try(&mut self, span: Span, sub_expr: &Expr) -> hir::ExprKind<'hir> {
-        let unstable_span = self.mark_span_with_reason(
+        let unstable_span = self.tcx.mark_span_with_reason(
             DesugaringKind::QuestionMark,
             span,
             self.allow_try_trait.clone(),
         );
         let try_span = self.tcx.sess.source_map().end_point(span);
-        let try_span = self.mark_span_with_reason(
+        let try_span = self.tcx.mark_span_with_reason(
             DesugaringKind::QuestionMark,
             try_span,
             self.allow_try_trait.clone(),
@@ -1659,10 +1663,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let (yeeted_span, yeeted_expr) = if let Some(sub_expr) = sub_expr {
             (sub_expr.span, self.lower_expr(sub_expr))
         } else {
-            (self.mark_span_with_reason(DesugaringKind::YeetExpr, span, None), self.expr_unit(span))
+            (
+                self.tcx.mark_span_with_reason(DesugaringKind::YeetExpr, span, None),
+                self.expr_unit(span),
+            )
         };
 
-        let unstable_span = self.mark_span_with_reason(
+        let unstable_span = self.tcx.mark_span_with_reason(
             DesugaringKind::YeetExpr,
             span,
             self.allow_try_trait.clone(),

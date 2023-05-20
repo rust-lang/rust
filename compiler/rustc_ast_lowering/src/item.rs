@@ -1071,7 +1071,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     }
                 };
 
-                let desugared_span = this.mark_span_with_reason(DesugaringKind::Async, span, None);
+                let desugared_span =
+                    this.tcx.mark_span_with_reason(DesugaringKind::Async, span, None);
 
                 // Construct a parameter representing `__argN: <ty>` to replace the parameter of the
                 // async function.
@@ -1160,7 +1161,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                     // Transform into `drop-temps { <user-body> }`, an expression:
                     let desugared_span =
-                        this.mark_span_with_reason(DesugaringKind::Async, user_body.span, None);
+                        this.tcx.mark_span_with_reason(DesugaringKind::Async, user_body.span, None);
                     let user_body =
                         this.expr_drop_temps(desugared_span, this.arena.alloc(user_body));
 

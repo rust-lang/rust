@@ -762,19 +762,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.tcx.sess.diagnostic()
     }
 
-    /// Reuses the span but adds information like the kind of the desugaring and features that are
-    /// allowed inside this span.
-    fn mark_span_with_reason(
-        &self,
-        reason: DesugaringKind,
-        span: Span,
-        allow_internal_unstable: Option<Lrc<[Symbol]>>,
-    ) -> Span {
-        self.tcx.with_stable_hashing_context(|hcx| {
-            span.mark_with_reason(allow_internal_unstable, reason, self.tcx.sess.edition(), hcx)
-        })
-    }
-
     /// Intercept all spans entering HIR.
     /// Mark a span as relative to the current owning item.
     fn lower_span(&self, span: Span) -> Span {
@@ -1529,7 +1516,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // desugaring that explicitly states that we don't want to track that.
         // Not tracking it makes lints in rustc and clippy very fragile, as
         // frequently opened issues show.
-        let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::OpaqueTy, span, None);
+        let opaque_ty_span = self.tcx.mark_span_with_reason(DesugaringKind::OpaqueTy, span, None);
 
         let opaque_ty_def_id = self.create_def(
             self.current_hir_id_owner.def_id,
@@ -1893,7 +1880,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> hir::FnRetTy<'hir> {
         let span = output.span();
 
-        let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::Async, span, None);
+        let opaque_ty_span = self.tcx.mark_span_with_reason(DesugaringKind::Async, span, None);
 
         let fn_def_id = self.local_def_id(fn_node_id);
 

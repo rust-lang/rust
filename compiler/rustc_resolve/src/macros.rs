@@ -217,17 +217,14 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
     ) -> LocalExpnId {
         let parent_module =
             parent_module_id.map(|module_id| self.local_def_id(module_id).to_def_id());
-        let expn_id = LocalExpnId::fresh(
-            ExpnData::allow_unstable(
-                ExpnKind::AstPass(pass),
-                call_site,
-                self.tcx.sess.edition(),
-                features.into(),
-                None,
-                parent_module,
-            ),
-            self.create_stable_hashing_context(),
-        );
+        let expn_id = self.tcx.create_expansion(ExpnData::allow_unstable(
+            ExpnKind::AstPass(pass),
+            call_site,
+            self.tcx.sess.edition(),
+            features.into(),
+            None,
+            parent_module,
+        ));
 
         let parent_scope =
             parent_module.map_or(self.empty_module, |def_id| self.expect_module(def_id));
@@ -290,7 +287,8 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
 
         let span = invoc.span();
         let def_id = res.opt_def_id();
-        invoc_id.set_expn_data(
+        self.tcx.finalize_expansion(
+            invoc_id,
             ext.expn_data(
                 parent_scope.expansion,
                 span,
@@ -298,7 +296,6 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
                 def_id,
                 def_id.map(|def_id| self.macro_def_scope(def_id).nearest_parent_mod()),
             ),
-            self.create_stable_hashing_context(),
         );
 
         Ok(ext)
