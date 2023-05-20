@@ -238,7 +238,7 @@ fn adjust_for_rust_scalar<'tcx>(
     layout: TyAndLayout<'tcx>,
     offset: Size,
     is_return: bool,
-    is_drop_target: bool,
+    drop_target_pointee: Option<Ty<'tcx>>,
 ) {
     // Booleans are always a noundef i1 that needs to be zero-extended.
     if scalar.is_bool() {
@@ -252,14 +252,24 @@ fn adjust_for_rust_scalar<'tcx>(
     }
 
     // Only pointer types handled below.
-    let Scalar::Initialized { value: Pointer(_), valid_range} = scalar else { return };
+    let Scalar::Initialized { value: Pointer(_), valid_range } = scalar else { return };
 
-    if !valid_range.contains(0) {
+    // Set `nonnull` if the validity range excludes zero, or for the argument to `drop_in_place`,
+    // which must be nonnull per its documented safety requirements.
+    if !valid_range.contains(0) || drop_target_pointee.is_some() {
         attrs.set(ArgAttribute::NonNull);
     }
 
     if let Some(pointee) = layout.pointee_info_at(&cx, offset) {
-        if let Some(kind) = pointee.safe {
+        let kind = if let Some(kind) = pointee.safe {
+            Some(kind)
+        } else if let Some(pointee) = drop_target_pointee {
+            // The argument to `drop_in_place` is semantically equivalent to a mutable reference.
+            Some(PointerKind::MutableRef { unpin: pointee.is_unpin(cx.tcx, cx.param_env()) })
+        } else {
+            None
+        };
+        if let Some(kind) = kind {
             attrs.pointee_align = Some(pointee.align);
 
             // `Box` are not necessarily dereferenceable for the entire duration of the function as
@@ -306,18 +316,6 @@ fn adjust_for_rust_scalar<'tcx>(
             if matches!(kind, PointerKind::SharedRef { frozen: true }) && !is_return {
                 attrs.set(ArgAttribute::ReadOnly);
             }
-        }
-
-        // If this is the argument to `drop_in_place`, the contents of which we fully control as the
-        // compiler, then we mark this argument as `noalias`, aligned, and dereferenceable. (The
-        // standard library documents the necessary requirements to uphold these attributes for code
-        // that calls this method directly.) This can enable better optimizations, such as argument
-        // promotion.
-        if is_drop_target {
-            attrs.set(ArgAttribute::NoAlias);
-            attrs.set(ArgAttribute::NonNull);
-            attrs.pointee_size = pointee.size;
-            attrs.pointee_align = Some(pointee.align);
         }
     }
 }
@@ -383,6 +381,10 @@ fn fn_abi_new_uncached<'tcx>(
         let _entered = span.enter();
         let is_return = arg_idx.is_none();
         let is_drop_target = is_drop_in_place && arg_idx == Some(0);
+        let drop_target_pointee = is_drop_target.then(|| match ty.kind() {
+            ty::RawPtr(ty::TypeAndMut { ty, .. }) => *ty,
+            _ => bug!("argument to drop_in_place is not a raw ptr: {:?}", ty),
+        });
 
         let layout = cx.layout_of(ty)?;
         let layout = if force_thin_self_ptr && arg_idx == Some(0) {
@@ -403,7 +405,7 @@ fn fn_abi_new_uncached<'tcx>(
                 *layout,
                 offset,
                 is_return,
-                is_drop_target,
+                drop_target_pointee,
             );
             attrs
         });

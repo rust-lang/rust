@@ -1,34 +1,38 @@
-// Tests that the compiler can mark `drop_in_place` as `noalias` when safe to do so.
+// compile-flags: -C no-prepopulate-passes
+
+// Tests that the compiler can apply `noalias` and other &mut attributes to `drop_in_place`.
+// Note that non-Unpin types should not get `noalias`, matching &mut behavior.
 
 #![crate_type="lib"]
 
-use std::hint::black_box;
+use std::marker::PhantomPinned;
 
-// CHECK: define{{.*}}core{{.*}}ptr{{.*}}drop_in_place{{.*}}Foo{{.*}}({{.*}}noalias {{.*}} align 4 dereferenceable(12){{.*}})
+// CHECK: define internal void @{{.*}}core{{.*}}ptr{{.*}}drop_in_place{{.*}}StructUnpin{{.*}}({{.*\*|ptr}} noalias noundef align 4 dereferenceable(12) %{{.+}})
 
-#[repr(C)]
-pub struct Foo {
+// CHECK: define internal void @{{.*}}core{{.*}}ptr{{.*}}drop_in_place{{.*}}StructNotUnpin{{.*}}({{.*\*|ptr}} noundef nonnull align 4 %{{.+}})
+
+pub struct StructUnpin {
     a: i32,
     b: i32,
     c: i32,
 }
 
-impl Drop for Foo {
-    #[inline(never)]
-    fn drop(&mut self) {
-        black_box(self.a);
-    }
+impl Drop for StructUnpin {
+    fn drop(&mut self) {}
 }
 
-extern {
-    fn bar();
-    fn baz(foo: Foo);
+pub struct StructNotUnpin {
+    a: i32,
+    b: i32,
+    c: i32,
+    p: PhantomPinned,
 }
 
-pub fn haha() {
-    let foo = Foo { a: 1, b: 2, c: 3 };
-    unsafe {
-        bar();
-        baz(foo);
-    }
+impl Drop for StructNotUnpin {
+    fn drop(&mut self) {}
+}
+
+pub unsafe fn main(x: StructUnpin, y: StructNotUnpin) {
+    drop(x);
+    drop(y);
 }
