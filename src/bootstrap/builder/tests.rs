@@ -146,6 +146,22 @@ fn alias_and_path_for_library() {
     );
 }
 
+#[test]
+fn test_beta_rev_parsing() {
+    use crate::extract_beta_rev;
+
+    // single digit revision
+    assert_eq!(extract_beta_rev("1.99.9-beta.7 (xxxxxx)"), Some("7".to_string()));
+    // multiple digits
+    assert_eq!(extract_beta_rev("1.99.9-beta.777 (xxxxxx)"), Some("777".to_string()));
+    // nightly channel (no beta revision)
+    assert_eq!(extract_beta_rev("1.99.9-nightly (xxxxxx)"), None);
+    // stable channel (no beta revision)
+    assert_eq!(extract_beta_rev("1.99.9 (xxxxxxx)"), None);
+    // invalid string
+    assert_eq!(extract_beta_rev("invalid"), None);
+}
+
 mod defaults {
     use super::{configure, first, run_build};
     use crate::builder::*;
