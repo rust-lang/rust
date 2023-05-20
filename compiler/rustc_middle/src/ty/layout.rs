@@ -1104,6 +1104,15 @@ where
     fn is_unit(this: TyAndLayout<'tcx>) -> bool {
         matches!(this.ty.kind(), ty::Tuple(list) if list.len() == 0)
     }
+
+    fn repr_options(this: TyAndLayout<'tcx>) -> ReprOptions {
+        match *this.ty.kind() {
+            ty::Adt(def, ..) => def.repr(),
+            _ => {
+                bug!("TyAndLayout::repr_options({:?}): not applicable", this)
+            }
+        }
+    }
 }
 
 /// Calculates whether a function's ABI can unwind or not.

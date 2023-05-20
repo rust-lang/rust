@@ -54,7 +54,31 @@ where
             continue;
         }
 
-        if arg.layout.is_aggregate() {
+        // FIXME: MSVC 2015+ will pass the first 3 vector arguments in [XYZ]MM0-2
+        // See https://reviews.llvm.org/D72114 for Clang behavior
+
+        let t = cx.target_spec();
+        let align_4 = Align::from_bytes(4).unwrap();
+        let align_16 = Align::from_bytes(16).unwrap();
+
+        if t.is_like_msvc
+            && arg.layout.is_adt()
+            && let Some(requested_align) = arg.layout.repr_options().align
+            && requested_align > align_4
+        {
+            // MSVC has special rules for overaligned arguments: https://reviews.llvm.org/D72114.
+            // Summarized here:
+            // - Arguments with _requested_ alignment > 4 are passed indirectly.
+            // - For backwards compatibility, arguments with natural alignment > 4 are still passed
+            //   on stack (via `byval`). For example, this includes `double`, `int64_t`,
+            //   and structs containing them, provided they lack an explicit alignment attribute.
+            assert!(arg.layout.align.abi >= requested_align,
+                "abi alignment {:?} less than requested alignment {:?}",
+                arg.layout.align.abi,
+                requested_align
+            );
+            arg.make_indirect();
+        } else if arg.layout.is_aggregate() {
             // We need to compute the alignment of the `byval` argument. The rules can be found in
             // `X86_32ABIInfo::getTypeStackAlignInBytes` in Clang's `TargetInfo.cpp`. Summarized
             // here, they are:
@@ -87,9 +111,6 @@ where
                 }
             }
 
-            let t = cx.target_spec();
-            let align_4 = Align::from_bytes(4).unwrap();
-            let align_16 = Align::from_bytes(16).unwrap();
             let byval_align = if arg.layout.align.abi < align_4 {
                 // (1.)
                 align_4
