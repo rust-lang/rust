@@ -375,10 +375,8 @@ fn fn_abi_new_uncached<'tcx>(
     use SpecAbi::*;
     let rust_abi = matches!(sig.abi, RustIntrinsic | PlatformIntrinsic | Rust | RustCall);
 
-    let is_drop_in_place = match (cx.tcx.lang_items().drop_in_place_fn(), fn_def_id) {
-        (Some(drop_in_place_fn), Some(fn_def_id)) => drop_in_place_fn == fn_def_id,
-        _ => false,
-    };
+    let is_drop_in_place =
+        fn_def_id.is_some() && fn_def_id == cx.tcx.lang_items().drop_in_place_fn();
 
     let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| -> Result<_, FnAbiError<'tcx>> {
         let span = tracing::debug_span!("arg_of");
