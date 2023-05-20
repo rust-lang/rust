@@ -892,7 +892,7 @@ impl OsStr {
     /// Note: As the encoding is unspecified, any sub-slice of bytes that is not valid UTF-8 should
     /// be treated as opaque and only comparable within the same rust version built for the same
     /// target platform.  For example, sending the slice over the network or storing it in a file
-    /// will likely result in incompatible byte slices  See [`OsString`] for more encoding details
+    /// will likely result in incompatible byte slices.  See [`OsString`] for more encoding details
     /// and [`std::ffi`] for platform-specific, specified conversions.
     ///
     /// [`std::ffi`]: crate::ffi
