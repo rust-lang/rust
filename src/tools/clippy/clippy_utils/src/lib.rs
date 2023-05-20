@@ -1388,6 +1388,13 @@ pub fn get_parent_as_impl(tcx: TyCtxt<'_>, id: HirId) -> Option<&Impl<'_>> {
     }
 }
 
+pub const fn peel_droptemps<'a>(expr: &'a Expr<'a>) -> &'a Expr<'a> {
+    match expr.kind {
+        ExprKind::DropTemps(source) => peel_droptemps(source),
+        _ => expr,
+    }
+}
+
 /// Removes blocks around an expression, only if the block contains just one expression
 /// and no statements. Unsafe blocks are not removed.
 ///

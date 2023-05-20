@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::eq_expr_value;
+use clippy_utils::peel_droptemps;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use if_chain::if_chain;
@@ -114,6 +115,7 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
     }
 
     fn run(&mut self, e: &'v Expr<'_>) -> Result<Bool, String> {
+        let e = peel_droptemps(e);
         fn negate(bin_op_kind: BinOpKind) -> Option<BinOpKind> {
             match bin_op_kind {
                 BinOpKind::Eq => Some(BinOpKind::Ne),

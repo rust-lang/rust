@@ -375,6 +375,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
             },
             ExprKind::Index(arr, index) => self.index(arr, index),
             ExprKind::AddrOf(_, _, inner) => self.expr(inner).map(|r| Constant::Ref(Box::new(r))),
+            ExprKind::DropTemps(e) => self.expr(e),
             // TODO: add other expressions.
             _ => None,
         }

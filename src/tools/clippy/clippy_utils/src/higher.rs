@@ -4,13 +4,13 @@
 
 use crate::consts::{constant_simple, Constant};
 use crate::ty::is_type_diagnostic_item;
-use crate::{is_expn_of, match_def_path, paths};
+use crate::{is_expn_of, match_def_path, paths, peel_droptemps};
 use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_hir as hir;
-use rustc_hir::{Arm, Block, Expr, ExprKind, HirId, LoopSource, MatchSource, Node, Pat, QPath};
+use rustc_hir::{Arm, BinOpKind, Block, Expr, ExprKind, HirId, LoopSource, MatchSource, Node, Pat, QPath};
 use rustc_lint::LateContext;
-use rustc_span::{sym, symbol, Span};
+use rustc_span::{source_map::Spanned, sym, symbol, Span};
 
 /// The essential nodes of a desugared for loop as well as the entire span:
 /// `for pat in arg { body }` becomes `(pat, arg, body)`. Return `(pat, arg, body, span)`.
@@ -63,20 +63,35 @@ pub struct If<'hir> {
     pub r#else: Option<&'hir Expr<'hir>>,
 }
 
+const fn has_let(expr: &Expr<'_>) -> bool {
+    match expr.kind {
+        ExprKind::DropTemps(..) => false,
+        ExprKind::Let(..) => true,
+        ExprKind::Binary(
+            Spanned {
+                node: BinOpKind::And, ..
+            },
+            lhs,
+            rhs,
+        ) => has_let(lhs) || has_let(rhs),
+        _ => panic!("unexpected"),
+    }
+}
+
 impl<'hir> If<'hir> {
     #[inline]
     /// Parses an `if` expression
     pub const fn hir(expr: &Expr<'hir>) -> Option<Self> {
-        if let ExprKind::If(
-            Expr {
-                kind: ExprKind::DropTemps(cond),
-                ..
-            },
-            then,
-            r#else,
-        ) = expr.kind
-        {
-            Some(Self { cond, then, r#else })
+        if let ExprKind::If(cond, then, r#else) = expr.kind {
+            if !has_let(cond) {
+                Some(Self {
+                    cond: peel_droptemps(cond),
+                    then,
+                    r#else,
+                })
+            } else {
+                None
+            }
         } else {
             None
         }
@@ -323,15 +338,7 @@ impl<'hir> While<'hir> {
             Block {
                 expr:
                     Some(Expr {
-                        kind:
-                            ExprKind::If(
-                                Expr {
-                                    kind: ExprKind::DropTemps(condition),
-                                    ..
-                                },
-                                body,
-                                _,
-                            ),
+                        kind: ExprKind::If(cond, body, _),
                         ..
                     }),
                 ..
@@ -341,9 +348,18 @@ impl<'hir> While<'hir> {
             span,
         ) = expr.kind
         {
-            return Some(Self { condition, body, span });
+            if !has_let(cond) {
+                Some(Self {
+                    condition: peel_droptemps(cond),
+                    body,
+                    span,
+                })
+            } else {
+                None
+            }
+        } else {
+            None
         }
-        None
     }
 }
 

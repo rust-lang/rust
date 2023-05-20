@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::higher;
+use clippy_utils::peel_droptemps;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{path_to_local, usage::is_potentially_mutated};
 use if_chain::if_chain;
@@ -142,6 +143,7 @@ fn collect_unwrap_info<'tcx>(
         is_type_diagnostic_item(cx, ty, sym::Result) && ["is_ok", "is_err"].contains(&method_name)
     }
 
+    let expr = peel_droptemps(expr);
     if let ExprKind::Binary(op, left, right) = &expr.kind {
         match (invert, op.node) {
             (false, BinOpKind::And | BinOpKind::BitAnd) | (true, BinOpKind::Or | BinOpKind::BitOr) => {

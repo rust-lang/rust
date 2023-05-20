@@ -23,6 +23,7 @@ mod verbose_bit_mask;
 
 pub(crate) mod arithmetic_side_effects;
 
+use clippy_utils::peel_droptemps;
 use rustc_hir::{Body, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -825,6 +826,8 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
         eq_op::check_assert(cx, e);
         match e.kind {
             ExprKind::Binary(op, lhs, rhs) => {
+                let lhs = peel_droptemps(lhs);
+                let rhs = peel_droptemps(rhs);
                 if !e.span.from_expansion() {
                     absurd_extreme_comparisons::check(cx, e, op.node, lhs, rhs);
                     if !(macro_with_not_op(lhs) || macro_with_not_op(rhs)) {
