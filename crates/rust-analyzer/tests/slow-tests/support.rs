@@ -155,7 +155,7 @@ pub(crate) fn project(fixture: &str) -> Server {
 pub(crate) struct Server {
     req_id: Cell<i32>,
     messages: RefCell<Vec<Message>>,
-    _thread: jod_thread::JoinHandle<()>,
+    _thread: stdx::thread::JoinHandle,
     client: Connection,
     /// XXX: remove the tempdir last
     dir: TestDir,
@@ -165,7 +165,7 @@ impl Server {
     fn new(dir: TestDir, config: Config) -> Server {
         let (connection, client) = Connection::memory();
 
-        let _thread = jod_thread::Builder::new()
+        let _thread = stdx::thread::Builder::new(stdx::thread::QoSClass::Utility)
             .name("test server".to_string())
             .spawn(move || main_loop(config, connection).unwrap())
             .expect("failed to spawn a thread");

@@ -18,7 +18,6 @@ cargo_metadata = "0.15.0"
 rustc-hash = "1.1.0"
 serde_json.workspace = true
 serde.workspace = true
-jod-thread = "0.1.2"
 command-group = "2.0.1"
 
 # local deps

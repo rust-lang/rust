@@ -22,6 +22,7 @@ object = { version = "0.30.2", default-features = false, features = [
 libloading = "0.7.3"
 memmap2 = "0.5.4"
 
+stdx.workspace = true
 tt.workspace = true
 mbe.workspace = true
 paths.workspace = true

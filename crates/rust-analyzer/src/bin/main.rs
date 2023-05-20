@@ -78,7 +78,7 @@ fn try_main(flags: flags::RustAnalyzer) -> Result<()> {
                 println!("rust-analyzer {}", rust_analyzer::version());
                 return Ok(());
             }
-            with_extra_thread("LspServer", run_server)?;
+            with_extra_thread("LspServer", stdx::thread::QoSClass::Utility, run_server)?;
         }
         flags::RustAnalyzerCmd::Parse(cmd) => cmd.run()?,
         flags::RustAnalyzerCmd::Symbols(cmd) => cmd.run()?,
@@ -136,14 +136,17 @@ const STACK_SIZE: usize = 1024 * 1024 * 8;
 /// space.
 fn with_extra_thread(
     thread_name: impl Into<String>,
+    qos_class: stdx::thread::QoSClass,
     f: impl FnOnce() -> Result<()> + Send + 'static,
 ) -> Result<()> {
-    let handle =
-        std::thread::Builder::new().name(thread_name.into()).stack_size(STACK_SIZE).spawn(f)?;
-    match handle.join() {
-        Ok(res) => res,
-        Err(panic) => std::panic::resume_unwind(panic),
-    }
+    let handle = stdx::thread::Builder::new(qos_class)
+        .name(thread_name.into())
+        .stack_size(STACK_SIZE)
+        .spawn(f)?;
+
+    handle.join()?;
+
+    Ok(())
 }
 
 fn run_server() -> Result<()> {
