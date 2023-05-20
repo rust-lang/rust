@@ -25,6 +25,12 @@ macro_rules! public_test_dep {
 /// platforms need and elsewhere in this library it just looks like normal Rust
 /// code.
 ///
+/// When the weak-intrinsics feature is enabled, all intrinsics functions are
+/// marked with #[linkage = "weak"] so that they can be replaced by another
+/// implementation at link time. This is particularly useful for mixed Rust/C++
+/// binaries that want to use the C++ intrinsics, otherwise linking against the
+/// Rust stdlib will replace those from the compiler-rt library.
+///
 /// This macro is structured to be invoked with a bunch of functions that looks
 /// like:
 ///
@@ -46,6 +52,10 @@ macro_rules! public_test_dep {
 ///
 /// A quick overview of attributes supported right now are:
 ///
+/// * `weak` - indicates that the function should always be given weak linkage.
+///   This attribute must come before other attributes, as the other attributes
+///   will generate the final output function and need to have `weak` modify
+///   them.
 /// * `maybe_use_optimized_c_shim` - indicates that the Rust implementation is
 ///   ignored if an optimized C version was compiled.
 /// * `aapcs_on_arm` - forces the ABI of the function to be `"aapcs"` on ARM and
@@ -57,7 +67,6 @@ macro_rules! public_test_dep {
 ///   it's a normal ABI elsewhere for returning a 128 bit integer.
 /// * `arm_aeabi_alias` - handles the "aliasing" of various intrinsics on ARM
 ///   their otherwise typical names to other prefixed ones.
-///
 macro_rules! intrinsics {
     () => ();
 
@@ -89,6 +98,95 @@ macro_rules! intrinsics {
 
         intrinsics!($($rest)*);
     );
+    // Same as above but for unsafe.
+    (
+        #[cfg_attr($e:meta, $($attr:tt)*)]
+        $(#[$($attrs:tt)*])*
+        pub unsafe extern $abi:tt fn $name:ident( $($argname:ident: $ty:ty),* ) $(-> $ret:ty)? {
+            $($body:tt)*
+        }
+        $($rest:tt)*
+    ) => (
+        #[cfg($e)]
+        intrinsics! {
+            #[$($attr)*]
+            $(#[$($attrs)*])*
+            pub unsafe extern $abi fn $name($($argname: $ty),*) $(-> $ret)? {
+                $($body)*
+            }
+        }
+
+        #[cfg(not($e))]
+        intrinsics! {
+            $(#[$($attrs)*])*
+            pub unsafe extern $abi fn $name($($argname: $ty),*) $(-> $ret)? {
+                $($body)*
+            }
+        }
+
+        intrinsics!($($rest)*);
+    );
+
+    // Explicit weak linkage gets dropped when weak-intrinsics is on since it
+    // will be added unconditionally to all intrinsics and would conflict
+    // otherwise.
+    (
+        #[weak]
+        $(#[$($attr:tt)*])*
+        pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) $(-> $ret:ty)? {
+            $($body:tt)*
+        }
+
+        $($rest:tt)*
+    ) => (
+        #[cfg(feature = "weak-intrinsics")]
+        intrinsics! {
+            $(#[$($attr)*])*
+            pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
+                $($body)*
+            }
+        }
+
+        #[cfg(not(feature = "weak-intrinsics"))]
+        intrinsics! {
+            $(#[$($attr)*])*
+            #[linkage = "weak"]
+            pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
+                $($body)*
+            }
+        }
+
+        intrinsics!($($rest)*);
+    );
+    // Same as above but for unsafe.
+    (
+        #[weak]
+        $(#[$($attr:tt)*])*
+        pub unsafe extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) $(-> $ret:ty)? {
+            $($body:tt)*
+        }
+
+        $($rest:tt)*
+    ) => (
+        #[cfg(feature = "weak-intrinsics")]
+        intrinsics! {
+            $(#[$($attr)*])*
+            pub unsafe extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
+                $($body)*
+            }
+        }
+
+        #[cfg(not(feature = "weak-intrinsics"))]
+        intrinsics! {
+            $(#[$($attr)*])*
+            #[linkage = "weak"]
+            pub unsafe extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
+                $($body)*
+            }
+        }
+
+        intrinsics!($($rest)*);
+    );
 
     // Right now there's a bunch of architecture-optimized intrinsics in the
     // stock compiler-rt implementation. Not all of these have been ported over
@@ -112,6 +210,7 @@ macro_rules! intrinsics {
         $($rest:tt)*
     ) => (
         #[cfg($name = "optimized-c")]
+        #[cfg_attr(feature = "weak-intrinsics", linkage = "weak")]
         pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
             extern $abi {
                 fn $name($($argname: $ty),*) $(-> $ret)?;
@@ -211,6 +310,7 @@ macro_rules! intrinsics {
     ) => (
         #[cfg(all(any(windows, target_os = "uefi"), target_arch = "x86_64"))]
         $(#[$($attr)*])*
+        #[cfg_attr(feature = "weak-intrinsics", linkage = "weak")]
         pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
             $($body)*
         }
@@ -218,6 +318,7 @@ macro_rules! intrinsics {
         #[cfg(all(any(windows, target_os = "uefi"), target_arch = "x86_64"))]
         pub mod $name {
             #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
+            #[cfg_attr(feature = "weak-intrinsics", linkage = "weak")]
             pub extern $abi fn $name( $($argname: $ty),* )
                 -> ::macros::win64_128bit_abi_hack::U64x2
             {
@@ -258,6 +359,7 @@ macro_rules! intrinsics {
         #[cfg(target_arch = "arm")]
         pub mod $name {
             #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
+            #[cfg_attr(feature = "weak-intrinsics", linkage = "weak")]
             pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
                 super::$name($($argname),*)
             }
@@ -266,7 +368,7 @@ macro_rules! intrinsics {
         #[cfg(target_arch = "arm")]
         pub mod $alias {
             #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
-            #[cfg_attr(all(not(windows), not(target_vendor="apple")), linkage = "weak")]
+            #[cfg_attr(any(all(not(windows), not(target_vendor="apple"), feature = "weak-intrinsics")), linkage = "weak")]
             pub extern "aapcs" fn $alias( $($argname: $ty),* ) $(-> $ret)? {
                 super::$name($($argname),*)
             }
@@ -302,6 +404,7 @@ macro_rules! intrinsics {
         pub mod $name {
             $(#[$($attr)*])*
             #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
+            #[cfg_attr(feature = "weak-intrinsics", linkage = "weak")]
             pub unsafe extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
                 super::$name($($argname),*)
             }
@@ -325,6 +428,7 @@ macro_rules! intrinsics {
             #[naked]
             $(#[$($attr)*])*
             #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
+            #[cfg_attr(feature = "weak-intrinsics", linkage = "weak")]
             pub unsafe extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
                 $($body)*
             }
@@ -391,6 +495,7 @@ macro_rules! intrinsics {
         pub mod $name {
             $(#[$($attr)*])*
             #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
+            #[cfg_attr(feature = "weak-intrinsics", linkage = "weak")]
             pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
                 super::$name($($argname),*)
             }
@@ -416,6 +521,7 @@ macro_rules! intrinsics {
         pub mod $name {
             $(#[$($attr)*])*
             #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
+            #[cfg_attr(feature = "weak-intrinsics", linkage = "weak")]
             pub unsafe extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
                 super::$name($($argname),*)
             }
