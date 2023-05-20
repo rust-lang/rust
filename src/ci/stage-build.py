@@ -48,6 +48,7 @@ RUSTC_PGO_CRATES = [
 
 LLVM_BOLT_CRATES = LLVM_PGO_CRATES
 
+
 class Pipeline:
     # Paths
     def checkout_path(self) -> Path:
@@ -85,6 +86,9 @@ class Pipeline:
 
     def llvm_profile_dir_root(self) -> Path:
         return self.opt_artifacts() / "llvm-pgo"
+
+    def llvm_profile_merged_file_intermediate(self) -> Path:
+        return self.opt_artifacts() / "llvm-pgo-intermediate.profdata"
 
     def llvm_profile_merged_file(self) -> Path:
         return self.opt_artifacts() / "llvm-pgo.profdata"
@@ -450,6 +454,7 @@ def cmd(
             )
     return subprocess.run(args, env=environment, check=True)
 
+
 class BenchmarkRunner:
     def run_rustc(self, pipeline: Pipeline):
         raise NotImplementedError
@@ -459,6 +464,7 @@ class BenchmarkRunner:
 
     def run_bolt(self, pipeline: Pipeline):
         raise NotImplementedError
+
 
 class DefaultBenchmarkRunner(BenchmarkRunner):
     def run_rustc(self, pipeline: Pipeline):
@@ -473,6 +479,7 @@ class DefaultBenchmarkRunner(BenchmarkRunner):
                 LLVM_PROFILE_FILE=str(pipeline.rustc_profile_template_path())
             )
         )
+
     def run_llvm(self, pipeline: Pipeline):
         run_compiler_benchmarks(
             pipeline,
@@ -488,6 +495,7 @@ class DefaultBenchmarkRunner(BenchmarkRunner):
             scenarios=["Full"],
             crates=LLVM_BOLT_CRATES
         )
+
 
 def run_compiler_benchmarks(
         pipeline: Pipeline,
@@ -622,7 +630,7 @@ def gather_llvm_profiles(pipeline: Pipeline, runner: BenchmarkRunner):
 
     runner.run_llvm(pipeline)
 
-    profile_path = pipeline.llvm_profile_merged_file()
+    profile_path = pipeline.llvm_profile_merged_file_intermediate()
     LOGGER.info(f"Merging LLVM PGO profiles to {profile_path}")
     cmd([
         pipeline.downloaded_llvm_dir() / "bin" / "llvm-profdata",
@@ -642,12 +650,36 @@ def gather_llvm_profiles(pipeline: Pipeline, runner: BenchmarkRunner):
     delete_directory(pipeline.llvm_profile_dir_root())
 
 
+def gather_llvm_cs_profiles(pipeline: Pipeline, runner: BenchmarkRunner):
+    LOGGER.info("Running benchmarks with CS PGO instrumented LLVM")
+
+    runner.run_llvm(pipeline)
+
+    profile_path = pipeline.llvm_profile_merged_file()
+    LOGGER.info(f"Merging LLVM CS PGO profiles to {profile_path}")
+    cmd([
+        pipeline.downloaded_llvm_dir() / "bin" / "llvm-profdata",
+        "merge",
+        "-o", profile_path,
+        pipeline.llvm_profile_dir_root(),
+        pipeline.llvm_profile_merged_file_intermediate()
+    ])
+
+    LOGGER.info("LLVM CS PGO statistics")
+    LOGGER.info(f"{profile_path}: {format_bytes(get_path_size(profile_path))}")
+    LOGGER.info(
+        f"{pipeline.llvm_profile_dir_root()}: {format_bytes(get_path_size(pipeline.llvm_profile_dir_root()))}")
+    LOGGER.info(f"Profile file count: {count_files(pipeline.llvm_profile_dir_root())}")
+
+    # We don't need the individual .profraw files now that they have been merged
+    # into a final .profdata
+    delete_directory(pipeline.llvm_profile_dir_root())
+
+
 def gather_rustc_profiles(pipeline: Pipeline, runner: BenchmarkRunner):
     LOGGER.info("Running benchmarks with PGO instrumented rustc")
 
-
     runner.run_rustc(pipeline)
-
 
     profile_path = pipeline.rustc_profile_merged_file()
     LOGGER.info(f"Merging Rustc PGO profiles to {profile_path}")
@@ -787,6 +819,27 @@ def execute_build_pipeline(timer: Timer, pipeline: Pipeline, runner: BenchmarkRu
         print_free_disk_space(pipeline)
 
     clear_llvm_files(pipeline)
+
+    # Stage 1b: Build rustc + CS PGO instrumented LLVM
+    with timer.section("Stage 1b (LLVM CS PGO)") as stage1b:
+        with stage1.section("Build rustc and LLVM") as rustc_build:
+            build_rustc(pipeline, args=[
+                "--llvm-profile-generate",
+                "--llvm-profile-use",
+                pipeline.llvm_profile_merged_file_intermediate()
+            ], env=dict(
+                LLVM_USE_CS_PGO="1",
+                LLVM_PROFILE_DIR=str(pipeline.llvm_profile_dir_root() / "prof-%p"),
+
+            ))
+            record_metrics(pipeline, rustc_build)
+
+        with stage1b.section("Gather profiles"):
+            gather_llvm_cs_profiles(pipeline, runner)
+        print_free_disk_space(pipeline)
+
+    clear_llvm_files(pipeline)
+
     final_build_args += [
         "--llvm-profile-use",
         pipeline.llvm_profile_merged_file()
@@ -864,6 +917,7 @@ def run(runner: BenchmarkRunner):
         print_free_disk_space(pipeline)
 
     print_binary_sizes(pipeline)
+
 
 if __name__ == "__main__":
     runner = DefaultBenchmarkRunner()

@@ -331,15 +331,24 @@ impl Step for Llvm {
         // This flag makes sure `FileCheck` is copied in the final binaries directory.
         cfg.define("LLVM_INSTALL_UTILS", "ON");
 
+        let mut cxxflags = vec![];
         if builder.config.llvm_profile_generate {
-            cfg.define("LLVM_BUILD_INSTRUMENTED", "IR");
-            if let Ok(llvm_profile_dir) = std::env::var("LLVM_PROFILE_DIR") {
-                cfg.define("LLVM_PROFILE_DATA_DIR", llvm_profile_dir);
+            if std::env::var("LLVM_USE_CS_PGO").is_ok() {
+                cfg.define("LLVM_BUILD_INSTRUMENTED", "CSIR");
+                if let Ok(llvm_profile_dir) = std::env::var("LLVM_PROFILE_DIR") {
+                    cfg.define("LLVM_CSPROFILE_DATA_DIR", llvm_profile_dir);
+                }
+            } else {
+                cfg.define("LLVM_BUILD_INSTRUMENTED", "IR");
+                if let Ok(llvm_profile_dir) = std::env::var("LLVM_PROFILE_DIR") {
+                    cfg.define("LLVM_PROFILE_DATA_DIR", llvm_profile_dir);
+                }
             }
             cfg.define("LLVM_BUILD_RUNTIME", "No");
         }
         if let Some(path) = builder.config.llvm_profile_use.as_ref() {
-            cfg.define("LLVM_PROFDATA_FILE", &path);
+            // cfg.define("LLVM_PROFDATA_FILE", &path);
+            cxxflags.push(&format!("-fprofile-use={path}"));
         }
         if builder.config.llvm_bolt_profile_generate
             || builder.config.llvm_bolt_profile_use.is_some()
