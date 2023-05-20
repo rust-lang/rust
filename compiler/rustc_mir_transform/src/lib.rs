@@ -569,7 +569,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &o1(simplify_branches::SimplifyConstCondition::AfterConstProp),
             &early_otherwise_branch::EarlyOtherwiseBranch,
             &simplify_comparison_integral::SimplifyComparisonIntegral,
-            &dead_store_elimination::DeadStoreElimination,
+            // &dead_store_elimination::DeadStoreElimination,
             &dest_prop::DestinationPropagation,
             &o1(simplify_branches::SimplifyConstCondition::Final),
             &o1(remove_noop_landing_pads::RemoveNoopLandingPads),
