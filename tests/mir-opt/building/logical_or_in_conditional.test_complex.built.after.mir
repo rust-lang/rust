@@ -1,0 +1,180 @@
+// MIR for `test_complex` after built
+
+fn test_complex() -> () {
+    let mut _0: ();
+    let _1: ();
+    let mut _2: E;
+    let mut _3: isize;
+    let mut _4: bool;
+    let mut _5: bool;
+    let mut _6: bool;
+    let mut _7: bool;
+    let mut _8: u8;
+    let mut _9: Droppy;
+    let mut _10: bool;
+    let mut _11: u8;
+    let mut _12: Droppy;
+    let mut _13: bool;
+    let mut _14: bool;
+    let mut _15: E;
+    let mut _16: isize;
+
+    bb0: {
+        StorageLive(_1);
+        StorageLive(_2);
+        _2 = E::f() -> [return: bb1, unwind: bb27];
+    }
+
+    bb1: {
+        FakeRead(ForMatchedPlace(None), _2);
+        _3 = discriminant(_2);
+        switchInt(move _3) -> [0: bb2, otherwise: bb3];
+    }
+
+    bb2: {
+        falseEdge -> [real: bb4, imaginary: bb3];
+    }
+
+    bb3: {
+        goto -> bb16;
+    }
+
+    bb4: {
+        StorageLive(_4);
+        StorageLive(_5);
+        StorageLive(_6);
+        _6 = always_true() -> [return: bb11, unwind: bb27];
+    }
+
+    bb5: {
+        _4 = const true;
+        goto -> bb7;
+    }
+
+    bb6: {
+        StorageLive(_10);
+        StorageLive(_11);
+        StorageLive(_12);
+        _12 = Droppy(const 1_u8);
+        _11 = (_12.0: u8);
+        _10 = Gt(move _11, const 1_u8);
+        drop(_12) -> [return: bb13, unwind: bb27];
+    }
+
+    bb7: {
+        StorageDead(_10);
+        StorageDead(_5);
+        switchInt(move _4) -> [0: bb15, otherwise: bb14];
+    }
+
+    bb8: {
+        _5 = const false;
+        goto -> bb10;
+    }
+
+    bb9: {
+        StorageLive(_7);
+        StorageLive(_8);
+        StorageLive(_9);
+        _9 = Droppy(const 0_u8);
+        _8 = (_9.0: u8);
+        _7 = Gt(move _8, const 0_u8);
+        drop(_9) -> [return: bb12, unwind: bb27];
+    }
+
+    bb10: {
+        StorageDead(_7);
+        StorageDead(_6);
+        switchInt(move _5) -> [0: bb6, otherwise: bb5];
+    }
+
+    bb11: {
+        switchInt(move _6) -> [0: bb8, otherwise: bb9];
+    }
+
+    bb12: {
+        StorageDead(_9);
+        StorageDead(_8);
+        _5 = move _7;
+        goto -> bb10;
+    }
+
+    bb13: {
+        StorageDead(_12);
+        StorageDead(_11);
+        _4 = move _10;
+        goto -> bb7;
+    }
+
+    bb14: {
+        _1 = const ();
+        goto -> bb17;
+    }
+
+    bb15: {
+        goto -> bb16;
+    }
+
+    bb16: {
+        _1 = const ();
+        goto -> bb17;
+    }
+
+    bb17: {
+        StorageDead(_4);
+        StorageDead(_2);
+        StorageDead(_1);
+        StorageLive(_13);
+        StorageLive(_14);
+        _14 = always_true() -> [return: bb18, unwind: bb27];
+    }
+
+    bb18: {
+        _13 = Not(move _14);
+        StorageDead(_14);
+        switchInt(move _13) -> [0: bb20, otherwise: bb19];
+    }
+
+    bb19: {
+        StorageLive(_15);
+        _15 = E::f() -> [return: bb21, unwind: bb27];
+    }
+
+    bb20: {
+        goto -> bb25;
+    }
+
+    bb21: {
+        FakeRead(ForMatchedPlace(None), _15);
+        _16 = discriminant(_15);
+        switchInt(move _16) -> [1: bb23, otherwise: bb22];
+    }
+
+    bb22: {
+        goto -> bb25;
+    }
+
+    bb23: {
+        falseEdge -> [real: bb24, imaginary: bb22];
+    }
+
+    bb24: {
+        _0 = const ();
+        goto -> bb26;
+    }
+
+    bb25: {
+        _0 = const ();
+        goto -> bb26;
+    }
+
+    bb26: {
+        StorageDead(_13);
+        StorageDead(_15);
+        return;
+    }
+
+    bb27 (cleanup): {
+        resume;
+    }
+}
