@@ -154,11 +154,11 @@ checksum = "98161a4e3e2184da77bb14f02184cdd111e83bbbcc9979dfee3c44b9a85f5602"
 
 [[package]]
 name = "ar_archive_writer"
-version = "0.1.3"
+version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0639441fd17a3197d1cbca8dc8768cc172a63b64b4bb6c372e8f41ed0acc9bb"
+checksum = "74cfb39880a59e122232cb5fb06b20b4382d58c12fa9747d16f846d38a7b094c"
 dependencies = [
- "object",
+ "object 0.31.1",
 ]
 
 [[package]]
@@ -233,7 +233,7 @@ dependencies = [
  "cfg-if",
  "libc",
  "miniz_oxide",
- "object",
+ "object 0.30.1",
  "rustc-demangle",
 ]
 
@@ -330,6 +330,12 @@ checksum = "72feb31ffc86498dacdbd0fcebb56138e7177a8cc5cea4516031d15ae85a742e"
 dependencies = [
  "packed_simd_2",
 ]
+
+[[package]]
+name = "byteorder"
+version = "1.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "14c189c53d098945499cdfa7ecc63567cf3886b3332b312a5b4585d8d3a6a610"
 
 [[package]]
 name = "bytes"
@@ -2365,13 +2371,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8d864c91689fdc196779b98dba0aceac6118594c2df6ee5d943eb6a8df4d107a"
 dependencies = [
  "compiler_builtins",
+ "memchr",
+ "rustc-std-workspace-alloc",
+ "rustc-std-workspace-core",
+]
+
+[[package]]
+name = "object"
+version = "0.31.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8bda667d9f2b5051b8833f59f3bf748b28ef54f850f4fcb389a252aa383866d1"
+dependencies = [
  "crc32fast",
  "flate2",
  "hashbrown 0.13.1",
  "indexmap",
  "memchr",
- "rustc-std-workspace-alloc",
- "rustc-std-workspace-core",
+ "ruzstd",
 ]
 
 [[package]]
@@ -3223,7 +3239,7 @@ dependencies = [
  "cstr",
  "libc",
  "measureme",
- "object",
+ "object 0.31.1",
  "rustc-demangle",
  "rustc_ast",
  "rustc_attr",
@@ -3259,7 +3275,7 @@ dependencies = [
  "itertools",
  "jobserver",
  "libc",
- "object",
+ "object 0.31.1",
  "pathdiff",
  "regex",
  "rustc_arena",
@@ -4419,6 +4435,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61b3909d758bb75c79f23d4736fac9433868679d3ad2ea7a61e3c25cfda9a088"
 
 [[package]]
+name = "ruzstd"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a15e661f0f9dac21f3494fe5d23a6338c0ac116a2d22c2b63010acd89467ffe"
+dependencies = [
+ "byteorder",
+ "thiserror",
+ "twox-hash",
+]
+
+[[package]]
 name = "ryu"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4654,7 +4681,7 @@ dependencies = [
  "hermit-abi 0.3.0",
  "libc",
  "miniz_oxide",
- "object",
+ "object 0.30.1",
  "panic_abort",
  "panic_unwind",
  "profiler_builtins",
@@ -4926,13 +4953,13 @@ dependencies = [
 
 [[package]]
 name = "thorin-dwp"
-version = "0.4.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da8fbf660a019b6bf11ea95762041464aa9099cc293b6a66d77cea5107619671"
+checksum = "98c040e1340b889d4180c64e1d787efa9c32cb1617757e101480b61238b0d927"
 dependencies = [
  "gimli 0.26.2",
  "hashbrown 0.12.3",
- "object",
+ "object 0.31.1",
  "tracing",
 ]
 
