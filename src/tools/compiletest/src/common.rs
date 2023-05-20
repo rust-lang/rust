@@ -69,6 +69,12 @@ string_enum! {
     }
 }
 
+impl Default for Mode {
+    fn default() -> Self {
+        Mode::Ui
+    }
+}
+
 impl Mode {
     pub fn disambiguator(self) -> &'static str {
         // Pretty-printing tests could run concurrently, and if they do,
@@ -125,7 +131,7 @@ pub enum PanicStrategy {
 }
 
 /// Configuration for compiletest
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct Config {
     /// `true` to overwrite stderr/stdout files instead of complaining about changes in output.
     pub bless: bool,
