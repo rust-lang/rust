@@ -1,18 +1,21 @@
 #![allow(clippy::float_cmp)]
 
+use crate::source::{get_source_text, walk_span_to_context};
 use crate::{clip, is_direct_expn_of, sext, unsext};
 use if_chain::if_chain;
 use rustc_ast::ast::{self, LitFloatType, LitKind};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BinOp, BinOpKind, Block, Expr, ExprKind, HirId, Item, ItemKind, Node, QPath, UnOp};
+use rustc_lexer::tokenize;
 use rustc_lint::LateContext;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::Scalar;
-use rustc_middle::ty::SubstsRef;
 use rustc_middle::ty::{self, EarlyBinder, FloatTy, ScalarInt, Ty, TyCtxt};
+use rustc_middle::ty::{List, SubstsRef};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Symbol;
+use rustc_span::SyntaxContext;
 use std::cmp::Ordering::{self, Equal};
 use std::hash::{Hash, Hasher};
 use std::iter;
@@ -210,8 +213,7 @@ pub fn lit_to_mir_constant(lit: &LitKind, ty: Option<Ty<'_>>) -> Constant {
     match *lit {
         LitKind::Str(ref is, _) => Constant::Str(is.to_string()),
         LitKind::Byte(b) => Constant::Int(u128::from(b)),
-        LitKind::ByteStr(ref s, _) => Constant::Binary(Lrc::clone(s)),
-        LitKind::CStr(ref s, _) => Constant::Binary(Lrc::clone(s)),
+        LitKind::ByteStr(ref s, _) | LitKind::CStr(ref s, _) => Constant::Binary(Lrc::clone(s)),
         LitKind::Char(c) => Constant::Char(c),
         LitKind::Int(n, _) => Constant::Int(n),
         LitKind::Float(ref is, LitFloatType::Suffixed(fty)) => match fty {
@@ -228,27 +230,46 @@ pub fn lit_to_mir_constant(lit: &LitKind, ty: Option<Ty<'_>>) -> Constant {
     }
 }
 
+/// The source of a constant value.
+pub enum ConstantSource {
+    /// The value is determined solely from the expression.
+    Local,
+    /// The value is dependent on a defined constant.
+    Constant,
+}
+impl ConstantSource {
+    pub fn is_local(&self) -> bool {
+        matches!(self, Self::Local)
+    }
+}
+
+/// Attempts to evaluate the expression as a constant.
 pub fn constant<'tcx>(
     lcx: &LateContext<'tcx>,
     typeck_results: &ty::TypeckResults<'tcx>,
     e: &Expr<'_>,
-) -> Option<(Constant, bool)> {
-    let mut cx = ConstEvalLateContext {
-        lcx,
-        typeck_results,
-        param_env: lcx.param_env,
-        needed_resolution: false,
-        substs: ty::List::empty(),
-    };
-    cx.expr(e).map(|cst| (cst, cx.needed_resolution))
+) -> Option<Constant> {
+    ConstEvalLateContext::new(lcx, typeck_results).expr(e)
 }
 
+/// Attempts to evaluate the expression as a constant.
+pub fn constant_with_source<'tcx>(
+    lcx: &LateContext<'tcx>,
+    typeck_results: &ty::TypeckResults<'tcx>,
+    e: &Expr<'_>,
+) -> Option<(Constant, ConstantSource)> {
+    let mut ctxt = ConstEvalLateContext::new(lcx, typeck_results);
+    let res = ctxt.expr(e);
+    res.map(|x| (x, ctxt.source))
+}
+
+/// Attempts to evaluate an expression only if it's value is not dependent on other items.
 pub fn constant_simple<'tcx>(
     lcx: &LateContext<'tcx>,
     typeck_results: &ty::TypeckResults<'tcx>,
     e: &Expr<'_>,
 ) -> Option<Constant> {
-    constant(lcx, typeck_results, e).and_then(|(cst, res)| if res { None } else { Some(cst) })
+    constant_with_source(lcx, typeck_results, e).and_then(|(c, s)| s.is_local().then_some(c))
 }
 
 pub fn constant_full_int<'tcx>(
@@ -297,29 +318,25 @@ impl Ord for FullInt {
     }
 }
 
-/// Creates a `ConstEvalLateContext` from the given `LateContext` and `TypeckResults`.
-pub fn constant_context<'a, 'tcx>(
-    lcx: &'a LateContext<'tcx>,
-    typeck_results: &'a ty::TypeckResults<'tcx>,
-) -> ConstEvalLateContext<'a, 'tcx> {
-    ConstEvalLateContext {
-        lcx,
-        typeck_results,
-        param_env: lcx.param_env,
-        needed_resolution: false,
-        substs: ty::List::empty(),
-    }
-}
-
 pub struct ConstEvalLateContext<'a, 'tcx> {
     lcx: &'a LateContext<'tcx>,
     typeck_results: &'a ty::TypeckResults<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    needed_resolution: bool,
+    source: ConstantSource,
     substs: SubstsRef<'tcx>,
 }
 
 impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
+    fn new(lcx: &'a LateContext<'tcx>, typeck_results: &'a ty::TypeckResults<'tcx>) -> Self {
+        Self {
+            lcx,
+            typeck_results,
+            param_env: lcx.param_env,
+            source: ConstantSource::Local,
+            substs: List::empty(),
+        }
+    }
+
     /// Simple constant folding: Insert an expression, get a constant or none.
     pub fn expr(&mut self, e: &Expr<'_>) -> Option<Constant> {
         match e.kind {
@@ -454,11 +471,9 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                     .const_eval_resolve(self.param_env, mir::UnevaluatedConst::new(def_id, substs), None)
                     .ok()
                     .map(|val| rustc_middle::mir::ConstantKind::from_value(val, ty))?;
-                let result = miri_to_const(self.lcx.tcx, result);
-                if result.is_some() {
-                    self.needed_resolution = true;
-                }
-                result
+                let result = miri_to_const(self.lcx.tcx, result)?;
+                self.source = ConstantSource::Constant;
+                Some(result)
             },
             // FIXME: cover all usable cases.
             _ => None,
@@ -492,8 +507,33 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
 
     /// A block can only yield a constant if it only has one constant expression.
     fn block(&mut self, block: &Block<'_>) -> Option<Constant> {
-        if block.stmts.is_empty() {
-            block.expr.as_ref().and_then(|b| self.expr(b))
+        if block.stmts.is_empty()
+            && let Some(expr) = block.expr
+        {
+            // Try to detect any `cfg`ed statements or empty macro expansions.
+            let span = block.span.data();
+            if span.ctxt == SyntaxContext::root() {
+                if let Some(expr_span) = walk_span_to_context(expr.span, span.ctxt)
+                    && let expr_lo = expr_span.lo()
+                    && expr_lo >= span.lo
+                    && let Some(src) = get_source_text(self.lcx, span.lo..expr_lo)
+                    && let Some(src) = src.as_str()
+                {
+                    use rustc_lexer::TokenKind::{Whitespace, LineComment, BlockComment, Semi, OpenBrace};
+                    if !tokenize(src)
+                        .map(|t| t.kind)
+                        .filter(|t| !matches!(t, Whitespace | LineComment { .. } | BlockComment { .. } | Semi))
+                        .eq([OpenBrace])
+                    {
+                        self.source = ConstantSource::Constant;
+                    }
+                } else {
+                    // Unable to access the source. Assume a non-local dependency.
+                    self.source = ConstantSource::Constant;
+                }
+            }
+
+            self.expr(expr)
         } else {
             None
         }

@@ -73,25 +73,25 @@ LL |     call_ty_fn(Box::new(u8::default()));
    |                ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:41:5
+  --> $DIR/box_default.rs:48:5
    |
 LL |     Box::new(bool::default())
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<bool>::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:58:28
+  --> $DIR/box_default.rs:65:28
    |
 LL |     let _: Box<dyn Read> = Box::new(ImplementsDefault::default());
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<ImplementsDefault>::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:67:17
+  --> $DIR/box_default.rs:74:17
    |
 LL |         let _ = Box::new(WeirdPathed::default());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<WeirdPathed>::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:79:18
+  --> $DIR/box_default.rs:86:18
    |
 LL |             Some(Box::new(Foo::default()))
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<Foo>::default()`

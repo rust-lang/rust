@@ -15,7 +15,7 @@ use rustc_target::abi::IntegerType;
 use super::{utils, CAST_ENUM_TRUNCATION, CAST_POSSIBLE_TRUNCATION};
 
 fn constant_int(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<u128> {
-    if let Some((Constant::Int(c), _)) = constant(cx, cx.typeck_results(), expr) {
+    if let Some(Constant::Int(c)) = constant(cx, cx.typeck_results(), expr) {
         Some(c)
     } else {
         None

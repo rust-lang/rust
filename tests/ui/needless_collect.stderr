@@ -90,5 +90,29 @@ error: avoid using `collect()` when not needed
 LL |     let _ = sample.iter().collect::<VecWrapper<_>>().contains(&&0);
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `any(|x| x == &0)`
 
-error: aborting due to 15 previous errors
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect.rs:68:40
+   |
+LL |         Vec::<u8>::new().extend((0..10).collect::<Vec<_>>());
+   |                                        ^^^^^^^^^^^^^^^^^^^^ help: remove this call
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect.rs:69:20
+   |
+LL |         foo((0..10).collect::<Vec<_>>());
+   |                    ^^^^^^^^^^^^^^^^^^^^ help: remove this call
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect.rs:70:49
+   |
+LL |         bar((0..10).collect::<Vec<_>>(), (0..10).collect::<Vec<_>>());
+   |                                                 ^^^^^^^^^^^^^^^^^^^^ help: remove this call
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect.rs:71:37
+   |
+LL |         baz((0..10), (), ('a'..='z').collect::<Vec<_>>())
+   |                                     ^^^^^^^^^^^^^^^^^^^^ help: remove this call
+
+error: aborting due to 19 previous errors
 

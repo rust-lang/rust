@@ -55,6 +55,7 @@ fn main() {
     issue5504();
     issue6067();
     issue6065();
+    issue10726();
 
     let _ = if let Ok(_) = gen_res() {
         1
@@ -123,5 +124,42 @@ const fn issue6067() {
     match Err::<i32, i32>(42) {
         Ok(_) => false,
         Err(_) => true,
+    };
+}
+
+fn issue10726() {
+    // This is optional, but it makes the examples easier
+    let x: Result<i32, i32> = Ok(42);
+
+    match x {
+        Ok(_) => true,
+        _ => false,
+    };
+
+    match x {
+        Ok(_) => false,
+        _ => true,
+    };
+
+    match x {
+        Err(_) => true,
+        _ => false,
+    };
+
+    match x {
+        Err(_) => false,
+        _ => true,
+    };
+
+    // Don't lint
+    match x {
+        Err(16) => false,
+        _ => true,
+    };
+
+    // Don't lint
+    match x {
+        Ok(16) => false,
+        _ => true,
     };
 }
