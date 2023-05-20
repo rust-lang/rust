@@ -729,8 +729,16 @@ fn lookup_impl_assoc_item_for_trait_ref(
     let self_ty = trait_ref.self_type_parameter(Interner);
     let self_ty_fp = TyFingerprint::for_trait_impl(&self_ty)?;
     let impls = db.trait_impls_in_deps(env.krate);
-    let impls =
-        impls.iter().flat_map(|impls| impls.for_trait_and_self_ty(hir_trait_id, self_ty_fp));
+    let self_impls = match self_ty.kind(Interner) {
+        TyKind::Adt(id, _) => {
+            id.0.module(db.upcast()).containing_block().map(|x| db.trait_impls_in_block(x))
+        }
+        _ => None,
+    };
+    let impls = impls
+        .iter()
+        .chain(self_impls.as_ref())
+        .flat_map(|impls| impls.for_trait_and_self_ty(hir_trait_id, self_ty_fp));
 
     let table = InferenceTable::new(db, env);
 
