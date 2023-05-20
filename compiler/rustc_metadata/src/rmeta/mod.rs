@@ -31,6 +31,7 @@ use rustc_span::edition::Edition;
 use rustc_span::hygiene::{ExpnIndex, MacroKind};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{self, ExpnData, ExpnHash, ExpnId, Span};
+use rustc_target::abi::VariantIdx;
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 
 use std::marker::PhantomData;
@@ -423,6 +424,7 @@ define_tables! {
 
 #[derive(TyEncodable, TyDecodable)]
 struct VariantData {
+    idx: VariantIdx,
     discr: ty::VariantDiscr,
     /// If this is unit or tuple-variant/struct, then this is the index of the ctor id.
     ctor: Option<(CtorKind, DefIndex)>,
