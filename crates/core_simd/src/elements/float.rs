@@ -56,10 +56,9 @@ pub trait SimdFloat: Copy + Sealed {
     /// which saturates on conversion.
     ///
     /// [cast]: Simd::cast
-    unsafe fn to_int_unchecked<I>(self) -> Self::Cast<I>
+    unsafe fn to_int_unchecked<I: SimdCast>(self) -> Self::Cast<I>
     where
-        Self::Scalar: core::convert::FloatToInt<I> + SimdCast,
-        I: SimdCast;
+        Self::Scalar: core::convert::FloatToInt<I>;
 
     /// Raw transmutation to an unsigned integer vector type with the
     /// same size and number of lanes.
@@ -263,10 +262,9 @@ macro_rules! impl_trait {
 
             #[inline]
             #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-            unsafe fn to_int_unchecked<I>(self) -> Self::Cast<I>
+            unsafe fn to_int_unchecked<I: SimdCast>(self) -> Self::Cast<I>
             where
-                Self::Scalar: core::convert::FloatToInt<I> + SimdCast,
-                I: SimdCast,
+                Self::Scalar: core::convert::FloatToInt<I>,
             {
                 // Safety: supported types are guaranteed by SimdCast, the caller is responsible for the extra invariants
                 unsafe { intrinsics::simd_cast(self) }
