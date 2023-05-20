@@ -1434,6 +1434,36 @@ pub struct OverflowingLiteral<'a> {
 #[diag(lint_unused_comparisons)]
 pub struct UnusedComparisons;
 
+#[derive(LintDiagnostic)]
+pub enum InvalidNanComparisons {
+    #[diag(lint_invalid_nan_comparisons_eq_ne)]
+    EqNe {
+        #[subdiagnostic]
+        suggestion: InvalidNanComparisonsSuggestion,
+    },
+    #[diag(lint_invalid_nan_comparisons_lt_le_gt_ge)]
+    LtLeGtGe,
+}
+
+#[derive(Subdiagnostic)]
+pub enum InvalidNanComparisonsSuggestion {
+    #[multipart_suggestion(
+        lint_suggestion,
+        style = "verbose",
+        applicability = "machine-applicable"
+    )]
+    Spanful {
+        #[suggestion_part(code = "!")]
+        neg: Option<Span>,
+        #[suggestion_part(code = ".is_nan()")]
+        float: Span,
+        #[suggestion_part(code = "")]
+        nan_plus_binop: Span,
+    },
+    #[help(lint_suggestion)]
+    Spanless,
+}
+
 pub struct ImproperCTypes<'a> {
     pub ty: Ty<'a>,
     pub desc: &'a str,

@@ -314,6 +314,11 @@ lint_invalid_from_utf8_checked = calls to `{$method}` with a invalid literal alw
 lint_invalid_from_utf8_unchecked = calls to `{$method}` with a invalid literal are undefined behavior
     .label = the literal was valid UTF-8 up to the {$valid_up_to} bytes
 
+lint_invalid_nan_comparisons_eq_ne = incorrect NaN comparison, NaN cannot be directly compared to itself
+    .suggestion = use `f32::is_nan()` or `f64::is_nan()` instead
+
+lint_invalid_nan_comparisons_lt_le_gt_ge = incorrect NaN comparison, NaN is not orderable
+
 lint_lintpass_by_hand = implementing `LintPass` by hand
     .help = try using `declare_lint_pass!` or `impl_lint_pass!` instead
 
