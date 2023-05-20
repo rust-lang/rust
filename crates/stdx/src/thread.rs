@@ -207,105 +207,120 @@ pub enum QoSClass {
     UserInteractive,
 }
 
-#[cfg(target_vendor = "apple")]
-pub const IS_QOS_AVAILABLE: bool = true;
+pub const IS_QOS_AVAILABLE: bool = imp::IS_QOS_AVAILABLE;
 
-#[cfg(not(target_vendor = "apple"))]
-pub const IS_QOS_AVAILABLE: bool = false;
+pub fn set_current_thread_qos_class(class: QoSClass) {
+    imp::set_current_thread_qos_class(class)
+}
+
+pub fn get_current_thread_qos_class() -> Option<QoSClass> {
+    imp::get_current_thread_qos_class()
+}
 
 // All Apple platforms use XNU as their kernel
 // and thus have the concept of QoS.
 #[cfg(target_vendor = "apple")]
-pub fn set_current_thread_qos_class(class: QoSClass) {
-    let c = match class {
-        QoSClass::UserInteractive => libc::qos_class_t::QOS_CLASS_USER_INTERACTIVE,
-        QoSClass::UserInitiated => libc::qos_class_t::QOS_CLASS_USER_INITIATED,
-        QoSClass::Utility => libc::qos_class_t::QOS_CLASS_UTILITY,
-        QoSClass::Background => libc::qos_class_t::QOS_CLASS_BACKGROUND,
-    };
+mod imp {
+    use super::QoSClass;
 
-    let code = unsafe { libc::pthread_set_qos_class_self_np(c, 0) };
+    pub(super) const IS_QOS_AVAILABLE: bool = true;
 
-    if code == 0 {
-        return;
-    }
+    pub(super) fn set_current_thread_qos_class(class: QoSClass) {
+        let c = match class {
+            QoSClass::UserInteractive => libc::qos_class_t::QOS_CLASS_USER_INTERACTIVE,
+            QoSClass::UserInitiated => libc::qos_class_t::QOS_CLASS_USER_INITIATED,
+            QoSClass::Utility => libc::qos_class_t::QOS_CLASS_UTILITY,
+            QoSClass::Background => libc::qos_class_t::QOS_CLASS_BACKGROUND,
+        };
 
-    let errno = unsafe { *libc::__error() };
+        let code = unsafe { libc::pthread_set_qos_class_self_np(c, 0) };
 
-    match errno {
-        libc::EPERM => {
-            // This thread has been excluded from the QoS system
-            // due to a previous call to a function such as `pthread_setschedparam`
-            // which is incompatible with QoS.
-            //
-            // Panic instead of returning an error
-            // to maintain the invariant that we only use QoS APIs.
-            panic!("tried to set QoS of thread which has opted out of QoS (os error {errno})")
+        if code == 0 {
+            return;
         }
 
-        libc::EINVAL => {
-            // This is returned if we pass something other than a qos_class_t
-            // to `pthread_set_qos_class_self_np`.
-            //
-            // This is impossible, so again panic.
-            unreachable!("invalid qos_class_t value was passed to pthread_set_qos_class_self_np")
-        }
-
-        _ => {
-            // `pthread_set_qos_class_self_np`’s documentation
-            // does not mention any other errors.
-            unreachable!("`pthread_set_qos_class_self_np` returned unexpected error {errno}")
-        }
-    }
-}
-
-#[cfg(not(target_vendor = "apple"))]
-pub fn set_current_thread_qos_class(class: QoSClass) {
-    // FIXME: Windows has QoS APIs, we should use them!
-}
-
-#[cfg(target_vendor = "apple")]
-pub fn get_current_thread_qos_class() -> Option<QoSClass> {
-    let current_thread = unsafe { libc::pthread_self() };
-    let mut qos_class_raw = libc::qos_class_t::QOS_CLASS_UNSPECIFIED;
-    let code = unsafe {
-        libc::pthread_get_qos_class_np(current_thread, &mut qos_class_raw, std::ptr::null_mut())
-    };
-
-    if code != 0 {
-        // `pthread_get_qos_class_np`’s documentation states that
-        // an error value is placed into errno if the return code is not zero.
-        // However, it never states what errors are possible.
-        // Inspecting the source[0] shows that, as of this writing, it always returns zero.
-        //
-        // Whatever errors the function could report in future are likely to be
-        // ones which we cannot handle anyway
-        //
-        // 0: https://github.com/apple-oss-distributions/libpthread/blob/67e155c94093be9a204b69637d198eceff2c7c46/src/qos.c#L171-L177
         let errno = unsafe { *libc::__error() };
-        unreachable!("`pthread_get_qos_class_np` failed unexpectedly (os error {errno})");
+
+        match errno {
+            libc::EPERM => {
+                // This thread has been excluded from the QoS system
+                // due to a previous call to a function such as `pthread_setschedparam`
+                // which is incompatible with QoS.
+                //
+                // Panic instead of returning an error
+                // to maintain the invariant that we only use QoS APIs.
+                panic!("tried to set QoS of thread which has opted out of QoS (os error {errno})")
+            }
+
+            libc::EINVAL => {
+                // This is returned if we pass something other than a qos_class_t
+                // to `pthread_set_qos_class_self_np`.
+                //
+                // This is impossible, so again panic.
+                unreachable!(
+                    "invalid qos_class_t value was passed to pthread_set_qos_class_self_np"
+                )
+            }
+
+            _ => {
+                // `pthread_set_qos_class_self_np`’s documentation
+                // does not mention any other errors.
+                unreachable!("`pthread_set_qos_class_self_np` returned unexpected error {errno}")
+            }
+        }
     }
 
-    match qos_class_raw {
-        libc::qos_class_t::QOS_CLASS_USER_INTERACTIVE => Some(QoSClass::UserInteractive),
-        libc::qos_class_t::QOS_CLASS_USER_INITIATED => Some(QoSClass::UserInitiated),
-        libc::qos_class_t::QOS_CLASS_DEFAULT => None, // QoS has never been set
-        libc::qos_class_t::QOS_CLASS_UTILITY => Some(QoSClass::Utility),
-        libc::qos_class_t::QOS_CLASS_BACKGROUND => Some(QoSClass::Background),
+    pub(super) fn get_current_thread_qos_class() -> Option<QoSClass> {
+        let current_thread = unsafe { libc::pthread_self() };
+        let mut qos_class_raw = libc::qos_class_t::QOS_CLASS_UNSPECIFIED;
+        let code = unsafe {
+            libc::pthread_get_qos_class_np(current_thread, &mut qos_class_raw, std::ptr::null_mut())
+        };
 
-        libc::qos_class_t::QOS_CLASS_UNSPECIFIED => {
-            // Using manual scheduling APIs causes threads to “opt out” of QoS.
-            // At this point they become incompatible with QoS,
-            // and as such have the “unspecified” QoS class.
+        if code != 0 {
+            // `pthread_get_qos_class_np`’s documentation states that
+            // an error value is placed into errno if the return code is not zero.
+            // However, it never states what errors are possible.
+            // Inspecting the source[0] shows that, as of this writing, it always returns zero.
             //
-            // Panic instead of returning an error
-            // to maintain the invariant that we only use QoS APIs.
-            panic!("tried to get QoS of thread which has opted out of QoS")
+            // Whatever errors the function could report in future are likely to be
+            // ones which we cannot handle anyway
+            //
+            // 0: https://github.com/apple-oss-distributions/libpthread/blob/67e155c94093be9a204b69637d198eceff2c7c46/src/qos.c#L171-L177
+            let errno = unsafe { *libc::__error() };
+            unreachable!("`pthread_get_qos_class_np` failed unexpectedly (os error {errno})");
+        }
+
+        match qos_class_raw {
+            libc::qos_class_t::QOS_CLASS_USER_INTERACTIVE => Some(QoSClass::UserInteractive),
+            libc::qos_class_t::QOS_CLASS_USER_INITIATED => Some(QoSClass::UserInitiated),
+            libc::qos_class_t::QOS_CLASS_DEFAULT => None, // QoS has never been set
+            libc::qos_class_t::QOS_CLASS_UTILITY => Some(QoSClass::Utility),
+            libc::qos_class_t::QOS_CLASS_BACKGROUND => Some(QoSClass::Background),
+
+            libc::qos_class_t::QOS_CLASS_UNSPECIFIED => {
+                // Using manual scheduling APIs causes threads to “opt out” of QoS.
+                // At this point they become incompatible with QoS,
+                // and as such have the “unspecified” QoS class.
+                //
+                // Panic instead of returning an error
+                // to maintain the invariant that we only use QoS APIs.
+                panic!("tried to get QoS of thread which has opted out of QoS")
+            }
         }
     }
 }
 
+// FIXME: Windows has QoS APIs, we should use them!
 #[cfg(not(target_vendor = "apple"))]
-pub fn get_current_thread_qos_class() -> Option<QoSClass> {
-    None
+mod imp {
+    use super::QoSClass;
+
+    pub(super) const IS_QOS_AVAILABLE: bool = false;
+
+    pub(super) fn set_current_thread_qos_class(_: QoSClass) {}
+
+    pub(super) fn get_current_thread_qos_class() -> Option<QoSClass> {
+        None
+    }
 }
