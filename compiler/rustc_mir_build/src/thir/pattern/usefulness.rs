@@ -800,19 +800,22 @@ fn compute_usefulness<'p, 'tcx>(
         }
 
         // Lint on likely incorrect range patterns (#63987)
-        if let Constructor::IntRange(overlap_range) = ctor {
-            // If two ranges overlap on their boundaries, that boundary will be found as a singleton
-            // range after splitting.
-            if overlap_range.is_singleton() && orig_column_count == 1 {
-                overlap_range.lint_overlapping_range_endpoints(
-                    pcx,
-                    spec_matrix
-                        .rows()
-                        .map(|child_row| &matrix.rows[child_row.parent_row])
-                        .map(|parent_row| (parent_row.head(), parent_row.is_under_guard)),
-                    orig_column_count,
-                    lint_root,
-                );
+        if spec_matrix.rows.len() >= 2 {
+            if let Constructor::IntRange(overlap_range) = ctor {
+                // If two ranges overlap on their boundaries, that boundary will be found as a singleton
+                // range after splitting.
+                // We limit to a single column for now, see `lint_overlapping_range_endpoints`.
+                if overlap_range.is_singleton() && orig_column_count == 1 {
+                    overlap_range.lint_overlapping_range_endpoints(
+                        pcx,
+                        spec_matrix
+                            .rows()
+                            .map(|child_row| &matrix.rows[child_row.parent_row])
+                            .map(|parent_row| (parent_row.head(), parent_row.is_under_guard)),
+                        orig_column_count,
+                        lint_root,
+                    );
+                }
             }
         }
 
