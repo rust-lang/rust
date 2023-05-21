@@ -1774,9 +1774,9 @@ impl<T> [T] {
     /// let v = &[1, 2, 3, 4, 5, 6][..];
     ///
     /// {
-    ///    let (left, right) = v.split_array_ref::<0>().unwrap();
-    ///    assert_eq!(left, &[]);
-    ///    assert_eq!(right, [1, 2, 3, 4, 5, 6]);
+    ///     let (left, right) = v.split_array_ref::<0>().unwrap();
+    ///     assert_eq!(left, &[]);
+    ///     assert_eq!(right, [1, 2, 3, 4, 5, 6]);
     /// }
     ///
     /// {
@@ -1863,9 +1863,9 @@ impl<T> [T] {
     /// let v = &[1, 2, 3, 4, 5, 6][..];
     ///
     /// {
-    ///    let (left, right) = v.rsplit_array_ref::<0>().unwrap();
-    ///    assert_eq!(left, [1, 2, 3, 4, 5, 6]);
-    ///    assert_eq!(right, &[]);
+    ///     let (left, right) = v.rsplit_array_ref::<0>().unwrap();
+    ///     assert_eq!(left, [1, 2, 3, 4, 5, 6]);
+    ///     assert_eq!(right, &[]);
     /// }
     ///
     /// {
