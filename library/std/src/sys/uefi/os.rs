@@ -4,15 +4,16 @@ use crate::ffi::{OsStr, OsString};
 use crate::fmt;
 use crate::io;
 use crate::marker::PhantomData;
+use crate::os::uefi;
 use crate::path::{self, PathBuf};
+use crate::ptr::NonNull;
+use r_efi::efi::Status;
 
 pub fn errno() -> RawOsError {
     0
 }
 
 pub fn error_string(errno: RawOsError) -> String {
-    use r_efi::efi::Status;
-
     // Keep the List in Alphabetical Order
     // The Messages are taken from UEFI Specification Appendix D - Status Codes
     match r_efi::efi::Status::from_usize(errno) {
@@ -160,12 +161,7 @@ impl fmt::Display for JoinPathsError {
     }
 }
 
-impl StdError for JoinPathsError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        "not supported on this platform yet"
-    }
-}
+impl StdError for JoinPathsError {}
 
 pub fn current_exe() -> io::Result<PathBuf> {
     unsupported()
@@ -173,10 +169,25 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
 pub struct Env(!);
 
+impl Env {
+    // FIXME(https://github.com/rust-lang/rust/issues/114583): Remove this when <OsStr as Debug>::fmt matches <str as Debug>::fmt.
+    pub fn str_debug(&self) -> impl fmt::Debug + '_ {
+        let Self(inner) = self;
+        match *inner {}
+    }
+}
+
 impl Iterator for Env {
     type Item = (OsString, OsString);
     fn next(&mut self) -> Option<(OsString, OsString)> {
         self.0
+    }
+}
+
+impl fmt::Debug for Env {
+    fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self(inner) = self;
+        match *inner {}
     }
 }
 
@@ -204,7 +215,20 @@ pub fn home_dir() -> Option<PathBuf> {
     None
 }
 
-pub fn exit(_code: i32) -> ! {
+pub fn exit(code: i32) -> ! {
+    if let (Some(boot_services), Some(handle)) =
+        (uefi::env::boot_services(), uefi::env::try_image_handle())
+    {
+        let boot_services: NonNull<r_efi::efi::BootServices> = boot_services.cast();
+        let _ = unsafe {
+            ((*boot_services.as_ptr()).exit)(
+                handle.as_ptr(),
+                Status::from_usize(code as usize),
+                0,
+                crate::ptr::null_mut(),
+            )
+        };
+    }
     crate::intrinsics::abort()
 }
 

@@ -2,23 +2,22 @@
 
 #![unstable(feature = "uefi_std", issue = "100499")]
 
-use crate::{cell::Cell, ffi::c_void, ptr::NonNull};
+use crate::sync::atomic::{AtomicBool, AtomicPtr, Ordering};
+use crate::{ffi::c_void, ptr::NonNull};
 
-// Since UEFI is single-threaded, making the global variables thread local should be safe.
-thread_local! {
-    // Flag to check if BootServices are still valid.
-    // Start with assuming that they are not available
-    static BOOT_SERVICES_FLAG: Cell<bool> = Cell::new(false);
-    // Position 0 = SystemTable
-    // Position 1 = ImageHandle
-    static GLOBALS: Cell<Option<(NonNull<c_void>, NonNull<c_void>)>> = Cell::new(None);
-}
+static SYSTEM_TABLE: AtomicPtr<c_void> = AtomicPtr::new(crate::ptr::null_mut());
+static IMAGE_HANDLE: AtomicPtr<c_void> = AtomicPtr::new(crate::ptr::null_mut());
+// Flag to check if BootServices are still valid.
+// Start with assuming that they are not available
+static BOOT_SERVICES_FLAG: AtomicBool = AtomicBool::new(false);
 
 /// Initializes the global System Table and Image Handle pointers.
 ///
 /// The standard library requires access to the UEFI System Table and the Application Image Handle
 /// to operate. Those are provided to UEFI Applications via their application entry point. By
 /// calling `init_globals()`, those pointers are retained by the standard library for future use.
+/// Thus this function must be called before any of the standard library services are used.
+///
 /// The pointers are never exposed to any entity outside of this application and it is guaranteed
 /// that, once the application exited, these pointers are never dereferenced again.
 ///
@@ -26,9 +25,26 @@ thread_local! {
 /// application. In particular, UEFI Boot Services must not be exited while an application with the
 /// standard library is loaded.
 ///
-/// This function must not be called more than once.
-pub unsafe fn init_globals(handle: NonNull<c_void>, system_table: NonNull<c_void>) {
-    GLOBALS.set(Some((system_table, handle)));
+/// # SAFETY
+/// Calling this function more than once will panic
+pub(crate) unsafe fn init_globals(handle: NonNull<c_void>, system_table: NonNull<c_void>) {
+    IMAGE_HANDLE
+        .compare_exchange(
+            crate::ptr::null_mut(),
+            handle.as_ptr(),
+            Ordering::Release,
+            Ordering::Acquire,
+        )
+        .unwrap();
+    SYSTEM_TABLE
+        .compare_exchange(
+            crate::ptr::null_mut(),
+            system_table.as_ptr(),
+            Ordering::Release,
+            Ordering::Acquire,
+        )
+        .unwrap();
+    BOOT_SERVICES_FLAG.store(true, Ordering::Release)
 }
 
 /// Get the SystemTable Pointer.
@@ -50,7 +66,7 @@ pub fn image_handle() -> NonNull<c_void> {
 /// Get the BootServices Pointer.
 /// This function also checks if `ExitBootServices` has already been called.
 pub fn boot_services() -> Option<NonNull<c_void>> {
-    if BOOT_SERVICES_FLAG.get() {
+    if BOOT_SERVICES_FLAG.load(Ordering::Acquire) {
         let system_table: NonNull<r_efi::efi::SystemTable> = try_system_table()?.cast();
         let boot_services = unsafe { (*system_table.as_ptr()).boot_services };
         NonNull::new(boot_services).map(|x| x.cast())
@@ -62,19 +78,15 @@ pub fn boot_services() -> Option<NonNull<c_void>> {
 /// Get the SystemTable Pointer.
 /// This function is mostly intended for places where panic is not an option
 pub(crate) fn try_system_table() -> Option<NonNull<c_void>> {
-    GLOBALS.get().map(|x| x.0)
+    NonNull::new(SYSTEM_TABLE.load(Ordering::Acquire))
 }
 
 /// Get the SystemHandle Pointer.
 /// This function is mostly intended for places where panicking is not an option
 pub(crate) fn try_image_handle() -> Option<NonNull<c_void>> {
-    GLOBALS.get().map(|x| x.1)
-}
-
-pub(crate) fn enable_boot_services() {
-    BOOT_SERVICES_FLAG.set(true);
+    NonNull::new(IMAGE_HANDLE.load(Ordering::Acquire))
 }
 
 pub(crate) fn disable_boot_services() {
-    BOOT_SERVICES_FLAG.set(false);
+    BOOT_SERVICES_FLAG.store(false, Ordering::Release)
 }

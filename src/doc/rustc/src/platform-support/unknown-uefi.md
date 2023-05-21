@@ -277,7 +277,9 @@ cargo +custom build --target x86_64-unknown-uefi
 ```
 
 ```rust,ignore (platform-specific)
-use r_efi::efi;
+#![feature(uefi_std)]
+
+use r_efi::{efi, protocols::simple_text_output};
 use std::{
   ffi::OsString,
   os::uefi::{env, ffi::OsStrExt}
@@ -290,7 +292,7 @@ pub fn main() {
   let r =
       unsafe {
         let con_out: *mut simple_text_output::Protocol = (*st).con_out;
-        let output_string: extern "efiapi" fn(_: *mut simple_text_output::Protocol, *mut u16) = (*con_out).output_string;
+        let output_string: extern "efiapi" fn(_: *mut simple_text_output::Protocol, *mut u16) -> efi::Status = (*con_out).output_string;
         output_string(con_out, s.as_ptr() as *mut efi::Char16)
       };
   assert!(!r.is_error())
@@ -298,6 +300,6 @@ pub fn main() {
 ```
 
 ### BootServices
-The current implementation of std make `BootServices` unavailable once `ExitBootServices` is called. Refer to [Runtime Drivers](https://edk2-docs.gitbook.io/edk-ii-uefi-driver-writer-s-guide/7_driver_entry_point/711_runtime_drivers) for more information regarding how to handle switching from using physical addresses to using virtual addresses.
+The current implementation of std makes `BootServices` unavailable once `ExitBootServices` is called. Refer to [Runtime Drivers](https://edk2-docs.gitbook.io/edk-ii-uefi-driver-writer-s-guide/7_driver_entry_point/711_runtime_drivers) for more information regarding how to handle switching from using physical addresses to using virtual addresses.
 
-Note: It should be noted that it is upto the user to drop all allocated memory before `ExitBootServices` is called.
+Note: It should be noted that it is up to the user to drop all allocated memory before `ExitBootServices` is called.

@@ -12,7 +12,6 @@
 //! [`OsStr`]: crate::ffi::OsStr
 //! [`OsString`]: crate::ffi::OsString
 
-#![deny(unsafe_op_in_unsafe_fn)]
 pub mod alloc;
 #[path = "../unsupported/args.rs"]
 pub mod args;
@@ -43,6 +42,8 @@ pub mod stdio;
 pub mod thread;
 #[path = "../unsupported/thread_local_key.rs"]
 pub mod thread_local_key;
+#[path = "../unsupported/thread_parking.rs"]
+pub mod thread_parking;
 #[path = "../unsupported/time.rs"]
 pub mod time;
 
@@ -53,18 +54,17 @@ mod tests;
 
 pub type RawOsError = usize;
 
-use crate::cell::Cell;
 use crate::io as std_io;
 use crate::os::uefi;
 use crate::ptr::NonNull;
+use crate::sync::atomic::{AtomicPtr, Ordering};
 
 pub mod memchr {
     pub use core::slice::memchr::{memchr, memrchr};
 }
 
-thread_local! {
-    static EXIT_BOOT_SERVICE_EVENT: Cell<Option<NonNull<crate::ffi::c_void>>> = Cell::new(None);
-}
+static EXIT_BOOT_SERVICE_EVENT: AtomicPtr<crate::ffi::c_void> =
+    AtomicPtr::new(crate::ptr::null_mut());
 
 /// # SAFETY
 /// - must be called only once during runtime initialization.
@@ -75,8 +75,6 @@ pub(crate) unsafe fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {
     let image_handle = unsafe { NonNull::new(*argv as *mut crate::ffi::c_void).unwrap() };
     let system_table = unsafe { NonNull::new(*argv.add(1) as *mut crate::ffi::c_void).unwrap() };
     unsafe { uefi::env::init_globals(image_handle, system_table) };
-    // Enable boot services once GLOBALS are initialized
-    uefi::env::enable_boot_services();
 
     // Register exit boot services handler
     match helpers::create_event(
@@ -86,7 +84,17 @@ pub(crate) unsafe fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {
         crate::ptr::null_mut(),
     ) {
         Ok(x) => {
-            EXIT_BOOT_SERVICE_EVENT.set(Some(x));
+            if EXIT_BOOT_SERVICE_EVENT
+                .compare_exchange(
+                    crate::ptr::null_mut(),
+                    x.as_ptr(),
+                    Ordering::Release,
+                    Ordering::Acquire,
+                )
+                .is_err()
+            {
+                abort_internal();
+            };
         }
         Err(_) => abort_internal(),
     }
@@ -96,7 +104,9 @@ pub(crate) unsafe fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {
 /// this is not guaranteed to run, for example when the program aborts.
 /// - must be called only once during runtime cleanup.
 pub unsafe fn cleanup() {
-    if let Some(exit_boot_service_event) = EXIT_BOOT_SERVICE_EVENT.take() {
+    if let Some(exit_boot_service_event) =
+        NonNull::new(EXIT_BOOT_SERVICE_EVENT.swap(crate::ptr::null_mut(), Ordering::Acquire))
+    {
         let _ = unsafe { helpers::close_event(exit_boot_service_event) };
     }
 }
@@ -159,7 +169,9 @@ pub fn decode_error_kind(code: RawOsError) -> crate::io::ErrorKind {
 }
 
 pub fn abort_internal() -> ! {
-    if let Some(exit_boot_service_event) = EXIT_BOOT_SERVICE_EVENT.take() {
+    if let Some(exit_boot_service_event) =
+        NonNull::new(EXIT_BOOT_SERVICE_EVENT.load(Ordering::Acquire))
+    {
         let _ = unsafe { helpers::close_event(exit_boot_service_event) };
     }
 
@@ -225,4 +237,8 @@ fn get_random() -> Option<(u64, u64)> {
 /// Disable access to BootServices if `EVT_SIGNAL_EXIT_BOOT_SERVICES` is signaled
 extern "efiapi" fn exit_boot_service_handler(_e: r_efi::efi::Event, _ctx: *mut crate::ffi::c_void) {
     uefi::env::disable_boot_services();
+}
+
+pub fn is_interrupted(_code: RawOsError) -> bool {
+    false
 }

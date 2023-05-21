@@ -60,13 +60,14 @@ pub(crate) fn locate_handles(mut guid: Guid) -> io::Result<Vec<NonNull<crate::ff
     }
 
     // The returned buf_len is in bytes
-    let mut buf: Vec<r_efi::efi::Handle> =
-        Vec::with_capacity(buf_len / size_of::<r_efi::efi::Handle>());
+    assert_eq!(buf_len % size_of::<r_efi::efi::Handle>(), 0);
+    let num_of_handles = buf_len / size_of::<r_efi::efi::Handle>();
+    let mut buf: Vec<r_efi::efi::Handle> = Vec::with_capacity(num_of_handles);
     match inner(&mut guid, boot_services, &mut buf_len, buf.as_mut_ptr()) {
         Ok(()) => {
             // This is safe because the call will succeed only if buf_len >= required length.
             // Also, on success, the `buf_len` is updated with the size of bufferv (in bytes) written
-            unsafe { buf.set_len(buf_len / size_of::<r_efi::efi::Handle>()) };
+            unsafe { buf.set_len(num_of_handles) };
             Ok(buf.into_iter().filter_map(|x| NonNull::new(x)).collect())
         }
         Err(e) => Err(e),
@@ -114,16 +115,15 @@ pub(crate) fn create_event(
 ) -> io::Result<NonNull<crate::ffi::c_void>> {
     let boot_services: NonNull<efi::BootServices> =
         boot_services().ok_or(BOOT_SERVICES_UNAVAILABLE)?.cast();
-    let mut exit_boot_service_event: r_efi::efi::Event = crate::ptr::null_mut();
+    let mut event: r_efi::efi::Event = crate::ptr::null_mut();
     let r = unsafe {
         let create_event = (*boot_services.as_ptr()).create_event;
-        (create_event)(signal, tpl, handler, context, &mut exit_boot_service_event)
+        (create_event)(signal, tpl, handler, context, &mut event)
     };
     if r.is_error() {
         Err(crate::io::Error::from_raw_os_error(r.as_usize()))
     } else {
-        NonNull::new(exit_boot_service_event)
-            .ok_or(const_io_error!(io::ErrorKind::Other, "null protocol"))
+        NonNull::new(event).ok_or(const_io_error!(io::ErrorKind::Other, "null protocol"))
     }
 }
 

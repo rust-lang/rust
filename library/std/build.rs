@@ -52,7 +52,6 @@ fn main() {
         // - mipsel-sony-psp
         // - nvptx64-nvidia-cuda
         // - arch=avr
-        // - tvos (aarch64-apple-tvos, x86_64-apple-tvos)
         // - JSON targets
         // - Any new targets that have not been explicitly added above.
         println!("cargo:rustc-cfg=feature=\"restricted-std\"");

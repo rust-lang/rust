@@ -421,7 +421,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         entry_type: EntryFnType,
     ) -> Bx::Function {
         // The entry function is either `int main(void)` or `int main(int argc, char **argv)`, or
-        // `Status efi_main(Handle hd, SystemTable *st)` depending on the target.
+        // `usize efi_main(void *handle, void *system_table)` depending on the target.
         let llfty = if cx.sess().target.os.contains("uefi") {
             cx.type_func(&[cx.type_ptr(), cx.type_ptr()], cx.type_isize())
         } else if cx.sess().target.main_needs_argc_argv {
@@ -508,10 +508,9 @@ fn get_argc_argv<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let param_handle = bx.get_param(0);
         let param_system_table = bx.get_param(1);
         let arg_argc = bx.const_int(cx.type_isize(), 2);
-        let arg_argv = bx.alloca(cx.type_array(cx.type_i8p(), 2), Align::ONE);
+        let arg_argv = bx.alloca(cx.type_array(cx.type_ptr(), 2), Align::ONE);
         bx.store(param_handle, arg_argv, Align::ONE);
-        let arg_argv_el1 =
-            bx.gep(cx.type_ptr_to(cx.type_i8()), arg_argv, &[bx.const_int(cx.type_int(), 1)]);
+        let arg_argv_el1 = bx.gep(cx.type_ptr(), arg_argv, &[bx.const_int(cx.type_int(), 1)]);
         bx.store(param_system_table, arg_argv_el1, Align::ONE);
         (arg_argc, arg_argv)
     } else if cx.sess().target.main_needs_argc_argv {
@@ -566,11 +565,7 @@ pub fn allocator_kind_for_codegen(tcx: TyCtxt<'_>) -> Option<AllocatorKind> {
         use rustc_middle::middle::dependency_format::Linkage;
         list.iter().any(|&linkage| linkage == Linkage::Dynamic)
     });
-    if any_dynamic_crate {
-        None
-    } else {
-        tcx.allocator_kind(())
-    }
+    if any_dynamic_crate { None } else { tcx.allocator_kind(()) }
 }
 
 pub fn codegen_crate<B: ExtraBackendMethods>(
