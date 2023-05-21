@@ -666,31 +666,30 @@ impl<'a> CrateLocator<'a> {
             return None;
         }
 
-        let root = metadata.get_root();
-        if root.is_proc_macro_crate() != self.is_proc_macro {
+        let header = metadata.get_header();
+        if header.is_proc_macro_crate != self.is_proc_macro {
             info!(
                 "Rejecting via proc macro: expected {} got {}",
-                self.is_proc_macro,
-                root.is_proc_macro_crate(),
+                self.is_proc_macro, header.is_proc_macro_crate,
             );
             return None;
         }
 
-        if self.exact_paths.is_empty() && self.crate_name != root.name() {
+        if self.exact_paths.is_empty() && self.crate_name != header.name {
             info!("Rejecting via crate name");
             return None;
         }
 
-        if root.triple() != &self.triple {
-            info!("Rejecting via crate triple: expected {} got {}", self.triple, root.triple());
+        if header.triple != self.triple {
+            info!("Rejecting via crate triple: expected {} got {}", self.triple, header.triple);
             self.crate_rejections.via_triple.push(CrateMismatch {
                 path: libpath.to_path_buf(),
-                got: root.triple().to_string(),
+                got: header.triple.to_string(),
             });
             return None;
         }
 
-        let hash = root.hash();
+        let hash = header.hash;
         if let Some(expected_hash) = self.hash {
             if hash != expected_hash {
                 info!("Rejecting via hash: expected {} got {}", expected_hash, hash);
