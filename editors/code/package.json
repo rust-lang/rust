@@ -1562,6 +1562,16 @@
                 "language": "ra_syntax_tree",
                 "scopeName": "source.ra_syntax_tree",
                 "path": "ra_syntax_tree.tmGrammar.json"
+            },
+            {
+                "scopeName": "rustdoc.markdown.injection",
+                "path": "rustdoc.markdown.injection.tmGrammar.json",
+                "injectTo": [
+                    "source.rust"
+                ],
+                "embeddedLanguages": {
+                    "meta.embedded.block.markdown": "text.html.markdown"
+                }
             }
         ],
         "problemMatchers": [
