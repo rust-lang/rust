@@ -46,6 +46,8 @@ use rustc_span::Span;
 mod plumbing;
 pub use crate::plumbing::QueryCtxt;
 
+mod cache_decoder;
+
 mod profiling_support;
 pub use self::profiling_support::alloc_self_profile_query_strings;
 

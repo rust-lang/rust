@@ -2,6 +2,7 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
+use crate::cache_decoder::{load_side_effects, try_load_query_result, CacheDecoder};
 use crate::rustc_middle::dep_graph::DepContext;
 use crate::rustc_middle::ty::TyEncoder;
 use crate::QueryConfigRestored;
@@ -13,7 +14,7 @@ use rustc_middle::dep_graph::{
     self, DepKind, DepKindStruct, DepNode, DepNodeIndex, SerializedDepNodeIndex,
 };
 use rustc_middle::query::on_disk_cache::AbsoluteBytePos;
-use rustc_middle::query::on_disk_cache::{CacheDecoder, CacheEncoder, EncodedDepNodeIndex};
+use rustc_middle::query::on_disk_cache::{CacheEncoder, EncodedDepNodeIndex};
 use rustc_middle::query::Key;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
 use rustc_middle::ty::{self, TyCtxt};
@@ -93,7 +94,7 @@ impl QueryContext for QueryCtxt<'_> {
         self.query_system
             .on_disk_cache
             .as_ref()
-            .map(|c| c.load_side_effects(self.tcx, prev_dep_node_index))
+            .map(|c| load_side_effects(c, self.tcx, prev_dep_node_index))
             .unwrap_or_default()
     }
 
@@ -406,7 +407,7 @@ where
     // details.
     let value = tcx
         .dep_graph
-        .with_query_deserialization(|| on_disk_cache.try_load_query_result(tcx, prev_index));
+        .with_query_deserialization(|| try_load_query_result(on_disk_cache, tcx, prev_index));
 
     prof_timer.finish_with_query_invocation_id(index.into());
 
