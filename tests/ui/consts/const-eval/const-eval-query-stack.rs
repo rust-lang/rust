@@ -10,7 +10,7 @@
 // normalize-stderr-test "\s\d{1,}: .*\n" -> ""
 // normalize-stderr-test "\s at .*\n" -> ""
 // normalize-stderr-test ".*note: Some details.*\n" -> ""
-
+// normalize-stderr-test ".*omitted \d{1,} frame.*\n" -> ""
 #![allow(unconditional_panic)]
 
 const X: i32 = 1 / 0; //~ERROR constant

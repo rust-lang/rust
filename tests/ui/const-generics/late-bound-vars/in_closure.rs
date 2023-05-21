@@ -16,6 +16,7 @@
 // normalize-stderr-test "\n\n[ ]*\n" -> ""
 // normalize-stderr-test "compiler/.*: projection" -> "projection"
 // this should run-pass
+// normalize-stderr-test ".*omitted \d{1,} frame.*\n" -> ""
 
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
