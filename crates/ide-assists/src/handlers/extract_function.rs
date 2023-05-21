@@ -707,7 +707,7 @@ impl FunctionBody {
     ) -> (FxIndexSet<Local>, Option<ast::SelfParam>) {
         let mut self_param = None;
         let mut res = FxIndexSet::default();
-        let mut cb = |name_ref: Option<_>| {
+        let mut add_name_if_local = |name_ref: Option<_>| {
             let local_ref =
                 match name_ref.and_then(|name_ref| NameRefClass::classify(sema, &name_ref)) {
                     Some(
@@ -731,21 +731,24 @@ impl FunctionBody {
         };
         self.walk_expr(&mut |expr| match expr {
             ast::Expr::PathExpr(path_expr) => {
-                cb(path_expr.path().and_then(|it| it.as_single_name_ref()))
+                add_name_if_local(path_expr.path().and_then(|it| it.as_single_name_ref()))
             }
             ast::Expr::ClosureExpr(closure_expr) => {
                 if let Some(body) = closure_expr.body() {
-                    body.syntax().descendants().map(ast::NameRef::cast).for_each(|it| cb(it));
+                    body.syntax()
+                        .descendants()
+                        .map(ast::NameRef::cast)
+                        .for_each(&mut add_name_if_local);
                 }
             }
             ast::Expr::MacroExpr(expr) => {
                 if let Some(tt) = expr.macro_call().and_then(|call| call.token_tree()) {
                     tt.syntax()
-                        .children_with_tokens()
-                        .flat_map(SyntaxElement::into_token)
-                        .filter(|it| it.kind() == SyntaxKind::IDENT)
+                        .descendants_with_tokens()
+                        .filter_map(SyntaxElement::into_token)
+                        .filter(|it| matches!(it.kind(), SyntaxKind::IDENT | T![self]))
                         .flat_map(|t| sema.descend_into_macros(t))
-                        .for_each(|t| cb(t.parent().and_then(ast::NameRef::cast)));
+                        .for_each(|t| add_name_if_local(t.parent().and_then(ast::NameRef::cast)));
                 }
             }
             _ => (),
@@ -4342,6 +4345,82 @@ fn $0fun_name(n: i32) -> i32 {
 }
 "#,
         );
+    }
+
+    #[test]
+    fn param_usage_in_macro_with_nested_tt() {
+        check_assist(
+            extract_function,
+            r#"
+macro_rules! m {
+    ($val:expr) => { $val };
+}
+
+fn foo() {
+    let n = 1;
+    let t = 1;
+    $0let k = n * m!((n) + { t });$0
+    let m = k + 1;
+}
+"#,
+            r#"
+macro_rules! m {
+    ($val:expr) => { $val };
+}
+
+fn foo() {
+    let n = 1;
+    let t = 1;
+    let k = fun_name(n, t);
+    let m = k + 1;
+}
+
+fn $0fun_name(n: i32, t: i32) -> i32 {
+    let k = n * m!((n) + { t });
+    k
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn param_usage_in_macro_with_nested_tt_2() {
+        check_assist(
+            extract_function,
+            r#"
+macro_rules! m {
+    ($val:expr) => { $val };
+}
+
+struct S(i32);
+impl S {
+    fn foo(&self) {
+        let n = 1;
+        $0let k = n * m!((n) + { self.0 });$0
+        let m = k + 1;
+    }
+}
+"#,
+            r#"
+macro_rules! m {
+    ($val:expr) => { $val };
+}
+
+struct S(i32);
+impl S {
+    fn foo(&self) {
+        let n = 1;
+        let k = self.fun_name(n);
+        let m = k + 1;
+    }
+
+    fn $0fun_name(&self, n: i32) -> i32 {
+        let k = n * m!((n) + { self.0 });
+        k
+    }
+}
+"#,
+        )
     }
 
     #[test]
