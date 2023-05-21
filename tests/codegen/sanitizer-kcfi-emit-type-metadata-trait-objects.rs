@@ -30,40 +30,84 @@ trait Freeze { }
 #[lang="drop_in_place"]
 fn drop_in_place_fn<T>() { }
 
-trait Trait1 {
+pub trait Trait1 {
     fn foo(&self);
 }
 
-struct Type1;
+pub struct Type1;
 
 impl Trait1 for Type1 {
     fn foo(&self) {
     }
 }
 
-pub fn foo() {
-    let a = Type1;
-    a.foo();
-    // CHECK-LABEL: define{{.*}}foo{{.*}}!{{<unknown kind #36>|kcfi_type}} !{{[0-9]+}}
-    // CHECK:       call <sanitizer_kcfi_emit_type_metadata_trait_objects::Type1 as sanitizer_kcfi_emit_type_metadata_trait_objects::Trait1>::foo
+pub trait Trait2<T> {
+    fn bar(&self);
 }
 
-pub fn bar() {
+pub struct Type2;
+
+impl Trait2<i32> for Type2 {
+    fn bar(&self) {
+    }
+}
+
+pub trait Trait3<T> {
+    fn baz(&self, _: &T);
+}
+
+pub struct Type3;
+
+impl<T, U> Trait3<U> for T {
+    fn baz(&self, _: &U) {
+    }
+}
+
+pub fn foo1(a: &dyn Trait1) {
+    a.foo();
+    // CHECK-LABEL: define{{.*}}4foo1{{.*}}!{{<unknown kind #36>|kcfi_type}} !{{[0-9]+}}
+    // CHECK:       call void %{{[0-9]}}({{\{\}\*|ptr}} align 1 {{%[a-z]\.0|%_[0-9]}}){{.*}}[ "kcfi"(i32 [[TYPE1:[[:print:]]+]]) ]
+}
+
+pub fn bar1() {
     let a = Type1;
     let b = &a as &dyn Trait1;
     b.foo();
-    // CHECK-LABEL: define{{.*}}bar{{.*}}!{{<unknown kind #36>|kcfi_type}} !{{[0-9]+}}
-    // CHECK:       call void %0({{\{\}\*|ptr}} align 1 {{%b\.0|%_1}}){{.*}}[ "kcfi"(i32 [[TYPE1:[[:print:]]+]]) ]
+    // CHECK-LABEL: define{{.*}}4bar1{{.*}}!{{<unknown kind #36>|kcfi_type}} !{{[0-9]+}}
+    // CHECK:       call void %{{[0-9]}}({{\{\}\*|ptr}} align 1 {{%[a-z]\.0|%_[0-9]}}){{.*}}[ "kcfi"(i32 [[TYPE1:[[:print:]]+]]) ]
 }
 
-pub fn baz() {
-    let a = Type1;
-    let b = &a as &dyn Trait1;
-    a.foo();
-    b.foo();
-    // CHECK-LABEL: define{{.*}}baz{{.*}}!{{<unknown kind #36>|kcfi_type}} !{{[0-9]+}}
-    // CHECK:       call <sanitizer_kcfi_emit_type_metadata_trait_objects::Type1 as sanitizer_kcfi_emit_type_metadata_trait_objects::Trait1>::foo
-    // CHECK:       call void %0({{\{\}\*|ptr}} align 1 {{%b\.0|%_1}}){{.*}}[ "kcfi"(i32 [[TYPE1:[[:print:]]+]]) ]
+pub fn foo2<T>(a: &dyn Trait2<T>) {
+    a.bar();
+    // CHECK-LABEL: define{{.*}}4foo2{{.*}}!{{<unknown kind #36>|kcfi_type}} !{{[0-9]+}}
+    // CHECK:       call void %{{[0-9]}}({{\{\}\*|ptr}} align 1 {{%[a-z]\.0|%_[0-9]}}){{.*}}[ "kcfi"(i32 [[TYPE2:[[:print:]]+]]) ]
+}
+
+pub fn bar2() {
+    let a = Type2;
+    foo2(&a);
+    let b = &a as &dyn Trait2<i32>;
+    b.bar();
+    // CHECK-LABEL: define{{.*}}4bar2{{.*}}!{{<unknown kind #36>|kcfi_type}} !{{[0-9]+}}
+    // CHECK:       call void %{{[0-9]}}({{\{\}\*|ptr}} align 1 {{%[a-z]\.0|%_[0-9]}}){{.*}}[ "kcfi"(i32 [[TYPE2:[[:print:]]+]]) ]
+}
+
+pub fn foo3(a: &dyn Trait3<Type3>) {
+    let b = Type3;
+    a.baz(&b);
+    // CHECK-LABEL: define{{.*}}4foo3{{.*}}!{{<unknown kind #36>|kcfi_type}} !{{[0-9]+}}
+    // CHECK:       call void %{{[0-9]}}({{\{\}\*|ptr}} align 1 {{%[a-z]\.0|%_[0-9]}}, {{\{\}\*|ptr|%Type3\*}} align 1 {{%[a-z]\.0|%_[0-9]}}){{.*}}[ "kcfi"(i32 [[TYPE3:[[:print:]]+]]) ]
+}
+
+pub fn bar3() {
+    let a = Type3;
+    foo3(&a);
+    let b = &a as &dyn Trait3<Type3>;
+    b.baz(&a);
+    // CHECK-LABEL: define{{.*}}4bar3{{.*}}!{{<unknown kind #36>|kcfi_type}} !{{[0-9]+}}
+    // CHECK:       call void %{{[0-9]}}({{\{\}\*|ptr}} align 1 {{%[a-z]\.0|%_[0-9]}}, {{\{\}\*|ptr|%Type3\*}} align 1 {{%[a-z]\.0|%_[0-9]}}){{.*}}[ "kcfi"(i32 [[TYPE3:[[:print:]]+]]) ]
 }
 
 // CHECK: !{{[0-9]+}} = !{i32 [[TYPE1]]}
+// CHECK: !{{[0-9]+}} = !{i32 [[TYPE2]]}
+// CHECK: !{{[0-9]+}} = !{i32 [[TYPE3]]}
