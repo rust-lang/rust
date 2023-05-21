@@ -266,6 +266,7 @@ where
     /// let v = u32x4::from_slice(&source);
     /// assert_eq!(v.as_array(), &[1, 2, 3, 4]);
     /// ```
+    #[must_use]
     #[inline]
     #[track_caller]
     pub const fn from_slice(slice: &[T]) -> Self {
