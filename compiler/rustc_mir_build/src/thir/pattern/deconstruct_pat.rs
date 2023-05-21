@@ -962,41 +962,26 @@ impl ConstructorSet {
                 // witness.
                 let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive_enum(pcx.ty);
 
-                let is_exhaustive_pat_feature = cx.tcx.features().exhaustive_patterns;
+                if def.variants().is_empty() && !is_declared_nonexhaustive {
+                    Self::Uninhabited
+                } else {
+                    let is_exhaustive_pat_feature = cx.tcx.features().exhaustive_patterns;
+                    let variants: Vec<_> =
+                        def.variants()
+                            .iter_enumerated()
+                            .filter(|(_, v)| {
+                                // If `exhaustive_patterns` is enabled, we exclude variants known to be
+                                // uninhabited.
+                                !is_exhaustive_pat_feature
+                                    || v.inhabited_predicate(cx.tcx, *def)
+                                        .subst(cx.tcx, substs)
+                                        .apply(cx.tcx, cx.param_env, cx.module)
+                            })
+                            .map(|(idx, _)| idx)
+                            .collect();
 
-                // If `exhaustive_patterns` is disabled and our scrutinee is an empty enum, we treat it
-                // as though it had an "unknown" constructor to avoid exposing its emptiness. The
-                // exception is if the pattern is at the top level, because we want empty matches to be
-                // considered exhaustive.
-                let is_secretly_empty =
-                    def.variants().is_empty() && !is_exhaustive_pat_feature && !pcx.is_top_level;
-
-                let variants: Vec<_> = def
-                    .variants()
-                    .iter_enumerated()
-                    .filter(|(_, v)| {
-                        // If `exhaustive_patterns` is enabled, we exclude variants known to be
-                        // uninhabited.
-                        !is_exhaustive_pat_feature
-                            || v.inhabited_predicate(cx.tcx, *def).subst(cx.tcx, substs).apply(
-                                cx.tcx,
-                                cx.param_env,
-                                cx.module,
-                            )
-                    })
-                    .map(|(idx, _)| idx)
-                    .collect();
-
-                Self::Variants {
-                    variants,
-                    non_exhaustive: is_secretly_empty || is_declared_nonexhaustive,
+                    Self::Variants { variants, non_exhaustive: is_declared_nonexhaustive }
                 }
-            }
-            // If `exhaustive_patterns` is disabled and our scrutinee is the never type, we cannot
-            // expose its emptiness. The exception is if the pattern is at the top level, because we
-            // want empty matches to be considered exhaustive.
-            ty::Never if !cx.tcx.features().exhaustive_patterns && !pcx.is_top_level => {
-                Self::Unlistable
             }
             ty::Never => Self::Uninhabited,
             _ if cx.is_uninhabited(pcx.ty) => Self::Uninhabited,
@@ -1017,6 +1002,9 @@ impl ConstructorSet {
         self,
         pcx: &PatCtxt<'_, '_, 'tcx>,
         ctors: impl Iterator<Item = &'a Constructor<'tcx>> + Clone,
+        // Whether the current pattern is the whole pattern as found in a match arm, or if it's a
+        // subpattern.
+        is_top_level: bool,
     ) -> (Vec<Constructor<'tcx>>, Vec<Constructor<'tcx>>)
     where
         'tcx: 'a,
@@ -1129,10 +1117,18 @@ impl ConstructorSet {
                 split.extend(seen);
                 missing.push(NonExhaustive);
             }
+            // If `exhaustive_patterns` is disabled and our scrutinee is an empty type, we cannot
+            // expose its emptiness. The exception is if the pattern is at the top level, because we
+            // want empty matches to be considered exhaustive.
+            ConstructorSet::Uninhabited
+                if !pcx.cx.tcx.features().exhaustive_patterns && !is_top_level =>
+            {
+                missing.push(NonExhaustive);
+            }
             ConstructorSet::Uninhabited => {}
         }
         if !missing.is_empty() {
-            let report_when_all_missing = pcx.is_top_level && !IntRange::is_integral(pcx.ty);
+            let report_when_all_missing = is_top_level && !IntRange::is_integral(pcx.ty);
             if seen_any_non_wildcard || report_when_all_missing {
                 split.push(Missing);
             } else {

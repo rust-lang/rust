@@ -361,9 +361,6 @@ pub(super) struct PatCtxt<'a, 'p, 'tcx> {
     pub(super) ty: Ty<'tcx>,
     /// Span of the current pattern under investigation.
     pub(super) span: Span,
-    /// Whether the current pattern is the whole pattern as found in a match arm, or if it's a
-    /// subpattern.
-    pub(super) is_top_level: bool,
 }
 
 impl<'a, 'p, 'tcx> fmt::Debug for PatCtxt<'a, 'p, 'tcx> {
@@ -787,10 +784,11 @@ fn compute_usefulness<'p, 'tcx>(
 
     let ty = matrix.head_ty();
     debug!("ty: {ty:?}");
-    let pcx = &PatCtxt { cx, ty, span: DUMMY_SP, is_top_level };
+    let pcx = &PatCtxt { cx, ty, span: DUMMY_SP };
 
     let set = ConstructorSet::new(pcx);
-    let (split_ctors, missing_ctors) = set.split(pcx, matrix.heads().map(|p| p.ctor()));
+    let (split_ctors, missing_ctors) =
+        set.split(pcx, matrix.heads().map(|p| p.ctor()), is_top_level);
     // For each constructor, we compute whether there's a value that starts with it that would
     // witness the usefulness of `v`.
     let mut ret = WitnessMatrix::new_empty();
@@ -865,10 +863,10 @@ fn collect_nonexhaustive_missing_variants<'p, 'tcx>(
 
     let ty = column[0].ty();
     let span = column[0].span();
-    let pcx = &PatCtxt { cx, ty, span, is_top_level: false };
+    let pcx = &PatCtxt { cx, ty, span };
 
     let set = ConstructorSet::new(pcx);
-    let (split_ctors, missing_ctors) = set.split(pcx, column.iter().map(|p| p.ctor()));
+    let (split_ctors, missing_ctors) = set.split(pcx, column.iter().map(|p| p.ctor()), false);
 
     if cx.is_foreign_non_exhaustive_enum(ty) {
         witnesses.extend(
