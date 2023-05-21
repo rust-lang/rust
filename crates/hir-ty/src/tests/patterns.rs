@@ -1,6 +1,6 @@
 use expect_test::expect;
 
-use super::{check, check_infer, check_infer_with_mismatches, check_types};
+use super::{check, check_infer, check_infer_with_mismatches, check_no_mismatches, check_types};
 
 #[test]
 fn infer_pattern() {
@@ -237,6 +237,21 @@ fn infer_pattern_match_ergonomics_ref() {
             47..48 'w': i32
             52..53 'v': &(i32, &i32)
         "#]],
+    );
+}
+
+#[test]
+fn ref_pat_with_inference_variable() {
+    check_no_mismatches(
+        r#"
+enum E { A }
+fn test() {
+    let f = |e| match e {
+        &E::A => {}
+    };
+    f(&E::A);
+}
+"#,
     );
 }
 

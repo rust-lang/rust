@@ -313,16 +313,23 @@ impl<'a> InferenceContext<'a> {
 
     fn infer_ref_pat(
         &mut self,
-        pat: PatId,
+        inner_pat: PatId,
         mutability: Mutability,
         expected: &Ty,
         default_bm: BindingMode,
     ) -> Ty {
         let expectation = match expected.as_reference() {
             Some((inner_ty, _lifetime, _exp_mut)) => inner_ty.clone(),
-            _ => self.result.standard_types.unknown.clone(),
+            None => {
+                let inner_ty = self.table.new_type_var();
+                let ref_ty =
+                    TyKind::Ref(mutability, static_lifetime(), inner_ty.clone()).intern(Interner);
+                // Unification failure will be reported by the caller.
+                self.unify(&ref_ty, expected);
+                inner_ty
+            }
         };
-        let subty = self.infer_pat(pat, &expectation, default_bm);
+        let subty = self.infer_pat(inner_pat, &expectation, default_bm);
         TyKind::Ref(mutability, static_lifetime(), subty).intern(Interner)
     }
 
