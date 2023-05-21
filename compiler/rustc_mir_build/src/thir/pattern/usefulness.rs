@@ -364,8 +364,6 @@ pub(super) struct PatCtxt<'a, 'p, 'tcx> {
     /// Whether the current pattern is the whole pattern as found in a match arm, or if it's a
     /// subpattern.
     pub(super) is_top_level: bool,
-    /// Whether the current pattern is from a `non_exhaustive` enum.
-    pub(super) is_non_exhaustive: bool,
 }
 
 impl<'a, 'p, 'tcx> fmt::Debug for PatCtxt<'a, 'p, 'tcx> {
@@ -700,10 +698,10 @@ impl<'p, 'tcx> WitnessMatrix<'p, 'tcx> {
             for witness in self.0.iter_mut() {
                 witness.apply_constructor(pcx, ctor)
             }
-        } else if pcx.is_non_exhaustive {
+        } else if missing_ctors.iter().any(|c| c.is_non_exhaustive()) {
             // Here we don't want the user to try to list all variants, we want them to add a
             // wildcard, so we only suggest that.
-            self.push_wild_ctor(pcx, Constructor::Wildcard);
+            self.push_wild_ctor(pcx, Constructor::NonExhaustive);
         } else {
             // We got the special `Missing` constructor, so each of the missing constructors gives a
             // new pattern that is not caught by the match. We list those patterns and push them
@@ -789,8 +787,7 @@ fn compute_usefulness<'p, 'tcx>(
 
     let ty = matrix.head_ty();
     debug!("ty: {ty:?}");
-    let is_non_exhaustive = cx.is_foreign_non_exhaustive_enum(ty);
-    let pcx = &PatCtxt { cx, ty, span: DUMMY_SP, is_top_level, is_non_exhaustive };
+    let pcx = &PatCtxt { cx, ty, span: DUMMY_SP, is_top_level };
 
     let set = ConstructorSet::new(pcx);
     let (split_ctors, missing_ctors) = set.split(pcx, matrix.heads().map(|p| p.ctor()));
@@ -868,13 +865,12 @@ fn collect_nonexhaustive_missing_variants<'p, 'tcx>(
 
     let ty = column[0].ty();
     let span = column[0].span();
-    let is_non_exhaustive = cx.is_foreign_non_exhaustive_enum(ty);
-    let pcx = &PatCtxt { cx, ty, span, is_top_level: false, is_non_exhaustive };
+    let pcx = &PatCtxt { cx, ty, span, is_top_level: false };
 
     let set = ConstructorSet::new(pcx);
     let (split_ctors, missing_ctors) = set.split(pcx, column.iter().map(|p| p.ctor()));
 
-    if is_non_exhaustive {
+    if cx.is_foreign_non_exhaustive_enum(ty) {
         witnesses.extend(
             missing_ctors
                 .into_iter()
