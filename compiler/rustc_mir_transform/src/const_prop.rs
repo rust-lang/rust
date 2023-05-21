@@ -886,13 +886,7 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
                 }
             }
             StatementKind::StorageLive(local) => {
-                let frame = self.ecx.frame_mut();
-                frame.locals[local].value =
-                    LocalValue::Live(interpret::Operand::Immediate(interpret::Immediate::Uninit));
-            }
-            StatementKind::StorageDead(local) => {
-                let frame = self.ecx.frame_mut();
-                frame.locals[local].value = LocalValue::Dead;
+                Self::remove_const(&mut self.ecx, local);
             }
             _ => {}
         }
