@@ -1564,7 +1564,6 @@ impl Build {
                     self.create_dir(&dst);
                     self.recurse_(&path, &dst, &relative, filter);
                 } else {
-                    let _ = fs::remove_file(&dst);
                     self.copy(&path, &dst);
                 }
             }
