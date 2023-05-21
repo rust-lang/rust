@@ -1041,13 +1041,21 @@ impl ConstructorSet {
             }
             ConstructorSet::Variants { variants, non_exhaustive } => {
                 let seen_set: FxHashSet<_> = seen.iter().map(|c| c.as_variant().unwrap()).collect();
+                let mut skipped_any_missing_variant = false;
                 for variant in variants {
                     let ctor = Variant(variant);
                     if seen_set.contains(&variant) {
                         split.push(ctor);
+                    } else if ctor.is_doc_hidden_variant(pcx) || ctor.is_unstable_variant(pcx) {
+                        // We don't want to mention any variants that are `doc(hidden)` or
+                        // behind an unstable feature gate.
+                        skipped_any_missing_variant = true;
                     } else {
                         missing.push(ctor);
                     }
+                }
+                if skipped_any_missing_variant {
+                    missing.push(Wildcard);
                 }
                 if non_exhaustive {
                     missing.push(NonExhaustive);

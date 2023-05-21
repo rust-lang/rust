@@ -703,25 +703,11 @@ impl<'p, 'tcx> WitnessMatrix<'p, 'tcx> {
             // We got the special `Missing` constructor, so each of the missing constructors gives a
             // new pattern that is not caught by the match. We list those patterns and push them
             // onto our current witnesses.
-
-            // Skip any variants that are `doc(hidden)` or behind an unstable feature gate.
-            // We replace them with a wildcard.
             let old_witnesses = std::mem::replace(self, Self::new_empty());
-            let mut skipped_any_variant = false;
             for missing_ctor in missing_ctors {
-                if missing_ctor.is_doc_hidden_variant(pcx) || missing_ctor.is_unstable_variant(pcx)
-                {
-                    skipped_any_variant = true;
-                } else {
-                    let mut witnesses_with_missing_ctor = old_witnesses.clone();
-                    witnesses_with_missing_ctor.push_wild_ctor(pcx, missing_ctor.clone());
-                    self.extend(witnesses_with_missing_ctor)
-                }
-            }
-            if skipped_any_variant {
-                let mut witnesses_with_wildcard = old_witnesses;
-                witnesses_with_wildcard.push_wild_ctor(pcx, Constructor::Wildcard);
-                self.extend(witnesses_with_wildcard)
+                let mut witnesses_with_missing_ctor = old_witnesses.clone();
+                witnesses_with_missing_ctor.push_wild_ctor(pcx, missing_ctor.clone());
+                self.extend(witnesses_with_missing_ctor)
             }
         }
     }
@@ -872,9 +858,8 @@ fn collect_nonexhaustive_missing_variants<'p, 'tcx>(
         witnesses.extend(
             missing_ctors
                 .into_iter()
-                // Filter out the `NonExhaustive` ctor because we want to list only real variants.
-                // Also remove any unstable feature gated variants.
-                .filter(|c| !(c.is_non_exhaustive() || c.is_unstable_variant(pcx)))
+                // We want to list only real variants.
+                .filter(|c| !(c.is_non_exhaustive() || c.is_wildcard()))
                 .map(|missing_ctor| DeconstructedPat::wild_from_ctor(pcx, missing_ctor)),
         )
     }
