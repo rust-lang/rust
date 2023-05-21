@@ -394,6 +394,8 @@ fn offset_of() {
         z: T
     }
 
+    trait Trait {}
+
     // Ensure that this type of generics works
     fn offs_of_z<T>() -> usize {
         offset_of!(Generic<T>, z)
@@ -401,6 +403,9 @@ fn offset_of() {
 
     assert_eq!(offset_of!(Generic<u8>, z), 8);
     assert_eq!(offs_of_z::<u8>(), 8);
+
+    // Ensure that it works with the implicit lifetime in `Box<dyn Trait + '_>`.
+    assert_eq!(offset_of!(Generic<Box<dyn Trait>>, z), 8);
 }
 
 #[test]
