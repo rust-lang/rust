@@ -1,0 +1,103 @@
+// MIR for `function_from_issue_111583` after built
+
+fn function_from_issue_111583(_1: f64) -> () {
+    debug z => _1;                       // in scope 0 at $DIR/logical_and_in_conditional.rs:+0:31: +0:32
+    let mut _0: ();                      // return place in scope 0 at $DIR/logical_and_in_conditional.rs:+0:39: +0:39
+    let _2: u64;                         // in scope 0 at $DIR/logical_and_in_conditional.rs:+1:9: +1:13
+    let mut _3: u64;                     // in scope 0 at $DIR/logical_and_in_conditional.rs:+1:16: +1:25
+    let mut _5: bool;                    // in scope 0 at $DIR/logical_and_in_conditional.rs:+3:8: +3:38
+    let mut _6: u64;                     // in scope 0 at $DIR/logical_and_in_conditional.rs:+3:8: +3:33
+    let mut _7: u64;                     // in scope 0 at $DIR/logical_and_in_conditional.rs:+3:8: +3:26
+    let mut _8: u64;                     // in scope 0 at $DIR/logical_and_in_conditional.rs:+3:9: +3:20
+    let mut _9: f64;                     // in scope 0 at $DIR/logical_and_in_conditional.rs:+3:9: +3:10
+    let mut _10: u64;                    // in scope 0 at $DIR/logical_and_in_conditional.rs:+3:29: +3:33
+    let mut _11: bool;                   // in scope 0 at $DIR/logical_and_in_conditional.rs:+3:42: +3:60
+    let mut _12: f64;                    // in scope 0 at $DIR/logical_and_in_conditional.rs:+3:42: +3:52
+    let mut _13: f64;                    // in scope 0 at $DIR/logical_and_in_conditional.rs:+3:42: +3:43
+    scope 1 {
+        debug mask => _2;                // in scope 1 at $DIR/logical_and_in_conditional.rs:+1:9: +1:13
+        let mut _4: i32;                 // in scope 1 at $DIR/logical_and_in_conditional.rs:+2:9: +2:16
+        scope 2 {
+            debug ret => _4;             // in scope 2 at $DIR/logical_and_in_conditional.rs:+2:9: +2:16
+        }
+    }
+
+    bb0: {
+        StorageLive(_2);                 // scope 0 at $DIR/logical_and_in_conditional.rs:+1:9: +1:13
+        StorageLive(_3);                 // scope 0 at $DIR/logical_and_in_conditional.rs:+1:16: +1:25
+        _3 = Shl(const 1_u64, const 38_i32); // scope 0 at $DIR/logical_and_in_conditional.rs:+1:16: +1:25
+        _2 = Sub(move _3, const 1_u64);  // scope 0 at $DIR/logical_and_in_conditional.rs:+1:16: +1:29
+        StorageDead(_3);                 // scope 0 at $DIR/logical_and_in_conditional.rs:+1:28: +1:29
+        FakeRead(ForLet(None), _2);      // scope 0 at $DIR/logical_and_in_conditional.rs:+1:9: +1:13
+        StorageLive(_4);                 // scope 1 at $DIR/logical_and_in_conditional.rs:+2:9: +2:16
+        _4 = const 0_i32;                // scope 1 at $DIR/logical_and_in_conditional.rs:+2:19: +2:20
+        FakeRead(ForLet(None), _4);      // scope 1 at $DIR/logical_and_in_conditional.rs:+2:9: +2:16
+        StorageLive(_5);                 // scope 2 at $DIR/logical_and_in_conditional.rs:+3:8: +3:38
+        StorageLive(_6);                 // scope 2 at $DIR/logical_and_in_conditional.rs:+3:8: +3:33
+        StorageLive(_7);                 // scope 2 at $DIR/logical_and_in_conditional.rs:+3:8: +3:26
+        StorageLive(_8);                 // scope 2 at $DIR/logical_and_in_conditional.rs:+3:9: +3:20
+        StorageLive(_9);                 // scope 2 at $DIR/logical_and_in_conditional.rs:+3:9: +3:10
+        _9 = _1;                         // scope 2 at $DIR/logical_and_in_conditional.rs:+3:9: +3:10
+        _8 = core::f64::<impl f64>::to_bits(move _9) -> [return: bb1, unwind: bb8]; // scope 2 at $DIR/logical_and_in_conditional.rs:+3:9: +3:20
+                                         // mir::Constant
+                                         // + span: $DIR/logical_and_in_conditional.rs:19:11: 19:18
+                                         // + literal: Const { ty: fn(f64) -> u64 {core::f64::<impl f64>::to_bits}, val: Value(<ZST>) }
+    }
+
+    bb1: {
+        StorageDead(_9);                 // scope 2 at $DIR/logical_and_in_conditional.rs:+3:19: +3:20
+        _7 = Shr(move _8, const 8_i32);  // scope 2 at $DIR/logical_and_in_conditional.rs:+3:8: +3:26
+        StorageDead(_8);                 // scope 2 at $DIR/logical_and_in_conditional.rs:+3:25: +3:26
+        StorageLive(_10);                // scope 2 at $DIR/logical_and_in_conditional.rs:+3:29: +3:33
+        _10 = _2;                        // scope 2 at $DIR/logical_and_in_conditional.rs:+3:29: +3:33
+        _6 = BitAnd(move _7, move _10);  // scope 2 at $DIR/logical_and_in_conditional.rs:+3:8: +3:33
+        StorageDead(_10);                // scope 2 at $DIR/logical_and_in_conditional.rs:+3:32: +3:33
+        StorageDead(_7);                 // scope 2 at $DIR/logical_and_in_conditional.rs:+3:32: +3:33
+        _5 = Eq(move _6, const 0_u64);   // scope 2 at $DIR/logical_and_in_conditional.rs:+3:8: +3:38
+        StorageDead(_6);                 // scope 2 at $DIR/logical_and_in_conditional.rs:+3:37: +3:38
+        switchInt(move _5) -> [0: bb3, otherwise: bb2]; // scope 2 at $DIR/logical_and_in_conditional.rs:+3:8: +3:38
+    }
+
+    bb2: {
+        StorageLive(_11);                // scope 2 at $DIR/logical_and_in_conditional.rs:+3:42: +3:60
+        StorageLive(_12);                // scope 2 at $DIR/logical_and_in_conditional.rs:+3:42: +3:52
+        StorageLive(_13);                // scope 2 at $DIR/logical_and_in_conditional.rs:+3:42: +3:43
+        _13 = _1;                        // scope 2 at $DIR/logical_and_in_conditional.rs:+3:42: +3:43
+        _12 = Rem(move _13, const 0.0625f64); // scope 2 at $DIR/logical_and_in_conditional.rs:+3:42: +3:52
+        StorageDead(_13);                // scope 2 at $DIR/logical_and_in_conditional.rs:+3:51: +3:52
+        _11 = Lt(move _12, const 1.0E-13f64); // scope 2 at $DIR/logical_and_in_conditional.rs:+3:42: +3:60
+        StorageDead(_12);                // scope 2 at $DIR/logical_and_in_conditional.rs:+3:59: +3:60
+        switchInt(move _11) -> [0: bb5, otherwise: bb4]; // scope 2 at $DIR/logical_and_in_conditional.rs:+3:42: +3:60
+    }
+
+    bb3: {
+        goto -> bb6;                     // scope 2 at $DIR/logical_and_in_conditional.rs:+3:8: +3:38
+    }
+
+    bb4: {
+        _4 = Add(_4, const 1_i32);       // scope 2 at $DIR/logical_and_in_conditional.rs:+4:9: +4:17
+        _0 = const ();                   // scope 2 at $DIR/logical_and_in_conditional.rs:+3:61: +5:6
+        goto -> bb7;                     // scope 2 at $DIR/logical_and_in_conditional.rs:+3:5: +5:6
+    }
+
+    bb5: {
+        goto -> bb6;                     // scope 2 at $DIR/logical_and_in_conditional.rs:+3:42: +3:60
+    }
+
+    bb6: {
+        _0 = const ();                   // scope 2 at $DIR/logical_and_in_conditional.rs:+5:6: +5:6
+        goto -> bb7;                     // scope 2 at $DIR/logical_and_in_conditional.rs:+3:5: +5:6
+    }
+
+    bb7: {
+        StorageDead(_11);                // scope 2 at $DIR/logical_and_in_conditional.rs:+5:5: +5:6
+        StorageDead(_5);                 // scope 2 at $DIR/logical_and_in_conditional.rs:+5:5: +5:6
+        StorageDead(_4);                 // scope 1 at $DIR/logical_and_in_conditional.rs:+6:1: +6:2
+        StorageDead(_2);                 // scope 0 at $DIR/logical_and_in_conditional.rs:+6:1: +6:2
+        return;                          // scope 0 at $DIR/logical_and_in_conditional.rs:+6:2: +6:2
+    }
+
+    bb8 (cleanup): {
+        resume;                          // scope 0 at $DIR/logical_and_in_conditional.rs:+0:1: +6:2
+    }
+}
