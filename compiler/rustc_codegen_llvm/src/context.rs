@@ -536,6 +536,10 @@ impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let name = if wants_msvc_seh(self.sess()) {
             Some("__CxxFrameHandler3")
         } else if wants_wasm_eh(self.sess()) {
+            // LLVM specifically tests for the name of the personality function
+            // There is no need for this function to exist anywhere, it will
+            // not be called. However, its name has to be "__gxx_wasm_personality_v0"
+            // for native wasm exceptions.
             Some("__gxx_wasm_personality_v0")
         } else {
             None
