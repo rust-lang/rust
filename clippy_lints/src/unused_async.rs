@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_then};
+use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_hir::intravisit::{walk_body, walk_expr, walk_fn, FnKind, Visitor};
 use rustc_hir::{Body, Expr, ExprKind, FnDecl, YieldSource};
 use rustc_lint::{LateContext, LateLintPass};
@@ -112,14 +112,6 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
                             diag.note("`await` used in an async block, which does not require the enclosing function to be `async`");
                         }
                     },
-                );
-                span_lint_and_help(
-                    cx,
-                    UNUSED_ASYNC,
-                    span,
-                    "unused `async` for function with no await statements",
-                    None,
-                    "consider removing the `async` from this function",
                 );
             }
         }
