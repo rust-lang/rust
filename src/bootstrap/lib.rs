@@ -1538,7 +1538,7 @@ impl Build {
         if self.config.dry_run() {
             return;
         }
-        self.recurse_(src, dst, Path::new(""), &|_| true, false)
+        self.recurse_(src, dst, Path::new(""), &|_| true)
     }
 
     /// Copies the `src` directory recursively to `dst`. Both are assumed to exist
@@ -1546,20 +1546,13 @@ impl Build {
     /// by returning `false` from the filter function.
     pub fn cp_filtered(&self, src: &Path, dst: &Path, filter: &dyn Fn(&Path) -> bool) {
         // Immediately recurse with an empty relative path
-        self.recurse_(src, dst, Path::new(""), filter, true)
+        self.recurse_(src, dst, Path::new(""), filter)
     }
 
     // Inner function does the actual work
     //
     // FIXME: consider merging cp_filtered and cp_r into one function
-    fn recurse_(
-        &self,
-        src: &Path,
-        dst: &Path,
-        relative: &Path,
-        filter: &dyn Fn(&Path) -> bool,
-        remove_dst_dir: bool,
-    ) {
+    fn recurse_(&self, src: &Path, dst: &Path, relative: &Path, filter: &dyn Fn(&Path) -> bool) {
         for f in self.read_dir(src) {
             let path = f.path();
             let name = path.file_name().unwrap();
@@ -1568,11 +1561,8 @@ impl Build {
             // Only copy file or directory if the filter function returns true
             if filter(&relative) {
                 if t!(f.file_type()).is_dir() {
-                    if remove_dst_dir {
-                        let _ = fs::remove_dir_all(&dst);
-                    }
                     self.create_dir(&dst);
-                    self.recurse_(&path, &dst, &relative, filter, remove_dst_dir);
+                    self.recurse_(&path, &dst, &relative, filter);
                 } else {
                     let _ = fs::remove_file(&dst);
                     self.copy(&path, &dst);
