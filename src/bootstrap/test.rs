@@ -620,6 +620,8 @@ impl Step for Miri {
             cargo.env("MIRIFLAGS", "-O -Zmir-opt-level=4 -Cdebug-assertions=yes");
             // Optimizations can change backtraces
             cargo.env("MIRI_SKIP_UI_CHECKS", "1");
+            // `MIRI_SKIP_UI_CHECKS` and `MIRI_BLESS` are incompatible
+            cargo.env_remove("MIRI_BLESS");
             // Optimizations can change error locations and remove UB so don't run `fail` tests.
             cargo.args(&["tests/pass", "tests/panic"]);
 
