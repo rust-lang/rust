@@ -559,10 +559,13 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             // inst combine is after MatchBranchSimplification to clean up Ne(_1, false)
             &multiple_return_terminators::MultipleReturnTerminators,
             &instsimplify::InstSimplify,
-            &separate_const_switch::SeparateConstSwitch,
             &simplify::SimplifyLocals::BeforeConstProp,
             &copy_prop::CopyProp,
             &ref_prop::ReferencePropagation,
+            // Perform `SeparateConstSwitch` after SSA-based analyses, as cloning blocks may
+            // destroy the SSA property. It should still happen before const-propagation, so the
+            // latter pass will leverage the created opportunities.
+            &separate_const_switch::SeparateConstSwitch,
             &const_prop::ConstProp,
             &dataflow_const_prop::DataflowConstProp,
             //
