@@ -1,0 +1,66 @@
+- // MIR for `aggregates` before GVN
++ // MIR for `aggregates` after GVN
+  
+  fn aggregates() -> () {
+      let mut _0: ();
+      let _1: S<[u8; 0]>;
+      let mut _2: [u8; 0];
+      let mut _4: [u16; 0];
+      let mut _6: ();
+      let mut _8: ();
+      scope 1 {
+          debug a_array => _1;
+          let _3: S<[u16; 0]>;
+          scope 2 {
+              debug b_array => _3;
+              let _5: S<()>;
+              scope 3 {
+                  debug a_tuple => _5;
+                  let _7: S<()>;
+                  scope 4 {
+                      debug b_tuple => _7;
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+-         _2 = [];
+-         _1 = S::<[u8; 0]>(move _2);
++         _2 = const [];
++         _1 = const S::<[u8; 0]>([]);
+          StorageDead(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+-         _4 = [];
+-         _3 = S::<[u16; 0]>(move _4);
++         _4 = const [];
++         _3 = const S::<[u16; 0]>([]);
+          StorageDead(_4);
+          StorageLive(_5);
+-         StorageLive(_6);
+-         _6 = ();
+-         _5 = S::<()>(move _6);
+-         StorageDead(_6);
++         nop;
++         _6 = const ();
++         _5 = const S::<()>(());
++         nop;
+          StorageLive(_7);
+          StorageLive(_8);
+-         _8 = ();
+-         _7 = S::<()>(move _8);
++         _8 = const ();
++         _7 = const S::<()>(());
+          StorageDead(_8);
+          _0 = const ();
+          StorageDead(_7);
+          StorageDead(_5);
+          StorageDead(_3);
+          StorageDead(_1);
+          return;
+      }
+  }
+  

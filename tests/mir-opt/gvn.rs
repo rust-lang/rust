@@ -231,6 +231,14 @@ fn slices() {
     assert_eq!(s.as_ptr(), u.as_ptr());
 }
 
+fn aggregates() {
+    let a_array: S<[u8; 0]> = S([]);
+    let b_array: S<[u16; 0]> = S([]); // This must not be merged with `a_array`.
+
+    let a_tuple: S<()> = S(());
+    let b_tuple: S<()> = S(()); // But this can be with `a_tuple`.
+}
+
 fn main() {
     subexpression_elimination(2, 4, 5);
     wrap_unwrap(5);
@@ -243,6 +251,7 @@ fn main() {
     references(5);
     dereferences(&mut 5, &6, &S(7));
     slices();
+    aggregates();
 }
 
 #[inline(never)]
@@ -259,3 +268,4 @@ fn opaque(_: impl Sized) {}
 // EMIT_MIR gvn.references.GVN.diff
 // EMIT_MIR gvn.dereferences.GVN.diff
 // EMIT_MIR gvn.slices.GVN.diff
+// EMIT_MIR gvn.aggregates.GVN.diff

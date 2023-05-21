@@ -682,33 +682,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 Value::Repeat(op, amount)
             }
             Rvalue::NullaryOp(op, ty) => Value::NullaryOp(op, ty),
-            Rvalue::Aggregate(box ref kind, ref mut fields) => {
-                let (ty, variant_index) = match *kind {
-                    // For empty arrays, we have not mean to recover the type. They are ZSTs
-                    // anyway, so return them as such.
-                    AggregateKind::Array(..) | AggregateKind::Tuple if fields.is_empty() => {
-                        return Some(self.insert(Value::Constant(Const::zero_sized(
-                            rvalue.ty(self.local_decls, self.tcx),
-                        ))));
-                    }
-                    AggregateKind::Array(..) => (AggregateTy::Array, FIRST_VARIANT),
-                    AggregateKind::Tuple => (AggregateTy::Tuple, FIRST_VARIANT),
-                    AggregateKind::Closure(did, substs)
-                    | AggregateKind::Coroutine(did, substs, _) => {
-                        (AggregateTy::Def(did, substs), FIRST_VARIANT)
-                    }
-                    AggregateKind::Adt(did, variant_index, substs, _, None) => {
-                        (AggregateTy::Def(did, substs), variant_index)
-                    }
-                    // Do not track unions.
-                    AggregateKind::Adt(_, _, _, _, Some(_)) => return None,
-                };
-                let fields: Option<Vec<_>> = fields
-                    .iter_mut()
-                    .map(|op| self.simplify_operand(op, location).or_else(|| self.new_opaque()))
-                    .collect();
-                Value::Aggregate(ty, variant_index, fields?)
-            }
+            Rvalue::Aggregate(..) => self.simplify_aggregate(rvalue, location)?,
             Rvalue::Ref(_, borrow_kind, ref mut place) => {
                 self.simplify_place_projection(place, location);
                 return self.new_pointer(*place, AddressKind::Ref(borrow_kind));
@@ -768,6 +742,61 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         }
 
         None
+    }
+
+    fn simplify_aggregate(
+        &mut self,
+        rvalue: &mut Rvalue<'tcx>,
+        location: Location,
+    ) -> Option<Value<'tcx>> {
+        let Rvalue::Aggregate(box ref kind, ref mut fields) = *rvalue else { bug!() };
+
+        let tcx = self.tcx;
+        if fields.is_empty() {
+            let is_zst = match *kind {
+                AggregateKind::Array(..) | AggregateKind::Tuple | AggregateKind::Closure(..) => {
+                    true
+                }
+                // Only enums can be non-ZST.
+                AggregateKind::Adt(did, ..) => tcx.def_kind(did) != DefKind::Enum,
+                // Coroutines are never ZST, as they at least contain the implicit states.
+                AggregateKind::Coroutine(..) => false,
+            };
+
+            if is_zst {
+                let ty = rvalue.ty(self.local_decls, tcx);
+                let value = Value::Constant(Const::zero_sized(ty));
+                return Some(value);
+            }
+        }
+
+        let (ty, variant_index) = match *kind {
+            AggregateKind::Array(..) => {
+                assert!(!fields.is_empty());
+                (AggregateTy::Array, FIRST_VARIANT)
+            }
+            AggregateKind::Tuple => {
+                assert!(!fields.is_empty());
+                (AggregateTy::Tuple, FIRST_VARIANT)
+            }
+            AggregateKind::Closure(did, substs) | AggregateKind::Coroutine(did, substs, _) => {
+                (AggregateTy::Def(did, substs), FIRST_VARIANT)
+            }
+            AggregateKind::Adt(did, variant_index, substs, _, None) => {
+                (AggregateTy::Def(did, substs), variant_index)
+            }
+            // Do not track unions.
+            AggregateKind::Adt(_, _, _, _, Some(_)) => return None,
+        };
+
+        let fields: Option<Vec<_>> = fields
+            .iter_mut()
+            .map(|op| self.simplify_operand(op, location).or_else(|| self.new_opaque()))
+            .collect();
+        let fields = fields?;
+
+        let value = Value::Aggregate(ty, variant_index, fields);
+        Some(value)
     }
 }
 
