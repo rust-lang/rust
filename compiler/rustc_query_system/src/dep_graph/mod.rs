@@ -137,6 +137,13 @@ impl FingerprintStyle {
     }
 }
 
+#[derive(Copy, Clone, Hash)]
+pub enum CurrentDepNode<K> {
+    Regular(DepNode<K>),
+    Anonymous,
+    Untracked,
+}
+
 /// Describe the different families of dependency nodes.
 pub trait DepKind: Copy + fmt::Debug + Eq + Hash + Send + Encodable<FileEncoder> + 'static {
     /// DepKind to use when incr. comp. is turned off.
@@ -149,7 +156,7 @@ pub trait DepKind: Copy + fmt::Debug + Eq + Hash + Send + Encodable<FileEncoder>
     fn debug_node(node: &DepNode<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result;
 
     /// Execute the operation with provided dependencies.
-    fn with_deps<OP, R>(deps: TaskDepsRef<'_, Self>, op: OP) -> R
+    fn with_deps<OP, R>(node: CurrentDepNode<Self>, deps: TaskDepsRef<'_, Self>, op: OP) -> R
     where
         OP: FnOnce() -> R;
 

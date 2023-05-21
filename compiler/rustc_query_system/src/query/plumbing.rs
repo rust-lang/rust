@@ -2,8 +2,8 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
+use crate::dep_graph::{CurrentDepNode, DepGraphData, HasDepContext, TaskDepsRef};
 use crate::dep_graph::{DepContext, DepKind, DepNode, DepNodeIndex, DepNodeParams};
-use crate::dep_graph::{DepGraphData, HasDepContext};
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
 #[cfg(parallel_compiler)]
@@ -629,8 +629,12 @@ where
     // recompute.
     let prof_timer = qcx.dep_context().profiler().query_provider();
 
-    // The dep-graph for this computation is already in-place.
-    let result = qcx.dep_context().dep_graph().with_ignore(|| query.compute(qcx, *key));
+    // The dep-graph for this computation is already in-place, but any side effect due to this
+    // query needs to know our DepNode.
+    let result =
+        Qcx::DepKind::with_deps(CurrentDepNode::Regular(*dep_node), TaskDepsRef::Ignore, || {
+            query.compute(qcx, *key)
+        });
 
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 

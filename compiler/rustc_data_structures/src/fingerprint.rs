@@ -196,6 +196,10 @@ impl<D: Decoder> Decodable<D> for Fingerprint {
 #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Clone, Copy, Hash)]
 pub struct PackedFingerprint(Fingerprint);
 
+impl PackedFingerprint {
+    pub const ZERO: PackedFingerprint = PackedFingerprint(Fingerprint::ZERO);
+}
+
 impl std::fmt::Display for PackedFingerprint {
     #[inline]
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

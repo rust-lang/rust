@@ -58,6 +58,8 @@ pub struct DepNode<K> {
 }
 
 impl<K: DepKind> DepNode<K> {
+    pub const NULL: DepNode<K> = DepNode { kind: K::NULL, hash: PackedFingerprint::ZERO };
+
     /// Creates a new, parameterless DepNode. This method will assert
     /// that the DepNode corresponding to the given DepKind actually
     /// does not require any parameters.

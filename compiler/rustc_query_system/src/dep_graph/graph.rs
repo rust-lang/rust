@@ -18,7 +18,7 @@ use std::sync::atomic::Ordering::Relaxed;
 
 use super::query::DepGraphQuery;
 use super::serialized::{GraphEncoder, SerializedDepGraph, SerializedDepNodeIndex};
-use super::{DepContext, DepKind, DepNode, HasDepContext, WorkProductId};
+use super::{CurrentDepNode, DepContext, DepKind, DepNode, HasDepContext, WorkProductId};
 use crate::ich::StableHashingContext;
 use crate::query::{QueryContext, QuerySideEffects};
 
@@ -218,7 +218,7 @@ impl<K: DepKind> DepGraph<K> {
     where
         OP: FnOnce() -> R,
     {
-        K::with_deps(TaskDepsRef::Ignore, op)
+        K::with_deps(CurrentDepNode::Untracked, TaskDepsRef::Ignore, op)
     }
 
     /// Used to wrap the deserialization of a query result from disk,
@@ -271,7 +271,7 @@ impl<K: DepKind> DepGraph<K> {
     where
         OP: FnOnce() -> R,
     {
-        K::with_deps(TaskDepsRef::Forbid, op)
+        K::with_deps(CurrentDepNode::Untracked, TaskDepsRef::Forbid, op)
     }
 
     #[inline(always)]
@@ -354,7 +354,8 @@ impl<K: DepKind> DepGraphData<K> {
                  - dep-node: {key:?}"
         );
 
-        let with_deps = |task_deps| K::with_deps(task_deps, || task(cx, arg));
+        let with_deps =
+            |task_deps| K::with_deps(CurrentDepNode::Regular(key), task_deps, || task(cx, arg));
         let (result, edges) = if cx.dep_context().is_eval_always(key.kind) {
             (with_deps(TaskDepsRef::EvalAlways), smallvec![])
         } else {
@@ -414,7 +415,7 @@ impl<K: DepKind> DepGraphData<K> {
         debug_assert!(!cx.is_eval_always(dep_kind));
 
         let task_deps = Lock::new(TaskDeps::default());
-        let result = K::with_deps(TaskDepsRef::Allow(&task_deps), op);
+        let result = K::with_deps(CurrentDepNode::Anonymous, TaskDepsRef::Allow(&task_deps), op);
         let task_deps = task_deps.into_inner();
         let task_deps = task_deps.reads;
 
