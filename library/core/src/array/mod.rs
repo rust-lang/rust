@@ -631,10 +631,6 @@ impl<T, const N: usize> [T; N] {
     /// the index `M` itself) and the second will contain all
     /// indices from `[M, N)` (excluding the index `N` itself).
     ///
-    /// # Panics
-    ///
-    /// Panics if `M > N`.
-    ///
     /// # Examples
     ///
     /// ```
@@ -667,6 +663,8 @@ impl<T, const N: usize> [T; N] {
     )]
     #[inline]
     pub fn split_array_ref<const M: usize>(&self) -> (&[T; M], &[T]) {
+        // FIXME: remove once constraint is encoded in return type
+        const { assert!(M <= N) }
         (&self[..]).split_array_ref::<M>().unwrap()
     }
 
@@ -675,10 +673,6 @@ impl<T, const N: usize> [T; N] {
     /// The first will contain all indices from `[0, M)` (excluding
     /// the index `M` itself) and the second will contain all
     /// indices from `[M, N)` (excluding the index `N` itself).
-    ///
-    /// # Panics
-    ///
-    /// Panics if `M > N`.
     ///
     /// # Examples
     ///
@@ -700,6 +694,8 @@ impl<T, const N: usize> [T; N] {
     )]
     #[inline]
     pub fn split_array_mut<const M: usize>(&mut self) -> (&mut [T; M], &mut [T]) {
+        // FIXME: remove once constraint is encoded in return type
+        const { assert!(M <= N) }
         (&mut self[..]).split_array_mut::<M>().unwrap()
     }
 
@@ -708,10 +704,6 @@ impl<T, const N: usize> [T; N] {
     /// The first will contain all indices from `[0, N - M)` (excluding
     /// the index `N - M` itself) and the second will contain all
     /// indices from `[N - M, N)` (excluding the index `N` itself).
-    ///
-    /// # Panics
-    ///
-    /// Panics if `M > N`.
     ///
     /// # Examples
     ///
@@ -745,6 +737,8 @@ impl<T, const N: usize> [T; N] {
     )]
     #[inline]
     pub fn rsplit_array_ref<const M: usize>(&self) -> (&[T], &[T; M]) {
+        // FIXME: remove once constraint is encoded in return type
+        const { assert!(M <= N) }
         (&self[..]).rsplit_array_ref::<M>().unwrap()
     }
 
@@ -753,10 +747,6 @@ impl<T, const N: usize> [T; N] {
     /// The first will contain all indices from `[0, N - M)` (excluding
     /// the index `N - M` itself) and the second will contain all
     /// indices from `[N - M, N)` (excluding the index `N` itself).
-    ///
-    /// # Panics
-    ///
-    /// Panics if `M > N`.
     ///
     /// # Examples
     ///
@@ -778,6 +768,8 @@ impl<T, const N: usize> [T; N] {
     )]
     #[inline]
     pub fn rsplit_array_mut<const M: usize>(&mut self) -> (&mut [T], &mut [T; M]) {
+        // FIXME: remove once constraint is encoded in return type
+        const { assert!(M <= N) }
         (&mut self[..]).rsplit_array_mut::<M>().unwrap()
     }
 }
