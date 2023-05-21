@@ -437,21 +437,7 @@ mod mut_ptr;
 ///
 /// # Safety
 ///
-/// Immediately upon executing, `drop_in_place` takes out a mutable borrow on the
-/// pointed-to-value. Effectively, this function is implemented like so:
-///
-/// ```
-/// # struct Foo { x: i32 }
-/// unsafe fn drop_in_place(to_drop: *mut Foo) {
-///     drop_in_place_inner(&mut *to_drop);
-///     unsafe fn drop_in_place_inner(to_drop: &mut Foo) {
-///         // ... drop the fields of `value` ...
-///     }
-/// }
-/// ```
-///
-/// This implies that the behavior is undefined if any of the following
-/// conditions are violated:
+/// Behavior is undefined if any of the following conditions are violated:
 ///
 /// * `to_drop` must be [valid] for both reads and writes.
 ///
