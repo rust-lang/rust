@@ -30,7 +30,7 @@ use crate::with_session_globals;
 use crate::{HashStableContext, Span, DUMMY_SP};
 
 use crate::def_id::{CrateNum, DefId, StableCrateId, CRATE_DEF_ID, LOCAL_CRATE};
-use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::HashingControls;
 use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
@@ -195,16 +195,19 @@ impl LocalExpnId {
     #[instrument(level = "trace", skip(ctx), ret)]
     pub fn create_untracked_expansion(
         mut expn_data: ExpnData,
+        dep_node: FakeDepNode,
         ctx: impl HashStableContext,
     ) -> LocalExpnId {
         debug_assert_eq!(expn_data.parent.krate, LOCAL_CRATE);
-        let expn_hash = update_disambiguator(&mut expn_data, ctx);
+        let expn_hash = update_disambiguator(&mut expn_data, dep_node, ctx);
         HygieneData::with(|data| {
             let expn_id = data.local_expn_data.push(Some(expn_data));
             let _eid = data.local_expn_hashes.push(expn_hash);
             debug_assert_eq!(expn_id, _eid);
             let _old_id = data.expn_hash_to_expn_id.insert(expn_hash, expn_id.to_expn_id());
-            debug_assert!(_old_id.is_none());
+            if !_old_id.is_none() {
+                panic!("Hash collision while creating expansion. Cannot continue.");
+            }
             expn_id
         })
     }
@@ -212,9 +215,14 @@ impl LocalExpnId {
     /// Implementation detail of `TyCtxt::finalize_expansion`.
     #[inline]
     #[instrument(level = "trace", skip(ctx))]
-    pub fn set_untracked_expn_data(self, mut expn_data: ExpnData, ctx: impl HashStableContext) {
+    pub fn set_untracked_expn_data(
+        self,
+        mut expn_data: ExpnData,
+        dep_node: FakeDepNode,
+        ctx: impl HashStableContext,
+    ) {
         debug_assert_eq!(expn_data.parent.krate, LOCAL_CRATE);
-        let expn_hash = update_disambiguator(&mut expn_data, ctx);
+        let expn_hash = update_disambiguator(&mut expn_data, dep_node, ctx);
         HygieneData::with(|data| {
             let old_expn_data = &mut data.local_expn_data[self];
             assert!(old_expn_data.is_none(), "expansion data is reset for an expansion ID");
@@ -222,7 +230,9 @@ impl LocalExpnId {
             debug_assert_eq!(data.local_expn_hashes[self].0, Fingerprint::ZERO);
             data.local_expn_hashes[self] = expn_hash;
             let _old_id = data.expn_hash_to_expn_id.insert(expn_hash, self.to_expn_id());
-            debug_assert!(_old_id.is_none());
+            if !_old_id.is_none() {
+                panic!("Hash collision while creating expansion. Cannot continue.");
+            }
         });
     }
 
@@ -339,6 +349,14 @@ impl ExpnId {
     }
 }
 
+/// This struct is meant to be a surrogate for the actual `DepNode` in rustc_middle.
+/// Both types should be kept in sync.
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
+pub struct FakeDepNode {
+    pub kind: u16,
+    pub hash: PackedFingerprint,
+}
+
 #[derive(Debug)]
 pub struct HygieneData {
     /// Each expansion should have an associated expansion data, but sometimes there's a delay
@@ -358,7 +376,7 @@ pub struct HygieneData {
     /// would have collisions without a disambiguator.
     /// The keys of this map are always computed with `ExpnData.disambiguator`
     /// set to 0.
-    expn_data_disambiguators: FxHashMap<Hash64, u32>,
+    expn_data_disambiguators: FxHashMap<FakeDepNode, FxHashMap<Hash64, u32>>,
 }
 
 impl HygieneData {
@@ -1031,9 +1049,10 @@ impl ExpnData {
     }
 
     #[inline]
-    fn hash_expn(&self, ctx: &mut impl HashStableContext) -> Hash64 {
+    fn hash_expn(&self, dep_node: FakeDepNode, ctx: &mut impl HashStableContext) -> Hash64 {
         let mut hasher = StableHasher::new();
         self.hash_stable(ctx, &mut hasher);
+        dep_node.hash(&mut hasher);
         hasher.finish()
     }
 }
@@ -1248,7 +1267,9 @@ pub fn register_local_expn_id(data: ExpnData, hash: ExpnHash) -> ExpnId {
         let expn_id = expn_id.to_expn_id();
 
         let _old_id = hygiene_data.expn_hash_to_expn_id.insert(hash, expn_id);
-        debug_assert!(_old_id.is_none());
+        if !_old_id.is_none() {
+            panic!("Hash collision while creating expansion. Cannot continue.");
+        }
         expn_id
     })
 }
@@ -1268,7 +1289,9 @@ pub fn register_expn_id(
         let _old_hash = hygiene_data.foreign_expn_hashes.insert(expn_id, hash);
         debug_assert!(_old_hash.is_none());
         let _old_id = hygiene_data.expn_hash_to_expn_id.insert(hash, expn_id);
-        debug_assert!(_old_id.is_none());
+        if !_old_id.is_none() {
+            panic!("Hash collision while creating expansion. Cannot continue.");
+        }
     });
     expn_id
 }
@@ -1452,16 +1475,27 @@ impl<D: Decoder> Decodable<D> for SyntaxContext {
 /// `set_expn_data`). It is *not* called for foreign `ExpnId`s deserialized
 /// from another crate's metadata - since `ExpnHash` includes the stable crate id,
 /// collisions are only possible between `ExpnId`s within the same crate.
-fn update_disambiguator(expn_data: &mut ExpnData, mut ctx: impl HashStableContext) -> ExpnHash {
+#[instrument(level = "trace", skip(ctx), ret)]
+fn update_disambiguator(
+    expn_data: &mut ExpnData,
+    dep_node: FakeDepNode,
+    mut ctx: impl HashStableContext,
+) -> ExpnHash {
     // This disambiguator should not have been set yet.
     assert_eq!(expn_data.disambiguator, 0, "Already set disambiguator for ExpnData: {expn_data:?}");
     assert_default_hashing_controls(&ctx, "ExpnData (disambiguator)");
-    let mut expn_hash = expn_data.hash_expn(&mut ctx);
+    let mut expn_hash = expn_data.hash_expn(dep_node, &mut ctx);
+    debug!(?expn_hash);
 
     let disambiguator = HygieneData::with(|data| {
         // If this is the first ExpnData with a given hash, then keep our
         // disambiguator at 0 (the default u32 value)
-        let disambig = data.expn_data_disambiguators.entry(expn_hash).or_default();
+        let disambig = data
+            .expn_data_disambiguators
+            .entry(dep_node)
+            .or_default()
+            .entry(expn_hash)
+            .or_default();
         let disambiguator = *disambig;
         *disambig += 1;
         disambiguator
@@ -1471,13 +1505,13 @@ fn update_disambiguator(expn_data: &mut ExpnData, mut ctx: impl HashStableContex
         debug!("Set disambiguator for expn_data={:?} expn_hash={:?}", expn_data, expn_hash);
 
         expn_data.disambiguator = disambiguator;
-        expn_hash = expn_data.hash_expn(&mut ctx);
+        expn_hash = expn_data.hash_expn(dep_node, &mut ctx);
 
         // Verify that the new disambiguator makes the hash unique
         #[cfg(debug_assertions)]
         HygieneData::with(|data| {
             assert_eq!(
-                data.expn_data_disambiguators.get(&expn_hash),
+                data.expn_data_disambiguators[&dep_node].get(&expn_hash),
                 None,
                 "Hash collision after disambiguator update!",
             );

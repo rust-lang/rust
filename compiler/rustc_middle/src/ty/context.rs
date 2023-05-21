@@ -5,7 +5,7 @@
 pub mod tls;
 
 use crate::arena::Arena;
-use crate::dep_graph::{DepGraph, DepKindStruct};
+use crate::dep_graph::{CurrentDepNode, DepGraph, DepKindStruct, DepNode};
 use crate::infer::canonical::CanonicalVarInfo;
 use crate::lint::struct_lint_level;
 use crate::metadata::ModChild;
@@ -902,11 +902,25 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
+const ENSURE_FAKE_DEP_NODE_SYNC: () = if std::mem::size_of::<rustc_span::hygiene::FakeDepNode>()
+    != std::mem::size_of::<DepNode>()
+{
+    panic!(
+        "rustc_span::hygiene::FakeDepNode has come out of sync with DepNode and should be updated."
+    )
+};
+
 impl<'tcx> TyCtxt<'tcx> {
     #[instrument(level = "trace", skip(self), ret)]
     pub fn create_expansion(self, expn_data: ExpnData) -> LocalExpnId {
+        let current_node = tls::with_related_context(self, |icx| icx.current_node);
+        let CurrentDepNode::Regular(DepNode { kind, hash }) = current_node else {
+            bug!("creating an expansion outside of a query")
+        };
+        let _ = ENSURE_FAKE_DEP_NODE_SYNC;
+        let fake_dep_node = rustc_span::hygiene::FakeDepNode { kind: kind as _, hash };
         self.with_stable_hashing_context(|ctx| {
-            LocalExpnId::create_untracked_expansion(expn_data, ctx)
+            LocalExpnId::create_untracked_expansion(expn_data, fake_dep_node, ctx)
         })
     }
 
@@ -914,7 +928,15 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     #[instrument(level = "trace", skip(self))]
     pub fn finalize_expansion(self, expn_id: LocalExpnId, expn_data: ExpnData) {
-        self.with_stable_hashing_context(|ctx| expn_id.set_untracked_expn_data(expn_data, ctx));
+        let current_node = tls::with_related_context(self, |icx| icx.current_node);
+        let CurrentDepNode::Regular(DepNode { kind, hash }) = current_node else {
+            bug!("creating an expansion outside of a query")
+        };
+        let _ = ENSURE_FAKE_DEP_NODE_SYNC;
+        let fake_dep_node = rustc_span::hygiene::FakeDepNode { kind: kind as _, hash };
+        self.with_stable_hashing_context(|ctx| {
+            expn_id.set_untracked_expn_data(expn_data, fake_dep_node, ctx)
+        });
     }
 
     /// Reuses the span but adds information like the kind of the desugaring and features that are
