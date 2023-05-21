@@ -3,7 +3,7 @@
 fn ilog2(_1: u32) -> u32 {
     debug x => _1;                       // in scope 0 at $DIR/checked_ops.rs:+0:14: +0:15
     let mut _0: u32;                     // return place in scope 0 at $DIR/checked_ops.rs:+0:25: +0:28
-    scope 1 (inlined #[track_caller] core::num::<impl u32>::ilog2) { // at $DIR/checked_ops.rs:20:7: 20:14
+    scope 1 (inlined #[track_caller] core::num::<impl u32>::ilog2) { // at $DIR/checked_ops.rs:21:7: 21:14
         debug self => _1;                // in scope 1 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
         let mut _2: std::option::Option<u32>; // in scope 1 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
         let mut _3: isize;               // in scope 1 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
