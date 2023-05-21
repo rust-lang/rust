@@ -700,6 +700,8 @@ macro_rules! define_queries {
             }
         }
 
+        // These arrays are used for iteration and can't be indexed by `DepKind`.
+
         const TRY_COLLECT_ACTIVE_JOBS: &[for<'tcx> fn(TyCtxt<'tcx>, &mut QueryMap<DepKind>)] =
             &[$(query_impl::$name::try_collect_active_jobs),*];
 
