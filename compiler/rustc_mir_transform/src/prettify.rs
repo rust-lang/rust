@@ -11,6 +11,10 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 
+/// Rearranges the basic blocks into a *reverse post-order*.
+///
+/// Thus after this pass, all the successors of a block are later than it in the
+/// `IndexVec`, unless that successor is a back-edge (such as from a loop).
 pub struct ReorderBasicBlocks;
 
 impl<'tcx> MirPass<'tcx> for ReorderBasicBlocks {
@@ -33,6 +37,12 @@ impl<'tcx> MirPass<'tcx> for ReorderBasicBlocks {
     }
 }
 
+/// Rearranges the locals into *use* order.
+///
+/// Thus after this pass, a local with a smaller [`Location`] where it was first
+/// assigned or referenced will have a smaller number.
+///
+/// (Does not reorder arguments nor the [`RETURN_PLACE`].)
 pub struct ReorderLocals;
 
 impl<'tcx> MirPass<'tcx> for ReorderLocals {
@@ -45,8 +55,8 @@ impl<'tcx> MirPass<'tcx> for ReorderLocals {
             LocalFinder { map: IndexVec::new(), seen: BitSet::new_empty(body.local_decls.len()) };
 
         // We can't reorder the return place or the arguments
-        for i in 0..=body.arg_count {
-            finder.track(Local::from_usize(i));
+        for local in (0..=body.arg_count).map(Local::from_usize) {
+            finder.track(local);
         }
 
         for (bb, bbd) in body.basic_blocks.iter_enumerated() {
@@ -64,7 +74,11 @@ impl<'tcx> MirPass<'tcx> for ReorderLocals {
         }
 
         let mut updater = LocalUpdater { map: finder.map.invert_bijective_mapping(), tcx };
-        debug_assert_eq!(updater.map[RETURN_PLACE], RETURN_PLACE);
+
+        for local in (0..=body.arg_count).map(Local::from_usize) {
+            debug_assert_eq!(updater.map[local], local);
+        }
+
         updater.visit_body_preserves_cfg(body);
 
         permute(&mut body.local_decls, &updater.map);
@@ -112,6 +126,8 @@ impl LocalFinder {
 
 impl<'tcx> Visitor<'tcx> for LocalFinder {
     fn visit_local(&mut self, l: Local, context: PlaceContext, _location: Location) {
+        // Exclude non-uses to keep `StorageLive` from controlling where we put
+        // a `Local`, since it might not actually be assigned until much later.
         if context.is_use() {
             self.track(l);
         }
