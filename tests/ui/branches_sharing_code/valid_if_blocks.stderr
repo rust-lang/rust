@@ -1,5 +1,5 @@
 error: this `if` has identical blocks
-  --> $DIR/valid_if_blocks.rs:105:14
+  --> $DIR/valid_if_blocks.rs:109:14
    |
 LL |       if false {
    |  ______________^
@@ -7,7 +7,7 @@ LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/valid_if_blocks.rs:106:12
+  --> $DIR/valid_if_blocks.rs:110:12
    |
 LL |       } else {
    |  ____________^
@@ -20,7 +20,7 @@ LL | #![deny(clippy::branches_sharing_code, clippy::if_same_then_else)]
    |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this `if` has identical blocks
-  --> $DIR/valid_if_blocks.rs:116:15
+  --> $DIR/valid_if_blocks.rs:120:15
    |
 LL |       if x == 0 {
    |  _______________^
@@ -31,7 +31,7 @@ LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/valid_if_blocks.rs:120:12
+  --> $DIR/valid_if_blocks.rs:124:12
    |
 LL |       } else {
    |  ____________^
@@ -42,19 +42,19 @@ LL | |     }
    | |_____^
 
 error: this `if` has identical blocks
-  --> $DIR/valid_if_blocks.rs:127:23
+  --> $DIR/valid_if_blocks.rs:131:23
    |
 LL |     let _ = if x == 6 { 7 } else { 7 };
    |                       ^^^^^
    |
 note: same as this
-  --> $DIR/valid_if_blocks.rs:127:34
+  --> $DIR/valid_if_blocks.rs:131:34
    |
 LL |     let _ = if x == 6 { 7 } else { 7 };
    |                                  ^^^^^
 
 error: this `if` has identical blocks
-  --> $DIR/valid_if_blocks.rs:133:23
+  --> $DIR/valid_if_blocks.rs:137:23
    |
 LL |       } else if x == 68 {
    |  _______________________^
@@ -66,7 +66,7 @@ LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/valid_if_blocks.rs:138:12
+  --> $DIR/valid_if_blocks.rs:142:12
    |
 LL |       } else {
    |  ____________^
@@ -78,7 +78,7 @@ LL | |     };
    | |_____^
 
 error: this `if` has identical blocks
-  --> $DIR/valid_if_blocks.rs:147:23
+  --> $DIR/valid_if_blocks.rs:151:23
    |
 LL |       } else if x == 68 {
    |  _______________________^
@@ -88,7 +88,7 @@ LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/valid_if_blocks.rs:150:12
+  --> $DIR/valid_if_blocks.rs:154:12
    |
 LL |       } else {
    |  ____________^
