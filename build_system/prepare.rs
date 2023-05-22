@@ -9,27 +9,19 @@ use super::rustc_info::{get_default_sysroot, get_rustc_version};
 use super::tests::LIBCORE_TESTS_SRC;
 use super::utils::{copy_dir_recursively, git_command, retry_spawn_and_wait, spawn_and_wait};
 
-pub(crate) fn prepare(dirs: &Dirs) {
+pub(crate) fn prepare(dirs: &Dirs, rustc: &Path) {
     RelPath::DOWNLOAD.ensure_fresh(dirs);
 
-    spawn_and_wait(super::build_backend::CG_CLIF.fetch("cargo", "rustc", dirs));
-
-    prepare_stdlib(dirs);
-    spawn_and_wait(super::build_sysroot::STANDARD_LIBRARY.fetch("cargo", "rustc", dirs));
-
-    prepare_coretests(dirs);
-    spawn_and_wait(super::tests::LIBCORE_TESTS.fetch("cargo", "rustc", dirs));
+    prepare_stdlib(dirs, rustc);
+    prepare_coretests(dirs, rustc);
 
     super::tests::RAND_REPO.fetch(dirs);
-    spawn_and_wait(super::tests::RAND.fetch("cargo", "rustc", dirs));
     super::tests::REGEX_REPO.fetch(dirs);
-    spawn_and_wait(super::tests::REGEX.fetch("cargo", "rustc", dirs));
     super::tests::PORTABLE_SIMD_REPO.fetch(dirs);
-    spawn_and_wait(super::tests::PORTABLE_SIMD.fetch("cargo", "rustc", dirs));
 }
 
-fn prepare_stdlib(dirs: &Dirs) {
-    let sysroot_src_orig = get_default_sysroot(Path::new("rustc")).join("lib/rustlib/src/rust");
+fn prepare_stdlib(dirs: &Dirs, rustc: &Path) {
+    let sysroot_src_orig = get_default_sysroot(rustc).join("lib/rustlib/src/rust");
     assert!(sysroot_src_orig.exists());
 
     eprintln!("[COPY] stdlib src");
@@ -44,7 +36,7 @@ fn prepare_stdlib(dirs: &Dirs) {
         &SYSROOT_SRC.to_path(dirs).join("library"),
     );
 
-    let rustc_version = get_rustc_version(Path::new("rustc"));
+    let rustc_version = get_rustc_version(rustc);
     fs::write(SYSROOT_RUSTC_VERSION.to_path(dirs), &rustc_version).unwrap();
 
     eprintln!("[GIT] init");
@@ -53,8 +45,8 @@ fn prepare_stdlib(dirs: &Dirs) {
     apply_patches(dirs, "stdlib", &SYSROOT_SRC.to_path(dirs));
 }
 
-fn prepare_coretests(dirs: &Dirs) {
-    let sysroot_src_orig = get_default_sysroot(Path::new("rustc")).join("lib/rustlib/src/rust");
+fn prepare_coretests(dirs: &Dirs, rustc: &Path) {
+    let sysroot_src_orig = get_default_sysroot(rustc).join("lib/rustlib/src/rust");
     assert!(sysroot_src_orig.exists());
 
     eprintln!("[COPY] coretests src");

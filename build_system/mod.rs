@@ -78,6 +78,7 @@ pub(crate) fn main() {
     let mut channel = "release";
     let mut sysroot_kind = SysrootKind::Clif;
     let mut use_unstable_features = true;
+    let mut frozen = false;
     while let Some(arg) = args.next().as_deref() {
         match arg {
             "--out-dir" => {
@@ -96,17 +97,38 @@ pub(crate) fn main() {
                 }
             }
             "--no-unstable-features" => use_unstable_features = false,
+            "--frozen" => frozen = true,
             flag if flag.starts_with("-") => arg_error!("Unknown flag {}", flag),
             arg => arg_error!("Unexpected argument {}", arg),
         }
     }
 
-    let bootstrap_host_compiler = Compiler::bootstrap_with_triple(
-        std::env::var("HOST_TRIPLE")
+    let rustup_toolchain_name = match (env::var("CARGO"), env::var("RUSTC"), env::var("RUSTDOC")) {
+        (Ok(_), Ok(_), Ok(_)) => None,
+        (Err(_), Err(_), Err(_)) => Some(rustc_info::get_toolchain_name()),
+        _ => {
+            eprintln!("All of CARGO, RUSTC and RUSTDOC need to be set or none must be set");
+            process::exit(1);
+        }
+    };
+    let bootstrap_host_compiler = {
+        let cargo = rustc_info::get_cargo_path();
+        let rustc = rustc_info::get_rustc_path();
+        let rustdoc = rustc_info::get_rustdoc_path();
+        let triple = std::env::var("HOST_TRIPLE")
             .ok()
             .or_else(|| config::get_value("host"))
-            .unwrap_or_else(|| rustc_info::get_host_triple()),
-    );
+            .unwrap_or_else(|| rustc_info::get_host_triple(&rustc));
+        Compiler {
+            cargo,
+            rustc,
+            rustdoc,
+            rustflags: String::new(),
+            rustdocflags: String::new(),
+            triple,
+            runner: vec![],
+        }
+    };
     let target_triple = std::env::var("TARGET_TRIPLE")
         .ok()
         .or_else(|| config::get_value("target"))
@@ -120,6 +142,7 @@ pub(crate) fn main() {
         download_dir: out_dir.join("download"),
         build_dir: out_dir.join("build"),
         dist_dir: out_dir.join("dist"),
+        frozen,
     };
 
     path::RelPath::BUILD.ensure_exists(&dirs);
@@ -134,7 +157,7 @@ pub(crate) fn main() {
     }
 
     if command == Command::Prepare {
-        prepare::prepare(&dirs);
+        prepare::prepare(&dirs, &bootstrap_host_compiler.rustc);
         process::exit(0);
     }
 
@@ -158,6 +181,7 @@ pub(crate) fn main() {
                 sysroot_kind,
                 &cg_clif_dylib,
                 &bootstrap_host_compiler,
+                rustup_toolchain_name.as_deref(),
                 target_triple.clone(),
             );
         }
@@ -166,7 +190,14 @@ pub(crate) fn main() {
                 eprintln!("Abi-cafe doesn't support cross-compilation");
                 process::exit(1);
             }
-            abi_cafe::run(channel, sysroot_kind, &dirs, &cg_clif_dylib, &bootstrap_host_compiler);
+            abi_cafe::run(
+                channel,
+                sysroot_kind,
+                &dirs,
+                &cg_clif_dylib,
+                rustup_toolchain_name.as_deref(),
+                &bootstrap_host_compiler,
+            );
         }
         Command::Build => {
             build_sysroot::build_sysroot(
@@ -175,6 +206,7 @@ pub(crate) fn main() {
                 sysroot_kind,
                 &cg_clif_dylib,
                 &bootstrap_host_compiler,
+                rustup_toolchain_name.as_deref(),
                 target_triple,
             );
         }
@@ -185,9 +217,10 @@ pub(crate) fn main() {
                 sysroot_kind,
                 &cg_clif_dylib,
                 &bootstrap_host_compiler,
+                rustup_toolchain_name.as_deref(),
                 target_triple,
             );
-            bench::benchmark(&dirs);
+            bench::benchmark(&dirs, &bootstrap_host_compiler);
         }
     }
 }

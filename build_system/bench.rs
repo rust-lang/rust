@@ -4,7 +4,7 @@ use std::path::Path;
 use super::path::{Dirs, RelPath};
 use super::prepare::GitRepo;
 use super::rustc_info::get_file_name;
-use super::utils::{hyperfine_command, spawn_and_wait};
+use super::utils::{hyperfine_command, spawn_and_wait, Compiler};
 
 static SIMPLE_RAYTRACER_REPO: GitRepo = GitRepo::github(
     "ebobby",
@@ -13,11 +13,11 @@ static SIMPLE_RAYTRACER_REPO: GitRepo = GitRepo::github(
     "<none>",
 );
 
-pub(crate) fn benchmark(dirs: &Dirs) {
-    benchmark_simple_raytracer(dirs);
+pub(crate) fn benchmark(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
+    benchmark_simple_raytracer(dirs, bootstrap_host_compiler);
 }
 
-fn benchmark_simple_raytracer(dirs: &Dirs) {
+fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
     if std::process::Command::new("hyperfine").output().is_err() {
         eprintln!("Hyperfine not installed");
         eprintln!("Hint: Try `cargo install hyperfine` to install hyperfine");
@@ -31,8 +31,9 @@ fn benchmark_simple_raytracer(dirs: &Dirs) {
     let bench_runs = env::var("BENCH_RUNS").unwrap_or_else(|_| "10".to_string()).parse().unwrap();
 
     eprintln!("[BENCH COMPILE] ebobby/simple-raytracer");
-    let cargo_clif =
-        RelPath::DIST.to_path(dirs).join(get_file_name("cargo_clif", "bin").replace('_', "-"));
+    let cargo_clif = RelPath::DIST
+        .to_path(dirs)
+        .join(get_file_name(&bootstrap_host_compiler.rustc, "cargo_clif", "bin").replace('_', "-"));
     let manifest_path = SIMPLE_RAYTRACER_REPO.source_dir().to_path(dirs).join("Cargo.toml");
     let target_dir = RelPath::BUILD.join("simple_raytracer").to_path(dirs);
 
@@ -75,9 +76,18 @@ fn benchmark_simple_raytracer(dirs: &Dirs) {
         bench_runs,
         None,
         &[
-            Path::new(".").join(get_file_name("raytracer_cg_llvm", "bin")).to_str().unwrap(),
-            Path::new(".").join(get_file_name("raytracer_cg_clif", "bin")).to_str().unwrap(),
-            Path::new(".").join(get_file_name("raytracer_cg_clif_opt", "bin")).to_str().unwrap(),
+            Path::new(".")
+                .join(get_file_name(&bootstrap_host_compiler.rustc, "raytracer_cg_llvm", "bin"))
+                .to_str()
+                .unwrap(),
+            Path::new(".")
+                .join(get_file_name(&bootstrap_host_compiler.rustc, "raytracer_cg_clif", "bin"))
+                .to_str()
+                .unwrap(),
+            Path::new(".")
+                .join(get_file_name(&bootstrap_host_compiler.rustc, "raytracer_cg_clif_opt", "bin"))
+                .to_str()
+                .unwrap(),
         ],
     );
     bench_run.current_dir(RelPath::BUILD.to_path(dirs));

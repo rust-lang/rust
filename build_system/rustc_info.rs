@@ -7,9 +7,9 @@ pub(crate) fn get_rustc_version(rustc: &Path) -> String {
     String::from_utf8(version_info).unwrap()
 }
 
-pub(crate) fn get_host_triple() -> String {
+pub(crate) fn get_host_triple(rustc: &Path) -> String {
     let version_info =
-        Command::new("rustc").stderr(Stdio::inherit()).args(&["-vV"]).output().unwrap().stdout;
+        Command::new(rustc).stderr(Stdio::inherit()).args(&["-vV"]).output().unwrap().stdout;
     String::from_utf8(version_info)
         .unwrap()
         .lines()
@@ -34,6 +34,9 @@ pub(crate) fn get_toolchain_name() -> String {
 }
 
 pub(crate) fn get_cargo_path() -> PathBuf {
+    if let Ok(cargo) = std::env::var("CARGO") {
+        return PathBuf::from(cargo);
+    }
     let cargo_path = Command::new("rustup")
         .stderr(Stdio::inherit())
         .args(&["which", "cargo"])
@@ -44,6 +47,9 @@ pub(crate) fn get_cargo_path() -> PathBuf {
 }
 
 pub(crate) fn get_rustc_path() -> PathBuf {
+    if let Ok(rustc) = std::env::var("RUSTC") {
+        return PathBuf::from(rustc);
+    }
     let rustc_path = Command::new("rustup")
         .stderr(Stdio::inherit())
         .args(&["which", "rustc"])
@@ -54,6 +60,9 @@ pub(crate) fn get_rustc_path() -> PathBuf {
 }
 
 pub(crate) fn get_rustdoc_path() -> PathBuf {
+    if let Ok(rustdoc) = std::env::var("RUSTDOC") {
+        return PathBuf::from(rustdoc);
+    }
     let rustc_path = Command::new("rustup")
         .stderr(Stdio::inherit())
         .args(&["which", "rustdoc"])
@@ -73,8 +82,9 @@ pub(crate) fn get_default_sysroot(rustc: &Path) -> PathBuf {
     Path::new(String::from_utf8(default_sysroot).unwrap().trim()).to_owned()
 }
 
-pub(crate) fn get_file_name(crate_name: &str, crate_type: &str) -> String {
-    let file_name = Command::new("rustc")
+// FIXME call once for each target and pass result around in struct
+pub(crate) fn get_file_name(rustc: &Path, crate_name: &str, crate_type: &str) -> String {
+    let file_name = Command::new(rustc)
         .stderr(Stdio::inherit())
         .args(&[
             "--crate-name",

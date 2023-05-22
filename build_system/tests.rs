@@ -217,6 +217,7 @@ pub(crate) fn run_tests(
     sysroot_kind: SysrootKind,
     cg_clif_dylib: &Path,
     bootstrap_host_compiler: &Compiler,
+    rustup_toolchain_name: Option<&str>,
     target_triple: String,
 ) {
     if config::get_bool("testsuite.no_sysroot") {
@@ -226,6 +227,7 @@ pub(crate) fn run_tests(
             SysrootKind::None,
             cg_clif_dylib,
             bootstrap_host_compiler,
+            rustup_toolchain_name,
             target_triple.clone(),
         );
 
@@ -251,6 +253,7 @@ pub(crate) fn run_tests(
             sysroot_kind,
             cg_clif_dylib,
             bootstrap_host_compiler,
+            rustup_toolchain_name,
             target_triple.clone(),
         );
         // Rust's build system denies a couple of lints that trigger on several of the test
