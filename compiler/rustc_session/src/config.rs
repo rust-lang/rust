@@ -12,7 +12,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
 use rustc_data_structures::stable_hasher::{StableOrd, ToStableHashKey};
 use rustc_target::abi::Align;
-use rustc_target::spec::{PanicStrategy, SanitizerSet, SplitDebuginfo};
+use rustc_target::spec::{LinkerFlavorCli, PanicStrategy, SanitizerSet, SplitDebuginfo};
 use rustc_target::spec::{Target, TargetTriple, TargetWarnings, TARGETS};
 
 use crate::parse::{CrateCheckConfig, CrateConfig};
@@ -2522,6 +2522,19 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
                 error_format,
                 "options `-C embed-bitcode=no` and `-C lto` are incompatible",
             ),
+        }
+    }
+
+    if let Some(flavor) = cg.linker_flavor {
+        if matches!(flavor, LinkerFlavorCli::BpfLinker | LinkerFlavorCli::PtxLinker)
+            && !nightly_options::is_unstable_enabled(matches)
+        {
+            let msg = format!(
+                "linker flavor `{}` is unstable, `-Z unstable-options` \
+                 flag must also be passed to explicitly use it",
+                flavor.desc()
+            );
+            early_error(error_format, msg);
         }
     }
 
