@@ -478,6 +478,7 @@ pub enum StashKey {
     MaybeFruTypo,
     CallAssocMethod,
     TraitMissingMethod,
+    OpaqueHiddenTypeMismatch,
 }
 
 fn default_track_diagnostic(d: &mut Diagnostic, f: &mut dyn FnMut(&mut Diagnostic)) {
