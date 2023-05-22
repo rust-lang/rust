@@ -1,5 +1,5 @@
 #![warn(clippy::single_match)]
-#![allow(clippy::uninlined_format_args)]
+#![allow(unused, clippy::uninlined_format_args)]
 
 fn dummy() {}
 
@@ -243,4 +243,25 @@ fn main() {
         Some(x) => x,
         _ => 0,
     };
+}
+
+fn issue_10808(bar: Option<i32>) {
+    match bar {
+        Some(v) => unsafe {
+            let r = &v as *const i32;
+            println!("{}", *r);
+        },
+        _ => {},
+    }
+
+    match bar {
+        Some(v) => {
+            // this comment prevents rustfmt from collapsing the block
+            unsafe {
+                let r = &v as *const i32;
+                println!("{}", *r);
+            }
+        },
+        _ => {},
+    }
 }
