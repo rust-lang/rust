@@ -20,10 +20,8 @@ pub struct DedupSolver {
     /// The variables present in each constraint - the inner vec contains the variables, in the order
     /// that they appear in the constraint. See solver/tests.rs for examples on how constraints are lowered to this format
     constraint_vars: IndexVec<ConstraintIndex, Vec<VarIndex>>,
-    /// The cliques that constraints are partitioned into. These are determined as follows: imagine a graph where
-    /// each constraint is a vertex, and an edge exists between a pair of constraints if there is a many-to-one mapping of
-    /// variables that perfectly maps one constraint onto the other. The constraint cliques are just cliques within this graph.
-    /// By nature of this problem, it is impossible for a constraint to be in two cliques
+    /// The cliques that constraints are partitioned into. Constraints can only be merged if they belong to the same clique,
+    /// and it's impossible for a constraint to be in more than one clique
     constraint_cliques: IndexVec<CliqueIndex, Vec<ConstraintIndex>>,
     /// A set of variables we cannot remove, i.e. they belong to a universe that the caller can name. We keep track of these
     /// to determine if there's a variable that we **can** remove that behaves like one of these, where in that case we just
@@ -61,7 +59,8 @@ struct MappingInfo {
     dependencies: FxIndexMap<ConstraintIndex, BTreeSet<MappingIndex>>,
 }
 #[derive(Debug, PartialEq, Eq)]
-enum MapEvalErr {
+enum MapEval {
+    Ok(MappingInfo),
     Conflicts,
     Unremovable,
 }
@@ -79,124 +78,12 @@ impl DedupSolver {
 
             mappings: FxIndexMap::default(),
             removed_constraints: RefCell::new(FxIndexSet::default()),
-            applied_mappings: RefCell::new(Mapping::from(&[], &[])),
+            applied_mappings: RefCell::new(Mapping::from(&[], &[]).unwrap()),
         };
-        deduper.refine_cliques();
         deduper.compute_mappings();
         deduper.resolve_dependencies();
 
         DedupResult { removed_constraints: deduper.removed_constraints.into_inner() }
-    }
-    /// The input cliques are provided just on a basis of the structure of the constraints, i.e.
-    /// "are they the same if we ignore variables unnameable from the caller". However, just because
-    /// this is the case doesn't mean that two constraints can be merged - for example, the constraint
-    /// involving vars [1, 3] can't be merged with a constraint involving vars [2, 2].
-    /// This function refines the cliques such that if we create a graph with constraints as vertices
-    /// and edges if they can be merged, constraint_cliques now represents the **true** cliques of the
-    /// graph, i.e. any two constrains in the same clique can now create a valid mapping
-    fn refine_cliques(&mut self) {
-        // Refine categories based on shape - see canonicalize_constraint_shape for more info
-        for clique_indx in (0..self.constraint_cliques.len()).map(CliqueIndex::new) {
-            let mut shape_cliques: FxIndexMap<Vec<usize>, CliqueIndex> = FxIndexMap::default();
-            let mut constraint_indx = 0;
-            while constraint_indx < self.constraint_cliques[clique_indx].len() {
-                let constraint = self.constraint_cliques[clique_indx][constraint_indx];
-                let shape =
-                    Self::canonicalize_constraint_shape(&mut self.constraint_vars[constraint]);
-                let is_first_entry = shape_cliques.is_empty();
-                let new_clique = *shape_cliques.entry(shape).or_insert_with(|| {
-                    if is_first_entry {
-                        clique_indx
-                    } else {
-                        self.constraint_cliques.push(Vec::new());
-                        CliqueIndex::new(self.constraint_cliques.len() - 1)
-                    }
-                });
-                if new_clique == clique_indx {
-                    constraint_indx += 1;
-                    continue;
-                }
-                self.constraint_cliques[clique_indx].swap_remove(constraint_indx);
-                self.constraint_cliques[new_clique].push(constraint);
-            }
-        }
-        // Refine categories based on indices of variables. This is based on the observation that
-        // if a variable V is present in a constraint C1 at some set of indices I, then a constraint
-        // C2 can be merged with C1 only if one of the following cases are satisfied:
-        //    a. V is present in constraint C2 at the **same** set of indices I, where in that case
-        //       the variable mapping that merges these two constraints would just map V onto V
-        //    b. V is not present in constraint C2 at all, in which case some other variable would
-        //       be mapped onto V
-        // If none of these above cases are true, that means we have a situation where we map V
-        // to another variable U, and a variable W would be mapped onto V - in this case, we're just
-        // shuffling variables around without actually eliminating any, which is unproductive and
-        // hence an "invalid mapping"
-        for clique_indx in (0..self.constraint_cliques.len()).map(CliqueIndex::new) {
-            // First element of tuple (the FxIndexMap) maps a variable to
-            // the index it occurs in
-            let mut index_cliques: Vec<(FxIndexMap<VarIndex, usize>, CliqueIndex)> = Vec::new();
-            let mut constraint_indx = 0;
-            while constraint_indx < self.constraint_cliques[clique_indx].len() {
-                let constraint = self.constraint_cliques[clique_indx][constraint_indx];
-                let constraint_vars = &self.constraint_vars[constraint];
-                let constraint_var_indices: FxIndexMap<VarIndex, usize> =
-                    constraint_vars.iter().enumerate().map(|(indx, x)| (*x, indx)).collect();
-
-                let mut found_clique = None;
-                for (clique_vars, new_clique_indx) in index_cliques.iter_mut() {
-                    let is_clique_member = constraint_vars
-                        .iter()
-                        .enumerate()
-                        .all(|(indx, x)| *clique_vars.get(x).unwrap_or(&indx) == indx);
-                    if !is_clique_member {
-                        continue;
-                    }
-                    found_clique = Some(*new_clique_indx);
-                    clique_vars.extend(&constraint_var_indices);
-                    break;
-                }
-                let new_clique = found_clique.unwrap_or_else(|| {
-                    if index_cliques.is_empty() {
-                        clique_indx
-                    } else {
-                        let new_clique = self.constraint_cliques.next_index();
-                        self.constraint_cliques.push(Vec::new());
-                        index_cliques.push((constraint_var_indices, new_clique));
-                        new_clique
-                    }
-                });
-                if new_clique == clique_indx {
-                    constraint_indx += 1;
-                    continue;
-                }
-                self.constraint_cliques[clique_indx].swap_remove(constraint_indx);
-                self.constraint_cliques[new_clique].push(constraint);
-            }
-        }
-    }
-    /// Returns the "shape" of a constraint, which captures information about the location(s) and
-    /// multiplicity of variables in the constraint, irrespective of the actual variable indices
-    /// For example, a constraint involving the vars [1, 1, 2, 3] has a shape of [0, 0, 1, 2],
-    /// and a constraint involving vars [3, 4] has a shape of [0, 1]
-    /// It takes a mutable reference to the vars because it also removes duplicates from
-    /// the input vector after computing the shape
-    /// Clearly, two constraints can be mapped onto each other only if they have the
-    /// same shape
-    fn canonicalize_constraint_shape(vars: &mut Vec<VarIndex>) -> Vec<usize> {
-        let mut shape = Vec::new();
-        let mut num_vars = 0;
-        let mut indx = 0;
-        while indx < vars.len() {
-            if let Some(val) = shape.iter().find(|y| vars[**y] == vars[indx]) {
-                shape.push(*val);
-                vars.remove(indx);
-            } else {
-                shape.push(num_vars);
-                num_vars += 1;
-                indx += 1;
-            }
-        }
-        shape
     }
 
     /// Computes the set of all possible mappings
@@ -211,27 +98,22 @@ impl DedupSolver {
                 .enumerate()
                 .filter(|x| !self.removed_constraints.borrow().contains(x.1))
             {
+                let constraint_1_vars = &self.constraint_vars[*constraint_1];
                 for constraint_2 in clique
                     .iter()
                     .skip(n + 1)
                     .filter(|x| !self.removed_constraints.borrow().contains(*x))
                 {
+                    let constraint_2_vars = &self.constraint_vars[*constraint_2];
                     // Maps constraint_1 to constraint_2
-                    let forward = Mapping::from(
-                        &self.constraint_vars[*constraint_1],
-                        &self.constraint_vars[*constraint_2],
-                    );
+                    let forward = Mapping::from(constraint_1_vars, constraint_2_vars);
                     // Maps constraint_2 to constraint_1
-                    let reverse = Mapping::from(
-                        &self.constraint_vars[*constraint_2],
-                        &self.constraint_vars[*constraint_1],
-                    );
-                    if self.mappings.contains_key(&forward) || self.mappings.contains_key(&reverse)
-                    {
+                    let reverse = Mapping::from(constraint_2_vars, constraint_1_vars);
+                    let (Ok(forward), Ok(reverse)) = (forward, reverse) else {
                         continue;
-                    }
+                    };
 
-                    // if constraint_1 and constraint_2 can be merged, this relation should be
+                    // If constraint_1 and constraint_2 can be merged, this relation should be
                     // bidirectional, i.e. we can merge 1 into 2 or 2 into 1
                     // For example, if a clique contains constraints [1, 2] and [11, 12] and another
                     // clique contains constraint [1], then we **cannot** merge vars 1 and 11 - the
@@ -240,17 +122,15 @@ impl DedupSolver {
                     // map the constraint [1] into [11], which is a constraint that doesn't exist
                     let (eval_forward, eval_reverse) =
                         (self.eval_mapping(&forward), self.eval_mapping(&reverse));
-                    if eval_forward == Err(MapEvalErr::Conflicts)
-                        || eval_reverse == Err(MapEvalErr::Conflicts)
-                    {
+                    if eval_forward == MapEval::Conflicts || eval_reverse == MapEval::Conflicts {
                         continue;
                     }
-                    if let Ok(eval_forward) = eval_forward {
+                    if let MapEval::Ok(eval_forward) = eval_forward {
                         if self.try_apply_mapping(&forward, &eval_forward, false) == Err(true) {
                             self.mappings.insert(forward, eval_forward);
                         }
                     }
-                    if let Ok(eval_reverse) = eval_reverse {
+                    if let MapEval::Ok(eval_reverse) = eval_reverse {
                         if self.try_apply_mapping(&reverse, &eval_reverse, false) == Err(true) {
                             self.mappings.insert(reverse, eval_reverse);
                         }
@@ -266,7 +146,7 @@ impl DedupSolver {
     /// MappingInfo can contain dependencies - these occur if a mapping *partially* maps
     /// a constraint onto another, so the mapping isn't immediately invalid, but we do need
     /// another mapping to complete that partial map for it to actually be valid
-    fn eval_mapping(&self, mapping: &Mapping) -> Result<MappingInfo, MapEvalErr> {
+    fn eval_mapping(&self, mapping: &Mapping) -> MapEval {
         let maps_unremovable_var =
             mapping.0.iter().any(|(from, to)| self.unremovable_vars.contains(from) && from != to);
 
@@ -280,7 +160,9 @@ impl DedupSolver {
                 let mut found_non_conflicting = false;
                 for constraint_2 in clique.iter() {
                     let vars_2 = &self.constraint_vars[*constraint_2];
-                    let trial_mapping = Mapping::from(vars_1, vars_2);
+                    let Ok(trial_mapping) = Mapping::from(vars_1, vars_2) else {
+                        continue;
+                    };
                     if mapping.conflicts_with(&trial_mapping) {
                         continue;
                     }
@@ -297,14 +179,14 @@ impl DedupSolver {
                     }
                 }
                 if !found_non_conflicting {
-                    return Err(MapEvalErr::Conflicts);
+                    return MapEval::Conflicts;
                 }
             }
         }
         if maps_unremovable_var {
-            return Err(MapEvalErr::Unremovable);
+            return MapEval::Unremovable;
         }
-        Ok(info)
+        MapEval::Ok(info)
     }
     /// Currently, dependencies are in the form FxIndexMap<ConstraintIndex, Empty FxIndexSet>,
     /// where ConstraintIndex is the constraint we must *also* map in order to apply this mapping.
@@ -494,22 +376,51 @@ impl DedupSolver {
 }
 
 impl Mapping {
-    fn from(from: &[VarIndex], to: &[VarIndex]) -> Self {
-        Self(from.iter().zip(to).map(|(x, y)| (*x, *y)).collect())
+    /// Creates a mapping between two constraints. If the resulting mapping is invalid,
+    /// an Err is returned
+    fn from(from: &[VarIndex], to: &[VarIndex]) -> Result<Self, ()> {
+        if from.len() != to.len() {
+            return Err(());
+        }
+        let mut mapping_set = BTreeMap::new();
+        for (from_var, to_var) in from.iter().zip(to) {
+            if let Some(previous_map) = mapping_set.get(from_var) {
+                if previous_map != to_var {
+                    return Err(());
+                }
+                continue;
+            }
+            mapping_set.insert(*from_var, *to_var);
+        }
+        // We impose a constraint that a variable cannot be both a key and a value of
+        // a mapping, as that would mean [1, 2] can be mapped onto [2, 1] - however,
+        // these are fundamentally different constraints that can't be merged.
+        // The only exception is if a var maps to itself - that's fine, as all it's saying
+        // is that we want to fix a variable and don't map it
+        if mapping_set.values().any(|x| mapping_set.get(x).unwrap_or(x) != x) {
+            return Err(());
+        }
+        Ok(Self(mapping_set))
     }
     fn maps_var(&self, constraint: VarIndex) -> Option<VarIndex> {
         self.0.get(&constraint).map(|x| *x)
     }
+    /// Returns whether the mapping will change the given constraint if applied
     fn affects_constraint(&self, constraint: &[VarIndex]) -> bool {
         constraint.iter().any(|x| self.maps_var(*x).unwrap_or(*x) != *x)
     }
+    /// Returns whether a mapping is a superset of another mapping
     fn contains_fully(&self, other: &Self) -> bool {
         other.0.iter().all(|(from, to)| self.maps_var(*from) == Some(*to))
     }
+    /// Returns whether a mapping conflicts with another mapping, i.e. they can't be applied together
     fn conflicts_with(&self, other: &Self) -> bool {
         for (from_a, to_a) in self.0.iter() {
             for (from_b, to_b) in other.0.iter() {
+                // Maps the same key to different values - conflicts!
                 let map_conflicts = from_a == from_b && to_a != to_b;
+                // Map A maps var v to w, but map B maps w to v. Applying both maps together doesn't
+                // remove any variables, but just shuffles them around, so we call this a conflict
                 let not_productive =
                     to_b == from_a && from_a != to_a || to_a == from_b && from_b != to_b;
                 if map_conflicts || not_productive {

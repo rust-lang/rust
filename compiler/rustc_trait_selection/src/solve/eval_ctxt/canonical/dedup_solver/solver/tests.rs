@@ -66,6 +66,15 @@ fn test_simple() {
     assert!([constraint_set([0]), constraint_set([1])].contains(&deduped.removed_constraints));
 }
 #[test]
+fn test_simple_2() {
+    let deduped = DedupSolver::dedup(
+        constraint_vars(vec![vec![0, 1], vec![2, 1], vec![1, 0], vec![1, 2]]),
+        constraint_cliques(vec![vec![0, 1, 2, 3]]),
+        FxIndexSet::from_iter([VarIndex::new(0), VarIndex::new(1)]),
+    );
+    assert_eq!(deduped.removed_constraints, constraint_set([1, 3]));
+}
+#[test]
 fn test_dependencies() {
     // Example of constraint that produces this lowering:
     // (&'?1 Foo, &'?2 Foo): &'?13
