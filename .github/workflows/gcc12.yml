@@ -1,4 +1,4 @@
-name: CI
+name: CI libgccjit 12
 
 on:
   - push
@@ -10,6 +10,7 @@ permissions:
 env:
   # Enable backtraces for easier debugging
   RUST_BACKTRACE: 1
+  TEST_FLAGS: "-Cpanic=abort -Zpanic-abort-tests"
 
 jobs:
   build:
@@ -18,20 +19,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        libgccjit_version:
-          - { gcc: "libgccjit.so", artifacts_branch: "master" }
-          - { gcc: "libgccjit_without_int128.so", artifacts_branch: "master-without-128bit-integers" }
         commands: [
           "--mini-tests",
-          "--std-tests",
+          # TODO(antoyo): re-enable those commands when the build with libgccjit 12 is fixed.
+          #"--std-tests",
           # FIXME: re-enable asm tests when GCC can emit in the right syntax.
           # "--asm-tests",
-          "--test-libcore",
-          "--extended-rand-tests",
-          "--extended-regex-example-tests",
-          "--extended-regex-tests",
-          "--test-successful-rustc --nb-parts 2 --current-part 0",
-          "--test-successful-rustc --nb-parts 2 --current-part 1",
+          #"--test-libcore",
+          #"--extended-rand-tests",
+          #"--extended-regex-example-tests",
+          #"--extended-regex-tests",
+          #"--test-successful-rustc --nb-parts 2 --current-part 0",
+          #"--test-successful-rustc --nb-parts 2 --current-part 1",
+          #"--test-failing-rustc",
         ]
 
     steps:
@@ -44,23 +44,10 @@ jobs:
 
     - name: Install packages
       # `llvm-14-tools` is needed to install the `FileCheck` binary which is used for asm tests.
-      run: sudo apt-get install ninja-build ripgrep llvm-14-tools
-
-    - name: Download artifact
-      uses: dawidd6/action-download-artifact@v2
-      with:
-          workflow: main.yml
-          name: gcc-13
-          path: gcc-13
-          repo: antoyo/gcc
-          branch: ${{ matrix.libgccjit_version.artifacts_branch }}
-          event: push
-          search_artifacts: true # Because, instead, the action only check the last job ran and that won't work since we want multiple artifacts.
+      run: sudo apt-get install ninja-build ripgrep llvm-14-tools libgccjit-12-dev
 
     - name: Setup path to libgccjit
-      run: |
-          sudo dpkg --force-overwrite -i gcc-13/gcc-13.deb
-          echo /usr/lib/ > gcc_path
+      run: echo /usr/lib/gcc/x86_64-linux-gnu/12 > gcc_path
 
     - name: Set env
       run: |
@@ -107,8 +94,10 @@ jobs:
     - name: Build
       run: |
         ./y.sh prepare --only-libcore
-        ./y.sh build
-        cargo test
+        # TODO(antoyo): build the sysroot when the build with libgccjit 12 is fixed.
+        #./y.sh build --no-default-features
+        # TODO(antoyo): run the tests when we can build the sysroot with libgccjit 12.
+        #cargo test --no-default-features
         ./clean_all.sh
 
     - name: Prepare dependencies
@@ -124,15 +113,12 @@ jobs:
         command: build
         args: --release
 
-    - name: Add more failing tests because the sysroot is not compiled with LTO
-      run: cat failing-non-lto-tests.txt >> failing-ui-tests.txt
+    - name: Add more failing tests for GCC 12
+      run: cat failing-ui-tests12.txt >> failing-ui-tests.txt
 
     - name: Run tests
       run: |
-        ./test.sh --release --clean --build-sysroot ${{ matrix.commands }}
-
-  duplicates:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - run: python tools/check_intrinsics_duplicates.py
+        # TODO(antoyo): add --build-sysroot when the build with libgccjit 12 is fixed.
+        # FIXME(antoyo): we need to set GCC_EXEC_PREFIX so that the linker can find the linker plugin.
+        # Not sure why it's not found otherwise.
+        GCC_EXEC_PREFIX=/usr/lib/gcc/ ./test.sh --release --clean ${{ matrix.commands }} --no-default-features

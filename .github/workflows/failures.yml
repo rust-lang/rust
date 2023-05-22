@@ -1,7 +1,7 @@
-name: CI
+# TODO: refactor to avoid duplication with the ci.yml file.
+name: Failures
 
 on:
-  - push
   - pull_request
 
 permissions:
@@ -21,18 +21,6 @@ jobs:
         libgccjit_version:
           - { gcc: "libgccjit.so", artifacts_branch: "master" }
           - { gcc: "libgccjit_without_int128.so", artifacts_branch: "master-without-128bit-integers" }
-        commands: [
-          "--mini-tests",
-          "--std-tests",
-          # FIXME: re-enable asm tests when GCC can emit in the right syntax.
-          # "--asm-tests",
-          "--test-libcore",
-          "--extended-rand-tests",
-          "--extended-regex-example-tests",
-          "--extended-regex-tests",
-          "--test-successful-rustc --nb-parts 2 --current-part 0",
-          "--test-successful-rustc --nb-parts 2 --current-part 1",
-        ]
 
     steps:
     - uses: actions/checkout@v3
@@ -96,8 +84,6 @@ jobs:
         key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain') }}
 
     #- name: Cache rust repository
-      ## We only clone the rust repository for rustc tests
-      #if: ${{ contains(matrix.commands, 'rustc') }}
       #uses: actions/cache@v3
       #id: cache-rust-repository
       #with:
@@ -128,11 +114,7 @@ jobs:
       run: cat failing-non-lto-tests.txt >> failing-ui-tests.txt
 
     - name: Run tests
+      id: tests
       run: |
-        ./test.sh --release --clean --build-sysroot ${{ matrix.commands }}
-
-  duplicates:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - run: python tools/check_intrinsics_duplicates.py
+        ./test.sh --release --clean --build-sysroot --test-failing-rustc | tee output_log
+        rg "test result" output_log >> $GITHUB_STEP_SUMMARY

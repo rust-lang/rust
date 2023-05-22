@@ -1,6 +1,6 @@
 use crate::config::set_config;
 use crate::utils::{
-    get_gcc_path, run_command, run_command_with_env, run_command_with_output_and_env, walk_dir,
+    get_gcc_path, run_command, run_command_with_output_and_env, walk_dir,
 };
 use std::collections::HashMap;
 use std::ffi::OsStr;
@@ -200,7 +200,7 @@ fn build_codegen(args: &BuildArg) -> Result<(), String> {
     for feature in &ref_features {
         command.push(feature);
     }
-    run_command_with_env(&command, None, Some(&env))?;
+    run_command_with_output_and_env(&command, None, Some(&env))?;
 
     let config = set_config(&mut env, &[], Some(&args.gcc_path))?;
 
