@@ -28,6 +28,7 @@ pub(crate) fn build_backend(
 
         if !is_ci_opt() {
             cmd.env("CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS", "true");
+            cmd.env("CARGO_PROFILE_RELEASE_OVERFLOW_CHECKS", "true");
         }
     }
 
