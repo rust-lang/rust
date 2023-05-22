@@ -1,5 +1,5 @@
 error: `Err(_)` matches all errors
-  --> $DIR/match_wild_err_arm.rs:11:9
+  --> $DIR/match_wild_err_arm.rs:24:9
    |
 LL |         Err(_) => panic!("err"),
    |         ^^^^^^
@@ -8,7 +8,7 @@ LL |         Err(_) => panic!("err"),
    = note: `-D clippy::match-wild-err-arm` implied by `-D warnings`
 
 error: `Err(_)` matches all errors
-  --> $DIR/match_wild_err_arm.rs:17:9
+  --> $DIR/match_wild_err_arm.rs:30:9
    |
 LL |         Err(_) => panic!(),
    |         ^^^^^^
@@ -16,7 +16,7 @@ LL |         Err(_) => panic!(),
    = note: match each error separately or use the error output, or use `.expect(msg)` if the error case is unreachable
 
 error: `Err(_)` matches all errors
-  --> $DIR/match_wild_err_arm.rs:23:9
+  --> $DIR/match_wild_err_arm.rs:36:9
    |
 LL |         Err(_) => {
    |         ^^^^^^
@@ -24,7 +24,7 @@ LL |         Err(_) => {
    = note: match each error separately or use the error output, or use `.expect(msg)` if the error case is unreachable
 
 error: `Err(_e)` matches all errors
-  --> $DIR/match_wild_err_arm.rs:31:9
+  --> $DIR/match_wild_err_arm.rs:44:9
    |
 LL |         Err(_e) => panic!(),
    |         ^^^^^^^
