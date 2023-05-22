@@ -1,6 +1,6 @@
 // check-pass
 
-#![warn(forget_copy)]
+#![warn(forgetting_copy_types)]
 
 use std::mem::forget;
 use std::vec::Vec;

@@ -12,7 +12,7 @@
 //
 // In regular builds, the bad cast was UB, like "Invalid LLVMRustVisibility value!"
 
-#![allow(drop_copy)]
+#![allow(dropping_copy_types)]
 
 pub mod before {
     #[no_mangle]

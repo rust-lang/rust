@@ -186,17 +186,17 @@ error: lint `clippy::drop_bounds` has been renamed to `drop_bounds`
 LL | #![warn(clippy::drop_bounds)]
    |         ^^^^^^^^^^^^^^^^^^^ help: use the new name: `drop_bounds`
 
-error: lint `clippy::drop_copy` has been renamed to `drop_copy`
+error: lint `clippy::drop_copy` has been renamed to `dropping_copy_types`
   --> $DIR/rename.rs:80:9
    |
 LL | #![warn(clippy::drop_copy)]
-   |         ^^^^^^^^^^^^^^^^^ help: use the new name: `drop_copy`
+   |         ^^^^^^^^^^^^^^^^^ help: use the new name: `dropping_copy_types`
 
-error: lint `clippy::drop_ref` has been renamed to `drop_ref`
+error: lint `clippy::drop_ref` has been renamed to `dropping_references`
   --> $DIR/rename.rs:81:9
    |
 LL | #![warn(clippy::drop_ref)]
-   |         ^^^^^^^^^^^^^^^^ help: use the new name: `drop_ref`
+   |         ^^^^^^^^^^^^^^^^ help: use the new name: `dropping_references`
 
 error: lint `clippy::for_loop_over_option` has been renamed to `for_loops_over_fallibles`
   --> $DIR/rename.rs:82:9
@@ -216,17 +216,17 @@ error: lint `clippy::for_loops_over_fallibles` has been renamed to `for_loops_ov
 LL | #![warn(clippy::for_loops_over_fallibles)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `for_loops_over_fallibles`
 
-error: lint `clippy::forget_copy` has been renamed to `forget_copy`
+error: lint `clippy::forget_copy` has been renamed to `forgetting_copy_types`
   --> $DIR/rename.rs:85:9
    |
 LL | #![warn(clippy::forget_copy)]
-   |         ^^^^^^^^^^^^^^^^^^^ help: use the new name: `forget_copy`
+   |         ^^^^^^^^^^^^^^^^^^^ help: use the new name: `forgetting_copy_types`
 
-error: lint `clippy::forget_ref` has been renamed to `forget_ref`
+error: lint `clippy::forget_ref` has been renamed to `forgetting_references`
   --> $DIR/rename.rs:86:9
    |
 LL | #![warn(clippy::forget_ref)]
-   |         ^^^^^^^^^^^^^^^^^^ help: use the new name: `forget_ref`
+   |         ^^^^^^^^^^^^^^^^^^ help: use the new name: `forgetting_references`
 
 error: lint `clippy::into_iter_on_array` has been renamed to `array_into_iter`
   --> $DIR/rename.rs:87:9

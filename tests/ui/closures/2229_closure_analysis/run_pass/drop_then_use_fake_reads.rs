@@ -2,7 +2,7 @@
 // check-pass
 
 #![feature(rustc_attrs)]
-#![allow(drop_ref)]
+#![allow(dropping_references)]
 
 fn main() {
     let mut x = 1;
