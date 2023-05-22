@@ -1,7 +1,7 @@
 //@compile-flags: -Zmiri-retag-fields
 // Checks that the test does not run forever (which relies on a fast path).
 
-#![allow(drop_copy)]
+#![allow(dropping_copy_types)]
 
 fn main() {
     let array = [(); usize::MAX];

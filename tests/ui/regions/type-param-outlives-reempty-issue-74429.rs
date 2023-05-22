@@ -3,7 +3,7 @@
 
 // check-pass
 
-#![allow(drop_copy)]
+#![allow(dropping_copy_types)]
 
 use std::marker::PhantomData;
 

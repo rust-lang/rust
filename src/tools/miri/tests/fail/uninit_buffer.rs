@@ -1,6 +1,6 @@
 //@error-in-other-file: memory is uninitialized at [0x4..0x10]
 
-#![allow(drop_copy)]
+#![allow(dropping_copy_types)]
 
 use std::alloc::{alloc, dealloc, Layout};
 use std::slice::from_raw_parts;

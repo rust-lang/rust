@@ -1,7 +1,7 @@
 // run-pass
 // pretty-expanded FIXME #23616
 
-#![allow(drop_copy)]
+#![allow(dropping_copy_types)]
 
 fn main() {
     use ::std::mem;
