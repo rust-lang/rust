@@ -1133,7 +1133,7 @@ impl ConstructorSet {
             ConstructorSet::Uninhabited => {}
         }
         if !missing.is_empty() {
-            let report_when_all_missing = is_top_level && !IntRange::is_integral(pcx.ty);
+            let report_when_all_missing = is_top_level && !matches!(self, Self::Integers { .. });
             if seen_any_non_wildcard || report_when_all_missing {
                 split.push(Missing);
             } else {
