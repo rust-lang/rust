@@ -16,7 +16,6 @@ use rustc_session::config::PrintRequest;
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::{MergeFunctions, PanicStrategy};
-use smallvec::{smallvec, SmallVec};
 use std::ffi::{CStr, CString};
 
 use std::path::Path;
@@ -132,6 +131,60 @@ pub fn time_trace_profiler_finish(file_name: &Path) {
     }
 }
 
+pub enum TargetFeatureFoldStrength<'a> {
+    // The feature is only tied when enabling the feature, disabling
+    // this feature shouldn't disable the tied feature.
+    EnableOnly(&'a str),
+    // The feature is tied for both enabling and disabling this feature.
+    Both(&'a str),
+}
+
+impl<'a> TargetFeatureFoldStrength<'a> {
+    fn as_str(&self) -> &'a str {
+        match self {
+            TargetFeatureFoldStrength::EnableOnly(feat) => feat,
+            TargetFeatureFoldStrength::Both(feat) => feat,
+        }
+    }
+}
+
+pub struct LLVMFeature<'a> {
+    pub llvm_feature_name: &'a str,
+    pub dependency: Option<TargetFeatureFoldStrength<'a>>,
+}
+
+impl<'a> LLVMFeature<'a> {
+    pub fn new(llvm_feature_name: &'a str) -> Self {
+        Self { llvm_feature_name, dependency: None }
+    }
+
+    pub fn with_dependency(
+        llvm_feature_name: &'a str,
+        dependency: TargetFeatureFoldStrength<'a>,
+    ) -> Self {
+        Self { llvm_feature_name, dependency: Some(dependency) }
+    }
+
+    pub fn contains(&self, feat: &str) -> bool {
+        self.iter().any(|dep| dep == feat)
+    }
+
+    pub fn iter(&'a self) -> impl Iterator<Item = &'a str> {
+        let dependencies = self.dependency.iter().map(|feat| feat.as_str());
+        std::iter::once(self.llvm_feature_name).chain(dependencies)
+    }
+}
+
+impl<'a> IntoIterator for LLVMFeature<'a> {
+    type Item = &'a str;
+    type IntoIter = impl Iterator<Item = &'a str>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        let dependencies = self.dependency.into_iter().map(|feat| feat.as_str());
+        std::iter::once(self.llvm_feature_name).chain(dependencies)
+    }
+}
+
 // WARNING: the features after applying `to_llvm_features` must be known
 // to LLVM or the feature detection code will walk past the end of the feature
 // array, leading to crashes.
@@ -147,58 +200,65 @@ pub fn time_trace_profiler_finish(file_name: &Path) {
 // Though note that Rust can also be build with an external precompiled version of LLVM
 // which might lead to failures if the oldest tested / supported LLVM version
 // doesn't yet support the relevant intrinsics
-//
-// Note: The first feature in the list that is returned is the mapping to the feature that is
-// provided from the `s` parameter.
-pub fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> SmallVec<[&'a str; 2]> {
+pub fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> LLVMFeature<'a> {
     let arch = if sess.target.arch == "x86_64" { "x86" } else { &*sess.target.arch };
     match (arch, s) {
-        ("x86", "sse4.2") => smallvec!["sse4.2", "crc32"],
-        ("x86", "pclmulqdq") => smallvec!["pclmul"],
-        ("x86", "rdrand") => smallvec!["rdrnd"],
-        ("x86", "bmi1") => smallvec!["bmi"],
-        ("x86", "cmpxchg16b") => smallvec!["cx16"],
-        ("aarch64", "rcpc2") => smallvec!["rcpc-immo"],
-        ("aarch64", "dpb") => smallvec!["ccpp"],
-        ("aarch64", "dpb2") => smallvec!["ccdp"],
-        ("aarch64", "frintts") => smallvec!["fptoint"],
-        ("aarch64", "fcma") => smallvec!["complxnum"],
-        ("aarch64", "pmuv3") => smallvec!["perfmon"],
-        ("aarch64", "paca") => smallvec!["pauth"],
-        ("aarch64", "pacg") => smallvec!["pauth"],
+        ("x86", "sse4.2") => {
+            LLVMFeature::with_dependency("sse4.2", TargetFeatureFoldStrength::EnableOnly("crc32"))
+        }
+        ("x86", "pclmulqdq") => LLVMFeature::new("pclmul"),
+        ("x86", "rdrand") => LLVMFeature::new("rdrnd"),
+        ("x86", "bmi1") => LLVMFeature::new("bmi"),
+        ("x86", "cmpxchg16b") => LLVMFeature::new("cx16"),
+        ("aarch64", "rcpc2") => LLVMFeature::new("rcpc-immo"),
+        ("aarch64", "dpb") => LLVMFeature::new("ccpp"),
+        ("aarch64", "dpb2") => LLVMFeature::new("ccdp"),
+        ("aarch64", "frintts") => LLVMFeature::new("fptoint"),
+        ("aarch64", "fcma") => LLVMFeature::new("complxnum"),
+        ("aarch64", "pmuv3") => LLVMFeature::new("perfmon"),
+        ("aarch64", "paca") => LLVMFeature::new("pauth"),
+        ("aarch64", "pacg") => LLVMFeature::new("pauth"),
         // Rust ties fp and neon together.
-        ("aarch64", "neon") => smallvec!["neon", "fp-armv8"],
+        ("aarch64", "neon") => {
+            LLVMFeature::with_dependency("neon", TargetFeatureFoldStrength::Both("fp-armv8"))
+        }
         // In LLVM neon implicitly enables fp, but we manually enable
         // neon when a feature only implicitly enables fp
-        ("aarch64", "f32mm") => smallvec!["f32mm", "neon"],
-        ("aarch64", "f64mm") => smallvec!["f64mm", "neon"],
-        ("aarch64", "fhm") => smallvec!["fp16fml", "neon"],
-        ("aarch64", "fp16") => smallvec!["fullfp16", "neon"],
-        ("aarch64", "jsconv") => smallvec!["jsconv", "neon"],
-        ("aarch64", "sve") => smallvec!["sve", "neon"],
-        ("aarch64", "sve2") => smallvec!["sve2", "neon"],
-        ("aarch64", "sve2-aes") => smallvec!["sve2-aes", "neon"],
-        ("aarch64", "sve2-sm4") => smallvec!["sve2-sm4", "neon"],
-        ("aarch64", "sve2-sha3") => smallvec!["sve2-sha3", "neon"],
-        ("aarch64", "sve2-bitperm") => smallvec!["sve2-bitperm", "neon"],
-        (_, s) => smallvec![s],
-    }
-}
-
-pub enum TargetFeatureFoldStrength {
-    // The feature is only tied when enabling the feature, disabling
-    // this feature shouldn't disable the tied feature.
-    EnableOnly,
-    // The feature is tied for both enabling and disabling this feature.
-    Both,
-}
-
-// Determines how the features are folded together, some features are
-// linked a lot more than some others.
-pub fn feature_fold_strength<'a>(feats: &SmallVec<[&'a str; 2]>) -> TargetFeatureFoldStrength {
-    match (feats.get(0), feats.get(1)) {
-        (Some(&"neon"), Some(&"fp-armv8")) => TargetFeatureFoldStrength::Both,
-        _ => TargetFeatureFoldStrength::EnableOnly,
+        ("aarch64", "f32mm") => {
+            LLVMFeature::with_dependency("f32mm", TargetFeatureFoldStrength::EnableOnly("neon"))
+        }
+        ("aarch64", "f64mm") => {
+            LLVMFeature::with_dependency("f64mm", TargetFeatureFoldStrength::EnableOnly("neon"))
+        }
+        ("aarch64", "fhm") => {
+            LLVMFeature::with_dependency("fp16fml", TargetFeatureFoldStrength::EnableOnly("neon"))
+        }
+        ("aarch64", "fp16") => {
+            LLVMFeature::with_dependency("fullfp16", TargetFeatureFoldStrength::EnableOnly("neon"))
+        }
+        ("aarch64", "jsconv") => {
+            LLVMFeature::with_dependency("jsconv", TargetFeatureFoldStrength::EnableOnly("neon"))
+        }
+        ("aarch64", "sve") => {
+            LLVMFeature::with_dependency("sve", TargetFeatureFoldStrength::EnableOnly("neon"))
+        }
+        ("aarch64", "sve2") => {
+            LLVMFeature::with_dependency("sve2", TargetFeatureFoldStrength::EnableOnly("neon"))
+        }
+        ("aarch64", "sve2-aes") => {
+            LLVMFeature::with_dependency("sve2-aes", TargetFeatureFoldStrength::EnableOnly("neon"))
+        }
+        ("aarch64", "sve2-sm4") => {
+            LLVMFeature::with_dependency("sve2-sm4", TargetFeatureFoldStrength::EnableOnly("neon"))
+        }
+        ("aarch64", "sve2-sha3") => {
+            LLVMFeature::with_dependency("sve2-sha3", TargetFeatureFoldStrength::EnableOnly("neon"))
+        }
+        ("aarch64", "sve2-bitperm") => LLVMFeature::with_dependency(
+            "sve2-bitperm",
+            TargetFeatureFoldStrength::EnableOnly("neon"),
+        ),
+        (_, s) => LLVMFeature::new(s),
     }
 }
 
@@ -296,18 +356,17 @@ fn print_target_features(sess: &Session, tm: &llvm::TargetMachine) {
     let mut rustc_target_features = supported_target_features(sess)
         .iter()
         .map(|(feature, _gate)| {
-            let desc = if let Some(llvm_feature) = to_llvm_features(sess, *feature).first() {
-                // LLVM asserts that these are sorted. LLVM and Rust both use byte comparison for these strings.
+            // LLVM asserts that these are sorted. LLVM and Rust both use byte comparison for these strings.
+            let llvm_feature = to_llvm_features(sess, *feature).llvm_feature_name;
+            let desc =
                 match llvm_target_features.binary_search_by_key(&llvm_feature, |(f, _d)| f).ok() {
                     Some(index) => {
                         known_llvm_target_features.insert(llvm_feature);
                         llvm_target_features[index].1
                     }
                     None => "",
-                }
-            } else {
-                ""
-            };
+                };
+
             (*feature, desc)
         })
         .collect::<Vec<_>>();
@@ -491,17 +550,20 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
             // passing requests down to LLVM. This means that all in-language
             // features also work on the command line instead of having two
             // different names when the LLVM name and the Rust name differ.
-            let llvm_features = to_llvm_features(sess, feature);
-            Some(to_llvm_features(sess, feature).into_iter().enumerate().filter_map(
-                move |(idx, f)| match (enable_disable, feature_fold_strength(&llvm_features)) {
-                    ('-' | '+', TargetFeatureFoldStrength::Both)
-                    | ('+', TargetFeatureFoldStrength::EnableOnly) => {
-                        Some(format!("{}{}", enable_disable, f))
-                    }
-                    _ if idx == 0 => Some(format!("{}{}", enable_disable, f)),
-                    _ => None,
-                },
-            ))
+            let llvm_feature = to_llvm_features(sess, feature);
+
+            Some(
+                std::iter::once(format!("{}{}", enable_disable, llvm_feature.llvm_feature_name))
+                    .chain(llvm_feature.dependency.into_iter().filter_map(move |feat| {
+                        match (enable_disable, feat) {
+                            ('-' | '+', TargetFeatureFoldStrength::Both(f))
+                            | ('+', TargetFeatureFoldStrength::EnableOnly(f)) => {
+                                Some(format!("{}{}", enable_disable, f))
+                            }
+                            _ => None,
+                        }
+                    })),
+            )
         })
         .flatten();
     features.extend(feats);
