@@ -8,7 +8,7 @@ LL | #![feature(dyn_star, pointer_like_trait)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error[E0282]: type annotations needed
-  --> $DIR/param-env-infer.rs:12:10
+  --> $DIR/param-env-infer.rs:13:10
    |
 LL |     t as _
    |          ^ cannot infer type

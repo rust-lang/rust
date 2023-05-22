@@ -2,7 +2,6 @@
 
 use super::search_graph::OverflowHandler;
 use super::{EvalCtxt, SolverMode};
-use crate::solve::CanonicalResponseExt;
 use crate::traits::coherence;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def_id::DefId;
@@ -744,13 +743,18 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             SolverMode::Normal => {
                 let param_env_responses = candidates
                     .iter()
-                    .filter(|c| matches!(c.source, CandidateSource::ParamEnv(_)))
+                    .filter(|c| {
+                        matches!(
+                            c.source,
+                            CandidateSource::ParamEnv(_) | CandidateSource::AliasBound
+                        )
+                    })
                     .map(|c| c.result)
                     .collect::<Vec<_>>();
                 if let Some(result) = self.try_merge_responses(&param_env_responses) {
-                    if result.has_only_region_constraints() {
-                        return Ok(result);
-                    }
+                    // We strongly prefer alias and param-env bounds here, even if they affect inference.
+                    // See https://github.com/rust-lang/trait-system-refactor-initiative/issues/11.
+                    return Ok(result);
                 }
             }
         }
