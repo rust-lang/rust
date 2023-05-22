@@ -2637,14 +2637,19 @@ impl GenericDef {
                 Either::Right(x) => GenericParam::TypeParam(x),
             }
         });
-        let lt_params = generics
+        self.lifetime_params(db).into_iter().chain(ty_params).collect()
+    }
+
+    pub fn lifetime_params(self, db: &dyn HirDatabase) -> Vec<GenericParam> {
+        let generics = db.generic_params(self.into());
+        generics
             .lifetimes
             .iter()
             .map(|(local_id, _)| LifetimeParam {
                 id: LifetimeParamId { parent: self.into(), local_id },
             })
-            .map(GenericParam::LifetimeParam);
-        lt_params.chain(ty_params).collect()
+            .map(GenericParam::LifetimeParam)
+            .collect()
     }
 
     pub fn type_params(self, db: &dyn HirDatabase) -> Vec<TypeOrConstParam> {
