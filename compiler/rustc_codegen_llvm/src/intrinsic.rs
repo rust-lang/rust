@@ -642,7 +642,7 @@ fn codegen_wasm_try<'ll>(
         //      ret i32 0
         //
         //   catchswitch:
-        //      %cs = catchswitch within none [%catchpad_rust] unwind to caller
+        //      %cs = catchswitch within none [%catchpad] unwind to caller
         //
         //   catchpad:
         //      %tok = catchpad within %cs [null]
