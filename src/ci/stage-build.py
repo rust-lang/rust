@@ -822,7 +822,7 @@ def execute_build_pipeline(timer: Timer, pipeline: Pipeline, runner: BenchmarkRu
 
     # Stage 1b: Build rustc + CS PGO instrumented LLVM
     with timer.section("Stage 1b (LLVM CS PGO)") as stage1b:
-        with stage1.section("Build rustc and LLVM") as rustc_build:
+        with stage1b.section("Build rustc and LLVM") as rustc_build:
             build_rustc(pipeline, args=[
                 "--llvm-profile-generate",
                 "--llvm-profile-use",

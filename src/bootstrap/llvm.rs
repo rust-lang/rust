@@ -344,6 +344,7 @@ impl Step for Llvm {
                     cfg.define("LLVM_PROFILE_DATA_DIR", llvm_profile_dir);
                 }
             }
+            cfg.define("LLVM_VP_COUNTERS_PER_SITE", "10");
             cfg.define("LLVM_BUILD_RUNTIME", "No");
         }
         if let Some(path) = builder.config.llvm_profile_use.as_ref() {
