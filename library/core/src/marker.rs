@@ -43,27 +43,17 @@ use crate::hash::Hasher;
 /// ```
 #[unstable(feature = "internal_impls_macro", issue = "none")]
 macro marker_impls {
-    ( $(#[$($meta:tt)*])* $Trait:ident for $( $({$($bounds:tt)*})? $T:ty ),+ $(,)?) => {
-        // This inner macro is needed because... idk macros are weird.
-        // It allows repeating `meta` on all impls.
-        #[unstable(feature = "internal_impls_macro", issue = "none")]
-        macro _impl {
-            ( $$({$$($$bounds_:tt)*})? $$T_:ty ) => {
-                $(#[$($meta)*])* impl<$$($$($$bounds_)*)?> $Trait for $$T_ {}
-            }
-        }
-        $( _impl! { $({$($bounds)*})? $T } )+
+    ( $(#[$($meta:tt)*])* $Trait:ident for $({$($bounds:tt)*})? $T:ty $(, $($rest:tt)*)? ) => {
+        $(#[$($meta)*])* impl< $($($bounds)*)? > $Trait for $T {}
+        marker_impls! { $(#[$($meta)*])* $Trait for $($($rest)*)? }
     },
-    ( $(#[$($meta:tt)*])* unsafe $Trait:ident for $( $({$($bounds:tt)*})? $T:ty ),+ $(,)?) => {
-        #[unstable(feature = "internal_impls_macro", issue = "none")]
-        macro _impl {
-            ( $$({$$($$bounds_:tt)*})? $$T_:ty ) => {
-                $(#[$($meta)*])* unsafe impl<$$($$($$bounds_)*)?> $Trait for $$T_ {}
-            }
-        }
+    ( $(#[$($meta:tt)*])* $Trait:ident for ) => {},
 
-        $( _impl! { $({$($bounds)*})? $T } )+
+    ( $(#[$($meta:tt)*])* unsafe $Trait:ident for $({$($bounds:tt)*})? $T:ty $(, $($rest:tt)*)? ) => {
+        $(#[$($meta)*])* unsafe impl< $($($bounds)*)? > $Trait for $T {}
+        marker_impls! { $(#[$($meta)*])* unsafe $Trait for $($($rest)*)? }
     },
+    ( $(#[$($meta:tt)*])* unsafe $Trait:ident for ) => {},
 }
 
 /// Types that can be transferred across thread boundaries.
