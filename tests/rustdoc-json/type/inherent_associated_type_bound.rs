@@ -5,14 +5,12 @@
 // @set Carrier = '$.index[*][?(@.name=="Carrier")].id'
 pub struct Carrier<'a>(&'a ());
 
-// @is '$.index[*][?(@.name=="User")].inner.type.kind' '"function_pointer"'
-// @is '$.index[*][?(@.name=="User")].inner.type.inner.generic_params[*].name' \""'b"\"
-// @is '$.index[*][?(@.name=="User")].inner.type.inner.decl.inputs[0][1].kind' '"qualified_path"'
-// @is '$.index[*][?(@.name=="User")].inner.type.inner.decl.inputs[0][1].inner.self_type.inner.id' $Carrier
-// @is '$.index[*][?(@.name=="User")].inner.type.inner.decl.inputs[0][1].inner.self_type.inner.args.angle_bracketed.args[0].lifetime' \""'b"\"
-// @is '$.index[*][?(@.name=="User")].inner.type.inner.decl.inputs[0][1].inner.name' '"Focus"'
-// @is '$.index[*][?(@.name=="User")].inner.type.inner.decl.inputs[0][1].inner.trait' null
-// @is '$.index[*][?(@.name=="User")].inner.type.inner.decl.inputs[0][1].inner.args.angle_bracketed.args[0].type.inner' '"i32"'
+// @is '$.index[*][?(@.name=="User")].inner.typedef.type.function_pointer.generic_params[*].name' \""'b"\"
+// @is '$.index[*][?(@.name=="User")].inner.typedef.type.function_pointer.decl.inputs[0][1].qualified_path.self_type.resolved_path.id' $Carrier
+// @is '$.index[*][?(@.name=="User")].inner.typedef.type.function_pointer.decl.inputs[0][1].qualified_path.self_type.resolved_path.args.angle_bracketed.args[0].lifetime' \""'b"\"
+// @is '$.index[*][?(@.name=="User")].inner.typedef.type.function_pointer.decl.inputs[0][1].qualified_path.name' '"Focus"'
+// @is '$.index[*][?(@.name=="User")].inner.typedef.type.function_pointer.decl.inputs[0][1].qualified_path.trait' null
+// @is '$.index[*][?(@.name=="User")].inner.typedef.type.function_pointer.decl.inputs[0][1].qualified_path.args.angle_bracketed.args[0].type.primitive' '"i32"'
 
 pub type User = for<'b> fn(Carrier<'b>::Focus<i32>);
 
