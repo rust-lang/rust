@@ -588,73 +588,68 @@ impl Slice {
 ///
 /// `max_slice` below will be made to have arity `L`.
 #[derive(Debug)]
-struct SplitVarLenSlice {
-    /// If the type is an array, this is its size.
-    array_len: Option<usize>,
-    /// The arity of the input slice.
-    arity: usize,
-    /// The smallest slice bigger than any slice seen. `max_slice.arity()` is the length `L`
-    /// described above.
-    max_slice: SliceKind,
-}
+struct SplitVarLenSlice;
 
 impl SplitVarLenSlice {
-    fn new(prefix: usize, suffix: usize, array_len: Option<usize>) -> Self {
-        SplitVarLenSlice { array_len, arity: prefix + suffix, max_slice: VarLen(prefix, suffix) }
-    }
-
-    /// Pass a set of slices relative to which to split this one.
-    fn split(&mut self, slices: impl Iterator<Item = SliceKind>) {
-        let VarLen(max_prefix_len, max_suffix_len) = &mut self.max_slice else {
-            // No need to split
-            return;
-        };
-        // We grow `self.max_slice` to be larger than all slices encountered, as described above.
-        // For diagnostics, we keep the prefix and suffix lengths separate, but grow them so that
-        // `L = max_prefix_len + max_suffix_len`.
+    /// Split the base `[..]` slice relative to `slices`.
+    fn split(
+        array_len: Option<usize>,
+        slices: impl Iterator<Item = SliceKind> + Clone,
+    ) -> impl Iterator<Item = (Presence, Slice)> {
+        let mut max_prefix_len = 0;
+        let mut max_suffix_len = 0;
         let mut max_fixed_len = 0;
-        for slice in slices {
+        let mut min_var_len = usize::MAX;
+        let mut seen_fixed_lens = FxHashSet::default();
+        for slice in slices.clone() {
             match slice {
                 FixedLen(len) => {
                     max_fixed_len = cmp::max(max_fixed_len, len);
+                    seen_fixed_lens.insert(len);
                 }
                 VarLen(prefix, suffix) => {
-                    *max_prefix_len = cmp::max(*max_prefix_len, prefix);
-                    *max_suffix_len = cmp::max(*max_suffix_len, suffix);
+                    max_prefix_len = cmp::max(max_prefix_len, prefix);
+                    max_suffix_len = cmp::max(max_suffix_len, suffix);
+                    min_var_len = cmp::min(min_var_len, prefix + suffix);
                 }
             }
         }
-        // We want `L = max(L, max_fixed_len + 1)`, modulo the fact that we keep prefix and
-        // suffix separate.
-        if max_fixed_len + 1 >= *max_prefix_len + *max_suffix_len {
-            // The subtraction can't overflow thanks to the above check.
+        // We want to compute `L` that is larger than all slices encountered, as described above. We
+        // take `L = max_prefix_len + max_suffix_len`, then ensure `L > max_fixed_len`.
+        // The subtlety with prefix vs suffix is for diagnostics purposes.
+        if max_fixed_len + 1 >= max_prefix_len + max_suffix_len {
+            // The subtraction can't underflow thanks to the above check.
             // The new `max_prefix_len` is larger than its previous value.
-            *max_prefix_len = max_fixed_len + 1 - *max_suffix_len;
+            max_prefix_len = max_fixed_len + 1 - max_suffix_len;
         }
 
+        // The smallest slice bigger than any slice seen. `max_slice.arity()` is the length `L`
+        // described above.
+        let mut max_slice = VarLen(max_prefix_len, max_suffix_len);
         // We cap the arity of `max_slice` at the array size.
-        match self.array_len {
-            Some(len) if self.max_slice.arity() >= len => self.max_slice = FixedLen(len),
+        match array_len {
+            Some(len) if max_slice.arity() >= len => max_slice = FixedLen(len),
             _ => {}
         }
-    }
-
-    /// Iterate over the partition of this slice.
-    fn iter(&self) -> impl Iterator<Item = Slice> + Captures<'_> {
-        let smaller_lengths = match self.array_len {
-            // The only admissible fixed-length slice is one of the array size. Whether `max_slice`
-            // is fixed-length or variable-length, it will be the only relevant slice to output
-            // here.
+        let smaller_lengths = match array_len {
+            // If the array has known length, the only admissible patterns are fixed-length of the
+            // array size or variable-length of a smaller size. This is exactly what `max_slice`
+            // captures, so we only output that.
             Some(_) => 0..0, // empty range
-            // We cover all arities in the range `(self.arity..infinity)`. We split that range into
-            // two: lengths smaller than `max_slice.arity()` are treated independently as
-            // fixed-lengths slices, and lengths above are captured by `max_slice`.
-            None => self.arity..self.max_slice.arity(),
+            // We cover all arities in the range `(0..infinity)`. We split that range into two:
+            // lengths smaller than `max_slice.arity()` are treated independently as fixed-lengths
+            // slices, and lengths above are captured by `max_slice`.
+            None => 0..max_slice.arity(),
         };
-        smaller_lengths
-            .map(FixedLen)
-            .chain(once(self.max_slice))
-            .map(move |kind| Slice::new(self.array_len, kind))
+        smaller_lengths.map(FixedLen).chain(once(max_slice)).map(move |slice| {
+            let arity = slice.arity();
+            let seen = if min_var_len <= arity || seen_fixed_lens.contains(&arity) {
+                Presence::Seen
+            } else {
+                Presence::Unseen
+            };
+            (seen, Slice::new(array_len, slice))
+        })
     }
 }
 
@@ -869,8 +864,10 @@ pub(super) enum ConstructorSet {
     /// `non_exhaustive` is used when the range is not allowed to be matched exhaustively (that's
     /// for usize/isize).
     Integers { range_1: IntRange, range_2: Option<IntRange>, non_exhaustive: bool },
-    /// The type is matched by slices.
-    Slice(Slice),
+    /// The type is matched by slices. The usize is the compile-time length of the array, if known.
+    Slice(Option<usize>),
+    /// The type is matched by slices whose elements are uninhabited.
+    SliceOfEmpty,
     /// The constructors cannot be listed, and the type cannot be matched exhaustively. E.g. `str`,
     /// floats.
     Unlistable,
@@ -931,13 +928,16 @@ impl ConstructorSet {
                 if len != 0 && cx.is_uninhabited(*sub_ty) {
                     Self::Uninhabited
                 } else {
-                    Self::Slice(Slice::new(Some(len), VarLen(0, 0)))
+                    Self::Slice(Some(len))
                 }
             }
             // Treat arrays of a constant but unknown length like slices.
             ty::Array(sub_ty, _) | ty::Slice(sub_ty) => {
-                let kind = if cx.is_uninhabited(*sub_ty) { FixedLen(0) } else { VarLen(0, 0) };
-                Self::Slice(Slice::new(None, kind))
+                if cx.is_uninhabited(*sub_ty) {
+                    Self::SliceOfEmpty
+                } else {
+                    Self::Slice(None)
+                }
             }
             ty::Adt(def, substs) if def.is_enum() => {
                 // If the enum is declared as `#[non_exhaustive]`, we treat it as if it had an
@@ -1084,32 +1084,26 @@ impl ConstructorSet {
                     missing.push(NonExhaustive);
                 }
             }
-            &ConstructorSet::Slice(base_slice) if seen.is_empty() => {
-                missing.push(Slice(base_slice));
+            &ConstructorSet::Slice(array_len) if seen.is_empty() => {
+                missing.push(Slice(Slice::new(array_len, VarLen(0, 0))));
             }
-            &ConstructorSet::Slice(base_slice) => {
-                match base_slice.kind {
-                    FixedLen(..) => {
-                        split.push(Slice(base_slice));
+            &ConstructorSet::Slice(array_len) => {
+                let seen_slices = seen.iter().map(|c| c.as_slice().unwrap()).map(|s| s.kind);
+                for (seen, splitted_slice) in SplitVarLenSlice::split(array_len, seen_slices) {
+                    let ctor = Slice(splitted_slice);
+                    match seen {
+                        Presence::Unseen => missing.push(ctor),
+                        Presence::Seen => split.push(ctor),
                     }
-                    VarLen(self_prefix, self_suffix) => {
-                        // FIXME: splitting and collecting should be done in one pass.
-                        let mut split_base_slice =
-                            SplitVarLenSlice::new(self_prefix, self_suffix, base_slice.array_len);
-                        let seen_slices = seen.iter().map(|c| c.as_slice().unwrap());
-                        split_base_slice.split(seen_slices.clone().map(|s| s.kind));
-                        for splitted_slice in split_base_slice.iter() {
-                            let is_covered_by_any = seen_slices
-                                .clone()
-                                .any(|other| splitted_slice.is_covered_by(other));
-                            let ctor = Slice(splitted_slice);
-                            if is_covered_by_any {
-                                split.push(ctor);
-                            } else {
-                                missing.push(ctor);
-                            }
-                        }
-                    }
+                }
+            }
+            ConstructorSet::SliceOfEmpty => {
+                // Behaves essentially like `Single`.
+                let slice = Slice(Slice::new(None, FixedLen(0)));
+                if seen.is_empty() {
+                    missing.push(slice);
+                } else {
+                    split.push(slice);
                 }
             }
             ConstructorSet::Unlistable => {
