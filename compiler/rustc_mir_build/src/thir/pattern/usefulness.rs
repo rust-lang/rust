@@ -359,8 +359,6 @@ pub(super) struct PatCtxt<'a, 'p, 'tcx> {
     pub(super) cx: &'a MatchCheckCtxt<'p, 'tcx>,
     /// Type of the current column under investigation.
     pub(super) ty: Ty<'tcx>,
-    /// Span of the current pattern under investigation.
-    pub(super) span: Span,
 }
 
 impl<'a, 'p, 'tcx> fmt::Debug for PatCtxt<'a, 'p, 'tcx> {
@@ -631,7 +629,7 @@ impl<'p, 'tcx> WitnessStack<'p, 'tcx> {
             let pats = self.0.drain((len - arity)..).rev();
             Fields::from_iter(pcx.cx, pats)
         };
-        let pat = DeconstructedPat::new(ctor.clone(), fields, pcx.ty, pcx.span);
+        let pat = DeconstructedPat::new(ctor.clone(), fields, pcx.ty, DUMMY_SP);
 
         self.0.push(pat);
     }
@@ -770,7 +768,7 @@ fn compute_usefulness<'p, 'tcx>(
 
     let ty = matrix.head_ty();
     debug!("ty: {ty:?}");
-    let pcx = &PatCtxt { cx, ty, span: DUMMY_SP };
+    let pcx = &PatCtxt { cx, ty };
 
     let set = ConstructorSet::new(pcx);
     let (split_ctors, missing_ctors) =
@@ -848,8 +846,7 @@ fn collect_nonexhaustive_missing_variants<'p, 'tcx>(
     }
 
     let ty = column[0].ty();
-    let span = column[0].span();
-    let pcx = &PatCtxt { cx, ty, span };
+    let pcx = &PatCtxt { cx, ty };
 
     let set = ConstructorSet::new(pcx);
     let (split_ctors, missing_ctors) = set.split(pcx, column.iter().map(|p| p.ctor()), false);
