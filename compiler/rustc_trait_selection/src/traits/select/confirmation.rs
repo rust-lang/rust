@@ -132,6 +132,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
         };
 
+        // The obligations returned by confirmation are recursively evaluated
+        // so we need to make sure they have the correct depth.
+        for subobligation in impl_src.borrow_nested_obligations_mut() {
+            subobligation.set_depth_from_parent(obligation.recursion_depth);
+        }
+
         if !obligation.predicate.is_const_if_const() {
             // normalize nested predicates according to parent predicate's constness.
             impl_src = impl_src.map(|mut o| {
