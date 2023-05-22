@@ -202,6 +202,7 @@ impl Attrs {
             None => Some(first),
         }
     }
+
     pub(crate) fn is_cfg_enabled(&self, cfg_options: &CfgOptions) -> bool {
         match self.cfg() {
             None => true,
