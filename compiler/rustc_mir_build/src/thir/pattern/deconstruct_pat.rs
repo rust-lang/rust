@@ -43,7 +43,7 @@
 //! [`SplitVarLenSlice`].
 
 use std::cell::Cell;
-use std::cmp::{self, max, min, Ordering};
+use std::cmp::{self, Ordering};
 use std::fmt;
 use std::iter::once;
 use std::ops::RangeInclusive;
@@ -202,16 +202,6 @@ impl IntRange {
         other.range.start() <= self.range.start() && self.range.end() <= other.range.end()
     }
 
-    fn intersection(&self, other: &Self) -> Option<Self> {
-        let (lo, hi) = self.boundaries();
-        let (other_lo, other_hi) = other.boundaries();
-        if lo <= other_hi && other_lo <= hi {
-            Some(IntRange { range: max(lo, other_lo)..=min(hi, other_hi), bias: self.bias })
-        } else {
-            None
-        }
-    }
-
     /// Only used for displaying the range properly.
     fn to_pat<'tcx>(&self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Pat<'tcx> {
         let (lo, hi) = self.boundaries();
@@ -301,18 +291,6 @@ impl IntRange {
                     OverlappingRangeEndpoints { overlap: overlaps, range: this_span },
                 );
             }
-        }
-    }
-
-    /// See `Constructor::is_covered_by`
-    fn is_covered_by(&self, other: &Self) -> bool {
-        if self.intersection(other).is_some() {
-            // Constructor splitting should ensure that all intersections we encounter are actually
-            // inclusions.
-            assert!(self.is_subrange(other));
-            true
-        } else {
-            false
         }
     }
 }
@@ -816,7 +794,7 @@ impl<'tcx> Constructor<'tcx> {
             (Single, Single) => true,
             (Variant(self_id), Variant(other_id)) => self_id == other_id,
 
-            (IntRange(self_range), IntRange(other_range)) => self_range.is_covered_by(other_range),
+            (IntRange(self_range), IntRange(other_range)) => self_range.is_subrange(other_range),
             (
                 FloatRange(self_from, self_to, self_end),
                 FloatRange(other_from, other_to, other_end),
