@@ -482,7 +482,6 @@ compiler-team = [
     "@petrochenkov",
     "@davidtwco",
     "@oli-obk",
-    "@lcnr",
     "@wesleywiser",
 ]
 compiler-team-contributors = [
@@ -593,6 +592,7 @@ style-team = [
 "/compiler/rustc_llvm" =                     ["@cuviper"]
 "/compiler/rustc_middle/src/mir" =           ["compiler", "mir"]
 "/compiler/rustc_middle/src/traits" =        ["compiler", "types"]
+"/compiler/rustc_middle/src/ty" =            ["compiler", "types"]
 "/compiler/rustc_const_eval/src/interpret" = ["compiler", "mir"]
 "/compiler/rustc_const_eval/src/transform" = ["compiler", "mir-opt"]
 "/compiler/rustc_mir_build/src/build" =      ["compiler", "mir"]
