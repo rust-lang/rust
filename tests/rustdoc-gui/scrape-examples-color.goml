@@ -81,16 +81,16 @@ define-function: (
 
 call-function: ("check-background", {
     "theme": "ayu",
-    "background_color_start": "rgb(15, 20, 25)",
+    "background_color_start": "rgba(15, 20, 25, 1)",
     "background_color_end": "rgba(15, 20, 25, 0)",
 })
 call-function: ("check-background", {
     "theme": "dark",
-    "background_color_start": "rgb(53, 53, 53)",
+    "background_color_start": "rgba(53, 53, 53, 1)",
     "background_color_end": "rgba(53, 53, 53, 0)",
 })
 call-function: ("check-background", {
     "theme": "light",
-    "background_color_start": "rgb(255, 255, 255)",
+    "background_color_start": "rgba(255, 255, 255, 1)",
     "background_color_end": "rgba(255, 255, 255, 0)",
 })
