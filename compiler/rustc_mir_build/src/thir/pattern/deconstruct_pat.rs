@@ -887,11 +887,12 @@ impl ConstructorSet {
     pub(super) fn new<'p, 'tcx>(pcx: &PatCtxt<'_, 'p, 'tcx>) -> Self {
         debug!("ConstructorSet::new({:?})", pcx.ty);
         let cx = pcx.cx;
+        let ty = pcx.ty;
         let make_range = |start, end| {
             // `unwrap()` is ok because we know the type is an integer.
-            IntRange::from_range(cx.tcx, start, end, pcx.ty, &RangeEnd::Included).unwrap()
+            IntRange::from_range(cx.tcx, start, end, ty, &RangeEnd::Included).unwrap()
         };
-        // This determines the set of all possible constructors for the type `pcx.ty`. For numbers,
+        // This determines the set of all possible constructors for the type `ty`. For numbers,
         // arrays and slices we use ranges and variable-length slices when appropriate.
         //
         // If the `exhaustive_patterns` feature is enabled, we make sure to omit constructors that
@@ -899,7 +900,7 @@ impl ConstructorSet {
         // returned list of constructors.
         // Invariant: this is `Uninhabited` if and only if the type is uninhabited (as determined by
         // `cx.is_uninhabited()`).
-        match pcx.ty.kind() {
+        match ty.kind() {
             ty::Bool => {
                 Self::Integers { range_1: make_range(0, 1), range_2: None, non_exhaustive: false }
             }
@@ -914,8 +915,8 @@ impl ConstructorSet {
             &ty::Int(ity) => {
                 // `usize`/`isize` are not allowed to be matched exhaustively unless the
                 // `precise_pointer_size_matching` feature is enabled.
-                let non_exhaustive = pcx.ty.is_ptr_sized_integral()
-                    && !cx.tcx.features().precise_pointer_size_matching;
+                let non_exhaustive =
+                    ty.is_ptr_sized_integral() && !cx.tcx.features().precise_pointer_size_matching;
                 let bits = Integer::from_int_ty(&cx.tcx, ity).size().bits() as u128;
                 let min = 1u128 << (bits - 1);
                 let max = min - 1;
@@ -924,8 +925,8 @@ impl ConstructorSet {
             &ty::Uint(uty) => {
                 // `usize`/`isize` are not allowed to be matched exhaustively unless the
                 // `precise_pointer_size_matching` feature is enabled.
-                let non_exhaustive = pcx.ty.is_ptr_sized_integral()
-                    && !cx.tcx.features().precise_pointer_size_matching;
+                let non_exhaustive =
+                    ty.is_ptr_sized_integral() && !cx.tcx.features().precise_pointer_size_matching;
                 let size = Integer::from_uint_ty(&cx.tcx, uty).size();
                 let max = size.truncate(u128::MAX);
                 Self::Integers { range_1: make_range(0, max), non_exhaustive, range_2: None }
@@ -960,7 +961,7 @@ impl ConstructorSet {
                 //
                 // we don't want to show every possible IO error, but instead have only `_` as the
                 // witness.
-                let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive_enum(pcx.ty);
+                let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive_enum(ty);
 
                 if def.variants().is_empty() && !is_declared_nonexhaustive {
                     Self::Uninhabited
@@ -984,7 +985,7 @@ impl ConstructorSet {
                 }
             }
             ty::Never => Self::Uninhabited,
-            _ if cx.is_uninhabited(pcx.ty) => Self::Uninhabited,
+            _ if cx.is_uninhabited(ty) => Self::Uninhabited,
             ty::Adt(..) | ty::Tuple(..) | ty::Ref(..) => Self::Single,
             // This type is one for which we cannot list constructors, like `str` or `f64`.
             _ => Self::Unlistable,
