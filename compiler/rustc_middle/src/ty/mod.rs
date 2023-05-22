@@ -1882,7 +1882,20 @@ impl PartialEq for VariantDef {
 
         let Self { def_id: lhs_def_id, ctor: _, name: _, discr: _, fields: _, flags: _ } = &self;
         let Self { def_id: rhs_def_id, ctor: _, name: _, discr: _, fields: _, flags: _ } = other;
-        lhs_def_id == rhs_def_id
+
+        let res = lhs_def_id == rhs_def_id;
+
+        // Double check that implicit assumption detailed above.
+        if cfg!(debug_assertions) && res {
+            let deep = self.ctor == other.ctor
+                && self.name == other.name
+                && self.discr == other.discr
+                && self.fields == other.fields
+                && self.flags == other.flags;
+            assert!(deep, "VariantDef for the same def-id has differing data");
+        }
+
+        res
     }
 }
 
@@ -1937,7 +1950,15 @@ impl PartialEq for FieldDef {
 
         let Self { did: rhs_did, name: _, vis: _ } = other;
 
-        lhs_did == rhs_did
+        let res = lhs_did == rhs_did;
+
+        // Double check that implicit assumption detailed above.
+        if cfg!(debug_assertions) && res {
+            let deep = self.name == other.name && self.vis == other.vis;
+            assert!(deep, "FieldDef for the same def-id has differing data");
+        }
+
+        res
     }
 }
 
