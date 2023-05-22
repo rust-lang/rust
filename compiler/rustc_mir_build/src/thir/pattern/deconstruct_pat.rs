@@ -100,10 +100,6 @@ fn expand_or_pat<'p, 'tcx>(pat: &'p Pat<'tcx>) -> Vec<&'p Pat<'tcx>> {
 #[derive(Clone, PartialEq, Eq)]
 pub(crate) struct IntRange {
     range: RangeInclusive<u128>,
-    /// Keeps the bias used for encoding the range. It depends on the type of the range and
-    /// possibly the pointer size of the current architecture. The algorithm ensures we never
-    /// compare `IntRange`s with different types/architectures.
-    bias: u128,
 }
 
 impl IntRange {
@@ -141,28 +137,25 @@ impl IntRange {
         value: mir::ConstantKind<'tcx>,
     ) -> Option<IntRange> {
         let ty = value.ty();
-        if let Some((target_size, bias)) = Self::integral_size_and_signed_bias(tcx, ty) {
-            let val = if let mir::ConstantKind::Val(ConstValue::Scalar(scalar), _) = value {
-                // For this specific pattern we can skip a lot of effort and go
-                // straight to the result, after doing a bit of checking. (We
-                // could remove this branch and just fall through, which
-                // is more general but much slower.)
-                scalar.to_bits_or_ptr_internal(target_size).unwrap().left()?
-            } else {
-                if let mir::ConstantKind::Ty(c) = value
+        let (target_size, bias) = Self::integral_size_and_signed_bias(tcx, ty)?;
+        let val = if let mir::ConstantKind::Val(ConstValue::Scalar(scalar), _) = value {
+            // For this specific pattern we can skip a lot of effort and go
+            // straight to the result, after doing a bit of checking. (We
+            // could remove this branch and just fall through, which
+            // is more general but much slower.)
+            scalar.to_bits_or_ptr_internal(target_size).unwrap().left()?
+        } else {
+            if let mir::ConstantKind::Ty(c) = value
                     && let ty::ConstKind::Value(_) = c.kind()
                 {
                     bug!("encountered ConstValue in mir::ConstantKind::Ty, whereas this is expected to be in ConstantKind::Val");
                 }
 
-                // This is a more general form of the previous case.
-                value.try_eval_bits(tcx, param_env, ty)?
-            };
-            let val = val ^ bias;
-            Some(IntRange { range: val..=val, bias })
-        } else {
-            None
-        }
+            // This is a more general form of the previous case.
+            value.try_eval_bits(tcx, param_env, ty)?
+        };
+        let val = val ^ bias;
+        Some(IntRange { range: val..=val })
     }
 
     #[inline]
@@ -183,7 +176,7 @@ impl IntRange {
                 // This should have been caught earlier by E0030.
                 bug!("malformed range pattern: {}..={}", lo, (hi - offset));
             }
-            IntRange { range: lo..=(hi - offset), bias }
+            IntRange { range: lo..=(hi - offset) }
         })
     }
 
@@ -206,7 +199,7 @@ impl IntRange {
     fn to_pat<'tcx>(&self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Pat<'tcx> {
         let (lo, hi) = self.boundaries();
 
-        let bias = self.bias;
+        let bias = IntRange::signed_bias(tcx, ty);
         let (lo, hi) = (lo ^ bias, hi ^ bias);
 
         let env = ty::ParamEnv::empty().and(ty);
@@ -275,11 +268,8 @@ impl IntRange {
                 }
             }
             if !overlaps.is_empty() {
-                let overlap_as_pat = (super::deconstruct_pat::IntRange {
-                    range: overlap..=overlap,
-                    bias: self.bias,
-                })
-                .to_pat(pcx.cx.tcx, pcx.ty);
+                let overlap_as_pat =
+                    (IntRange { range: overlap..=overlap }).to_pat(pcx.cx.tcx, pcx.ty);
                 let overlaps: Vec<_> = overlaps
                     .into_iter()
                     .map(|span| Overlap { range: overlap_as_pat.clone(), span })
@@ -296,12 +286,10 @@ impl IntRange {
 }
 
 /// Note: this is often not what we want: e.g. `false` is converted into the range `0..=0` and
-/// would be displayed as such. To render properly, convert to a pattern first.
+/// `-128..=127i8` is encoded as `0..=255`. To render properly, convert to a pattern first.
 impl fmt::Debug for IntRange {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let (lo, hi) = self.boundaries();
-        let bias = self.bias;
-        let (lo, hi) = (lo ^ bias, hi ^ bias);
         write!(f, "{}", lo)?;
         write!(f, "{}", RangeEnd::Included)?;
         write!(f, "{}", hi)
@@ -385,18 +373,13 @@ impl SplitIntRange {
             .map(|r| Self::into_boundaries(r))
             .flat_map(|[lo, hi]| [(lo, 0, 1), (hi, 0, -1)])
             .collect();
-        let self_bias;
         match self {
             Self::Single(self_range) => {
-                self_bias = self_range.bias;
-
                 let [lo, hi] = Self::into_boundaries(self_range);
                 bdys.push((lo, 1, 0));
                 bdys.push((hi, -1, 0));
             }
             Self::Double([range_1, range_2]) => {
-                self_bias = range_1.bias;
-
                 let [lo, hi] = Self::into_boundaries(range_1);
                 bdys.push((lo, 1, 0));
                 bdys.push((hi, -1, 0));
@@ -435,7 +418,7 @@ impl SplitIntRange {
                     (JustBefore(n), AfterMax) => n..=u128::MAX,
                     _ => unreachable!(), // Ruled out by the sorting and filtering we did
                 };
-                let range = IntRange { range, bias: self_bias };
+                let range = IntRange { range };
                 (presence, range)
             })
     }
