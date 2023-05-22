@@ -999,7 +999,7 @@ impl ConstructorSet {
     /// - if we replace any `Wildcard`/`Missing` in `split` with all of `missing`, this also
     ///     covers the whole type
     pub(super) fn split<'a, 'tcx>(
-        self,
+        &self,
         pcx: &PatCtxt<'_, '_, 'tcx>,
         ctors: impl Iterator<Item = &'a Constructor<'tcx>> + Clone,
         // Whether the current pattern is the whole pattern as found in a match arm, or if it's a
@@ -1034,8 +1034,8 @@ impl ConstructorSet {
                 }
             }
             ConstructorSet::Variants { variants, non_exhaustive } if seen.is_empty() => {
-                missing.extend(variants.into_iter().map(Variant));
-                if non_exhaustive {
+                missing.extend(variants.iter().copied().map(Variant));
+                if *non_exhaustive {
                     missing.push(NonExhaustive);
                 }
             }
@@ -1043,7 +1043,7 @@ impl ConstructorSet {
                 let seen_set: FxHashSet<_> = seen.iter().map(|c| c.as_variant().unwrap()).collect();
                 let mut skipped_any_missing_variant = false;
                 for variant in variants {
-                    let ctor = Variant(variant);
+                    let ctor = Variant(*variant);
                     if seen_set.contains(&variant) {
                         split.push(ctor);
                     } else if ctor.is_doc_hidden_variant(pcx) || ctor.is_unstable_variant(pcx) {
@@ -1057,44 +1057,41 @@ impl ConstructorSet {
                 if skipped_any_missing_variant {
                     missing.push(Wildcard);
                 }
-                if non_exhaustive {
+                if *non_exhaustive {
                     missing.push(NonExhaustive);
                 }
             }
             ConstructorSet::Integers { range_1, range_2, non_exhaustive } if seen.is_empty() => {
-                if non_exhaustive {
+                if *non_exhaustive {
                     missing.push(NonExhaustive);
                 } else {
-                    missing.push(IntRange(range_1));
+                    missing.push(IntRange(range_1.clone()));
                     if let Some(range_2) = range_2 {
-                        missing.push(IntRange(range_2));
+                        missing.push(IntRange(range_2.clone()));
                     }
                 }
             }
             ConstructorSet::Integers { range_1, range_2, non_exhaustive } => {
                 let range = match range_2 {
-                    None => SplitIntRange::Single(range_1),
-                    Some(range_2) => SplitIntRange::Double([range_1, range_2]),
+                    None => SplitIntRange::Single(range_1.clone()),
+                    Some(range_2) => SplitIntRange::Double([range_1.clone(), range_2.clone()]),
                 };
                 let seen_ranges = seen.iter().map(|ctor| ctor.as_int_range().unwrap());
-                let splitted_ranges = range.split(seen_ranges.cloned());
-                for (seen, splitted_range) in splitted_ranges {
+                for (seen, splitted_range) in range.split(seen_ranges.cloned()) {
                     let ctor = IntRange(splitted_range);
                     match seen {
-                        // We don't report missing constructors in this case
-                        Presence::Unseen if non_exhaustive => {}
                         Presence::Unseen => missing.push(ctor),
                         Presence::Seen => split.push(ctor),
                     }
                 }
-                if non_exhaustive {
+                if *non_exhaustive {
                     missing.push(NonExhaustive);
                 }
             }
-            ConstructorSet::Slice(base_slice) if seen.is_empty() => {
+            &ConstructorSet::Slice(base_slice) if seen.is_empty() => {
                 missing.push(Slice(base_slice));
             }
-            ConstructorSet::Slice(base_slice) => {
+            &ConstructorSet::Slice(base_slice) => {
                 match base_slice.kind {
                     FixedLen(..) => {
                         split.push(Slice(base_slice));
