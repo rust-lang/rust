@@ -9,8 +9,8 @@ pub enum Foo {
         // @set y = "$.index[*][?(@.name=='y')].id"
         y: i32,
     },
-    // @is "$.index[*][?(@.name=='Variant')].inner.kind.struct.fields_stripped" true
-    // @is "$.index[*][?(@.name=='Variant')].inner.kind.struct.fields[0]" $b
-    // @is "$.index[*][?(@.name=='Variant')].inner.kind.struct.fields[1]" $y
-    // @count "$.index[*][?(@.name=='Variant')].inner.kind.struct.fields[*]" 2
+    // @is "$.index[*][?(@.name=='Variant')].inner.variant.kind.struct.fields_stripped" true
+    // @is "$.index[*][?(@.name=='Variant')].inner.variant.kind.struct.fields[0]" $b
+    // @is "$.index[*][?(@.name=='Variant')].inner.variant.kind.struct.fields[1]" $y
+    // @count "$.index[*][?(@.name=='Variant')].inner.variant.kind.struct.fields[*]" 2
 }

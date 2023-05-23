@@ -1,4 +1,4 @@
 // @is "$.index[*][?(@.name=='Unit')].visibility" \"public\"
-// @is "$.index[*][?(@.name=='Unit')].kind" \"struct\"
-// @is "$.index[*][?(@.name=='Unit')].inner.kind" \"unit\"
+// @has "$.index[*][?(@.name=='Unit')].inner.struct"
+// @is "$.index[*][?(@.name=='Unit')].inner.struct.kind" \"unit\"
 pub struct Unit;
