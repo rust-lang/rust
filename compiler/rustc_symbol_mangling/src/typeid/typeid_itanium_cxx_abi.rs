@@ -272,12 +272,11 @@ fn encode_region<'tcx>(
             s.push('E');
             compress(dict, DictKey::Region(region), &mut s);
         }
-        RegionKind::ReErased => {
+        RegionKind::ReEarlyBound(..) | RegionKind::ReErased => {
             s.push_str("u6region");
             compress(dict, DictKey::Region(region), &mut s);
         }
-        RegionKind::ReEarlyBound(..)
-        | RegionKind::ReFree(..)
+        RegionKind::ReFree(..)
         | RegionKind::ReStatic
         | RegionKind::ReError(_)
         | RegionKind::ReVar(..)
@@ -704,14 +703,15 @@ fn transform_predicates<'tcx>(
 ) -> &'tcx List<ty::PolyExistentialPredicate<'tcx>> {
     let predicates: Vec<ty::PolyExistentialPredicate<'tcx>> = predicates
         .iter()
-        .map(|predicate| match predicate.skip_binder() {
+        .filter_map(|predicate| match predicate.skip_binder() {
             ty::ExistentialPredicate::Trait(trait_ref) => {
                 let trait_ref = ty::TraitRef::identity(tcx, trait_ref.def_id);
-                ty::Binder::dummy(ty::ExistentialPredicate::Trait(
+                Some(ty::Binder::dummy(ty::ExistentialPredicate::Trait(
                     ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref),
-                ))
+                )))
             }
-            _ => predicate,
+            ty::ExistentialPredicate::Projection(..) => None,
+            ty::ExistentialPredicate::AutoTrait(..) => Some(predicate),
         })
         .collect();
     tcx.mk_poly_existential_predicates(&predicates)
