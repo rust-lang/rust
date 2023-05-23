@@ -8,6 +8,7 @@ pub struct OtherStruct;
 impl SomeTrait for &[SomeStruct] {}
 
 // @has doc_notable_trait_slice/fn.bare_fn_matches.html
+// @has - '//a[@class="tooltip"]/@title' 'impl SomeTrait for &[SomeStruct]'
 // @snapshot bare_fn_matches - '//script[@id="notable-traits-data"]'
 pub fn bare_fn_matches() -> &'static [SomeStruct] {
     &[]

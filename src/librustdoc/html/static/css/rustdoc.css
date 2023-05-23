@@ -1179,18 +1179,6 @@ a.test-arrow:hover {
 	position: relative;
 }
 
-/* placeholder thunk so that the mouse can easily travel from "(i)" to popover
-	the resulting "hover tunnel" is a stepped triangle, approximating
-	https://bjk5.com/post/44698559168/breaking-down-amazons-mega-dropdown */
-a.tooltip:hover::after {
-	position: absolute;
-	top: calc(100% - 10px);
-	left: -15px;
-	right: -15px;
-	height: 20px;
-	content: "\00a0";
-}
-
 .popover.tooltip .content {
 	margin: 0.25em 0.5em;
 }

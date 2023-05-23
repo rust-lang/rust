@@ -1279,8 +1279,6 @@ fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> 
 }
 
 pub(crate) fn notable_traits_button(ty: &clean::Type, cx: &mut Context<'_>) -> Option<String> {
-    let mut has_notable_trait = false;
-
     let did = ty.def_id(cx.cache())?;
 
     // Box has pass-through impls for Read, Write, Iterator, and Future when the
@@ -1292,6 +1290,8 @@ pub(crate) fn notable_traits_button(ty: &clean::Type, cx: &mut Context<'_>) -> O
     {
         return None;
     }
+
+    let mut notable_tt = String::new();
 
     if let Some(impls) = cx.cache().impls.get(&did) {
         for i in impls {
@@ -1306,20 +1306,49 @@ pub(crate) fn notable_traits_button(ty: &clean::Type, cx: &mut Context<'_>) -> O
 
                 if cx.cache().traits.get(&trait_did).map_or(false, |t| t.is_notable_trait(cx.tcx()))
                 {
-                    has_notable_trait = true;
+                    if !notable_tt.is_empty() {
+                        notable_tt.push('\n');
+                    }
+                    write!(&mut notable_tt, "  {:#}", impl_.print(false, cx))
+                        .expect("infallible write");
+                    for it in &impl_.items {
+                        if let clean::AssocTypeItem(ref tydef, ref bounds) = *it.kind {
+                            write!(
+                                &mut notable_tt,
+                                "\n    type {name}{generics:#}",
+                                name = it.name.as_ref().unwrap(),
+                                generics = tydef.generics.print(cx),
+                            )
+                            .expect("infallible write");
+                            if !bounds.is_empty() {
+                                write!(&mut notable_tt, ": {:#}", print_generic_bounds(bounds, cx))
+                                    .expect("infallible write");
+                            }
+                            write!(
+                                &mut notable_tt,
+                                "{:#}",
+                                print_where_clause(&tydef.generics, cx, 4, Ending::NoNewline)
+                            )
+                            .expect("infallible write");
+                            write!(&mut notable_tt, " = {:#}", tydef.type_.print(cx))
+                                .expect("infallible write");
+                        }
+                    }
                 }
             }
         }
     }
 
-    if has_notable_trait {
+    if notable_tt.is_empty() {
+        None
+    } else {
         cx.types_with_notable_traits.insert(ty.clone());
         Some(format!(
-            " <a href=\"#\" class=\"tooltip\" data-notable-ty=\"{ty}\">ⓘ</a>",
+            " <a href=\"#\" title=\"Notable traits for {ty}&#10;{tt}\" class=\"tooltip\" \
+                data-notable-ty=\"{ty}\">ⓘ</a>",
             ty = Escape(&format!("{:#}", ty.print(cx))),
+            tt = Escape(&notable_tt),
         ))
-    } else {
-        None
     }
 }
 

@@ -740,12 +740,8 @@ function preLoadCss(cssUrl) {
             //
             // This means when the window is resized, we need to redo the layout.
             const base = window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE;
-            const force_visible = base.TOOLTIP_FORCE_VISIBLE;
             hideTooltip(false);
-            if (force_visible) {
-                showTooltip(base);
-                base.TOOLTIP_FORCE_VISIBLE = true;
-            }
+            showTooltip(base);
         }
     });
 
@@ -824,15 +820,6 @@ function preLoadCss(cssUrl) {
         wrapper.style.visibility = "";
         window.CURRENT_TOOLTIP_ELEMENT = wrapper;
         window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE = e;
-        wrapper.onpointerleave = function(ev) {
-            // If this is a synthetic touch event, ignore it. A click event will be along shortly.
-            if (ev.pointerType !== "mouse") {
-                return;
-            }
-            if (!e.TOOLTIP_FORCE_VISIBLE && !elemIsInParent(event.relatedTarget, e)) {
-                hideTooltip(true);
-            }
-        };
     }
 
     function tooltipBlurHandler(event) {
@@ -856,11 +843,8 @@ function preLoadCss(cssUrl) {
 
     function hideTooltip(focus) {
         if (window.CURRENT_TOOLTIP_ELEMENT) {
-            if (window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE.TOOLTIP_FORCE_VISIBLE) {
-                if (focus) {
-                    window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE.focus();
-                }
-                window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE.TOOLTIP_FORCE_VISIBLE = false;
+            if (focus) {
+                window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE.focus();
             }
             const body = document.getElementsByTagName("body")[0];
             body.removeChild(window.CURRENT_TOOLTIP_ELEMENT);
@@ -870,8 +854,7 @@ function preLoadCss(cssUrl) {
 
     onEachLazy(document.getElementsByClassName("tooltip"), e => {
         e.onclick = function() {
-            this.TOOLTIP_FORCE_VISIBLE = this.TOOLTIP_FORCE_VISIBLE ? false : true;
-            if (window.CURRENT_TOOLTIP_ELEMENT && !this.TOOLTIP_FORCE_VISIBLE) {
+            if (window.CURRENT_TOOLTIP_ELEMENT) {
                 hideTooltip(true);
             } else {
                 showTooltip(this);
@@ -880,23 +863,6 @@ function preLoadCss(cssUrl) {
                 window.CURRENT_TOOLTIP_ELEMENT.onblur = tooltipBlurHandler;
             }
             return false;
-        };
-        e.onpointerenter = function(ev) {
-            // If this is a synthetic touch event, ignore it. A click event will be along shortly.
-            if (ev.pointerType !== "mouse") {
-                return;
-            }
-            showTooltip(this);
-        };
-        e.onpointerleave = function(ev) {
-            // If this is a synthetic touch event, ignore it. A click event will be along shortly.
-            if (ev.pointerType !== "mouse") {
-                return;
-            }
-            if (!this.TOOLTIP_FORCE_VISIBLE &&
-                !elemIsInParent(ev.relatedTarget, window.CURRENT_TOOLTIP_ELEMENT)) {
-                hideTooltip(true);
-            }
         };
     });
 

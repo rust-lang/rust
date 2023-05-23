@@ -40,7 +40,6 @@ compare-elements-position-false: (
     ("x")
 )
 click: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"
-move-cursor-to: "//h1"
 assert-count: ("//*[@class='tooltip popover']", 0)
 
 // Now only the `i` should be on the next line.
@@ -116,7 +115,6 @@ assert-position: (
     {"x": 0}
 )
 click: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"
-move-cursor-to: "//h1"
 assert-count: ("//*[@class='tooltip popover']", 0)
 
 // Now check the colors.
@@ -133,7 +131,7 @@ define-function: (
         // We reload the page so the local storage settings are being used.
         reload:
 
-        move-cursor-to: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"
+        click: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"
         assert-count: (".tooltip.popover", 1)
 
         assert-css: (
@@ -196,7 +194,6 @@ reload:
 
 // Check that pressing escape works
 click: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"
-move-cursor-to: "//*[@class='tooltip popover']"
 assert-count: ("//*[@class='tooltip popover']", 1)
 press-key: "Escape"
 assert-count: ("//*[@class='tooltip popover']", 0)
@@ -211,7 +208,6 @@ assert-false: "#method\.create_an_iterator_from_read .tooltip:focus"
 
 // Check that pressing tab over and over works.
 click: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"
-move-cursor-to: "//*[@class='tooltip popover']"
 assert-count: ("//*[@class='tooltip popover']", 1)
 press-key: "Tab"
 press-key: "Tab"
