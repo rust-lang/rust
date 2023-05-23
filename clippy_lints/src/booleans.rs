@@ -441,7 +441,7 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                             diag.span_suggestions(
                                 e.span,
                                 "try",
-                                suggestions.into_iter(),
+                                suggestions,
                                 // nonminimal_bool can produce minimal but
                                 // not human readable expressions (#3141)
                                 Applicability::Unspecified,

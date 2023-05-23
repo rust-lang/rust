@@ -3,7 +3,7 @@ use clippy_utils::source::snippet;
 use clippy_utils::{get_parent_expr, is_trait_method};
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::*;
+use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
