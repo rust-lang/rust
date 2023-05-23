@@ -94,8 +94,10 @@ pub mod work_queue;
 
 mod atomic_ref;
 mod hashes;
+mod option_ext;
 
 pub use atomic_ref::AtomicRef;
+pub use option_ext::OptionExt;
 
 #[inline(never)]
 #[cold]
