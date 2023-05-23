@@ -1,5 +1,5 @@
 error[E0592]: duplicate definitions with name `method1`
-  --> $DIR/coherence-inherited-subtyping.rs:14:5
+  --> $DIR/coherence-inherited-subtyping.rs:12:5
    |
 LL |     fn method1(&self) {}
    |     ^^^^^^^^^^^^^^^^^ duplicate definitions for `method1`
