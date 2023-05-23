@@ -44,7 +44,7 @@ struct AsyncFnVisitor<'a, 'tcx> {
     found_await: bool,
     /// Also keep track of `await`s in nested async blocks so we can mention
     /// it in a note
-    found_await_in_async_block: bool,
+    await_in_async_block: Option<Span>,
     async_depth: usize,
 }
 
@@ -55,8 +55,8 @@ impl<'a, 'tcx> Visitor<'tcx> for AsyncFnVisitor<'a, 'tcx> {
         if let ExprKind::Yield(_, YieldSource::Await { .. }) = ex.kind {
             if self.async_depth == 1 {
                 self.found_await = true;
-            } else {
-                self.found_await_in_async_block = true;
+            } else if self.await_in_async_block.is_none() {
+                self.await_in_async_block = Some(ex.span);
             }
         }
         walk_expr(self, ex);
@@ -96,7 +96,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
                 cx,
                 found_await: false,
                 async_depth: 0,
-                found_await_in_async_block: false,
+                await_in_async_block: None,
             };
             walk_fn(&mut visitor, fn_kind, fn_decl, body.id(), def_id);
             if !visitor.found_await {
@@ -108,8 +108,12 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
                     |diag| {
                         diag.help("consider removing the `async` from this function");
 
-                        if visitor.found_await_in_async_block {
-                            diag.note("`await` used in an async block, which does not require the enclosing function to be `async`");
+                        if let Some(span) = visitor.await_in_async_block {
+                            diag.span_note(
+                                span,
+                                "`await` used in an async block, which does not require \
+                                the enclosing function to be `async`",
+                            );
                         }
                     },
                 );

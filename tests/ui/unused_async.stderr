@@ -9,7 +9,11 @@ LL | |     }
    | |_____^
    |
    = help: consider removing the `async` from this function
-   = note: `await` used in an async block, which does not require the enclosing function to be `async`
+note: `await` used in an async block, which does not require the enclosing function to be `async`
+  --> $DIR/unused_async.rs:13:23
+   |
+LL |             ready(()).await;
+   |                       ^^^^^
    = note: `-D clippy::unused-async` implied by `-D warnings`
 
 error: unused `async` for function with no await statements
