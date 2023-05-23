@@ -810,7 +810,7 @@ def execute_build_pipeline(timer: Timer, pipeline: Pipeline, runner: BenchmarkRu
             build_rustc(pipeline, args=[
                 "--llvm-profile-generate"
             ], env=dict(
-                LLVM_PROFILE_DIR=str(pipeline.llvm_profile_dir_root() / "prof-%p")
+                LLVM_PROFILE_DIR=str(pipeline.llvm_profile_dir_root() / "profiles")
             ))
             record_metrics(pipeline, rustc_build)
 
@@ -829,8 +829,7 @@ def execute_build_pipeline(timer: Timer, pipeline: Pipeline, runner: BenchmarkRu
                 pipeline.llvm_profile_merged_file_intermediate()
             ], env=dict(
                 LLVM_USE_CS_PGO="1",
-                LLVM_PROFILE_DIR=str(pipeline.llvm_profile_dir_root() / "%4m.profraw"),
-                # LLVM_PROFILE_DIR=str(pipeline.llvm_profile_dir_root() / "prof-%p"),
+                LLVM_PROFILE_DIR=str(pipeline.llvm_profile_dir_root() / "profiles2"),
             ))
             record_metrics(pipeline, rustc_build)
 

@@ -331,26 +331,34 @@ impl Step for Llvm {
         // This flag makes sure `FileCheck` is copied in the final binaries directory.
         cfg.define("LLVM_INSTALL_UTILS", "ON");
 
-        let mut cxxflags = vec![];
+        let mut cxxflags: Vec<String> = Vec::new();
         if builder.config.llvm_profile_generate {
             if std::env::var("LLVM_USE_CS_PGO").is_ok() {
-                cfg.define("LLVM_BUILD_INSTRUMENTED", "CSIR");
-                if let Ok(llvm_profile_dir) = std::env::var("LLVM_PROFILE_DIR") {
-                    cfg.define("LLVM_CSPROFILE_DATA_DIR", llvm_profile_dir);
-                }
+                //cfg.define("LLVM_BUILD_INSTRUMENTED", "CSIR");
+                cxxflags.push(format!(
+                    "-fcs-profile-generate={}",
+                    std::env::var("LLVM_PROFILE_DIR").unwrap()
+                ));
+                //if let Ok(llvm_profile_dir) = std::env::var("LLVM_PROFILE_DIR") {
+                //    cfg.define("LLVM_CSPROFILE_DATA_DIR", llvm_profile_dir);
+                //}
+                cxxflags.push("-mllvm".to_string());
+                cxxflags.push("-vp-counters-per-site=10".to_string());
             } else {
-                cfg.define("LLVM_BUILD_INSTRUMENTED", "IR");
-                if let Ok(llvm_profile_dir) = std::env::var("LLVM_PROFILE_DIR") {
-                    cfg.define("LLVM_PROFILE_DATA_DIR", llvm_profile_dir);
-                }
+                //cfg.define("LLVM_BUILD_INSTRUMENTED", "IR");
+                //if let Ok(llvm_profile_dir) = std::env::var("LLVM_PROFILE_DIR") {
+                //    cfg.define("LLVM_PROFILE_DATA_DIR", llvm_profile_dir);
+                //}
+                cxxflags.push(format!(
+                    "-fprofile-generate={}",
+                    std::env::var("LLVM_PROFILE_DIR").unwrap()
+                ));
             }
-            cxxflags.push("-mllvm");
-            cxxflags.push("-vp-counters-per-site=10");
             cfg.define("LLVM_BUILD_RUNTIME", "No");
         }
         if let Some(path) = builder.config.llvm_profile_use.as_ref() {
             // cfg.define("LLVM_PROFDATA_FILE", &path);
-            cxxflags.push(&format!("-fprofile-use={path}"));
+            cxxflags.push(format!("-fprofile-use={path}"));
         }
         if builder.config.llvm_bolt_profile_generate
             || builder.config.llvm_bolt_profile_use.is_some()
@@ -485,7 +493,14 @@ impl Step for Llvm {
             cfg.define("LLVM_VERSION_SUFFIX", suffix);
         }
 
-        configure_cmake(builder, target, &mut cfg, true, ldflags, &[]);
+        configure_cmake(
+            builder,
+            target,
+            &mut cfg,
+            true,
+            ldflags,
+            &cxxflags.iter().map(|s| s.as_str()).collect::<Vec<_>>(),
+        );
         configure_llvm(builder, target, &mut cfg);
 
         for (key, val) in &builder.config.llvm_build_config {
