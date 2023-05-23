@@ -218,6 +218,7 @@ mod needless_arbitrary_self_type;
 mod needless_bool;
 mod needless_borrowed_ref;
 mod needless_continue;
+mod needless_else;
 mod needless_for_each;
 mod needless_late_init;
 mod needless_parens_on_range_literals;
@@ -992,6 +993,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(items_after_test_module::ItemsAfterTestModule));
     store.register_early_pass(|| Box::new(ref_patterns::RefPatterns));
     store.register_late_pass(|_| Box::new(default_constructed_unit_structs::DefaultConstructedUnitStructs));
+    store.register_early_pass(|| Box::new(needless_else::NeedlessElse));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
