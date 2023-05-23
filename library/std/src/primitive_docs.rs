@@ -1,3 +1,6 @@
+// `library/{std,core}/src/primitive_docs.rs` should have the same contents.
+// These are different files so that relative links work properly without
+// having to have `CARGO_PKG_NAME` set, but conceptually they should always be the same.
 #[rustc_doc_primitive = "bool"]
 #[doc(alias = "true")]
 #[doc(alias = "false")]
@@ -103,7 +106,7 @@ mod prim_bool {}
 /// behaviour of the `!` type - expressions with type `!` will coerce into any other type.
 ///
 /// [`u32`]: prim@u32
-/// [`exit`]: ../std/process/fn.exit.html
+#[doc = concat!("[`exit`]: ", include_str!("../primitive_docs/process_exit.md"))]
 ///
 /// # `!` and generics
 ///
@@ -188,7 +191,7 @@ mod prim_bool {}
 /// because `!` coerces to `Result<!, ConnectionError>` automatically.
 ///
 /// [`String::from_str`]: str::FromStr::from_str
-/// [`String`]: ../std/string/struct.String.html
+#[doc = concat!("[`String`]: ", include_str!("../primitive_docs/string_string.md"))]
 /// [`FromStr`]: str::FromStr
 ///
 /// # `!` and traits
@@ -264,7 +267,7 @@ mod prim_bool {}
 /// `impl` for this which simply panics, but the same is true for any type (we could `impl
 /// Default` for (eg.) [`File`] by just making [`default()`] panic.)
 ///
-/// [`File`]: ../std/fs/struct.File.html
+#[doc = concat!("[`File`]: ", include_str!("../primitive_docs/fs_file.md"))]
 /// [`Debug`]: fmt::Debug
 /// [`default()`]: Default::default
 ///
@@ -283,7 +286,7 @@ mod prim_never {}
 /// `char` type. For technical reasons, there is additional, separate
 /// documentation in [the `std::char` module](char/index.html) as well.
 ///
-/// # Validity and Layout
+/// # Validity
 ///
 /// A `char` is a '[Unicode scalar value]', which is any '[Unicode code point]'
 /// other than a [surrogate code point]. This has a fixed numerical definition:
@@ -291,7 +294,7 @@ mod prim_never {}
 /// Surrogate code points, used by UTF-16, are in the range 0xD800 to 0xDFFF.
 ///
 /// No `char` may be constructed, whether as a literal or at runtime, that is not a
-/// Unicode scalar value. Violating this rule causes undefined behavior.
+/// Unicode scalar value:
 ///
 /// ```compile_fail
 /// // Each of these is a compiler error
@@ -308,10 +311,9 @@ mod prim_never {}
 /// let _ = unsafe { char::from_u32_unchecked(0x110000) };
 /// ```
 ///
-/// Unicode scalar values are also the exact set of values that may be encoded in UTF-8. Because
-/// `char` values are Unicode scalar values and functions may assume [incoming `str` values are
-/// valid UTF-8](primitive.str.html#invariant), it is safe to store any `char` in a `str` or read
-/// any character from a `str` as a `char`.
+/// USVs are also the exact set of values that may be encoded in UTF-8. Because
+/// `char` values are USVs and `str` values are valid UTF-8, it is safe to store
+/// any `char` in a `str` or read any character from a `str` as a `char`.
 ///
 /// The gap in valid `char` values is understood by the compiler, so in the
 /// below example the two ranges are understood to cover the whole range of
@@ -325,17 +327,11 @@ mod prim_never {}
 /// };
 /// ```
 ///
-/// All Unicode scalar values are valid `char` values, but not all of them represent a real
-/// character. Many Unicode scalar values are not currently assigned to a character, but may be in
-/// the future ("reserved"); some will never be a character ("noncharacters"); and some may be given
-/// different meanings by different users ("private use").
-///
-/// `char` is guaranteed to have the same size, alignment, and function call ABI as `u32` on all
-/// platforms.
-/// ```
-/// use std::alloc::Layout;
-/// assert_eq!(Layout::new::<char>(), Layout::new::<u32>());
-/// ```
+/// All USVs are valid `char` values, but not all of them represent a real
+/// character. Many USVs are not currently assigned to a character, but may be
+/// in the future ("reserved"); some will never be a character
+/// ("noncharacters"); and some may be given different meanings by different
+/// users ("private use").
 ///
 /// [Unicode code point]: https://www.unicode.org/glossary/#code_point
 /// [Unicode scalar value]: https://www.unicode.org/glossary/#unicode_scalar_value
@@ -359,7 +355,7 @@ mod prim_never {}
 /// assert_eq!(5, s.len() * std::mem::size_of::<u8>());
 /// ```
 ///
-/// [`String`]: ../std/string/struct.String.html
+#[doc = concat!("[`String`]: ", include_str!("../primitive_docs/string_string.md"))]
 ///
 /// As always, remember that a human intuition for 'character' might not map to
 /// Unicode's definitions. For example, despite looking similar, the 'é'
@@ -447,6 +443,22 @@ mod prim_unit {}
 // See src/librustdoc/passes/collect_trait_impls.rs:collect_trait_impls
 #[doc(hidden)]
 impl () {}
+
+// Fake impl that's only really used for docs.
+#[cfg(doc)]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Clone for () {
+    fn clone(&self) -> Self {
+        loop {}
+    }
+}
+
+// Fake impl that's only really used for docs.
+#[cfg(doc)]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Copy for () {
+    // empty
+}
 
 #[rustc_doc_primitive = "pointer"]
 #[doc(alias = "ptr")]
@@ -560,7 +572,7 @@ impl () {}
 /// [`null_mut`]: ptr::null_mut
 /// [`is_null`]: pointer::is_null
 /// [`offset`]: pointer::offset
-/// [`into_raw`]: ../std/boxed/struct.Box.html#method.into_raw
+#[doc = concat!("[`into_raw`]: ", include_str!("../primitive_docs/box_into_raw.md"))]
 /// [`write`]: ptr::write
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_pointer {}
@@ -600,7 +612,7 @@ mod prim_pointer {}
 /// statically generated up to size 32.
 ///
 /// Arrays of sizes from 1 to 12 (inclusive) implement [`From<Tuple>`], where `Tuple`
-/// is a homogeneous [prim@tuple] of appropriate length.
+/// is a homogenous [prim@tuple] of appropriate length.
 ///
 /// Arrays coerce to [slices (`[T]`)][slice], so a slice method may be called on
 /// an array. Indeed, this provides most of the API for working with arrays.
@@ -664,7 +676,7 @@ mod prim_pointer {}
 /// move_away(roa);
 /// ```
 ///
-/// Arrays can be created from homogeneous tuples of appropriate length:
+/// Arrays can be created from homogenous tuples of appropriate length:
 ///
 /// ```
 /// let tuple: (u32, u32, u32) = (1, 2, 3);
@@ -878,6 +890,8 @@ mod prim_slice {}
 /// type. It is usually seen in its borrowed form, `&str`. It is also the type
 /// of string literals, `&'static str`.
 ///
+/// String slices are always valid UTF-8.
+///
 /// # Basic Usage
 ///
 /// String literals are string slices:
@@ -931,14 +945,6 @@ mod prim_slice {}
 /// Note: This example shows the internals of `&str`. `unsafe` should not be
 /// used to get a string slice under normal circumstances. Use `as_str`
 /// instead.
-///
-/// # Invariant
-///
-/// Rust libraries may assume that string slices are always valid UTF-8.
-///
-/// Constructing a non-UTF-8 string slice is not immediate undefined behavior, but any function
-/// called on a string slice may assume that it is valid UTF-8, which means that a non-UTF-8 string
-/// slice can lead to undefined behavior down the road.
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_str {}
 
@@ -1059,7 +1065,7 @@ mod prim_str {}
 /// assert_eq!(y, 5);
 /// ```
 ///
-/// Homogeneous tuples can be created from arrays of appropriate length:
+/// Homogenous tuples can be created from arrays of appropriate length:
 ///
 /// ```
 /// let array: [u32; 3] = [1, 2, 3];
@@ -1073,6 +1079,26 @@ mod prim_tuple {}
 // See src/librustdoc/passes/collect_trait_impls.rs:collect_trait_impls
 #[doc(hidden)]
 impl<T> (T,) {}
+
+// Fake impl that's only really used for docs.
+#[cfg(doc)]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[doc(fake_variadic)]
+/// This trait is implemented on arbitrary-length tuples.
+impl<T: Clone> Clone for (T,) {
+    fn clone(&self) -> Self {
+        loop {}
+    }
+}
+
+// Fake impl that's only really used for docs.
+#[cfg(doc)]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[doc(fake_variadic)]
+/// This trait is implemented on arbitrary-length tuples.
+impl<T: Copy> Copy for (T,) {
+    // empty
+}
 
 #[rustc_doc_primitive = "f32"]
 /// A 32-bit floating point type (specifically, the "binary32" type defined in IEEE 754-2008).
@@ -1119,9 +1145,10 @@ impl<T> (T,) {}
 ///     surprising results upon inspecting the bit patterns,
 ///     as the same calculations might produce NaNs with different bit patterns.
 ///
-/// When a primitive operation (addition, subtraction, multiplication, or
-/// division) is performed on this type, the result is rounded according to the
-/// roundTiesToEven direction defined in IEEE 754-2008. That means:
+/// When the number resulting from a primitive operation (addition,
+/// subtraction, multiplication, or division) on this type is not exactly
+/// representable as `f32`, it is rounded according to the roundTiesToEven
+/// direction defined in IEEE 754-2008. That means:
 ///
 /// - The result is the representable value closest to the true value, if there
 ///   is a unique closest representable value.
@@ -1130,9 +1157,6 @@ impl<T> (T,) {}
 /// - If the true value's magnitude is ≥ `f32::MAX` + 2<sup>(`f32::MAX_EXP` −
 ///   `f32::MANTISSA_DIGITS` − 1)</sup>, the result is ∞ or −∞ (preserving the
 ///   true value's sign).
-/// - If the result of a sum exactly equals zero, the outcome is +0.0 unless
-///   both arguments were negative, then it is -0.0. Subtraction `a - b` is
-///   regarded as a sum `a + (-b)`.
 ///
 /// For more information on floating point numbers, see [Wikipedia][wikipedia].
 ///
@@ -1332,11 +1356,12 @@ mod prim_usize {}
 /// * [`Fn`] \(in addition, `&T` references get [`FnMut`] and [`FnOnce`] if `T: Fn`)
 /// * [`Hash`]
 /// * [`ToSocketAddrs`]
+/// * [`Send`] \(`&T` references also require <code>T: [Sync]</code>)
 /// * [`Sync`]
 ///
 /// [`std::fmt`]: fmt
 /// [`Hash`]: hash::Hash
-/// [`ToSocketAddrs`]: ../std/net/trait.ToSocketAddrs.html
+#[doc = concat!("[`ToSocketAddrs`]: ", include_str!("../primitive_docs/net_tosocketaddrs.md"))]
 ///
 /// `&mut T` references get all of the above except `ToSocketAddrs`, plus the following, if `T`
 /// implements that trait:
@@ -1349,7 +1374,6 @@ mod prim_usize {}
 /// * [`ExactSizeIterator`]
 /// * [`FusedIterator`]
 /// * [`TrustedLen`]
-/// * [`Send`]
 /// * [`io::Write`]
 /// * [`Read`]
 /// * [`Seek`]
@@ -1357,41 +1381,15 @@ mod prim_usize {}
 ///
 /// [`FusedIterator`]: iter::FusedIterator
 /// [`TrustedLen`]: iter::TrustedLen
-/// [`Seek`]: ../std/io/trait.Seek.html
-/// [`BufRead`]: ../std/io/trait.BufRead.html
-/// [`Read`]: ../std/io/trait.Read.html
-/// [`io::Write`]: ../std/io/trait.Write.html
-///
-/// In addition, `&T` references implement [`Send`] if and only if `T` implements [`Sync`].
+#[doc = concat!("[`Seek`]: ", include_str!("../primitive_docs/io_seek.md"))]
+#[doc = concat!("[`BufRead`]: ", include_str!("../primitive_docs/io_bufread.md"))]
+#[doc = concat!("[`Read`]: ", include_str!("../primitive_docs/io_read.md"))]
+#[doc = concat!("[`io::Write`]: ", include_str!("../primitive_docs/io_write.md"))]
 ///
 /// Note that due to method call deref coercion, simply calling a trait method will act like they
 /// work on references as well as they do on owned values! The implementations described here are
 /// meant for generic contexts, where the final type `T` is a type parameter or otherwise not
 /// locally known.
-///
-/// # Safety
-///
-/// For all types, `T: ?Sized`, and for all `t: &T` or `t: &mut T`, when such values cross an API
-/// boundary, the following invariants must generally be upheld:
-///
-/// * `t` is aligned to `align_of_val(t)`
-/// * `t` is dereferenceable for `size_of_val(t)` many bytes
-///
-/// If `t` points at address `a`, being "dereferenceable" for N bytes means that the memory range
-/// `[a, a + N)` is all contained within a single [allocated object].
-///
-/// For instance, this means that unsafe code in a safe function may assume these invariants are
-/// ensured of arguments passed by the caller, and it may assume that these invariants are ensured
-/// of return values from any safe functions it calls. In most cases, the inverse is also true:
-/// unsafe code must not violate these invariants when passing arguments to safe functions or
-/// returning values from safe functions; such violations may result in undefined behavior. Where
-/// exceptions to this latter requirement exist, they will be called out explicitly in documentation.
-///
-/// It is not decided yet whether unsafe code may violate these invariants temporarily on internal
-/// data. As a consequence, unsafe code which violates these invariants temporarily on internal data
-/// may become unsound in future versions of Rust depending on how this question is decided.
-///
-/// [allocated object]: ptr#allocated-object
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_ref {}
 
@@ -1503,7 +1501,7 @@ mod prim_ref {}
 ///
 /// ### Casting to and from integers
 ///
-/// You can cast function pointers directly to integers:
+/// You cast function pointers directly to integers:
 ///
 /// ```rust
 /// let fnptr: fn(i32) -> i32 = |x| x+2;
@@ -1529,121 +1527,15 @@ mod prim_ref {}
 /// Note that all of this is not portable to platforms where function pointers and data pointers
 /// have different sizes.
 ///
-/// ### ABI compatibility
-///
-/// Generally, when a function is declared with one signature and called via a function pointer with
-/// a different signature, the two signatures must be *ABI-compatible* or else calling the function
-/// via that function pointer is Undefined Behavior. ABI compatibility is a lot stricter than merely
-/// having the same memory layout; for example, even if `i32` and `f32` have the same size and
-/// alignment, they might be passed in different registers and hence not be ABI-compatible.
-///
-/// ABI compatibility as a concern only arises in code that alters the type of function pointers,
-/// code that imports functions via `extern` blocks, and in code that combines `#[target_feature]`
-/// with `extern fn`. Altering the type of function pointers is wildly unsafe (as in, a lot more
-/// unsafe than even [`transmute_copy`][mem::transmute_copy]), and should only occur in the most
-/// exceptional circumstances. Most Rust code just imports functions via `use`. `#[target_feature]`
-/// is also used rarely. So, most likely you do not have to worry about ABI compatibility.
-///
-/// But assuming such circumstances, what are the rules? For this section, we are only considering
-/// the ABI of direct Rust-to-Rust calls, not linking in general -- once functions are imported via
-/// `extern` blocks, there are more things to consider that we do not go into here.
-///
-/// For two signatures to be considered *ABI-compatible*, they must use a compatible ABI string,
-/// must take the same number of arguments, the individual argument types and the return types must
-/// be ABI-compatible, and the target feature requirements must be met (see the subsection below for
-/// the last point). The ABI string is declared via `extern "ABI" fn(...) -> ...`; note that
-/// `fn name(...) -> ...` implicitly uses the `"Rust"` ABI string and `extern fn name(...) -> ...`
-/// implicitly uses the `"C"` ABI string.
-///
-/// The ABI strings are guaranteed to be compatible if they are the same, or if the caller ABI
-/// string is `$X-unwind` and the callee ABI string is `$X`, where `$X` is one of the following:
-/// "C", "aapcs", "fastcall", "stdcall", "system", "sysv64", "thiscall", "vectorcall", "win64".
-///
-/// The following types are guaranteed to be ABI-compatible:
-///
-/// - `*const T`, `*mut T`, `&T`, `&mut T`, `Box<T>` (specifically, only `Box<T, Global>`), and
-///   `NonNull<T>` are all ABI-compatible with each other for all `T`. They are also ABI-compatible
-///   with each other for _different_ `T` if they have the same metadata type (`<T as
-///   Pointee>::Metadata`).
-/// - `usize` is ABI-compatible with the `uN` integer type of the same size, and likewise `isize` is
-///   ABI-compatible with the `iN` integer type of the same size.
-/// - `char` is ABI-compatible with `u32`.
-/// - Any two `fn` (function pointer) types are ABI-compatible with each other if they have the same
-///   ABI string or the ABI string only differs in a trailing `-unwind`, independent of the rest of
-///   their signature. (This means you can pass `fn()` to a function expecting `fn(i32)`, and the
-///   call will be valid ABI-wise. The callee receives the result of transmuting the function pointer
-///   from `fn()` to `fn(i32)`; that transmutation is itself a well-defined operation, it's just
-///   almost certainly UB to later call that function pointer.)
-/// - Any two types with size 0 and alignment 1 are ABI-compatible.
-/// - A `repr(transparent)` type `T` is ABI-compatible with its unique non-trivial field, i.e., the
-///   unique field that doesn't have size 0 and alignment 1 (if there is such a field).
-/// - `i32` is ABI-compatible with `NonZeroI32`, and similar for all other integer types with their
-///   matching `NonZero*` type.
-/// - If `T` is guaranteed to be subject to the [null pointer
-///   optimization](option/index.html#representation), then `T` and `Option<T>` are ABI-compatible.
-///
-/// Furthermore, ABI compatibility satisfies the following general properties:
-///
-/// - Every type is ABI-compatible with itself.
-/// - If `T1` and `T2` are ABI-compatible and `T2` and `T3` are ABI-compatible, then so are `T1` and
-///   `T3` (i.e., ABI-compatibility is transitive).
-/// - If `T1` and `T2` are ABI-compatible, then so are `T2` and `T1` (i.e., ABI-compatibility is
-///   symmetric).
-///
-/// More signatures can be ABI-compatible on specific targets, but that should not be relied upon
-/// since it is not portable and not a stable guarantee.
-///
-/// Noteworthy cases of types *not* being ABI-compatible in general are:
-/// * `bool` vs `u8`, `i32` vs `u32`, `char` vs `i32`: on some targets, the calling conventions for
-///   these types differ in terms of what they guarantee for the remaining bits in the register that
-///   are not used by the value.
-/// * `i32` vs `f32` are not compatible either, as has already been mentioned above.
-/// * `struct Foo(u32)` and `u32` are not compatible (without `repr(transparent)`) since structs are
-///   aggregate types and often passed in a different way than primitives like `i32`.
-///
-/// Note that these rules describe when two completely known types are ABI-compatible. When
-/// considering ABI compatibility of a type declared in another crate (including the standard
-/// library), consider that any type that has a private field or the `#[non_exhaustive]` attribute
-/// may change its layout as a non-breaking update unless documented otherwise -- so for instance,
-/// even if such a type is a 1-ZST or `repr(transparent)` right now, this might change with any
-/// library version bump.
-///
-/// If the declared signature and the signature of the function pointer are ABI-compatible, then the
-/// function call behaves as if every argument was [`transmute`d][mem::transmute] from the
-/// type in the function pointer to the type at the function declaration, and the return value is
-/// [`transmute`d][mem::transmute] from the type in the declaration to the type in the
-/// pointer. All the usual caveats and concerns around transmutation apply; for instance, if the
-/// function expects a `NonZeroI32` and the function pointer uses the ABI-compatible type
-/// `Option<NonZeroI32>`, and the value used for the argument is `None`, then this call is Undefined
-/// Behavior since transmuting `None::<NonZeroI32>` to `NonZeroI32` violates the non-zero
-/// requirement.
-///
-/// #### Requirements concerning target features
-///
-/// Under some conditions, the signature used by the caller and the callee can be ABI-incompatible
-/// even if the exact same ABI string and types are being used. As an example, the
-/// `std::arch::x86_64::__m256` type has a different `extern "C"` ABI when the `avx` feature is
-/// enabled vs when it is not enabled.
-///
-/// Therefore, to ensure ABI compatibility when code using different target features is combined
-/// (such as via `#[target_feature]`), we further require that one of the following conditions is
-/// met:
-///
-/// - The function uses the `"Rust"` ABI string (which is the default without `extern`).
-/// - Caller and callee are using the exact same set of target features. For the callee we consider
-///   the features enabled (via `#[target_feature]` and `-C target-feature`/`-C target-cpu`) at the
-///   declaration site; for the caller we consider the features enabled at the call site.
-/// - Neither any argument nor the return value involves a SIMD type (`#[repr(simd)]`) that is not
-///   behind a pointer indirection (i.e., `*mut __m256` is fine, but `(i32, __m256)` is not).
-///
 /// ### Trait implementations
 ///
-/// In this documentation the shorthand `fn(T₁, T₂, …, Tₙ)` is used to represent non-variadic
+/// In this documentation the shorthand `fn (T₁, T₂, …, Tₙ)` is used to represent non-variadic
 /// function pointers of varying length. Note that this is a convenience notation to avoid
 /// repetitive documentation, not valid Rust syntax.
 ///
-/// The following traits are implemented for function pointers with any number of arguments and
-/// any ABI.
+/// Due to a temporary restriction in Rust's type system, these traits are only implemented on
+/// functions that take 12 arguments or less, with the `"Rust"` and `"C"` ABIs. In the future, this
+/// may change:
 ///
 /// * [`PartialEq`]
 /// * [`Eq`]
@@ -1652,6 +1544,11 @@ mod prim_ref {}
 /// * [`Hash`]
 /// * [`Pointer`]
 /// * [`Debug`]
+///
+/// The following traits are implemented for function pointers with any number of arguments and
+/// any ABI. These traits have implementations that are automatically generated by the compiler,
+/// so are not limited by missing language features:
+///
 /// * [`Clone`]
 /// * [`Copy`]
 /// * [`Send`]
@@ -1670,6 +1567,11 @@ mod prim_ref {}
 /// these traits are specially known to the compiler.
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_fn {}
+
+// Required to make auto trait impls render.
+// See src/librustdoc/passes/collect_trait_impls.rs:collect_trait_impls
+#[doc(hidden)]
+impl<Ret, T> fn(T) -> Ret {}
 
 // Fake impl that's only really used for docs.
 #[cfg(doc)]
@@ -1705,8 +1607,3 @@ impl<Ret, T> FnPtr for fn(T) -> Ret {
         // empty
     }
 }
-
-// Required to make auto trait impls render.
-// See src/librustdoc/passes/collect_trait_impls.rs:collect_trait_impls
-#[doc(hidden)]
-impl<Ret, T> fn(T) -> Ret {}
