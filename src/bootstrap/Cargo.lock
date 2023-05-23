@@ -89,9 +89,8 @@ version = "0.1.0"
 
 [[package]]
 name = "cc"
-version = "1.0.74"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "581f5dba903aac52ea3feb5ec4810848460ee833876f1f9b0fdeab1f19091574"
+version = "1.0.73"
+source = "git+https://github.com/rust-lang/cc-rs?rev=53fb72c87e5769a299f1886ead831901b9c775d6#53fb72c87e5769a299f1886ead831901b9c775d6"
 
 [[package]]
 name = "cfg-if"
