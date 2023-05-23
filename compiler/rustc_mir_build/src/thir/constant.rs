@@ -3,6 +3,8 @@ use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
 use rustc_middle::ty::{self, ParamEnv, ScalarInt, TyCtxt};
 use rustc_span::DUMMY_SP;
 
+use crate::build::parse_float_into_scalar;
+
 pub(crate) fn lit_to_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     lit_input: LitToConstInput<'tcx>,
@@ -52,6 +54,17 @@ pub(crate) fn lit_to_const<'tcx>(
             ty::ValTree::from_scalar_int(scalar_int)
         }
         (ast::LitKind::Bool(b), ty::Bool) => ty::ValTree::from_scalar_int((*b).into()),
+        (ast::LitKind::Float(n, _), ty::Float(fty)) => {
+            let bits = parse_float_into_scalar(*n, *fty, neg)
+                .ok_or_else(|| {
+                    LitToConstError::Reported(tcx.sess.delay_span_bug(
+                        DUMMY_SP,
+                        format!("couldn't parse float literal: {:?}", lit_input.lit),
+                    ))
+                })?
+                .assert_int();
+            ty::ValTree::from_scalar_int(bits)
+        }
         (ast::LitKind::Char(c), ty::Char) => ty::ValTree::from_scalar_int((*c).into()),
         (ast::LitKind::Err, _) => {
             return Err(LitToConstError::Reported(
