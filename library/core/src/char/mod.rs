@@ -38,6 +38,7 @@ pub use self::methods::encode_utf16_raw;
 #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
 pub use self::methods::encode_utf8_raw;
 
+use crate::ascii;
 use crate::error::Error;
 use crate::escape;
 use crate::fmt::{self, Write};
@@ -152,7 +153,7 @@ pub struct EscapeUnicode(escape::EscapeIterInner<10>);
 
 impl EscapeUnicode {
     fn new(chr: char) -> Self {
-        let mut data = [0; 10];
+        let mut data = [ascii::Char::Null; 10];
         let range = escape::escape_unicode_into(&mut data, chr);
         Self(escape::EscapeIterInner::new(data, range))
     }
@@ -218,14 +219,14 @@ impl fmt::Display for EscapeUnicode {
 pub struct EscapeDefault(escape::EscapeIterInner<10>);
 
 impl EscapeDefault {
-    fn printable(chr: u8) -> Self {
-        let data = [chr, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-        Self(escape::EscapeIterInner::new(data, 0..1))
+    fn printable(chr: ascii::Char) -> Self {
+        let data = [chr];
+        Self(escape::EscapeIterInner::from_array(data))
     }
 
-    fn backslash(chr: u8) -> Self {
-        let data = [b'\\', chr, 0, 0, 0, 0, 0, 0, 0, 0];
-        Self(escape::EscapeIterInner::new(data, 0..2))
+    fn backslash(chr: ascii::Char) -> Self {
+        let data = [ascii::Char::ReverseSolidus, chr];
+        Self(escape::EscapeIterInner::from_array(data))
     }
 
     fn from_unicode(esc: EscapeUnicode) -> Self {
@@ -307,9 +308,9 @@ impl EscapeDebug {
         Self(EscapeDebugInner::Char(chr))
     }
 
-    fn backslash(chr: u8) -> Self {
-        let data = [b'\\', chr, 0, 0, 0, 0, 0, 0, 0, 0];
-        let iter = escape::EscapeIterInner::new(data, 0..2);
+    fn backslash(chr: ascii::Char) -> Self {
+        let data = [ascii::Char::ReverseSolidus, chr];
+        let iter = escape::EscapeIterInner::from_array(data);
         Self(EscapeDebugInner::Bytes(iter))
     }
 
@@ -318,7 +319,7 @@ impl EscapeDebug {
     }
 
     fn clear(&mut self) {
-        let bytes = escape::EscapeIterInner::new([0; 10], 0..0);
+        let bytes = escape::EscapeIterInner::from_array([]);
         self.0 = EscapeDebugInner::Bytes(bytes);
     }
 }

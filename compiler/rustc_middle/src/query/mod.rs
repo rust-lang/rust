@@ -12,6 +12,7 @@ use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
 use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
+use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use crate::middle::lib_features::LibFeatures;
 use crate::middle::privacy::EffectiveVisibilities;
@@ -724,12 +725,6 @@ rustc_queries! {
     /// constructor function).
     query is_promotable_const_fn(key: DefId) -> bool {
         desc { |tcx| "checking if item is promotable: `{}`", tcx.def_path_str(key) }
-    }
-
-    /// Returns `true` if this is a foreign item (i.e., linked via `extern { ... }`).
-    query is_foreign_item(key: DefId) -> bool {
-        desc { |tcx| "checking if `{}` is a foreign item", tcx.def_path_str(key) }
-        separate_provide_extern
     }
 
     /// Returns `Some(generator_kind)` if the node pointed to by `def_id` is a generator.
@@ -1790,12 +1785,18 @@ rustc_queries! {
         desc { "looking at the source for a crate" }
         separate_provide_extern
     }
+
     /// Returns the debugger visualizers defined for this crate.
-    query debugger_visualizers(_: CrateNum) -> &'tcx Vec<rustc_span::DebuggerVisualizerFile> {
+    /// NOTE: This query has to be marked `eval_always` because it reads data
+    ///       directly from disk that is not tracked anywhere else. I.e. it
+    ///       represents a genuine input to the query system.
+    query debugger_visualizers(_: CrateNum) -> &'tcx Vec<DebuggerVisualizerFile> {
         arena_cache
         desc { "looking up the debugger visualizers for this crate" }
         separate_provide_extern
+        eval_always
     }
+
     query postorder_cnums(_: ()) -> &'tcx [CrateNum] {
         eval_always
         desc { "generating a postorder list of CrateNums" }

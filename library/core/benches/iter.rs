@@ -404,7 +404,7 @@ fn bench_trusted_random_access_adapters(b: &mut Bencher) {
 
 /// Exercises the iter::Copied specialization for slice::Iter
 #[bench]
-fn bench_copied_chunks(b: &mut Bencher) {
+fn bench_next_chunk_copied(b: &mut Bencher) {
     let v = vec![1u8; 1024];
 
     b.iter(|| {
@@ -421,7 +421,7 @@ fn bench_copied_chunks(b: &mut Bencher) {
 
 /// Exercises the TrustedRandomAccess specialization in ArrayChunks
 #[bench]
-fn bench_trusted_random_access_chunks(b: &mut Bencher) {
+fn bench_next_chunk_trusted_random_access(b: &mut Bencher) {
     let v = vec![1u8; 1024];
 
     b.iter(|| {
@@ -436,4 +436,46 @@ fn bench_trusted_random_access_chunks(b: &mut Bencher) {
             })
             .sum::<Wrapping<u64>>()
     })
+}
+
+#[bench]
+fn bench_next_chunk_filter_even(b: &mut Bencher) {
+    let a = (0..1024).next_chunk::<1024>().unwrap();
+
+    b.iter(|| black_box(&a).iter().filter(|&&i| i % 2 == 0).next_chunk::<32>())
+}
+
+#[bench]
+fn bench_next_chunk_filter_predictably_true(b: &mut Bencher) {
+    let a = (0..1024).next_chunk::<1024>().unwrap();
+
+    b.iter(|| black_box(&a).iter().filter(|&&i| i < 100).next_chunk::<32>())
+}
+
+#[bench]
+fn bench_next_chunk_filter_mostly_false(b: &mut Bencher) {
+    let a = (0..1024).next_chunk::<1024>().unwrap();
+
+    b.iter(|| black_box(&a).iter().filter(|&&i| i > 900).next_chunk::<32>())
+}
+
+#[bench]
+fn bench_next_chunk_filter_map_even(b: &mut Bencher) {
+    let a = (0..1024).next_chunk::<1024>().unwrap();
+
+    b.iter(|| black_box(&a).iter().filter_map(|&i| (i % 2 == 0).then(|| i)).next_chunk::<32>())
+}
+
+#[bench]
+fn bench_next_chunk_filter_map_predictably_true(b: &mut Bencher) {
+    let a = (0..1024).next_chunk::<1024>().unwrap();
+
+    b.iter(|| black_box(&a).iter().filter_map(|&i| (i < 100).then(|| i)).next_chunk::<32>())
+}
+
+#[bench]
+fn bench_next_chunk_filter_map_mostly_false(b: &mut Bencher) {
+    let a = (0..1024).next_chunk::<1024>().unwrap();
+
+    b.iter(|| black_box(&a).iter().filter_map(|&i| (i > 900).then(|| i)).next_chunk::<32>())
 }

@@ -1,7 +1,7 @@
 // check-pass
 
 #![feature(decl_macro)]
-#![allow(drop_copy)]
+#![allow(dropping_copy_types)]
 
 macro mac() {
     mod m {

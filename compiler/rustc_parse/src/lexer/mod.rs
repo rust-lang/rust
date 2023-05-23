@@ -662,7 +662,7 @@ impl<'a> StringReader<'a> {
                 &RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
                 prefix_span,
                 ast::CRATE_NODE_ID,
-                &format!("prefix `{prefix}` is unknown"),
+                format!("prefix `{prefix}` is unknown"),
                 BuiltinLintDiagnostics::ReservedPrefix(prefix_span),
             );
         }

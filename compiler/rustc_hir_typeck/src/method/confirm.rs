@@ -158,7 +158,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         let Some((ty, n)) = autoderef.nth(pick.autoderefs) else {
             return self.tcx.ty_error_with_message(
                 rustc_span::DUMMY_SP,
-                &format!("failed autoderef {}", pick.autoderefs),
+                format!("failed autoderef {}", pick.autoderefs),
             );
         };
         assert_eq!(n, pick.autoderefs);

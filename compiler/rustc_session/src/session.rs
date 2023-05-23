@@ -211,6 +211,9 @@ pub struct Session {
 
     /// Set of enabled features for the current target, including unstable ones.
     pub unstable_target_features: FxIndexSet<Symbol>,
+
+    /// The version of the rustc process, possibly including a commit hash and description.
+    pub cfg_version: &'static str,
 }
 
 pub struct PerfStats {
@@ -487,20 +490,6 @@ impl Session {
     #[rustc_lint_diagnostics]
     pub fn fatal(&self, msg: impl Into<DiagnosticMessage>) -> ! {
         self.diagnostic().fatal(msg).raise()
-    }
-    #[rustc_lint_diagnostics]
-    #[track_caller]
-    pub fn span_err_or_warn<S: Into<MultiSpan>>(
-        &self,
-        is_warning: bool,
-        sp: S,
-        msg: impl Into<DiagnosticMessage>,
-    ) {
-        if is_warning {
-            self.span_warn(sp, msg);
-        } else {
-            self.span_err(sp, msg);
-        }
     }
     #[rustc_lint_diagnostics]
     #[track_caller]
@@ -1380,6 +1369,7 @@ pub fn build_session(
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
     file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
     target_override: Option<Target>,
+    cfg_version: &'static str,
 ) -> Session {
     // FIXME: This is not general enough to make the warning lint completely override
     // normal diagnostic warnings, since the warning lint can also be denied and changed
@@ -1400,10 +1390,10 @@ pub fn build_session(
     let target_cfg = config::build_target_config(&sopts, target_override, &sysroot);
     let host_triple = TargetTriple::from_triple(config::host_triple());
     let (host, target_warnings) = Target::search(&host_triple, &sysroot).unwrap_or_else(|e| {
-        early_error(sopts.error_format, &format!("Error loading host specification: {e}"))
+        early_error(sopts.error_format, format!("Error loading host specification: {e}"))
     });
     for warning in target_warnings.warning_messages() {
-        early_warn(sopts.error_format, &warning)
+        early_warn(sopts.error_format, warning)
     }
 
     let loader = file_loader.unwrap_or_else(|| Box::new(RealFileLoader));
@@ -1445,7 +1435,7 @@ pub fn build_session(
         match profiler {
             Ok(profiler) => Some(Arc::new(profiler)),
             Err(e) => {
-                early_warn(sopts.error_format, &format!("failed to create profiler: {e}"));
+                early_warn(sopts.error_format, format!("failed to create profiler: {e}"));
                 None
             }
         }
@@ -1524,6 +1514,7 @@ pub fn build_session(
         asm_arch,
         target_features: Default::default(),
         unstable_target_features: Default::default(),
+        cfg_version,
     };
 
     validate_commandline_args_with_session_available(&sess);
@@ -1741,18 +1732,22 @@ fn early_error_handler(output: config::ErrorOutputType) -> rustc_errors::Handler
 
 #[allow(rustc::untranslatable_diagnostic)]
 #[allow(rustc::diagnostic_outside_of_impl)]
-pub fn early_error_no_abort(output: config::ErrorOutputType, msg: &str) -> ErrorGuaranteed {
+#[must_use = "ErrorGuaranteed must be returned from `run_compiler` in order to exit with a non-zero status code"]
+pub fn early_error_no_abort(
+    output: config::ErrorOutputType,
+    msg: impl Into<DiagnosticMessage>,
+) -> ErrorGuaranteed {
     early_error_handler(output).struct_err(msg).emit()
 }
 
 #[allow(rustc::untranslatable_diagnostic)]
 #[allow(rustc::diagnostic_outside_of_impl)]
-pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
+pub fn early_error(output: config::ErrorOutputType, msg: impl Into<DiagnosticMessage>) -> ! {
     early_error_handler(output).struct_fatal(msg).emit()
 }
 
 #[allow(rustc::untranslatable_diagnostic)]
 #[allow(rustc::diagnostic_outside_of_impl)]
-pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
+pub fn early_warn(output: config::ErrorOutputType, msg: impl Into<DiagnosticMessage>) {
     early_error_handler(output).struct_warn(msg).emit()
 }

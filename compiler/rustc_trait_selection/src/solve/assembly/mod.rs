@@ -506,10 +506,12 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Param(_)
             | ty::Placeholder(..)
             | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+            | ty::Alias(ty::Inherent, _)
             | ty::Error(_) => return,
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
             | ty::Bound(..) => bug!("unexpected self type for `{goal:?}`"),
-            ty::Alias(_, alias_ty) => alias_ty,
+            // Excluding IATs here as they don't have meaningful item bounds.
+            ty::Alias(ty::Projection | ty::Opaque, alias_ty) => alias_ty,
         };
 
         for assumption in self.tcx().item_bounds(alias_ty.def_id).subst(self.tcx(), alias_ty.substs)

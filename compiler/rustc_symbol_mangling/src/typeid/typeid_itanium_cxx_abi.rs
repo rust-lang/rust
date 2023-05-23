@@ -673,6 +673,14 @@ fn encode_ty<'tcx>(
             typeid.push_str(&s);
         }
 
+        // Type parameters
+        ty::Param(..) => {
+            // u5param as vendor extended type
+            let mut s = String::from("u5param");
+            compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
+            typeid.push_str(&s);
+        }
+
         // Unexpected types
         ty::Bound(..)
         | ty::Error(..)
@@ -680,13 +688,47 @@ fn encode_ty<'tcx>(
         | ty::GeneratorWitnessMIR(..)
         | ty::Infer(..)
         | ty::Alias(..)
-        | ty::Param(..)
         | ty::Placeholder(..) => {
             bug!("encode_ty: unexpected `{:?}`", ty.kind());
         }
     };
 
     typeid
+}
+
+/// Transforms predicates for being encoded and used in the substitution dictionary.
+fn transform_predicates<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    predicates: &List<ty::PolyExistentialPredicate<'tcx>>,
+    _options: EncodeTyOptions,
+) -> &'tcx List<ty::PolyExistentialPredicate<'tcx>> {
+    let predicates: Vec<ty::PolyExistentialPredicate<'tcx>> = predicates
+        .iter()
+        .map(|predicate| match predicate.skip_binder() {
+            ty::ExistentialPredicate::Trait(trait_ref) => {
+                let trait_ref = ty::TraitRef::identity(tcx, trait_ref.def_id);
+                ty::Binder::dummy(ty::ExistentialPredicate::Trait(
+                    ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref),
+                ))
+            }
+            _ => predicate,
+        })
+        .collect();
+    tcx.mk_poly_existential_predicates(&predicates)
+}
+
+/// Transforms substs for being encoded and used in the substitution dictionary.
+fn transform_substs<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    substs: SubstsRef<'tcx>,
+    options: TransformTyOptions,
+) -> SubstsRef<'tcx> {
+    let substs = substs.iter().map(|subst| match subst.unpack() {
+        GenericArgKind::Type(ty) if ty.is_c_void(tcx) => tcx.mk_unit().into(),
+        GenericArgKind::Type(ty) => transform_ty(tcx, ty, options).into(),
+        _ => subst,
+    });
+    tcx.mk_substs_from_iter(substs)
 }
 
 // Transforms a ty:Ty for being encoded and used in the substitution dictionary. It transforms all
@@ -697,7 +739,7 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
     let mut ty = ty;
 
     match ty.kind() {
-        ty::Float(..) | ty::Char | ty::Str | ty::Never | ty::Foreign(..) | ty::Dynamic(..) => {}
+        ty::Float(..) | ty::Char | ty::Str | ty::Never | ty::Foreign(..) => {}
 
         ty::Bool => {
             if options.contains(EncodeTyOptions::NORMALIZE_INTEGERS) {
@@ -870,6 +912,14 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
             }
         }
 
+        ty::Dynamic(predicates, _region, kind) => {
+            ty = tcx.mk_dynamic(
+                transform_predicates(tcx, predicates, options),
+                tcx.lifetimes.re_erased,
+                *kind,
+            );
+        }
+
         ty::Bound(..)
         | ty::Error(..)
         | ty::GeneratorWitness(..)
@@ -883,20 +933,6 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
     }
 
     ty
-}
-
-/// Transforms substs for being encoded and used in the substitution dictionary.
-fn transform_substs<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    substs: SubstsRef<'tcx>,
-    options: TransformTyOptions,
-) -> SubstsRef<'tcx> {
-    let substs = substs.iter().map(|subst| match subst.unpack() {
-        GenericArgKind::Type(ty) if ty.is_c_void(tcx) => tcx.mk_unit().into(),
-        GenericArgKind::Type(ty) => transform_ty(tcx, ty, options).into(),
-        _ => subst,
-    });
-    tcx.mk_substs_from_iter(substs)
 }
 
 /// Returns a type metadata identifier for the specified FnAbi using the Itanium C++ ABI with vendor

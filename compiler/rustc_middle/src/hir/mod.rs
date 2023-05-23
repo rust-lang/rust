@@ -10,6 +10,7 @@ use crate::query::Providers;
 use crate::ty::{EarlyBinder, ImplSubject, TyCtxt};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{par_for_each_in, DynSend, DynSync};
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::*;
 use rustc_query_system::ich::StableHashingContext;
@@ -109,6 +110,12 @@ impl<'tcx> TyCtxt<'tcx> {
             Some(t) => t.map_bound(ImplSubject::Trait),
             None => self.type_of(def_id).map_bound(ImplSubject::Inherent),
         }
+    }
+
+    /// Returns `true` if this is a foreign item (i.e., linked via `extern { ... }`).
+    pub fn is_foreign_item(self, def_id: impl Into<DefId>) -> bool {
+        self.opt_parent(def_id.into())
+            .map_or(false, |parent| matches!(self.def_kind(parent), DefKind::ForeignMod))
     }
 }
 

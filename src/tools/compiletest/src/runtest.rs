@@ -32,6 +32,7 @@ use std::process::{Child, Command, ExitStatus, Output, Stdio};
 use std::str;
 use std::sync::Arc;
 
+use anyhow::Context;
 use glob::glob;
 use once_cell::sync::Lazy;
 use tracing::*;
@@ -131,7 +132,11 @@ pub fn run(config: Arc<Config>, testpaths: &TestPaths, revision: Option<&str>) {
     }
 
     let cx = TestCx { config: &config, props: &props, testpaths, revision };
-    create_dir_all(&cx.output_base_dir()).unwrap();
+    create_dir_all(&cx.output_base_dir())
+        .with_context(|| {
+            format!("failed to create output base directory {}", cx.output_base_dir().display())
+        })
+        .unwrap();
     if props.incremental {
         cx.init_incremental_test();
     }

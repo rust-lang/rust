@@ -19,6 +19,7 @@ use rustc_hir::definitions::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc_hir::diagnostic_items::DiagnosticItems;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::metadata::ModChild;
+use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::ty::codec::TyDecoder;
@@ -958,7 +959,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .decode((self, sess))
     }
 
-    fn get_debugger_visualizers(self) -> Vec<rustc_span::DebuggerVisualizerFile> {
+    fn get_debugger_visualizers(self) -> Vec<DebuggerVisualizerFile> {
         self.root.debugger_visualizers.decode(self).collect::<Vec<_>>()
     }
 
@@ -1248,14 +1249,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 ast::MacroDef { macro_rules, body: ast::ptr::P(body) }
             }
             _ => bug!(),
-        }
-    }
-
-    fn is_foreign_item(self, id: DefIndex) -> bool {
-        if let Some(parent) = self.def_key(id).parent {
-            matches!(self.def_kind(parent), DefKind::ForeignMod)
-        } else {
-            false
         }
     }
 

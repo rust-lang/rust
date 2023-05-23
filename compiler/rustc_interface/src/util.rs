@@ -88,7 +88,7 @@ pub fn create_session(
     ) {
         Ok(bundle) => bundle,
         Err(e) => {
-            early_error(sopts.error_format, &format!("failed to load fluent bundle: {e}"));
+            early_error(sopts.error_format, format!("failed to load fluent bundle: {e}"));
         }
     };
 
@@ -104,6 +104,7 @@ pub fn create_session(
         lint_caps,
         file_loader,
         target_override,
+        rustc_version_str().unwrap_or("unknown"),
     );
 
     codegen_backend.init(&sess);
@@ -220,13 +221,13 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
 fn load_backend_from_dylib(path: &Path) -> MakeBackendFn {
     let lib = unsafe { Library::new(path) }.unwrap_or_else(|err| {
         let err = format!("couldn't load codegen backend {path:?}: {err}");
-        early_error(ErrorOutputType::default(), &err);
+        early_error(ErrorOutputType::default(), err);
     });
 
     let backend_sym = unsafe { lib.get::<MakeBackendFn>(b"__rustc_codegen_backend") }
         .unwrap_or_else(|e| {
             let err = format!("couldn't load codegen backend: {e}");
-            early_error(ErrorOutputType::default(), &err);
+            early_error(ErrorOutputType::default(), err);
         });
 
     // Intentionally leak the dynamic library. We can't ever unload it
@@ -320,7 +321,7 @@ fn get_codegen_sysroot(maybe_sysroot: &Option<PathBuf>, backend_name: &str) -> M
             "failed to find a `codegen-backends` folder \
                            in the sysroot candidates:\n* {candidates}"
         );
-        early_error(ErrorOutputType::default(), &err);
+        early_error(ErrorOutputType::default(), err);
     });
     info!("probing {} for a codegen backend", sysroot.display());
 
@@ -331,7 +332,7 @@ fn get_codegen_sysroot(maybe_sysroot: &Option<PathBuf>, backend_name: &str) -> M
             sysroot.display(),
             e
         );
-        early_error(ErrorOutputType::default(), &err);
+        early_error(ErrorOutputType::default(), err);
     });
 
     let mut file: Option<PathBuf> = None;
@@ -359,7 +360,7 @@ fn get_codegen_sysroot(maybe_sysroot: &Option<PathBuf>, backend_name: &str) -> M
                 prev.display(),
                 path.display()
             );
-            early_error(ErrorOutputType::default(), &err);
+            early_error(ErrorOutputType::default(), err);
         }
         file = Some(path.clone());
     }
@@ -368,7 +369,7 @@ fn get_codegen_sysroot(maybe_sysroot: &Option<PathBuf>, backend_name: &str) -> M
         Some(ref s) => load_backend_from_dylib(s),
         None => {
             let err = format!("unsupported builtin codegen backend `{backend_name}`");
-            early_error(ErrorOutputType::default(), &err);
+            early_error(ErrorOutputType::default(), err);
         }
     }
 }

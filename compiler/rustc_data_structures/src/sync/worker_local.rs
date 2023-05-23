@@ -154,13 +154,6 @@ impl<T> WorkerLocal<T> {
     }
 }
 
-impl<T> WorkerLocal<Vec<T>> {
-    /// Joins the elements of all the worker locals into one Vec
-    pub fn join(self) -> Vec<T> {
-        self.into_inner().into_iter().flat_map(|v| v).collect()
-    }
-}
-
 impl<T> Deref for WorkerLocal<T> {
     type Target = T;
 

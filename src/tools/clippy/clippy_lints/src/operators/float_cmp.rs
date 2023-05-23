@@ -1,4 +1,4 @@
-use clippy_utils::consts::{constant, Constant};
+use clippy_utils::consts::{constant_with_source, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::get_item_name;
 use clippy_utils::sugg::Sugg;
@@ -18,9 +18,16 @@ pub(crate) fn check<'tcx>(
     right: &'tcx Expr<'_>,
 ) {
     if (op == BinOpKind::Eq || op == BinOpKind::Ne) && (is_float(cx, left) || is_float(cx, right)) {
-        if is_allowed(cx, left) || is_allowed(cx, right) {
-            return;
-        }
+        let left_is_local = match constant_with_source(cx, cx.typeck_results(), left) {
+            Some((c, s)) if !is_allowed(&c) => s.is_local(),
+            Some(_) => return,
+            None => true,
+        };
+        let right_is_local = match constant_with_source(cx, cx.typeck_results(), right) {
+            Some((c, s)) if !is_allowed(&c) => s.is_local(),
+            Some(_) => return,
+            None => true,
+        };
 
         // Allow comparing the results of signum()
         if is_signum(cx, left) && is_signum(cx, right) {
@@ -34,10 +41,7 @@ pub(crate) fn check<'tcx>(
             }
         }
         let is_comparing_arrays = is_array(cx, left) || is_array(cx, right);
-        let (lint, msg) = get_lint_and_message(
-            is_named_constant(cx, left) || is_named_constant(cx, right),
-            is_comparing_arrays,
-        );
+        let (lint, msg) = get_lint_and_message(left_is_local && right_is_local, is_comparing_arrays);
         span_lint_and_then(cx, lint, expr.span, msg, |diag| {
             let lhs = Sugg::hir(cx, left, "..");
             let rhs = Sugg::hir(cx, right, "..");
@@ -59,20 +63,8 @@ pub(crate) fn check<'tcx>(
     }
 }
 
-fn get_lint_and_message(
-    is_comparing_constants: bool,
-    is_comparing_arrays: bool,
-) -> (&'static rustc_lint::Lint, &'static str) {
-    if is_comparing_constants {
-        (
-            FLOAT_CMP_CONST,
-            if is_comparing_arrays {
-                "strict comparison of `f32` or `f64` constant arrays"
-            } else {
-                "strict comparison of `f32` or `f64` constant"
-            },
-        )
-    } else {
+fn get_lint_and_message(is_local: bool, is_comparing_arrays: bool) -> (&'static rustc_lint::Lint, &'static str) {
+    if is_local {
         (
             FLOAT_CMP,
             if is_comparing_arrays {
@@ -81,22 +73,23 @@ fn get_lint_and_message(
                 "strict comparison of `f32` or `f64`"
             },
         )
-    }
-}
-
-fn is_named_constant<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
-    if let Some((_, res)) = constant(cx, cx.typeck_results(), expr) {
-        res
     } else {
-        false
+        (
+            FLOAT_CMP_CONST,
+            if is_comparing_arrays {
+                "strict comparison of `f32` or `f64` constant arrays"
+            } else {
+                "strict comparison of `f32` or `f64` constant"
+            },
+        )
     }
 }
 
-fn is_allowed<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
-    match constant(cx, cx.typeck_results(), expr) {
-        Some((Constant::F32(f), _)) => f == 0.0 || f.is_infinite(),
-        Some((Constant::F64(f), _)) => f == 0.0 || f.is_infinite(),
-        Some((Constant::Vec(vec), _)) => vec.iter().all(|f| match f {
+fn is_allowed(val: &Constant) -> bool {
+    match val {
+        &Constant::F32(f) => f == 0.0 || f.is_infinite(),
+        &Constant::F64(f) => f == 0.0 || f.is_infinite(),
+        Constant::Vec(vec) => vec.iter().all(|f| match f {
             Constant::F32(f) => *f == 0.0 || (*f).is_infinite(),
             Constant::F64(f) => *f == 0.0 || (*f).is_infinite(),
             _ => false,

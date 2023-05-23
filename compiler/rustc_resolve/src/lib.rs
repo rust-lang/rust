@@ -85,6 +85,7 @@ pub mod rustdoc;
 
 fluent_messages! { "../messages.ftl" }
 
+#[derive(Debug)]
 enum Weak {
     Yes,
     No,
@@ -467,6 +468,13 @@ struct BindingKey {
     /// 0 if ident is not `_`, otherwise a value that's unique to the specific
     /// `_` in the expanded AST that introduced this binding.
     disambiguator: u32,
+}
+
+impl BindingKey {
+    fn new(ident: Ident, ns: Namespace) -> Self {
+        let ident = ident.normalize_to_macros_2_0();
+        BindingKey { ident, ns, disambiguator: 0 }
+    }
 }
 
 type Resolutions<'a> = RefCell<FxIndexMap<BindingKey, &'a RefCell<NameResolution<'a>>>>;
@@ -943,6 +951,7 @@ pub struct Resolver<'a, 'tcx> {
     empty_module: Module<'a>,
     module_map: FxHashMap<DefId, Module<'a>>,
     binding_parent_modules: FxHashMap<Interned<'a, NameBinding<'a>>, Module<'a>>,
+
     underscore_disambiguator: u32,
 
     /// Maps glob imports to the names of items actually imported.
@@ -1595,7 +1604,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         import_ids
     }
 
-    fn new_key(&mut self, ident: Ident, ns: Namespace) -> BindingKey {
+    fn new_disambiguated_key(&mut self, ident: Ident, ns: Namespace) -> BindingKey {
         let ident = ident.normalize_to_macros_2_0();
         let disambiguator = if ident.name == kw::Underscore {
             self.underscore_disambiguator += 1;

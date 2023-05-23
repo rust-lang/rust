@@ -365,7 +365,7 @@ pub enum Subcommand {
         #[arg(long)]
         all: bool,
     },
-    /// Duild distribution artifacts
+    /// Build distribution artifacts
     Dist,
     /// Install distribution artifacts
     Install,

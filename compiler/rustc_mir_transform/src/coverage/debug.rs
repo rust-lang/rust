@@ -118,7 +118,7 @@ use rustc_middle::mir::spanview::{self, SpanViewable};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::mir::coverage::*;
-use rustc_middle::mir::{self, BasicBlock, TerminatorKind};
+use rustc_middle::mir::{self, BasicBlock};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
@@ -796,7 +796,7 @@ fn bcb_to_string_sections<'tcx>(
     }
     let non_term_blocks = bcb_data.basic_blocks[0..len - 1]
         .iter()
-        .map(|&bb| format!("{:?}: {}", bb, term_type(&mir_body[bb].terminator().kind)))
+        .map(|&bb| format!("{:?}: {}", bb, mir_body[bb].terminator().kind.name()))
         .collect::<Vec<_>>();
     if non_term_blocks.len() > 0 {
         sections.push(non_term_blocks.join("\n"));
@@ -804,28 +804,7 @@ fn bcb_to_string_sections<'tcx>(
     sections.push(format!(
         "{:?}: {}",
         bcb_data.basic_blocks.last().unwrap(),
-        term_type(&bcb_data.terminator(mir_body).kind)
+        bcb_data.terminator(mir_body).kind.name(),
     ));
     sections
-}
-
-/// Returns a simple string representation of a `TerminatorKind` variant, independent of any
-/// values it might hold.
-pub(super) fn term_type(kind: &TerminatorKind<'_>) -> &'static str {
-    match kind {
-        TerminatorKind::Goto { .. } => "Goto",
-        TerminatorKind::SwitchInt { .. } => "SwitchInt",
-        TerminatorKind::Resume => "Resume",
-        TerminatorKind::Terminate => "Terminate",
-        TerminatorKind::Return => "Return",
-        TerminatorKind::Unreachable => "Unreachable",
-        TerminatorKind::Drop { .. } => "Drop",
-        TerminatorKind::Call { .. } => "Call",
-        TerminatorKind::Assert { .. } => "Assert",
-        TerminatorKind::Yield { .. } => "Yield",
-        TerminatorKind::GeneratorDrop => "GeneratorDrop",
-        TerminatorKind::FalseEdge { .. } => "FalseEdge",
-        TerminatorKind::FalseUnwind { .. } => "FalseUnwind",
-        TerminatorKind::InlineAsm { .. } => "InlineAsm",
-    }
 }

@@ -1,6 +1,6 @@
 // run-rustfix
 
-#![allow(drop_ref)]
+#![allow(dropping_references)]
 
 struct Foo {
     x: isize

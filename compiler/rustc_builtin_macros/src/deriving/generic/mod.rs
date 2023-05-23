@@ -1591,7 +1591,7 @@ impl<'a> TraitDef<'a> {
                                 BYTE_SLICE_IN_PACKED_STRUCT_WITH_DERIVE,
                                 sp,
                                 ast::CRATE_NODE_ID,
-                                &format!(
+                                format!(
                                     "{} slice in a packed struct that derives a built-in trait",
                                     ty
                                 ),

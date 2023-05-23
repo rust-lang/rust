@@ -23,6 +23,7 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
+use rustc_middle::middle::debugger_visualizer::{DebuggerVisualizerFile, DebuggerVisualizerType};
 use rustc_middle::middle::exported_symbols;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_middle::middle::lang_items;
@@ -35,7 +36,6 @@ use rustc_session::config::{self, CrateType, EntryFnType, OutputType};
 use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::Symbol;
-use rustc_span::{DebuggerVisualizerFile, DebuggerVisualizerType};
 use rustc_target::abi::{Align, FIRST_VARIANT};
 
 use std::collections::BTreeSet;

@@ -1,6 +1,6 @@
 // check-pass
 
-#![warn(drop_ref)]
+#![warn(dropping_references)]
 
 struct SomeStruct;
 

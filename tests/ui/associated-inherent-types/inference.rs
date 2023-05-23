@@ -3,7 +3,7 @@
 
 #![feature(inherent_associated_types)]
 #![allow(incomplete_features)]
-#![allow(drop_copy)]
+#![allow(dropping_copy_types)]
 
 use std::convert::identity;
 

@@ -537,14 +537,22 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
         self.evaluation_probe(|this| {
-            if this.tcx().trait_solver_next() {
-                this.evaluate_predicates_recursively_in_new_solver([obligation.clone()])
+            let goal =
+                this.infcx.resolve_vars_if_possible((obligation.predicate, obligation.param_env));
+            let mut result = if this.tcx().trait_solver_next() {
+                this.evaluate_predicates_recursively_in_new_solver([obligation.clone()])?
             } else {
                 this.evaluate_predicate_recursively(
                     TraitObligationStackList::empty(&ProvisionalEvaluationCache::default()),
                     obligation.clone(),
-                )
+                )?
+            };
+            // If the predicate has done any inference, then downgrade the
+            // result to ambiguous.
+            if this.infcx.shallow_resolve(goal) != goal {
+                result = result.max(EvaluatedToAmbig);
             }
+            Ok(result)
         })
     }
 
@@ -1645,7 +1653,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let tcx = self.infcx.tcx;
         let (def_id, substs) = match *placeholder_trait_predicate.trait_ref.self_ty().kind() {
-            ty::Alias(_, ty::AliasTy { def_id, substs, .. }) => (def_id, substs),
+            ty::Alias(ty::Projection | ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
+                (def_id, substs)
+            }
             _ => {
                 span_bug!(
                     obligation.cause.span,

@@ -35,6 +35,7 @@ const EXTENSION_EXCEPTION_PATHS: &[&str] = &[
     "tests/ui/macros/syntax-extension-source-utils-files/includeme.fragment", // more include
     "tests/ui/unused-crate-deps/test.mk", // why would you use make
     "tests/ui/proc-macro/auxiliary/included-file.txt", // more include
+    "tests/ui/invalid/foo.natvis.xml", // sample debugger visualizer
 ];
 
 fn check_entries(tests_path: &Path, bad: &mut bool) {

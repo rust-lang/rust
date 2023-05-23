@@ -4,7 +4,7 @@ use crate::cell::UnsafeCell;
 use crate::future::{poll_fn, Future};
 use crate::mem;
 use crate::pin::Pin;
-use crate::task::{Context, Poll};
+use crate::task::{ready, Context, Poll};
 
 /// Polls multiple futures simultaneously, returning a tuple
 /// of all results once complete.
@@ -118,7 +118,7 @@ macro join_internal {
                             fut
                         })
                     };
-                    // Despite how tempting it may be to `let () = fut.poll(cx).ready()?;`
+                    // Despite how tempting it may be to `let () = ready!(fut.poll(cx));`
                     // doing so would defeat the point of `join!`: to start polling eagerly all
                     // of the futures, to allow parallelizing the waits.
                     done &= fut.poll(cx).is_ready();
@@ -180,7 +180,7 @@ impl<F: Future> Future for MaybeDone<F> {
             // Do not mix match ergonomics with unsafe.
             match *self.as_mut().get_unchecked_mut() {
                 MaybeDone::Future(ref mut f) => {
-                    let val = Pin::new_unchecked(f).poll(cx).ready()?;
+                    let val = ready!(Pin::new_unchecked(f).poll(cx));
                     self.set(Self::Done(val));
                 }
                 MaybeDone::Done(_) => {}

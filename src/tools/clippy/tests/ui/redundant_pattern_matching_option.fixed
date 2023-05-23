@@ -46,6 +46,7 @@ fn main() {
     let _ = if opt.is_some() { true } else { false };
 
     issue6067();
+    issue10726();
 
     let _ = if gen_opt().is_some() {
         1
@@ -87,4 +88,22 @@ const fn issue6067() {
 fn issue7921() {
     if (&None::<()>).is_none() {}
     if (&None::<()>).is_none() {}
+}
+
+fn issue10726() {
+    let x = Some(42);
+
+    x.is_some();
+
+    x.is_none();
+
+    x.is_none();
+
+    x.is_some();
+
+    // Don't lint
+    match x {
+        Some(21) => true,
+        _ => false,
+    };
 }

@@ -722,7 +722,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                     });
                                 }
                             };
-                            if fragment_kind == AstFragmentKind::Expr && items.is_empty() {
+                            if matches!(
+                                fragment_kind,
+                                AstFragmentKind::Expr | AstFragmentKind::MethodReceiverExpr
+                            ) && items.is_empty()
+                            {
                                 self.cx.emit_err(RemoveExprNotSupported { span });
                                 fragment_kind.dummy(span)
                             } else {
@@ -1664,7 +1668,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         &UNUSED_ATTRIBUTES,
                         attr.span,
                         self.cx.current_expansion.lint_node_id,
-                        &format!("unused attribute `{}`", attr_name),
+                        format!("unused attribute `{}`", attr_name),
                         BuiltinLintDiagnostics::UnusedBuiltinAttribute {
                             attr_name,
                             macro_name: pprust::path_to_string(&call.path),

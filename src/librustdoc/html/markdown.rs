@@ -551,7 +551,15 @@ impl<'a, I: Iterator<Item = Event<'a>>> SummaryLine<'a, I> {
 }
 
 fn check_if_allowed_tag(t: &Tag<'_>) -> bool {
-    matches!(t, Tag::Paragraph | Tag::Emphasis | Tag::Strong | Tag::Link(..) | Tag::BlockQuote)
+    matches!(
+        t,
+        Tag::Paragraph
+            | Tag::Emphasis
+            | Tag::Strong
+            | Tag::Strikethrough
+            | Tag::Link(..)
+            | Tag::BlockQuote
+    )
 }
 
 fn is_forbidden_tag(t: &Tag<'_>) -> bool {
@@ -773,7 +781,7 @@ impl<'tcx> ExtraInfo<'tcx> {
         ExtraInfo { def_id, sp, tcx }
     }
 
-    fn error_invalid_codeblock_attr(&self, msg: &str, help: &str) {
+    fn error_invalid_codeblock_attr(&self, msg: String, help: &str) {
         if let Some(def_id) = self.def_id.as_local() {
             self.tcx.struct_span_lint_hir(
                 crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
@@ -948,7 +956,7 @@ impl LangString {
                     } {
                         if let Some(extra) = extra {
                             extra.error_invalid_codeblock_attr(
-                                &format!("unknown attribute `{}`. Did you mean `{}`?", x, flag),
+                                format!("unknown attribute `{}`. Did you mean `{}`?", x, flag),
                                 help,
                             );
                         }

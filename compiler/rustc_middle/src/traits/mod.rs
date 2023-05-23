@@ -701,9 +701,9 @@ impl<'tcx, N> ImplSource<'tcx, N> {
     }
 
     pub fn borrow_nested_obligations(&self) -> &[N] {
-        match &self {
-            ImplSource::UserDefined(i) => &i.nested[..],
-            ImplSource::Param(n, _) => &n,
+        match self {
+            ImplSource::UserDefined(i) => &i.nested,
+            ImplSource::Param(n, _) => n,
             ImplSource::Builtin(i) => &i.nested,
             ImplSource::AutoImpl(d) => &d.nested,
             ImplSource::Closure(c) => &c.nested,
@@ -714,6 +714,23 @@ impl<'tcx, N> ImplSource<'tcx, N> {
             ImplSource::TraitAlias(d) => &d.nested,
             ImplSource::TraitUpcasting(d) => &d.nested,
             ImplSource::ConstDestruct(i) => &i.nested,
+        }
+    }
+
+    pub fn borrow_nested_obligations_mut(&mut self) -> &mut [N] {
+        match self {
+            ImplSource::UserDefined(i) => &mut i.nested,
+            ImplSource::Param(n, _) => n,
+            ImplSource::Builtin(i) => &mut i.nested,
+            ImplSource::AutoImpl(d) => &mut d.nested,
+            ImplSource::Closure(c) => &mut c.nested,
+            ImplSource::Generator(c) => &mut c.nested,
+            ImplSource::Future(c) => &mut c.nested,
+            ImplSource::Object(d) => &mut d.nested,
+            ImplSource::FnPointer(d) => &mut d.nested,
+            ImplSource::TraitAlias(d) => &mut d.nested,
+            ImplSource::TraitUpcasting(d) => &mut d.nested,
+            ImplSource::ConstDestruct(i) => &mut i.nested,
         }
     }
 

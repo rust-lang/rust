@@ -88,8 +88,10 @@ pub struct FilePermissions {
 pub struct FileTimes {
     accessed: Option<c::FILETIME>,
     modified: Option<c::FILETIME>,
+    created: Option<c::FILETIME>,
 }
-impl core::fmt::Debug for c::FILETIME {
+
+impl fmt::Debug for c::FILETIME {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let time = ((self.dwHighDateTime as u64) << 32) | self.dwLowDateTime as u64;
         f.debug_tuple("FILETIME").field(&time).finish()
@@ -582,7 +584,10 @@ impl File {
 
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
         let is_zero = |t: c::FILETIME| t.dwLowDateTime == 0 && t.dwHighDateTime == 0;
-        if times.accessed.map_or(false, is_zero) || times.modified.map_or(false, is_zero) {
+        if times.accessed.map_or(false, is_zero)
+            || times.modified.map_or(false, is_zero)
+            || times.created.map_or(false, is_zero)
+        {
             return Err(io::const_io_error!(
                 io::ErrorKind::InvalidInput,
                 "Cannot set file timestamp to 0",
@@ -590,18 +595,23 @@ impl File {
         }
         let is_max =
             |t: c::FILETIME| t.dwLowDateTime == c::DWORD::MAX && t.dwHighDateTime == c::DWORD::MAX;
-        if times.accessed.map_or(false, is_max) || times.modified.map_or(false, is_max) {
+        if times.accessed.map_or(false, is_max)
+            || times.modified.map_or(false, is_max)
+            || times.created.map_or(false, is_max)
+        {
             return Err(io::const_io_error!(
                 io::ErrorKind::InvalidInput,
                 "Cannot set file timestamp to 0xFFFF_FFFF_FFFF_FFFF",
             ));
         }
         cvt(unsafe {
+            let created =
+                times.created.as_ref().map(|a| a as *const c::FILETIME).unwrap_or(ptr::null());
             let accessed =
                 times.accessed.as_ref().map(|a| a as *const c::FILETIME).unwrap_or(ptr::null());
             let modified =
                 times.modified.as_ref().map(|a| a as *const c::FILETIME).unwrap_or(ptr::null());
-            c::SetFileTime(self.as_raw_handle(), ptr::null_mut(), accessed, modified)
+            c::SetFileTime(self.as_raw_handle(), created, accessed, modified)
         })?;
         Ok(())
     }
@@ -1004,6 +1014,10 @@ impl FileTimes {
 
     pub fn set_modified(&mut self, t: SystemTime) {
         self.modified = Some(t.into_inner());
+    }
+
+    pub fn set_created(&mut self, t: SystemTime) {
+        self.created = Some(t.into_inner());
     }
 }
 

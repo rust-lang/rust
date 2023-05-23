@@ -1,6 +1,6 @@
 // check-pass
 
-#![warn(drop_copy)]
+#![warn(dropping_copy_types)]
 
 use std::mem::drop;
 use std::vec::Vec;

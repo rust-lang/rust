@@ -4,7 +4,7 @@
 // Tests ensuring that `dbg!(expr)` has the expected run-time behavior.
 // as well as some compile time properties we expect.
 
-#![allow(drop_copy)]
+#![allow(dropping_copy_types)]
 
 #[derive(Copy, Clone, Debug)]
 struct Unit;

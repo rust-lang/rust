@@ -191,18 +191,14 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
 /// Returns a tuple of options with the start and end (exclusive) values of
 /// the range. If the start or end is not constant, None is returned.
 fn to_const_range(cx: &LateContext<'_>, range: higher::Range<'_>, array_size: u128) -> (Option<u128>, Option<u128>) {
-    let s = range
-        .start
-        .map(|expr| constant(cx, cx.typeck_results(), expr).map(|(c, _)| c));
+    let s = range.start.map(|expr| constant(cx, cx.typeck_results(), expr));
     let start = match s {
         Some(Some(Constant::Int(x))) => Some(x),
         Some(_) => None,
         None => Some(0),
     };
 
-    let e = range
-        .end
-        .map(|expr| constant(cx, cx.typeck_results(), expr).map(|(c, _)| c));
+    let e = range.end.map(|expr| constant(cx, cx.typeck_results(), expr));
     let end = match e {
         Some(Some(Constant::Int(x))) => {
             if range.limits == RangeLimits::Closed {

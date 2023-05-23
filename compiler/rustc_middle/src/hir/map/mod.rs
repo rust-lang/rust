@@ -1,4 +1,5 @@
 use crate::hir::{ModuleItems, Owner};
+use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
 use crate::query::LocalCrate;
 use crate::ty::TyCtxt;
 use rustc_ast as ast;
@@ -1165,11 +1166,26 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
 
     source_file_names.sort_unstable();
 
+    // We have to take care of debugger visualizers explicitly. The HIR (and
+    // thus `hir_body_hash`) contains the #[debugger_visualizer] attributes but
+    // these attributes only store the file path to the visualizer file, not
+    // their content. Yet that content is exported into crate metadata, so any
+    // changes to it need to be reflected in the crate hash.
+    let debugger_visualizers: Vec<_> = tcx
+        .debugger_visualizers(LOCAL_CRATE)
+        .iter()
+        // We ignore the path to the visualizer file since it's not going to be
+        // encoded in crate metadata and we already hash the full contents of
+        // the file.
+        .map(DebuggerVisualizerFile::path_erased)
+        .collect();
+
     let crate_hash: Fingerprint = tcx.with_stable_hashing_context(|mut hcx| {
         let mut stable_hasher = StableHasher::new();
         hir_body_hash.hash_stable(&mut hcx, &mut stable_hasher);
         upstream_crates.hash_stable(&mut hcx, &mut stable_hasher);
         source_file_names.hash_stable(&mut hcx, &mut stable_hasher);
+        debugger_visualizers.hash_stable(&mut hcx, &mut stable_hasher);
         if tcx.sess.opts.incremental_relative_spans() {
             let definitions = tcx.definitions_untracked();
             let mut owner_spans: Vec<_> = krate

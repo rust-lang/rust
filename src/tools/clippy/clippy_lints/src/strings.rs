@@ -132,7 +132,7 @@ declare_clippy_lint! {
     /// Probably lots of false positives. If an index comes from a known valid position (e.g.
     /// obtained via `char_indices` over the same string), it is totally OK.
     ///
-    /// # Example
+    /// ### Example
     /// ```rust,should_panic
     /// &"Ölkanne"[1..];
     /// ```

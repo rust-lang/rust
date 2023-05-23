@@ -89,11 +89,7 @@ impl<'tcx> LateLintPass<'tcx> for FnNullCheck {
 
                     // Catching:
                     // (fn_ptr as *<const/mut> <ty>) == <const that evaluates to null_ptr>
-                    _ if matches!(
-                        constant(cx, cx.typeck_results(), to_check),
-                        Some((Constant::RawPtr(0), _))
-                    ) =>
-                    {
+                    _ if matches!(constant(cx, cx.typeck_results(), to_check), Some(Constant::RawPtr(0))) => {
                         lint_expr(cx, expr);
                     },
 

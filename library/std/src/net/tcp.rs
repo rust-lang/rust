@@ -756,6 +756,15 @@ impl TcpListener {
     /// ];
     /// let listener = TcpListener::bind(&addrs[..]).unwrap();
     /// ```
+    ///
+    /// Creates a TCP listener bound to a port assigned by the operating system
+    /// at `127.0.0.1`.
+    ///
+    /// ```no_run
+    /// use std::net::TcpListener;
+    ///
+    /// let socket = TcpListener::bind("127.0.0.1:0").unwrap();
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn bind<A: ToSocketAddrs>(addr: A) -> io::Result<TcpListener> {
         super::each_addr(addr, net_imp::TcpListener::bind).map(TcpListener)

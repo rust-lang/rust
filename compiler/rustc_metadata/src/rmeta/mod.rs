@@ -2,6 +2,7 @@ use crate::creader::CrateMetadataRef;
 use decoder::Metadata;
 use def_path_hash_map::DefPathHashMapRef;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use table::TableBuilder;
 
 use rustc_ast as ast;
@@ -48,8 +49,8 @@ mod def_path_hash_map;
 mod encoder;
 mod table;
 
-pub(crate) fn rustc_version() -> String {
-    format!("rustc {}", option_env!("CFG_VERSION").unwrap_or("unknown version"))
+pub(crate) fn rustc_version(cfg_version: &'static str) -> String {
+    format!("rustc {}", cfg_version)
 }
 
 /// Metadata encoding version.
@@ -245,7 +246,7 @@ pub(crate) struct CrateRoot {
     proc_macro_data: Option<ProcMacroData>,
 
     tables: LazyTables,
-    debugger_visualizers: LazyArray<rustc_span::DebuggerVisualizerFile>,
+    debugger_visualizers: LazyArray<DebuggerVisualizerFile>,
 
     exported_symbols: LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>,
 

@@ -1415,7 +1415,11 @@ impl<'a> Formatter<'a> {
     /// Takes the formatted parts and applies the padding.
     /// Assumes that the caller already has rendered the parts with required precision,
     /// so that `self.precision` can be ignored.
-    fn pad_formatted_parts(&mut self, formatted: &numfmt::Formatted<'_>) -> Result {
+    ///
+    /// # Safety
+    ///
+    /// Any `numfmt::Part::Copy` parts in `formatted` must contain valid UTF-8.
+    unsafe fn pad_formatted_parts(&mut self, formatted: &numfmt::Formatted<'_>) -> Result {
         if let Some(mut width) = self.width {
             // for the sign-aware zero padding, we render the sign first and
             // behave as if we had no sign from the beginning.
@@ -1438,10 +1442,14 @@ impl<'a> Formatter<'a> {
             let len = formatted.len();
             let ret = if width <= len {
                 // no padding
-                self.write_formatted_parts(&formatted)
+                // SAFETY: Per the precondition.
+                unsafe { self.write_formatted_parts(&formatted) }
             } else {
                 let post_padding = self.padding(width - len, Alignment::Right)?;
-                self.write_formatted_parts(&formatted)?;
+                // SAFETY: Per the precondition.
+                unsafe {
+                    self.write_formatted_parts(&formatted)?;
+                }
                 post_padding.write(self)
             };
             self.fill = old_fill;
@@ -1449,20 +1457,20 @@ impl<'a> Formatter<'a> {
             ret
         } else {
             // this is the common case and we take a shortcut
-            self.write_formatted_parts(formatted)
+            // SAFETY: Per the precondition.
+            unsafe { self.write_formatted_parts(formatted) }
         }
     }
 
-    fn write_formatted_parts(&mut self, formatted: &numfmt::Formatted<'_>) -> Result {
-        fn write_bytes(buf: &mut dyn Write, s: &[u8]) -> Result {
+    /// # Safety
+    ///
+    /// Any `numfmt::Part::Copy` parts in `formatted` must contain valid UTF-8.
+    unsafe fn write_formatted_parts(&mut self, formatted: &numfmt::Formatted<'_>) -> Result {
+        unsafe fn write_bytes(buf: &mut dyn Write, s: &[u8]) -> Result {
             // SAFETY: This is used for `numfmt::Part::Num` and `numfmt::Part::Copy`.
             // It's safe to use for `numfmt::Part::Num` since every char `c` is between
-            // `b'0'` and `b'9'`, which means `s` is valid UTF-8.
-            // It's also probably safe in practice to use for `numfmt::Part::Copy(buf)`
-            // since `buf` should be plain ASCII, but it's possible for someone to pass
-            // in a bad value for `buf` into `numfmt::to_shortest_str` since it is a
-            // public function.
-            // FIXME: Determine whether this could result in UB.
+            // `b'0'` and `b'9'`, which means `s` is valid UTF-8. It's safe to use for
+            // `numfmt::Part::Copy` due to this function's precondition.
             buf.write_str(unsafe { str::from_utf8_unchecked(s) })
         }
 
@@ -1489,11 +1497,15 @@ impl<'a> Formatter<'a> {
                         *c = b'0' + (v % 10) as u8;
                         v /= 10;
                     }
-                    write_bytes(self.buf, &s[..len])?;
+                    // SAFETY: Per the precondition.
+                    unsafe {
+                        write_bytes(self.buf, &s[..len])?;
+                    }
                 }
-                numfmt::Part::Copy(buf) => {
+                // SAFETY: Per the precondition.
+                numfmt::Part::Copy(buf) => unsafe {
                     write_bytes(self.buf, buf)?;
-                }
+                },
             }
         }
         Ok(())
