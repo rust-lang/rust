@@ -1,4 +1,4 @@
-#![warn(clippy::integer_arithmetic)]
+#![warn(clippy::arithmetic_side_effects)]
 
 mod backtrace;
 #[cfg(target_os = "linux")]
