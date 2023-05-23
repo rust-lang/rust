@@ -63,7 +63,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('test', 'test', [CompletionResultType]::ParameterValue, 'Build and run some test suites')
             [CompletionResult]::new('bench', 'bench', [CompletionResultType]::ParameterValue, 'Build and run some benchmarks')
             [CompletionResult]::new('clean', 'clean', [CompletionResultType]::ParameterValue, 'Clean out build directories')
-            [CompletionResult]::new('dist', 'dist', [CompletionResultType]::ParameterValue, 'Duild distribution artifacts')
+            [CompletionResult]::new('dist', 'dist', [CompletionResultType]::ParameterValue, 'Build distribution artifacts')
             [CompletionResult]::new('install', 'install', [CompletionResultType]::ParameterValue, 'Install distribution artifacts')
             [CompletionResult]::new('run', 'run', [CompletionResultType]::ParameterValue, 'Run tools contained in this repository')
             [CompletionResult]::new('setup', 'setup', [CompletionResultType]::ParameterValue, 'Set up the environment for development')

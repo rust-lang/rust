@@ -237,7 +237,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     // error has been emitted. (#64638)
                     self.fcx.tcx.ty_error_with_message(
                         e.span,
-                        &format!("bad index {:?} for base: `{:?}`", index, base),
+                        format!("bad index {:?} for base: `{:?}`", index, base),
                     )
                 });
                 let index_ty = self.fcx.resolve_vars_if_possible(index_ty);
@@ -692,15 +692,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             fcx_typeck_results.offset_of_data().items_in_stable_order()
         {
             let hir_id = hir::HirId { owner: common_hir_owner, local_id };
-
-            if cfg!(debug_assertions) && container.has_infer() {
-                span_bug!(
-                    hir_id.to_span(self.fcx.tcx),
-                    "writeback: `{:?}` has inference variables",
-                    container
-                );
-            };
-
+            let container = self.resolve(container, &hir_id);
             self.typeck_results.offset_of_data_mut().insert(hir_id, (container, indices.clone()));
         }
     }

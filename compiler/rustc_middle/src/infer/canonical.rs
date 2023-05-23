@@ -280,7 +280,7 @@ pub struct QueryResponse<'tcx, R> {
     /// should get its hidden type inferred. So we bubble the opaque type
     /// and the type it was compared against upwards and let the query caller
     /// handle it.
-    pub opaque_types: Vec<(Ty<'tcx>, Ty<'tcx>)>,
+    pub opaque_types: Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>,
     pub value: R,
 }
 

@@ -1,6 +1,6 @@
 // check-pass
 
-#![warn(forget_ref)]
+#![warn(forgetting_references)]
 
 use std::mem::forget;
 

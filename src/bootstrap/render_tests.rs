@@ -168,9 +168,14 @@ impl<'a> Renderer<'a> {
         if !self.failures.is_empty() {
             println!("\nfailures:\n");
             for failure in &self.failures {
-                if let Some(stdout) = &failure.stdout {
+                if failure.stdout.is_some() || failure.message.is_some() {
                     println!("---- {} stdout ----", failure.name);
-                    println!("{stdout}");
+                    if let Some(stdout) = &failure.stdout {
+                        println!("{stdout}");
+                    }
+                    if let Some(message) = &failure.message {
+                        println!("note: {message}");
+                    }
                 }
             }
 

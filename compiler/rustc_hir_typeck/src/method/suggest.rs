@@ -288,8 +288,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mode = no_match_data.mode;
         let tcx = self.tcx;
         let rcvr_ty = self.resolve_vars_if_possible(rcvr_ty);
-        let (ty_str, ty_file) = tcx.short_ty_string(rcvr_ty);
-        let short_ty_str = with_forced_trimmed_paths!(rcvr_ty.to_string());
+        let ((mut ty_str, ty_file), short_ty_str) = if trait_missing_method
+            && let ty::Dynamic(predicates, _, _) = rcvr_ty.kind() {
+                ((predicates.to_string(), None), with_forced_trimmed_paths!(predicates.to_string()))
+            } else {
+                (tcx.short_ty_string(rcvr_ty), with_forced_trimmed_paths!(rcvr_ty.to_string()))
+            };
         let is_method = mode == Mode::MethodCall;
         let unsatisfied_predicates = &no_match_data.unsatisfied_predicates;
         let similar_candidate = no_match_data.similar_candidate;
@@ -329,12 +333,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span = item_name.span;
 
         // Don't show generic arguments when the method can't be found in any implementation (#81576).
-        let mut ty_str_reported = if trait_missing_method {
-            ty_str.strip_prefix("dyn ").expect("Failed to remove the prefix dyn").to_owned()
-        } else {
-            ty_str.clone()
-        };
-
+        let mut ty_str_reported = ty_str.clone();
         if let ty::Adt(_, generics) = rcvr_ty.kind() {
             if generics.len() > 0 {
                 let mut autoderef = self.autoderef(span, rcvr_ty);
@@ -383,14 +382,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if tcx.sess.source_map().is_multiline(sugg_span) {
             err.span_label(sugg_span.with_hi(span.lo()), "");
         }
-        let mut ty_str = if short_ty_str.len() < ty_str.len() && ty_str.len() > 10 {
-            short_ty_str
-        } else {
-            ty_str
-        };
-        if trait_missing_method {
-            ty_str =
-                ty_str.strip_prefix("dyn ").expect("Failed to remove the prefix dyn").to_owned();
+
+        if short_ty_str.len() < ty_str.len() && ty_str.len() > 10 {
+            ty_str = short_ty_str;
         }
 
         if let Some(file) = ty_file {

@@ -421,7 +421,7 @@ pub enum TrimmedDefPaths {
     GoodPath,
 }
 
-#[derive(Clone, Hash)]
+#[derive(Clone, Hash, Debug)]
 pub enum ResolveDocLinks {
     /// Do not resolve doc links.
     None,
@@ -1319,7 +1319,7 @@ pub(super) fn build_target_config(
     let (target, target_warnings) = target_result.unwrap_or_else(|e| {
         early_error(
             opts.error_format,
-            &format!(
+            format!(
                 "Error loading target specification: {}. \
                  Run `rustc --print target-list` for a list of built-in targets",
                 e
@@ -1327,15 +1327,14 @@ pub(super) fn build_target_config(
         )
     });
     for warning in target_warnings.warning_messages() {
-        early_warn(opts.error_format, &warning)
+        early_warn(opts.error_format, warning)
     }
 
     if !matches!(target.pointer_width, 16 | 32 | 64) {
         early_error(
             opts.error_format,
-            &format!(
-                "target specification was invalid: \
-             unrecognized target-pointer-width {}",
+            format!(
+                "target specification was invalid: unrecognized target-pointer-width {}",
                 target.pointer_width
             ),
         )
@@ -1599,7 +1598,7 @@ pub fn get_cmd_lint_options(
 
     let lint_cap = matches.opt_str("cap-lints").map(|cap| {
         lint::Level::from_str(&cap)
-            .unwrap_or_else(|| early_error(error_format, &format!("unknown lint level: `{cap}`")))
+            .unwrap_or_else(|| early_error(error_format, format!("unknown lint level: `{cap}`")))
     });
 
     (lint_opts, describe_lints, lint_cap)
@@ -1616,7 +1615,7 @@ pub fn parse_color(matches: &getopts::Matches) -> ColorConfig {
 
         Some(arg) => early_error(
             ErrorOutputType::default(),
-            &format!(
+            format!(
                 "argument for `--color` must be auto, \
                  always or never (instead was `{arg}`)"
             ),
@@ -1691,7 +1690,7 @@ pub fn parse_json(matches: &getopts::Matches) -> JsonConfig {
                 "future-incompat" => json_future_incompat = true,
                 s => early_error(
                     ErrorOutputType::default(),
-                    &format!("unknown `--json` option `{s}`"),
+                    format!("unknown `--json` option `{s}`"),
                 ),
             }
         }
@@ -1729,7 +1728,7 @@ pub fn parse_error_format(
 
             Some(arg) => early_error(
                 ErrorOutputType::HumanReadable(HumanReadableErrorType::Default(color)),
-                &format!(
+                format!(
                     "argument for `--error-format` must be `human`, `json` or \
                      `short` (instead was `{arg}`)"
                 ),
@@ -1763,7 +1762,7 @@ pub fn parse_crate_edition(matches: &getopts::Matches) -> Edition {
         Some(arg) => Edition::from_str(&arg).unwrap_or_else(|_| {
             early_error(
                 ErrorOutputType::default(),
-                &format!(
+                format!(
                     "argument for `--edition` must be one of: \
                      {EDITION_NAME_LIST}. (instead was `{arg}`)"
                 ),
@@ -1782,7 +1781,7 @@ pub fn parse_crate_edition(matches: &getopts::Matches) -> Edition {
         } else {
             format!("edition {edition} is unstable and only available with -Z unstable-options")
         };
-        early_error(ErrorOutputType::default(), &msg)
+        early_error(ErrorOutputType::default(), msg)
     }
 
     edition
@@ -1827,7 +1826,7 @@ fn parse_output_types(
                 let output_type = OutputType::from_shorthand(shorthand).unwrap_or_else(|| {
                     early_error(
                         error_format,
-                        &format!(
+                        format!(
                             "unknown emission type: `{shorthand}` - expected one of: {display}",
                             display = OutputType::shorthands_display(),
                         ),
@@ -1866,7 +1865,7 @@ fn should_override_cgus_and_disable_thinlto(
                     for ot in &incompatible {
                         early_warn(
                             error_format,
-                            &format!(
+                            format!(
                                 "`--emit={ot}` with `-o` incompatible with \
                                  `-C codegen-units=N` for N > 1",
                             ),
@@ -1970,7 +1969,7 @@ fn collect_print_requests(
                 let prints = prints.join(", ");
                 early_error(
                     error_format,
-                    &format!("unknown print request `{req}`. Valid print requests are: {prints}"),
+                    format!("unknown print request `{req}`. Valid print requests are: {prints}"),
                 );
             }
         }
@@ -1987,7 +1986,7 @@ pub fn parse_target_triple(
         Some(target) if target.ends_with(".json") => {
             let path = Path::new(&target);
             TargetTriple::from_path(path).unwrap_or_else(|_| {
-                early_error(error_format, &format!("target file {path:?} does not exist"))
+                early_error(error_format, format!("target file {path:?} does not exist"))
             })
         }
         Some(target) => TargetTriple::TargetTriple(target),
@@ -2028,7 +2027,7 @@ fn parse_opt_level(
             arg => {
                 early_error(
                     error_format,
-                    &format!(
+                    format!(
                         "optimization level needs to be \
                             between 0-3, s or z (instead was `{arg}`)"
                     ),
@@ -2059,7 +2058,7 @@ pub(crate) fn parse_assert_incr_state(
         Some(s) if s.as_str() == "loaded" => Some(IncrementalStateAssertion::Loaded),
         Some(s) if s.as_str() == "not-loaded" => Some(IncrementalStateAssertion::NotLoaded),
         Some(s) => {
-            early_error(error_format, &format!("unexpected incremental state assertion value: {s}"))
+            early_error(error_format, format!("unexpected incremental state assertion value: {s}"))
         }
         None => None,
     }
@@ -2086,13 +2085,13 @@ fn parse_native_lib_kind(
                 } else {
                     ", the `-Z unstable-options` flag must also be passed to use it"
                 };
-                early_error(error_format, &format!("library kind `link-arg` is unstable{why}"))
+                early_error(error_format, format!("library kind `link-arg` is unstable{why}"))
             }
             NativeLibKind::LinkArg
         }
         _ => early_error(
             error_format,
-            &format!(
+            format!(
                 "unknown library kind `{kind}`, expected one of: static, dylib, framework, link-arg"
             ),
         ),
@@ -2127,16 +2126,13 @@ fn parse_native_lib_modifiers(
                 } else {
                     ", the `-Z unstable-options` flag must also be passed to use it"
                 };
-                early_error(
-                    error_format,
-                    &format!("linking modifier `{modifier}` is unstable{why}"),
-                )
+                early_error(error_format, format!("linking modifier `{modifier}` is unstable{why}"))
             }
         };
         let assign_modifier = |dst: &mut Option<bool>| {
             if dst.is_some() {
                 let msg = format!("multiple `{modifier}` modifiers in a single `-l` option");
-                early_error(error_format, &msg)
+                early_error(error_format, msg)
             } else {
                 *dst = Some(value);
             }
@@ -2173,7 +2169,7 @@ fn parse_native_lib_modifiers(
             // string, like `modifiers = ""`.
             _ => early_error(
                 error_format,
-                &format!(
+                format!(
                     "unknown linking modifier `{modifier}`, expected one \
                      of: bundle, verbatim, whole-archive, as-needed"
                 ),
@@ -2303,7 +2299,7 @@ pub fn parse_externs(
                     }
                     "nounused" => nounused_dep = true,
                     "force" => force = true,
-                    _ => early_error(error_format, &format!("unknown --extern option `{opt}`")),
+                    _ => early_error(error_format, format!("unknown --extern option `{opt}`")),
                 }
             }
         }
@@ -2369,7 +2365,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let unparsed_crate_types = matches.opt_strs("crate-type");
     let crate_types = parse_crate_types_from_list(unparsed_crate_types)
-        .unwrap_or_else(|e| early_error(error_format, &e));
+        .unwrap_or_else(|e| early_error(error_format, e));
 
     let mut unstable_opts = UnstableOptions::build(matches, error_format);
     let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
@@ -2597,7 +2593,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     };
 
     let working_dir = std::env::current_dir().unwrap_or_else(|e| {
-        early_error(error_format, &format!("Current directory is invalid: {e}"));
+        early_error(error_format, format!("Current directory is invalid: {e}"));
     });
 
     let remap = FilePathMapping::new(remap_path_prefix.clone());
@@ -2669,7 +2665,7 @@ fn parse_pretty(unstable_opts: &UnstableOptions, efmt: ErrorOutputType) -> Optio
         "mir-cfg" => MirCFG,
         name => early_error(
             efmt,
-            &format!(
+            format!(
                 "argument to `unpretty` must be one of `normal`, `identified`, \
                             `expanded`, `expanded,identified`, `expanded,hygiene`, \
                             `ast-tree`, `ast-tree,expanded`, `hir`, `hir,identified`, \
@@ -2747,7 +2743,7 @@ pub mod nightly_options {
             if opt.name != "Z" && !has_z_unstable_option {
                 early_error(
                     ErrorOutputType::default(),
-                    &format!(
+                    format!(
                         "the `-Z unstable-options` flag must also be passed to enable \
                          the flag `{}`",
                         opt.name
@@ -2760,11 +2756,10 @@ pub mod nightly_options {
             match opt.stability {
                 OptionStability::Unstable => {
                     let msg = format!(
-                        "the option `{}` is only accepted on the \
-                         nightly compiler",
+                        "the option `{}` is only accepted on the nightly compiler",
                         opt.name
                     );
-                    early_error(ErrorOutputType::default(), &msg);
+                    early_error(ErrorOutputType::default(), msg);
                 }
                 OptionStability::Stable => {}
             }

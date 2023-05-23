@@ -26,8 +26,24 @@ struct Gamma {
     z: Extern,
 }
 
+struct Delta<T: ?Sized> {
+    x: u8,
+    y: u16,
+    z: T,
+}
+
 fn main() {
     offset_of!(Alpha, z); //~ ERROR the size for values of type
     offset_of!(Beta, z); //~ ERROR the size for values of type
     offset_of!(Gamma, z); //~ ERROR the size for values of type
+}
+
+fn delta() {
+    offset_of!(Delta<Alpha>, z); //~ ERROR the size for values of type
+    offset_of!(Delta<Extern>, z); //~ ERROR the size for values of type
+    offset_of!(Delta<dyn Trait>, z); //~ ERROR the size for values of type
+}
+
+fn generic_with_maybe_sized<T: ?Sized>() -> usize {
+    offset_of!(Delta<T>, z) //~ ERROR the size for values of type
 }

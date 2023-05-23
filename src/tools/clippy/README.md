@@ -278,7 +278,7 @@ If you want to contribute to Clippy, you can find more information in [CONTRIBUT
 
 <!-- REUSE-IgnoreStart -->
 
-Copyright 2014-2022 The Rust Project Developers
+Copyright 2014-2023 The Rust Project Developers
 
 Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 [https://www.apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0)> or the MIT license

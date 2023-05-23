@@ -306,6 +306,14 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     }
                 }
             }
+
+            // `&[{integral}]` - `FromIterator` needs that.
+            if let ty::Ref(_, ref_ty, rustc_ast::Mutability::Not) = self_ty.kind()
+                && let ty::Slice(sty) = ref_ty.kind()
+                && sty.is_integral()
+            {
+                flags.push((sym::_Self, Some("&[{integral}]".to_owned())));
+            }
         });
 
         if let Ok(Some(command)) = OnUnimplementedDirective::of_item(self.tcx, def_id) {

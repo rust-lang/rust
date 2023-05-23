@@ -1324,7 +1324,7 @@ impl Build {
         match &self.config.channel[..] {
             "stable" => num.to_string(),
             "beta" => {
-                if self.rust_info().is_managed_git_subrepository() && !self.config.omit_git_hash {
+                if !self.config.omit_git_hash {
                     format!("{}-beta.{}", num, self.beta_prerelease_version())
                 } else {
                     format!("{}-beta", num)
@@ -1336,18 +1336,28 @@ impl Build {
     }
 
     fn beta_prerelease_version(&self) -> u32 {
+        fn extract_beta_rev_from_file<P: AsRef<Path>>(version_file: P) -> Option<String> {
+            let version = fs::read_to_string(version_file).ok()?;
+
+            extract_beta_rev(&version)
+        }
+
         if let Some(s) = self.prerelease_version.get() {
             return s;
         }
 
-        // Figure out how many merge commits happened since we branched off master.
-        // That's our beta number!
-        // (Note that we use a `..` range, not the `...` symmetric difference.)
-        let count =
+        // First check if there is a version file available.
+        // If available, we read the beta revision from that file.
+        // This only happens when building from a source tarball when Git should not be used.
+        let count = extract_beta_rev_from_file(self.src.join("version")).unwrap_or_else(|| {
+            // Figure out how many merge commits happened since we branched off master.
+            // That's our beta number!
+            // (Note that we use a `..` range, not the `...` symmetric difference.)
             output(self.config.git().arg("rev-list").arg("--count").arg("--merges").arg(format!(
                 "refs/remotes/origin/{}..HEAD",
                 self.config.stage0_metadata.config.nightly_branch
-            )));
+            )))
+        });
         let n = count.trim().parse().unwrap();
         self.prerelease_version.set(Some(n));
         n
@@ -1705,6 +1715,17 @@ to download LLVM rather than building it.
         stream.reset().unwrap();
         result
     }
+}
+
+/// Extract the beta revision from the full version string.
+///
+/// The full version string looks like "a.b.c-beta.y". And we need to extract
+/// the "y" part from the string.
+pub fn extract_beta_rev(version: &str) -> Option<String> {
+    let parts = version.splitn(2, "-beta.").collect::<Vec<_>>();
+    let count = parts.get(1).and_then(|s| s.find(' ').map(|p| (&s[..p]).to_string()));
+
+    count
 }
 
 #[cfg(unix)]

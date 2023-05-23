@@ -250,13 +250,13 @@ where
         cgu.create_size_estimate(tcx);
     }
 
-    debug_dump(tcx, "INITIAL PARTITIONING:", initial_partitioning.codegen_units.iter());
+    debug_dump(tcx, "INITIAL PARTITIONING", &initial_partitioning.codegen_units);
 
     // Merge until we have at most `max_cgu_count` codegen units.
     {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_merge_cgus");
         partitioner.merge_codegen_units(cx, &mut initial_partitioning);
-        debug_dump(tcx, "POST MERGING:", initial_partitioning.codegen_units.iter());
+        debug_dump(tcx, "POST MERGING", &initial_partitioning.codegen_units);
     }
 
     // In the next step, we use the inlining map to determine which additional
@@ -272,7 +272,7 @@ where
         cgu.create_size_estimate(tcx);
     }
 
-    debug_dump(tcx, "POST INLINING:", post_inlining.codegen_units.iter());
+    debug_dump(tcx, "POST INLINING", &post_inlining.codegen_units);
 
     // Next we try to make as many symbols "internal" as possible, so LLVM has
     // more freedom to optimize.
@@ -322,6 +322,8 @@ where
 
     result.sort_by(|a, b| a.name().as_str().cmp(b.name().as_str()));
 
+    debug_dump(tcx, "FINAL", &result);
+
     result
 }
 
@@ -346,33 +348,37 @@ struct PostInliningPartitioning<'tcx> {
     internalization_candidates: FxHashSet<MonoItem<'tcx>>,
 }
 
-fn debug_dump<'a, 'tcx, I>(tcx: TyCtxt<'tcx>, label: &str, cgus: I)
-where
-    I: Iterator<Item = &'a CodegenUnit<'tcx>>,
-    'tcx: 'a,
-{
+fn debug_dump<'a, 'tcx: 'a>(tcx: TyCtxt<'tcx>, label: &str, cgus: &[CodegenUnit<'tcx>]) {
     let dump = move || {
         use std::fmt::Write;
 
+        let num_cgus = cgus.len();
+        let max = cgus.iter().map(|cgu| cgu.size_estimate()).max().unwrap();
+        let min = cgus.iter().map(|cgu| cgu.size_estimate()).min().unwrap();
+        let ratio = max as f64 / min as f64;
+
         let s = &mut String::new();
-        let _ = writeln!(s, "{label}");
+        let _ = writeln!(
+            s,
+            "{label} ({num_cgus} CodegenUnits, max={max}, min={min}, max/min={ratio:.1}):"
+        );
         for cgu in cgus {
             let _ =
-                writeln!(s, "CodegenUnit {} estimated size {} :", cgu.name(), cgu.size_estimate());
+                writeln!(s, "CodegenUnit {} estimated size {}:", cgu.name(), cgu.size_estimate());
 
             for (mono_item, linkage) in cgu.items() {
                 let symbol_name = mono_item.symbol_name(tcx).name;
                 let symbol_hash_start = symbol_name.rfind('h');
                 let symbol_hash = symbol_hash_start.map_or("<no hash>", |i| &symbol_name[i..]);
 
-                let _ = writeln!(
+                let _ = with_no_trimmed_paths!(writeln!(
                     s,
                     " - {} [{:?}] [{}] estimated size {}",
                     mono_item,
                     linkage,
                     symbol_hash,
                     mono_item.size_estimate(tcx)
-                );
+                ));
             }
 
             let _ = writeln!(s);

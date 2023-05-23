@@ -108,7 +108,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         Ok(0)
     }
 
-    #[allow(non_snake_case, clippy::integer_arithmetic)]
+    #[allow(non_snake_case, clippy::arithmetic_side_effects)]
     fn GetSystemTimeAsFileTime(
         &mut self,
         LPFILETIME_op: &OpTy<'tcx, Provenance>,

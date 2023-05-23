@@ -33,30 +33,30 @@ define-function: (
 
 call-function: ("check-colors", {
     "theme": "ayu",
-    "highlight": "rgb(91, 59, 1)",
-    "highlight_focus": "rgb(124, 75, 15)",
-    "help_border": "rgb(170, 170, 170)",
-    "help_color": "rgb(238, 238, 238)",
-    "help_hover_border": "rgb(255, 255, 255)",
-    "help_hover_color": "rgb(255, 255, 255)",
+    "highlight": "#5b3b01",
+    "highlight_focus": "#7c4b0f",
+    "help_border": "#aaa",
+    "help_color": "#eee",
+    "help_hover_border": "#fff",
+    "help_hover_color": "#fff",
 })
 call-function: ("check-colors", {
     "theme": "dark",
-    "highlight": "rgb(91, 59, 1)",
-    "highlight_focus": "rgb(124, 75, 15)",
-    "help_border": "rgb(170, 170, 170)",
-    "help_color": "rgb(238, 238, 238)",
-    "help_hover_border": "rgb(255, 255, 255)",
-    "help_hover_color": "rgb(255, 255, 255)",
+    "highlight": "#5b3b01",
+    "highlight_focus": "#7c4b0f",
+    "help_border": "#aaa",
+    "help_color": "#eee",
+    "help_hover_border": "#fff",
+    "help_hover_color": "#fff",
 })
 call-function: ("check-colors", {
     "theme": "light",
-    "highlight": "rgb(252, 255, 214)",
-    "highlight_focus": "rgb(246, 253, 176)",
-    "help_border": "rgb(85, 85, 85)",
-    "help_color": "rgb(51, 51, 51)",
-    "help_hover_border": "rgb(0, 0, 0)",
-    "help_hover_color": "rgb(0, 0, 0)",
+    "highlight": "#fcffd6",
+    "highlight_focus": "#f6fdb0",
+    "help_border": "#555",
+    "help_color": "#333",
+    "help_hover_border": "#000",
+    "help_hover_color": "#000",
 })
 
 // Now testing the top and bottom background in case there is only one scraped examples.
@@ -81,16 +81,16 @@ define-function: (
 
 call-function: ("check-background", {
     "theme": "ayu",
-    "background_color_start": "rgb(15, 20, 25)",
+    "background_color_start": "rgba(15, 20, 25, 1)",
     "background_color_end": "rgba(15, 20, 25, 0)",
 })
 call-function: ("check-background", {
     "theme": "dark",
-    "background_color_start": "rgb(53, 53, 53)",
+    "background_color_start": "rgba(53, 53, 53, 1)",
     "background_color_end": "rgba(53, 53, 53, 0)",
 })
 call-function: ("check-background", {
     "theme": "light",
-    "background_color_start": "rgb(255, 255, 255)",
+    "background_color_start": "rgba(255, 255, 255, 1)",
     "background_color_end": "rgba(255, 255, 255, 0)",
 })

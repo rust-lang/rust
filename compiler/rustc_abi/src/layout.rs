@@ -12,7 +12,7 @@ use tracing::debug;
 pub trait LayoutCalculator {
     type TargetDataLayoutRef: Borrow<TargetDataLayout>;
 
-    fn delay_bug(&self, txt: &str);
+    fn delay_bug(&self, txt: String);
     fn current_data_layout(&self) -> Self::TargetDataLayoutRef;
 
     fn scalar_pair(&self, a: Scalar, b: Scalar) -> LayoutS {
@@ -969,7 +969,7 @@ fn univariant(
     for &i in &inverse_memory_index {
         let field = &fields[i];
         if !sized {
-            this.delay_bug(&format!(
+            this.delay_bug(format!(
                 "univariant: field #{} comes after unsized field",
                 offsets.len(),
             ));

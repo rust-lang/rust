@@ -8,7 +8,7 @@ use rustc_data_structures::{
     fx::{FxHashMap, FxHashSet},
     intern::Interned,
 };
-use rustc_errors::{Applicability, Diagnostic};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticMessage};
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{DefKind, Namespace, PerNS};
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
@@ -24,6 +24,7 @@ use rustc_span::BytePos;
 use smallvec::{smallvec, SmallVec};
 
 use std::borrow::Cow;
+use std::fmt::Display;
 use std::mem;
 use std::ops::Range;
 
@@ -841,7 +842,7 @@ impl PreprocessingError {
         match self {
             PreprocessingError::MultipleAnchors => report_multiple_anchors(cx, diag_info),
             PreprocessingError::Disambiguator(range, msg) => {
-                disambiguator_error(cx, diag_info, range.clone(), msg)
+                disambiguator_error(cx, diag_info, range.clone(), msg.as_str())
             }
             PreprocessingError::MalformedGenerics(err, path_str) => {
                 report_malformed_generics(cx, diag_info, *err, path_str)
@@ -1185,7 +1186,7 @@ impl LinkCollector<'_, '_> {
             }
             suggest_disambiguator(resolved, diag, path_str, &ori_link.link, sp);
         };
-        report_diagnostic(self.cx.tcx, BROKEN_INTRA_DOC_LINKS, &msg, diag_info, callback);
+        report_diagnostic(self.cx.tcx, BROKEN_INTRA_DOC_LINKS, msg, diag_info, callback);
     }
 
     fn report_rawptr_assoc_feature_gate(&self, dox: &str, ori_link: &Range<usize>, item: &Item) {
@@ -1581,7 +1582,7 @@ impl Suggestion {
 fn report_diagnostic(
     tcx: TyCtxt<'_>,
     lint: &'static Lint,
-    msg: &str,
+    msg: impl Into<DiagnosticMessage> + Display,
     DiagnosticInfo { item, ori_link: _, dox, link_range }: &DiagnosticInfo<'_>,
     decorate: impl FnOnce(&mut Diagnostic, Option<rustc_span::Span>),
 ) {
@@ -1649,7 +1650,7 @@ fn resolution_failure(
     report_diagnostic(
         tcx,
         BROKEN_INTRA_DOC_LINKS,
-        &format!("unresolved link to `{}`", path_str),
+        format!("unresolved link to `{}`", path_str),
         &diag_info,
         |diag, sp| {
             let item = |res: Res| format!("the {} `{}`", res.descr(), res.name(tcx),);
@@ -1865,20 +1866,20 @@ fn resolution_failure(
 
 fn report_multiple_anchors(cx: &DocContext<'_>, diag_info: DiagnosticInfo<'_>) {
     let msg = format!("`{}` contains multiple anchors", diag_info.ori_link);
-    anchor_failure(cx, diag_info, &msg, 1)
+    anchor_failure(cx, diag_info, msg, 1)
 }
 
 fn report_anchor_conflict(cx: &DocContext<'_>, diag_info: DiagnosticInfo<'_>, def_id: DefId) {
     let (link, kind) = (diag_info.ori_link, Res::from_def_id(cx.tcx, def_id).descr());
     let msg = format!("`{link}` contains an anchor, but links to {kind}s are already anchored");
-    anchor_failure(cx, diag_info, &msg, 0)
+    anchor_failure(cx, diag_info, msg, 0)
 }
 
 /// Report an anchor failure.
 fn anchor_failure(
     cx: &DocContext<'_>,
     diag_info: DiagnosticInfo<'_>,
-    msg: &str,
+    msg: String,
     anchor_idx: usize,
 ) {
     report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, msg, &diag_info, |diag, sp| {
@@ -1898,7 +1899,7 @@ fn disambiguator_error(
     cx: &DocContext<'_>,
     mut diag_info: DiagnosticInfo<'_>,
     disambiguator_range: Range<usize>,
-    msg: &str,
+    msg: impl Into<DiagnosticMessage> + Display,
 ) {
     diag_info.link_range = disambiguator_range;
     report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, msg, &diag_info, |diag, _sp| {
@@ -1919,7 +1920,7 @@ fn report_malformed_generics(
     report_diagnostic(
         cx.tcx,
         BROKEN_INTRA_DOC_LINKS,
-        &format!("unresolved link to `{}`", path_str),
+        format!("unresolved link to `{}`", path_str),
         &diag_info,
         |diag, sp| {
             let note = match err {
@@ -1994,7 +1995,7 @@ fn ambiguity_error(
         }
     }
 
-    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, &msg, diag_info, |diag, sp| {
+    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, msg, diag_info, |diag, sp| {
         if let Some(sp) = sp {
             diag.span_label(sp, "ambiguous link");
         } else {
@@ -2046,7 +2047,7 @@ fn privacy_error(cx: &DocContext<'_>, diag_info: &DiagnosticInfo<'_>, path_str: 
     let msg =
         format!("public documentation for `{}` links to private item `{}`", item_name, path_str);
 
-    report_diagnostic(cx.tcx, PRIVATE_INTRA_DOC_LINKS, &msg, diag_info, |diag, sp| {
+    report_diagnostic(cx.tcx, PRIVATE_INTRA_DOC_LINKS, msg, diag_info, |diag, sp| {
         if let Some(sp) = sp {
             diag.span_label(sp, "this item is private");
         }

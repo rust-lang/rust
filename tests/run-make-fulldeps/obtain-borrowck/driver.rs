@@ -24,7 +24,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_interface::interface::Compiler;
 use rustc_interface::{Config, Queries};
-use rustc_middle::query::query_values::mir_borrowck;
+use rustc_middle::query::queries::mir_borrowck::ProvidedValue;
 use rustc_middle::query::{ExternProviders, Providers};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -126,7 +126,7 @@ thread_local! {
         RefCell::new(HashMap::new());
 }
 
-fn mir_borrowck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> mir_borrowck<'tcx> {
+fn mir_borrowck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ProvidedValue<'tcx> {
     let body_with_facts = rustc_borrowck::consumers::get_body_with_borrowck_facts(tcx, def_id);
     // SAFETY: The reader casts the 'static lifetime to 'tcx before using it.
     let body_with_facts: BodyWithBorrowckFacts<'static> =

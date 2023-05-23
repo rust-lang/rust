@@ -89,6 +89,7 @@ pub fn register_plugins<'a>(
         crate_name,
         sess.crate_types().contains(&CrateType::Executable),
         sess.opts.cg.metadata.clone(),
+        sess.cfg_version,
     );
     sess.stable_crate_id.set(stable_crate_id).expect("not yet initialized");
     rustc_incremental::prepare_session_directory(sess, crate_name, stable_crate_id)?;
@@ -484,6 +485,11 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
         }
         if let Some(ref profile_sample) = sess.opts.unstable_opts.profile_sample_use {
             files.push(normalize_path(profile_sample.as_path().to_path_buf()));
+        }
+
+        // Debugger visualizer files
+        for debugger_visualizer in tcx.debugger_visualizers(LOCAL_CRATE) {
+            files.push(normalize_path(debugger_visualizer.path.clone().unwrap()));
         }
 
         if sess.binary_dep_depinfo() {

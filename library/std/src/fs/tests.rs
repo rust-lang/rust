@@ -1,7 +1,7 @@
 use crate::io::prelude::*;
 
 use crate::env;
-use crate::fs::{self, File, OpenOptions};
+use crate::fs::{self, File, FileTimes, OpenOptions};
 use crate::io::{BorrowedBuf, ErrorKind, SeekFrom};
 use crate::mem::MaybeUninit;
 use crate::path::Path;
@@ -9,7 +9,7 @@ use crate::str;
 use crate::sync::Arc;
 use crate::sys_common::io::test::{tmpdir, TempDir};
 use crate::thread;
-use crate::time::{Duration, Instant};
+use crate::time::{Duration, Instant, SystemTime};
 
 use rand::RngCore;
 
@@ -1632,4 +1632,54 @@ fn rename_directory() {
     fs::rename(&old_path, &new_path.join("newdir")).unwrap();
     assert!(new_path.join("newdir").is_dir());
     assert!(new_path.join("newdir/temp.txt").exists());
+}
+
+#[test]
+fn test_file_times() {
+    #[cfg(target_os = "ios")]
+    use crate::os::ios::fs::FileTimesExt;
+    #[cfg(target_os = "macos")]
+    use crate::os::macos::fs::FileTimesExt;
+    #[cfg(target_os = "watchos")]
+    use crate::os::watchos::fs::FileTimesExt;
+    #[cfg(windows)]
+    use crate::os::windows::fs::FileTimesExt;
+
+    let tmp = tmpdir();
+    let file = File::create(tmp.join("foo")).unwrap();
+    let mut times = FileTimes::new();
+    let accessed = SystemTime::UNIX_EPOCH + Duration::from_secs(12345);
+    let modified = SystemTime::UNIX_EPOCH + Duration::from_secs(54321);
+    times = times.set_accessed(accessed).set_modified(modified);
+    #[cfg(any(windows, target_os = "macos", target_os = "ios", target_os = "watchos"))]
+    let created = SystemTime::UNIX_EPOCH + Duration::from_secs(32123);
+    #[cfg(any(windows, target_os = "macos", target_os = "ios", target_os = "watchos"))]
+    {
+        times = times.set_created(created);
+    }
+    match file.set_times(times) {
+        // Allow unsupported errors on platforms which don't support setting times.
+        #[cfg(not(any(
+            windows,
+            all(
+                unix,
+                not(any(
+                    target_os = "android",
+                    target_os = "redox",
+                    target_os = "espidf",
+                    target_os = "horizon"
+                ))
+            )
+        )))]
+        Err(e) if e.kind() == ErrorKind::Unsupported => return,
+        Err(e) => panic!("error setting file times: {e:?}"),
+        Ok(_) => {}
+    }
+    let metadata = file.metadata().unwrap();
+    assert_eq!(metadata.accessed().unwrap(), accessed);
+    assert_eq!(metadata.modified().unwrap(), modified);
+    #[cfg(any(windows, target_os = "macos", target_os = "ios", target_os = "watchos"))]
+    {
+        assert_eq!(metadata.created().unwrap(), created);
+    }
 }

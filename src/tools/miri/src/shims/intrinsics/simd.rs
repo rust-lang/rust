@@ -612,7 +612,7 @@ fn simd_bitmask_index(idx: u32, vec_len: u32, endianness: Endian) -> u32 {
     assert!(idx < vec_len);
     match endianness {
         Endian::Little => idx,
-        #[allow(clippy::integer_arithmetic)] // idx < vec_len
+        #[allow(clippy::arithmetic_side_effects)] // idx < vec_len
         Endian::Big => vec_len - 1 - idx, // reverse order of bits
     }
 }

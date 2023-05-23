@@ -168,6 +168,18 @@ impl<'tcx> Inliner<'tcx> {
     ) -> Result<std::ops::Range<BasicBlock>, &'static str> {
         let callee_attrs = self.tcx.codegen_fn_attrs(callsite.callee.def_id());
         self.check_codegen_attributes(callsite, callee_attrs)?;
+
+        let terminator = caller_body[callsite.block].terminator.as_ref().unwrap();
+        let TerminatorKind::Call { args, destination, .. } = &terminator.kind else { bug!() };
+        let destination_ty = destination.ty(&caller_body.local_decls, self.tcx).ty;
+        for arg in args {
+            if !arg.ty(&caller_body.local_decls, self.tcx).is_sized(self.tcx, self.param_env) {
+                // We do not allow inlining functions with unsized params. Inlining these functions
+                // could create unsized locals, which are unsound and being phased out.
+                return Err("Call has unsized argument");
+            }
+        }
+
         self.check_mir_is_available(caller_body, &callsite.callee)?;
         let callee_body = try_instance_mir(self.tcx, callsite.callee.def)?;
         self.check_mir_body(callsite, callee_body, callee_attrs)?;
@@ -189,9 +201,6 @@ impl<'tcx> Inliner<'tcx> {
         // Check call signature compatibility.
         // Normally, this shouldn't be required, but trait normalization failure can create a
         // validation ICE.
-        let terminator = caller_body[callsite.block].terminator.as_ref().unwrap();
-        let TerminatorKind::Call { args, destination, .. } = &terminator.kind else { bug!() };
-        let destination_ty = destination.ty(&caller_body.local_decls, self.tcx).ty;
         let output_type = callee_body.return_ty();
         if !util::is_subtype(self.tcx, self.param_env, output_type, destination_ty) {
             trace!(?output_type, ?destination_ty);

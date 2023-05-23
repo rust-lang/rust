@@ -3,7 +3,7 @@
 //
 // check-pass
 
-#![allow(drop_ref)]
+#![allow(dropping_references)]
 
 trait MyTrait<'a> {
     type Output;

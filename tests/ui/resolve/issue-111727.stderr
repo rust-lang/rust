@@ -1,0 +1,9 @@
+error[E0599]: no function or associated item named `create` found for trait `Any`
+  --> $DIR/issue-111727.rs:4:20
+   |
+LL |     std::any::Any::create();
+   |                    ^^^^^^ function or associated item not found in `Any`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.
