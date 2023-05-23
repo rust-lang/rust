@@ -12,16 +12,6 @@ vbfmlaltq_f32
 vbfmlaltq_lane_f32
 vbfmlaltq_laneq_f32
 vbfmmlaq_f32
-vsudot_laneq_s32
-vsudot_lane_s32
-vsudotq_laneq_s32
-vsudotq_lane_s32
-vusdot_laneq_s32
-vusdot_lane_s32
-vusdotq_laneq_s32
-vusdotq_lane_s32
-vusdotq_s32
-vusdot_s32
 
 # Implemented in Clang and stdarch for A64 only even though CSV claims A32 support
 __crc32d

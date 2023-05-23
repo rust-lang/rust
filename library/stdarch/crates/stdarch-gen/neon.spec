@@ -3478,27 +3478,138 @@ link-arm = vst4lane._EXTpi8r_
 const-arm = LANE
 generate *mut f32:float32x2x4_t:void, *mut f32:float32x4x4_t:void
 
+/// Dot product vector form with unsigned and signed integers
+name = vusdot
+out-suffix
+a = 1000, -4200, -1000, 2000
+b = 100, 205, 110, 195, 120, 185, 130, 175, 140, 165, 150, 155, 160, 145, 170, 135
+c = 0, 1, 2, 3, -1, -2, -3, -4, 4, 5, 6, 7, -5, -6, -7, -8
+aarch64 = usdot
+arm = vusdot
+target = i8mm
+
+//  1000 + (100, 205, 110, 195) . ( 0,  1,  2,  3)
+// -4200 + (120, 185, 130, 175) . (-1, -2, -3, -4)
+//  ...
+validate 2010, -5780, 2370, -1940
+
+link-arm = usdot._EXT2_._EXT4_:int32x2_t:uint8x8_t:int8x8_t:int32x2_t
+link-aarch64 = usdot._EXT2_._EXT4_:int32x2_t:uint8x8_t:int8x8_t:int32x2_t
+generate int32x2_t:uint8x8_t:int8x8_t:int32x2_t
+
+link-arm = usdot._EXT2_._EXT4_:int32x4_t:uint8x16_t:int8x16_t:int32x4_t
+link-aarch64 = usdot._EXT2_._EXT4_:int32x4_t:uint8x16_t:int8x16_t:int32x4_t
+generate int32x4_t:uint8x16_t:int8x16_t:int32x4_t
+
+/// Dot product index form with unsigned and signed integers
+name = vusdot
+out-lane-suffixes
+constn = LANE
+aarch64 = usdot
+arm = vusdot
+target = i8mm
+multi_fn = static_assert_imm-in2_dot-LANE
+multi_fn = transmute, c:merge4_t2, c
+multi_fn = simd_shuffle!, c:out_signed, c, c, {dup-out_len-LANE as u32}
+multi_fn = vusdot-out-noext, a, b, {transmute, c}
+a = 1000, -4200, -1000, 2000
+b = 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250
+c = 4, 3, 2, 1, 0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11
+
+//  1000 + (100, 110, 120, 130) . (4, 3, 2, 1)
+// -4200 + (140, 150, 160, 170) . (4, 3, 2, 1)
+//  ...
+n = 0
+validate 2100, -2700, 900, 4300
+
+//  1000 + (100, 110, 120, 130) . (0, -1, -2, -3)
+// -4200 + (140, 150, 160, 170) . (0, -1, -2, -3)
+//  ...
+n = 1
+validate 260, -5180, -2220, 540
+
+generate int32x2_t:uint8x8_t:int8x8_t:int32x2_t
+generate int32x4_t:uint8x16_t:int8x8_t:int32x4_t
+
+/// Dot product index form with unsigned and signed integers
+name = vusdot
+out-lane-suffixes
+constn = LANE
+// Only AArch64 has the laneq forms.
+aarch64 = usdot
+target = i8mm
+multi_fn = static_assert_imm-in2_dot-LANE
+multi_fn = transmute, c:merge4_t2, c
+multi_fn = simd_shuffle!, c:out_signed, c, c, {dup-out_len-LANE as u32}
+multi_fn = vusdot-out-noext, a, b, {transmute, c}
+a = 1000, -4200, -1000, 2000
+b = 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250
+c = 4, 3, 2, 1, 0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11
+
+//  1000 + (100, 110, 120, 130) . (-4, -5, -6, -7)
+// -4200 + (140, 150, 160, 170) . (-4, -5, -6, -7)
+//  ...
+n = 3
+validate -3420, -10140, -8460, -6980
+
+generate int32x2_t:uint8x8_t:int8x16_t:int32x2_t
+generate int32x4_t:uint8x16_t:int8x16_t:int32x4_t
+
 /// Dot product index form with signed and unsigned integers
 name = vsudot
 out-lane-suffixes
 constn = LANE
-multi_fn = static_assert_imm-in2_dot-LANE
-multi_fn = simd_shuffle!, c:unsigned, c, c, {base-4-LANE}
-multi_fn = vsudot-outlane-_, a, b, c
-a = 1, 2, 1, 2
-b = 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8
-c = 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8
-n = 0
-validate 31, 72, 31, 72
-target = dotprod
-
 aarch64 = sudot
-link-aarch64 = usdot._EXT2_._EXT4_:int32x2_t:int8x8_t:uint8x8_t:int32x2_t
-// LLVM ERROR: Cannot select: intrinsic %llvm.aarch64.neon.usdot
-//generate int32x2_t:int8x8_t:uint8x8_t:int32x2_t, int32x2_t:int8x8_t:uint8x16_t:int32x2_t
-link-aarch64 = usdot._EXT2_._EXT4_:int32x4_t:int8x16_t:uint8x16_t:int32x4_t
-// LLVM ERROR: Cannot select: intrinsic %llvm.aarch64.neon.usdot
-//generate int32x4_t:int8x16_t:uint8x8_t:int32x4_t, int32x4_t:int8x16_t:uint8x16_t:int32x4_t
+arm = vsudot
+target = i8mm
+
+multi_fn = static_assert_imm-in2_dot-LANE
+multi_fn = transmute, c:merge4_t2, c
+multi_fn = simd_shuffle!, c:out_unsigned, c, c, {dup-out_len-LANE as u32}
+multi_fn = vusdot-out-noext, a, {transmute, c}, b
+a = -2000, 4200, -1000, 2000
+b = 4, 3, 2, 1, 0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11
+c = 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250
+
+// -2000 + (4,  3,  2,  1) . (100, 110, 120, 130)
+//  4200 + (0, -1, -2, -3) . (100, 110, 120, 130)
+//  ...
+n = 0
+validate -900, 3460, -3580, -2420
+
+// -2000 + (4,  3,  2,  1) . (140, 150, 160, 170)
+//  4200 + (0, -1, -2, -3) . (140, 150, 160, 170)
+//  ...
+n = 1
+validate -500, 3220, -4460, -3940
+
+generate int32x2_t:int8x8_t:uint8x8_t:int32x2_t
+generate int32x4_t:int8x16_t:uint8x8_t:int32x4_t
+
+/// Dot product index form with signed and unsigned integers
+name = vsudot
+out-lane-suffixes
+constn = LANE
+// Only AArch64 has the laneq forms.
+aarch64 = sudot
+target = i8mm
+
+multi_fn = static_assert_imm-in2_dot-LANE
+multi_fn = transmute, c:merge4_t2, c
+multi_fn = simd_shuffle!, c:out_unsigned, c, c, {dup-out_len-LANE as u32}
+multi_fn = vusdot-out-noext, a, {transmute, c}, b
+a = -2000, 4200, -1000, 2000
+b = 4, 3, 2, 1, 0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11
+c = 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250
+
+// -2000 + (4,  3,  2,  1) . (220, 230, 240, 250)
+//  4200 + (0, -1, -2, -3) . (220, 230, 240, 250)
+//  ...
+n = 3
+validate 300, 2740, -6220, -6980
+
+generate int32x2_t:int8x8_t:uint8x16_t:int32x2_t
+generate int32x4_t:int8x16_t:uint8x16_t:int32x4_t
 
 /// Multiply
 name = vmul

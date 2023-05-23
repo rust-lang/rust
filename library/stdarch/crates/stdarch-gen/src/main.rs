@@ -799,6 +799,19 @@ fn type_to_half(t: &str) -> &str {
     }
 }
 
+fn type_with_merged_lanes(t: &str, elements_per_lane: usize) -> String {
+    assert_eq!(type_len(t) % elements_per_lane, 0);
+    let prefix_len = t
+        .find(|c: char| c.is_ascii_digit())
+        .unwrap_or_else(|| t.len());
+    format!(
+        "{prefix}{bits}x{len}_t",
+        prefix = &t[0..prefix_len],
+        bits = type_bits(t) * elements_per_lane,
+        len = type_len(t) / elements_per_lane
+    )
+}
+
 fn asc(start: i32, len: usize) -> String {
     let mut s = String::from("[");
     for i in 0..len {
@@ -2993,6 +3006,12 @@ fn get_call(
                 re = Some((re_params[0].clone(), in_t[1].to_string()));
             } else if re_params[1] == "out_t" {
                 re = Some((re_params[0].clone(), out_t.to_string()));
+            } else if re_params[1] == "out_unsigned" {
+                re = Some((re_params[0].clone(), type_to_unsigned(out_t).to_string()));
+            } else if re_params[1] == "out_signed" {
+                re = Some((re_params[0].clone(), type_to_signed(out_t).to_string()));
+            } else if re_params[1] == "merge4_t2" {
+                re = Some((re_params[0].clone(), type_with_merged_lanes(in_t[2], 4)));
             } else if re_params[1] == "half" {
                 re = Some((re_params[0].clone(), type_to_half(in_t[1]).to_string()));
             } else if re_params[1] == "in_ntt" {
