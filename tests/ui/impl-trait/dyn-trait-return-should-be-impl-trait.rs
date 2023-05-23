@@ -26,7 +26,7 @@ fn bax() -> dyn Trait { //~ ERROR E0746
     if true {
         Struct
     } else {
-        42 //~ ERROR `if` and `else` have incompatible types
+        42
     }
 }
 fn bam() -> Box<dyn Trait> {

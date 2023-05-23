@@ -5,7 +5,7 @@
 use crate::FnCtxt;
 use hir::def_id::LocalDefId;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::ErrorGuaranteed;
+use rustc_errors::{ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
@@ -82,10 +82,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         wbcx.typeck_results.treat_byte_string_as_slice =
             mem::take(&mut self.typeck_results.borrow_mut().treat_byte_string_as_slice);
 
-        if let Some(e) = self.tainted_by_errors() {
-            wbcx.typeck_results.tainted_by_errors = Some(e);
-        }
-
         debug!("writeback: typeck results for {:?} are {:#?}", item_def_id, wbcx.typeck_results);
 
         self.tcx.arena.alloc(wbcx.typeck_results)
@@ -118,12 +114,21 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     ) -> WritebackCx<'cx, 'tcx> {
         let owner = body.id().hir_id.owner;
 
-        WritebackCx {
+        let mut wbcx = WritebackCx {
             fcx,
             typeck_results: ty::TypeckResults::new(owner),
             body,
             rustc_dump_user_substs,
+        };
+
+        // HACK: We specifically don't want the (opaque) error from tainting our
+        // inference context. That'll prevent us from doing opaque type inference
+        // later on in borrowck, which affects diagnostic spans pretty negatively.
+        if let Some(e) = fcx.tainted_by_errors() {
+            wbcx.typeck_results.tainted_by_errors = Some(e);
         }
+
+        wbcx
     }
 
     fn tcx(&self) -> TyCtxt<'tcx> {
@@ -578,13 +583,26 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 continue;
             }
 
-            let hidden_type = hidden_type.remap_generic_params_to_declaration_params(
-                opaque_type_key,
-                self.fcx.infcx.tcx,
-                true,
-            );
+            let hidden_type =
+                self.tcx().erase_regions(hidden_type.remap_generic_params_to_declaration_params(
+                    opaque_type_key,
+                    self.tcx(),
+                    true,
+                ));
 
-            self.typeck_results.concrete_opaque_types.insert(opaque_type_key.def_id, hidden_type);
+            if let Some(last_opaque_ty) = self
+                .typeck_results
+                .concrete_opaque_types
+                .insert(opaque_type_key.def_id, hidden_type)
+                && last_opaque_ty.ty != hidden_type.ty
+            {
+                hidden_type
+                    .report_mismatch(&last_opaque_ty, opaque_type_key.def_id, self.tcx())
+                    .stash(
+                        self.tcx().def_span(opaque_type_key.def_id),
+                        StashKey::OpaqueHiddenTypeMismatch,
+                    );
+            }
         }
     }
 

@@ -584,7 +584,8 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
                 debug!(?concrete_type, "found constraint");
                 if let Some(prev) = &mut self.found {
                     if concrete_type.ty != prev.ty && !(concrete_type, prev.ty).references_error() {
-                        let guar = prev.report_mismatch(&concrete_type, self.tcx);
+                        let guar =
+                            prev.report_mismatch(&concrete_type, self.def_id, self.tcx).emit();
                         prev.ty = self.tcx.ty_error(guar);
                     }
                 } else {
@@ -678,10 +679,10 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
     // Only check against typeck if we didn't already error
     if !hidden.ty.references_error() {
         for concrete_type in locator.typeck_types {
-            if tcx.erase_regions(concrete_type.ty) != tcx.erase_regions(hidden.ty)
+            if concrete_type.ty != tcx.erase_regions(hidden.ty)
                 && !(concrete_type, hidden).references_error()
             {
-                hidden.report_mismatch(&concrete_type, tcx);
+                hidden.report_mismatch(&concrete_type, def_id, tcx).emit();
             }
         }
     }
@@ -722,7 +723,7 @@ fn find_opaque_ty_constraints_for_rpit(
                 if concrete_type.ty != self.found.ty
                     && !(concrete_type, self.found).references_error()
                 {
-                    self.found.report_mismatch(&concrete_type, self.tcx);
+                    self.found.report_mismatch(&concrete_type, self.def_id, self.tcx).emit();
                 }
             }
         }

@@ -15,6 +15,7 @@ use rustc_middle::mir::Place;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::cast::{mir_cast_kind, CastTy};
+use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, Ty, UpvarSubsts};
 use rustc_span::Span;
 
@@ -225,49 +226,63 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     );
                     let (op,ty) = (Operand::Move(discr), discr_ty);
 
-                    if let Abi::Scalar(scalar) = layout.unwrap().abi{
-                        if let Primitive::Int(_, signed) = scalar.primitive() {
-                            let range = scalar.valid_range(&this.tcx);
-                            // FIXME: Handle wraparound cases too.
-                            if range.end >= range.start {
-                                let mut assumer = |range: u128, bin_op: BinOp| {
-                                    // We will be overwriting this val if our scalar is signed value
-                                    // because sign extension on unsigned types might cause unintended things
-                                    let mut range_val =
-                                        ConstantKind::from_bits(this.tcx, range, ty::ParamEnv::empty().and(discr_ty));
-                                    let bool_ty = this.tcx.types.bool;
-                                    if signed {
-                                        let scalar_size_extend = scalar.size(&this.tcx).sign_extend(range);
-                                        let discr_layout = this.tcx.layout_of(this.param_env.and(discr_ty));
-                                        let truncated_val = discr_layout.unwrap().size.truncate(scalar_size_extend);
-                                        range_val = ConstantKind::from_bits(
-                                            this.tcx,
-                                            truncated_val,
-                                            ty::ParamEnv::empty().and(discr_ty),
-                                        );
-                                    }
-                                    let lit_op = this.literal_operand(expr.span, range_val);
-                                    let is_bin_op = this.temp(bool_ty, expr_span);
-                                    this.cfg.push_assign(
-                                        block,
-                                        source_info,
-                                        is_bin_op,
-                                        Rvalue::BinaryOp(bin_op, Box::new(((lit_op), (Operand::Copy(discr))))),
-                                    );
-                                    this.cfg.push(
-                                        block,
-                                        Statement {
-                                            source_info,
-                                            kind: StatementKind::Intrinsic(Box::new(NonDivergingIntrinsic::Assume(
-                                                Operand::Copy(is_bin_op),
-                                            ))),
-                                        },
-                                    )
-                                };
-                                assumer(range.end, BinOp::Ge);
-                                assumer(range.start, BinOp::Le);
-                            }
-                        }
+                    if let Abi::Scalar(scalar) = layout.unwrap().abi
+                        && !scalar.is_always_valid(&this.tcx)
+                        && let Primitive::Int(int_width, _signed) = scalar.primitive()
+                    {
+                        let unsigned_ty = int_width.to_ty(this.tcx, false);
+                        let unsigned_place = this.temp(unsigned_ty, expr_span);
+                        this.cfg.push_assign(
+                            block,
+                            source_info,
+                            unsigned_place,
+                            Rvalue::Cast(CastKind::IntToInt, Operand::Copy(discr), unsigned_ty));
+
+                        let bool_ty = this.tcx.types.bool;
+                        let range = scalar.valid_range(&this.tcx);
+                        let merge_op =
+                            if range.start <= range.end {
+                                BinOp::BitAnd
+                            } else {
+                                BinOp::BitOr
+                            };
+
+                        let mut comparer = |range: u128, bin_op: BinOp| -> Place<'tcx> {
+                            let range_val =
+                                ConstantKind::from_bits(this.tcx, range, ty::ParamEnv::empty().and(unsigned_ty));
+                            let lit_op = this.literal_operand(expr.span, range_val);
+                            let is_bin_op = this.temp(bool_ty, expr_span);
+                            this.cfg.push_assign(
+                                block,
+                                source_info,
+                                is_bin_op,
+                                Rvalue::BinaryOp(bin_op, Box::new((Operand::Copy(unsigned_place), lit_op))),
+                            );
+                            is_bin_op
+                        };
+                        let assert_place = if range.start == 0 {
+                            comparer(range.end, BinOp::Le)
+                        } else {
+                            let start_place = comparer(range.start, BinOp::Ge);
+                            let end_place = comparer(range.end, BinOp::Le);
+                            let merge_place = this.temp(bool_ty, expr_span);
+                            this.cfg.push_assign(
+                                block,
+                                source_info,
+                                merge_place,
+                                Rvalue::BinaryOp(merge_op, Box::new((Operand::Move(start_place), Operand::Move(end_place)))),
+                            );
+                            merge_place
+                        };
+                        this.cfg.push(
+                            block,
+                            Statement {
+                                source_info,
+                                kind: StatementKind::Intrinsic(Box::new(NonDivergingIntrinsic::Assume(
+                                    Operand::Move(assert_place),
+                                ))),
+                            },
+                        );
                     }
 
                     (op,ty)
