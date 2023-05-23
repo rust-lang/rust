@@ -30,7 +30,7 @@
 //! For example, [`From`]/[`TryFrom`] implementations exist for string to string, list to list,
 //! number to number, or error to error conversions. However, implementing `From<i32>` for
 //! `String` or `TryFrom<&str>` for `i32` would not be appropriate.
-    
+//!
 //! # Generic Implementations
 //!
 //! - [`AsRef`] and [`AsMut`] auto-dereference if the inner type is a reference
