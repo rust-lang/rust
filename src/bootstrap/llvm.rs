@@ -342,10 +342,10 @@ impl Step for Llvm {
                 cfg.define("LLVM_BUILD_INSTRUMENTED", "IR");
                 if let Ok(llvm_profile_dir) = std::env::var("LLVM_PROFILE_DIR") {
                     cfg.define("LLVM_PROFILE_DATA_DIR", llvm_profile_dir);
-                    cxxflags.push("-mllvm");
-                    cxxflags.push("-vp-counters-per-site=10");
                 }
             }
+            cxxflags.push("-mllvm");
+            cxxflags.push("-vp-counters-per-site=10");
             cfg.define("LLVM_BUILD_RUNTIME", "No");
         }
         if let Some(path) = builder.config.llvm_profile_use.as_ref() {
