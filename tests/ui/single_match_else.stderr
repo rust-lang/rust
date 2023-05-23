@@ -100,5 +100,101 @@ LL +         return;
 LL +     }
    |
 
-error: aborting due to 5 previous errors
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> $DIR/single_match_else.rs:120:5
+   |
+LL | /     match bar {
+LL | |         Some(v) => unsafe {
+LL | |             let r = &v as *const i32;
+LL | |             println!("{}", *r);
+...  |
+LL | |         },
+LL | |     }
+   | |_____^
+   |
+help: try this
+   |
+LL ~     if let Some(v) = bar { unsafe {
+LL +         let r = &v as *const i32;
+LL +         println!("{}", *r);
+LL +     } } else {
+LL +         println!("None1");
+LL +         println!("None2");
+LL +     }
+   |
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> $DIR/single_match_else.rs:131:5
+   |
+LL | /     match bar {
+LL | |         Some(v) => {
+LL | |             println!("Some");
+LL | |             println!("{v}");
+...  |
+LL | |         },
+LL | |     }
+   | |_____^
+   |
+help: try this
+   |
+LL ~     if let Some(v) = bar {
+LL +         println!("Some");
+LL +         println!("{v}");
+LL +     } else { unsafe {
+LL +         let v = 0;
+LL +         let r = &v as *const i32;
+LL +         println!("{}", *r);
+LL +     } }
+   |
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> $DIR/single_match_else.rs:143:5
+   |
+LL | /     match bar {
+LL | |         Some(v) => unsafe {
+LL | |             let r = &v as *const i32;
+LL | |             println!("{}", *r);
+...  |
+LL | |         },
+LL | |     }
+   | |_____^
+   |
+help: try this
+   |
+LL ~     if let Some(v) = bar { unsafe {
+LL +         let r = &v as *const i32;
+LL +         println!("{}", *r);
+LL +     } } else { unsafe {
+LL +         let v = 0;
+LL +         let r = &v as *const i32;
+LL +         println!("{}", *r);
+LL +     } }
+   |
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> $DIR/single_match_else.rs:155:5
+   |
+LL | /     match bar {
+LL | |         #[rustfmt::skip]
+LL | |         Some(v) => {
+LL | |             unsafe {
+...  |
+LL | |         },
+LL | |     }
+   | |_____^
+   |
+help: try this
+   |
+LL ~     if let Some(v) = bar {
+LL +         unsafe {
+LL +             let r = &v as *const i32;
+LL +             println!("{}", *r);
+LL +         }
+LL +     } else {
+LL +         println!("None");
+LL +         println!("None");
+LL +     }
+   |
+
+error: aborting due to 9 previous errors
 
