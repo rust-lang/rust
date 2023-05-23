@@ -175,8 +175,8 @@ error: you seem to be trying to use `match` for destructuring a single pattern. 
   --> $DIR/single_match_else.rs:155:5
    |
 LL | /     match bar {
+LL | |         #[rustfmt::skip]
 LL | |         Some(v) => {
-LL | |             // this comment prevents rustfmt from collapsing the block
 LL | |             unsafe {
 ...  |
 LL | |         },
@@ -186,7 +186,6 @@ LL | |     }
 help: try this
    |
 LL ~     if let Some(v) = bar {
-LL +         // this comment prevents rustfmt from collapsing the block
 LL +         unsafe {
 LL +             let r = &v as *const i32;
 LL +             println!("{}", *r);

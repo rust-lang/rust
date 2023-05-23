@@ -153,8 +153,8 @@ fn issue_10808(bar: Option<i32>) {
     }
 
     match bar {
+        #[rustfmt::skip]
         Some(v) => {
-            // this comment prevents rustfmt from collapsing the block
             unsafe {
                 let r = &v as *const i32;
                 println!("{}", *r);
@@ -171,8 +171,8 @@ fn issue_10808(bar: Option<i32>) {
             println!("Some");
             println!("{v}");
         },
+        #[rustfmt::skip]
         None => {
-            // this comment prevents rustfmt from collapsing the block
             unsafe {
                 let v = 0;
                 let r = &v as *const i32;
@@ -182,15 +182,15 @@ fn issue_10808(bar: Option<i32>) {
     }
 
     match bar {
+        #[rustfmt::skip]
         Some(v) => {
-            // this comment prevents rustfmt from collapsing the block
             unsafe {
                 let r = &v as *const i32;
                 println!("{}", *r);
             }
         },
+        #[rustfmt::skip]
         None => {
-            // this comment prevents rustfmt from collapsing the block
             unsafe {
                 let v = 0;
                 let r = &v as *const i32;

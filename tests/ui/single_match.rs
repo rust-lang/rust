@@ -255,8 +255,8 @@ fn issue_10808(bar: Option<i32>) {
     }
 
     match bar {
+        #[rustfmt::skip]
         Some(v) => {
-            // this comment prevents rustfmt from collapsing the block
             unsafe {
                 let r = &v as *const i32;
                 println!("{}", *r);
