@@ -183,15 +183,6 @@ impl<'tcx> InferCtxtUndoLogs<'tcx> {
         self.logs[s.undo_len..].iter().any(|log| matches!(log, UndoLog::OpaqueTypes(..)))
     }
 
-    pub(crate) fn region_constraints(
-        &self,
-    ) -> impl Iterator<Item = &'_ region_constraints::UndoLog<'tcx>> + Clone {
-        self.logs.iter().filter_map(|log| match log {
-            UndoLog::RegionConstraintCollector(log) => Some(log),
-            _ => None,
-        })
-    }
-
     fn assert_open_snapshot(&self, snapshot: &Snapshot<'tcx>) {
         // Failures here may indicate a failure to follow a stack discipline.
         assert!(self.logs.len() >= snapshot.undo_len);
