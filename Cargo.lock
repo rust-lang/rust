@@ -51,18 +51,18 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "cranelift-bforest"
-version = "0.96.0"
+version = "0.96.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5dfbfa12cfd843d39182f3e466b3b1a2b53ff348b34eb3579fcd4ee818d177a9"
+checksum = "9b6160c0a96253993b79fb7e0983534a4515ecf666120ddf8f92068114997ebc"
 dependencies = [
  "cranelift-entity",
 ]
 
 [[package]]
 name = "cranelift-codegen"
-version = "0.96.0"
+version = "0.96.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a3efdd75f82d338ebce8f6e492fac7205e4b1091bb76da74ad27894b224052c5"
+checksum = "7b38da5f63562e42f3c929d7c76871098e5ad12c8ab44b0659ffc529f22a5b3a"
 dependencies = [
  "bumpalo",
  "cranelift-bforest",
@@ -81,39 +81,39 @@ dependencies = [
 
 [[package]]
 name = "cranelift-codegen-meta"
-version = "0.96.0"
+version = "0.96.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e03ccd2e7959cb8c1434aeda5a80599a65f71ba75e00bf969d5f8e2dc7ca11d3"
+checksum = "011371e213e163b55dd9e8404b3f2d9fa52cd14dc2f3dc5b83e61ffceff126db"
 dependencies = [
  "cranelift-codegen-shared",
 ]
 
 [[package]]
 name = "cranelift-codegen-shared"
-version = "0.96.0"
+version = "0.96.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6e64284ccb56442849500cf17a8cc3681a254ec1bb8f0c887f55b2f81beab70"
+checksum = "1bf97dde7f5ad571161cdd203a2c9c88682ef669830aea3c14ea5d164ef8bb43"
 
 [[package]]
 name = "cranelift-control"
-version = "0.96.0"
+version = "0.96.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "537278bd7c9389b6d820d0b8f549460445d8e1cb1d21b617ac2e44aaf2f686cf"
+checksum = "fd9a9254aee733b0f2b68e5eaaf0337ad53cb23252a056c10a35370551be8d40"
 dependencies = [
  "arbitrary",
 ]
 
 [[package]]
 name = "cranelift-entity"
-version = "0.96.0"
+version = "0.96.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e234fff84b1941dd25fa3e24c466283256b377997ccbd85f592066389251796"
+checksum = "baf39a33ee39479d1337cd9333f3c09786c5a0ca1ec509edcaf9d1346d5de0e5"
 
 [[package]]
 name = "cranelift-frontend"
-version = "0.96.0"
+version = "0.96.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59ebfb3cc39ef246aecc9bbd44f6259501cf243da19d45888409cb7f06a34bd0"
+checksum = "65e260b92a193a0a2dccc3938f133d9532e7dcfe8d03e36bf8b7d3518c1c1793"
 dependencies = [
  "cranelift-codegen",
  "log",
@@ -123,15 +123,15 @@ dependencies = [
 
 [[package]]
 name = "cranelift-isle"
-version = "0.96.0"
+version = "0.96.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f22fdc6c4ce755b44f92f2e3e1f7f1138f9ee5c3d99e2e2b20418475713a2c6c"
+checksum = "9446c8e1aadfcdacee1a49592bc2c25d1d9bf5484782c163e7f5485c92cd3c1c"
 
 [[package]]
 name = "cranelift-jit"
-version = "0.96.0"
+version = "0.96.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65b7970f8950043cada68dcb8b1e9ea5f00d9b7aaf8cb139b4954fd4fb365bc2"
+checksum = "689a6df165d0f860c1e1a3d53c28944e2743c3e9ee4c678cf190fe60ad7a6ef5"
 dependencies = [
  "anyhow",
  "cranelift-codegen",
@@ -149,9 +149,9 @@ dependencies = [
 
 [[package]]
 name = "cranelift-module"
-version = "0.96.0"
+version = "0.96.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1413dae1da005e5f54b185b0173f13b4184cd4d80ec3cc8c37ee5666c20a9ccb"
+checksum = "0b1402d6ff1695b429536b2eaa126db560fc94c375ed0e9cfb15051fc07427f7"
 dependencies = [
  "anyhow",
  "cranelift-codegen",
@@ -160,9 +160,9 @@ dependencies = [
 
 [[package]]
 name = "cranelift-native"
-version = "0.96.0"
+version = "0.96.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e961c2eba1af0ec7422170fc1ba635d06000f466ee4d4811f3d4cd6f4594327f"
+checksum = "eac916f3c5aff4b817e42fc2e682292b931495b3fe2603d5e3c3cf602d74e344"
 dependencies = [
  "cranelift-codegen",
  "libc",
@@ -171,9 +171,9 @@ dependencies = [
 
 [[package]]
 name = "cranelift-object"
-version = "0.96.0"
+version = "0.96.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1521f1e47b81d913f032e8ab246c2c8201c6da9fd7dcef6afee07d2afa31811"
+checksum = "23860f4cd064017f2108e6bc5d25660a77cd6eea77f1ac0756870a00abb12e93"
 dependencies = [
  "anyhow",
  "cranelift-codegen",
@@ -374,9 +374,9 @@ checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
 
 [[package]]
 name = "wasmtime-jit-icache-coherence"
-version = "9.0.0"
+version = "9.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc60ec61519028279b9e8b6119a52c23b7ce2f2a8f0ec3cbe12aeb6ee9b2c549"
+checksum = "7d90933b781e1cef7656baed671c7a90bdba0c1c694e04fdd4124419308f5cbb"
 dependencies = [
  "cfg-if",
  "libc",
