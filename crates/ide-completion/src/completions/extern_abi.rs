@@ -30,6 +30,8 @@ const SUPPORTED_CALLING_CONVENTIONS: &[&str] = &[
     "efiapi",
     "avr-interrupt",
     "avr-non-blocking-interrupt",
+    "riscv-interrupt-m",
+    "riscv-interrupt-s",
     "C-cmse-nonsecure-call",
     "wasm",
     "system",
