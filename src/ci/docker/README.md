@@ -257,6 +257,22 @@ For targets: `i586-unknown-linux-gnu`
 (\*) Compressed debug is enabled by default for gas (assembly) on Linux/x86 targets,
      but that makes our `compiler_builtins` incompatible with binutils < 2.32.
 
+### `loongarch64-linux-gnu.defconfig`
+
+For targets: `loongarch64-unknown-linux-gnu`
+
+- Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
+- Path and misc options > Use a mirror = ENABLE
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
+- Target options > Target Architecture = loongarch
+- Target options > Bitness = 64-bit
+- Operating System > Target OS = linux
+- Operating System > Linux kernel version = 5.19.16
+- Binary utilities > Version of binutils = 2.40
+- C-library > glibc version = 2.36
+- C compiler > gcc version = 12.2.0
+- C compiler > C++ = ENABLE -- to cross compile LLVM
+
 ### `mips-linux-gnu.defconfig`
 
 For targets: `mips-unknown-linux-gnu`
