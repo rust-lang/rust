@@ -46,61 +46,62 @@ extern crate cfg_if;
 #[macro_use]
 extern crate rustc_macros;
 
+pub use ena::snapshot_vec;
+pub use ena::undo_log;
+pub use ena::unify;
 pub use rustc_index::static_assert_size;
 
-#[inline(never)]
-#[cold]
-pub fn cold_path<F: FnOnce() -> R, R>(f: F) -> R {
-    f()
-}
-
+#[macro_use]
+pub mod stable_hasher;
+pub mod aligned;
 pub mod base_n;
 pub mod binary_search_util;
 pub mod captures;
+pub mod fingerprint;
 pub mod flat_map_in_place;
 pub mod flock;
+pub mod frozen;
 pub mod functor;
 pub mod fx;
 pub mod graph;
 pub mod intern;
 pub mod jobserver;
 pub mod macros;
+pub mod marker;
+pub mod memmap;
 pub mod obligation_forest;
+pub mod owned_slice;
+pub mod profiling;
+pub mod sharded;
 pub mod sip128;
 pub mod small_c_str;
 pub mod small_str;
 pub mod snapshot_map;
-pub mod svh;
-pub use ena::snapshot_vec;
-pub mod memmap;
 pub mod sorted_map;
-#[macro_use]
-pub mod stable_hasher;
-mod atomic_ref;
-pub mod fingerprint;
-pub mod marker;
-pub mod profiling;
-pub mod sharded;
-pub mod stack;
-pub mod sync;
-pub mod tiny_list;
-pub mod transitive_relation;
-pub mod vec_linked_list;
-pub mod work_queue;
-pub use atomic_ref::AtomicRef;
-pub mod aligned;
-pub mod frozen;
-mod hashes;
-pub mod owned_slice;
 pub mod sso;
+pub mod stack;
 pub mod steal;
+pub mod svh;
+pub mod sync;
 pub mod tagged_ptr;
 pub mod temp_dir;
+pub mod tiny_list;
+pub mod transitive_relation;
 pub mod unhash;
 pub mod unord;
+pub mod vec_linked_list;
+pub mod work_queue;
 
-pub use ena::undo_log;
-pub use ena::unify;
+mod atomic_ref;
+mod hashes;
+
+pub use atomic_ref::AtomicRef;
+
+#[inline(never)]
+#[cold]
+pub fn cold_path<F: FnOnce() -> R, R>(f: F) -> R {
+    f()
+}
 
 pub struct OnDrop<F: Fn()>(pub F);
 
