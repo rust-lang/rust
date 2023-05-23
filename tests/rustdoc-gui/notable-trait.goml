@@ -134,7 +134,7 @@ define-function: (
         reload:
 
         move-cursor-to: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"
-        assert-count: (".tooltip.popover", 1)
+        wait-for-count: (".tooltip.popover", 1)
 
         assert-css: (
              ".tooltip.popover h3",

@@ -1191,6 +1191,14 @@ a.tooltip:hover::after {
 	content: "\00a0";
 }
 
+/* This animation is layered onto the mistake-proofing delay for dismissing
+	a hovered tooltip, to ensure it feels responsive even with the delay.
+	*/
+.fade-out {
+	opacity: 0;
+	transition: opacity 0.45s cubic-bezier(0, 0, 0.1, 1.0);
+}
+
 .popover.tooltip .content {
 	margin: 0.25em 0.5em;
 }
