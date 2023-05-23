@@ -152,8 +152,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     let guar = ty.error_reported().err().unwrap_or_else(|| {
                         prev.report_mismatch(
                             &OpaqueHiddenType { ty, span: concrete_type.span },
+                            opaque_type_key.def_id,
                             infcx.tcx,
                         )
+                        .emit()
                     });
                     prev.ty = infcx.tcx.ty_error(guar);
                 }
