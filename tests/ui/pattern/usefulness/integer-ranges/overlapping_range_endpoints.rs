@@ -42,6 +42,15 @@ fn main() {
         //~| ERROR multiple patterns overlap on their endpoints
         _ => {}
     }
+    // Selectively allow lint
+    match 0u8 {
+        0..=10 => {}
+        #[allow(overlapping_range_endpoints)]
+        10..=20 => {}
+        10..=20 => {}
+        //~^ ERROR multiple patterns overlap on their endpoints
+        _ => {}
+    }
     match 0u8 {
         0..=10 => {}
         10..=20 if true => {} //~ ERROR multiple patterns overlap on their endpoints

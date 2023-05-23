@@ -223,9 +223,8 @@ impl IntRange {
     pub(super) fn lint_overlapping_range_endpoints<'a, 'p: 'a, 'tcx: 'a>(
         &self,
         pcx: &PatCtxt<'_, 'p, 'tcx>,
-        pats: impl Iterator<Item = (&'a DeconstructedPat<'p, 'tcx>, bool)>,
+        pats: impl Iterator<Item = (&'a DeconstructedPat<'p, 'tcx>, bool, HirId)>,
         column_count: usize,
-        lint_root: HirId,
     ) {
         // FIXME: for now, only check for overlapping ranges on non-nested range patterns. Otherwise
         // with the current logic the following is detected as overlapping:
@@ -245,9 +244,11 @@ impl IntRange {
         let mut prefixes: SmallVec<[_; 1]> = Default::default();
         let mut suffixes: SmallVec<[_; 1]> = Default::default();
         // Iterate on rows that contained `overlap`.
-        for (range, this_span, is_under_guard) in pats.filter_map(|(pat, under_guard)| {
-            Some((pat.ctor().as_int_range()?, pat.span(), under_guard))
-        }) {
+        for (range, this_span, is_under_guard, arm_hir_id) in
+            pats.filter_map(|(pat, under_guard, arm_hir_id)| {
+                Some((pat.ctor().as_int_range()?, pat.span(), under_guard, arm_hir_id))
+            })
+        {
             if range.is_singleton() {
                 continue;
             }
@@ -276,7 +277,7 @@ impl IntRange {
                     .collect();
                 pcx.cx.tcx.emit_spanned_lint(
                     lint::builtin::OVERLAPPING_RANGE_ENDPOINTS,
-                    lint_root,
+                    arm_hir_id,
                     this_span,
                     OverlappingRangeEndpoints { overlap: overlaps, range: this_span },
                 );

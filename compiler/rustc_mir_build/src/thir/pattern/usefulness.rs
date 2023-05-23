@@ -806,12 +806,16 @@ fn compute_usefulness<'p, 'tcx>(
                 if overlap_range.is_singleton() && orig_column_count == 1 {
                     overlap_range.lint_overlapping_range_endpoints(
                         pcx,
-                        spec_matrix
-                            .rows()
-                            .map(|child_row| &matrix.rows[child_row.parent_row])
-                            .map(|parent_row| (parent_row.head(), parent_row.is_under_guard)),
+                        spec_matrix.rows().map(|child_row| &matrix.rows[child_row.parent_row]).map(
+                            |parent_row| {
+                                (
+                                    parent_row.head(),
+                                    parent_row.is_under_guard,
+                                    parent_row.arm_hir_id,
+                                )
+                            },
+                        ),
                         orig_column_count,
-                        lint_root,
                     );
                 }
             }
