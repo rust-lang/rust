@@ -277,7 +277,6 @@ fn run_dep_mode(target: String, mut args: impl Iterator<Item = OsString>) -> Res
     // the arguments to the interpreted prog
     cmd.arg("--");
     cmd.args(args);
-    println!("{cmd:?}");
     if cmd.spawn()?.wait()?.success() { Ok(()) } else { std::process::exit(1) }
 }
 
