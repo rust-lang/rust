@@ -17,6 +17,6 @@ define-function: (
     },
 )
 
-call-function: ("check-background-color", ("ayu", "rgb(51, 51, 51)"))
-call-function: ("check-background-color", ("dark", "rgb(51, 51, 51)"))
-call-function: ("check-background-color", ("light", "rgb(238, 238, 238)"))
+call-function: ("check-background-color", ("ayu", "#333"))
+call-function: ("check-background-color", ("dark", "#333"))
+call-function: ("check-background-color", ("light", "#eee"))
