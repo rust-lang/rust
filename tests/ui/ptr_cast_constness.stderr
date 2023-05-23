@@ -1,0 +1,34 @@
+error: `as` casting between raw pointers while changing its constness
+  --> $DIR/ptr_cast_constness.rs:20:17
+   |
+LL |         let _ = *ptr_ptr as *mut i32;
+   |                 ^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast_mut`, a safer alternative: `(*ptr_ptr).cast_mut()`
+   |
+   = note: `-D clippy::ptr-cast-constness` implied by `-D warnings`
+
+error: `as` casting between raw pointers while changing its constness
+  --> $DIR/ptr_cast_constness.rs:23:13
+   |
+LL |     let _ = ptr as *mut i32;
+   |             ^^^^^^^^^^^^^^^ help: try `pointer::cast_mut`, a safer alternative: `ptr.cast_mut()`
+
+error: `as` casting between raw pointers while changing its constness
+  --> $DIR/ptr_cast_constness.rs:24:13
+   |
+LL |     let _ = mut_ptr as *const i32;
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast_const`, a safer alternative: `mut_ptr.cast_const()`
+
+error: `as` casting between raw pointers while changing its constness
+  --> $DIR/ptr_cast_constness.rs:53:13
+   |
+LL |     let _ = ptr as *mut i32;
+   |             ^^^^^^^^^^^^^^^ help: try `pointer::cast_mut`, a safer alternative: `ptr.cast_mut()`
+
+error: `as` casting between raw pointers while changing its constness
+  --> $DIR/ptr_cast_constness.rs:54:13
+   |
+LL |     let _ = mut_ptr as *const i32;
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast_const`, a safer alternative: `mut_ptr.cast_const()`
+
+error: aborting due to 5 previous errors
+
