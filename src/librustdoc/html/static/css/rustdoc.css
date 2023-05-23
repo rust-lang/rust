@@ -1722,6 +1722,14 @@ in source-script.js
 		display: block;
 	}
 
+	.search-results > a > .type-kind {
+		display: inline-block;
+	}
+	.search-results > a > .result-name {
+		display: inline-block;
+		margin-left: 7px;
+	}
+
 	/* Display an alternating layout on tablets and phones */
 	.search-results > a {
 		padding: 5px 0px;
