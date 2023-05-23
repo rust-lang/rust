@@ -12,6 +12,7 @@ use std::rc::Rc;
 use crate::borrow_set::BorrowSet;
 
 pub use super::{
+    constraints::OutlivesConstraint,
     dataflow::{calculate_borrows_out_of_scope_at_location, BorrowIndex, Borrows},
     facts::{AllFacts as PoloniusInput, RustcFacts},
     location::{LocationTable, RichLocation},
