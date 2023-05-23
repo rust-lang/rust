@@ -180,7 +180,14 @@ fn get_clap_config() -> ArgMatches {
                         .short('n')
                         .long("name")
                         .help("Name of the new lint in snake case, ex: fn_too_long")
-                        .required(true),
+                        .required(true)
+                        .value_parser(|name: &str| {
+                            if name.contains('-') {
+                                Err("Lint name cannot contain `-`, use `_` instead.")
+                            } else {
+                                Ok(name.to_owned())
+                            }
+                        }),
                     Arg::new("category")
                         .short('c')
                         .long("category")
