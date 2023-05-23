@@ -464,27 +464,44 @@ impl<'p, 'tcx> fmt::Debug for PatStack<'p, 'tcx> {
 /// A 2D matrix.
 #[derive(Clone)]
 struct Matrix<'p, 'tcx> {
+    /// The rows of this matrix.
+    /// Invariant: `row.head()` is never an or-pattern.
     rows: Vec<PatStack<'p, 'tcx>>,
+    /// Fake row that stores wildcard patterns that match the other rows. This is used only to track
+    /// the type and number of columns of the matrix.
+    wildcard_row: PatStack<'p, 'tcx>,
 }
 
 impl<'p, 'tcx> Matrix<'p, 'tcx> {
-    fn empty() -> Self {
-        Matrix { rows: vec![] }
+    fn empty(wildcard_row: PatStack<'p, 'tcx>) -> Self {
+        Matrix { rows: vec![], wildcard_row }
     }
 
     /// Pushes a new row to the matrix. If the row starts with an or-pattern, this recursively
     /// expands it.
-    fn push(&mut self, row: PatStack<'p, 'tcx>) -> usize {
+    fn push(&mut self, row: PatStack<'p, 'tcx>) {
         if !row.is_empty() && row.head().is_or_pat() {
-            let mut count = 0;
             for new_row in row.expand_or_pat() {
-                count += self.push(new_row);
+                self.push(new_row);
             }
-            count
         } else {
             self.rows.push(row);
-            1
         }
+    }
+
+    fn column_count(&self) -> usize {
+        self.wildcard_row.len()
+    }
+    fn head_ty(&self) -> Ty<'tcx> {
+        let mut ty = self.wildcard_row.head().ty();
+        // Opaque types can't get destructured/split, but the patterns can
+        // actually hint at hidden types, so we use the patterns' types instead.
+        if let ty::Alias(ty::Opaque, ..) = ty.kind() {
+            if let Some(row) = self.rows().next() {
+                ty = row.head().ty();
+            }
+        }
+        ty
     }
 
     fn rows<'a>(
@@ -492,6 +509,12 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     ) -> impl Iterator<Item = &'a PatStack<'p, 'tcx>> + Clone + DoubleEndedIterator + ExactSizeIterator
     {
         self.rows.iter()
+    }
+    fn rows_mut<'a>(
+        &'a mut self,
+    ) -> impl Iterator<Item = &'a mut PatStack<'p, 'tcx>> + DoubleEndedIterator + ExactSizeIterator
+    {
+        self.rows.iter_mut()
     }
     /// Iterate over the first component of each row
     fn heads<'a>(
@@ -506,7 +529,8 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         pcx: &PatCtxt<'_, 'p, 'tcx>,
         ctor: &Constructor<'tcx>,
     ) -> Matrix<'p, 'tcx> {
-        let mut matrix = Matrix::empty();
+        let mut matrix =
+            Matrix::empty(self.wildcard_row.pop_head_constructor(pcx, ctor, usize::MAX));
         for (i, row) in self.rows().enumerate() {
             if ctor.is_covered_by(pcx, row.head().ctor()) {
                 let new_row = row.pop_head_constructor(pcx, ctor, i);
@@ -739,18 +763,17 @@ impl<'p, 'tcx> WitnessMatrix<'p, 'tcx> {
 fn compute_usefulness<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     matrix: &mut Matrix<'p, 'tcx>,
-    v: &PatStack<'p, 'tcx>,
     collect_witnesses: bool,
     lint_root: HirId,
     is_top_level: bool,
 ) -> WitnessMatrix<'p, 'tcx> {
-    debug_assert!(matrix.rows().all(|r| r.len() == v.len()));
+    debug_assert!(matrix.rows().all(|r| r.len() == matrix.column_count()));
 
     // The base case. We are pattern-matching on () and the return value is based on whether our
     // matrix has a row or not.
-    if v.is_empty() {
+    if matrix.column_count() == 0 {
         let mut useful = true;
-        for row in matrix.rows.iter_mut() {
+        for row in matrix.rows_mut() {
             row.is_useful = useful;
             useful = useful && row.is_under_guard;
             if !useful {
@@ -764,14 +787,7 @@ fn compute_usefulness<'p, 'tcx>(
         }
     }
 
-    let mut ty = v.head().ty();
-    // Opaque types can't get destructured/split, but the patterns can
-    // actually hint at hidden types, so we use the patterns' types instead.
-    if let ty::Alias(ty::Opaque, ..) = ty.kind() {
-        if let Some(row) = matrix.rows().next() {
-            ty = row.head().ty();
-        }
-    }
+    let ty = matrix.head_ty();
     debug!("ty: {ty:?}");
     let is_non_exhaustive = cx.is_foreign_non_exhaustive_enum(ty);
     let pcx = &PatCtxt { cx, ty, span: DUMMY_SP, is_top_level, is_non_exhaustive };
@@ -781,7 +797,7 @@ fn compute_usefulness<'p, 'tcx>(
     // For each constructor, we compute whether there's a value that starts with it that would
     // witness the usefulness of `v`.
     let mut ret = WitnessMatrix::new_empty();
-    let orig_column_count = v.len();
+    let orig_column_count = matrix.column_count();
     for ctor in split_ctors {
         // If some ctors are missing we only report those. Could report all if that's useful for
         // some applications.
@@ -790,9 +806,8 @@ fn compute_usefulness<'p, 'tcx>(
                 || matches!(ctor, Constructor::Wildcard | Constructor::Missing));
         debug!("specialize({:?})", ctor);
         let mut spec_matrix = matrix.specialize_constructor(pcx, &ctor);
-        let v = v.pop_head_constructor(pcx, &ctor, usize::MAX);
         let mut witnesses = ensure_sufficient_stack(|| {
-            compute_usefulness(cx, &mut spec_matrix, &v, collect_witnesses, lint_root, false)
+            compute_usefulness(cx, &mut spec_matrix, collect_witnesses, lint_root, false)
         });
         if collect_witnesses {
             witnesses.apply_constructor(pcx, &missing_ctors, &ctor);
@@ -800,7 +815,7 @@ fn compute_usefulness<'p, 'tcx>(
         }
 
         // Lint on likely incorrect range patterns (#63987)
-        if spec_matrix.rows.len() >= 2 {
+        if spec_matrix.rows().len() >= 2 {
             if let Constructor::IntRange(overlap_range) = ctor {
                 // If two ranges overlap on their boundaries, that boundary will be found as a singleton
                 // range after splitting.
@@ -965,16 +980,15 @@ pub(crate) fn compute_match_usefulness<'p, 'tcx>(
     scrut_ty: Ty<'tcx>,
     scrut_span: Span,
 ) -> UsefulnessReport<'p, 'tcx> {
-    let mut matrix = Matrix::empty();
+    let wild_pattern = cx.pattern_arena.alloc(DeconstructedPat::wildcard(scrut_ty, DUMMY_SP));
+    let wildcard_row = PatStack::from_pattern(wild_pattern, usize::MAX, false);
+    let mut matrix = Matrix::empty(wildcard_row);
     for (row_id, arm) in arms.iter().enumerate() {
         let v = PatStack::from_pattern(arm.pat, row_id, arm.has_guard);
         matrix.push(v);
     }
 
-    let wild_pattern = cx.pattern_arena.alloc(DeconstructedPat::wildcard(scrut_ty, DUMMY_SP));
-    let v = PatStack::from_pattern(wild_pattern, usize::MAX, false);
-    let non_exhaustiveness_witnesses =
-        compute_usefulness(cx, &mut matrix, &v, true, lint_root, true);
+    let non_exhaustiveness_witnesses = compute_usefulness(cx, &mut matrix, true, lint_root, true);
     let non_exhaustiveness_witnesses: Vec<_> = non_exhaustiveness_witnesses.single_column();
     let arm_usefulness: Vec<_> = arms
         .iter()
