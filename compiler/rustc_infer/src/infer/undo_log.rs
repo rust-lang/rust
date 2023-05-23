@@ -138,11 +138,9 @@ impl<'tcx> InferCtxtInner<'tcx> {
         }
 
         if self.undo_log.num_open_snapshots == 1 {
-            // The root snapshot. It's safe to clear the undo log because
-            // there's no snapshot further out that we might need to roll back
-            // to.
+            // After the root snapshot the undo log should be empty.
             assert!(snapshot.undo_len == 0);
-            self.undo_log.logs.clear();
+            assert!(self.undo_log.logs.is_empty());
         }
 
         self.undo_log.num_open_snapshots -= 1;
