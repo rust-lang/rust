@@ -1,4 +1,4 @@
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::canonical::CanonicalVarValues;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -192,13 +192,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
 
             for &(a, b) in &input.predefined_opaques_in_body.opaque_types {
                 let InferOk { value: (), obligations } = infcx
-                    .handle_opaque_type(
-                        tcx.mk_opaque(a.def_id.to_def_id(), a.substs),
-                        b,
-                        true,
-                        &ObligationCause::dummy(),
-                        input.goal.param_env,
-                    )
+                    .register_hidden_type_in_new_solver(a, input.goal.param_env, b)
                     .expect("expected opaque type instantiation to succeed");
                 // We're only registering opaques already defined by the caller,
                 // so we're not responsible for proving that they satisfy their
@@ -727,19 +721,18 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
-    pub(super) fn can_define_opaque_ty(&mut self, def_id: DefId) -> bool {
-        let Some(def_id) = def_id.as_local() else { return false; };
+    pub(super) fn can_define_opaque_ty(&mut self, def_id: LocalDefId) -> bool {
         self.infcx.opaque_type_origin(def_id).is_some()
     }
 
     pub(super) fn register_opaque_ty(
         &mut self,
-        a: Ty<'tcx>,
+        a: ty::OpaqueTypeKey<'tcx>,
         b: Ty<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Result<(), NoSolution> {
         let InferOk { value: (), obligations } =
-            self.infcx.handle_opaque_type(a, b, true, &ObligationCause::dummy(), param_env)?;
+            self.infcx.register_hidden_type_in_new_solver(a, param_env, b)?;
         self.add_goals(obligations.into_iter().map(|obligation| obligation.into()));
         Ok(())
     }
@@ -749,17 +742,15 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     pub(super) fn unify_existing_opaque_tys(
         &mut self,
         param_env: ty::ParamEnv<'tcx>,
-        key: ty::AliasTy<'tcx>,
+        key: ty::OpaqueTypeKey<'tcx>,
         ty: Ty<'tcx>,
     ) -> Vec<CanonicalResponse<'tcx>> {
-        let Some(def_id) = key.def_id.as_local() else { return vec![]; };
-
         // FIXME: Super inefficient to be cloning this...
         let opaques = self.infcx.clone_opaque_types_for_query_response();
 
         let mut values = vec![];
         for (candidate_key, candidate_ty) in opaques {
-            if candidate_key.def_id != def_id {
+            if candidate_key.def_id != key.def_id {
                 continue;
             }
             values.extend(self.probe(|ecx| {

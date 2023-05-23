@@ -18,10 +18,15 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         match goal.param_env.reveal() {
             Reveal::UserFacing => match self.solver_mode() {
                 SolverMode::Normal => {
+                    let Some(opaque_ty_def_id) = opaque_ty.def_id.as_local() else {
+                        return Err(NoSolution);
+                    };
+                    let opaque_ty =
+                        ty::OpaqueTypeKey { def_id: opaque_ty_def_id, substs: opaque_ty.substs };
                     // FIXME: at some point we should call queries without defining
                     // new opaque types but having the existing opaque type definitions.
                     // This will require moving this below "Prefer opaques registered already".
-                    if !self.can_define_opaque_ty(opaque_ty.def_id) {
+                    if !self.can_define_opaque_ty(opaque_ty_def_id) {
                         return Err(NoSolution);
                     }
                     // FIXME: This may have issues when the substs contain aliases...
@@ -47,8 +52,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                         }
                     }
                     // Otherwise, define a new opaque type
-                    let opaque_ty = tcx.mk_opaque(opaque_ty.def_id, opaque_ty.substs);
-                    self.register_opaque_ty(expected, opaque_ty, goal.param_env)?;
+                    self.register_opaque_ty(opaque_ty, expected, goal.param_env)?;
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 }
                 SolverMode::Coherence => {

@@ -26,7 +26,6 @@ use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::AssertKind;
 use rustc_middle::mir::*;
-use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::subst::{SubstsRef, UserSubsts};

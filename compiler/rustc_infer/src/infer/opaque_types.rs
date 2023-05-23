@@ -557,6 +557,29 @@ impl<'tcx> InferCtxt<'tcx> {
         Ok(InferOk { value: (), obligations })
     }
 
+    /// Registers an opaque's hidden type -- only should be used when the opaque
+    /// can be defined. For something more fallible -- checks the anchors, tries
+    /// to unify opaques in both dirs, etc. -- use `InferCtxt::handle_opaque_type`.
+    pub fn register_hidden_type_in_new_solver(
+        &self,
+        opaque_type_key: OpaqueTypeKey<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        hidden_ty: Ty<'tcx>,
+    ) -> InferResult<'tcx, ()> {
+        assert!(self.tcx.trait_solver_next());
+        let origin = self
+            .opaque_type_origin(opaque_type_key.def_id)
+            .expect("should be called for defining usages only");
+        self.register_hidden_type(
+            opaque_type_key,
+            ObligationCause::dummy(),
+            param_env,
+            hidden_ty,
+            origin,
+            true,
+        )
+    }
+
     pub fn add_item_bounds_for_hidden_type(
         &self,
         OpaqueTypeKey { def_id, substs }: OpaqueTypeKey<'tcx>,

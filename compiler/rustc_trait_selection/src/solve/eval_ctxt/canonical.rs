@@ -15,11 +15,11 @@ use rustc_index::IndexVec;
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::canonical::CanonicalVarValues;
 use rustc_infer::infer::canonical::{CanonicalExt, QueryRegionConstraints};
+use rustc_infer::infer::InferOk;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{
     ExternalConstraints, ExternalConstraintsData, MaybeCause, PredefinedOpaquesData, QueryInput,
 };
-use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, BoundVar, GenericArgKind, Ty};
 use rustc_span::DUMMY_SP;
 use std::iter;
@@ -179,13 +179,12 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let Response { var_values, external_constraints, certainty } =
             response.substitute(self.tcx(), &substitution);
 
-        let mut nested_goals =
-            self.unify_query_var_values(param_env, &original_values, var_values)?;
+        let nested_goals = self.unify_query_var_values(param_env, &original_values, var_values)?;
 
         let ExternalConstraintsData { region_constraints, opaque_types } =
             external_constraints.deref();
         self.register_region_constraints(region_constraints);
-        nested_goals.extend(self.register_opaque_types(param_env, opaque_types)?);
+        self.register_opaque_types(param_env, opaque_types)?;
 
         Ok((certainty, nested_goals))
     }
@@ -310,24 +309,14 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         &mut self,
         param_env: ty::ParamEnv<'tcx>,
         opaque_types: &[(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)],
-    ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution> {
-        let mut nested_goals = vec![];
+    ) -> Result<(), NoSolution> {
         for &(a, b) in opaque_types {
-            nested_goals.extend(
-                self.infcx
-                    .handle_opaque_type(
-                        self.tcx().mk_opaque(a.def_id.to_def_id(), a.substs),
-                        b,
-                        true,
-                        &ObligationCause::dummy(),
-                        param_env,
-                    )?
-                    .into_obligations()
-                    .into_iter()
-                    .map(Goal::from),
-            );
+            let InferOk { value: (), obligations } =
+                self.infcx.register_hidden_type_in_new_solver(a, param_env, b)?;
+            // It's sound to drop these obligations, since the normalizes-to goal
+            // is responsible for proving these obligations.
+            let _ = obligations;
         }
-
-        Ok(nested_goals)
+        Ok(())
     }
 }
