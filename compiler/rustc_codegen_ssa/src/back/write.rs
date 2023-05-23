@@ -196,7 +196,7 @@ impl ModuleConfig {
                 false
             ),
 
-            //enzyme_print_activity: sess.opts.debugging_opts.enzyme_print_activity,
+            enzyme_print_activity: sess.opts.unstable_opts.enzyme_print_activity,
             sanitizer: if_regular!(sess.opts.unstable_opts.sanitizer, SanitizerSet::empty()),
             sanitizer_recover: if_regular!(
                 sess.opts.unstable_opts.sanitizer_recover,
@@ -1365,7 +1365,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     let import_only_modules = mem::take(&mut lto_import_only_modules);
 
                     for (work, cost) in
-                        generate_lto_work(&cgcx, needs_fat_lto, needs_thin_lto, import_only_modules)
+                        generate_lto_work(&cgcx, autodiff_items.clone(), typetrees.clone(), needs_fat_lto, needs_thin_lto, import_only_modules)
                     {
                         let insertion_index = work_items
                             .binary_search_by_key(&cost, |&(_, cost)| cost)
@@ -1375,141 +1375,119 @@ fn start_executing_work<B: ExtraBackendMethods>(
                             helper.request_token();
                         }
                     }
+                }
 
-                    // Spin up what work we can, only doing this while we've got available
-                    // parallelism slots and work left to spawn.
-                    while !codegen_aborted && !work_items.is_empty() && running < tokens.len() {
-                        let (item, _) = work_items.pop().unwrap();
-
-                        maybe_start_llvm_timer(prof, cgcx.config(item.module_kind()), &mut llvm_start_time);
-
-                        let cgcx =
-                            CodegenContext { worker: get_worker_id(&mut free_worker_ids), ..cgcx.clone() };
-
-                        spawn_work(cgcx, item);
-                        running += 1;
-                    }
-
-                    // Relinquish accidentally acquired extra tokens
-                    tokens.truncate(running);
-
-                    // If a thread exits successfully then we drop a token associated
-                    // with that worker and update our `running` count. We may later
-                    // re-acquire a token to continue running more work. We may also not
-                    // actually drop a token here if the worker was running with an
-                    // "ephemeral token"
-                    let mut free_worker = |worker_id| {
-                        if main_thread_worker_state == MainThreadWorkerState::LLVMing {
-                            main_thread_worker_state = MainThreadWorkerState::Idle;
-                        } else {
-                            running -= 1;
-                        }
-
-                        free_worker_ids.push(worker_id);
-                    };
-
-                    let msg = coordinator_receive.recv().unwrap();
-                    match *msg.downcast::<Message<B>>().ok().unwrap() {
-                        // Save the token locally and the next turn of the loop will use
-                        // this to spawn a new unit of work, or it may get dropped
-                        // immediately if we have no more work to spawn.
-                        Message::Token(token) => {
-                            match token {
-                                Ok(token) => {
-                                    tokens.push(token);
-
-                                    if main_thread_worker_state == MainThreadWorkerState::LLVMing {
-                                        // If the main thread token is used for LLVM work
-                                        // at the moment, we turn that thread into a regular
-                                        // LLVM worker thread, so the main thread is free
-                                        // to react to codegen demand.
-                                        main_thread_worker_state = MainThreadWorkerState::Idle;
-                                        running += 1;
-                                    }
-                                }
-                                Err(e) => {
-                                    let msg = &format!("failed to acquire jobserver token: {}", e);
-                                    shared_emitter.fatal(msg);
-                                    // Exit the coordinator thread
-                                    panic!("{}", msg)
-                                }
-                            }
-                        }
-
-                        Message::CodegenDone { mut llvm_work_item, cost } => {
-                            // extract build typetrees
-                            match &mut llvm_work_item {
-                                WorkItem::Optimize(module) => {
-                                    let tt = B::typetrees(&mut module.module_llvm);
-                                    typetrees.extend(tt);
-                                }
-                                _ => {},
-                            }
-
-                            // We keep the queue sorted by estimated processing cost,
-                            // so that more expensive items are processed earlier. This
-                            // is good for throughput as it gives the main thread more
-                            // time to fill up the queue and it avoids scheduling
-                            // expensive items to the end.
-                            // Note, however, that this is not ideal for memory
-                            // consumption, as LLVM module sizes are not evenly
-                            // distributed.
-                            let insertion_index = work_items.binary_search_by_key(&cost, |&(_, cost)| cost);
-                            let insertion_index = match insertion_index {
-                                Ok(idx) | Err(idx) => idx,
+                // In this branch, we know that everything has been codegened,
+                // so it's just a matter of determining whether the implicit
+                // Token is free to use for LLVM work.
+                match main_thread_worker_state {
+                    MainThreadWorkerState::Idle => {
+                        if let Some((item, _)) = work_items.pop() {
+                            let cgcx = CodegenContext {
+                                worker: get_worker_id(&mut free_worker_ids),
+                                ..cgcx.clone()
                             };
-                            work_items.insert(insertion_index, (llvm_work_item, cost));
-
-                            if !cgcx.opts.debugging_opts.no_parallel_llvm {
-                                helper.request_token();
-                            }
-                            assert!(!codegen_aborted);
-                            assert_eq!(main_thread_worker_state, MainThreadWorkerState::Codegenning);
-                            main_thread_worker_state = MainThreadWorkerState::Idle;
+                            maybe_start_llvm_timer(
+                                prof,
+                                cgcx.config(item.module_kind()),
+                                &mut llvm_start_time,
+                            );
+                            main_thread_worker_state = MainThreadWorkerState::LLVMing;
+                            spawn_work(cgcx, item);
+                        } else {
+                            // There is no unstarted work, so let the main thread
+                            // take over for a running worker. Otherwise the
+                            // implicit token would just go to waste.
+                            // We reduce the `running` counter by one. The
+                            // `tokens.truncate()` below will take care of
+                            // giving the Token back.
+                            debug_assert!(running > 0);
+                            running -= 1;
+                            main_thread_worker_state = MainThreadWorkerState::LLVMing;
                         }
+                    }
+                    MainThreadWorkerState::Codegenning => bug!(
+                        "codegen worker should not be codegenning after \
+                              codegen was already completed"
+                    ),
+                    MainThreadWorkerState::LLVMing => {
+                        // Already making good use of that token
+                    }
+                }
+            }
 
-                        Message::CodegenComplete => {
-                            codegen_done = true;
-                            assert!(!codegen_aborted);
-                            assert_eq!(main_thread_worker_state, MainThreadWorkerState::Codegenning);
-                            main_thread_worker_state = MainThreadWorkerState::Idle;
-                        }
 
-                        // If codegen is aborted that means translation was aborted due
-                        // to some normal-ish compiler error. In this situation we want
-                        // to exit as soon as possible, but we want to make sure all
-                        // existing work has finished. Flag codegen as being done, and
-                        // then conditions above will ensure no more work is spawned but
-                        // we'll keep executing this loop until `running` hits 0.
-                        Message::CodegenAborted => {
-                            assert!(!codegen_aborted);
-                            codegen_done = true;
-                            codegen_aborted = true;
-                            assert_eq!(main_thread_worker_state, MainThreadWorkerState::Codegenning);
-                        }
-                        Message::Done { result: Ok(compiled_module), worker_id } => {
-                            free_worker(worker_id);
-                            match compiled_module.kind {
-                                ModuleKind::Regular => {
-                                    compiled_modules.push(compiled_module);
-                                }
-                                ModuleKind::Allocator => {
-                                    assert!(compiled_allocator_module.is_none());
-                                    compiled_allocator_module = Some(compiled_module);
-                                }
-                                ModuleKind::Metadata => bug!("Should be handled separately"),
+            // Spin up what work we can, only doing this while we've got available
+            // parallelism slots and work left to spawn.
+            while !codegen_aborted && !work_items.is_empty() && running < tokens.len() {
+                let (item, _) = work_items.pop().unwrap();
+
+                maybe_start_llvm_timer(prof, cgcx.config(item.module_kind()), &mut llvm_start_time);
+
+                let cgcx =
+                    CodegenContext { worker: get_worker_id(&mut free_worker_ids), ..cgcx.clone() };
+
+                spawn_work(cgcx, item);
+                running += 1;
+            }
+
+            // Relinquish accidentally acquired extra tokens
+            tokens.truncate(running);
+
+            // If a thread exits successfully then we drop a token associated
+            // with that worker and update our `running` count. We may later
+            // re-acquire a token to continue running more work. We may also not
+            // actually drop a token here if the worker was running with an
+            // "ephemeral token"
+            let mut free_worker = |worker_id| {
+                if main_thread_worker_state == MainThreadWorkerState::LLVMing {
+                    main_thread_worker_state = MainThreadWorkerState::Idle;
+                } else {
+                    running -= 1;
+                }
+
+                free_worker_ids.push(worker_id);
+            };
+
+            let msg = coordinator_receive.recv().unwrap();
+            match *msg.downcast::<Message<B>>().ok().unwrap() {
+                // Save the token locally and the next turn of the loop will use
+                // this to spawn a new unit of work, or it may get dropped
+                // immediately if we have no more work to spawn.
+                Message::Token(token) => {
+                    match token {
+                        Ok(token) => {
+                            tokens.push(token);
+
+                            if main_thread_worker_state == MainThreadWorkerState::LLVMing {
+                                // If the main thread token is used for LLVM work
+                                // at the moment, we turn that thread into a regular
+                                // LLVM worker thread, so the main thread is free
+                                // to react to codegen demand.
+                                main_thread_worker_state = MainThreadWorkerState::Idle;
+                                running += 1;
                             }
                         }
                         Err(e) => {
                             let msg = &format!("failed to acquire jobserver token: {}", e);
                             shared_emitter.fatal(msg);
-                            codegen_done = true;
-                            codegen_aborted = true;
+                            // Exit the coordinator thread
+                            panic!("{}", msg)
                         }
                     }
                 }
 
-                Message::CodegenDone { llvm_work_item, cost } => {
+
+                Message::CodegenDone { mut llvm_work_item, cost } => {
+                    // extract build typetrees
+                    match &mut llvm_work_item {
+                        WorkItem::Optimize(module) => {
+                            let tt = B::typetrees(&mut module.module_llvm);
+                            typetrees.extend(tt);
+                        }
+                        _ => {},
+                    }
+
                     // We keep the queue sorted by estimated processing cost,
                     // so that more expensive items are processed earlier. This
                     // is good for throughput as it gives the main thread more
@@ -1556,14 +1534,11 @@ fn start_executing_work<B: ExtraBackendMethods>(
                         ModuleKind::Regular => {
                             compiled_modules.push(compiled_module);
                         }
-                        // If the thread failed that means it panicked, so we abort immediately.
-                        Message::Done { result: Err(None), worker_id: _ } => {
-                            bug!("worker thread panicked");
+                        ModuleKind::Allocator => {
+                            assert!(compiled_allocator_module.is_none());
+                            compiled_allocator_module = Some(compiled_module);
                         }
-                        Message::Done { result: Err(Some(WorkerFatalError)), worker_id: _ } => {
-                            return Err(());
-                        }
-                        Message::CodegenItem => bug!("the coordinator should not receive codegen requests"),
+                        ModuleKind::Metadata => bug!("Should be handled separately"),
                     }
                 }
                 Message::NeedsLink { module, worker_id } => {
@@ -2008,7 +1983,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
         &self,
         items: Vec<AutoDiffItem>,
         ) {
-        drop(self.coordinator_send.send(Box::new(Message::<B>::AddAutoDiffItems(items))));
+        drop(self.coordinator.sender.send(Box::new(Message::<B>::AddAutoDiffItems(items))));
     }
 
 

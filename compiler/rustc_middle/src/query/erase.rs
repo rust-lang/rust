@@ -180,6 +180,10 @@ impl<T0, T1> EraseType for (&'_ T0, &'_ [T1]) {
     type Result = [u8; size_of::<(&'static (), &'static [()])>()];
 }
 
+impl<T0, T1, T2> EraseType for (&'_ T0, &'_ [T1], &'_ [T2]) {
+    type Result = [u8; size_of::<(&'static (), &'static [()], &'static [()])>()];
+}
+
 macro_rules! trivial {
     ($($ty:ty),+ $(,)?) => {
         $(

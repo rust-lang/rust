@@ -1133,10 +1133,10 @@ rustc_queries! {
     }
 
     /// The list autodiff extern functions in current crate
-    query autodiff_attrs(def_id: DefId) -> AutoDiffAttrs {
+    query autodiff_attrs(def_id: DefId) -> &'tcx AutoDiffAttrs {
         desc { |tcx| "computing autodiff attributes of `{}`", tcx.def_path_str(def_id) }
-        storage(ArenaCacheSelector<'tcx>)
-        cache_on_disk_if { true }
+        arena_cache
+        cache_on_disk_if { def_id.is_local() }
     }
 
     query asm_target_features(def_id: DefId) -> &'tcx FxIndexSet<Symbol> {

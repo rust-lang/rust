@@ -1,6 +1,6 @@
 use crate::fluent_generated as fluent;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use crate::middle::autodiff_attrs::AutoDiffAttrs;
+//use crate::middle::autodiff_attrs::AutoDiffAttrs;
 use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::{self, ReprOptions, Ty, TyCtxt, TypeVisitableExt};
 use rustc_errors::{DiagnosticBuilder, Handler, IntoDiagnostic};

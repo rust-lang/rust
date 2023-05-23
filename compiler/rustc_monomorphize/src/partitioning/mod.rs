@@ -107,7 +107,6 @@ use rustc_middle::mir;
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::mir::mono::{CodegenUnit, Linkage};
 use rustc_middle::middle::autodiff_attrs::AutoDiffItem;
-use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{TyCtxt, ParamEnv};
@@ -419,7 +418,7 @@ where
     }
 }
 
-fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &'tcx [AutoDiffItem], &[CodegenUnit<'_>]) {
+fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[AutoDiffItem], &[CodegenUnit<'_>]) {
     let collection_mode = match tcx.sess.opts.unstable_opts.print_mono_items {
         Some(ref s) => {
             let mode = s.to_lowercase();
@@ -491,6 +490,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &'tc
             }
         })
         .filter_map(|(item, instance)| {
+            dbg!(&instance);
             let target_id = instance.def_id();
             let target_attrs = tcx.autodiff_attrs(target_id);
             if !target_attrs.apply_autodiff() {

@@ -78,7 +78,9 @@ impl<'tcx> Partition<'tcx> for DefaultPartitioning {
                 export_generics,
             );
 
-            let autodiff_active = characteristic_def_id.map(|x| cx.tcx.autodiff_attrs(x).is_active()).unwrap_or(false);
+            //dbg!(&characteristic_def_id);
+            //let autodiff_active = characteristic_def_id.map(|x| cx.tcx.autodiff_attrs(x).is_active()).unwrap_or(false);
+            let autodiff_active = false;
 
             if !autodiff_active && visibility == Visibility::Hidden && can_be_internalized {
                 internalization_candidates.insert(mono_item);

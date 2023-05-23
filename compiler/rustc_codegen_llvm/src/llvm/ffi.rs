@@ -1004,6 +1004,13 @@ pub type SelfProfileBeforePassCallback =
 unsafe extern "C" fn(*mut c_void, *const c_char, *const c_char);
 pub type SelfProfileAfterPassCallback = unsafe extern "C" fn(*mut c_void);
 
+#[repr(C)]
+pub enum LLVMVerifierFailureAction {
+    LLVMAbortProcessAction,
+    LLVMPrintMessageAction,
+    LLVMReturnStatusAction,
+}
+
 pub(crate) unsafe fn enzyme_rust_forward_diff(
     logic_ref: EnzymeLogicRef,
     type_analysis: EnzymeTypeAnalysisRef,
@@ -1158,7 +1165,7 @@ extern "C" {
     pub fn LLVMDeleteFunction(V: &Value);
     pub fn LLVMVerifyFunction(V: &Value, action: LLVMVerifierFailureAction) -> bool;
     pub fn LLVMGetParams(Fnc: &Value, parms: *mut &Value);
-    pub fn LLVMBuildCall<'a>(arg1: &Builder<'a>, func: &Value, args: *mut &Value, num_args: size_t, name: *const c_char) -> &'a Value;
+    pub fn LLVMBuildCall2<'a>(arg1: &Builder<'a>, ty: &Type, func: &Value, args: *mut &Value, num_args: size_t, name: *const c_char) -> &'a Value;
     pub fn LLVMGetBasicBlockTerminator(B: &BasicBlock) -> &Value;
     pub fn LLVMAddFunction<'a>(M: &Module, Name: *const c_char, Ty: &Type) -> &'a Value;
     pub fn LLVMGetFirstFunction(M: &Module) -> Option<&Value>;
@@ -2680,7 +2687,20 @@ extern "C" {
         remark_passes: *const *const c_char,
         remark_passes_len: usize,
         );
+    #[allow(improper_ctypes)]
+    pub fn LLVMRustGetMangledName(V: &Value, out: &RustString);
 
+    pub fn LLVMRustGetElementTypeArgIndex(CallSite: &Value) -> i32;
+
+    pub fn LLVMRustIsBitcode(ptr: *const u8, len: usize) -> bool;
+
+    pub fn LLVMRustGetSymbols(
+        buf_ptr: *const u8,
+        buf_len: usize,
+        state: *mut c_void,
+        callback: GetSymbolsCallback,
+        error_callback: GetSymbolsErrorCallback,
+    ) -> *mut c_void;
 }
 // Manuel
 #[repr(C)]
@@ -2965,19 +2985,4 @@ impl Drop for TypeTree {
     fn drop(&mut self) {
         unsafe { EnzymeFreeTypeTree(self.inner) }
     }
-    /*
-    #[allow(improper_ctypes)]
-    pub fn LLVMRustGetMangledName(V: &Value, out: &RustString);
-
-    pub fn LLVMRustGetElementTypeArgIndex(CallSite: &Value) -> i32;
-
-    pub fn LLVMRustIsBitcode(ptr: *const u8, len: usize) -> bool;
-
-    pub fn LLVMRustGetSymbols(
-        buf_ptr: *const u8,
-        buf_len: usize,
-        state: *mut c_void,
-        callback: GetSymbolsCallback,
-        error_callback: GetSymbolsErrorCallback,
-    ) -> *mut c_void;*/
 }

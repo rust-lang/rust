@@ -80,22 +80,23 @@ impl<B: WriteBackendMethods> LtoModuleCodegen<B> {
 
     /// Run autodiff on Fat LTO module
     pub unsafe fn autodiff(
-        &mut self,
+        self,
         cgcx: &CodegenContext<B>,
         diff_fncs: Vec<AutoDiffItem>,
         typetrees: FxHashMap<String, B::TypeTree>,
         config: &ModuleConfig,
     ) -> Result<LtoModuleCodegen<B>, FatalError> {
-        match *self {
-            LtoModuleCodegen::Fat { ref mut module, .. } => {
-                let module = module.take().unwrap();
+        match &self {
+            LtoModuleCodegen::Fat { ref module, .. } => {
+                //let module = module.take().unwrap();
                 {
                     B::autodiff(cgcx, &module, diff_fncs, typetrees, config)?;
                 }
-                Ok(LtoModuleCodegen::Fat { module: Some(module), _serialized_bitcode: Vec::new() })
             }
             LtoModuleCodegen::Thin(_) => panic!("Please run in Fat LTO mode for autodiff!"),
         }
+
+        Ok(self)
     }
 
     /// A "gauge" of how costly it is to optimize this module, used to sort

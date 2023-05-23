@@ -1411,7 +1411,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             trait_impls: self.trait_impls,
             proc_macros,
             confused_type_with_std_module,
-            registered_tools: self.registered_tools,
             autodiff_map: Default::default(),
             doc_link_resolutions: self.doc_link_resolutions,
             doc_link_traits_in_scope: self.doc_link_traits_in_scope,

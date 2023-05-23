@@ -970,7 +970,7 @@ pub fn provide(providers: &mut Providers) {
             config::OptLevel::SizeMin => config::OptLevel::Default,
         };
 
-        let (defids, _) = tcx.collect_and_partition_mono_items(cratenum);
+        let (defids, _, _) = tcx.collect_and_partition_mono_items(cratenum);
 
         let any_for_speed = defids.items().any(|id| {
             let CodegenFnAttrs { optimize, .. } = tcx.codegen_fn_attrs(*id);
