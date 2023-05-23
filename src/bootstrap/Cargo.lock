@@ -89,8 +89,8 @@ version = "0.1.0"
 
 [[package]]
 name = "cc"
-version = "1.0.73"
-source = "git+https://github.com/rust-lang/cc-rs?rev=53fb72c87e5769a299f1886ead831901b9c775d6#53fb72c87e5769a299f1886ead831901b9c775d6"
+version = "1.0.79"
+source = "git+https://github.com/rust-lang/cc-rs?rev=57853c4bf8a89a0f4c9137eb367ac580305c6919#57853c4bf8a89a0f4c9137eb367ac580305c6919"
 
 [[package]]
 name = "cfg-if"

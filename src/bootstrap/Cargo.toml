@@ -94,4 +94,4 @@ debug = 0
 bootstrap.debug = 1
 
 [patch.crates-io]
-cc = { git = 'https://github.com/rust-lang/cc-rs', rev = '53fb72c87e5769a299f1886ead831901b9c775d6' }
+cc = { git = 'https://github.com/rust-lang/cc-rs', rev = '57853c4bf8a89a0f4c9137eb367ac580305c6919' }
