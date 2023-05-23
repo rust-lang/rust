@@ -48,7 +48,7 @@ libc = "0.2.50"
 [dependencies.object]
 version = "0.31.1"
 default-features = false
-features = ["read_core", "elf", "macho", "pe", "unaligned", "archive", "write"]
+features = ["read_core", "elf", "macho", "pe", "xcoff", "unaligned", "archive", "write"]
 
 [target.'cfg(windows)'.dependencies.windows]
 version = "0.48.0"
