@@ -166,7 +166,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     dependency_format.1.iter().enumerate().filter_map(|(num, &linkage)| {
                         // We add 1 to the number because that's what rustc also does everywhere it
                         // calls `CrateNum::new`...
-                        #[allow(clippy::integer_arithmetic)]
+                        #[allow(clippy::arithmetic_side_effects)]
                         (linkage != Linkage::NotLinked).then_some(CrateNum::new(num + 1))
                     }),
                 ) {
@@ -707,7 +707,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     .position(|&c| c == val)
                 {
                     let idx = u64::try_from(idx).unwrap();
-                    #[allow(clippy::integer_arithmetic)] // idx < num, so this never wraps
+                    #[allow(clippy::arithmetic_side_effects)] // idx < num, so this never wraps
                     let new_ptr = ptr.offset(Size::from_bytes(num - idx - 1), this)?;
                     this.write_pointer(new_ptr, dest)?;
                 } else {
@@ -916,10 +916,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let a = this.read_scalar(a)?.to_u64()?;
                 let b = this.read_scalar(b)?.to_u64()?;
 
-                #[allow(clippy::integer_arithmetic)]
+                #[allow(clippy::arithmetic_side_effects)]
                 // adding two u64 and a u8 cannot wrap in a u128
                 let wide_sum = u128::from(c_in) + u128::from(a) + u128::from(b);
-                #[allow(clippy::integer_arithmetic)] // it's a u128, we can shift by 64
+                #[allow(clippy::arithmetic_side_effects)] // it's a u128, we can shift by 64
                 let (c_out, sum) = ((wide_sum >> 64).truncate::<u8>(), wide_sum.truncate::<u64>());
 
                 let c_out_field = this.place_field(dest, 0)?;
