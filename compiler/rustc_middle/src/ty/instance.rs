@@ -2,6 +2,7 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable};
 use crate::ty::{EarlyBinder, InternalSubsts, SubstsRef, TypeVisitableExt};
+use rustc_data_structures::OptionExt as _;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{CrateNum, DefId};
@@ -241,7 +242,7 @@ impl<'tcx> InstanceDef<'tcx> {
             // We include enums without destructors to allow, say, optimizing
             // drops of `Option::None` before LTO. We also respect the intent of
             // `#[inline]` on `Drop::drop` implementations.
-            return ty.ty_adt_def().map_or(true, |adt_def| {
+            return ty.ty_adt_def().is_none_or(|adt_def| {
                 adt_def.destructor(tcx).map_or_else(
                     || adt_def.is_enum(),
                     |dtor| tcx.codegen_fn_attrs(dtor.did).requests_inline(),

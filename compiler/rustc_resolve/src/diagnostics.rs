@@ -5,6 +5,7 @@ use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{self as ast, Crate, ItemKind, ModKind, NodeId, Path, CRATE_NODE_ID};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::OptionExt as _;
 use rustc_errors::{
     pluralize, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan,
 };
@@ -289,7 +290,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let duplicate = new_binding.res().opt_def_id() == old_binding.res().opt_def_id();
         let has_dummy_span = new_binding.span.is_dummy() || old_binding.span.is_dummy();
         let from_item =
-            self.extern_prelude.get(&ident).map_or(true, |entry| entry.introduced_by_item);
+            self.extern_prelude.get(&ident).is_none_or(|entry| entry.introduced_by_item);
         // Only suggest removing an import if both bindings are to the same def, if both spans
         // aren't dummy spans. Further, if both bindings are imports, then the ident must have
         // been introduced by an item.
@@ -518,7 +519,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         for (key, resolution) in self.resolutions(module).borrow().iter() {
             if let Some(binding) = resolution.borrow().binding {
                 let res = binding.res();
-                if filter_fn(res) && ctxt.map_or(true, |ctxt| ctxt == key.ident.span.ctxt()) {
+                if filter_fn(res) && ctxt.is_none_or(|ctxt| ctxt == key.ident.span.ctxt()) {
                     names.push(TypoSuggestion::typo_from_ident(key.ident, res));
                 }
             }

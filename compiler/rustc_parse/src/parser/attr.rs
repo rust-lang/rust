@@ -5,6 +5,7 @@ use super::{AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, PathStyle
 use rustc_ast as ast;
 use rustc_ast::attr;
 use rustc_ast::token::{self, Delimiter, Nonterminal};
+use rustc_data_structures::OptionExt as _;
 use rustc_errors::{error_code, Diagnostic, IntoDiagnostic, PResult};
 use rustc_span::{sym, BytePos, Span};
 use std::convert::TryInto;
@@ -429,7 +430,7 @@ pub fn maybe_needs_tokens(attrs: &[ast::Attribute]) -> bool {
         if attr.is_doc_comment() {
             return false;
         }
-        attr.ident().map_or(true, |ident| {
+        attr.ident().is_none_or(|ident| {
             ident.name == sym::cfg_attr || !rustc_feature::is_builtin_attr_name(ident.name)
         })
     })

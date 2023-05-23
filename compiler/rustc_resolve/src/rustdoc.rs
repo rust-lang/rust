@@ -2,6 +2,7 @@ use pulldown_cmark::{BrokenLink, Event, LinkType, Options, Parser, Tag};
 use rustc_ast as ast;
 use rustc_ast::util::comments::beautify_doc_string;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::OptionExt as _;
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
@@ -336,7 +337,7 @@ pub fn strip_generics_from_path(path_str: &str) -> Result<Box<str>, MalformedGen
 //// If there are no doc-comments, return true.
 /// FIXME(#78591): Support both inner and outer attributes on the same item.
 pub fn inner_docs(attrs: &[ast::Attribute]) -> bool {
-    attrs.iter().find(|a| a.doc_str().is_some()).map_or(true, |a| a.style == ast::AttrStyle::Inner)
+    attrs.iter().find(|a| a.doc_str().is_some()).is_none_or(|a| a.style == ast::AttrStyle::Inner)
 }
 
 /// Has `#[rustc_doc_primitive]` or `#[doc(keyword)]`.

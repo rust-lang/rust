@@ -4,6 +4,7 @@ use rustc_ast as ast;
 use rustc_ast::NodeId;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::ToStableHashKey;
+use rustc_data_structures::OptionExt as _;
 use rustc_macros::HashStable_Generic;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::hygiene::MacroKind;
@@ -731,7 +732,7 @@ impl<Id> Res<Id> {
 
     /// Always returns `true` if `self` is `Res::Err`
     pub fn matches_ns(&self, ns: Namespace) -> bool {
-        self.ns().map_or(true, |actual_ns| actual_ns == ns)
+        self.ns().is_none_or(|actual_ns| actual_ns == ns)
     }
 
     /// Returns whether such a resolved path can occur in a tuple struct/variant pattern

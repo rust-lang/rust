@@ -1,4 +1,5 @@
 use crate::lints::{Expectation, ExpectationNote};
+use rustc_data_structures::OptionExt as _;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::UNFULFILLED_LINT_EXPECTATIONS;
@@ -25,7 +26,7 @@ fn check_expectations(tcx: TyCtxt<'_>, tool_filter: Option<Symbol>) {
         // holds stable ids
         if let LintExpectationId::Stable { hir_id, .. } = id {
             if !fulfilled_expectations.contains(&id)
-                && tool_filter.map_or(true, |filter| expectation.lint_tool == Some(filter))
+                && tool_filter.is_none_or(|filter| expectation.lint_tool == Some(filter))
             {
                 let rationale = expectation.reason.map(|rationale| ExpectationNote { rationale });
                 let note = expectation.is_unfulfilled_lint_expectations.then_some(());

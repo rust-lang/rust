@@ -14,6 +14,7 @@ use std::ptr;
 
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::OptionExt as _;
 use rustc_middle::mir::display_allocation;
 use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TyCtxt};
 use rustc_target::abi::{Align, HasDataLayout, Size};
@@ -422,7 +423,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let (alloc_size, alloc_align, ret_val) = alloc_size(alloc_id, offset, prov)?;
                 // Test bounds. This also ensures non-null.
                 // It is sufficient to check this for the end pointer. Also check for overflow!
-                if offset.checked_add(size, &self.tcx).map_or(true, |end| end > alloc_size) {
+                if offset.checked_add(size, &self.tcx).is_none_or(|end| end > alloc_size) {
                     throw_ub!(PointerOutOfBounds {
                         alloc_id,
                         alloc_size,

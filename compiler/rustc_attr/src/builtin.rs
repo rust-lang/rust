@@ -3,6 +3,7 @@
 use rustc_ast::{self as ast, attr};
 use rustc_ast::{Attribute, LitKind, MetaItem, MetaItemKind, MetaItemLit, NestedMetaItem, NodeId};
 use rustc_ast_pretty::pprust;
+use rustc_data_structures::OptionExt as _;
 use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};
 use rustc_macros::HashStable_Generic;
 use rustc_session::config::ExpectedValues;
@@ -1096,7 +1097,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                 // the `check_mod_attrs` pass, but this pass doesn't always run
                 // (e.g. if we only pretty-print the source), so we have to gate
                 // the `delay_span_bug` call as follows:
-                if sess.opts.pretty.map_or(true, |pp| pp.needs_analysis()) {
+                if sess.opts.pretty.is_none_or(|pp| pp.needs_analysis()) {
                     diagnostic.delay_span_bug(item.span(), "unrecognized representation hint");
                 }
             }

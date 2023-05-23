@@ -4,6 +4,7 @@
 use std::cmp;
 
 use rustc_data_structures::sorted_map::SortedMap;
+use rustc_data_structures::OptionExt as _;
 use rustc_target::abi::{HasDataLayout, Size};
 
 use super::{alloc_range, AllocError, AllocId, AllocRange, AllocResult, Provenance};
@@ -90,7 +91,7 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
         debug_assert!(prov.len() <= 1);
         if let Some(entry) = prov.first() {
             // If it overlaps with this byte, it is on this byte.
-            debug_assert!(self.bytes.as_ref().map_or(true, |b| b.get(&offset).is_none()));
+            debug_assert!(self.bytes.as_ref().is_none_or(|b| b.get(&offset).is_none()));
             Some(entry.1)
         } else {
             // Look up per-byte provenance.
@@ -275,7 +276,7 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
                 // For really small copies, make sure we don't start before `src` does.
                 let entry_start = cmp::max(entry.0, src.start);
                 for offset in entry_start..src.end() {
-                    if bytes.last().map_or(true, |bytes_entry| bytes_entry.0 < offset) {
+                    if bytes.last().is_none_or(|bytes_entry| bytes_entry.0 < offset) {
                         // The last entry, if it exists, has a lower offset than us.
                         bytes.push((offset, entry.1));
                     } else {

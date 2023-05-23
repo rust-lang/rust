@@ -5,6 +5,7 @@ use std::sync::OnceLock;
 use std::{io, ops, str};
 
 use regex::Regex;
+use rustc_data_structures::OptionExt as _;
 use rustc_graphviz as dot;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::graphviz_safe_def_name;
@@ -421,7 +422,7 @@ where
         let before = diffs_before.as_mut().map(next_in_dataflow_order);
 
         assert!(diffs_after.is_empty());
-        assert!(diffs_before.as_ref().map_or(true, ExactSizeIterator::is_empty));
+        assert!(diffs_before.as_ref().is_none_or(ExactSizeIterator::is_empty));
 
         let terminator = body[block].terminator();
         let mut terminator_str = String::new();

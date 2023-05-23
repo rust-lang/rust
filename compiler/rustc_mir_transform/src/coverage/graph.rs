@@ -4,6 +4,7 @@ use itertools::Itertools;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::dominators::{self, Dominators};
 use rustc_data_structures::graph::{self, GraphSuccessors, WithNumNodes, WithStartNode};
+use rustc_data_structures::OptionExt as _;
 use rustc_index::bit_set::BitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::coverage::*;
@@ -382,7 +383,7 @@ impl BasicCoverageBlockData {
             // If the BCB has an edge counter (to be injected into a new `BasicBlock`), it can also
             // have an expression (to be injected into an existing `BasicBlock` represented by this
             // `BasicCoverageBlock`).
-            if !self.counter_kind.as_ref().map_or(true, |c| c.is_expression()) {
+            if !self.counter_kind.as_ref().is_none_or(|c| c.is_expression()) {
                 return Error::from_string(format!(
                     "attempt to add an incoming edge counter from {:?} when the target BCB already \
                     has a `Counter`",

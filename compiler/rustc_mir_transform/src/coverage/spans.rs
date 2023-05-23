@@ -2,6 +2,7 @@ use super::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph, ST
 
 use itertools::Itertools;
 use rustc_data_structures::graph::WithNumNodes;
+use rustc_data_structures::OptionExt as _;
 use rustc_middle::mir::spanview::source_range_no_file;
 use rustc_middle::mir::{
     self, AggregateKind, BasicBlock, FakeReadCause, Rvalue, Statement, StatementKind, Terminator,
@@ -480,9 +481,10 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
 
     fn check_invoked_macro_name_span(&mut self) {
         if let Some(visible_macro) = self.curr().visible_macro(self.body_span) {
-            if self.prev_expn_span.map_or(true, |prev_expn_span| {
-                self.curr().expn_span.ctxt() != prev_expn_span.ctxt()
-            }) {
+            if self
+                .prev_expn_span
+                .is_none_or(|prev_expn_span| self.curr().expn_span.ctxt() != prev_expn_span.ctxt())
+            {
                 let merged_prefix_len = self.curr_original_span.lo() - self.curr().span.lo();
                 let after_macro_bang =
                     merged_prefix_len + BytePos(visible_macro.as_str().len() as u32 + 1);

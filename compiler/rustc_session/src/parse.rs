@@ -9,6 +9,7 @@ use crate::lint::{
 use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::sync::{AppendOnlyVec, AtomicBool, Lock, Lrc};
+use rustc_data_structures::OptionExt as _;
 use rustc_errors::{emitter::SilentEmitter, ColorConfig, Handler};
 use rustc_errors::{
     fallback_fluent_bundle, Diagnostic, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
@@ -55,7 +56,7 @@ impl GatedSpans {
     ///
     /// Using this is discouraged unless you have a really good reason to.
     pub fn is_ungated(&self, feature: Symbol) -> bool {
-        self.spans.borrow().get(&feature).map_or(true, |spans| spans.is_empty())
+        self.spans.borrow().get(&feature).is_none_or(|spans| spans.is_empty())
     }
 
     /// Prepend the given set of `spans` onto the set in `self`.

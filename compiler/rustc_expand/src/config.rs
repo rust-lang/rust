@@ -14,6 +14,7 @@ use rustc_ast::{self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem
 use rustc_attr as attr;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::OptionExt as _;
 use rustc_feature::{Feature, Features, State as FeatureState};
 use rustc_feature::{
     ACCEPTED_FEATURES, ACTIVE_FEATURES, REMOVED_FEATURES, STABLE_REMOVED_FEATURES,
@@ -427,7 +428,7 @@ impl<'a> StripUnconfigured<'a> {
                 return true;
             }
         };
-        parse_cfg(&meta_item, &self.sess).map_or(true, |meta_item| {
+        parse_cfg(&meta_item, &self.sess).is_none_or(|meta_item| {
             attr::cfg_matches(&meta_item, &self.sess.parse_sess, self.lint_node_id, self.features)
         })
     }
@@ -435,7 +436,7 @@ impl<'a> StripUnconfigured<'a> {
     /// If attributes are not allowed on expressions, emit an error for `attr`
     #[instrument(level = "trace", skip(self))]
     pub(crate) fn maybe_emit_expr_attr_err(&self, attr: &Attribute) {
-        if !self.features.map_or(true, |features| features.stmt_expr_attributes) {
+        if !self.features.is_none_or(|features| features.stmt_expr_attributes) {
             let mut err = feature_err(
                 &self.sess.parse_sess,
                 sym::stmt_expr_attributes,

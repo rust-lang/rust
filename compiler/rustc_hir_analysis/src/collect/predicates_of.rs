@@ -4,6 +4,7 @@ use crate::collect::ItemCtxt;
 use crate::constrained_generic_params as cgp;
 use hir::{HirId, Node};
 use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::OptionExt as _;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -803,7 +804,7 @@ impl<'tcx> ItemCtxt<'tcx> {
                 bound_ty,
                 predicate.bounds.iter().filter(|bound| {
                     assoc_name
-                        .map_or(true, |assoc_name| self.bound_defines_assoc_item(bound, assoc_name))
+                        .is_none_or(|assoc_name| self.bound_defines_assoc_item(bound, assoc_name))
                 }),
                 &mut bounds,
                 bound_vars,

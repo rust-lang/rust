@@ -6,6 +6,7 @@
 use self::drop_ranges::DropRanges;
 use super::FnCtxt;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_data_structures::OptionExt as _;
 use rustc_errors::{pluralize, DelayDm};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -456,7 +457,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
         // doesn't match the behavior of MIR borrowck and causes ICEs. See the FIXME comment in
         // tests/ui/generator/drop-tracking-parent-expression.rs.
         let scope = if self.drop_ranges.is_borrowed_temporary(expr)
-            || ty.map_or(true, |ty| {
+            || ty.is_none_or(|ty| {
                 // Avoid ICEs in needs_drop.
                 let ty = self.fcx.resolve_vars_if_possible(ty);
                 let ty = self.fcx.tcx.erase_regions(ty);

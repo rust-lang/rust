@@ -1,6 +1,7 @@
 use std::cmp::Ordering;
 
 use crate::infer::InferCtxt;
+use rustc_data_structures::OptionExt as _;
 use rustc_middle::infer::canonical::Canonical;
 use rustc_middle::infer::canonical::CanonicalTyVarKind;
 use rustc_middle::infer::canonical::CanonicalVarInfo;
@@ -156,7 +157,7 @@ impl<'a, 'tcx> Canonicalizer<'a, 'tcx> {
                         //
                         // For this we set `next_orig_uv` to the next smallest, not yet compressed,
                         // universe of the input.
-                        if next_orig_uv.map_or(true, |curr_next_uv| uv.cannot_name(curr_next_uv)) {
+                        if next_orig_uv.is_none_or(|curr_next_uv| uv.cannot_name(curr_next_uv)) {
                             next_orig_uv = Some(uv);
                         }
                     }

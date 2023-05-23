@@ -10,6 +10,7 @@ use crate::{
 };
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::OptionExt as _;
 use rustc_errors::{
     pluralize, Applicability, Diagnostic, DiagnosticId, ErrorGuaranteed, MultiSpan,
 };
@@ -940,7 +941,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if only_extras_so_far
                             && errors
                                 .peek()
-                                .map_or(true, |next_error| !matches!(next_error, Error::Extra(_)))
+                                .is_none_or(|next_error| !matches!(next_error, Error::Extra(_)))
                         {
                             let next = provided_arg_tys
                                 .get(arg_idx + 1)
@@ -1955,7 +1956,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             for (_, param) in params
                 .into_iter()
                 .enumerate()
-                .filter(|(idx, _)| expected_idx.map_or(true, |expected_idx| expected_idx == *idx))
+                .filter(|(idx, _)| expected_idx.is_none_or(|expected_idx| expected_idx == *idx))
             {
                 spans.push_span_label(param.span, "");
             }

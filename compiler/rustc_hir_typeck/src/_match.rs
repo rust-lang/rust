@@ -1,5 +1,6 @@
 use crate::coercion::{AsCoercionSite, CoerceMany};
 use crate::{Diverges, Expectation, FnCtxt, Needs};
+use rustc_data_structures::OptionExt as _;
 use rustc_errors::{Applicability, Diagnostic, MultiSpan};
 use rustc_hir::{self as hir, ExprKind};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -211,7 +212,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let ret_ty = ret_coercion.borrow().expected_ty();
                 let ret_ty = self.inh.infcx.shallow_resolve(ret_ty);
                 self.can_coerce(arm_ty, ret_ty)
-                    && prior_arm.map_or(true, |(_, ty, _)| self.can_coerce(ty, ret_ty))
+                    && prior_arm.is_none_or(|(_, ty, _)| self.can_coerce(ty, ret_ty))
                     // The match arms need to unify for the case of `impl Trait`.
                     && !matches!(ret_ty.kind(), ty::Alias(ty::Opaque, ..))
             }

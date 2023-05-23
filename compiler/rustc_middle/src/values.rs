@@ -1,5 +1,6 @@
 use crate::dep_graph::DepKind;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::OptionExt as _;
 use rustc_errors::{pluralize, struct_span_err, Applicability, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -207,7 +208,7 @@ fn find_item_ty_spans(
         hir::TyKind::Path(hir::QPath::Resolved(_, path)) => {
             if let Res::Def(kind, def_id) = path.res
                 && kind != DefKind::TyAlias {
-                let check_params = def_id.as_local().map_or(true, |def_id| {
+                let check_params = def_id.as_local().is_none_or(|def_id| {
                     if def_id == needle {
                         spans.push(ty.span);
                     }

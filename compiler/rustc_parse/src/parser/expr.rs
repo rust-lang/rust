@@ -22,6 +22,7 @@ use rustc_ast::{AnonConst, BinOp, BinOpKind, FnDecl, FnRetTy, MacCall, Param, Ty
 use rustc_ast::{Arm, Async, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLimits};
 use rustc_ast::{ClosureBinder, MetaItemLit, StmtKind};
 use rustc_ast_pretty::pprust;
+use rustc_data_structures::OptionExt as _;
 use rustc_errors::{
     AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic,
     PResult, StashKey,
@@ -1913,7 +1914,7 @@ impl<'a> Parser<'a> {
                     // point literal here, since there's no use of the exponent
                     // syntax that also constitutes a valid integer, so we need
                     // not check for that.
-                    if suffix.map_or(true, |s| s == sym::f32 || s == sym::f64)
+                    if suffix.is_none_or(|s| s == sym::f32 || s == sym::f64)
                         && symbol.as_str().chars().all(|c| c.is_numeric() || c == '_')
                         && self.token.span.hi() == next_token.span.lo()
                     {

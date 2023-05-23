@@ -2,6 +2,7 @@ use rustc_ast as ast;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::{attr, AssocConstraint, AssocConstraintKind, NodeId};
 use rustc_ast::{PatKind, RangeEnd};
+use rustc_data_structures::OptionExt as _;
 use rustc_errors::{Applicability, StashKey};
 use rustc_feature::{AttributeGate, BuiltinAttribute, Features, GateIssue, BUILTIN_ATTRIBUTE_MAP};
 use rustc_session::parse::{feature_err, feature_err_issue, feature_warn};
@@ -101,7 +102,7 @@ impl<'a> PostExpansionVisitor<'a> {
                 .emit();
             }
             Err(abi::AbiDisabled::Unrecognized) => {
-                if self.sess.opts.pretty.map_or(true, |ppm| ppm.needs_hir()) {
+                if self.sess.opts.pretty.is_none_or(|ppm| ppm.needs_hir()) {
                     self.sess.parse_sess.span_diagnostic.delay_span_bug(
                         span,
                         format!(

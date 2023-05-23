@@ -7,6 +7,7 @@ use crate::mbe::{
 use rustc_ast::token::{self, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast_pretty::pprust;
+use rustc_data_structures::OptionExt as _;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, DiagnosticMessage};
 use rustc_parse::parser::{Parser, Recovery};
 use rustc_span::source_map::SourceMap;
@@ -155,7 +156,7 @@ impl<'a, 'cx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'a, 'cx, 
                 if self
                     .best_failure
                     .as_ref()
-                    .map_or(true, |failure| failure.is_better_position(*approx_position))
+                    .is_none_or(|failure| failure.is_better_position(*approx_position))
                 {
                     self.best_failure = Some(BestFailure {
                         token: token.clone(),

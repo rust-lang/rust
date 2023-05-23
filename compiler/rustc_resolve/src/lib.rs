@@ -32,6 +32,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{Lrc, MappedReadGuard};
+use rustc_data_structures::OptionExt as _;
 use rustc_errors::{
     Applicability, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed, SubdiagnosticMessage,
 };
@@ -1089,7 +1090,7 @@ impl<'a> ResolverArenas<'a> {
         let module =
             self.modules.alloc(ModuleData::new(parent, kind, expn_id, span, no_implicit_prelude));
         let def_id = module.opt_def_id();
-        if def_id.map_or(true, |def_id| def_id.is_local()) {
+        if def_id.is_none_or(|def_id| def_id.is_local()) {
             self.local_modules.borrow_mut().push(module);
         }
         if let Some(def_id) = def_id {
