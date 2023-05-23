@@ -470,6 +470,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tcx.require_lang_item(hir::LangItem::Tuple, Some(sp)),
                     traits::ObligationCause::new(sp, self.body_id, traits::RustCall),
                 );
+                self.require_type_is_sized(ty, sp, traits::RustCall);
             } else {
                 self.tcx.sess.span_err(
                         sp,
