@@ -92,6 +92,3 @@ debug = 0
 [profile.dev.package]
 # Only use debuginfo=1 to further reduce compile times.
 bootstrap.debug = 1
-
-[patch.crates-io]
-cc = { git = 'https://github.com/rust-lang/cc-rs', rev = '57853c4bf8a89a0f4c9137eb367ac580305c6919' }
