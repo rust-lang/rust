@@ -175,7 +175,7 @@ impl Socket
 
     pub fn accept(&self) -> io::Result<Socket> {
         let (fd, addr) = unsafe {
-            wasi::sock_accept2(self.fd(), 0).map_err(err2io)?
+            wasi::sock_accept_v2(self.fd(), 0).map_err(err2io)?
         };
         let addr = conv_addr_port(addr);
         Ok(Socket {
@@ -222,7 +222,7 @@ impl Socket
             }
             
             unsafe {
-                match wasi::sock_accept2(self.fd(), 0) {
+                match wasi::sock_accept_v2(self.fd(), 0) {
                     Ok((fd, addr)) => {
                         let addr = conv_addr_port(addr);
                         return Ok(Socket {

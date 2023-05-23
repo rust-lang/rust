@@ -216,7 +216,7 @@ impl TcpListener {
 
     pub fn accept(&self) -> io::Result<(TcpStream, SocketAddr)> {
         let fd = unsafe {
-            wasi::sock_accept(self.as_inner().as_inner().as_raw_fd() as _, 0).map_err(err2io)?
+            wasi::sock_accept_v2(self.as_inner().as_inner().as_raw_fd() as _, 0).map_err(err2io)?
         };
 
         Ok((

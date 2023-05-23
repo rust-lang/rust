@@ -133,15 +133,15 @@ impl FileTimes {
 
 impl FileType {
     pub fn is_dir(&self) -> bool {
-        self.bits == wasi::FILETYPE_DIRECTORY
+        self.bits.raw() == wasi::FILETYPE_DIRECTORY.raw()
     }
 
     pub fn is_file(&self) -> bool {
-        self.bits == wasi::FILETYPE_REGULAR_FILE
+        self.bits.raw() == wasi::FILETYPE_REGULAR_FILE.raw()
     }
 
     pub fn is_symlink(&self) -> bool {
-        self.bits == wasi::FILETYPE_SYMBOLIC_LINK
+        self.bits.raw() == wasi::FILETYPE_SYMBOLIC_LINK.raw()
     }
 
     pub fn bits(&self) -> wasi::Filetype {
