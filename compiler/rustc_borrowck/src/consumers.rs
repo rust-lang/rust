@@ -3,10 +3,13 @@
 //! This file provides API for compiler consumers.
 
 use rustc_hir::def_id::LocalDefId;
-use rustc_index::IndexSlice;
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::{DefiningAnchor, TyCtxtInferExt};
-use rustc_middle::mir::Body;
+use rustc_middle::mir::{Body, Promoted};
 use rustc_middle::ty::TyCtxt;
+use std::rc::Rc;
+
+use crate::borrow_set::BorrowSet;
 
 pub use super::{
     dataflow::{calculate_borrows_out_of_scope_at_location, BorrowIndex, Borrows},
@@ -16,7 +19,6 @@ pub use super::{
     place_ext::PlaceExt,
     places_conflict::{places_conflict, PlaceConflictBias},
     region_infer::RegionInferenceContext,
-    BodyWithBorrowckFacts,
 };
 
 /// Options determining the output behavior of [`get_body_with_borrowck_facts`].
@@ -54,6 +56,34 @@ impl ConsumerOptions {
     pub(crate) fn polonius_output(&self) -> bool {
         matches!(self, Self::PoloniusOutputFacts)
     }
+}
+
+/// A `Body` with information computed by the borrow checker. This struct is
+/// intended to be consumed by compiler consumers.
+///
+/// We need to include the MIR body here because the region identifiers must
+/// match the ones in the Polonius facts.
+pub struct BodyWithBorrowckFacts<'tcx> {
+    /// A mir body that contains region identifiers.
+    pub body: Body<'tcx>,
+    /// The mir bodies of promoteds.
+    pub promoted: IndexVec<Promoted, Body<'tcx>>,
+    /// The set of borrows occurring in `body` with data about them.
+    pub borrow_set: Rc<BorrowSet<'tcx>>,
+    /// Context generated during borrowck, intended to be passed to
+    /// [`calculate_borrows_out_of_scope_at_location`].
+    pub region_inference_context: Rc<RegionInferenceContext<'tcx>>,
+    /// The table that maps Polonius points to locations in the table.
+    /// Populated when using [`ConsumerOptions::PoloniusInputFacts`]
+    /// or [`ConsumerOptions::PoloniusOutputFacts`].
+    pub location_table: Option<LocationTable>,
+    /// Polonius input facts.
+    /// Populated when using [`ConsumerOptions::PoloniusInputFacts`]
+    /// or [`ConsumerOptions::PoloniusOutputFacts`].
+    pub input_facts: Option<Box<PoloniusInput>>,
+    /// Polonius output facts. Populated when using
+    /// [`ConsumerOptions::PoloniusOutputFacts`].
+    pub output_facts: Option<Rc<PoloniusOutput>>,
 }
 
 /// This function computes borrowck facts for the given body. The [`ConsumerOptions`]

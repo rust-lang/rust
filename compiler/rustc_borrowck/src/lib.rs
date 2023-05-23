@@ -62,8 +62,7 @@ use crate::session_diagnostics::VarNeedNotMut;
 use self::diagnostics::{AccessKind, RegionName};
 use self::location::LocationTable;
 use self::prefixes::PrefixSet;
-use consumers::ConsumerOptions;
-use facts::AllFacts;
+use consumers::{BodyWithBorrowckFacts, ConsumerOptions};
 
 use self::path_utils::*;
 
@@ -461,32 +460,6 @@ fn do_mir_borrowck<'tcx>(
     debug!("do_mir_borrowck: result = {:#?}", result);
 
     (result, body_with_facts)
-}
-
-/// A `Body` with information computed by the borrow checker. This struct is
-/// intended to be consumed by compiler consumers.
-///
-/// We need to include the MIR body here because the region identifiers must
-/// match the ones in the Polonius facts.
-pub struct BodyWithBorrowckFacts<'tcx> {
-    /// A mir body that contains region identifiers.
-    pub body: Body<'tcx>,
-    /// The mir bodies of promoteds.
-    pub promoted: IndexVec<Promoted, Body<'tcx>>,
-    /// The set of borrows occurring in `body` with data about them.
-    pub borrow_set: Rc<BorrowSet<'tcx>>,
-    /// Context generated during borrowck, intended to be passed to
-    /// [`OutOfScopePrecomputer`](dataflow::OutOfScopePrecomputer).
-    pub region_inference_context: Rc<RegionInferenceContext<'tcx>>,
-    /// The table that maps Polonius points to locations in the table. Populated
-    /// when using [`ConsumerOptions::PoloniusInputFacts`] or above.
-    pub location_table: Option<LocationTable>,
-    /// Polonius input facts. Populated when using
-    /// [`ConsumerOptions::PoloniusInputFacts`] or above.
-    pub input_facts: Option<Box<AllFacts>>,
-    /// Polonius output facts. Populated when using
-    /// [`ConsumerOptions::PoloniusOutputFacts`] or above.
-    pub output_facts: Option<Rc<self::nll::PoloniusOutput>>,
 }
 
 pub struct BorrowckInferCtxt<'cx, 'tcx> {

@@ -18,7 +18,7 @@ extern crate rustc_interface;
 extern crate rustc_middle;
 extern crate rustc_session;
 
-use rustc_borrowck::consumers::BodyWithBorrowckFacts;
+use rustc_borrowck::consumers::{self, BodyWithBorrowckFacts, ConsumerOptions};
 use rustc_driver::Compilation;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
@@ -128,7 +128,7 @@ thread_local! {
 
 fn mir_borrowck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ProvidedValue<'tcx> {
     let opts = ConsumerOptions::PoloniusInputFacts;
-    let body_with_facts = rustc_borrowck::consumers::get_body_with_borrowck_facts(tcx, def_id, opts);
+    let body_with_facts = consumers::get_body_with_borrowck_facts(tcx, def_id, opts);
     // SAFETY: The reader casts the 'static lifetime to 'tcx before using it.
     let body_with_facts: BodyWithBorrowckFacts<'static> =
         unsafe { std::mem::transmute(body_with_facts) };
