@@ -873,6 +873,11 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     let msg = "macro-expanded `extern crate` items cannot \
                                        shadow names passed with `--extern`";
                     self.r.tcx.sess.span_err(item.span, msg);
+                    // `return` is intended to discard this binding because it's an
+                    // unregistered ambiguity error which would result in a panic
+                    // caused by inconsistency `path_res`
+                    // more details: https://github.com/rust-lang/rust/pull/111761
+                    return;
                 }
             }
             let entry = self.r.extern_prelude.entry(ident.normalize_to_macros_2_0()).or_insert(

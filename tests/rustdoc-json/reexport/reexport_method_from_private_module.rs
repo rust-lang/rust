@@ -1,9 +1,9 @@
 // Regression test for <https://github.com/rust-lang/rust/issues/102583>.
 
 // @set impl_S = "$.index[*][?(@.docs=='impl S')].id"
-// @has "$.index[*][?(@.name=='S')].inner.impls[*]" $impl_S
+// @has "$.index[*][?(@.name=='S')].inner.struct.impls[*]" $impl_S
 // @set is_present = "$.index[*][?(@.name=='is_present')].id"
-// @is "$.index[*][?(@.docs=='impl S')].inner.items[*]" $is_present
+// @is "$.index[*][?(@.docs=='impl S')].inner.impl.items[*]" $is_present
 // @!has "$.index[*][?(@.name=='hidden_impl')]"
 // @!has "$.index[*][?(@.name=='hidden_fn')]"
 

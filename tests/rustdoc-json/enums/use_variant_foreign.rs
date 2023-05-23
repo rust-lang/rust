@@ -2,7 +2,7 @@
 
 extern crate color;
 
-// @is "$.index[*][?(@.inner.name == 'Red')].kind" '"import"'
+// @has "$.index[*].inner.import[?(@.name == 'Red')]"
 pub use color::Color::Red;
 
 // @!has "$.index[*][?(@.name == 'Red')]"

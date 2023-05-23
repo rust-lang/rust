@@ -15,7 +15,7 @@ impl i32 {
         self
     }
 
-    // @is "$.index[*][?(@.docs=='Only core can do this')].inner.items[*]" $identity
+    // @is "$.index[*][?(@.docs=='Only core can do this')].inner.impl.items[*]" $identity
 }
 
 // @set Trait = "$.index[*][?(@.name=='Trait')].id"
@@ -30,5 +30,5 @@ mod prim_i32 {}
 
 // @set i32 = "$.index[*][?(@.docs=='i32')].id"
 // @is "$.index[*][?(@.docs=='i32')].name" '"i32"'
-// @is "$.index[*][?(@.docs=='i32')].inner.name" '"i32"'
-// @ismany "$.index[*][?(@.docs=='i32')].inner.impls[*]" $impl_i32 $impl_trait_for_i32
+// @is "$.index[*][?(@.docs=='i32')].inner.primitive.name" '"i32"'
+// @ismany "$.index[*][?(@.docs=='i32')].inner.primitive.impls[*]" $impl_i32 $impl_trait_for_i32

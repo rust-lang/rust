@@ -2,7 +2,7 @@
 
 #![no_std]
 
-// @has "$.index[*][?(@.name=='Error')].kind" \"assoc_type\"
-// @has "$.index[*][?(@.name=='Error')].inner.default.kind" \"resolved_path\"
-// @has "$.index[*][?(@.name=='Error')].inner.default.inner.name" \"Infallible\"
+// @has "$.index[*][?(@.name=='Error')].inner.assoc_type"
+// @has "$.index[*][?(@.name=='Error')].inner.assoc_type.default.resolved_path"
+// @has "$.index[*][?(@.name=='Error')].inner.assoc_type.default.resolved_path.name" \"Infallible\"
 pub struct ForBlanketTryFromImpl;

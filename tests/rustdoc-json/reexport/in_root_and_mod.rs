@@ -7,10 +7,10 @@ mod foo {
     pub struct Foo;
 }
 
-// @has "$.index[*][?(@.kind=='import' && @.inner.source=='foo::Foo')]"
+// @has "$.index[*].inner[?(@.import.source=='foo::Foo')]"
 pub use foo::Foo;
 
 pub mod bar {
-    // @has "$.index[*][?(@.kind=='import' && @.inner.source=='crate::foo::Foo')]"
+    // @has "$.index[*].inner[?(@.import.source=='crate::foo::Foo')]"
     pub use crate::foo::Foo;
 }

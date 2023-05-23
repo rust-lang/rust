@@ -12,11 +12,9 @@ pub struct Owner;
 pub fn create() -> Owner::Metadata {
     OwnerMetadata
 }
-// @is '$.index[*][?(@.name=="create")].inner.decl.output.kind' '"qualified_path"'
-// @is '$.index[*][?(@.name=="create")].inner.decl.output.inner.name' '"Metadata"'
-// @is '$.index[*][?(@.name=="create")].inner.decl.output.inner.trait' null
-// @is '$.index[*][?(@.name=="create")].inner.decl.output.inner.self_type.kind' '"resolved_path"'
-// @is '$.index[*][?(@.name=="create")].inner.decl.output.inner.self_type.inner.id' $Owner
+// @is '$.index[*][?(@.name=="create")].inner.function.decl.output.qualified_path.name' '"Metadata"'
+// @is '$.index[*][?(@.name=="create")].inner.function.decl.output.qualified_path.trait' null
+// @is '$.index[*][?(@.name=="create")].inner.function.decl.output.qualified_path.self_type.resolved_path.id' $Owner
 
 /// impl
 impl Owner {
@@ -24,6 +22,5 @@ impl Owner {
     pub type Metadata = OwnerMetadata;
 }
 // @set iat = '$.index[*][?(@.docs=="iat")].id'
-// @is '$.index[*][?(@.docs=="impl")].inner.items[*]' $iat
-// @is '$.index[*][?(@.docs=="iat")].kind' '"assoc_type"'
-// @is '$.index[*][?(@.docs=="iat")].inner.default.inner.id' $OwnerMetadata
+// @is '$.index[*][?(@.docs=="impl")].inner.impl.items[*]' $iat
+// @is '$.index[*][?(@.docs=="iat")].inner.assoc_type.default.resolved_path.id' $OwnerMetadata

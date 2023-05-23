@@ -9,7 +9,8 @@ macro_rules! repro {
     () => {};
 }
 
-// @set repro2_id = "$.index[*][?(@.inner.name=='repro2')].id"
+// @set repro2_id = "$.index[*][?(@.docs=='Re-export')].id"
+/// Re-export
 pub use crate::repro as repro2;
 
-// @ismany "$.index[*][?(@.name=='macro')].inner.items[*]" $repro_id $repro2_id
+// @ismany "$.index[*][?(@.name=='macro')].inner.module.items[*]" $repro_id $repro2_id
