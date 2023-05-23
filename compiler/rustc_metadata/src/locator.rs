@@ -961,6 +961,7 @@ pub(crate) enum CrateError {
     DlSym(String),
     LocatorCombined(Box<CombinedLocatorError>),
     NonDylibPlugin(Symbol),
+    NotFound(Symbol),
 }
 
 enum MetadataError<'a> {
@@ -1130,6 +1131,18 @@ impl CrateError {
             }
             CrateError::NonDylibPlugin(crate_name) => {
                 sess.emit_err(errors::NoDylibPlugin { span, crate_name });
+            }
+            CrateError::NotFound(crate_name) => {
+                sess.emit_err(errors::CannotFindCrate {
+                    span,
+                    crate_name,
+                    add_info: String::new(),
+                    missing_core,
+                    current_crate: sess.opts.crate_name.clone().unwrap_or("<unknown>".to_string()),
+                    is_nightly_build: sess.is_nightly_build(),
+                    profiler_runtime: Symbol::intern(&sess.opts.unstable_opts.profiler_runtime),
+                    locator_triple: sess.opts.target_triple.clone(),
+                });
             }
         }
     }
