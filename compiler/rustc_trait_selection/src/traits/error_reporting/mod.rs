@@ -885,7 +885,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             return;
                         }
 
-                        if self.suggest_impl_trait(&mut err, span, &obligation, trait_predicate) {
+                        if self.suggest_impl_trait(&mut err, &obligation, trait_predicate) {
                             err.emit();
                             return;
                         }
