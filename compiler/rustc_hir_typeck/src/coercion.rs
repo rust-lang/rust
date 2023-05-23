@@ -824,7 +824,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             // want the coerced type to be the actual supertype of these two,
             // but for now, we want to just error to ensure we don't lock
             // ourselves into a specific behavior with NLL.
-            self.leak_check(false, snapshot)?;
+            self.leak_check(snapshot)?;
 
             result
         })

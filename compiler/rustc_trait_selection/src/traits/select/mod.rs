@@ -563,7 +563,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.infcx.probe(|snapshot| -> Result<EvaluationResult, OverflowError> {
             let result = op(self)?;
 
-            match self.infcx.leak_check(true, snapshot) {
+            match self.infcx.leak_check(snapshot) {
                 Ok(()) => {}
                 Err(_) => return Ok(EvaluatedToErr),
             }

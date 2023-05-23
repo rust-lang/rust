@@ -65,13 +65,12 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     pub fn leak_check(
         &mut self,
         tcx: TyCtxt<'tcx>,
-        overly_polymorphic: bool,
         max_universe: ty::UniverseIndex,
         snapshot: &CombinedSnapshot<'tcx>,
     ) -> RelateResult<'tcx, ()> {
         debug!(
-            "leak_check(max_universe={:?}, snapshot.universe={:?}, overly_polymorphic={:?})",
-            max_universe, snapshot.universe, overly_polymorphic
+            "leak_check(max_universe={:?}, snapshot.universe={:?})",
+            max_universe, snapshot.universe
         );
 
         assert!(UndoLogs::<super::UndoLog<'_>>::in_snapshot(&self.undo_log));
@@ -84,14 +83,8 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         let mini_graph =
             &MiniGraph::new(tcx, self.undo_log.region_constraints(), &self.storage.data.verifys);
 
-        let mut leak_check = LeakCheck::new(
-            tcx,
-            universe_at_start_of_snapshot,
-            max_universe,
-            overly_polymorphic,
-            mini_graph,
-            self,
-        );
+        let mut leak_check =
+            LeakCheck::new(tcx, universe_at_start_of_snapshot, max_universe, mini_graph, self);
         leak_check.assign_placeholder_values()?;
         leak_check.propagate_scc_value()?;
         Ok(())
@@ -101,8 +94,6 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
 struct LeakCheck<'me, 'tcx> {
     tcx: TyCtxt<'tcx>,
     universe_at_start_of_snapshot: ty::UniverseIndex,
-    /// Only used when reporting region errors.
-    overly_polymorphic: bool,
     mini_graph: &'me MiniGraph<'tcx>,
     rcc: &'me RegionConstraintCollector<'me, 'tcx>,
 
@@ -132,7 +123,6 @@ impl<'me, 'tcx> LeakCheck<'me, 'tcx> {
         tcx: TyCtxt<'tcx>,
         universe_at_start_of_snapshot: ty::UniverseIndex,
         max_universe: ty::UniverseIndex,
-        overly_polymorphic: bool,
         mini_graph: &'me MiniGraph<'tcx>,
         rcc: &'me RegionConstraintCollector<'me, 'tcx>,
     ) -> Self {
@@ -140,7 +130,6 @@ impl<'me, 'tcx> LeakCheck<'me, 'tcx> {
         Self {
             tcx,
             universe_at_start_of_snapshot,
-            overly_polymorphic,
             mini_graph,
             rcc,
             scc_placeholders: IndexVec::from_elem_n(None, mini_graph.sccs.num_sccs()),
@@ -289,11 +278,7 @@ impl<'me, 'tcx> LeakCheck<'me, 'tcx> {
         other_region: ty::Region<'tcx>,
     ) -> TypeError<'tcx> {
         debug!("error: placeholder={:?}, other_region={:?}", placeholder, other_region);
-        if self.overly_polymorphic {
-            TypeError::RegionsOverlyPolymorphic(placeholder.bound.kind, other_region)
-        } else {
-            TypeError::RegionsInsufficientlyPolymorphic(placeholder.bound.kind, other_region)
-        }
+        TypeError::RegionsInsufficientlyPolymorphic(placeholder.bound.kind, other_region)
     }
 }
 

@@ -108,11 +108,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// See [RegionConstraintCollector::leak_check][1].
     ///
     /// [1]: crate::infer::region_constraints::RegionConstraintCollector::leak_check
-    pub fn leak_check(
-        &self,
-        overly_polymorphic: bool,
-        snapshot: &CombinedSnapshot<'tcx>,
-    ) -> RelateResult<'tcx, ()> {
+    pub fn leak_check(&self, snapshot: &CombinedSnapshot<'tcx>) -> RelateResult<'tcx, ()> {
         // If the user gave `-Zno-leak-check`, or we have been
         // configured to skip the leak check, then skip the leak check
         // completely. The leak check is deprecated. Any legitimate
@@ -125,7 +121,6 @@ impl<'tcx> InferCtxt<'tcx> {
 
         self.inner.borrow_mut().unwrap_region_constraints().leak_check(
             self.tcx,
-            overly_polymorphic,
             self.universe(),
             snapshot,
         )

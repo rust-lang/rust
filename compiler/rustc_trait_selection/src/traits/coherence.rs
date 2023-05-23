@@ -200,7 +200,7 @@ fn overlap_within_probe<'cx, 'tcx>(
 
     // We disable the leak when creating the `snapshot` by using
     // `infcx.probe_maybe_disable_leak_check`.
-    if infcx.leak_check(true, snapshot).is_err() {
+    if infcx.leak_check(snapshot).is_err() {
         debug!("overlap: leak check failed");
         return None;
     }
