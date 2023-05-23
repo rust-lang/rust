@@ -376,6 +376,7 @@ struct PatStack<'p, 'tcx> {
     /// none, this is the id of the arm.
     parent_row: usize,
     is_under_guard: bool,
+    arm_hir_id: HirId,
     is_useful: bool,
 }
 
@@ -384,16 +385,18 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         pat: &'p DeconstructedPat<'p, 'tcx>,
         parent_row: usize,
         is_under_guard: bool,
+        arm_hir_id: HirId,
     ) -> Self {
-        Self::from_vec(smallvec![pat], parent_row, is_under_guard)
+        Self::from_vec(smallvec![pat], parent_row, is_under_guard, arm_hir_id)
     }
 
     fn from_vec(
         vec: SmallVec<[&'p DeconstructedPat<'p, 'tcx>; 2]>,
         parent_row: usize,
         is_under_guard: bool,
+        arm_hir_id: HirId,
     ) -> Self {
-        PatStack { pats: vec, parent_row, is_under_guard, is_useful: false }
+        PatStack { pats: vec, parent_row, is_under_guard, arm_hir_id, is_useful: false }
     }
 
     fn is_empty(&self) -> bool {
@@ -417,7 +420,7 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     fn expand_or_pat<'a>(&'a self) -> impl Iterator<Item = PatStack<'p, 'tcx>> + Captures<'a> {
         self.head().iter_fields().map(move |pat| {
             let mut new_patstack =
-                PatStack::from_pattern(pat, self.parent_row, self.is_under_guard);
+                PatStack::from_pattern(pat, self.parent_row, self.is_under_guard, self.arm_hir_id);
             new_patstack.pats.extend_from_slice(&self.pats[1..]);
             new_patstack
         })
@@ -439,7 +442,7 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         // `self.head()`.
         let mut new_fields: SmallVec<[_; 2]> = self.head().specialize(pcx, ctor);
         new_fields.extend_from_slice(&self.pats[1..]);
-        PatStack::from_vec(new_fields, parent_row, self.is_under_guard)
+        PatStack::from_vec(new_fields, parent_row, self.is_under_guard, self.arm_hir_id)
     }
 }
 
@@ -770,9 +773,10 @@ fn compute_usefulness<'p, 'tcx>(
     debug!("ty: {ty:?}");
     let pcx = &PatCtxt { cx, ty };
 
-    let set = ConstructorSet::new(pcx);
+    let ctor_set = ConstructorSet::new(pcx);
     let (split_ctors, missing_ctors) =
-        set.split(pcx, matrix.heads().map(|p| p.ctor()), is_top_level);
+        ctor_set.split(pcx, matrix.heads().map(|p| p.ctor()), is_top_level);
+
     // For each constructor, we compute whether there's a value that starts with it that would
     // witness the usefulness of `v`.
     let mut ret = WitnessMatrix::new_empty();
@@ -795,7 +799,7 @@ fn compute_usefulness<'p, 'tcx>(
 
         // Lint on likely incorrect range patterns (#63987)
         if spec_matrix.rows().len() >= 2 {
-            if let Constructor::IntRange(overlap_range) = ctor {
+            if let Constructor::IntRange(overlap_range) = &ctor {
                 // If two ranges overlap on their boundaries, that boundary will be found as a singleton
                 // range after splitting.
                 // We limit to a single column for now, see `lint_overlapping_range_endpoints`.
@@ -813,6 +817,40 @@ fn compute_usefulness<'p, 'tcx>(
             }
         }
 
+        // When all the conditions are met we have a match with a `non_exhaustive` enum
+        // that has the potential to trigger the `non_exhaustive_omitted_patterns` lint.
+        if cx.refutable
+            && matches!(&ctor, Constructor::Missing)
+            && matches!(&ctor_set, ConstructorSet::Variants { non_exhaustive: true, .. })
+            && spec_matrix.rows().len() != 0
+        {
+            let patterns = missing_ctors
+                .iter()
+                // We want to list only real variants.
+                .filter(|c| !(c.is_non_exhaustive() || c.is_wildcard()))
+                .cloned()
+                .map(|missing_ctor| DeconstructedPat::wild_from_ctor(pcx, missing_ctor))
+                .collect::<Vec<_>>();
+
+            if !patterns.is_empty() {
+                let first_spec_row = spec_matrix.rows().next().unwrap();
+                let first_wildcard_row = &matrix.rows[first_spec_row.parent_row];
+                let wildcard_span = first_wildcard_row.head().span();
+                // Report that a match of a `non_exhaustive` enum marked with `non_exhaustive_omitted_patterns`
+                // is not exhaustive enough.
+                // NB: The partner lint for structs lives in `compiler/rustc_hir_analysis/src/check/pat.rs`.
+                cx.tcx.emit_spanned_lint(
+                    NON_EXHAUSTIVE_OMITTED_PATTERNS,
+                    first_wildcard_row.arm_hir_id,
+                    wildcard_span,
+                    NonExhaustiveOmittedPattern {
+                        scrut_ty: pcx.ty,
+                        uncovered: Uncovered::new(wildcard_span, pcx.cx, patterns),
+                    },
+                );
+            }
+        }
+
         for child_row in spec_matrix.rows() {
             let parent_row = &mut matrix.rows[child_row.parent_row];
             parent_row.is_useful = parent_row.is_useful || child_row.is_useful;
@@ -826,92 +864,6 @@ fn compute_usefulness<'p, 'tcx>(
     }
 
     ret
-}
-
-/// Traverse the patterns to collect any variants of a non_exhaustive enum that fail to be mentioned
-/// in a given column. This traverses patterns column-by-column, where a column is the intuitive
-/// notion of "subpatterns that inspect the same subvalue".
-/// Despite similarities with `is_useful`, this traversal is different. Notably this is linear in the
-/// depth of patterns, whereas `is_useful` is worst-case exponential (exhaustiveness is NP-complete).
-fn collect_nonexhaustive_missing_variants<'p, 'tcx>(
-    cx: &MatchCheckCtxt<'p, 'tcx>,
-    column: &[&DeconstructedPat<'p, 'tcx>],
-) -> Vec<DeconstructedPat<'p, 'tcx>> {
-    let mut witnesses = Vec::new();
-    // If the column is all wildcards, we don't want to collect anything and we can't recurse
-    // further.
-    let is_all_wildcards = column.iter().all(|p| p.ctor().is_wildcard());
-    if column.is_empty() || is_all_wildcards {
-        return witnesses;
-    }
-
-    let ty = column[0].ty();
-    let pcx = &PatCtxt { cx, ty };
-
-    let set = ConstructorSet::new(pcx);
-    let (split_ctors, missing_ctors) = set.split(pcx, column.iter().map(|p| p.ctor()), false);
-
-    if cx.is_foreign_non_exhaustive_enum(ty) {
-        witnesses.extend(
-            missing_ctors
-                .into_iter()
-                // We want to list only real variants.
-                .filter(|c| !(c.is_non_exhaustive() || c.is_wildcard()))
-                .map(|missing_ctor| DeconstructedPat::wild_from_ctor(pcx, missing_ctor)),
-        )
-    }
-
-    // Recurse into the fields.
-    for ctor in split_ctors {
-        let arity = ctor.arity(pcx);
-        if arity == 0 {
-            continue;
-        }
-
-        // We specialize the column by `ctor`. This gives us `arity`-many columns of patterns. These
-        // columns may not have the same length in the presence of or-patterns (this is why we can't
-        // reuse what `Matrix` does).
-        let mut specialized_columns: Vec<Vec<_>> = (0..arity).map(|_| Vec::new()).collect();
-        let relevant_patterns = column.iter().filter(|pat| ctor.is_covered_by(pcx, pat.ctor()));
-        for pat in relevant_patterns {
-            let specialized = pat.specialize(pcx, &ctor);
-            for (subpat, sub_column) in specialized.iter().zip(&mut specialized_columns) {
-                if subpat.is_or_pat() {
-                    sub_column.extend(subpat.iter_fields())
-                } else {
-                    sub_column.push(subpat)
-                }
-            }
-        }
-        assert!(
-            !specialized_columns[0].is_empty(),
-            "ctor {ctor:?} was listed as present but isn't"
-        );
-
-        for (i, col_i) in specialized_columns.iter().enumerate() {
-            // Compute witnesses for each column.
-            let wits_for_col_i = collect_nonexhaustive_missing_variants(cx, col_i.as_slice());
-            if wits_for_col_i.is_empty() {
-                continue;
-            }
-            // For each witness, we build a new pattern in the shape of `ctor(_, _, wit, _, _)`,
-            // adding enough wildcards to match `arity`.
-            let fields = Fields::wildcards(pcx, &ctor);
-            for wit in wits_for_col_i {
-                let fields_with_wit = Fields::from_iter(
-                    cx,
-                    fields
-                        .iter_patterns()
-                        .enumerate()
-                        .map(|(j, wild)| if i == j { &wit } else { wild })
-                        .cloned(),
-                );
-                let pat = DeconstructedPat::new(ctor.clone(), fields_with_wit, ty, DUMMY_SP);
-                witnesses.push(pat);
-            }
-        }
-    }
-    witnesses
 }
 
 /// The arm of a match expression.
@@ -957,10 +909,10 @@ pub(crate) fn compute_match_usefulness<'p, 'tcx>(
     scrut_span: Span,
 ) -> UsefulnessReport<'p, 'tcx> {
     let wild_pattern = cx.pattern_arena.alloc(DeconstructedPat::wildcard(scrut_ty, DUMMY_SP));
-    let wildcard_row = PatStack::from_pattern(wild_pattern, usize::MAX, false);
+    let wildcard_row = PatStack::from_pattern(wild_pattern, usize::MAX, false, lint_root);
     let mut matrix = Matrix::empty(wildcard_row);
     for (row_id, arm) in arms.iter().enumerate() {
-        let v = PatStack::from_pattern(arm.pat, row_id, arm.has_guard);
+        let v = PatStack::from_pattern(arm.pat, row_id, arm.has_guard, arm.hir_id);
         matrix.push(v);
     }
 
@@ -979,35 +931,6 @@ pub(crate) fn compute_match_usefulness<'p, 'tcx>(
             (arm, reachability)
         })
         .collect();
-
-    // Run the non_exhaustive_omitted_patterns lint. Only run on refutable patterns to avoid hittin
-    // `if let`s. Only run if the match is exhaustive otherwise the error is redundant.
-    if cx.refutable
-        && non_exhaustiveness_witnesses.is_empty()
-        && !matches!(
-            cx.tcx.lint_level_at_node(NON_EXHAUSTIVE_OMITTED_PATTERNS, lint_root).0,
-            rustc_session::lint::Level::Allow
-        )
-    {
-        let pat_column = arms.iter().flat_map(|arm| arm.pat.flatten_or_pat()).collect::<Vec<_>>();
-        let witnesses = collect_nonexhaustive_missing_variants(cx, &pat_column);
-
-        if !witnesses.is_empty() {
-            // Report that a match of a `non_exhaustive` enum marked with `non_exhaustive_omitted_patterns`
-            // is not exhaustive enough.
-            //
-            // NB: The partner lint for structs lives in `compiler/rustc_hir_analysis/src/check/pat.rs`.
-            cx.tcx.emit_spanned_lint(
-                NON_EXHAUSTIVE_OMITTED_PATTERNS,
-                lint_root,
-                scrut_span,
-                NonExhaustiveOmittedPattern {
-                    scrut_ty,
-                    uncovered: Uncovered::new(scrut_span, cx, witnesses),
-                },
-            );
-        }
-    }
 
     UsefulnessReport { arm_usefulness, non_exhaustiveness_witnesses }
 }
