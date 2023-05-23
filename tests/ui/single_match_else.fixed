@@ -14,12 +14,9 @@ enum ExprNode {
 static NODE: ExprNode = ExprNode::Unicorns;
 
 fn unwrap_addr() -> Option<&'static ExprNode> {
-    let _ = match ExprNode::Butterflies {
-        ExprNode::ExprAddrOf => Some(&NODE),
-        _ => {
-            let x = 5;
-            None
-        },
+    let _ = if let ExprNode::ExprAddrOf = ExprNode::Butterflies { Some(&NODE) } else {
+        let x = 5;
+        None
     };
 
     // Don't lint
@@ -79,91 +76,66 @@ fn main() {
     //
 
     // lint here
-    match Some(1) {
-        Some(a) => println!("${:?}", a),
-        None => {
-            println!("else block");
-            return
-        },
+    if let Some(a) = Some(1) { println!("${:?}", a) } else {
+        println!("else block");
+        return
     }
 
     // lint here
-    match Some(1) {
-        Some(a) => println!("${:?}", a),
-        None => {
-            println!("else block");
-            return;
-        },
+    if let Some(a) = Some(1) { println!("${:?}", a) } else {
+        println!("else block");
+        return;
     }
 
     // lint here
     use std::convert::Infallible;
-    match Result::<i32, Infallible>::Ok(1) {
-        Ok(a) => println!("${:?}", a),
-        Err(_) => {
-            println!("else block");
-            return;
-        }
+    if let Ok(a) = Result::<i32, Infallible>::Ok(1) { println!("${:?}", a) } else {
+        println!("else block");
+        return;
     }
 
     use std::borrow::Cow;
-    match Cow::from("moo") {
-        Cow::Owned(a) => println!("${:?}", a),
-        Cow::Borrowed(_) => {
-            println!("else block");
-            return;
-        }
+    if let Cow::Owned(a) = Cow::from("moo") { println!("${:?}", a) } else {
+        println!("else block");
+        return;
     }
 }
 
 fn issue_10808(bar: Option<i32>) {
-    match bar {
-        Some(v) => unsafe {
-            let r = &v as *const i32;
-            println!("{}", *r);
-        },
-        None => {
-            println!("None1");
-            println!("None2");
-        },
+    if let Some(v) = bar { unsafe {
+        let r = &v as *const i32;
+        println!("{}", *r);
+    } } else {
+        println!("None1");
+        println!("None2");
     }
 
-    match bar {
-        Some(v) => {
-            println!("Some");
-            println!("{v}");
-        },
-        None => unsafe {
-            let v = 0;
-            let r = &v as *const i32;
-            println!("{}", *r);
-        },
-    }
+    if let Some(v) = bar {
+        println!("Some");
+        println!("{v}");
+    } else { unsafe {
+        let v = 0;
+        let r = &v as *const i32;
+        println!("{}", *r);
+    } }
 
-    match bar {
-        Some(v) => unsafe {
-            let r = &v as *const i32;
-            println!("{}", *r);
-        },
-        None => unsafe {
-            let v = 0;
-            let r = &v as *const i32;
-            println!("{}", *r);
-        },
-    }
+    if let Some(v) = bar { unsafe {
+        let r = &v as *const i32;
+        println!("{}", *r);
+    } } else { unsafe {
+        let v = 0;
+        let r = &v as *const i32;
+        println!("{}", *r);
+    } }
 
-    match bar {
-        #[rustfmt::skip]
-        Some(v) => {
-            unsafe {
-                let r = &v as *const i32;
-                println!("{}", *r);
-            }
-        },
-        None => {
-            println!("None");
-            println!("None");
-        },
+    if let Some(v) = bar {
+        unsafe {
+            let r = &v as *const i32;
+            println!("{}", *r);
+        }
+    } else {
+        println!("None");
+        println!("None");
     }
 
     match bar {
