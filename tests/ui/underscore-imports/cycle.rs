@@ -2,6 +2,8 @@
 
 // check-pass
 
+#![allow(noop_method_call)]
+
 mod x {
     pub use crate::y::*;
     pub use std::ops::Deref as _;
