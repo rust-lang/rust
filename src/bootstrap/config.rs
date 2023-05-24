@@ -1472,7 +1472,7 @@ impl Config {
         config.rust_overflow_checks_std =
             overflow_checks_std.unwrap_or(config.rust_overflow_checks);
 
-        config.rust_debug_logging = debug_logging.unwrap_or(config.rust_debug_assertions);
+        config.rust_debug_logging = debug_logging.unwrap_or(true);
 
         let with_defaults = |debuginfo_level_specific: Option<u32>| {
             debuginfo_level_specific.or(debuginfo_level).unwrap_or(if debug == Some(true) {
