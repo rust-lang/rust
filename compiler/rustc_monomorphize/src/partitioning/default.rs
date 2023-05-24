@@ -15,9 +15,7 @@ use rustc_span::symbol::Symbol;
 
 use super::PartitioningCx;
 use crate::collector::InliningMap;
-use crate::partitioning::{
-    MonoItemPlacement, Partition, PostInliningPartitioning, PreInliningPartitioning,
-};
+use crate::partitioning::{MonoItemPlacement, Partition};
 
 pub struct DefaultPartitioning;
 
@@ -26,7 +24,7 @@ impl<'tcx> Partition<'tcx> for DefaultPartitioning {
         &mut self,
         cx: &PartitioningCx<'_, 'tcx>,
         mono_items: &mut I,
-    ) -> PreInliningPartitioning<'tcx>
+    ) -> (Vec<CodegenUnit<'tcx>>, FxHashSet<MonoItem<'tcx>>, FxHashSet<MonoItem<'tcx>>)
     where
         I: Iterator<Item = MonoItem<'tcx>>,
     {
@@ -91,20 +89,15 @@ impl<'tcx> Partition<'tcx> for DefaultPartitioning {
             codegen_units.insert(codegen_unit_name, CodegenUnit::new(codegen_unit_name));
         }
 
-        PreInliningPartitioning {
-            codegen_units: codegen_units.into_values().collect(),
-            roots,
-            internalization_candidates,
-        }
+        (codegen_units.into_values().collect(), roots, internalization_candidates)
     }
 
     fn merge_codegen_units(
         &mut self,
         cx: &PartitioningCx<'_, 'tcx>,
-        initial_partitioning: &mut PreInliningPartitioning<'tcx>,
+        codegen_units: &mut Vec<CodegenUnit<'tcx>>,
     ) {
         assert!(cx.target_cgu_count >= 1);
-        let codegen_units = &mut initial_partitioning.codegen_units;
 
         // Note that at this point in time the `codegen_units` here may not be
         // in a deterministic order (but we know they're deterministically the
@@ -201,20 +194,14 @@ impl<'tcx> Partition<'tcx> for DefaultPartitioning {
     fn place_inlined_mono_items(
         &mut self,
         cx: &PartitioningCx<'_, 'tcx>,
-        initial_partitioning: PreInliningPartitioning<'tcx>,
-    ) -> PostInliningPartitioning<'tcx> {
-        let mut new_partitioning = Vec::new();
+        codegen_units: &mut [CodegenUnit<'tcx>],
+        roots: FxHashSet<MonoItem<'tcx>>,
+    ) -> FxHashMap<MonoItem<'tcx>, MonoItemPlacement> {
         let mut mono_item_placements = FxHashMap::default();
 
-        let PreInliningPartitioning {
-            codegen_units: initial_cgus,
-            roots,
-            internalization_candidates,
-        } = initial_partitioning;
+        let single_codegen_unit = codegen_units.len() == 1;
 
-        let single_codegen_unit = initial_cgus.len() == 1;
-
-        for old_codegen_unit in initial_cgus {
+        for old_codegen_unit in codegen_units.iter_mut() {
             // Collect all items that need to be available in this codegen unit.
             let mut reachable = FxHashSet::default();
             for root in old_codegen_unit.items().keys() {
@@ -266,14 +253,10 @@ impl<'tcx> Partition<'tcx> for DefaultPartitioning {
                 }
             }
 
-            new_partitioning.push(new_codegen_unit);
+            *old_codegen_unit = new_codegen_unit;
         }
 
-        return PostInliningPartitioning {
-            codegen_units: new_partitioning,
-            mono_item_placements,
-            internalization_candidates,
-        };
+        return mono_item_placements;
 
         fn follow_inlining<'tcx>(
             mono_item: MonoItem<'tcx>,
@@ -293,14 +276,16 @@ impl<'tcx> Partition<'tcx> for DefaultPartitioning {
     fn internalize_symbols(
         &mut self,
         cx: &PartitioningCx<'_, 'tcx>,
-        partitioning: &mut PostInliningPartitioning<'tcx>,
+        codegen_units: &mut [CodegenUnit<'tcx>],
+        mono_item_placements: FxHashMap<MonoItem<'tcx>, MonoItemPlacement>,
+        internalization_candidates: FxHashSet<MonoItem<'tcx>>,
     ) {
-        if partitioning.codegen_units.len() == 1 {
+        if codegen_units.len() == 1 {
             // Fast path for when there is only one codegen unit. In this case we
             // can internalize all candidates, since there is nowhere else they
             // could be accessed from.
-            for cgu in &mut partitioning.codegen_units {
-                for candidate in &partitioning.internalization_candidates {
+            for cgu in codegen_units {
+                for candidate in &internalization_candidates {
                     cgu.items_mut().insert(*candidate, (Linkage::Internal, Visibility::Default));
                 }
             }
@@ -317,15 +302,13 @@ impl<'tcx> Partition<'tcx> for DefaultPartitioning {
             }
         });
 
-        let mono_item_placements = &partitioning.mono_item_placements;
-
         // For each internalization candidates in each codegen unit, check if it is
         // accessed from outside its defining codegen unit.
-        for cgu in &mut partitioning.codegen_units {
+        for cgu in codegen_units {
             let home_cgu = MonoItemPlacement::SingleCgu { cgu_name: cgu.name() };
 
             for (accessee, linkage_and_visibility) in cgu.items_mut() {
-                if !partitioning.internalization_candidates.contains(accessee) {
+                if !internalization_candidates.contains(accessee) {
                     // This item is no candidate for internalizing, so skip it.
                     continue;
                 }
