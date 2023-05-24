@@ -1,6 +1,6 @@
 // check-pass
 
-#![feature(return_position_impl_trait_in_trait)]
+#![feature(return_position_impl_trait_in_trait, refine)]
 #![allow(incomplete_features)]
 
 use std::fmt::Display;
@@ -10,12 +10,14 @@ trait Foo {
 }
 
 impl Foo for i32 {
+    #[refine]
     fn bar(&self) -> i32 {
         *self
     }
 }
 
 impl Foo for &'static str {
+    #[refine]
     fn bar(&self) -> &'static str {
         *self
     }
@@ -24,6 +26,7 @@ impl Foo for &'static str {
 struct Yay;
 
 impl Foo for Yay {
+    #[refine]
     fn bar(&self) -> String {
         String::from(":^)")
     }

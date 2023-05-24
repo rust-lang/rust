@@ -225,7 +225,9 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
             ty::Opaque => {
                 // Only normalize `impl Trait` outside of type inference, usually in codegen.
                 match self.param_env.reveal() {
-                    Reveal::UserFacing => ty.try_super_fold_with(self)?,
+                    Reveal::UserFacing | Reveal::HideReturnPositionImplTraitInTrait => {
+                        ty.try_super_fold_with(self)?
+                    }
 
                     Reveal::All => {
                         let args = data.args.try_fold_with(self)?;

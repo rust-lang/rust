@@ -1,6 +1,7 @@
 // check-pass
 
 #![feature(return_position_impl_trait_in_trait)]
+#![feature(refine)]
 #![allow(incomplete_features)]
 
 use std::fmt::Display;
@@ -13,6 +14,7 @@ trait Foo {
 struct A;
 
 impl Foo for A {
+    #[refine]
     fn bar(self) -> &'static str {
         "Hello, world"
     }
@@ -21,6 +23,7 @@ impl Foo for A {
 struct B;
 
 impl Foo for B {
+    #[refine]
     fn bar(self) -> Box<i32> {
         Box::new(42)
     }

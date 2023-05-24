@@ -2,6 +2,7 @@
 
 #![feature(specialization)]
 #![feature(return_position_impl_trait_in_trait)]
+#![feature(refine)]
 #![allow(incomplete_features)]
 
 trait Foo {
@@ -12,6 +13,7 @@ impl<U> Foo for U
 where
     U: Copy,
 {
+    #[refine]
     fn bar(&self) -> U {
         *self
     }

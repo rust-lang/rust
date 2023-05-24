@@ -50,6 +50,9 @@ impl<'tcx> MirPass<'tcx> for Validator {
         let param_env = match mir_phase.reveal() {
             Reveal::UserFacing => tcx.param_env(def_id),
             Reveal::All => tcx.param_env_reveal_all_normalized(def_id),
+            Reveal::HideReturnPositionImplTraitInTrait => {
+                unreachable!("only used during refinement checks")
+            }
         };
 
         let always_live_locals = always_storage_live_locals(body);

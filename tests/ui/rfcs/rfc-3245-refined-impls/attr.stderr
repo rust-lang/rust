@@ -1,5 +1,14 @@
+warning: the feature `refine` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/attr.rs:1:12
+   |
+LL | #![feature(refine)]
+   |            ^^^^^^
+   |
+   = note: see issue #1 <https://github.com/rust-lang/rust/issues/1> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
 error: `#[refine]` attribute must be put on an associated function or type in a trait implementation
-  --> $DIR/attr.rs:40:1
+  --> $DIR/attr.rs:41:1
    |
 LL | #[refine]
    | ^^^^^^^^^
@@ -8,7 +17,7 @@ LL | fn foo() {}
    | ----------- this item
 
 error: `#[refine]` attribute cannot be put on an item in a trait
-  --> $DIR/attr.rs:4:5
+  --> $DIR/attr.rs:5:5
    |
 LL |     #[refine]
    |     ^^^^^^^^^
@@ -19,7 +28,7 @@ LL |     fn assoc();
    = note: the attribute is useless because the item does not refine anything
 
 error: `#[refine]` attribute cannot be put on an item in a trait
-  --> $DIR/attr.rs:8:5
+  --> $DIR/attr.rs:9:5
    |
 LL |     #[refine]
    |     ^^^^^^^^^
@@ -30,7 +39,7 @@ LL |     type Assoc;
    = note: the attribute is useless because the item does not refine anything
 
 error: associated consts cannot be refined
-  --> $DIR/attr.rs:12:5
+  --> $DIR/attr.rs:13:5
    |
 LL |     #[refine]
    |     ^^^^^^^^^
@@ -39,7 +48,7 @@ LL |     const N: u32;
    |     ------------- this associated const
 
 error: `#[refine]` attribute cannot be put on an item in an inherent impl
-  --> $DIR/attr.rs:19:5
+  --> $DIR/attr.rs:20:5
    |
 LL |     #[refine]
    |     ^^^^^^^^^
@@ -50,7 +59,7 @@ LL |     fn assoc() {}
    = note: the attribute is useless because the item does not refine anything
 
 error: associated consts cannot be refined
-  --> $DIR/attr.rs:23:5
+  --> $DIR/attr.rs:24:5
    |
 LL |     #[refine]
    |     ^^^^^^^^^
@@ -59,7 +68,7 @@ LL |     const M: u32 = 1;
    |     ----------------- this associated const
 
 error: associated consts cannot be refined
-  --> $DIR/attr.rs:29:5
+  --> $DIR/attr.rs:30:5
    |
 LL |     #[refine]
    |     ^^^^^^^^^
@@ -67,5 +76,5 @@ LL |
 LL |     const N: u32 = 1;
    |     ----------------- this associated const
 
-error: aborting due to 7 previous errors
+error: aborting due to 7 previous errors; 1 warning emitted
 

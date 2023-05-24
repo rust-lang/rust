@@ -741,7 +741,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 self.merge_candidates(param_env_candidates)
             }
             ty::Alias(ty::Opaque, _opaque_ty) => match goal.param_env.reveal() {
-                Reveal::UserFacing => {
+                Reveal::UserFacing | Reveal::HideReturnPositionImplTraitInTrait => {
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 }
                 Reveal::All => return Err(NoSolution),

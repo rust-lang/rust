@@ -1662,8 +1662,15 @@ struct ParamTag {
 
 impl_tag! {
     impl Tag for ParamTag;
-    ParamTag { reveal: traits::Reveal::UserFacing },
-    ParamTag { reveal: traits::Reveal::All },
+    ParamTag {
+        reveal: traits::Reveal::UserFacing,
+    },
+    ParamTag {
+        reveal: traits::Reveal::All,
+    },
+    ParamTag {
+        reveal: traits::Reveal::HideReturnPositionImplTraitInTrait,
+    },
 }
 
 impl<'tcx> fmt::Debug for ParamEnv<'tcx> {
@@ -1767,6 +1774,15 @@ impl<'tcx> ParamEnv<'tcx> {
         Self::new(List::empty(), self.reveal())
     }
 
+    #[inline]
+    pub fn with_hidden_return_position_impl_trait_in_trait_tys(self) -> Self {
+        Self::new(
+            self.caller_bounds(),
+            Reveal::HideReturnPositionImplTraitInTrait,
+            self.constness(),
+        )
+    }
+
     /// Creates a suitable environment in which to perform trait
     /// queries on the given value. When type-checking, this is simply
     /// the pair of the environment plus value. But when reveal is set to
@@ -1781,7 +1797,9 @@ impl<'tcx> ParamEnv<'tcx> {
     /// although the surrounding function is never reachable.
     pub fn and<T: TypeVisitable<TyCtxt<'tcx>>>(self, value: T) -> ParamEnvAnd<'tcx, T> {
         match self.reveal() {
-            Reveal::UserFacing => ParamEnvAnd { param_env: self, value },
+            Reveal::UserFacing | Reveal::HideReturnPositionImplTraitInTrait => {
+                ParamEnvAnd { param_env: self, value }
+            }
 
             Reveal::All => {
                 if value.is_global() {

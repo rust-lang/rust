@@ -1,0 +1,62 @@
+error: impl method signature does not match trait method signature
+  --> $DIR/refine.rs:9:17
+   |
+LL |     fn bar() -> impl Sized;
+   |                 ---------- return type from trait method defined here
+...
+LL |     fn bar() -> impl Copy {}
+   |                 ^^^^^----
+   |                      |
+   |                      this bound is stronger than that defined on the trait
+   |
+help: replace the return type so that it matches the trait
+   |
+LL |     fn bar() -> impl Sized {}
+   |                 ~~~~~~~~~~
+
+error: impl method signature does not match trait method signature
+  --> $DIR/refine.rs:15:5
+   |
+LL |     fn bar() -> impl Sized;
+   |                 ---------- return type from trait method defined here
+...
+LL |     fn bar() {}
+   |     ^^^^^^^^
+   |
+help: replace the return type so that it matches the trait
+   |
+LL |     fn bar() -> impl Sized {}
+   |              +++++++++++++
+
+error: impl method signature does not match trait method signature
+  --> $DIR/refine.rs:21:17
+   |
+LL |     fn bar() -> impl Sized;
+   |                 ---------- return type from trait method defined here
+...
+LL |     fn bar() -> () {}
+   |                 ^^
+   |
+help: replace the return type so that it matches the trait
+   |
+LL |     fn bar() -> impl Sized {}
+   |                 ~~~~~~~~~~
+
+error: impl method signature does not match trait method signature
+  --> $DIR/refine.rs:31:22
+   |
+LL |     fn bar<'a>(&'a self) -> impl Sized + 'a;
+   |                             --------------- return type from trait method defined here
+...
+LL |     fn bar(&self) -> impl Copy + '_ {}
+   |                      ^^^^^----^^^^^
+   |                           |
+   |                           this bound is stronger than that defined on the trait
+   |
+help: replace the return type so that it matches the trait
+   |
+LL |     fn bar(&self) -> impl Sized + '_ {}
+   |                      ~~~~~~~~~~~~~~~
+
+error: aborting due to 4 previous errors
+

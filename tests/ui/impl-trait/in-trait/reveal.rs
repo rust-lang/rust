@@ -1,6 +1,6 @@
 // check-pass
 
-#![feature(return_position_impl_trait_in_trait)]
+#![feature(return_position_impl_trait_in_trait, refine)]
 #![allow(incomplete_features)]
 
 trait Foo {
@@ -8,6 +8,7 @@ trait Foo {
 }
 
 impl Foo for () {
+    #[refine]
     fn f() -> Box<String> {
         Box::new(String::new())
     }

@@ -412,7 +412,7 @@ pub(crate) fn needs_normalization<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
     reveal: Reveal,
 ) -> bool {
     match reveal {
-        Reveal::UserFacing => value.has_type_flags(
+        Reveal::UserFacing | Reveal::HideReturnPositionImplTraitInTrait => value.has_type_flags(
             ty::TypeFlags::HAS_TY_PROJECTION
                 | ty::TypeFlags::HAS_TY_INHERENT
                 | ty::TypeFlags::HAS_CT_PROJECTION,
@@ -546,7 +546,9 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
             ty::Opaque => {
                 // Only normalize `impl Trait` outside of type inference, usually in codegen.
                 match self.param_env.reveal() {
-                    Reveal::UserFacing => ty.super_fold_with(self),
+                    Reveal::UserFacing | Reveal::HideReturnPositionImplTraitInTrait => {
+                        ty.super_fold_with(self)
+                    }
 
                     Reveal::All => {
                         let recursion_limit = self.interner().recursion_limit();
@@ -1699,6 +1701,13 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
     obligation: &ProjectionTyObligation<'tcx>,
     candidate_set: &mut ProjectionCandidateSet<'tcx>,
 ) {
+    // Don't reveal RPITIT if we are checking RPITIT refines.
+    if selcx.tcx().is_impl_trait_in_trait(obligation.predicate.def_id)
+        && obligation.param_env.reveal() == Reveal::HideReturnPositionImplTraitInTrait
+    {
+        return;
+    }
+
     // If we are resolving `<T as TraitRef<...>>::Item == Type`,
     // start out by selecting the predicate `T as TraitRef<...>`:
     let trait_ref = obligation.predicate.trait_ref(selcx.tcx());

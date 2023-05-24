@@ -1,4 +1,5 @@
 #![feature(refine)]
+//~^ WARN the feature `refine` is incomplete and may not be safe to use and/or cause compiler crashes
 
 trait Foo {
     #[refine]

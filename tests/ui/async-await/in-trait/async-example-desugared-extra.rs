@@ -3,6 +3,7 @@
 
 #![feature(async_fn_in_trait)]
 #![feature(return_position_impl_trait_in_trait)]
+#![feature(refine)]
 #![allow(incomplete_features)]
 
 use std::future::Future;
@@ -27,8 +28,7 @@ impl Future for MyFuture {
 }
 
 impl MyTrait for i32 {
-    // FIXME: this should eventually require `#[refine]` to compile, because it also provides
-    // `Clone`.
+    #[refine]
     fn foo(&self) -> impl Future<Output = i32> + Clone {
         MyFuture(*self)
     }

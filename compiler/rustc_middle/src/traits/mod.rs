@@ -64,6 +64,11 @@ pub enum Reveal {
     /// type-checking.
     UserFacing,
 
+    // Same as user-facing reveal, but do not project ("reveal") return-position
+    // impl trait in traits. This is only used for checking that an RPITIT is not
+    // refined by an implementation.
+    HideReturnPositionImplTraitInTrait,
+
     /// At codegen time, all monomorphic projections will succeed.
     /// Also, `impl Trait` is normalized to the concrete type,
     /// which has to be already collected by type-checking.

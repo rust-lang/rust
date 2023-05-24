@@ -80,6 +80,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 self.eq(goal.param_env, expected, actual)?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
+            (Reveal::HideReturnPositionImplTraitInTrait, SolverMode::Normal) => todo!(),
+            (Reveal::HideReturnPositionImplTraitInTrait, SolverMode::Coherence) => todo!(),
         }
     }
 }

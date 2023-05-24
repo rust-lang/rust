@@ -28,6 +28,8 @@ use rustc_trait_selection::traits::{
 use std::borrow::Cow;
 use std::iter;
 
+mod refine;
+
 /// Checks that a method from an impl conforms to the signature of
 /// the same method as declared in the trait.
 ///
@@ -52,6 +54,12 @@ pub(super) fn compare_impl_method<'tcx>(
             trait_m,
             impl_trait_ref,
             CheckImpliedWfMode::Check,
+        )?;
+        refine::compare_impl_trait_in_trait_predicate_entailment(
+            tcx,
+            impl_m,
+            trait_m,
+            impl_trait_ref,
         )?;
     };
 }

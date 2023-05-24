@@ -918,3 +918,17 @@ pub struct UnusedAssociatedTypeBounds {
     #[suggestion(code = "")]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_rpitit_refined)]
+pub(crate) struct ReturnPositionImplTraitInTraitRefined {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(applicability = "maybe-incorrect", code = "{sugg}")]
+    pub impl_return_span: Span,
+    #[label]
+    pub trait_return_span: Option<Span>,
+    pub sugg: String,
+    #[label(hir_analysis_unmatched_bound_label)]
+    pub unmatched_bound: Option<Span>,
+}
