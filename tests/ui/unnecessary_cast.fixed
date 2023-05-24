@@ -8,6 +8,9 @@
     clippy::unnecessary_operation
 )]
 
+type PtrConstU8 = *const u8;
+type PtrMutU8 = *mut u8;
+
 #[rustfmt::skip]
 fn main() {
     // Test cast_unnecessary
@@ -21,6 +24,17 @@ fn main() {
     -1_f32;
     1_i32;
     1_f32;
+
+    [1u8, 2].as_ptr();
+    [1u8, 2].as_ptr() as *mut u8;
+    [1u8, 2].as_mut_ptr();
+    [1u8, 2].as_mut_ptr() as *const u8;
+    [1u8, 2].as_ptr() as PtrConstU8;
+    [1u8, 2].as_ptr() as PtrMutU8;
+    [1u8, 2].as_mut_ptr() as PtrMutU8;
+    [1u8, 2].as_mut_ptr() as PtrConstU8;
+    let _: *const u8 = [1u8, 2].as_ptr() as _;
+    let _: *mut u8 = [1u8, 2].as_mut_ptr() as _;
 
     // macro version
     macro_rules! foo {
