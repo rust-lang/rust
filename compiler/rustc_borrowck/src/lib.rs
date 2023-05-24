@@ -43,7 +43,6 @@ use rustc_target::abi::FieldIdx;
 
 use either::Either;
 use smallvec::SmallVec;
-use std::cell::OnceCell;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::ops::Deref;
@@ -331,7 +330,6 @@ fn do_mir_borrowck<'tcx>(
                 used_mut: Default::default(),
                 used_mut_upvars: SmallVec::new(),
                 borrow_set: Rc::clone(&borrow_set),
-                dominators: Default::default(),
                 upvars: Vec::new(),
                 local_names: IndexVec::from_elem(None, &promoted_body.local_decls),
                 region_names: RefCell::default(),
@@ -360,7 +358,6 @@ fn do_mir_borrowck<'tcx>(
         used_mut: Default::default(),
         used_mut_upvars: SmallVec::new(),
         borrow_set: Rc::clone(&borrow_set),
-        dominators: Default::default(),
         upvars,
         local_names,
         region_names: RefCell::default(),
@@ -590,9 +587,6 @@ struct MirBorrowckCtxt<'cx, 'tcx> {
 
     /// The set of borrows extracted from the MIR
     borrow_set: Rc<BorrowSet<'tcx>>,
-
-    /// Dominators for MIR
-    dominators: OnceCell<Dominators<BasicBlock>>,
 
     /// Information about upvars not necessarily preserved in types or MIR
     upvars: Vec<Upvar<'tcx>>,
@@ -2269,7 +2263,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     }
 
     fn dominators(&self) -> &Dominators<BasicBlock> {
-        self.dominators.get_or_init(|| self.body.basic_blocks.dominators())
+        // `BasicBlocks` computes dominators on-demand and caches them.
+        self.body.basic_blocks.dominators()
     }
 }
 

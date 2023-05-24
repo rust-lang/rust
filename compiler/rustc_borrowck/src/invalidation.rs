@@ -46,7 +46,7 @@ struct InvalidationGenerator<'cx, 'tcx> {
     all_facts: &'cx mut AllFacts,
     location_table: &'cx LocationTable,
     body: &'cx Body<'tcx>,
-    dominators: Dominators<BasicBlock>,
+    dominators: &'cx Dominators<BasicBlock>,
     borrow_set: &'cx BorrowSet<'tcx>,
 }
 
