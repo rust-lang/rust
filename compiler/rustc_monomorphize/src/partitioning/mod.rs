@@ -93,7 +93,6 @@
 //! inlining, even when they are not marked `#[inline]`.
 
 mod default;
-mod merging;
 
 use std::cmp;
 use std::fs::{self, File};
