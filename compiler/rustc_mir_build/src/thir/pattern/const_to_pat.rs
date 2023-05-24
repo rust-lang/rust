@@ -187,19 +187,7 @@ impl<'tcx> ConstToPat<'tcx> {
         );
 
         // FIXME: should this call a `predicate_must_hold` variant instead?
-        let has_impl = self.infcx.predicate_may_hold(&partial_eq_obligation);
-
-        // Note: To fix rust-lang/rust#65466, we could just remove this type
-        // walk hack for function pointers, and unconditionally error
-        // if `PartialEq` is not implemented. However, that breaks stable
-        // code at the moment, because types like `for <'a> fn(&'a ())` do
-        // not *yet* implement `PartialEq`. So for now we leave this here.
-        has_impl
-            || ty.walk().any(|t| match t.unpack() {
-                ty::subst::GenericArgKind::Lifetime(_) => false,
-                ty::subst::GenericArgKind::Type(t) => t.is_fn_ptr(),
-                ty::subst::GenericArgKind::Const(_) => false,
-            })
+        self.infcx.predicate_may_hold(&partial_eq_obligation)
     }
 
     fn field_pats(
