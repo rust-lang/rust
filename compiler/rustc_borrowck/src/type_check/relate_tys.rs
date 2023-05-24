@@ -1,3 +1,4 @@
+use rustc_errors::ErrorGuaranteed;
 use rustc_infer::infer::nll_relate::{TypeRelating, TypeRelatingDelegate};
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_infer::traits::PredicateObligations;
@@ -185,7 +186,7 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
     }
 
     fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
-        match self.type_checker.fully_perform_op(
+        let _: Result<_, ErrorGuaranteed> = self.type_checker.fully_perform_op(
             self.locations,
             self.category,
             InstantiateOpaqueType {
@@ -194,16 +195,6 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
                 base_universe: None,
                 region_constraints: None,
             },
-        ) {
-            Ok(()) => {}
-            Err(_) => {
-                // It's a bit redundant to delay a bug here, but I'd rather
-                // delay more bugs than accidentally not delay a bug at all.
-                self.type_checker.tcx().sess.delay_span_bug(
-                    self.locations.span(self.type_checker.body),
-                    "errors selecting obligation during MIR typeck",
-                );
-            }
-        };
+        );
     }
 }
