@@ -78,7 +78,14 @@ fn try_main(flags: flags::RustAnalyzer) -> Result<()> {
                 println!("rust-analyzer {}", rust_analyzer::version());
                 return Ok(());
             }
-            with_extra_thread("LspServer", stdx::thread::QoSClass::Utility, run_server)?;
+
+            // rust-analyzer’s “main thread” is actually a secondary thread
+            // with an increased stack size at the User Initiated QoS class.
+            // We use this QoS class because any delay in the main loop
+            // will make actions like hitting enter in the editor slow.
+            // rust-analyzer does not block the editor’s render loop,
+            // so we don’t use User Interactive.
+            with_extra_thread("LspServer", stdx::thread::QoSClass::UserInitiated, run_server)?;
         }
         flags::RustAnalyzerCmd::Parse(cmd) => cmd.run()?,
         flags::RustAnalyzerCmd::Symbols(cmd) => cmd.run()?,
