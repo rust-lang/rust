@@ -1817,9 +1817,20 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
         cx: std::cell::RefCell<&'a mut Context<'cx>>,
         it: &'a clean::Item,
         s: &'a clean::Struct,
+        should_render_fields: bool,
     }
 
     impl<'a, 'cx: 'a> ItemStruct<'a, 'cx> {
+        fn new(
+            cx: std::cell::RefCell<&'a mut Context<'cx>>,
+            it: &'a clean::Item,
+            s: &'a clean::Struct,
+        ) -> Self {
+            let should_render_fields = matches!(s.ctor_kind, None | Some(CtorKind::Fn))
+                && struct_field_items(s).peekable().peek().is_some();
+            Self { cx, it, s, should_render_fields }
+        }
+
         fn render_struct<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
             display_fn(move |f| {
                 let cx = self.cx.borrow();
@@ -1842,18 +1853,6 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
                 let v = document(*cx, self.it, None, HeadingOffset::H2);
                 write!(f, "{v}")
             })
-        }
-
-        fn fields(&self) -> impl Iterator<Item = (&clean::Item, &clean::Type)> {
-            self.s.fields.iter().filter_map(|item| match *item.kind {
-                clean::StructFieldItem(ref ty) => Some((item, ty)),
-                _ => None,
-            })
-        }
-
-        fn should_render_fields(&self) -> bool {
-            matches!(self.s.ctor_kind, None | Some(CtorKind::Fn))
-                && self.fields().peekable().peek().is_some()
         }
 
         fn render_field_in_span<'b>(
@@ -1913,7 +1912,14 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
         }
     }
 
-    ItemStruct { cx: std::cell::RefCell::new(cx), it, s }.render_into(w).unwrap();
+    ItemStruct::new(std::cell::RefCell::new(cx), it, s).render_into(w).unwrap();
+}
+
+fn struct_field_items(s: &clean::Struct) -> impl Iterator<Item = (&clean::Item, &clean::Type)> {
+    s.fields.iter().filter_map(|item| match *item.kind {
+        clean::StructFieldItem(ref ty) => Some((item, ty)),
+        _ => None,
+    })
 }
 
 fn item_static(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Static) {

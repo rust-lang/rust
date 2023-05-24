@@ -3,7 +3,7 @@
     {{ self.render_struct() | safe }}
 </code></pre>
 {{ self.document() | safe }}
-{% if self.should_render_fields() %}
+{% if self.should_render_fields %}
     <h2 id="fields" class="fields small-section header">
         {% if self.s.ctor_kind.is_none() %}
             Fields
@@ -14,7 +14,7 @@
         <a href="#fields" class="anchor">§</a>
     </h2>
     {{ self::document_non_exhaustive(self.it) | safe }}
-    {% for (index, (field, ty)) in self.fields().enumerate() %}
+    {% for (index, (field, ty)) in self::struct_field_items(self.s).enumerate() %}
         {{ self.render_field_in_span(index, field, ty) | safe }}
         {{ self.document_field(field) | safe }}
     {% endfor %}
