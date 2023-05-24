@@ -383,9 +383,8 @@ impl LateLintPass<'_> for Diagnostics {
         debug!(?span, ?def_id, ?substs);
         let has_attr = ty::Instance::resolve(cx.tcx, cx.param_env, def_id, substs)
             .ok()
-            .and_then(|inst| inst)
-            .map(|inst| cx.tcx.has_attr(inst.def_id(), sym::rustc_lint_diagnostics))
-            .unwrap_or(false);
+            .flatten()
+            .is_some_and(|inst| cx.tcx.has_attr(inst.def_id(), sym::rustc_lint_diagnostics));
         if !has_attr {
             return;
         }

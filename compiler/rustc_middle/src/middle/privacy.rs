@@ -94,8 +94,7 @@ pub struct EffectiveVisibilities<Id = LocalDefId> {
 
 impl EffectiveVisibilities {
     pub fn is_public_at_level(&self, id: LocalDefId, level: Level) -> bool {
-        self.effective_vis(id)
-            .map_or(false, |effective_vis| effective_vis.is_public_at_level(level))
+        self.effective_vis(id).is_some_and(|effective_vis| effective_vis.is_public_at_level(level))
     }
 
     /// See `Level::Reachable`.

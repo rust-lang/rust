@@ -358,7 +358,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                     // Can only unsize to an object-safe type
                     if data
                         .principal_def_id()
-                        .map_or(false, |def_id| !tcx.check_is_object_safe(def_id))
+                        .is_some_and(|def_id| !tcx.check_is_object_safe(def_id))
                     {
                         return Err(NoSolution);
                     }

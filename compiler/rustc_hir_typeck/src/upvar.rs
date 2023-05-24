@@ -972,15 +972,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut obligations_should_hold = Vec::new();
         // Checks if a root variable implements any of the auto traits
         for check_trait in auto_traits_def_id.iter() {
-            obligations_should_hold.push(
-                check_trait
-                    .map(|check_trait| {
-                        self.infcx
-                            .type_implements_trait(check_trait, [ty], self.param_env)
-                            .must_apply_modulo_regions()
-                    })
-                    .unwrap_or(false),
-            );
+            obligations_should_hold.push(check_trait.is_some_and(|check_trait| {
+                self.infcx
+                    .type_implements_trait(check_trait, [ty], self.param_env)
+                    .must_apply_modulo_regions()
+            }));
         }
 
         let mut problematic_captures = FxHashMap::default();
@@ -996,15 +992,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Checks if a capture implements any of the auto traits
             let mut obligations_holds_for_capture = Vec::new();
             for check_trait in auto_traits_def_id.iter() {
-                obligations_holds_for_capture.push(
-                    check_trait
-                        .map(|check_trait| {
-                            self.infcx
-                                .type_implements_trait(check_trait, [ty], self.param_env)
-                                .must_apply_modulo_regions()
-                        })
-                        .unwrap_or(false),
-                );
+                obligations_holds_for_capture.push(check_trait.is_some_and(|check_trait| {
+                    self.infcx
+                        .type_implements_trait(check_trait, [ty], self.param_env)
+                        .must_apply_modulo_regions()
+                }));
             }
 
             let mut capture_problems = FxHashSet::default();

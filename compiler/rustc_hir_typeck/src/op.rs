@@ -549,9 +549,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let to_owned_msg = "create an owned `String` from a string reference";
 
         let string_type = self.tcx.lang_items().string();
-        let is_std_string = |ty: Ty<'tcx>| {
-            ty.ty_adt_def().map_or(false, |ty_def| Some(ty_def.did()) == string_type)
-        };
+        let is_std_string =
+            |ty: Ty<'tcx>| ty.ty_adt_def().is_some_and(|ty_def| Some(ty_def.did()) == string_type);
 
         match (lhs_ty.kind(), rhs_ty.kind()) {
             (&Ref(_, l_ty, _), &Ref(_, r_ty, _)) // &str or &String + &str, &String or &&str
@@ -760,8 +759,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             span,
             traits::BinOp {
                 rhs_span: opt_rhs_expr.map(|expr| expr.span),
-                is_lit: opt_rhs_expr
-                    .map_or(false, |expr| matches!(expr.kind, hir::ExprKind::Lit(_))),
+                is_lit: opt_rhs_expr.is_some_and(|expr| matches!(expr.kind, hir::ExprKind::Lit(_))),
                 output_ty: expected.only_has_type(self),
             },
         );

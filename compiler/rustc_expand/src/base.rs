@@ -780,7 +780,7 @@ impl SyntaxExtension {
         let allow_internal_unsafe = attr::contains_name(attrs, sym::allow_internal_unsafe);
         let local_inner_macros = attr::find_by_name(attrs, sym::macro_export)
             .and_then(|macro_export| macro_export.meta_item_list())
-            .map_or(false, |l| attr::list_contains_name(&l, sym::local_inner_macros));
+            .is_some_and(|l| attr::list_contains_name(&l, sym::local_inner_macros));
         let collapse_debuginfo = attr::contains_name(attrs, sym::collapse_debuginfo);
         tracing::debug!(?local_inner_macros, ?collapse_debuginfo, ?allow_internal_unsafe);
 
@@ -1449,7 +1449,7 @@ fn pretty_printing_compatibility_hack(item: &Item, sess: &ParseSess) -> bool {
                                     && version
                                         .next()
                                         .and_then(|c| c.parse::<u32>().ok())
-                                        .map_or(false, |v| v < 6)
+                                        .is_some_and(|v| v < 6)
                             };
 
                             if crate_matches {
