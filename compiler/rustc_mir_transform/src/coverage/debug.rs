@@ -639,7 +639,7 @@ pub(super) fn dump_coverage_spanview<'tcx>(
     let def_id = mir_source.def_id();
 
     let span_viewables = span_viewables(tcx, mir_body, basic_coverage_blocks, &coverage_spans);
-    let mut file = create_dump_file(tcx, "html", false, pass_name, &0, mir_body)
+    let mut file = create_dump_file(tcx, "html", false, pass_name, &0i32, mir_body)
         .expect("Unexpected error creating MIR spanview HTML file");
     let crate_name = tcx.crate_name(def_id.krate);
     let item_name = tcx.def_path(def_id).to_filename_friendly_no_crate();
@@ -740,7 +740,7 @@ pub(super) fn dump_coverage_graphviz<'tcx>(
                 .join("\n  ")
         ));
     }
-    let mut file = create_dump_file(tcx, "dot", false, pass_name, &0, mir_body)
+    let mut file = create_dump_file(tcx, "dot", false, pass_name, &0i32, mir_body)
         .expect("Unexpected error creating BasicCoverageBlock graphviz DOT file");
     graphviz_writer
         .write_graphviz(tcx, &mut file)

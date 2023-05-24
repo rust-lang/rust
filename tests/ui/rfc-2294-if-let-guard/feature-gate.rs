@@ -10,10 +10,12 @@ fn _if_let_guard() {
         () if (let 0 = 1) => {}
         //~^ ERROR `let` expressions in this position are unstable
         //~| ERROR expected expression, found `let` statement
+        //~| ERROR `let` expressions are not supported here
 
         () if (((let 0 = 1))) => {}
         //~^ ERROR `let` expressions in this position are unstable
         //~| ERROR expected expression, found `let` statement
+        //~| ERROR `let` expressions are not supported here
 
         () if true && let 0 = 1 => {}
         //~^ ERROR `if let` guards are experimental
@@ -26,16 +28,20 @@ fn _if_let_guard() {
         () if (let 0 = 1) && true => {}
         //~^ ERROR `let` expressions in this position are unstable
         //~| ERROR expected expression, found `let` statement
+        //~| ERROR `let` expressions are not supported here
 
         () if true && (let 0 = 1) => {}
         //~^ ERROR `let` expressions in this position are unstable
         //~| ERROR expected expression, found `let` statement
+        //~| ERROR `let` expressions are not supported here
 
         () if (let 0 = 1) && (let 0 = 1) => {}
         //~^ ERROR `let` expressions in this position are unstable
         //~| ERROR `let` expressions in this position are unstable
         //~| ERROR expected expression, found `let` statement
         //~| ERROR expected expression, found `let` statement
+        //~| ERROR `let` expressions are not supported here
+        //~| ERROR `let` expressions are not supported here
 
         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
         //~^ ERROR `if let` guards are experimental
@@ -47,6 +53,10 @@ fn _if_let_guard() {
         //~| ERROR expected expression, found `let` statement
         //~| ERROR expected expression, found `let` statement
         //~| ERROR expected expression, found `let` statement
+        //~| ERROR `let` expressions are not supported here
+        //~| ERROR `let` expressions are not supported here
+        //~| ERROR `let` expressions are not supported here
+
 
         () if let Range { start: _, end: _ } = (true..true) && false => {}
         //~^ ERROR `if let` guards are experimental
@@ -68,9 +78,11 @@ fn _macros() {
     use_expr!((let 0 = 1 && 0 == 0));
     //~^ ERROR `let` expressions in this position are unstable
     //~| ERROR expected expression, found `let` statement
+    //~| ERROR `let` expressions are not supported here
     use_expr!((let 0 = 1));
     //~^ ERROR `let` expressions in this position are unstable
     //~| ERROR expected expression, found `let` statement
+    //~| ERROR `let` expressions are not supported here
     match () {
         #[cfg(FALSE)]
         () if let 0 = 1 => {}
