@@ -30,7 +30,7 @@ use crate::with_session_globals;
 use crate::{HashStableContext, Span, DUMMY_SP};
 
 use crate::def_id::{CrateNum, DefId, StableCrateId, CRATE_DEF_ID, LOCAL_CRATE};
-use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::HashingControls;
 use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
@@ -195,11 +195,12 @@ impl LocalExpnId {
     #[instrument(level = "trace", skip(ctx), ret)]
     pub fn create_untracked_expansion(
         mut expn_data: ExpnData,
-        dep_node: FakeDepNode,
+        hash_extra: impl Hash + Copy + fmt::Debug,
         ctx: impl HashStableContext,
+        disambiguation_map: &Lock<UnhashMap<Hash64, u32>>,
     ) -> LocalExpnId {
         debug_assert_eq!(expn_data.parent.krate, LOCAL_CRATE);
-        let expn_hash = update_disambiguator(&mut expn_data, dep_node, ctx);
+        let expn_hash = update_disambiguator(&mut expn_data, hash_extra, ctx, disambiguation_map);
         HygieneData::with(|data| {
             let expn_id = data.local_expn_data.push(Some(expn_data));
             let _eid = data.local_expn_hashes.push(expn_hash);
@@ -218,11 +219,12 @@ impl LocalExpnId {
     pub fn set_untracked_expn_data(
         self,
         mut expn_data: ExpnData,
-        dep_node: FakeDepNode,
+        hash_extra: impl Hash + Copy + fmt::Debug,
         ctx: impl HashStableContext,
+        disambiguation_map: &Lock<UnhashMap<Hash64, u32>>,
     ) {
         debug_assert_eq!(expn_data.parent.krate, LOCAL_CRATE);
-        let expn_hash = update_disambiguator(&mut expn_data, dep_node, ctx);
+        let expn_hash = update_disambiguator(&mut expn_data, hash_extra, ctx, disambiguation_map);
         HygieneData::with(|data| {
             let old_expn_data = &mut data.local_expn_data[self];
             assert!(old_expn_data.is_none(), "expansion data is reset for an expansion ID");
@@ -349,14 +351,6 @@ impl ExpnId {
     }
 }
 
-/// This struct is meant to be a surrogate for the actual `DepNode` in rustc_middle.
-/// Both types should be kept in sync.
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub struct FakeDepNode {
-    pub kind: u16,
-    pub hash: PackedFingerprint,
-}
-
 #[derive(Debug)]
 pub struct HygieneData {
     /// Each expansion should have an associated expansion data, but sometimes there's a delay
@@ -371,12 +365,6 @@ pub struct HygieneData {
     expn_hash_to_expn_id: UnhashMap<ExpnHash, ExpnId>,
     syntax_context_data: Vec<SyntaxContextData>,
     syntax_context_map: FxHashMap<(SyntaxContext, ExpnId, Transparency), SyntaxContext>,
-    /// Maps the `local_hash` of an `ExpnData` to the next disambiguator value.
-    /// This is used by `update_disambiguator` to keep track of which `ExpnData`s
-    /// would have collisions without a disambiguator.
-    /// The keys of this map are always computed with `ExpnData.disambiguator`
-    /// set to 0.
-    expn_data_disambiguators: FxHashMap<FakeDepNode, FxHashMap<Hash64, u32>>,
 }
 
 impl HygieneData {
@@ -405,7 +393,6 @@ impl HygieneData {
                 dollar_crate_name: kw::DollarCrate,
             }],
             syntax_context_map: FxHashMap::default(),
-            expn_data_disambiguators: FxHashMap::default(),
         }
     }
 
@@ -1049,10 +1036,10 @@ impl ExpnData {
     }
 
     #[inline]
-    fn hash_expn(&self, dep_node: FakeDepNode, ctx: &mut impl HashStableContext) -> Hash64 {
+    fn hash_expn(&self, hash_extra: impl Hash, ctx: &mut impl HashStableContext) -> Hash64 {
         let mut hasher = StableHasher::new();
         self.hash_stable(ctx, &mut hasher);
-        dep_node.hash(&mut hasher);
+        hash_extra.hash(&mut hasher);
         hasher.finish()
     }
 }
@@ -1478,44 +1465,38 @@ impl<D: Decoder> Decodable<D> for SyntaxContext {
 #[instrument(level = "trace", skip(ctx), ret)]
 fn update_disambiguator(
     expn_data: &mut ExpnData,
-    dep_node: FakeDepNode,
+    hash_extra: impl Hash + Copy + fmt::Debug,
     mut ctx: impl HashStableContext,
+    disambiguation_map: &Lock<UnhashMap<Hash64, u32>>,
 ) -> ExpnHash {
     // This disambiguator should not have been set yet.
     assert_eq!(expn_data.disambiguator, 0, "Already set disambiguator for ExpnData: {expn_data:?}");
     assert_default_hashing_controls(&ctx, "ExpnData (disambiguator)");
-    let mut expn_hash = expn_data.hash_expn(dep_node, &mut ctx);
+    let mut expn_hash = expn_data.hash_expn(hash_extra, &mut ctx);
     debug!(?expn_hash);
 
-    let disambiguator = HygieneData::with(|data| {
+    let disambiguator = {
         // If this is the first ExpnData with a given hash, then keep our
         // disambiguator at 0 (the default u32 value)
-        let disambig = data
-            .expn_data_disambiguators
-            .entry(dep_node)
-            .or_default()
-            .entry(expn_hash)
-            .or_default();
+        let mut disambiguation_map = disambiguation_map.lock();
+        let disambig = disambiguation_map.entry(expn_hash).or_default();
         let disambiguator = *disambig;
         *disambig += 1;
         disambiguator
-    });
+    };
 
     if disambiguator != 0 {
         debug!("Set disambiguator for expn_data={:?} expn_hash={:?}", expn_data, expn_hash);
 
         expn_data.disambiguator = disambiguator;
-        expn_hash = expn_data.hash_expn(dep_node, &mut ctx);
+        expn_hash = expn_data.hash_expn(hash_extra, &mut ctx);
 
         // Verify that the new disambiguator makes the hash unique
-        #[cfg(debug_assertions)]
-        HygieneData::with(|data| {
-            assert_eq!(
-                data.expn_data_disambiguators[&dep_node].get(&expn_hash),
-                None,
-                "Hash collision after disambiguator update!",
-            );
-        });
+        debug_assert_eq!(
+            disambiguation_map.lock().get(&expn_hash),
+            None,
+            "Hash collision after disambiguator update!",
+        );
     }
 
     ExpnHash::new(ctx.def_path_hash(LOCAL_CRATE.as_def_id()).stable_crate_id(), expn_hash)

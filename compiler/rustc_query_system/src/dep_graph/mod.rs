@@ -14,6 +14,9 @@ pub use serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 
 use crate::ich::StableHashingContext;
 use rustc_data_structures::profiling::SelfProfilerRef;
+use rustc_data_structures::stable_hasher::Hash64;
+use rustc_data_structures::sync::{Lock, Lrc};
+use rustc_data_structures::unhash::UnhashMap;
 use rustc_serialize::{opaque::FileEncoder, Encodable};
 use rustc_session::Session;
 
@@ -137,11 +140,25 @@ impl FingerprintStyle {
     }
 }
 
-#[derive(Copy, Clone, Hash)]
+#[derive(Clone)]
 pub enum CurrentDepNode<K> {
-    Regular(DepNode<K>),
+    Regular {
+        dep_node: DepNode<K>,
+        /// Disambiguation map for expansions created while executing
+        /// the query with this `DepNode`.
+        expn_disambiguators: Lrc<Lock<UnhashMap<Hash64, u32>>>,
+    },
     Anonymous,
     Untracked,
+}
+
+impl<K> CurrentDepNode<K> {
+    pub fn regular(dep_node: DepNode<K>) -> CurrentDepNode<K> {
+        CurrentDepNode::Regular {
+            dep_node,
+            expn_disambiguators: Lrc::new(Lock::new(UnhashMap::default())),
+        }
+    }
 }
 
 /// Describe the different families of dependency nodes.

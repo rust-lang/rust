@@ -355,7 +355,7 @@ impl<K: DepKind> DepGraphData<K> {
         );
 
         let with_deps =
-            |task_deps| K::with_deps(CurrentDepNode::Regular(key), task_deps, || task(cx, arg));
+            |task_deps| K::with_deps(CurrentDepNode::regular(key), task_deps, || task(cx, arg));
         let (result, edges) = if cx.dep_context().is_eval_always(key.kind) {
             (with_deps(TaskDepsRef::EvalAlways), smallvec![])
         } else {

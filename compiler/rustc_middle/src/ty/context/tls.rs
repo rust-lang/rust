@@ -31,7 +31,7 @@ pub struct ImplicitCtxt<'a, 'tcx> {
     /// Used to prevent queries from calling too deeply.
     pub query_depth: usize,
 
-    /// The DepNode of the query being executed. This is updated by the dep-graph. Thisis used to
+    /// The DepNode of the query being executed. This is updated by the dep-graph. This is used to
     /// know which query created an expansion.
     pub current_node: CurrentDepNode,
 
@@ -46,7 +46,7 @@ impl<'a, 'tcx> ImplicitCtxt<'a, 'tcx> {
         let current_node = if tcx.dep_graph.is_fully_enabled() {
             CurrentDepNode::Untracked
         } else {
-            CurrentDepNode::Regular(DepNode::NULL)
+            CurrentDepNode::regular(DepNode::NULL)
         };
         ImplicitCtxt {
             tcx,

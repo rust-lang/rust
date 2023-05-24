@@ -632,7 +632,7 @@ where
     // The dep-graph for this computation is already in-place, but any side effect due to this
     // query needs to know our DepNode.
     let result =
-        Qcx::DepKind::with_deps(CurrentDepNode::Regular(*dep_node), TaskDepsRef::Ignore, || {
+        Qcx::DepKind::with_deps(CurrentDepNode::regular(*dep_node), TaskDepsRef::Ignore, || {
             query.compute(qcx, *key)
         });
 
