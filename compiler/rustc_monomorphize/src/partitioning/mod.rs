@@ -259,6 +259,8 @@ where
     debug_dump(tcx, "INITIAL PARTITIONING", &codegen_units);
 
     // Merge until we have at most `max_cgu_count` codegen units.
+    // `merge_codegen_units` is responsible for updating the CGU size
+    // estimates.
     {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_merge_cgus");
         partitioner.merge_codegen_units(cx, &mut codegen_units);
