@@ -7,7 +7,8 @@ on:
   workflow_call:
 jobs:
   build-libc:
-    runs-on: ubuntu-latest-8-cores
+    # runs-on: ubuntu-latest-8-cores
+    runs-on: ubuntu-latest
     steps:
       - name: show git config
         run: |
@@ -69,16 +70,17 @@ jobs:
     needs: build-libc
     strategy:
       matrix:
-        os: [ubuntu-latest-8-cores, macos-12, windows-latest-8-cores]
+        # os: [ubuntu-latest-8-cores, macos-12, windows-latest-8-cores]
+        os: [ubuntu-latest, macos-12, windows-latest]
         arch: [x86, aarch64]
         exclude:
-          - os: windows-latest-8-cores
+          - os: windows-latest
             arch: aarch64
-          - os: windows-latest-8-cores
+          - os: windows-latest
             arch: aarch64
-          - os: ubuntu-latest-8-cores
+          - os: ubuntu-latest
             arch: aarch64
-          - os: ubuntu-latest-8-cores
+          - os: ubuntu-latest
             arch: aarch64
     runs-on: ${{ matrix.os }}
     steps:
