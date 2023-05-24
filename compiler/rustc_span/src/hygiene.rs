@@ -320,7 +320,6 @@ impl ExpnId {
             // Stop going up the backtrace once include! is encountered
             if expn_data.is_root()
                 || expn_data.kind == ExpnKind::Macro(MacroKind::Bang, sym::include)
-                || expn_data.kind == ExpnKind::Inlined
             {
                 break;
             }
@@ -1058,8 +1057,6 @@ pub enum ExpnKind {
     AstPass(AstPass),
     /// Desugaring done by the compiler during HIR lowering.
     Desugaring(DesugaringKind),
-    /// MIR inlining
-    Inlined,
 }
 
 impl ExpnKind {
@@ -1073,7 +1070,6 @@ impl ExpnKind {
             },
             ExpnKind::AstPass(kind) => kind.descr().to_string(),
             ExpnKind::Desugaring(kind) => format!("desugaring of {}", kind.descr()),
-            ExpnKind::Inlined => "inlined source".to_string(),
         }
     }
 }
