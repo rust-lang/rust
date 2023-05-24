@@ -32,6 +32,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     fn_def_id: LocalDefId,
     body: &'tcx hir::Body<'tcx>,
     can_be_generator: Option<hir::Movability>,
+    params_can_be_unsized: bool,
 ) -> Option<GeneratorTypes<'tcx>> {
     let fn_id = fcx.tcx.hir().local_def_id_to_hir_id(fn_def_id);
 
@@ -94,7 +95,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         // The check for a non-trivial pattern is a hack to avoid duplicate warnings
         // for simple cases like `fn foo(x: Trait)`,
         // where we would error once on the parameter as a whole, and once on the binding `x`.
-        if param.pat.simple_ident().is_none() && !tcx.features().unsized_fn_params {
+        if param.pat.simple_ident().is_none() && !params_can_be_unsized {
             fcx.require_type_is_sized(param_ty, param.pat.span, traits::SizedArgumentType(ty_span));
         }
 
