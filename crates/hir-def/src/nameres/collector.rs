@@ -290,16 +290,16 @@ impl DefCollector<'_> {
         let module_id = self.def_map.root;
 
         let attrs = item_tree.top_level_attrs(self.db, self.def_map.krate);
-        if let Some(cfg) = attrs.cfg() {
-            if self.cfg_options.check(&cfg) == Some(false) {
-                return;
-            }
-        }
 
         self.inject_prelude(&attrs);
 
         // Process other crate-level attributes.
         for attr in &*attrs {
+            if let Some(cfg) = attr.cfg() {
+                if self.cfg_options.check(&cfg) == Some(false) {
+                    return;
+                }
+            }
             let attr_name = match attr.path.as_ident() {
                 Some(name) => name,
                 None => continue,

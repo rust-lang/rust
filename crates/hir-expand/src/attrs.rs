@@ -309,6 +309,14 @@ impl Attr {
 
         Some(paths)
     }
+
+    pub fn cfg(&self) -> Option<CfgExpr> {
+        if *self.path.as_ident()? == crate::name![cfg] {
+            self.token_tree_value().map(CfgExpr::parse)
+        } else {
+            None
+        }
+    }
 }
 
 pub fn collect_attrs(
