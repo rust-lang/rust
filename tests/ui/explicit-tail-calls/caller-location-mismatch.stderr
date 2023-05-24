@@ -1,0 +1,20 @@
+error: a function mot marked with `#[track_caller]` cannot tail-call one that is
+  --> $DIR/caller-location-mismatch.rs:10:5
+   |
+LL |     become inner()
+   |     ^^^^^^^^^^^^^^
+
+error: a function marked with `#[track_caller]` cannot tail-call one that is not
+  --> $DIR/caller-location-mismatch.rs:21:5
+   |
+LL |     become inner()
+   |     ^^^^^^^^^^^^^^
+
+error: a function mot marked with `#[track_caller]` cannot tail-call one that is
+  --> $DIR/caller-location-mismatch.rs:17:9
+   |
+LL |         become Location::caller()
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
