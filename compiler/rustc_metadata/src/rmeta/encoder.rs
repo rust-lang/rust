@@ -1938,7 +1938,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     fn encode_traits(&mut self) -> LazyArray<DefIndex> {
         empty_proc_macro!(self);
-        self.lazy_array(self.tcx.traits_in_crate(LOCAL_CRATE).iter().map(|def_id| def_id.index))
+        self.lazy_array(self.tcx.traits(LOCAL_CRATE).iter().map(|def_id| def_id.index))
     }
 
     /// Encodes an index, mapping each trait to its (local) implementations.
@@ -2329,7 +2329,7 @@ pub fn provide(providers: &mut Providers) {
                 .get(&def_id)
                 .expect("no traits in scope for a doc link")
         },
-        traits_in_crate: |tcx, LocalCrate| {
+        traits: |tcx, LocalCrate| {
             let mut traits = Vec::new();
             for id in tcx.hir().items() {
                 if matches!(tcx.def_kind(id.owner_id), DefKind::Trait | DefKind::TraitAlias) {
