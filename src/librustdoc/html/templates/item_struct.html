@@ -1,5 +1,5 @@
 <pre class="rust item-decl"><code>
-    {{ self.render_attributes_in_code() | safe }}
+    {{ self::render_attributes_in_code(self.it, self.cx.borrow().tcx()) | safe }}
     {{ self.render_struct() | safe }}
 </code></pre>
 {{ self.document() | safe }}
@@ -10,10 +10,10 @@
         {% else %}
             Tuple Fields
         {% endif %}
-        {{ self.document_non_exhaustive_header() | safe }}
+        {{ self::document_non_exhaustive_header(self.it) | safe }}
         <a href="#fields" class="anchor">§</a>
     </h2>
-    {{ self.document_non_exhaustive() | safe }}
+    {{ self::document_non_exhaustive(self.it) | safe }}
     {% for (index, (field, ty)) in self.fields().enumerate() %}
         {{ self.render_field_in_span(index, field, ty) | safe }}
         {{ self.document_field(field) | safe }}

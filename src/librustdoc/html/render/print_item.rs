@@ -1820,15 +1820,6 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
     }
 
     impl<'a, 'cx: 'a> ItemStruct<'a, 'cx> {
-        fn render_attributes_in_code<'b>(
-            &'b self,
-        ) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
-                let tcx = self.cx.borrow().tcx();
-                write!(f, "{}", render_attributes_in_code(self.it, tcx))
-            })
-        }
-
         fn render_struct<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
             display_fn(move |f| {
                 let cx = self.cx.borrow();
@@ -1863,14 +1854,6 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
         fn should_render_fields(&self) -> bool {
             matches!(self.s.ctor_kind, None | Some(CtorKind::Fn))
                 && self.fields().peekable().peek().is_some()
-        }
-
-        fn document_non_exhaustive_header(&self) -> &str {
-            document_non_exhaustive_header(self.it)
-        }
-
-        fn document_non_exhaustive(&self) -> impl fmt::Display + 'a {
-            document_non_exhaustive(self.it)
         }
 
         fn render_field_in_span<'b>(
