@@ -1831,6 +1831,15 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
             Self { cx, it, s, should_render_fields }
         }
 
+        fn render_attributes_in_code<'b>(
+            &'b self,
+        ) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
+            display_fn(move |f| {
+                let tcx = self.cx.borrow().tcx();
+                write!(f, "{}", render_attributes_in_code(self.it, tcx))
+            })
+        }
+
         fn render_struct<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
             display_fn(move |f| {
                 let cx = self.cx.borrow();
