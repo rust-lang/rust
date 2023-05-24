@@ -56,10 +56,6 @@ pub fn provide(providers: &mut Providers) {
     providers.valtree_to_const_val = |tcx, (ty, valtree)| {
         const_eval::valtree_to_const_value(tcx, ty::ParamEnv::empty().and(ty), valtree)
     };
-    providers.deref_mir_constant = |tcx, param_env_and_value| {
-        let (param_env, value) = param_env_and_value.into_parts();
-        const_eval::deref_mir_constant(tcx, param_env, value)
-    };
     providers.check_validity_requirement = |tcx, (init_kind, param_env_and_ty)| {
         util::check_validity_requirement(tcx, init_kind, param_env_and_ty)
     };
