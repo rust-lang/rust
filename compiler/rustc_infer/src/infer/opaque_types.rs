@@ -53,7 +53,7 @@ impl<'tcx> InferCtxt<'tcx> {
         }
         let mut obligations = vec![];
         let replace_opaque_type = |def_id: DefId| {
-            def_id.as_local().map_or(false, |def_id| self.opaque_type_origin(def_id).is_some())
+            def_id.as_local().is_some_and(|def_id| self.opaque_type_origin(def_id).is_some())
         };
         let value = value.fold_with(&mut BottomUpFolder {
             tcx: self.tcx,

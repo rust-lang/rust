@@ -861,11 +861,11 @@ pub fn is_builtin_attr_name(name: Symbol) -> bool {
 /// Whether this builtin attribute is only used in the local crate.
 /// If so, it is not encoded in the crate metadata.
 pub fn is_builtin_only_local(name: Symbol) -> bool {
-    BUILTIN_ATTRIBUTE_MAP.get(&name).map_or(false, |attr| attr.only_local)
+    BUILTIN_ATTRIBUTE_MAP.get(&name).is_some_and(|attr| attr.only_local)
 }
 
 pub fn is_valid_for_get_attr(name: Symbol) -> bool {
-    BUILTIN_ATTRIBUTE_MAP.get(&name).map_or(false, |attr| match attr.duplicates {
+    BUILTIN_ATTRIBUTE_MAP.get(&name).is_some_and(|attr| match attr.duplicates {
         WarnFollowing | ErrorFollowing | ErrorPreceding | FutureWarnFollowing
         | FutureWarnPreceding => true,
         DuplicatesOk | WarnFollowingWordOnly => false,

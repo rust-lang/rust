@@ -356,7 +356,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        let is_write = sugg_span.ctxt().outer_expn_data().macro_def_id.map_or(false, |def_id| {
+        let is_write = sugg_span.ctxt().outer_expn_data().macro_def_id.is_some_and(|def_id| {
             tcx.is_diagnostic_item(sym::write_macro, def_id)
                 || tcx.is_diagnostic_item(sym::writeln_macro, def_id)
         }) && item_name.name == Symbol::intern("write_fmt");
@@ -1522,7 +1522,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     let span_included = match parent_expr.kind {
                         hir::ExprKind::Struct(_, eps, _) => {
-                            eps.len() > 0 && eps.last().map_or(false, |ep| ep.span.contains(span))
+                            eps.len() > 0 && eps.last().is_some_and(|ep| ep.span.contains(span))
                         }
                         // `..=` desugars into `::std::ops::RangeInclusive::new(...)`.
                         hir::ExprKind::Call(ref func, ..) => func.span.contains(span),
@@ -1781,7 +1781,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 ProbeScope::TraitsInScope,
                                 return_type,
                             )
-                            .map_or(false, |pick| {
+                            .is_ok_and(|pick| {
                                 !never_mention_traits
                                     .iter()
                                     .flatten()
@@ -2468,7 +2468,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // implement the `AsRef` trait.
                         let skip = skippable.contains(&did)
                             || (("Pin::new" == *pre) && (sym::as_ref == item_name.name))
-                            || inputs_len.map_or(false, |inputs_len| pick.item.kind == ty::AssocKind::Fn && self.tcx.fn_sig(pick.item.def_id).skip_binder().skip_binder().inputs().len() != inputs_len);
+                            || inputs_len.is_some_and(|inputs_len| pick.item.kind == ty::AssocKind::Fn && self.tcx.fn_sig(pick.item.def_id).skip_binder().skip_binder().inputs().len() != inputs_len);
                         // Make sure the method is defined for the *actual* receiver: we don't
                         // want to treat `Box<Self>` as a receiver if it only works because of
                         // an autoderef to `&self`
@@ -2755,7 +2755,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let imp = self.tcx.impl_trait_ref(imp_did).unwrap().subst_identity();
                             let imp_simp =
                                 simplify_type(self.tcx, imp.self_ty(), TreatParams::ForLookup);
-                            imp_simp.map_or(false, |s| s == simp_rcvr_ty)
+                            imp_simp.is_some_and(|s| s == simp_rcvr_ty)
                         })
                     {
                         explicitly_negative.push(candidate);
@@ -2893,7 +2893,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match ty.kind() {
                 ty::Adt(def, _) => def.did().is_local(),
                 ty::Foreign(did) => did.is_local(),
-                ty::Dynamic(tr, ..) => tr.principal().map_or(false, |d| d.def_id().is_local()),
+                ty::Dynamic(tr, ..) => tr.principal().is_some_and(|d| d.def_id().is_local()),
                 ty::Param(_) => true,
 
                 // Everything else (primitive types, etc.) is effectively

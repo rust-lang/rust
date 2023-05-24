@@ -1843,7 +1843,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     None,
                 )
             }
-        } else if ident.name.as_str().chars().next().map_or(false, |c| c.is_ascii_uppercase()) {
+        } else if ident.name.as_str().chars().next().is_some_and(|c| c.is_ascii_uppercase()) {
             // Check whether the name refers to an item in the value namespace.
             let binding = if let Some(ribs) = ribs {
                 self.resolve_ident_in_lexical_scope(
@@ -2165,7 +2165,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 let is_definitely_crate = import
                     .module_path
                     .first()
-                    .map_or(false, |f| f.ident.name != kw::SelfLower && f.ident.name != kw::Super);
+                    .is_some_and(|f| f.ident.name != kw::SelfLower && f.ident.name != kw::Super);
 
                 // Add the import to the start, with a `{` if required.
                 let start_point = source_map.start_point(after_crate_name);

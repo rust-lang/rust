@@ -443,7 +443,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     .sess
                     .source_map()
                     .span_to_snippet(span)
-                    .map_or(false, |snippet| snippet.starts_with("&mut ")) =>
+                    .is_ok_and(|snippet| snippet.starts_with("&mut ")) =>
             {
                 err.span_label(span, format!("cannot {act}"));
                 err.span_suggestion(

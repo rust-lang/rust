@@ -818,7 +818,7 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                 let field = variant.fields.iter().find(|field| {
                     let ty = tcx.type_of(field.did).subst_identity();
                     let is_zst =
-                        tcx.layout_of(param_env.and(ty)).map_or(false, |layout| layout.is_zst());
+                        tcx.layout_of(param_env.and(ty)).is_ok_and(|layout| layout.is_zst());
                     !is_zst
                 });
                 if let Some(field) = field {

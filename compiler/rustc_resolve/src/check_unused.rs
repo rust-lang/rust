@@ -469,7 +469,7 @@ impl Resolver<'_, '_> {
                 .r
                 .extern_prelude
                 .get(&extern_crate.ident)
-                .map_or(false, |entry| !entry.introduced_by_item)
+                .is_some_and(|entry| !entry.introduced_by_item)
             {
                 continue;
             }

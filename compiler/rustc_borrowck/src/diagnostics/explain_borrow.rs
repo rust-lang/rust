@@ -118,7 +118,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     let path_span = path_span.unwrap();
                     // path_span is only present in the case of closure capture
                     assert!(matches!(later_use_kind, LaterUseKind::ClosureCapture));
-                    if !borrow_span.map_or(false, |sp| sp.overlaps(var_or_use_span)) {
+                    if !borrow_span.is_some_and(|sp| sp.overlaps(var_or_use_span)) {
                         let path_label = "used here by closure";
                         let capture_kind_label = message;
                         err.span_label(

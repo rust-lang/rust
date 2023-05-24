@@ -2341,7 +2341,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn is_late_bound(self, id: HirId) -> bool {
-        self.is_late_bound_map(id.owner).map_or(false, |set| set.contains(&id.local_id))
+        self.is_late_bound_map(id.owner).is_some_and(|set| set.contains(&id.local_id))
     }
 
     pub fn late_bound_vars(self, id: HirId) -> &'tcx List<ty::BoundVariableKind> {
@@ -2474,7 +2474,7 @@ pub fn provide(providers: &mut Providers) {
         |tcx, LocalCrate| attr::contains_name(tcx.hir().krate_attrs(), sym::compiler_builtins);
     providers.has_panic_handler = |tcx, LocalCrate| {
         // We want to check if the panic handler was defined in this crate
-        tcx.lang_items().panic_impl().map_or(false, |did| did.is_local())
+        tcx.lang_items().panic_impl().is_some_and(|did| did.is_local())
     };
     providers.source_span = |tcx, def_id| tcx.untracked.source_span.get(def_id).unwrap_or(DUMMY_SP);
 }

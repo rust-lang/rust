@@ -1793,12 +1793,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .infcx
             .at(&obligation.cause, obligation.param_env)
             .sup(DefineOpaqueTypes::No, obligation.predicate, infer_projection)
-            .map_or(false, |InferOk { obligations, value: () }| {
+            .is_ok_and(|InferOk { obligations, value: () }| {
                 self.evaluate_predicates_recursively(
                     TraitObligationStackList::empty(&ProvisionalEvaluationCache::default()),
                     nested_obligations.into_iter().chain(obligations),
                 )
-                .map_or(false, |res| res.may_apply())
+                .is_ok_and(|res| res.may_apply())
             });
 
         if is_match {

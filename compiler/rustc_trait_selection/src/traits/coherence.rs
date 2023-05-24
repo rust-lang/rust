@@ -706,7 +706,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OrphanChecker<'tcx> {
             }
             ty::Dynamic(tt, ..) => {
                 let principal = tt.principal().map(|p| p.def_id());
-                if principal.map_or(false, |p| self.def_id_is_local(p)) {
+                if principal.is_some_and(|p| self.def_id_is_local(p)) {
                     ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty))
                 } else {
                     self.found_non_local_ty(ty)
