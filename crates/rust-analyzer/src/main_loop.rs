@@ -652,14 +652,20 @@ impl GlobalState {
         use crate::handlers::request as handlers;
 
         dispatcher
+            // Request handlers that must run on the main thread
+            // because they mutate GlobalState:
             .on_sync_mut::<lsp_ext::ReloadWorkspace>(handlers::handle_workspace_reload)
             .on_sync_mut::<lsp_ext::RebuildProcMacros>(handlers::handle_proc_macros_rebuild)
             .on_sync_mut::<lsp_ext::MemoryUsage>(handlers::handle_memory_usage)
             .on_sync_mut::<lsp_ext::ShuffleCrateGraph>(handlers::handle_shuffle_crate_graph)
+            // Request handlers which are related to the user typing
+            // are run on the main thread to reduce latency:
             .on_sync::<lsp_ext::JoinLines>(handlers::handle_join_lines)
             .on_sync::<lsp_ext::OnEnter>(handlers::handle_on_enter)
             .on_sync::<lsp_types::request::SelectionRangeRequest>(handlers::handle_selection_range)
             .on_sync::<lsp_ext::MatchingBrace>(handlers::handle_matching_brace)
+            .on_sync::<lsp_ext::OnTypeFormatting>(handlers::handle_on_type_formatting)
+            // All other request handlers:
             .on::<lsp_ext::FetchDependencyList>(handlers::fetch_dependency_list)
             .on::<lsp_ext::AnalyzerStatus>(handlers::handle_analyzer_status)
             .on::<lsp_ext::SyntaxTree>(handlers::handle_syntax_tree)
@@ -680,7 +686,6 @@ impl GlobalState {
             .on::<lsp_ext::OpenCargoToml>(handlers::handle_open_cargo_toml)
             .on::<lsp_ext::MoveItem>(handlers::handle_move_item)
             .on::<lsp_ext::WorkspaceSymbol>(handlers::handle_workspace_symbol)
-            .on::<lsp_ext::OnTypeFormatting>(handlers::handle_on_type_formatting)
             .on::<lsp_types::request::DocumentSymbolRequest>(handlers::handle_document_symbol)
             .on::<lsp_types::request::GotoDefinition>(handlers::handle_goto_definition)
             .on::<lsp_types::request::GotoDeclaration>(handlers::handle_goto_declaration)
