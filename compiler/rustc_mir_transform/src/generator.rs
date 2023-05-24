@@ -67,7 +67,8 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
 use rustc_middle::ty::{GeneratorSubsts, SubstsRef};
 use rustc_mir_dataflow::impls::{
-    MaybeBorrowedLocals, MaybeLiveLocals, MaybeRequiresStorage, MaybeStorageLive,
+    get_borrowed_locals_results, MaybeBorrowedLocals, MaybeLiveLocals, MaybeRequiresStorage,
+    MaybeStorageLive,
 };
 use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_mir_dataflow::{self, Analysis};
@@ -599,6 +600,8 @@ fn locals_live_across_suspend_points<'tcx>(
 
     let mut borrowed_locals_cursor = borrowed_locals_results.cloned_results_cursor(body_ref);
 
+    let mut live_borrows_cursor = get_borrowed_locals_results(body, tcx);
+
     // Calculate the MIR locals that we actually need to keep storage around
     // for.
     let mut requires_storage_results =
@@ -620,8 +623,20 @@ fn locals_live_across_suspend_points<'tcx>(
     let mut live_locals_at_any_suspension_point = BitSet::new_empty(body.local_decls.len());
 
     for (block, data) in body.basic_blocks.iter_enumerated() {
+        for (i, stmt) in data.statements.iter().enumerate() {
+            debug!(?stmt);
+            let loc = Location { block, statement_index: i };
+            debug!("live_borrows_cursor seek before");
+            live_borrows_cursor.seek_before_primary_effect(loc);
+            debug!("finished seek before");
+            let live_borrowed_locals = live_borrows_cursor.get();
+            debug!(?live_borrowed_locals);
+        }
+
+        debug!(?block, ?data.terminator);
         if let TerminatorKind::Yield { .. } = data.terminator().kind {
             let loc = Location { block, statement_index: data.statements.len() };
+            debug!("encountered Yield at loc {:?}", loc);
 
             liveness.seek_to_block_end(block);
             let mut live_locals: BitSet<_> = BitSet::new_empty(body.local_decls.len());
@@ -639,7 +654,27 @@ fn locals_live_across_suspend_points<'tcx>(
                 // forever. Note that the final liveness is still bounded by the storage liveness
                 // of the local, which happens using the `intersect` operation below.
                 borrowed_locals_cursor.seek_before_primary_effect(loc);
-                live_locals.union(borrowed_locals_cursor.get());
+                let current_borrowed_locals = borrowed_locals_cursor.get();
+
+                debug!("live_borrows_cursor seek before");
+                live_borrows_cursor.seek_before_primary_effect(loc);
+                debug!("finished seek before");
+                let live_borrowed_locals = live_borrows_cursor.get();
+
+                let mut live_locals_stmt: BitSet<_> = BitSet::new_empty(body.local_decls.len());
+                liveness.seek_before_primary_effect(loc);
+                live_locals_stmt.union(liveness.get());
+
+                let mut storage_req: BitSet<_> = BitSet::new_empty(body.local_decls.len());
+                requires_storage_cursor.seek_before_primary_effect(loc);
+                storage_req.union(requires_storage_cursor.get());
+
+                debug!(?current_borrowed_locals);
+                debug!(?live_borrowed_locals);
+                debug!(?live_locals_stmt);
+                debug!(?storage_req);
+
+                live_locals.union(current_borrowed_locals);
             }
 
             // Store the storage liveness for later use so we can restore the state

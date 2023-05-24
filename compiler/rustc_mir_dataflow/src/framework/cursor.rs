@@ -140,7 +140,6 @@ where
     }
 
     /// Allows inspection of unreachable basic blocks even with `debug_assertions` enabled.
-    #[cfg(test)]
     pub(crate) fn allow_unreachable(&mut self) {
         #[cfg(debug_assertions)]
         self.reachable_blocks.insert_all()
