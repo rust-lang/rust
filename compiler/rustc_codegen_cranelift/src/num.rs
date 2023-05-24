@@ -1,6 +1,7 @@
 //! Various operations on integer and floating-point numbers
 
 use crate::prelude::*;
+use rustc_data_structures::OptionExt as _;
 
 pub(crate) fn bin_op_to_intcc(bin_op: BinOp, signed: bool) -> Option<IntCC> {
     use BinOp::*;
@@ -368,8 +369,7 @@ pub(crate) fn codegen_ptr_binop<'tcx>(
         .layout()
         .ty
         .builtin_deref(true)
-        .map(|TypeAndMut { ty, mutbl: _ }| !has_ptr_meta(fx.tcx, ty))
-        .unwrap_or(true);
+        .is_none_or(|TypeAndMut { ty, mutbl: _ }| !has_ptr_meta(fx.tcx, ty));
 
     if is_thin_ptr {
         match bin_op {

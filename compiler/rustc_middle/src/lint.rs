@@ -2,6 +2,7 @@ use std::cmp;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedMap;
+use rustc_data_structures::OptionExt as _;
 use rustc_errors::{Diagnostic, DiagnosticBuilder, DiagnosticId, DiagnosticMessage, MultiSpan};
 use rustc_hir::{HirId, ItemLocalId};
 use rustc_session::lint::{
@@ -389,7 +390,7 @@ pub fn struct_lint_level(
             // if this lint occurs in the expansion of a macro from an external crate,
             // allow individual lints to opt-out from being reported.
             let not_future_incompatible =
-                future_incompatible.map(|f| f.reason.edition().is_some()).unwrap_or(true);
+                future_incompatible.is_none_or(|f| f.reason.edition().is_some());
             if not_future_incompatible && !lint.report_in_external_macro {
                 err.cancel();
                 // Don't continue further, since we don't want to have

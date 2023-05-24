@@ -1,5 +1,6 @@
 //! Print diagnostics to explain why values are borrowed.
 
+use rustc_data_structures::OptionExt as _;
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
@@ -106,8 +107,8 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     LaterUseKind::Other => "used here",
                 };
                 // We can use `var_or_use_span` if either `path_span` is not present, or both spans are the same
-                if path_span.map(|path_span| path_span == var_or_use_span).unwrap_or(true) {
-                    if borrow_span.map(|sp| !sp.overlaps(var_or_use_span)).unwrap_or(true) {
+                if path_span.is_none_or(|path_span| path_span == var_or_use_span) {
+                    if borrow_span.is_none_or(|sp| !sp.overlaps(var_or_use_span)) {
                         err.span_label(
                             var_or_use_span,
                             format!("{borrow_desc}borrow later {message}"),
@@ -142,14 +143,14 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     LaterUseKind::Other => "borrow used here, in later iteration of loop",
                 };
                 // We can use `var_or_use_span` if either `path_span` is not present, or both spans are the same
-                if path_span.map(|path_span| path_span == var_or_use_span).unwrap_or(true) {
+                if path_span.is_none_or(|path_span| path_span == var_or_use_span) {
                     err.span_label(var_or_use_span, format!("{borrow_desc}{message}"));
                 } else {
                     // path_span must be `Some` as otherwise the if condition is true
                     let path_span = path_span.unwrap();
                     // path_span is only present in the case of closure capture
                     assert!(matches!(later_use_kind, LaterUseKind::ClosureCapture));
-                    if borrow_span.map(|sp| !sp.overlaps(var_or_use_span)).unwrap_or(true) {
+                    if borrow_span.is_none_or(|sp| !sp.overlaps(var_or_use_span)) {
                         let path_label = "used here by closure";
                         let capture_kind_label = message;
                         err.span_label(

@@ -617,8 +617,7 @@ impl<'a> AstValidator<'a> {
             .session
             .source_map()
             .span_to_snippet(span)
-            .map(|snippet| snippet.starts_with("#["))
-            .unwrap_or(true);
+            .map_or(true, |snippet| snippet.starts_with("#["));
         if !is_macro_callsite {
             self.lint_buffer.buffer_lint_with_diagnostic(
                 MISSING_ABI,

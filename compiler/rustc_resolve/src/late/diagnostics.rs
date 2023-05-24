@@ -12,6 +12,7 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust::path_segment_to_string;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::OptionExt as _;
 use rustc_errors::{
     pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
     MultiSpan,
@@ -2184,7 +2185,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     let deletion_span = deletion_span();
                     // the give lifetime originates from expanded code so we won't be able to remove it #104432
                     let lifetime_only_in_expanded_code =
-                        deletion_span.map(|sp| sp.in_derive_expansion()).unwrap_or(true);
+                        deletion_span.is_none_or(|sp| sp.in_derive_expansion());
                     if !lifetime_only_in_expanded_code {
                         self.r.lint_buffer.buffer_lint_with_diagnostic(
                             lint::builtin::UNUSED_LIFETIMES,
