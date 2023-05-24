@@ -102,6 +102,26 @@ fn partition_at_index_loop<'a, T, F>(
     }
 }
 
+/// Helper function that returns the index of the minimum element in the slice using the given
+/// comparator function
+fn min_index<T, F: FnMut(&T, &T) -> bool>(slice: &[T], is_less: &mut F) -> Option<usize> {
+    slice
+        .iter()
+        .enumerate()
+        .reduce(|acc, t| if is_less(t.1, acc.1) { t } else { acc })
+        .map(|(i, _)| i)
+}
+
+/// Helper function that returns the index of the maximum element in the slice using the given
+/// comparator function
+fn max_index<T, F: FnMut(&T, &T) -> bool>(slice: &[T], is_less: &mut F) -> Option<usize> {
+    slice
+        .iter()
+        .enumerate()
+        .reduce(|acc, t| if is_less(acc.1, t.1) { t } else { acc })
+        .map(|(i, _)| i)
+}
+
 /// Reorder the slice such that the element at `index` is at its final sorted position.
 pub fn partition_at_index<T, F>(
     v: &mut [T],
@@ -120,13 +140,13 @@ where
     } else if index == v.len() - 1 {
         // Find max element and place it in the last position of the array. We're free to use
         // `unwrap()` here because we know v must not be empty.
-        let (max_index, _) = v.iter().enumerate().max_by(from_is_less(&mut is_less)).unwrap();
-        v.swap(max_index, index);
+        let max_idx = max_index(v, &mut is_less).unwrap();
+        v.swap(max_idx, index);
     } else if index == 0 {
         // Find min element and place it in the first position of the array. We're free to use
         // `unwrap()` here because we know v must not be empty.
-        let (min_index, _) = v.iter().enumerate().min_by(from_is_less(&mut is_less)).unwrap();
-        v.swap(min_index, index);
+        let min_idx = min_index(v, &mut is_less).unwrap();
+        v.swap(min_idx, index);
     } else {
         partition_at_index_loop(v, index, &mut is_less, None);
     }
@@ -135,16 +155,6 @@ where
     let (pivot, right) = right.split_at_mut(1);
     let pivot = &mut pivot[0];
     (left, pivot, right)
-}
-
-/// helper function used to find the index of the min/max element
-/// using e.g. `slice.iter().enumerate().min_by(from_is_less(&mut is_less)).unwrap()`
-fn from_is_less<T>(
-    is_less: &mut impl FnMut(&T, &T) -> bool,
-) -> impl FnMut(&(usize, &T), &(usize, &T)) -> cmp::Ordering + '_ {
-    |&(_, x), &(_, y)| {
-        if is_less(x, y) { cmp::Ordering::Less } else { cmp::Ordering::Greater }
-    }
 }
 
 /// Selection algorithm to select the k-th element from the slice in guaranteed O(n) time.
@@ -170,14 +180,14 @@ fn median_of_medians<T, F: FnMut(&T, &T) -> bool>(mut v: &mut [T], is_less: &mut
         if k == v.len() - 1 {
             // Find max element and place it in the last position of the array. We're free to use
             // `unwrap()` here because we know v must not be empty.
-            let (max_index, _) = v.iter().enumerate().max_by(from_is_less(is_less)).unwrap();
-            v.swap(max_index, k);
+            let max_idx = max_index(v, is_less).unwrap();
+            v.swap(max_idx, k);
             return;
         } else if k == 0 {
             // Find min element and place it in the first position of the array. We're free to use
             // `unwrap()` here because we know v must not be empty.
-            let (min_index, _) = v.iter().enumerate().min_by(from_is_less(is_less)).unwrap();
-            v.swap(min_index, k);
+            let min_idx = min_index(v, is_less).unwrap();
+            v.swap(min_idx, k);
             return;
         }
 
