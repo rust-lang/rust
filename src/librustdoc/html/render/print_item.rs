@@ -1820,6 +1820,13 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
         should_render_fields: bool,
     }
 
+    struct Field<'a> {
+        item: &'a clean::Item,
+        name: String,
+        id: String,
+        ty: String,
+    }
+
     impl<'a, 'cx: 'a> ItemStruct<'a, 'cx> {
         fn new(
             cx: std::cell::RefCell<&'a mut Context<'cx>>,
@@ -1864,26 +1871,16 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
             })
         }
 
-        fn render_field_in_span<'b>(
+        fn struct_field_items_iter<'b>(
             &'b self,
-            index: &'b usize,
-            field: &'b clean::Item,
-            ty: &'b clean::Type,
-        ) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
+        ) -> impl Iterator<Item = Field<'a>> + Captures<'a> + 'b + Captures<'cx> {
+            struct_field_items(self.s).enumerate().map(|(index, (item, ty))| {
                 let mut cx = self.cx.borrow_mut();
-                let field_name =
-                    field.name.map_or_else(|| index.to_string(), |sym| sym.as_str().to_string());
-                let id = cx.derive_id(format!("{}.{}", ItemType::StructField, field_name));
-                let ty = ty.print(*cx);
-                write!(
-                    f,
-                    "<span id=\"{id}\" class=\"{item_type} small-section-header\">\
-                        <a href=\"#{id}\" class=\"anchor field\">§</a>\
-                        <code>{field_name}: {ty}</code>\
-                    </span>",
-                    item_type = ItemType::StructField,
-                )
+                let name =
+                    item.name.map_or_else(|| index.to_string(), |sym| sym.as_str().to_string());
+                let id = cx.derive_id(format!("{}.{}", ItemType::StructField, name));
+                let ty = ty.print(*cx).to_string();
+                Field { item, name, id, ty }
             })
         }
 
