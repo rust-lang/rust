@@ -76,7 +76,7 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
         if let Some(item) = ast::Item::cast(node.clone()) {
             if let Some(def) = sema.resolve_attr_macro_call(&item) {
                 break (
-                    def.name(db).to_string(),
+                    def.name(db).display(db).to_string(),
                     expand_attr_macro_recur(&sema, &item)?,
                     SyntaxKind::MACRO_ITEMS,
                 );

@@ -181,7 +181,7 @@ impl CapturedItem {
 
     pub fn display_place(&self, owner: DefWithBodyId, db: &dyn HirDatabase) -> String {
         let body = db.body(owner);
-        let mut result = body[self.place.local].name.to_string();
+        let mut result = body[self.place.local].name.display(db.upcast()).to_string();
         let mut field_need_paren = false;
         for proj in &self.place.projections {
             match proj {

@@ -139,7 +139,7 @@ pub(crate) fn complete_attribute_path(
         }
 
         if is_inner || !attr_completion.prefer_inner {
-            item.add_to(acc);
+            item.add_to(acc, ctx.db);
         }
     };
 

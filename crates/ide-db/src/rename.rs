@@ -202,12 +202,13 @@ fn rename_mod(
         //  - Module has submodules defined in separate files
         let dir_paths = match (is_mod_rs, has_detached_child, module.name(sema.db)) {
             // Go up one level since the anchor is inside the dir we're trying to rename
-            (true, _, Some(mod_name)) => {
-                Some((format!("../{}", mod_name.unescaped()), format!("../{new_name}")))
-            }
+            (true, _, Some(mod_name)) => Some((
+                format!("../{}", mod_name.unescaped().display(sema.db)),
+                format!("../{new_name}"),
+            )),
             // The anchor is on the same level as target dir
             (false, true, Some(mod_name)) => {
-                Some((mod_name.unescaped().to_string(), new_name.to_owned()))
+                Some((mod_name.unescaped().display(sema.db).to_string(), new_name.to_owned()))
             }
             _ => None,
         };

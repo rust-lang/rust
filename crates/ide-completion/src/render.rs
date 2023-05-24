@@ -126,24 +126,25 @@ pub(crate) fn render_field(
     field: hir::Field,
     ty: &hir::Type,
 ) -> CompletionItem {
+    let db = ctx.db();
     let is_deprecated = ctx.is_deprecated(field);
-    let name = field.name(ctx.db());
+    let name = field.name(db);
     let (name, escaped_name) = (name.unescaped().to_smol_str(), name.to_smol_str());
     let mut item = CompletionItem::new(
         SymbolKind::Field,
         ctx.source_range(),
-        field_with_receiver(receiver.as_ref(), &name),
+        field_with_receiver(db, receiver.as_ref(), &name),
     );
     item.set_relevance(CompletionRelevance {
         type_match: compute_type_match(ctx.completion, ty),
         exact_name_match: compute_exact_name_match(ctx.completion, name.as_str()),
         ..CompletionRelevance::default()
     });
-    item.detail(ty.display(ctx.db()).to_string())
-        .set_documentation(field.docs(ctx.db()))
+    item.detail(ty.display(db).to_string())
+        .set_documentation(field.docs(db))
         .set_deprecated(is_deprecated)
         .lookup_by(name);
-    item.insert_text(field_with_receiver(receiver.as_ref(), &escaped_name));
+    item.insert_text(field_with_receiver(db, receiver.as_ref(), &escaped_name));
     if let Some(receiver) = &dot_access.receiver {
         if let Some(original) = ctx.completion.sema.original_ast_node(receiver.clone()) {
             if let Some(ref_match) = compute_ref_match(ctx.completion, ty) {
@@ -152,11 +153,18 @@ pub(crate) fn render_field(
         }
     }
     item.doc_aliases(ctx.doc_aliases);
-    item.build()
+    item.build(db)
 }
 
-fn field_with_receiver(receiver: Option<&hir::Name>, field_name: &str) -> SmolStr {
-    receiver.map_or_else(|| field_name.into(), |receiver| format!("{receiver}.{field_name}").into())
+fn field_with_receiver(
+    db: &RootDatabase,
+    receiver: Option<&hir::Name>,
+    field_name: &str,
+) -> SmolStr {
+    receiver.map_or_else(
+        || field_name.into(),
+        |receiver| format!("{}.{field_name}", receiver.display(db)).into(),
+    )
 }
 
 pub(crate) fn render_tuple_field(
@@ -168,10 +176,10 @@ pub(crate) fn render_tuple_field(
     let mut item = CompletionItem::new(
         SymbolKind::Field,
         ctx.source_range(),
-        field_with_receiver(receiver.as_ref(), &field.to_string()),
+        field_with_receiver(ctx.db(), receiver.as_ref(), &field.to_string()),
     );
     item.detail(ty.display(ctx.db()).to_string()).lookup_by(field.to_string());
-    item.build()
+    item.build(ctx.db())
 }
 
 pub(crate) fn render_type_inference(
@@ -181,7 +189,7 @@ pub(crate) fn render_type_inference(
     let mut builder =
         CompletionItem::new(CompletionItemKind::InferredType, ctx.source_range(), ty_string);
     builder.set_relevance(CompletionRelevance { is_definite: true, ..Default::default() });
-    builder.build()
+    builder.build(ctx.db)
 }
 
 pub(crate) fn render_path_resolution(
@@ -319,7 +327,7 @@ fn render_resolution_path(
                 item.lookup_by(name.clone())
                     .label(SmolStr::from_iter([&name, "<…>"]))
                     .trigger_call_info()
-                    .insert_snippet(cap, format!("{local_name}<$0>"));
+                    .insert_snippet(cap, format!("{}<$0>", local_name.display(db)));
             }
         }
     }

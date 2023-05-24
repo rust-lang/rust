@@ -184,6 +184,7 @@ impl<'db> MatchFinder<'db> {
                 (
                     file_id,
                     replacing::matches_to_edit(
+                        self.sema.db,
                         &matches,
                         &self.sema.db.file_text(file_id),
                         &self.rules,

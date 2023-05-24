@@ -619,7 +619,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
             }
             Expr::MethodCall { receiver, args, method_name, .. } => {
                 let (func_id, generic_args) =
-                    self.infer.method_resolution(expr_id).ok_or_else(|| MirLowerError::UnresolvedMethod(format!("{}", method_name)))?;
+                    self.infer.method_resolution(expr_id).ok_or_else(|| MirLowerError::UnresolvedMethod(method_name.display(self.db.upcast()).to_string()))?;
                 let func = Operand::from_fn(self.db, func_id, generic_args);
                 self.lower_call_and_args(
                     func,
@@ -1614,7 +1614,11 @@ impl<'ctx> MirLowerCtx<'ctx> {
             Ok(r) => Ok(r),
             Err(e) => {
                 let data = self.db.enum_data(variant.parent);
-                let name = format!("{}::{}", data.name, data.variants[variant.local_id].name);
+                let name = format!(
+                    "{}::{}",
+                    data.name.display(self.db.upcast()),
+                    data.variants[variant.local_id].name.display(self.db.upcast())
+                );
                 Err(MirLowerError::ConstEvalError(name, Box::new(e)))
             }
         }
@@ -1766,13 +1770,17 @@ pub fn mir_body_for_closure_query(
 
 pub fn mir_body_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Result<Arc<MirBody>> {
     let _p = profile::span("mir_body_query").detail(|| match def {
-        DefWithBodyId::FunctionId(it) => db.function_data(it).name.to_string(),
-        DefWithBodyId::StaticId(it) => db.static_data(it).name.clone().to_string(),
-        DefWithBodyId::ConstId(it) => {
-            db.const_data(it).name.clone().unwrap_or_else(Name::missing).to_string()
-        }
+        DefWithBodyId::FunctionId(it) => db.function_data(it).name.display(db.upcast()).to_string(),
+        DefWithBodyId::StaticId(it) => db.static_data(it).name.display(db.upcast()).to_string(),
+        DefWithBodyId::ConstId(it) => db
+            .const_data(it)
+            .name
+            .clone()
+            .unwrap_or_else(Name::missing)
+            .display(db.upcast())
+            .to_string(),
         DefWithBodyId::VariantId(it) => {
-            db.enum_data(it.parent).variants[it.local_id].name.to_string()
+            db.enum_data(it.parent).variants[it.local_id].name.display(db.upcast()).to_string()
         }
     });
     let body = db.body(def);

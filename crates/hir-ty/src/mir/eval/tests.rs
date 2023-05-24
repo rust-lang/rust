@@ -13,7 +13,7 @@ fn eval_main(db: &TestDB, file_id: FileId) -> Result<(String, String), MirEvalEr
         .declarations()
         .find_map(|x| match x {
             hir_def::ModuleDefId::FunctionId(x) => {
-                if db.function_data(x).name.to_string() == "main" {
+                if db.function_data(x).name.display(db).to_string() == "main" {
                     Some(x)
                 } else {
                     None

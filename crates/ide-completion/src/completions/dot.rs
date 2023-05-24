@@ -23,7 +23,7 @@ pub(crate) fn complete_dot(
         let mut item =
             CompletionItem::new(CompletionItemKind::Keyword, ctx.source_range(), "await");
         item.detail("expr.await");
-        item.add_to(acc);
+        item.add_to(acc, ctx.db);
     }
 
     if let DotAccessKind::Method { .. } = dot_access.kind {

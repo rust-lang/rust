@@ -1,9 +1,11 @@
 //! HIR for references to types. Paths in these are not yet resolved. They can
 //! be directly created from an ast::TypeRef, without further queries.
 
+use core::fmt;
 use std::fmt::Write;
 
 use hir_expand::{
+    db::ExpandDatabase,
     name::{AsName, Name},
     AstId,
 };
@@ -383,21 +385,25 @@ pub enum ConstRefOrPath {
     Path(Name),
 }
 
-impl std::fmt::Display for ConstRefOrPath {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ConstRefOrPath::Scalar(s) => s.fmt(f),
-            ConstRefOrPath::Path(n) => n.fmt(f),
-        }
-    }
-}
-
 impl ConstRefOrPath {
     pub(crate) fn from_expr_opt(expr: Option<ast::Expr>) -> Self {
         match expr {
             Some(x) => Self::from_expr(x),
             None => Self::Scalar(ConstRef::Unknown),
         }
+    }
+
+    pub fn display<'a>(&'a self, db: &'a dyn ExpandDatabase) -> impl fmt::Display + 'a {
+        struct Display<'a>(&'a dyn ExpandDatabase, &'a ConstRefOrPath);
+        impl fmt::Display for Display<'_> {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                match self.1 {
+                    ConstRefOrPath::Scalar(s) => s.fmt(f),
+                    ConstRefOrPath::Path(n) => n.display(self.0).fmt(f),
+                }
+            }
+        }
+        Display(db, self)
     }
 
     // FIXME: as per the comments on `TypeRef::Array`, this evaluation should not happen at this

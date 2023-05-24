@@ -24,27 +24,6 @@ enum Repr {
     TupleField(usize),
 }
 
-impl fmt::Display for Name {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.0 {
-            Repr::Text(text) => fmt::Display::fmt(&text, f),
-            Repr::TupleField(idx) => fmt::Display::fmt(&idx, f),
-        }
-    }
-}
-
-impl<'a> fmt::Display for UnescapedName<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.0 .0 {
-            Repr::Text(text) => {
-                let text = text.strip_prefix("r#").unwrap_or(text);
-                fmt::Display::fmt(&text, f)
-            }
-            Repr::TupleField(idx) => fmt::Display::fmt(&idx, f),
-        }
-    }
-}
-
 impl<'a> UnescapedName<'a> {
     /// Returns the textual representation of this name as a [`SmolStr`]. Prefer using this over
     /// [`ToString::to_string`] if possible as this conversion is cheaper in the general case.
@@ -59,6 +38,11 @@ impl<'a> UnescapedName<'a> {
             }
             Repr::TupleField(it) => SmolStr::new(it.to_string()),
         }
+    }
+
+    pub fn display(&'a self, db: &dyn crate::db::ExpandDatabase) -> impl fmt::Display + 'a {
+        _ = db;
+        UnescapedDisplay { name: self }
     }
 }
 
@@ -165,6 +149,40 @@ impl Name {
         match &self.0 {
             Repr::Text(it) => it.starts_with("r#"),
             Repr::TupleField(_) => false,
+        }
+    }
+
+    pub fn display<'a>(&'a self, db: &dyn crate::db::ExpandDatabase) -> impl fmt::Display + 'a {
+        _ = db;
+        Display { name: self }
+    }
+}
+
+struct Display<'a> {
+    name: &'a Name,
+}
+
+impl<'a> fmt::Display for Display<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.name.0 {
+            Repr::Text(text) => fmt::Display::fmt(&text, f),
+            Repr::TupleField(idx) => fmt::Display::fmt(&idx, f),
+        }
+    }
+}
+
+struct UnescapedDisplay<'a> {
+    name: &'a UnescapedName<'a>,
+}
+
+impl<'a> fmt::Display for UnescapedDisplay<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.name.0 .0 {
+            Repr::Text(text) => {
+                let text = text.strip_prefix("r#").unwrap_or(text);
+                fmt::Display::fmt(&text, f)
+            }
+            Repr::TupleField(idx) => fmt::Display::fmt(&idx, f),
         }
     }
 }

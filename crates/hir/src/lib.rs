@@ -329,7 +329,7 @@ impl ModuleDef {
             segments.extend(m.name(db))
         }
         segments.reverse();
-        Some(segments.into_iter().join("::"))
+        Some(segments.iter().map(|it| it.display(db.upcast())).join("::"))
     }
 
     pub fn canonical_module_path(
@@ -555,7 +555,11 @@ impl Module {
     /// Fills `acc` with the module's diagnostics.
     pub fn diagnostics(self, db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>) {
         let _p = profile::span("Module::diagnostics").detail(|| {
-            format!("{:?}", self.name(db).map_or("<unknown>".into(), |name| name.to_string()))
+            format!(
+                "{:?}",
+                self.name(db)
+                    .map_or("<unknown>".into(), |name| name.display(db.upcast()).to_string())
+            )
         });
         let def_map = self.id.def_map(db.upcast());
         for diag in def_map.diagnostics() {

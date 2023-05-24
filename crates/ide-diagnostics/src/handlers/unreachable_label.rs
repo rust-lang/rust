@@ -8,7 +8,7 @@ pub(crate) fn unreachable_label(
     let name = &d.name;
     Diagnostic::new(
         "unreachable-label",
-        format!("use of unreachable label `{name}`"),
+        format!("use of unreachable label `{}`", name.display(ctx.sema.db)),
         ctx.sema.diagnostics_display_range(d.node.clone().map(|it| it.into())).range,
     )
 }

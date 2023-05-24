@@ -370,7 +370,7 @@ fn definition_owner_name(db: &RootDatabase, def: &Definition) -> Option<String> 
         Definition::Variant(e) => Some(e.parent_enum(db).name(db)),
         _ => None,
     }
-    .map(|name| name.to_string())
+    .map(|name| name.display(db).to_string())
 }
 
 pub(super) fn path(db: &RootDatabase, module: hir::Module, item_name: Option<String>) -> String {
@@ -380,7 +380,7 @@ pub(super) fn path(db: &RootDatabase, module: hir::Module, item_name: Option<Str
         .path_to_root(db)
         .into_iter()
         .rev()
-        .flat_map(|it| it.name(db).map(|name| name.to_string()));
+        .flat_map(|it| it.name(db).map(|name| name.display(db).to_string()));
     crate_name.into_iter().chain(module_path).chain(item_name).join("::")
 }
 
@@ -468,18 +468,20 @@ pub(super) fn definition(
         Definition::BuiltinType(it) => {
             return famous_defs
                 .and_then(|fd| builtin(fd, it))
-                .or_else(|| Some(Markup::fenced_block(&it.name())))
+                .or_else(|| Some(Markup::fenced_block(&it.name().display(db))))
         }
         Definition::Local(it) => return local(db, it, config),
         Definition::SelfType(impl_def) => {
             impl_def.self_ty(db).as_adt().map(|adt| label_and_docs(db, adt))?
         }
         Definition::GenericParam(it) => label_and_docs(db, it),
-        Definition::Label(it) => return Some(Markup::fenced_block(&it.name(db))),
+        Definition::Label(it) => return Some(Markup::fenced_block(&it.name(db).display(db))),
         // FIXME: We should be able to show more info about these
         Definition::BuiltinAttr(it) => return render_builtin_attr(db, it),
         Definition::ToolModule(it) => return Some(Markup::fenced_block(&it.name(db))),
-        Definition::DeriveHelper(it) => (format!("derive_helper {}", it.name(db)), None),
+        Definition::DeriveHelper(it) => {
+            (format!("derive_helper {}", it.name(db).display(db)), None)
+        }
     };
 
     let docs = docs
@@ -717,19 +719,19 @@ fn markup(docs: Option<String>, desc: String, mod_path: Option<String>) -> Optio
 
 fn builtin(famous_defs: &FamousDefs<'_, '_>, builtin: hir::BuiltinType) -> Option<Markup> {
     // std exposes prim_{} modules with docstrings on the root to document the builtins
-    let primitive_mod = format!("prim_{}", builtin.name());
+    let primitive_mod = format!("prim_{}", builtin.name().display(famous_defs.0.db));
     let doc_owner = find_std_module(famous_defs, &primitive_mod)?;
     let docs = doc_owner.attrs(famous_defs.0.db).docs()?;
-    markup(Some(docs.into()), builtin.name().to_string(), None)
+    markup(Some(docs.into()), builtin.name().display(famous_defs.0.db).to_string(), None)
 }
 
 fn find_std_module(famous_defs: &FamousDefs<'_, '_>, name: &str) -> Option<hir::Module> {
     let db = famous_defs.0.db;
     let std_crate = famous_defs.std()?;
     let std_root_module = std_crate.root_module(db);
-    std_root_module
-        .children(db)
-        .find(|module| module.name(db).map_or(false, |module| module.to_string() == name))
+    std_root_module.children(db).find(|module| {
+        module.name(db).map_or(false, |module| module.display(db).to_string() == name)
+    })
 }
 
 fn local(db: &RootDatabase, it: hir::Local, config: &HoverConfig) -> Option<Markup> {
@@ -748,7 +750,7 @@ fn local(db: &RootDatabase, it: hir::Local, config: &HoverConfig) -> Option<Mark
             } else {
                 ""
             };
-            format!("{let_kw}{is_mut}{name}: {ty}")
+            format!("{let_kw}{is_mut}{}: {ty}", name.display(db))
         }
         None => format!("{is_mut}self: {ty}"),
     };

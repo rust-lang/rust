@@ -153,7 +153,7 @@ impl<'a> PatCtxt<'a> {
                 match (bm, ty.kind(Interner)) {
                     (BindingMode::Ref(_), TyKind::Ref(.., rty)) => ty = rty,
                     (BindingMode::Ref(_), _) => {
-                        never!("`ref {}` has wrong type {:?}", name, ty);
+                        never!("`ref {}` has wrong type {:?}", name.display(self.db.upcast()), ty);
                         self.errors.push(PatternError::UnexpectedType);
                         return Pat { ty: ty.clone(), kind: PatKind::Wild.into() };
                     }
@@ -298,7 +298,7 @@ impl HirDisplay for Pat {
         match &*self.kind {
             PatKind::Wild => write!(f, "_"),
             PatKind::Binding { name, subpattern } => {
-                write!(f, "{name}")?;
+                write!(f, "{}", name.display(f.db.upcast()))?;
                 if let Some(subpattern) = subpattern {
                     write!(f, " @ ")?;
                     subpattern.hir_fmt(f)?;
@@ -319,10 +319,14 @@ impl HirDisplay for Pat {
                     match variant {
                         VariantId::EnumVariantId(v) => {
                             let data = f.db.enum_data(v.parent);
-                            write!(f, "{}", data.variants[v.local_id].name)?;
+                            write!(f, "{}", data.variants[v.local_id].name.display(f.db.upcast()))?;
                         }
-                        VariantId::StructId(s) => write!(f, "{}", f.db.struct_data(s).name)?,
-                        VariantId::UnionId(u) => write!(f, "{}", f.db.union_data(u).name)?,
+                        VariantId::StructId(s) => {
+                            write!(f, "{}", f.db.struct_data(s).name.display(f.db.upcast()))?
+                        }
+                        VariantId::UnionId(u) => {
+                            write!(f, "{}", f.db.union_data(u).name.display(f.db.upcast()))?
+                        }
                     };
 
                     let variant_data = variant.variant_data(f.db.upcast());
@@ -336,7 +340,11 @@ impl HirDisplay for Pat {
                             .map(|p| {
                                 printed += 1;
                                 WriteWith(move |f| {
-                                    write!(f, "{}: ", rec_fields[p.field].name)?;
+                                    write!(
+                                        f,
+                                        "{}: ",
+                                        rec_fields[p.field].name.display(f.db.upcast())
+                                    )?;
                                     p.pattern.hir_fmt(f)
                                 })
                             });

@@ -162,7 +162,7 @@ fn signature_help_for_call(
     match callable.kind() {
         hir::CallableKind::Function(func) => {
             res.doc = func.docs(db).map(|it| it.into());
-            format_to!(res.signature, "fn {}", func.name(db));
+            format_to!(res.signature, "fn {}", func.name(db).display(db));
             fn_params = Some(match callable.receiver_param(db) {
                 Some(_self) => func.params_without_self(db),
                 None => func.assoc_fn_params(db),
@@ -170,15 +170,15 @@ fn signature_help_for_call(
         }
         hir::CallableKind::TupleStruct(strukt) => {
             res.doc = strukt.docs(db).map(|it| it.into());
-            format_to!(res.signature, "struct {}", strukt.name(db));
+            format_to!(res.signature, "struct {}", strukt.name(db).display(db));
         }
         hir::CallableKind::TupleEnumVariant(variant) => {
             res.doc = variant.docs(db).map(|it| it.into());
             format_to!(
                 res.signature,
                 "enum {}::{}",
-                variant.parent_enum(db).name(db),
-                variant.name(db)
+                variant.parent_enum(db).name(db).display(db),
+                variant.name(db).display(db)
             );
         }
         hir::CallableKind::Closure | hir::CallableKind::FnPtr | hir::CallableKind::Other => (),
@@ -248,31 +248,31 @@ fn signature_help_for_generics(
     match generics_def {
         hir::GenericDef::Function(it) => {
             res.doc = it.docs(db).map(|it| it.into());
-            format_to!(res.signature, "fn {}", it.name(db));
+            format_to!(res.signature, "fn {}", it.name(db).display(db));
         }
         hir::GenericDef::Adt(hir::Adt::Enum(it)) => {
             res.doc = it.docs(db).map(|it| it.into());
-            format_to!(res.signature, "enum {}", it.name(db));
+            format_to!(res.signature, "enum {}", it.name(db).display(db));
         }
         hir::GenericDef::Adt(hir::Adt::Struct(it)) => {
             res.doc = it.docs(db).map(|it| it.into());
-            format_to!(res.signature, "struct {}", it.name(db));
+            format_to!(res.signature, "struct {}", it.name(db).display(db));
         }
         hir::GenericDef::Adt(hir::Adt::Union(it)) => {
             res.doc = it.docs(db).map(|it| it.into());
-            format_to!(res.signature, "union {}", it.name(db));
+            format_to!(res.signature, "union {}", it.name(db).display(db));
         }
         hir::GenericDef::Trait(it) => {
             res.doc = it.docs(db).map(|it| it.into());
-            format_to!(res.signature, "trait {}", it.name(db));
+            format_to!(res.signature, "trait {}", it.name(db).display(db));
         }
         hir::GenericDef::TraitAlias(it) => {
             res.doc = it.docs(db).map(|it| it.into());
-            format_to!(res.signature, "trait {}", it.name(db));
+            format_to!(res.signature, "trait {}", it.name(db).display(db));
         }
         hir::GenericDef::TypeAlias(it) => {
             res.doc = it.docs(db).map(|it| it.into());
-            format_to!(res.signature, "type {}", it.name(db));
+            format_to!(res.signature, "type {}", it.name(db).display(db));
         }
         hir::GenericDef::Variant(it) => {
             // In paths, generics of an enum can be specified *after* one of its variants.
@@ -280,7 +280,7 @@ fn signature_help_for_generics(
             // We'll use the signature of the enum, but include the docs of the variant.
             res.doc = it.docs(db).map(|it| it.into());
             let enum_ = it.parent_enum(db);
-            format_to!(res.signature, "enum {}", enum_.name(db));
+            format_to!(res.signature, "enum {}", enum_.name(db).display(db));
             generics_def = enum_.into();
         }
         // These don't have generic args that can be specified
@@ -412,7 +412,12 @@ fn signature_help_for_tuple_struct_pat(
         let en = variant.parent_enum(db);
 
         res.doc = en.docs(db).map(|it| it.into());
-        format_to!(res.signature, "enum {}::{} (", en.name(db), variant.name(db));
+        format_to!(
+            res.signature,
+            "enum {}::{} (",
+            en.name(db).display(db),
+            variant.name(db).display(db)
+        );
         variant.fields(db)
     } else {
         let adt = match path_res {
@@ -424,7 +429,7 @@ fn signature_help_for_tuple_struct_pat(
         match adt {
             hir::Adt::Struct(it) => {
                 res.doc = it.docs(db).map(|it| it.into());
-                format_to!(res.signature, "struct {} (", it.name(db));
+                format_to!(res.signature, "struct {} (", it.name(db).display(db));
                 it.fields(db)
             }
             _ => return None,
@@ -486,7 +491,12 @@ fn signature_help_for_record_(
         let en = variant.parent_enum(db);
 
         res.doc = en.docs(db).map(|it| it.into());
-        format_to!(res.signature, "enum {}::{} {{ ", en.name(db), variant.name(db));
+        format_to!(
+            res.signature,
+            "enum {}::{} {{ ",
+            en.name(db).display(db),
+            variant.name(db).display(db)
+        );
     } else {
         let adt = match path_res {
             PathResolution::SelfType(imp) => imp.self_ty(db).as_adt()?,
@@ -498,12 +508,12 @@ fn signature_help_for_record_(
             hir::Adt::Struct(it) => {
                 fields = it.fields(db);
                 res.doc = it.docs(db).map(|it| it.into());
-                format_to!(res.signature, "struct {} {{ ", it.name(db));
+                format_to!(res.signature, "struct {} {{ ", it.name(db).display(db));
             }
             hir::Adt::Union(it) => {
                 fields = it.fields(db);
                 res.doc = it.docs(db).map(|it| it.into());
-                format_to!(res.signature, "union {} {{ ", it.name(db));
+                format_to!(res.signature, "union {} {{ ", it.name(db).display(db));
             }
             _ => return None,
         }
@@ -514,7 +524,7 @@ fn signature_help_for_record_(
     let mut buf = String::new();
     for (field, ty) in fields2 {
         let name = field.name(db);
-        format_to!(buf, "{name}: {}", ty.display_truncated(db, Some(20)));
+        format_to!(buf, "{}: {}", name.display(db), ty.display_truncated(db, Some(20)));
         res.push_record_field(&buf);
         buf.clear();
 
@@ -524,7 +534,7 @@ fn signature_help_for_record_(
     }
     for (name, field) in fields {
         let Some(field) = field else { continue };
-        format_to!(buf, "{name}: {}", field.ty(db).display_truncated(db, Some(20)));
+        format_to!(buf, "{}: {}", name.display(db), field.ty(db).display_truncated(db, Some(20)));
         res.push_record_field(&buf);
         buf.clear();
     }

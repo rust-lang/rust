@@ -97,7 +97,7 @@ fn compute_fields_ranks(
         .fields(ctx.db())
         .into_iter()
         .enumerate()
-        .map(|(idx, field)| (field.name(ctx.db()).to_string(), idx))
+        .map(|(idx, field)| (field.name(ctx.db()).display(ctx.db()).to_string(), idx))
         .collect();
 
     Some(res)

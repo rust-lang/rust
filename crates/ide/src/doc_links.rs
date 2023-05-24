@@ -394,7 +394,7 @@ fn rewrite_url_link(db: &RootDatabase, def: Definition, target: &str) -> Option<
 fn mod_path_of_def(db: &RootDatabase, def: Definition) -> Option<String> {
     def.canonical_module_path(db).map(|it| {
         let mut path = String::new();
-        it.flat_map(|it| it.name(db)).for_each(|name| format_to!(path, "{}/", name));
+        it.flat_map(|it| it.name(db)).for_each(|name| format_to!(path, "{}/", name.display(db)));
         path
     })
 }
@@ -567,9 +567,9 @@ fn filename_and_frag_for_def(
 
     let res = match def {
         Definition::Adt(adt) => match adt {
-            Adt::Struct(s) => format!("struct.{}.html", s.name(db)),
-            Adt::Enum(e) => format!("enum.{}.html", e.name(db)),
-            Adt::Union(u) => format!("union.{}.html", u.name(db)),
+            Adt::Struct(s) => format!("struct.{}.html", s.name(db).display(db.upcast())),
+            Adt::Enum(e) => format!("enum.{}.html", e.name(db).display(db.upcast())),
+            Adt::Union(u) => format!("union.{}.html", u.name(db).display(db.upcast())),
         },
         Definition::Module(m) => match m.name(db) {
             // `#[doc(keyword = "...")]` is internal used only by rust compiler
@@ -577,21 +577,25 @@ fn filename_and_frag_for_def(
                 Some(kw) => {
                     format!("keyword.{}.html", kw.trim_matches('"'))
                 }
-                None => format!("{name}/index.html"),
+                None => format!("{}/index.html", name.display(db.upcast())),
             },
             None => String::from("index.html"),
         },
-        Definition::Trait(t) => format!("trait.{}.html", t.name(db)),
-        Definition::TraitAlias(t) => format!("traitalias.{}.html", t.name(db)),
-        Definition::TypeAlias(t) => format!("type.{}.html", t.name(db)),
-        Definition::BuiltinType(t) => format!("primitive.{}.html", t.name()),
-        Definition::Function(f) => format!("fn.{}.html", f.name(db)),
+        Definition::Trait(t) => format!("trait.{}.html", t.name(db).display(db.upcast())),
+        Definition::TraitAlias(t) => format!("traitalias.{}.html", t.name(db).display(db.upcast())),
+        Definition::TypeAlias(t) => format!("type.{}.html", t.name(db).display(db.upcast())),
+        Definition::BuiltinType(t) => format!("primitive.{}.html", t.name().display(db.upcast())),
+        Definition::Function(f) => format!("fn.{}.html", f.name(db).display(db.upcast())),
         Definition::Variant(ev) => {
-            format!("enum.{}.html#variant.{}", ev.parent_enum(db).name(db), ev.name(db))
+            format!(
+                "enum.{}.html#variant.{}",
+                ev.parent_enum(db).name(db).display(db.upcast()),
+                ev.name(db).display(db.upcast())
+            )
         }
-        Definition::Const(c) => format!("const.{}.html", c.name(db)?),
-        Definition::Static(s) => format!("static.{}.html", s.name(db)),
-        Definition::Macro(mac) => format!("macro.{}.html", mac.name(db)),
+        Definition::Const(c) => format!("const.{}.html", c.name(db)?.display(db.upcast())),
+        Definition::Static(s) => format!("static.{}.html", s.name(db).display(db.upcast())),
+        Definition::Macro(mac) => format!("macro.{}.html", mac.name(db).display(db.upcast())),
         Definition::Field(field) => {
             let def = match field.parent_def(db) {
                 hir::VariantDef::Struct(it) => Definition::Adt(it.into()),
@@ -599,7 +603,11 @@ fn filename_and_frag_for_def(
                 hir::VariantDef::Variant(it) => Definition::Variant(it),
             };
             let (_, file, _) = filename_and_frag_for_def(db, def)?;
-            return Some((def, file, Some(format!("structfield.{}", field.name(db)))));
+            return Some((
+                def,
+                file,
+                Some(format!("structfield.{}", field.name(db).display(db.upcast()))),
+            ));
         }
         Definition::SelfType(impl_) => {
             let adt = impl_.self_ty(db).as_adt()?.into();
@@ -633,12 +641,14 @@ fn get_assoc_item_fragment(db: &dyn HirDatabase, assoc_item: hir::AssocItem) -> 
             // Rustdoc makes this decision based on whether a method 'has defaultness'.
             // Currently this is only the case for provided trait methods.
             if is_trait_method && !function.has_body(db) {
-                format!("tymethod.{}", function.name(db))
+                format!("tymethod.{}", function.name(db).display(db.upcast()))
             } else {
-                format!("method.{}", function.name(db))
+                format!("method.{}", function.name(db).display(db.upcast()))
             }
         }
-        AssocItem::Const(constant) => format!("associatedconstant.{}", constant.name(db)?),
-        AssocItem::TypeAlias(ty) => format!("associatedtype.{}", ty.name(db)),
+        AssocItem::Const(constant) => {
+            format!("associatedconstant.{}", constant.name(db)?.display(db.upcast()))
+        }
+        AssocItem::TypeAlias(ty) => format!("associatedtype.{}", ty.name(db).display(db.upcast())),
     })
 }

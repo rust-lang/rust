@@ -183,7 +183,9 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
 
 fn make_function_name(semantics_scope: &hir::SemanticsScope<'_>) -> ast::NameRef {
     let mut names_in_scope = vec![];
-    semantics_scope.process_all_names(&mut |name, _| names_in_scope.push(name.to_string()));
+    semantics_scope.process_all_names(&mut |name, _| {
+        names_in_scope.push(name.display(semantics_scope.db.upcast()).to_string())
+    });
 
     let default_name = "fun_name";
 
@@ -443,7 +445,7 @@ impl Param {
     }
 
     fn to_param(&self, ctx: &AssistContext<'_>, module: hir::Module) -> ast::Param {
-        let var = self.var.name(ctx.db()).to_string();
+        let var = self.var.name(ctx.db()).display(ctx.db()).to_string();
         let var_name = make::name(&var);
         let pat = match self.kind() {
             ParamKind::MutValue => make::ident_pat(false, true, var_name),
@@ -473,7 +475,8 @@ impl TryKind {
         let name = adt.name(ctx.db());
         // FIXME: use lang items to determine if it is std type or user defined
         //        E.g. if user happens to define type named `Option`, we would have false positive
-        match name.to_string().as_str() {
+        let name = &name.display(ctx.db()).to_string();
+        match name.as_str() {
             "Option" => Some(TryKind::Option),
             "Result" => Some(TryKind::Result { ty }),
             _ => None,
@@ -1341,14 +1344,15 @@ fn make_call(ctx: &AssistContext<'_>, fun: &Function, indent: IndentLevel) -> St
         [var] => {
             let modifier = mut_modifier(var);
             let name = var.local.name(ctx.db());
-            format_to!(buf, "let {modifier}{name} = ")
+            format_to!(buf, "let {modifier}{} = ", name.display(ctx.db()))
         }
         vars => {
             buf.push_str("let (");
             let bindings = vars.iter().format_with(", ", |local, f| {
                 let modifier = mut_modifier(local);
                 let name = local.local.name(ctx.db());
-                f(&format_args!("{modifier}{name}"))
+                f(&format_args!("{modifier}{}", name.display(ctx.db())))?;
+                Ok(())
             });
             format_to!(buf, "{bindings}");
             buf.push_str(") = ");
@@ -1487,7 +1491,7 @@ impl FlowHandler {
 }
 
 fn path_expr_from_local(ctx: &AssistContext<'_>, var: Local) -> ast::Expr {
-    let name = var.name(ctx.db()).to_string();
+    let name = var.name(ctx.db()).display(ctx.db()).to_string();
     make::expr_path(make::ext::ident_path(&name))
 }
 

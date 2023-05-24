@@ -167,8 +167,8 @@ impl ItemTree {
         Attrs::filter(db, krate, self.raw_attrs(of).clone())
     }
 
-    pub fn pretty_print(&self) -> String {
-        pretty::print_item_tree(self)
+    pub fn pretty_print(&self, db: &dyn DefDatabase) -> String {
+        pretty::print_item_tree(db.upcast(), self)
     }
 
     fn data(&self) -> &ItemTreeData {

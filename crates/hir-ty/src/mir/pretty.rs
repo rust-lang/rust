@@ -42,19 +42,23 @@ impl MirBody {
         ctx.for_body(|this| match ctx.body.owner {
             hir_def::DefWithBodyId::FunctionId(id) => {
                 let data = db.function_data(id);
-                w!(this, "fn {}() ", data.name);
+                w!(this, "fn {}() ", data.name.display(db.upcast()));
             }
             hir_def::DefWithBodyId::StaticId(id) => {
                 let data = db.static_data(id);
-                w!(this, "static {}: _ = ", data.name);
+                w!(this, "static {}: _ = ", data.name.display(db.upcast()));
             }
             hir_def::DefWithBodyId::ConstId(id) => {
                 let data = db.const_data(id);
-                w!(this, "const {}: _ = ", data.name.as_ref().unwrap_or(&Name::missing()));
+                w!(
+                    this,
+                    "const {}: _ = ",
+                    data.name.as_ref().unwrap_or(&Name::missing()).display(db.upcast())
+                );
             }
             hir_def::DefWithBodyId::VariantId(id) => {
                 let data = db.enum_data(id.parent);
-                w!(this, "enum {} = ", data.name);
+                w!(this, "enum {} = ", data.name.display(db.upcast()));
             }
         });
         ctx.result
@@ -99,11 +103,16 @@ enum LocalName {
     Binding(Name, LocalId),
 }
 
-impl Display for LocalName {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl HirDisplay for LocalName {
+    fn hir_fmt(
+        &self,
+        f: &mut crate::display::HirFormatter<'_>,
+    ) -> Result<(), crate::display::HirDisplayError> {
         match self {
             LocalName::Unknown(l) => write!(f, "_{}", u32::from(l.into_raw())),
-            LocalName::Binding(n, l) => write!(f, "{n}_{}", u32::from(l.into_raw())),
+            LocalName::Binding(n, l) => {
+                write!(f, "{}_{}", n.display(f.db.upcast()), u32::from(l.into_raw()))
+            }
         }
     }
 }
@@ -177,7 +186,12 @@ impl<'a> MirPrettyCtx<'a> {
 
     fn locals(&mut self) {
         for (id, local) in self.body.locals.iter() {
-            wln!(self, "let {}: {};", self.local_name(id), self.hir_display(&local.ty));
+            wln!(
+                self,
+                "let {}: {};",
+                self.local_name(id).display(self.db),
+                self.hir_display(&local.ty)
+            );
         }
     }
 
@@ -206,10 +220,10 @@ impl<'a> MirPrettyCtx<'a> {
                             wln!(this, ";");
                         }
                         StatementKind::StorageDead(p) => {
-                            wln!(this, "StorageDead({})", this.local_name(*p));
+                            wln!(this, "StorageDead({})", this.local_name(*p).display(self.db));
                         }
                         StatementKind::StorageLive(p) => {
-                            wln!(this, "StorageLive({})", this.local_name(*p));
+                            wln!(this, "StorageLive({})", this.local_name(*p).display(self.db));
                         }
                         StatementKind::Deinit(p) => {
                             w!(this, "Deinit(");
@@ -267,7 +281,7 @@ impl<'a> MirPrettyCtx<'a> {
         fn f(this: &mut MirPrettyCtx<'_>, local: LocalId, projections: &[PlaceElem]) {
             let Some((last, head)) = projections.split_last() else {
                 // no projection
-                w!(this, "{}", this.local_name(local));
+                w!(this, "{}", this.local_name(local).display(this.db));
                 return;
             };
             match last {
@@ -285,11 +299,16 @@ impl<'a> MirPrettyCtx<'a> {
                             f(this, local, head);
                             let variant_name =
                                 &this.db.enum_data(e.parent).variants[e.local_id].name;
-                            w!(this, " as {}).{}", variant_name, name);
+                            w!(
+                                this,
+                                " as {}).{}",
+                                variant_name.display(this.db.upcast()),
+                                name.display(this.db.upcast())
+                            );
                         }
                         hir_def::VariantId::StructId(_) | hir_def::VariantId::UnionId(_) => {
                             f(this, local, head);
-                            w!(this, ".{name}");
+                            w!(this, ".{}", name.display(this.db.upcast()));
                         }
                     }
                 }
@@ -299,7 +318,7 @@ impl<'a> MirPrettyCtx<'a> {
                 }
                 ProjectionElem::Index(l) => {
                     f(this, local, head);
-                    w!(this, "[{}]", this.local_name(*l));
+                    w!(this, "[{}]", this.local_name(*l).display(this.db));
                 }
                 x => {
                     f(this, local, head);

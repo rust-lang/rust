@@ -243,7 +243,7 @@ pub fn resolve_completion_edits(
                     config.prefer_no_std,
                 )
             })
-            .find(|mod_path| mod_path.to_string() == full_import_path);
+            .find(|mod_path| mod_path.display(db).to_string() == full_import_path);
         if let Some(import_path) = import {
             insert_use::insert_use(&new_ast, mod_path_to_ast(&import_path), &config.insert_use);
         }

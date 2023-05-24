@@ -565,7 +565,7 @@ impl DefCollector<'_> {
             types => {
                 tracing::debug!(
                     "could not resolve prelude path `{}` to module (resolved to {:?})",
-                    path,
+                    path.display(self.db.upcast()),
                     types
                 );
             }
@@ -766,7 +766,8 @@ impl DefCollector<'_> {
     }
 
     fn resolve_import(&self, module_id: LocalModuleId, import: &Import) -> PartialResolvedImport {
-        let _p = profile::span("resolve_import").detail(|| format!("{}", import.path));
+        let _p = profile::span("resolve_import")
+            .detail(|| format!("{}", import.path.display(self.db.upcast())));
         tracing::debug!("resolving import: {:?} ({:?})", import, self.def_map.edition);
         if import.is_extern_crate {
             let name = import
@@ -1985,7 +1986,10 @@ impl ModCollector<'_, '_> {
             if self.def_collector.def_map.is_builtin_or_registered_attr(&attr.path) {
                 continue;
             }
-            tracing::debug!("non-builtin attribute {}", attr.path);
+            tracing::debug!(
+                "non-builtin attribute {}",
+                attr.path.display(self.def_collector.db.upcast())
+            );
 
             let ast_id = AstIdWithPath::new(
                 self.file_id(),
@@ -2119,8 +2123,8 @@ impl ModCollector<'_, '_> {
                         stdx::always!(
                             name == mac.name,
                             "built-in macro {} has #[rustc_builtin_macro] which declares different name {}",
-                            mac.name,
-                            name
+                            mac.name.display(self.def_collector.db.upcast()),
+                            name.display(self.def_collector.db.upcast())
                         );
                         helpers_opt = Some(helpers);
                     }

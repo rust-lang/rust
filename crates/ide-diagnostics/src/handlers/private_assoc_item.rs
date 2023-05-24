@@ -11,7 +11,11 @@ pub(crate) fn private_assoc_item(
     d: &hir::PrivateAssocItem,
 ) -> Diagnostic {
     // FIXME: add quickfix
-    let name = d.item.name(ctx.sema.db).map(|name| format!("`{name}` ")).unwrap_or_default();
+    let name = d
+        .item
+        .name(ctx.sema.db)
+        .map(|name| format!("`{}` ", name.display(ctx.sema.db)))
+        .unwrap_or_default();
     Diagnostic::new(
         "private-assoc-item",
         format!(

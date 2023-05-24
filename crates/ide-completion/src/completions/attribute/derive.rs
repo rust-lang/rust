@@ -90,7 +90,7 @@ pub(crate) fn complete_derive_path(
                             item.documentation(docs);
                         }
                         item.lookup_by(lookup);
-                        item.add_to(acc);
+                        item.add_to(acc, ctx.db);
                     }
                     None => acc.add_macro(ctx, path_ctx, mac, name),
                 }

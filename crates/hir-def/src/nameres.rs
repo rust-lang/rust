@@ -463,25 +463,31 @@ impl DefMap {
         let mut arc;
         let mut current_map = self;
         while let Some(block) = current_map.block {
-            go(&mut buf, current_map, "block scope", current_map.root);
+            go(&mut buf, db, current_map, "block scope", current_map.root);
             buf.push('\n');
             arc = block.parent.def_map(db);
             current_map = &arc;
         }
-        go(&mut buf, current_map, "crate", current_map.root);
+        go(&mut buf, db, current_map, "crate", current_map.root);
         return buf;
 
-        fn go(buf: &mut String, map: &DefMap, path: &str, module: LocalModuleId) {
+        fn go(
+            buf: &mut String,
+            db: &dyn DefDatabase,
+            map: &DefMap,
+            path: &str,
+            module: LocalModuleId,
+        ) {
             format_to!(buf, "{}\n", path);
 
-            map.modules[module].scope.dump(buf);
+            map.modules[module].scope.dump(db.upcast(), buf);
 
             for (name, child) in
                 map.modules[module].children.iter().sorted_by(|a, b| Ord::cmp(&a.0, &b.0))
             {
-                let path = format!("{path}::{name}");
+                let path = format!("{path}::{}", name.display(db.upcast()));
                 buf.push('\n');
-                go(buf, map, &path, *child);
+                go(buf, db, map, &path, *child);
             }
         }
     }

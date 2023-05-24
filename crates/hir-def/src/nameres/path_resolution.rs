@@ -192,8 +192,11 @@ impl DefMap {
     ) -> ResolvePathResult {
         let graph = db.crate_graph();
         let _cx = stdx::panic_context::enter(format!(
-            "DefMap {:?} crate_name={:?} block={:?} path={path}",
-            self.krate, graph[self.krate].display_name, self.block
+            "DefMap {:?} crate_name={:?} block={:?} path={}",
+            self.krate,
+            graph[self.krate].display_name,
+            self.block,
+            path.display(db.upcast())
         ));
 
         let mut segments = path.segments().iter().enumerate();
@@ -262,8 +265,8 @@ impl DefMap {
                                 );
                                 tracing::debug!(
                                     "`super` path: {} -> {} in parent map",
-                                    path,
-                                    new_path
+                                    path.display(db.upcast()),
+                                    new_path.display(db.upcast())
                                 );
                                 return block.parent.def_map(db).resolve_path_fp_with_macro(
                                     db,

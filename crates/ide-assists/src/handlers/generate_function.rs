@@ -196,7 +196,7 @@ fn add_func_to_accumulator(
         let mut func = function_template.to_string(ctx.config.snippet_cap);
         if let Some(name) = adt_name {
             // FIXME: adt may have generic params.
-            func = format!("\n{indent}impl {name} {{\n{func}\n{indent}}}");
+            func = format!("\n{indent}impl {} {{\n{func}\n{indent}}}", name.display(ctx.db()));
         }
         builder.edit_file(file);
         match ctx.config.snippet_cap {
