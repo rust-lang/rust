@@ -104,16 +104,16 @@ impl<'tcx> Partition<'tcx> for DefaultPartitioning {
         // same set). We want this merging to produce a deterministic ordering
         // of codegen units from the input.
         //
-        // Due to basically how we've implemented the merging below (merge the
-        // two smallest into each other) we're sure to start off with a
-        // deterministic order (sorted by name). This'll mean that if two cgus
-        // have the same size the stable sort below will keep everything nice
-        // and deterministic.
+        // Due to basically how we've implemented the merging below (repeatedly
+        // merging adjacent pairs of CGUs) we're sure to start off with a
+        // deterministic deterministic order (sorted by name). This'll mean that
+        // if two cgus have the same size the stable sort below will keep
+        // everything nice and deterministic.
         codegen_units.sort_by(|a, b| a.name().as_str().cmp(b.name().as_str()));
 
         //---------------------------------------------------------------------------
         // njn: split big CGUs if necessary
-        if false && codegen_units.len() > cx.target_cgu_count {
+        if codegen_units.len() > cx.target_cgu_count {
             // njn: type ann?
             let total_size: usize = codegen_units.iter().map(|cgu| cgu.size_estimate()).sum();
             let target_size = total_size / cx.target_cgu_count;
@@ -123,6 +123,7 @@ impl<'tcx> Partition<'tcx> for DefaultPartitioning {
             // njn: make it a for loop?
             // njn: explain all this
             let mut i = 0;
+            let mut j = 0; // njn: explain
             let n = codegen_units.len();
             while i < n {
                 let old_cgu = &mut codegen_units[i]; 
@@ -134,7 +135,7 @@ impl<'tcx> Partition<'tcx> for DefaultPartitioning {
                     // times
                     
                     let mut new_name = old_cgu.name().to_string();
-                    new_name += "-split";
+                    new_name += &format!("-split{}", j);
                     let mut new_cgu = CodegenUnit::new(Symbol::intern(&new_name));
                     new_cgu.create_size_estimate(cx.tcx); // initially zero
 
@@ -164,9 +165,11 @@ impl<'tcx> Partition<'tcx> for DefaultPartitioning {
 
                     codegen_units.push(new_cgu);
                     // njn: explain lack of `i += 1`;
+                    j += 1;
                 } else {
                     // njn: explain this
                     i += 1;
+                    j = 0;
                 }
             }
         }
@@ -176,30 +179,26 @@ impl<'tcx> Partition<'tcx> for DefaultPartitioning {
         let mut cgu_contents: FxHashMap<Symbol, Vec<Symbol>> =
             codegen_units.iter().map(|cgu| (cgu.name(), vec![cgu.name()])).collect();
 
-        // Merge the two smallest codegen units until the target size is
-        // reached.
+        // Repeatedly merge cgu[n] into cgu[n-1].
         while codegen_units.len() > cx.target_cgu_count {
-            // Sort small cgus to the back
+            // njn: more comments about this.
+            // Sort small cgus to the back. At this point... njn: more
             codegen_units.sort_by_cached_key(|cgu| cmp::Reverse(cgu.size_estimate()));
-            let mut smallest = codegen_units.pop().unwrap();
-            let second_smallest = codegen_units.last_mut().unwrap();
+            let mut cgu_n = codegen_units.swap_remove(cx.target_cgu_count);
+            let cgu_n_minus_1 = &mut codegen_units[cx.target_cgu_count - 1];
 
-            // Move the mono-items from `smallest` to `second_smallest`
-            second_smallest.increase_size_estimate(smallest.size_estimate());
-            for (k, v) in smallest.items_mut().drain() {
-                second_smallest.items_mut().insert(k, v);
+            // Move the mono-items from `cgu_n` to `cgu_n_minus_1`
+            cgu_n_minus_1.increase_size_estimate(cgu_n.size_estimate());
+            for (k, v) in cgu_n.items_mut().drain() {
+                cgu_n_minus_1.items_mut().insert(k, v);
             }
 
-            // Record that `second_smallest` now contains all the stuff that was
-            // in `smallest` before.
-            let mut consumed_cgu_names = cgu_contents.remove(&smallest.name()).unwrap();
-            cgu_contents.get_mut(&second_smallest.name()).unwrap().append(&mut consumed_cgu_names);
+            // Record that `cgu_n_minus_1` now contains all the stuff that was in
+            // `cgu_n` before.
+            let mut consumed_cgu_names = cgu_contents.remove(&cgu_n.name()).unwrap();
+            cgu_contents.get_mut(&cgu_n_minus_1.name()).unwrap().append(&mut consumed_cgu_names);
 
-            debug!(
-                "CodegenUnit {} merged into CodegenUnit {}",
-                smallest.name(),
-                second_smallest.name()
-            );
+            debug!("CodegenUnit {} merged into CodegenUnit {}", cgu_n.name(), cgu_n_minus_1.name());
         }
 
         let cgu_name_builder = &mut CodegenUnitNameBuilder::new(cx.tcx);
