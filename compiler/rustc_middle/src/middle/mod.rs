@@ -1,5 +1,5 @@
-pub mod codegen_fn_attrs;
 pub mod autodiff_attrs;
+pub mod codegen_fn_attrs;
 pub mod dependency_format;
 pub mod exported_symbols;
 pub mod lang_items;

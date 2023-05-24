@@ -33,7 +33,7 @@ macro_rules! check_ci_llvm {
             $name.is_none(),
             "setting {} is incompatible with download-ci-llvm.",
             stringify!($name)
-            );
+        );
     };
 }
 
@@ -516,7 +516,7 @@ impl Merge for TomlConfig {
     fn merge(
         &mut self,
         TomlConfig { build, install, llvm, rust, dist, target, profile: _, changelog_seen: _ }: Self,
-        ) {
+    ) {
         fn do_merge<T: Merge>(x: &mut Option<T>, y: Option<T>) {
             if let Some(new) = y {
                 if let Some(original) = x {
@@ -1436,7 +1436,7 @@ impl Config {
                         config.stage, 2,
                         "x.py should be run with `--stage 2` on CI, but was run with `--stage {}`",
                         config.stage,
-                        );
+                    );
                 }
                 Subcommand::Clean { .. }
                 | Subcommand::Check { .. }

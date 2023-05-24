@@ -3,20 +3,28 @@ use crate::back::profiling::{
     selfprofile_after_pass_callback, selfprofile_before_pass_callback, LlvmSelfProfiler,
 };
 
-use crate::{base, DiffTypeTree};
 use crate::common;
 use crate::consts;
-use crate::llvm::{Value, LLVMVerifyFunction, LLVMReplaceAllUsesWith};
 use crate::errors::{
     CopyBitcode, FromLlvmDiag, FromLlvmOptimizationDiag, LlvmError, WithLlvmError, WriteBytecode,
 };
 use crate::llvm::{self, DiagnosticInfo, PassManager};
+use crate::llvm::{LLVMReplaceAllUsesWith, LLVMVerifyFunction, Value};
 use crate::llvm_util;
 use crate::type_::Type;
+use crate::typetree::to_enzyme_typetree;
 use crate::LlvmCodegenBackend;
 use crate::ModuleLlvm;
-use crate::typetree::to_enzyme_typetree;
-use llvm::{EnzymeLogicRef, EnzymeTypeAnalysisRef, CreateTypeAnalysis, CreateEnzymeLogic, LLVMSetValueName2, LLVMGetModuleContext, LLVMAddFunction, BasicBlock, LLVMGetElementType, LLVMAppendBasicBlockInContext, LLVMCountParams, LLVMTypeOf, LLVMCreateBuilderInContext, LLVMPositionBuilderAtEnd, LLVMBuildExtractValue, LLVMBuildRet, LLVMDisposeBuilder, LLVMGetBasicBlockTerminator, LLVMBuildCall2, LLVMGetParams, LLVMDeleteFunction, LLVMCountStructElementTypes, LLVMGetReturnType, enzyme_rust_forward_diff, enzyme_rust_reverse_diff, LLVMVoidTypeInContext};
+use crate::{base, DiffTypeTree};
+use llvm::{
+    enzyme_rust_forward_diff, enzyme_rust_reverse_diff, BasicBlock, CreateEnzymeLogic,
+    CreateTypeAnalysis, EnzymeLogicRef, EnzymeTypeAnalysisRef, LLVMAddFunction,
+    LLVMAppendBasicBlockInContext, LLVMBuildCall2, LLVMBuildExtractValue, LLVMBuildRet,
+    LLVMCountParams, LLVMCountStructElementTypes, LLVMCreateBuilderInContext, LLVMDeleteFunction,
+    LLVMDisposeBuilder, LLVMGetBasicBlockTerminator, LLVMGetElementType, LLVMGetModuleContext,
+    LLVMGetParams, LLVMGetReturnType, LLVMPositionBuilderAtEnd, LLVMSetValueName2, LLVMTypeOf,
+    LLVMVoidTypeInContext,
+};
 //use llvm::LLVMRustGetNamedValue;
 use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::write::{
@@ -25,12 +33,12 @@ use rustc_codegen_ssa::back::write::{
 };
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{FatalError, Handler, Level};
 use rustc_fs_util::{link_or_copy, path_to_c_string};
-use rustc_middle::middle::autodiff_attrs::{AutoDiffItem, DiffMode, DiffActivity};
+use rustc_middle::middle::autodiff_attrs::{AutoDiffItem, DiffActivity, DiffMode};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{self, Lto, OutputType, Passes, SplitDwarfKind, SwitchWithOptPath};
 use rustc_session::Session;
@@ -40,7 +48,7 @@ use rustc_target::spec::{CodeModel, RelocModel, SanitizerSet, SplitDebuginfo};
 
 use crate::llvm::diagnostic::OptimizationDiagnosticKind;
 use libc::{c_char, c_int, c_uint, c_void, size_t};
-use std::ffi::{CString, CStr};
+use std::ffi::{CStr, CString};
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -117,7 +125,7 @@ pub fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> &'static mut ll
             tcx.sess.split_debuginfo(),
             tcx.sess.opts.unstable_opts.split_dwarf_kind,
             Some(mod_name),
-            )
+        )
     } else {
         None
     };
@@ -132,7 +140,7 @@ pub fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> &'static mut ll
 
 pub fn to_llvm_opt_settings(
     cfg: config::OptLevel,
-    ) -> (llvm::CodeGenOptLevel, llvm::CodeGenOptSize) {
+) -> (llvm::CodeGenOptLevel, llvm::CodeGenOptSize) {
     use self::config::OptLevel::*;
     match cfg {
         No => (llvm::CodeGenOptLevel::None, llvm::CodeGenOptSizeNone),
@@ -183,7 +191,7 @@ pub fn target_machine_factory(
     sess: &Session,
     optlvl: config::OptLevel,
     target_features: &[String],
-    ) -> TargetMachineFactoryFn<LlvmCodegenBackend> {
+) -> TargetMachineFactoryFn<LlvmCodegenBackend> {
     let reloc_model = to_llvm_relocation_model(sess.relocation_model());
 
     let (opt_level, _) = to_llvm_opt_settings(optlvl);
@@ -261,7 +269,7 @@ pub(crate) fn save_temp_bitcode(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     module: &ModuleCodegen<ModuleLlvm>,
     name: &str,
-    ) {
+) {
     if !cgcx.save_temps {
         return;
     }
@@ -286,7 +294,7 @@ impl<'a> DiagnosticHandlers<'a> {
         cgcx: &'a CodegenContext<LlvmCodegenBackend>,
         handler: &'a Handler,
         llcx: &'a llvm::Context,
-        ) -> Self {
+    ) -> Self {
         let remark_passes_all: bool;
         let remark_passes: Vec<CString>;
         match &cgcx.remark {
@@ -333,7 +341,7 @@ fn report_inline_asm(
     level: llvm::DiagnosticLevel,
     mut cookie: c_uint,
     source: Option<(String, Vec<InnerSpan>)>,
-    ) {
+) {
     // In LTO build we may get srcloc values from other crates which are invalid
     // since they use a different source map. To be safe we just suppress these
     // in LTO builds.
@@ -442,8 +450,7 @@ pub(crate) unsafe fn llvm_optimize(
     config: &ModuleConfig,
     opt_level: config::OptLevel,
     opt_stage: llvm::OptStage,
-    ) -> Result<(), FatalError> {
-
+) -> Result<(), FatalError> {
     // Enzyme:
     // We want to simplify / optimize functions before AD.
     // However, benchmarks show that optimizations increasing the code size
@@ -530,7 +537,6 @@ pub(crate) unsafe fn llvm_optimize(
     result.into_result().map_err(|()| llvm_err(diag_handler, LlvmError::RunLlvmPasses))
 }
 
-
 fn get_params(fnc: &Value) -> Vec<&Value> {
     unsafe {
         let param_num = LLVMCountParams(fnc) as usize;
@@ -549,51 +555,30 @@ unsafe fn create_wrapper<'a>(
     fnc: &'a Value,
     u_type: &Type,
     fnc_name: String,
-    ) -> (
-        &'a Value,
-        &'a BasicBlock,
-        Vec<&'a Value>,
-        Vec<&'a Value>,
-        CString,
-        ) {
-        //let llmod = module.module_llvm.llmod();
-        let context = LLVMGetModuleContext(llmod);
-        let inner_fnc_name = "inner_".to_string() + &fnc_name;
-        let c_inner_fnc_name = CString::new(inner_fnc_name.clone()).unwrap();
-        LLVMSetValueName2(
-            fnc,
-            c_inner_fnc_name.as_ptr(),
-            inner_fnc_name.len() as usize,
-            );
+) -> (&'a Value, &'a BasicBlock, Vec<&'a Value>, Vec<&'a Value>, CString) {
+    //let llmod = module.module_llvm.llmod();
+    let context = LLVMGetModuleContext(llmod);
+    let inner_fnc_name = "inner_".to_string() + &fnc_name;
+    let c_inner_fnc_name = CString::new(inner_fnc_name.clone()).unwrap();
+    LLVMSetValueName2(fnc, c_inner_fnc_name.as_ptr(), inner_fnc_name.len() as usize);
 
-        let c_outer_fnc_name = CString::new(fnc_name).unwrap();
-        let outer_fnc: &Value = LLVMAddFunction(
-            llmod,
-            c_outer_fnc_name.as_ptr(),
-            LLVMGetElementType(u_type) as &Type,
-            );
+    let c_outer_fnc_name = CString::new(fnc_name).unwrap();
+    let outer_fnc: &Value =
+        LLVMAddFunction(llmod, c_outer_fnc_name.as_ptr(), LLVMGetElementType(u_type) as &Type);
 
-        let entry = "fnc_entry".to_string();
-        let c_entry = CString::new(entry).unwrap();
-        let basic_block = LLVMAppendBasicBlockInContext(context, outer_fnc, c_entry.as_ptr());
+    let entry = "fnc_entry".to_string();
+    let c_entry = CString::new(entry).unwrap();
+    let basic_block = LLVMAppendBasicBlockInContext(context, outer_fnc, c_entry.as_ptr());
 
-        let outer_params: Vec<&Value> = get_params(outer_fnc);
-        let inner_params: Vec<&Value> = get_params(fnc);
+    let outer_params: Vec<&Value> = get_params(outer_fnc);
+    let inner_params: Vec<&Value> = get_params(fnc);
 
-        (
-            outer_fnc,
-            basic_block,
-            outer_params,
-            inner_params,
-            c_inner_fnc_name,
-        )
-    }
-
+    (outer_fnc, basic_block, outer_params, inner_params, c_inner_fnc_name)
+}
 
 //pub(crate) fn get_type(t: LLVMTypeRef) -> CString {
 //    unsafe { CString::from_raw(LLVMPrintTypeToString(t)) }
 //}
-
 
 // TODO: Don't write a wrapper function, just unwrap the struct inside of the same fnc.
 // Might help during debugging, if you have one function less to jump trough
@@ -602,7 +587,7 @@ pub(crate) unsafe fn extract_return_type<'a>(
     fnc: &'a Value,
     u_type: &Type,
     fnc_name: String,
-    ) -> &'a Value {
+) -> &'a Value {
     //let llmod = module.module_llvm.llmod();
     let context = llvm::LLVMGetModuleContext(llmod);
     //dbg!("Unpacking", fnc_name.clone());
@@ -625,7 +610,7 @@ pub(crate) unsafe fn extract_return_type<'a>(
         outer_args.as_mut_ptr(),
         outer_args.len(),
         c_inner_fnc_name.as_ptr(),
-        );
+    );
     // We can use an arbitrary name here, since it will be used to store a tmp value.
     let inner_grad_name = "foo".to_string();
     let c_inner_grad_name = CString::new(inner_grad_name).unwrap();
@@ -635,7 +620,8 @@ pub(crate) unsafe fn extract_return_type<'a>(
     //assert!(LLVMIsNull(terminator)!=0, "no terminator");
     LLVMDisposeBuilder(builder);
 
-    let _fnc_ok = LLVMVerifyFunction(outer_fnc, llvm::LLVMVerifierFailureAction::LLVMAbortProcessAction);
+    let _fnc_ok =
+        LLVMVerifyFunction(outer_fnc, llvm::LLVMVerifierFailureAction::LLVMAbortProcessAction);
     //dbg!(outer_fnc);
     //assert!(fnc_ok);
     //if let Err(e) = verify_function(outer_fnc) {
@@ -648,7 +634,11 @@ pub(crate) unsafe fn extract_return_type<'a>(
 // As unsafe as it can be.
 #[allow(unused_variables)]
 #[allow(unused)]
-pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, llcx: &llvm::Context, item: AutoDiffItem) -> Result<(), FatalError> {
+pub(crate) unsafe fn enzyme_ad(
+    llmod: &llvm::Module,
+    llcx: &llvm::Context,
+    item: AutoDiffItem,
+) -> Result<(), FatalError> {
     let autodiff_mode = item.attrs.mode;
     let rust_name = item.source;
     let rust_name2 = &item.target;
@@ -663,45 +653,63 @@ pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, llcx: &llvm::Context, item:
     let target_fnc = llvm::LLVMGetNamedFunction(llmod, name2.as_ptr()).unwrap();
 
     // create enzyme typetrees
-    let llvm_data_layout = unsafe{ llvm::LLVMGetDataLayoutStr(&*llmod) };
-    let llvm_data_layout = std::str::from_utf8(unsafe {CStr::from_ptr(llvm_data_layout)}.to_bytes())
-        .expect("got a non-UTF8 data-layout from LLVM");
+    let llvm_data_layout = unsafe { llvm::LLVMGetDataLayoutStr(&*llmod) };
+    let llvm_data_layout =
+        std::str::from_utf8(unsafe { CStr::from_ptr(llvm_data_layout) }.to_bytes())
+            .expect("got a non-UTF8 data-layout from LLVM");
 
-    let input_tts = item.inputs.into_iter().map(|x| to_enzyme_typetree(x, llvm_data_layout, llcx)).collect();
+    let input_tts =
+        item.inputs.into_iter().map(|x| to_enzyme_typetree(x, llvm_data_layout, llcx)).collect();
     let output_tt = to_enzyme_typetree(item.output, llvm_data_layout, llcx);
 
-    let opt  = 1;
+    let opt = 1;
     let ret_primary_ret = false;
     let diff_primary_ret = false;
     let logic_ref: EnzymeLogicRef = CreateEnzymeLogic(opt as u8);
-    let type_analysis: EnzymeTypeAnalysisRef = CreateTypeAnalysis(logic_ref, std::ptr::null_mut(), std::ptr::null_mut(), 0);
+    let type_analysis: EnzymeTypeAnalysisRef =
+        CreateTypeAnalysis(logic_ref, std::ptr::null_mut(), std::ptr::null_mut(), 0);
 
     dbg!(&type_analysis);
     let mut res: &Value = match item.attrs.mode {
-        DiffMode::Forward => enzyme_rust_forward_diff(logic_ref, type_analysis, src_fnc, args_activity, ret_activity, ret_primary_ret, input_tts, output_tt),
-        DiffMode::Reverse => enzyme_rust_reverse_diff(logic_ref, type_analysis, src_fnc, args_activity, ret_activity, ret_primary_ret, diff_primary_ret, input_tts, output_tt),
+        DiffMode::Forward => enzyme_rust_forward_diff(
+            logic_ref,
+            type_analysis,
+            src_fnc,
+            args_activity,
+            ret_activity,
+            ret_primary_ret,
+            input_tts,
+            output_tt,
+        ),
+        DiffMode::Reverse => enzyme_rust_reverse_diff(
+            logic_ref,
+            type_analysis,
+            src_fnc,
+            args_activity,
+            ret_activity,
+            ret_primary_ret,
+            diff_primary_ret,
+            input_tts,
+            output_tt,
+        ),
         _ => unreachable!(),
     };
     let f_type = LLVMTypeOf(res);
     let f_return_type = LLVMGetReturnType(LLVMGetElementType(f_type));
     let void_type = LLVMVoidTypeInContext(llcx);
-    if item.attrs.mode == DiffMode::Reverse && f_return_type != void_type{
+    if item.attrs.mode == DiffMode::Reverse && f_return_type != void_type {
         //dbg!("Reverse Mode sanitizer");
         //dbg!(f_type);
         //dbg!(f_return_type);
         let num_elem_in_ret_struct = LLVMCountStructElementTypes(f_return_type);
         if num_elem_in_ret_struct == 1 {
             let u_type = LLVMTypeOf(target_fnc);
-            res = extract_return_type(llmod, res, u_type, rust_name2.clone());// TODO: check if name or name2
+            res = extract_return_type(llmod, res, u_type, rust_name2.clone()); // TODO: check if name or name2
         }
     }
     LLVMReplaceAllUsesWith(target_fnc, res);
     LLVMDeleteFunction(target_fnc);
-    LLVMSetValueName2(
-        res,
-        name2.as_ptr(),
-        rust_name2.len(),
-        );
+    LLVMSetValueName2(res, name2.as_ptr(), rust_name2.len());
 
     Ok(())
 }
@@ -712,8 +720,7 @@ pub(crate) unsafe fn differentiate(
     diff_items: Vec<AutoDiffItem>,
     _typetrees: FxHashMap<String, DiffTypeTree>,
     config: &ModuleConfig,
-    ) -> Result<(), FatalError> {
-
+) -> Result<(), FatalError> {
     let llmod = module.module_llvm.llmod();
     let llcx = &module.module_llvm.llcx;
 
@@ -739,8 +746,7 @@ pub(crate) unsafe fn optimize(
     diag_handler: &Handler,
     module: &ModuleCodegen<ModuleLlvm>,
     config: &ModuleConfig,
-    ) -> Result<(), FatalError> {
-
+) -> Result<(), FatalError> {
     let _timer = cgcx.prof.generic_activity_with_arg("LLVM_module_optimize", &*module.name);
 
     let llmod = module.module_llvm.llmod();
@@ -773,7 +779,7 @@ pub(crate) fn link(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     diag_handler: &Handler,
     mut modules: Vec<ModuleCodegen<ModuleLlvm>>,
-    ) -> Result<ModuleCodegen<ModuleLlvm>, FatalError> {
+) -> Result<ModuleCodegen<ModuleLlvm>, FatalError> {
     use super::lto::{Linker, ModuleBuffer};
     // Sort the modules by name to ensure deterministic behavior.
     modules.sort_by(|a, b| a.name.cmp(&b.name));
@@ -799,7 +805,7 @@ pub(crate) unsafe fn codegen(
     diag_handler: &Handler,
     module: ModuleCodegen<ModuleLlvm>,
     config: &ModuleConfig,
-    ) -> Result<CompiledModule, FatalError> {
+) -> Result<CompiledModule, FatalError> {
     let _timer = cgcx.prof.generic_activity_with_arg("LLVM_module_codegen", &*module.name);
     {
         let llmod = module.module_llvm.llmod();
@@ -826,15 +832,15 @@ pub(crate) unsafe fn codegen(
             llmod: &'ll llvm::Module,
             no_builtins: bool,
             f: F,
-            ) -> R
-            where
-                F: FnOnce(&'ll mut PassManager<'ll>) -> R,
-            {
-                let cpm = llvm::LLVMCreatePassManager();
-                llvm::LLVMAddAnalysisPasses(tm, cpm);
-                llvm::LLVMRustAddLibraryInfo(cpm, llmod, no_builtins);
-                f(cpm)
-            }
+        ) -> R
+        where
+            F: FnOnce(&'ll mut PassManager<'ll>) -> R,
+        {
+            let cpm = llvm::LLVMCreatePassManager();
+            llvm::LLVMAddAnalysisPasses(tm, cpm);
+            llvm::LLVMRustAddLibraryInfo(cpm, llmod, no_builtins);
+            f(cpm)
+        }
 
         // Two things to note:
         // - If object files are just LLVM bitcode we write bitcode, copy it to
@@ -858,7 +864,7 @@ pub(crate) unsafe fn codegen(
                     "llvm_bitcode",
                     bitcode_filename.to_string_lossy(),
                     data.len() as u64,
-                    );
+                );
             }
 
             if config.emit_bc || config.emit_obj == EmitObj::Bitcode {
@@ -889,7 +895,7 @@ pub(crate) unsafe fn codegen(
                 input_len: size_t,
                 output_ptr: *mut c_char,
                 output_len: size_t,
-                ) -> size_t {
+            ) -> size_t {
                 let input =
                     unsafe { slice::from_raw_parts(input_ptr as *const u8, input_len as usize) };
 
@@ -945,7 +951,7 @@ pub(crate) unsafe fn codegen(
                     None,
                     llvm::FileType::AssemblyFile,
                     &cgcx.prof,
-                    )
+                )
             })?;
         }
 
@@ -980,7 +986,7 @@ pub(crate) unsafe fn codegen(
                         dwo_out,
                         llvm::FileType::ObjectFile,
                         &cgcx.prof,
-                        )
+                    )
                 })?;
             }
 
@@ -1070,7 +1076,7 @@ unsafe fn embed_bitcode(
     llmod: &llvm::Module,
     cmdline: &str,
     bitcode: &[u8],
-    ) {
+) {
     // We're adding custom sections to the output object file, but we definitely
     // do not want these custom sections to make their way into the final linked
     // executable. The purpose of these custom sections is for tooling
@@ -1109,21 +1115,21 @@ unsafe fn embed_bitcode(
         || cgcx.opts.target_triple.triple().contains("-watchos");
     if is_apple
         || cgcx.opts.target_triple.triple().starts_with("wasm")
-            || cgcx.opts.target_triple.triple().starts_with("asmjs")
-            {
-                // We don't need custom section flags, create LLVM globals.
-                let llconst = common::bytes_in_context(llcx, bitcode);
-                let llglobal = llvm::LLVMAddGlobal(
-                    llmod,
-                    common::val_ty(llconst),
-                    "rustc.embedded.module\0".as_ptr().cast(),
-                    );
-                llvm::LLVMSetInitializer(llglobal, llconst);
+        || cgcx.opts.target_triple.triple().starts_with("asmjs")
+    {
+        // We don't need custom section flags, create LLVM globals.
+        let llconst = common::bytes_in_context(llcx, bitcode);
+        let llglobal = llvm::LLVMAddGlobal(
+            llmod,
+            common::val_ty(llconst),
+            "rustc.embedded.module\0".as_ptr().cast(),
+        );
+        llvm::LLVMSetInitializer(llglobal, llconst);
 
-                let section = if is_apple { "__LLVM,__bitcode\0" } else { ".llvmbc\0" };
-                llvm::LLVMSetSection(llglobal, section.as_ptr().cast());
-                llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
-                llvm::LLVMSetGlobalConstant(llglobal, llvm::True);
+        let section = if is_apple { "__LLVM,__bitcode\0" } else { ".llvmbc\0" };
+        llvm::LLVMSetSection(llglobal, section.as_ptr().cast());
+        llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
+        llvm::LLVMSetGlobalConstant(llglobal, llvm::True);
 
         let llconst = common::bytes_in_context(llcx, cmdline.as_bytes());
         let llglobal = llvm::LLVMAddGlobal(
@@ -1154,7 +1160,7 @@ fn create_msvc_imps(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     llcx: &llvm::Context,
     llmod: &llvm::Module,
-    ) {
+) {
     if !cgcx.msvc_imps_needed {
         return;
     }
@@ -1171,18 +1177,18 @@ fn create_msvc_imps(
                 llvm::LLVMRustGetLinkage(val) == llvm::Linkage::ExternalLinkage
                     && llvm::LLVMIsDeclaration(val) == 0
             })
-        .filter_map(|val| {
-            // Exclude some symbols that we know are not Rust symbols.
-            let name = llvm::get_value_name(val);
-            if ignored(name) { None } else { Some((val, name)) }
-        })
-        .map(move |(val, name)| {
-            let mut imp_name = prefix.as_bytes().to_vec();
-            imp_name.extend(name);
-            let imp_name = CString::new(imp_name).unwrap();
-            (imp_name, val)
-        })
-        .collect::<Vec<_>>();
+            .filter_map(|val| {
+                // Exclude some symbols that we know are not Rust symbols.
+                let name = llvm::get_value_name(val);
+                if ignored(name) { None } else { Some((val, name)) }
+            })
+            .map(move |(val, name)| {
+                let mut imp_name = prefix.as_bytes().to_vec();
+                imp_name.extend(name);
+                let imp_name = CString::new(imp_name).unwrap();
+                (imp_name, val)
+            })
+            .collect::<Vec<_>>();
 
         for (imp_name, val) in globals {
             let imp = llvm::LLVMAddGlobal(llmod, i8p_ty, imp_name.as_ptr().cast());
@@ -1202,7 +1208,7 @@ fn record_artifact_size(
     self_profiler_ref: &SelfProfilerRef,
     artifact_kind: &'static str,
     path: &Path,
-    ) {
+) {
     // Don't stat the file if we are not going to record its size.
     if !self_profiler_ref.enabled() {
         return;

@@ -2,8 +2,8 @@ use proc_macro::TokenStream;
 use proc_macro_error::proc_macro_error;
 use quote::quote;
 
-mod parser;
 mod gen;
+mod parser;
 
 #[proc_macro_attribute]
 #[proc_macro_error]

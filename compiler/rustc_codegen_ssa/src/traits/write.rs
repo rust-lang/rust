@@ -2,10 +2,10 @@ use crate::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
 use crate::back::write::{CodegenContext, FatLTOInput, ModuleConfig};
 use crate::{CompiledModule, ModuleCodegen};
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{FatalError, Handler};
 use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::autodiff_attrs::AutoDiffItem;
-use rustc_data_structures::fx::FxHashMap;
 
 pub trait WriteBackendMethods: 'static + Sized + Clone {
     type Module: Send + Sync;

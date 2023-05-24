@@ -23,6 +23,7 @@ use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
 use rustc_codegen_ssa::mono_item::MonoItemExt;
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_middle::dep_graph;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
@@ -31,7 +32,6 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::config::DebugInfo;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::SanitizerSet;
-use rustc_data_structures::fx::FxHashMap;
 
 use std::time::Instant;
 
@@ -66,7 +66,7 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
         cgu_name,
         module_codegen,
         Some(dep_graph::hash_result),
-        );
+    );
     let time_to_codegen = start_time.elapsed();
 
     // We assume that the cost to run LLVM on a CGU is proportional to
@@ -136,22 +136,22 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
 
             // find autodiff items and build typetrees for them
             /*mono_items.iter()
-                //.filter(|(mono_item, _)| mono_item.def_id().map(|x| tcx.autodiff_attrs(x).is_active()).unwrap_or(false))
-                .filter(|(mono_item, _)| mono_item.def_id().map(|x| tcx.autodiff_attrs(x).is_source()).unwrap_or(false))
-                .filter_map(|(mono_item, _)| {
-                    let symbol = mono_item.symbol_name(cx.tcx).to_string();
-                    match mono_item {
-                        MonoItem::Fn(instance) => {
-                            let ty = instance.ty(tcx, ParamEnv::empty());
+            //.filter(|(mono_item, _)| mono_item.def_id().map(|x| tcx.autodiff_attrs(x).is_active()).unwrap_or(false))
+            .filter(|(mono_item, _)| mono_item.def_id().map(|x| tcx.autodiff_attrs(x).is_source()).unwrap_or(false))
+            .filter_map(|(mono_item, _)| {
+                let symbol = mono_item.symbol_name(cx.tcx).to_string();
+                match mono_item {
+                    MonoItem::Fn(instance) => {
+                        let ty = instance.ty(tcx, ParamEnv::empty());
 
-                            Some((
-                                    symbol,
-                                    parse_typetree(tcx, ty, &llvm_module)
-                                 ))
-                        },
-                        _ => None
-                    }
-                }).collect::<FxHashMap<_, _>>()*/
+                        Some((
+                                symbol,
+                                parse_typetree(tcx, ty, &llvm_module)
+                             ))
+                    },
+                    _ => None
+                }
+            }).collect::<FxHashMap<_, _>>()*/
 
             FxHashMap::default()
         };

@@ -28,12 +28,7 @@ impl Type {
             x => add + x,
         };
 
-        Self {
-            size: self.size,
-            kind: self.kind,
-            child: self.child,
-            offset,
-        }
+        Self { size: self.size, kind: self.kind, child: self.child, offset }
     }
 }
 
@@ -42,4 +37,3 @@ impl fmt::Display for Type {
         <Self as fmt::Debug>::fmt(self, f)
     }
 }
-

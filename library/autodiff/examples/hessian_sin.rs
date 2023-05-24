@@ -13,7 +13,7 @@ fn jac(x: &Vec<f32>, d_x: &mut Vec<f32>, y: &mut f32, y_t: &f32);
 fn hessian(x: &Vec<f32>, y_x: &Vec<f32>, d_x: &mut Vec<f32>, y: &mut f32, y_t: &f32);
 
 fn main() {
-    let inp = vec![3.1415/2., 1.0, 0.5];
+    let inp = vec![3.1415 / 2., 1.0, 0.5];
     let mut d_inp = vec![0.0, 0.0, 0.0];
     let mut y = 0.0;
     let tang = vec![1.0, 0.0, 0.0];

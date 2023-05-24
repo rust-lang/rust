@@ -32,3 +32,6 @@
 [submodule "library/backtrace"]
 	path = library/backtrace
 	url = https://github.com/rust-lang/backtrace-rs.git
+[submodule "src/tools/enzyme"]
+	path = src/tools/enzyme
+	url = https://github.com/EnzymeAD/Enzyme.git

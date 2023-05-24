@@ -112,7 +112,7 @@ impl Step for ToolBuild {
         builder.save_toolstate(
             tool,
             if is_expected { ToolState::TestFail } else { ToolState::BuildFail },
-            );
+        );
 
         if !is_expected {
             if !is_optional_tool {
@@ -144,7 +144,7 @@ pub fn prepare_tool_cargo(
     path: &str,
     source_type: SourceType,
     extra_features: &[String],
-    ) -> CargoCommand {
+) -> CargoCommand {
     let mut cargo = builder.cargo(compiler, mode, source_type, target, command);
     let dir = builder.src.join(path);
     cargo.arg("--manifest-path").arg(dir.join("Cargo.toml"));
@@ -253,27 +253,28 @@ macro_rules! bootstrap_tool {
                     });
                 }
 
-            fn run(self, builder: &Builder<'_>) -> PathBuf {
-                builder.ensure(ToolBuild {
-                    compiler: self.compiler,
-                    target: self.target,
-                    tool: $tool_name,
-                    mode: if false $(|| $unstable)* {
-                        // use in-tree libraries for unstable features
-                        Mode::ToolStd
-                    } else {
-                        Mode::ToolBootstrap
-                    },
-                    path: $path,
-                    is_optional_tool: false,
-                    source_type: if false $(|| $external)* {
-                        SourceType::Submodule
-                    } else {
-                        SourceType::InTree
-                    },
-                    extra_features: vec![],
-                    allow_features: concat!($($allow_features)*),
-                }).expect("expected to build -- essential tool")
+                fn run(self, builder: &Builder<'_>) -> PathBuf {
+                    builder.ensure(ToolBuild {
+                        compiler: self.compiler,
+                        target: self.target,
+                        tool: $tool_name,
+                        mode: if false $(|| $unstable)* {
+                            // use in-tree libraries for unstable features
+                            Mode::ToolStd
+                        } else {
+                            Mode::ToolBootstrap
+                        },
+                        path: $path,
+                        is_optional_tool: false,
+                        source_type: if false $(|| $external)* {
+                            SourceType::Submodule
+                        } else {
+                            SourceType::InTree
+                        },
+                        extra_features: vec![],
+                        allow_features: concat!($($allow_features)*),
+                    }).expect("expected to build -- essential tool")
+                }
             }
             )+
     }
@@ -356,7 +357,7 @@ impl Step for ErrorIndex {
                 extra_features: Vec::new(),
                 allow_features: "",
             })
-        .expect("expected to build -- essential tool")
+            .expect("expected to build -- essential tool")
     }
 }
 
@@ -393,7 +394,7 @@ impl Step for RemoteTestServer {
                 extra_features: Vec::new(),
                 allow_features: "",
             })
-        .expect("expected to build -- essential tool")
+            .expect("expected to build -- essential tool")
     }
 }
 
@@ -448,7 +449,7 @@ impl Step for Rustdoc {
         if !builder.config.dry_run() && builder.download_rustc() && build_compiler.stage == 0 {
             println!(
                 "warning: `download-rustc` does nothing when building stage1 tools; consider using `--stage 2` instead"
-                );
+            );
         }
 
         // The presence of `target_compiler` ensures that the necessary libraries (codegen backends,
@@ -472,7 +473,7 @@ impl Step for Rustdoc {
             "src/tools/rustdoc",
             SourceType::InTree,
             features.as_slice(),
-            );
+        );
 
         if builder.config.rustc_parallel {
             cargo.rustflag("--cfg=parallel_compiler");
@@ -524,12 +525,12 @@ impl Step for Cargo {
         let builder = run.builder;
         run.path("src/tools/cargo").default_condition(
             builder.config.extended
-            && builder.config.tools.as_ref().map_or(
-                true,
-                // If `tools` is set, search list for this tool.
-                |tools| tools.iter().any(|tool| tool == "cargo"),
+                && builder.config.tools.as_ref().map_or(
+                    true,
+                    // If `tools` is set, search list for this tool.
+                    |tools| tools.iter().any(|tool| tool == "cargo"),
                 ),
-                )
+        )
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -552,7 +553,7 @@ impl Step for Cargo {
                 extra_features: Vec::new(),
                 allow_features: "",
             })
-        .expect("expected to build -- essential tool");
+            .expect("expected to build -- essential tool");
 
         let build_cred = |name, path| {
             // These credential helpers are currently experimental.
@@ -616,7 +617,7 @@ impl Step for LldWrapper {
                 extra_features: Vec::new(),
                 allow_features: "",
             })
-        .expect("expected to build -- essential tool");
+            .expect("expected to build -- essential tool");
 
         src_exe
     }
@@ -774,38 +775,39 @@ macro_rules! tool_extended {
                     });
                 }
 
-            #[allow(unused_mut)]
-            fn run(mut $sel, $builder: &Builder<'_>) -> Option<PathBuf> {
-                let tool = $builder.ensure(ToolBuild {
-                    compiler: $sel.compiler,
-                    target: $sel.target,
-                    tool: $tool_name,
-                    mode: if false $(|| $tool_std)? { Mode::ToolStd } else { Mode::ToolRustc },
-                    path: $path,
-                    extra_features: $sel.extra_features,
-                    is_optional_tool: true,
-                    source_type: SourceType::InTree,
-                    allow_features: concat!($($allow_features)*),
-                })?;
+                #[allow(unused_mut)]
+                fn run(mut $sel, $builder: &Builder<'_>) -> Option<PathBuf> {
+                    let tool = $builder.ensure(ToolBuild {
+                        compiler: $sel.compiler,
+                        target: $sel.target,
+                        tool: $tool_name,
+                        mode: if false $(|| $tool_std)? { Mode::ToolStd } else { Mode::ToolRustc },
+                        path: $path,
+                        extra_features: $sel.extra_features,
+                        is_optional_tool: true,
+                        source_type: SourceType::InTree,
+                        allow_features: concat!($($allow_features)*),
+                    })?;
 
-                if (false $(|| !$add_bins_to_sysroot.is_empty())?) && $sel.compiler.stage > 0 {
-                    let bindir = $builder.sysroot($sel.compiler).join("bin");
-                    t!(fs::create_dir_all(&bindir));
+                    if (false $(|| !$add_bins_to_sysroot.is_empty())?) && $sel.compiler.stage > 0 {
+                        let bindir = $builder.sysroot($sel.compiler).join("bin");
+                        t!(fs::create_dir_all(&bindir));
 
-                    #[allow(unused_variables)]
-                    let tools_out = $builder
-                        .cargo_out($sel.compiler, Mode::ToolRustc, $sel.target);
+                        #[allow(unused_variables)]
+                        let tools_out = $builder
+                            .cargo_out($sel.compiler, Mode::ToolRustc, $sel.target);
 
-                    $(for add_bin in $add_bins_to_sysroot {
-                        let bin_source = tools_out.join(exe(add_bin, $sel.target));
-                        let bin_destination = bindir.join(exe(add_bin, $sel.compiler.host));
-                        $builder.copy(&bin_source, &bin_destination);
-                    })?
+                        $(for add_bin in $add_bins_to_sysroot {
+                            let bin_source = tools_out.join(exe(add_bin, $sel.target));
+                            let bin_destination = bindir.join(exe(add_bin, $sel.compiler.host));
+                            $builder.copy(&bin_source, &bin_destination);
+                        })?
 
-                    let tool = bindir.join(exe($tool_name, $sel.compiler.host));
-                    Some(tool)
-                } else {
-                    Some(tool)
+                        let tool = bindir.join(exe($tool_name, $sel.compiler.host));
+                        Some(tool)
+                    } else {
+                        Some(tool)
+                    }
                 }
             }
             )+

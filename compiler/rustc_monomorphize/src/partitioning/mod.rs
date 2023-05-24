@@ -103,14 +103,14 @@ use std::path::{Path, PathBuf};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync;
 use rustc_hir::def_id::{DefIdSet, LOCAL_CRATE};
+use rustc_middle::middle::autodiff_attrs::AutoDiffItem;
+use rustc_middle::middle::typetree::{Kind, Type, TypeTree};
 use rustc_middle::mir;
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::mir::mono::{CodegenUnit, Linkage};
-use rustc_middle::middle::autodiff_attrs::AutoDiffItem;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{TyCtxt, ParamEnv};
-use rustc_middle::middle::typetree::{Kind, TypeTree, Type};
+use rustc_middle::ty::{ParamEnv, TyCtxt};
 use rustc_session::config::{DumpMonoStatsFormat, SwitchWithOptPath};
 use rustc_span::symbol::Symbol;
 use rustc_symbol_mangling::symbol_name_for_instance_in_crate;
@@ -418,7 +418,10 @@ where
     }
 }
 
-fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[AutoDiffItem], &[CodegenUnit<'_>]) {
+fn collect_and_partition_mono_items(
+    tcx: TyCtxt<'_>,
+    (): (),
+) -> (&DefIdSet, &[AutoDiffItem], &[CodegenUnit<'_>]) {
     let collection_mode = match tcx.sess.opts.unstable_opts.print_mono_items {
         Some(ref s) => {
             let mode = s.to_lowercase();
@@ -482,25 +485,25 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Au
         })
         .collect();
 
-    let autodiff_items = items.iter()
-        .filter_map(|item| {
-            match *item {
-                MonoItem::Fn(ref instance) => Some((item, instance)),
-                _ => None,
-            }
+    let autodiff_items = items
+        .iter()
+        .filter_map(|item| match *item {
+            MonoItem::Fn(ref instance) => Some((item, instance)),
+            _ => None,
         })
         .filter_map(|(item, instance)| {
-            dbg!(&instance);
             let target_id = instance.def_id();
             let target_attrs = tcx.autodiff_attrs(target_id);
             if !target_attrs.apply_autodiff() {
                 return None;
             }
 
-            let target_symbol = symbol_name_for_instance_in_crate(tcx, instance.clone(), LOCAL_CRATE);
+            let target_symbol =
+                symbol_name_for_instance_in_crate(tcx, instance.clone(), LOCAL_CRATE);
             let range = inlining_map.index.get(&item).unwrap();
 
-            let source = inlining_map.targets[range.clone()].into_iter()
+            let source = inlining_map.targets[range.clone()]
+                .into_iter()
                 .filter_map(|item| match *item {
                     MonoItem::Fn(ref instance_s) => {
                         let source_id = instance_s.def_id();
@@ -510,17 +513,16 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Au
                         }
 
                         None
-                    },
-                    _ => None
-                }).next();
+                    }
+                    _ => None,
+                })
+                .next();
 
             source.map(|inst| {
                 let (inputs, output) = fnc_typetrees(inst.ty(tcx, ParamEnv::empty()), tcx);
                 let symb = symbol_name_for_instance_in_crate(tcx, inst.clone(), LOCAL_CRATE);
 
-                target_attrs.clone().into_item(
-                    symb, target_symbol,
-                    inputs, output)
+                target_attrs.clone().into_item(symb, target_symbol, inputs, output)
             })
         });
 
@@ -695,9 +697,9 @@ fn codegened_and_inlined_items(tcx: TyCtxt<'_>, (): ()) -> &DefIdSet {
     tcx.arena.alloc(result)
 }
 
-use std::iter;
-use rustc_middle::ty::{self, Ty, Adt, ParamEnvAnd};
+use rustc_middle::ty::{self, Adt, ParamEnvAnd, Ty};
 use rustc_target::abi::FieldsShape;
+use std::iter;
 
 pub fn typetree_empty() -> TypeTree {
     TypeTree(vec![])
@@ -705,14 +707,14 @@ pub fn typetree_empty() -> TypeTree {
 
 pub fn typetree_from_ty<'a>(ty: Ty<'a>, tcx: TyCtxt<'a>, depth: usize) -> TypeTree {
     if ty.is_unsafe_ptr() || ty.is_ref() || ty.is_box() {
-        if  ty.is_fn_ptr() {
+        if ty.is_fn_ptr() {
             unimplemented!("what to do whith fn ptr?");
         }
 
         let inner_ty = ty.builtin_deref(true).unwrap().ty;
         let child = typetree_from_ty(inner_ty, tcx, depth + 1);
 
-        let tt = Type { offset: -1, kind: Kind::Pointer, size: 8, child, };
+        let tt = Type { offset: -1, kind: Kind::Pointer, size: 8, child };
         //println!("{:depth$} add indirection {:?}", "", tt);
 
         return TypeTree(vec![tt]);
@@ -732,15 +734,10 @@ pub fn typetree_from_ty<'a>(ty: Ty<'a>, tcx: TyCtxt<'a>, depth: usize) -> TypeTr
             }
         };
 
-        return TypeTree(vec![
-            Type {offset: -1, child: typetree_empty(), kind, size }
-        ]);
+        return TypeTree(vec![Type { offset: -1, child: typetree_empty(), kind, size }]);
     }
 
-    let param_env_and = ParamEnvAnd {
-        param_env: ParamEnv::empty(),
-        value: ty,
-    };
+    let param_env_and = ParamEnvAnd { param_env: ParamEnv::empty(), value: ty };
 
     let layout = tcx.layout_of(param_env_and);
     assert!(layout.is_ok());
@@ -758,36 +755,42 @@ pub fn typetree_from_ty<'a>(ty: Ty<'a>, tcx: TyCtxt<'a>, depth: usize) -> TypeTr
 
         if adt_def.is_struct() {
             let (offsets, _memory_index) = match fields {
-                FieldsShape::Arbitrary{ offsets: o, memory_index: m } => (o,m),
+                FieldsShape::Arbitrary { offsets: o, memory_index: m } => (o, m),
                 _ => panic!(""),
             };
             //println!("{:depth$} combine fields", "");
 
             let fields = adt_def.all_fields();
-            let fields = fields.into_iter().zip(offsets.into_iter()).filter_map(|(field, offset)| {
-                let field_ty: Ty<'_> = field.ty(tcx, substs);
-                let field_ty: Ty<'_> = tcx.normalize_erasing_regions(ParamEnv::empty(), field_ty);
+            let fields = fields
+                .into_iter()
+                .zip(offsets.into_iter())
+                .filter_map(|(field, offset)| {
+                    let field_ty: Ty<'_> = field.ty(tcx, substs);
+                    let field_ty: Ty<'_> =
+                        tcx.normalize_erasing_regions(ParamEnv::empty(), field_ty);
 
-                if field_ty.is_phantom_data() {
-                    return None;
-                }
-
-                let mut child = typetree_from_ty(field_ty, tcx, depth + 1).0;
-
-                for c in &mut child {
-                    if c.offset == -1 {
-                        c.offset = offset.bytes() as isize
-                    } else {
-                        c.offset += offset.bytes() as isize;
+                    if field_ty.is_phantom_data() {
+                        return None;
                     }
-                }
 
-                //inner_tt.offset = offset;
+                    let mut child = typetree_from_ty(field_ty, tcx, depth + 1).0;
 
-                //println!("{:depth$} -> {:?}", "", child);
+                    for c in &mut child {
+                        if c.offset == -1 {
+                            c.offset = offset.bytes() as isize
+                        } else {
+                            c.offset += offset.bytes() as isize;
+                        }
+                    }
 
-                Some(child)
-            }).flatten().collect::<Vec<Type>>();
+                    //inner_tt.offset = offset;
+
+                    //println!("{:depth$} -> {:?}", "", child);
+
+                    Some(child)
+                })
+                .flatten()
+                .collect::<Vec<Type>>();
 
             let ret_tt = TypeTree(fields);
             //println!("{:depth$} into {:?}", "", ret_tt);
@@ -799,7 +802,7 @@ pub fn typetree_from_ty<'a>(ty: Ty<'a>, tcx: TyCtxt<'a>, depth: usize) -> TypeTr
 
     if ty.is_array() {
         let (stride, count) = match fields {
-            FieldsShape::Array{ stride: s, count: c } => (s,c),
+            FieldsShape::Array { stride: s, count: c } => (s, c),
             _ => panic!(""),
         };
         let byte_stride = stride.bytes_usize();
@@ -811,15 +814,16 @@ pub fn typetree_from_ty<'a>(ty: Ty<'a>, tcx: TyCtxt<'a>, depth: usize) -> TypeTr
         let subtt = typetree_from_ty(sub_ty, tcx, depth + 1);
 
         // calculate size of subtree
-        let param_env_and = ParamEnvAnd {
-            param_env: ParamEnv::empty(),
-            value: sub_ty,
-        };
+        let param_env_and = ParamEnvAnd { param_env: ParamEnv::empty(), value: sub_ty };
         let size = tcx.layout_of(param_env_and).unwrap().size.bytes() as usize;
         let tt = TypeTree(
-            iter::repeat(subtt).take(*count as usize).enumerate().map(|(idx, x)| 
-                x.0.into_iter().map(move |x| x.add_offset((idx * size) as isize))
-            ).flatten().collect());
+            iter::repeat(subtt)
+                .take(*count as usize)
+                .enumerate()
+                .map(|(idx, x)| x.0.into_iter().map(move |x| x.add_offset((idx * size) as isize)))
+                .flatten()
+                .collect(),
+        );
 
         //println!("{:depth$} repeated array into {:?}", "", tt);
 
@@ -843,8 +847,7 @@ pub fn fnc_typetrees<'tcx>(fn_ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> (Vec<TypeTree>
     // TODO: verify.
     let x: ty::FnSig<'_> = fnc_binder.skip_binder();
 
-    let inputs = x.inputs().into_iter().map(|x| typetree_from_ty(*x, tcx, 0))
-        .collect();
+    let inputs = x.inputs().into_iter().map(|x| typetree_from_ty(*x, tcx, 0)).collect();
 
     let output = typetree_from_ty(x.output(), tcx, 0);
 

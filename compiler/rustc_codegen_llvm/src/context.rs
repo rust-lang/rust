@@ -136,7 +136,7 @@ pub unsafe fn create_module<'ll>(
     tcx: TyCtxt<'_>,
     llcx: &'ll llvm::Context,
     mod_name: &str,
-    ) -> &'ll llvm::Module {
+) -> &'ll llvm::Module {
     let sess = tcx.sess;
     let mod_name = SmallCStr::new(mod_name);
     let llmod = llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx);
@@ -188,11 +188,11 @@ pub unsafe fn create_module<'ll>(
             bug!(
                 "data-layout for target `{rustc_target}`, `{rustc_layout}`, \
                   differs from LLVM target's `{llvm_target}` default layout, `{llvm_layout}`",
-                  rustc_target = sess.opts.target_triple,
-                  rustc_layout = target_data_layout,
-                  llvm_target = sess.target.llvm_target,
-                  llvm_layout = llvm_data_layout
-                );
+                rustc_target = sess.opts.target_triple,
+                rustc_layout = target_data_layout,
+                llvm_target = sess.target.llvm_target,
+                llvm_layout = llvm_data_layout
+            );
         }
     }
 
@@ -209,9 +209,9 @@ pub unsafe fn create_module<'ll>(
         // If all our outputs are executables, then we can relax PIC to PIE.
         if reloc_model == RelocModel::Pie
             || sess.crate_types().iter().all(|ty| *ty == CrateType::Executable)
-            {
-                llvm::LLVMRustSetModulePIELevel(llmod);
-            }
+        {
+            llvm::LLVMRustSetModulePIELevel(llmod);
+        }
     }
 
     // Linking object files with different code models is undefined behavior
@@ -236,7 +236,7 @@ pub unsafe fn create_module<'ll>(
             llvm::LLVMModFlagBehavior::Override,
             canonical_jump_tables,
             1,
-            );
+        );
     }
 
     // Enable LTO unit splitting if specified or if CFI is enabled. (See https://reviews.llvm.org/D53891.)
@@ -267,7 +267,7 @@ pub unsafe fn create_module<'ll>(
                     llvm::LLVMModFlagBehavior::Warning,
                     "cfguard\0".as_ptr() as *const _,
                     1,
-                    )
+                )
             }
             CFGuard::Checks => {
                 // Set `cfguard=2` module flag to emit metadata and checks.
@@ -276,7 +276,7 @@ pub unsafe fn create_module<'ll>(
                     llvm::LLVMModFlagBehavior::Warning,
                     "cfguard\0".as_ptr() as *const _,
                     2,
-                    )
+                )
             }
         }
     }
@@ -294,20 +294,20 @@ pub unsafe fn create_module<'ll>(
                 behavior,
                 "branch-target-enforcement\0".as_ptr().cast(),
                 bti.into(),
-                );
+            );
             llvm::LLVMRustAddModuleFlag(
                 llmod,
                 behavior,
                 "sign-return-address\0".as_ptr().cast(),
                 pac_ret.is_some().into(),
-                );
+            );
             let pac_opts = pac_ret.unwrap_or(PacRet { leaf: false, key: PAuthKey::A });
             llvm::LLVMRustAddModuleFlag(
                 llmod,
                 behavior,
                 "sign-return-address-all\0".as_ptr().cast(),
                 pac_opts.leaf.into(),
-                );
+            );
             llvm::LLVMRustAddModuleFlag(
                 llmod,
                 behavior,
@@ -329,7 +329,7 @@ pub unsafe fn create_module<'ll>(
             llvm::LLVMModFlagBehavior::Override,
             "cf-protection-branch\0".as_ptr().cast(),
             1,
-            )
+        )
     }
     if let CFProtection::Return | CFProtection::Full = sess.opts.unstable_opts.cf_protection {
         llvm::LLVMRustAddModuleFlag(
@@ -337,7 +337,7 @@ pub unsafe fn create_module<'ll>(
             llvm::LLVMModFlagBehavior::Override,
             "cf-protection-return\0".as_ptr().cast(),
             1,
-            )
+        )
     }
 
     if sess.opts.unstable_opts.virtual_function_elimination {
@@ -357,7 +357,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         tcx: TyCtxt<'tcx>,
         codegen_unit: &'tcx CodegenUnit<'tcx>,
         llvm_module: &'ll crate::ModuleLlvm,
-        ) -> Self {
+    ) -> Self {
         // An interesting part of Windows which MSVC forces our hand on (and
         // apparently MinGW didn't) is the usage of `dllimport` and `dllexport`
         // attributes in LLVM IR as well as native dependencies (in C these
@@ -427,7 +427,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 tcx,
                 codegen_unit.name().as_str(),
                 &dctx,
-                );
+            );
             Some(dctx)
         } else {
             None
@@ -491,7 +491,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn vtables(
         &self,
-        ) -> &RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>
+    ) -> &RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>
     {
         &self.vtables
     }
@@ -617,7 +617,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         name: &'static str,
         args: Option<&[&'ll llvm::Type]>,
         ret: &'ll llvm::Type,
-        ) -> (&'ll llvm::Type, &'ll llvm::Value) {
+    ) -> (&'ll llvm::Type, &'ll llvm::Value) {
         let fn_ty = if let Some(args) = args {
             self.type_func(args, ret)
         } else {
@@ -989,7 +989,7 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
         err: FnAbiError<'tcx>,
         span: Span,
         fn_abi_request: FnAbiRequest<'tcx>,
-        ) -> ! {
+    ) -> ! {
         if let FnAbiError::Layout(LayoutError::SizeOverflow(_)) = err {
             self.sess().emit_fatal(Spanned { span, node: err })
         } else {
@@ -1001,7 +1001,7 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
                         sig,
                         extra_args,
                         err
-                        );
+                    );
                 }
                 FnAbiRequest::OfInstance { instance, extra_args } => {
                     span_bug!(
@@ -1010,7 +1010,7 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
                         instance,
                         extra_args,
                         err
-                        );
+                    );
                 }
             }
         }

@@ -1,7 +1,10 @@
-use syn::{Item, ForeignItemFn, Block, parse::Parser, punctuated::Punctuated, Path, Token, Signature, Ident, FnArg, Attribute, Type, ReturnType, parse_quote};
 use proc_macro2::TokenStream;
 use proc_macro_error::abort;
 use quote::{format_ident, quote};
+use syn::{
+    parse::Parser, parse_quote, punctuated::Punctuated, Attribute, Block, FnArg, ForeignItemFn,
+    Ident, Item, Path, ReturnType, Signature, Token, Type,
+};
 
 #[derive(Debug)]
 pub struct PrimalSig {
@@ -21,7 +24,7 @@ pub struct DiffItem {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub(crate) enum Mode {
     Forward,
-    Reverse
+    Reverse,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -71,12 +74,15 @@ impl Activity {
     }
 
     pub(crate) fn to_ident(&self) -> Ident {
-        format_ident!("{}", match self {
-            Activity::Const => "Const",
-            Activity::Active => "Active",
-            Activity::Duplicated => "Duplicated",
-            Activity::DuplicatedNoNeed => "DuplicatedNoNeed",
-        })
+        format_ident!(
+            "{}",
+            match self {
+                Activity::Const => "Const",
+                Activity::Active => "Active",
+                Activity::Duplicated => "Duplicated",
+                Activity::DuplicatedNoNeed => "DuplicatedNoNeed",
+            }
+        )
     }
 }
 
@@ -90,61 +96,62 @@ pub(crate) struct Header {
 impl Header {
     fn from_params(name: &Path, mode: Option<&Ident>, ret_activity: Option<&Ident>) -> Self {
         // parse mode and return activity
-        let mode = mode.map(|x| match x.to_string().as_str() {
-            "forward" | "Forward" => Mode::Forward,
-            "reverse" | "Reverse" => Mode::Reverse,
-            _ => {
-                abort!(
-                    mode,
-                    "should be forward or reverse";
-                    help = "`#[autodiff]` modes should be either forward or reverse"
-                );
-            }
-        }).unwrap_or(Mode::Forward);
+        let mode = mode
+            .map(|x| match x.to_string().as_str() {
+                "forward" | "Forward" => Mode::Forward,
+                "reverse" | "Reverse" => Mode::Reverse,
+                _ => {
+                    abort!(
+                        mode,
+                        "should be forward or reverse";
+                        help = "`#[autodiff]` modes should be either forward or reverse"
+                    );
+                }
+            })
+            .unwrap_or(Mode::Forward);
         let ret_act = Activity::from_header(ret_activity);
 
         // check for invalid mode and return activity combinations
         match (mode, ret_act) {
-            (Mode::Forward, Activity::Active) =>
-                abort!(
-                    ret_activity,
-                    "active return for forward mode";
-                    help = "`#[autodiff]` return should be Const, Duplicated or DuplicatedNoNeed in forward mode"
-                ),
-            (Mode::Reverse, Activity::Duplicated | Activity::DuplicatedNoNeed) =>
-                abort!(
-                    ret_activity,
-                    "duplicated return for reverse mode";
-                    help = "`#[autodiff]` return should be Const or Active in reverse mode"
-                ),
+            (Mode::Forward, Activity::Active) => abort!(
+                ret_activity,
+                "active return for forward mode";
+                help = "`#[autodiff]` return should be Const, Duplicated or DuplicatedNoNeed in forward mode"
+            ),
+            (Mode::Reverse, Activity::Duplicated | Activity::DuplicatedNoNeed) => abort!(
+                ret_activity,
+                "duplicated return for reverse mode";
+                help = "`#[autodiff]` return should be Const or Active in reverse mode"
+            ),
 
-            _ => {},
+            _ => {}
         }
 
-        Header {
-            name: name.clone(),
-            mode,
-            ret_act,
-        }
+        Header { name: name.clone(), mode, ret_act }
     }
 
     fn parse(args: TokenStream) -> (Header, Vec<Activity>) {
-        let args_parsed: Vec<_> = match Punctuated::<Path, Token![,]>::parse_terminated
-            .parse(args.clone().into()) {
+        let args_parsed: Vec<_> =
+            match Punctuated::<Path, Token![,]>::parse_terminated.parse(args.clone().into()) {
                 Ok(x) => x.into_iter().collect(),
-                Err(_) => 
-                    abort!(
-                        args,
-                        "duplicated return for reverse mode";
-                        help = "`#[autodiff]` return should be Const or Active in reverse mode"
-                    )
+                Err(_) => abort!(
+                    args,
+                    "duplicated return for reverse mode";
+                    help = "`#[autodiff]` return should be Const or Active in reverse mode"
+                ),
             };
 
         match &args_parsed[..] {
             [name] => (Self::from_params(&name, None, None), vec![]),
-            [name, mode] => (Self::from_params(&name, Some(&mode.get_ident().unwrap()), None), vec![]),
+            [name, mode] => {
+                (Self::from_params(&name, Some(&mode.get_ident().unwrap()), None), vec![])
+            }
             [name, mode, ret_act, rem @ ..] => {
-                let params = Self::from_params(&name, Some(&mode.get_ident().unwrap()), Some(&ret_act.get_ident().unwrap()));
+                let params = Self::from_params(
+                    &name,
+                    Some(&mode.get_ident().unwrap()),
+                    Some(&ret_act.get_ident().unwrap()),
+                );
                 let rem = rem.into_iter()
                     .map(|x| x.get_ident().unwrap())
                     .map(|x| Activity::from_header(Some(x)))
@@ -161,7 +168,7 @@ impl Header {
                     .collect();
 
                 (params, rem)
-            },
+            }
             _ => {
                 abort!(
                     args,
@@ -192,16 +199,19 @@ fn is_scalar(t: &Type) -> bool {
 fn ret_arg(arg: &FnArg) -> Type {
     match arg {
         FnArg::Receiver(_) => parse_quote!(Self),
-        FnArg::Typed(t) => {
-            match &*t.ty {
-                Type::Reference(t) => *t.elem.clone(),
-                x => x.clone(),
-            }
-        }
+        FnArg::Typed(t) => match &*t.ty {
+            Type::Reference(t) => *t.elem.clone(),
+            x => x.clone(),
+        },
     }
 }
 
-pub(crate) fn reduce_params(mut sig: Signature, header_acts: Vec<Activity>, is_adjoint: bool, header: &Header) -> (PrimalSig, Vec<Activity>) {
+pub(crate) fn reduce_params(
+    mut sig: Signature,
+    header_acts: Vec<Activity>,
+    is_adjoint: bool,
+    header: &Header,
+) -> (PrimalSig, Vec<Activity>) {
     let mut args = Vec::new();
     let mut ret = Vec::new();
     let mut acts = Vec::new();
@@ -215,30 +225,26 @@ pub(crate) fn reduce_params(mut sig: Signature, header_acts: Vec<Activity>, is_a
         // happens when we parse the signature of adjoint/augmented primal function
         if let Some(prev_arg) = last_arg.take() {
             match (header.mode, is_ref_mut(&prev_arg), is_ref_mut(&arg)) {
-                (Mode::Forward, Some(false), Some(true) | None) => 
-                    abort!(
-                        arg,
-                        "should be an immutable reference";
-                        help = "`#[autodiff]` input parameter should duplicate tangent into second parameter for forward mode"
-                    ),
-                (Mode::Forward, Some(true), Some(false) | None) => 
-                    abort!(
-                        arg,
-                        "should be a mutable reference";
-                        help = "`#[autodiff]` output parameter should duplicate derivative into second parameter for forward mode"
-                    ),
-                (Mode::Reverse, Some(false), Some(false) | None) => 
-                    abort!(
-                        arg,
-                        "should be a mutable reference";
-                        help = "`#[autodiff]` input parameter should duplicate derivative into second parameter for reverse mode"
-                    ),
-                (Mode::Reverse, Some(true), Some(true) | None) => 
-                    abort!(
-                        arg,
-                        "should be an immutable reference";
-                        help = "`#[autodiff]` input parameter should duplicate derivative into second parameter for reverse mode"
-                    ),
+                (Mode::Forward, Some(false), Some(true) | None) => abort!(
+                    arg,
+                    "should be an immutable reference";
+                    help = "`#[autodiff]` input parameter should duplicate tangent into second parameter for forward mode"
+                ),
+                (Mode::Forward, Some(true), Some(false) | None) => abort!(
+                    arg,
+                    "should be a mutable reference";
+                    help = "`#[autodiff]` output parameter should duplicate derivative into second parameter for forward mode"
+                ),
+                (Mode::Reverse, Some(false), Some(false) | None) => abort!(
+                    arg,
+                    "should be a mutable reference";
+                    help = "`#[autodiff]` input parameter should duplicate derivative into second parameter for reverse mode"
+                ),
+                (Mode::Reverse, Some(true), Some(true) | None) => abort!(
+                    arg,
+                    "should be an immutable reference";
+                    help = "`#[autodiff]` input parameter should duplicate derivative into second parameter for reverse mode"
+                ),
                 _ => {}
             }
 
@@ -266,42 +272,43 @@ pub(crate) fn reduce_params(mut sig: Signature, header_acts: Vec<Activity>, is_a
 
         // compare indirection with activity
         match (header.mode, is_ref_mut(&arg), act) {
-            (Mode::Forward, None, Activity::Duplicated) => 
-                abort!(
-                    arg,
-                    "type not behind reference";
-                    help = "`#[autodiff]` duplicated types should be behind a reference"
-                ),
-            (Mode::Forward, Some(false), Activity::DuplicatedNoNeed) =>
-                abort!(
-                    arg,
-                    "should be mutable reference";
-                    help = "`#[autodiff]` parameter should be output for DuplicatedNoNeed activity"
-                ),
-            (Mode::Reverse, Some(_), Activity::Active) => 
-                abort!(
-                    arg,
-                    "type behind reference";
-                    help = "`#[autodiff]` active parameter should be concrete in reverse mode"
-                ),
-            (Mode::Reverse, None, Activity::Duplicated | Activity::DuplicatedNoNeed) => 
-                abort!(
-                    arg,
-                    "type not behind reference";
-                    help = "`#[autodiff]` duplicated parameters should be behind reference in reverse mode"
-                ),
-            (Mode::Reverse, Some(false), Activity::DuplicatedNoNeed) => 
-                abort!(
-                    arg,
-                    "use duplicated instead";
-                    help = "`#[autodiff]` input parameter cannot be declared as duplicatednoneed"
-                ),
-            (Mode::Forward, Some(false), Activity::Duplicated) if header.ret_act != Activity::Const =>
-                ret.push(ret_arg(&arg)),
+            (Mode::Forward, None, Activity::Duplicated) => abort!(
+                arg,
+                "type not behind reference";
+                help = "`#[autodiff]` duplicated types should be behind a reference"
+            ),
+            (Mode::Forward, Some(false), Activity::DuplicatedNoNeed) => abort!(
+                arg,
+                "should be mutable reference";
+                help = "`#[autodiff]` parameter should be output for DuplicatedNoNeed activity"
+            ),
+            (Mode::Reverse, Some(_), Activity::Active) => abort!(
+                arg,
+                "type behind reference";
+                help = "`#[autodiff]` active parameter should be concrete in reverse mode"
+            ),
+            (Mode::Reverse, None, Activity::Duplicated | Activity::DuplicatedNoNeed) => abort!(
+                arg,
+                "type not behind reference";
+                help = "`#[autodiff]` duplicated parameters should be behind reference in reverse mode"
+            ),
+            (Mode::Reverse, Some(false), Activity::DuplicatedNoNeed) => abort!(
+                arg,
+                "use duplicated instead";
+                help = "`#[autodiff]` input parameter cannot be declared as duplicatednoneed"
+            ),
+            (Mode::Forward, Some(false), Activity::Duplicated)
+                if header.ret_act != Activity::Const =>
+            {
+                ret.push(ret_arg(&arg))
+            }
             (Mode::Reverse, None, Activity::Active) => ret.push(ret_arg(&arg)),
-            (Mode::Forward, Some(_), Activity::Duplicated | Activity::DuplicatedNoNeed) |
-                (Mode::Reverse, _, Activity::Duplicated | Activity::DuplicatedNoNeed) if is_adjoint =>
-                    last_arg = Some(arg.clone()),
+            (Mode::Forward, Some(_), Activity::Duplicated | Activity::DuplicatedNoNeed)
+            | (Mode::Reverse, _, Activity::Duplicated | Activity::DuplicatedNoNeed)
+                if is_adjoint =>
+            {
+                last_arg = Some(arg.clone())
+            }
             _ => {}
         }
 
@@ -315,7 +322,7 @@ pub(crate) fn reduce_params(mut sig: Signature, header_acts: Vec<Activity>, is_a
     // if const -> no return
 
     // if we have adjoint signature and are in reverse mode
-    // if active -> input type * n times 
+    // if active -> input type * n times
     // construct return type based on mode
     let ret = if is_adjoint {
         let ret_typs = match &sig.output {
@@ -341,7 +348,7 @@ pub(crate) fn reduce_params(mut sig: Signature, header_acts: Vec<Activity>, is_a
                 }
 
                 parse_quote!(-> #expected)
-            },
+            }
             (Mode::Forward, Activity::DuplicatedNoNeed) => {
                 let expected = ret_typs[0].clone();
                 let list = vec![expected.clone(); ret.len()];
@@ -356,7 +363,7 @@ pub(crate) fn reduce_params(mut sig: Signature, header_acts: Vec<Activity>, is_a
                 }
 
                 parse_quote!(-> #expected)
-            },
+            }
             (Mode::Reverse, Activity::Active) => {
                 // tangent of output is latest in parameter list
                 let ret_typ = match (args.pop(), acts.pop()) {
@@ -377,13 +384,12 @@ pub(crate) fn reduce_params(mut sig: Signature, header_acts: Vec<Activity>, is_a
                         } else {
                             parse_quote!(-> #x)
                         }
-                    },
-                    (None, None) => 
-                        abort!(
-                            sig,
-                            "missing output tangent parameter";
-                            help = "`#[autodiff]` the last parameter of an adjoint with active return should exist"
-                        ),
+                    }
+                    (None, None) => abort!(
+                        sig,
+                        "missing output tangent parameter";
+                        help = "`#[autodiff]` the last parameter of an adjoint with active return should exist"
+                    ),
                     _ => unreachable!(),
                 };
 
@@ -398,14 +404,14 @@ pub(crate) fn reduce_params(mut sig: Signature, header_acts: Vec<Activity>, is_a
                 }
 
                 ret_typ
-            },
+            }
             (_, Activity::Const) if ret.len() > 0 => {
                 abort!(
                     ret[0],
                     "constant return but more than one return";
                     help = "`#[autodiff]` adjoint should have a return type when active"
                 )
-            },
+            }
             _ => ReturnType::Default,
         }
     } else {
@@ -427,14 +433,7 @@ pub(crate) fn reduce_params(mut sig: Signature, header_acts: Vec<Activity>, is_a
         sig.ident.clone()
     };
 
-    (
-        PrimalSig {
-            ident: sig,
-            inputs: args,
-            output: ret,
-        },
-        acts
-    )
+    (PrimalSig { ident: sig, inputs: args, output: ret }, acts)
 }
 
 //fn check_output(arg: &FnArg) -> bool {
@@ -500,7 +499,7 @@ pub(crate) fn reduce_params(mut sig: Signature, header_acts: Vec<Activity>, is_a
 //            if *a != Activity::Const {
 //                inputs.push(dup_arg_with_name_mut(&p, "adj", false));
 //            }
-//            
+//
 //            if *ret_act != Activity::Const {
 //                match sig.output {
 //                    ReturnType::Type(_, ref ty) => outputs.push(ty.clone()),
@@ -540,7 +539,7 @@ pub(crate) fn reduce_params(mut sig: Signature, header_acts: Vec<Activity>, is_a
 //            }
 //        };
 //    }
-//        
+//
 //    sig
 //}
 //
@@ -587,18 +586,16 @@ pub(crate) fn reduce_params(mut sig: Signature, header_acts: Vec<Activity>, is_a
 //    } else {
 //        parse_quote!()
 //    };
-//        
+//
 //    sig
 //}
 pub(crate) fn parse(args: TokenStream, input: TokenStream) -> DiffItem {
     // first parse function
     let (_attrs, _, sig, block) = match syn::parse2::<Item>(input) {
         Ok(Item::Fn(item)) => (item.attrs, item.vis, item.sig, Some(item.block)),
-        Ok(Item::Verbatim(x)) => {
-            match syn::parse2::<ForeignItemFn>(x) {
-                Ok(item) => (item.attrs, item.vis, item.sig, None),
-                Err(err) => panic!("Could not parse item {}", err)
-            }
+        Ok(Item::Verbatim(x)) => match syn::parse2::<ForeignItemFn>(x) {
+            Ok(item) => (item.attrs, item.vis, item.sig, None),
+            Err(err) => panic!("Could not parse item {}", err),
         },
         Ok(item) => {
             abort!(
@@ -606,10 +603,9 @@ pub(crate) fn parse(args: TokenStream, input: TokenStream) -> DiffItem {
                 "item is not a function";
                 help = "`#[autodiff]` can only be used on primal or adjoint functions"
             )
-        },
-        Err(err) => panic!("Could not parse item: {}", err)
+        }
+        Err(err) => panic!("Could not parse item: {}", err),
     };
-
 
     // then parse attributes
     let (header, param_attrs) = Header::parse(args);
@@ -617,10 +613,5 @@ pub(crate) fn parse(args: TokenStream, input: TokenStream) -> DiffItem {
     // reduce parameters to primal parameter set
     let (primal, params) = reduce_params(sig, param_attrs, !block.is_some(), &header);
 
-    DiffItem {
-        header,
-        primal,
-        params,
-        block,
-    }
+    DiffItem { header, primal, params, block }
 }

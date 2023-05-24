@@ -311,9 +311,9 @@ impl StepDescription {
 
         if !builder.config.exclude.is_empty() {
             builder.verbose(&format!(
-                    "{:?} not skipped for {:?} -- not in {:?}",
-                    pathset, self.name, builder.config.exclude
-                    ));
+                "{:?} not skipped for {:?} -- not in {:?}",
+                pathset, self.name, builder.config.exclude
+            ));
         }
         false
     }
@@ -330,7 +330,7 @@ impl StepDescription {
                 !should_run.paths.is_empty(),
                 "{:?} should have at least one pathset",
                 desc.name
-                );
+            );
         }
 
         if paths.is_empty() || builder.config.include_default_paths {
@@ -1336,10 +1336,10 @@ impl<'a> Builder<'a> {
                 rustflags.arg("--sysroot");
                 rustflags.arg(
                     self.sysroot(compiler)
-                    .as_os_str()
-                    .to_str()
-                    .expect("sysroot must be valid UTF-8"),
-                    );
+                        .as_os_str()
+                        .to_str()
+                        .expect("sysroot must be valid UTF-8"),
+                );
                 // Only run clippy on a very limited subset of crates (in particular, not build scripts).
                 cargo.arg("-Zunstable-options");
                 // Explicitly does *not* set `--cfg=bootstrap`, since we're using a nightly clippy.
@@ -1368,7 +1368,7 @@ impl<'a> Builder<'a> {
         // TODO: adjust -14 ending for Enzyme
         // https://rust-lang.zulipchat.com/#narrow/stream/182449-t-compiler.2Fhelp/topic/.E2.9C.94.20link.20new.20library.20into.20stage1.2Frustc
         rustflags.arg("-l");
-        rustflags.arg("LLVMEnzyme-14");
+        rustflags.arg("LLVMEnzyme-16");
 
         let use_new_symbol_mangling = match self.config.rust_new_symbol_mangling {
             Some(setting) => {
@@ -1593,7 +1593,7 @@ impl<'a> Builder<'a> {
                 } else {
                     PathBuf::from("/path/to/nowhere/rustdoc/not/required")
                 },
-                )
+            )
             .env("RUSTC_ERROR_METADATA_DST", self.extended_error_dir())
             .env("RUSTC_BREAK_ON_ICE", "1");
         // Clippy support is a hack and uses the default `cargo-clippy` in path.
@@ -1686,7 +1686,7 @@ impl<'a> Builder<'a> {
             } else {
                 self.config.rust_debug_assertions.to_string()
             },
-            );
+        );
         cargo.env(
             profile_var("OVERFLOW_CHECKS"),
             if mode == Mode::Std {
@@ -1694,7 +1694,7 @@ impl<'a> Builder<'a> {
             } else {
                 self.config.rust_overflow_checks.to_string()
             },
-            );
+        );
 
         let split_debuginfo_is_stable = target.contains("linux")
             || target.contains("apple")
@@ -1913,11 +1913,11 @@ impl<'a> Builder<'a> {
         // the stage 1 compiler.
         if cfg!(windows)
             && mode == Mode::Std
-                && self.config.control_flow_guard
-                && compiler.stage >= 1
-                {
-                    rustflags.arg("-Ccontrol-flow-guard");
-                }
+            && self.config.control_flow_guard
+            && compiler.stage >= 1
+        {
+            rustflags.arg("-Ccontrol-flow-guard");
+        }
 
         // For `cargo doc` invocations, make rustdoc print the Rust version into the docs
         // This replaces spaces with newlines because RUSTDOCFLAGS does not
@@ -2108,7 +2108,7 @@ impl<'a> Builder<'a> {
         &'a self,
         step: S,
         kind: Kind,
-        ) -> S::Output {
+    ) -> S::Output {
         let desc = StepDescription::from::<S>(kind);
         let should_run = (desc.should_run)(ShouldRun::new(self, desc.kind));
 
@@ -2133,10 +2133,10 @@ impl<'a> Builder<'a> {
                 && !desc.is_excluded(
                     self,
                     &PathSet::Suite(TaskPath { path: path.clone(), kind: Some(desc.kind) }),
-                    )
-                {
-                    return true;
-                }
+                )
+            {
+                return true;
+            }
         }
 
         false
@@ -2234,15 +2234,15 @@ impl Cargo {
     }
 
     pub fn args<I, S>(&mut self, args: I) -> &mut Cargo
-        where
+    where
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>,
-        {
-            for arg in args {
-                self.arg(arg.as_ref());
-            }
-            self
+    {
+        for arg in args {
+            self.arg(arg.as_ref());
         }
+        self
+    }
 
     pub fn env(&mut self, key: impl AsRef<OsStr>, value: impl AsRef<OsStr>) -> &mut Cargo {
         // These are managed through rustflag/rustdocflag interfaces.

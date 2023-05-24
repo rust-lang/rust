@@ -23,6 +23,5 @@ fn main() {
     //matvec(&mat, &inp, &mut out);
     d_matvec(&mat, &mut d_mat, &inp, &mut out, &mut out_tang);
 
-
     dbg!(&out);
 }
