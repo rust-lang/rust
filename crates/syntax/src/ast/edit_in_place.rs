@@ -465,6 +465,8 @@ impl ast::Impl {
 }
 
 impl ast::AssocItemList {
+    /// Attention! This function does align the first line of `item` with respect to `self`,
+    /// but it does _not_ change indentation of other lines (if any).
     pub fn add_item(&self, item: ast::AssocItem) {
         let (indent, position, whitespace) = match self.assoc_items().last() {
             Some(last_item) => (

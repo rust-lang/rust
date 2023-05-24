@@ -9,8 +9,8 @@ use stdx::format_to;
 use syntax::{
     ast::{
         self,
-        edit::{self, AstNodeEdit},
-        edit_in_place::{AttrsOwnerEdit, Removable},
+        edit::{AstNodeEdit, IndentLevel},
+        edit_in_place::{AttrsOwnerEdit, Indent, Removable},
         make, HasArgList, HasAttrs, HasGenericParams, HasName, HasTypeBounds, Whitespace,
     },
     ted, AstNode, AstToken, Direction, SourceFile,
@@ -139,9 +139,11 @@ pub fn add_trait_assoc_items_to_impl(
 
     let transform = PathTransform::trait_impl(&target_scope, &source_scope, trait_, impl_.clone());
 
+    let new_indent_level = IndentLevel::from_node(impl_.syntax()) + 1;
     let items = items.into_iter().map(|assoc_item| {
         transform.apply(assoc_item.syntax());
         assoc_item.remove_attrs_and_docs();
+        assoc_item.reindent_to(new_indent_level);
         assoc_item
     });
 
@@ -153,8 +155,10 @@ pub fn add_trait_assoc_items_to_impl(
         first_item.get_or_insert_with(|| item.clone());
         match &item {
             ast::AssocItem::Fn(fn_) if fn_.body().is_none() => {
-                let body = make::block_expr(None, Some(make::ext::expr_todo()))
-                    .indent(edit::IndentLevel(1));
+                let body = AstNodeEdit::indent(
+                    &make::block_expr(None, Some(make::ext::expr_todo())),
+                    new_indent_level,
+                );
                 ted::replace(fn_.get_or_create_body().syntax(), body.clone_for_update().syntax())
             }
             ast::AssocItem::TypeAlias(type_alias) => {
