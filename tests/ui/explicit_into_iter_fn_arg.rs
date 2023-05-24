@@ -1,6 +1,6 @@
 //@run-rustfix
 
-#![allow(unused)]
+#![allow(unused, clippy::useless_conversion)]
 #![warn(clippy::explicit_into_iter_fn_arg)]
 
 fn a<T>(_: T) {}
@@ -11,7 +11,6 @@ where
     T: IntoIterator<Item = i32>,
 {
 }
-fn e<T: IntoIterator<Item = i32>>(_: T) {}
 fn f(_: std::vec::IntoIter<i32>) {}
 
 fn main() {
@@ -19,6 +18,16 @@ fn main() {
     b(vec![1, 2].into_iter());
     c(vec![1, 2].into_iter());
     d(vec![1, 2].into_iter());
-    e([&1, &2, &3].into_iter().cloned());
-    f(vec![1, 2].into_iter());
+    b([&1, &2, &3].into_iter().cloned());
+
+    // Don't lint chained `.into_iter().into_iter()` calls. Covered by useless_conversion.
+    b(vec![1, 2].into_iter().into_iter());
+    b(vec![1, 2].into_iter().into_iter().into_iter());
+
+    macro_rules! macro_generated {
+        () => {
+            vec![1, 2].into_iter()
+        };
+    }
+    b(macro_generated!());
 }
