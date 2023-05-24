@@ -807,15 +807,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
             );
 
             let is_allowed_through_unstable_modules = |def_id| {
-                self.tcx
-                    .lookup_stability(def_id)
-                    .map(|stab| match stab.level {
-                        StabilityLevel::Stable { allowed_through_unstable_modules, .. } => {
-                            allowed_through_unstable_modules
-                        }
-                        _ => false,
-                    })
-                    .unwrap_or(false)
+                self.tcx.lookup_stability(def_id).is_some_and(|stab| match stab.level {
+                    StabilityLevel::Stable { allowed_through_unstable_modules, .. } => {
+                        allowed_through_unstable_modules
+                    }
+                    _ => false,
+                })
             };
 
             if item_is_allowed && !is_allowed_through_unstable_modules(def_id) {

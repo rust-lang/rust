@@ -2610,7 +2610,7 @@ impl<'a> Parser<'a> {
         let TyKind::Path(qself, path) = &ty.kind else { return Ok(()) };
         let qself_position = qself.as_ref().map(|qself| qself.position);
         for (i, segments) in path.segments.windows(2).enumerate() {
-            if qself_position.map(|pos| i < pos).unwrap_or(false) {
+            if qself_position.is_some_and(|pos| i < pos) {
                 continue;
             }
             if let [a, b] = segments {

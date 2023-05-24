@@ -1748,8 +1748,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             |err: &mut Diagnostic,
              found_to_exp_is_fallible: bool,
              exp_to_found_is_fallible: bool| {
-                let exp_is_lhs =
-                    expected_ty_expr.map(|e| self.tcx.hir().is_lhs(e.hir_id)).unwrap_or(false);
+                let exp_is_lhs = expected_ty_expr.is_some_and(|e| self.tcx.hir().is_lhs(e.hir_id));
 
                 if exp_is_lhs {
                     return;

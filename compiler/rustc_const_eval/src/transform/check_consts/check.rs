@@ -944,7 +944,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         tcx.features().declared_lib_features.iter().any(|&(sym, _)| sym == gate)
                     };
                     let feature_gate_declared = gate_declared(gate);
-                    let implied_gate_declared = implied_by.map(gate_declared).unwrap_or(false);
+                    let implied_gate_declared = implied_by.is_some_and(gate_declared);
                     if !feature_gate_declared && !implied_gate_declared {
                         self.check_op(ops::FnCallUnstable(callee, Some(gate)));
                         return;

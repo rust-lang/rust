@@ -197,8 +197,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             .sess
                             .source_map()
                             .span_to_snippet(span)
-                            .map(|snippet| snippet.ends_with(')'))
-                            .unwrap_or(false)
+                            .is_ok_and(|snippet| snippet.ends_with(')'))
                     }
                     Res::Def(
                         DefKind::Ctor(..) | DefKind::AssocFn | DefKind::Const | DefKind::AssocConst,

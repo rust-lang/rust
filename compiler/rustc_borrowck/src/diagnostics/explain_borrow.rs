@@ -224,12 +224,9 @@ impl<'tcx> BorrowExplanation<'tcx> {
                             if info.tail_result_is_ignored {
                                 // #85581: If the first mutable borrow's scope contains
                                 // the second borrow, this suggestion isn't helpful.
-                                if !multiple_borrow_span
-                                    .map(|(old, new)| {
-                                        old.to(info.span.shrink_to_hi()).contains(new)
-                                    })
-                                    .unwrap_or(false)
-                                {
+                                if !multiple_borrow_span.is_some_and(|(old, new)| {
+                                    old.to(info.span.shrink_to_hi()).contains(new)
+                                }) {
                                     err.span_suggestion_verbose(
                                         info.span.shrink_to_hi(),
                                         "consider adding semicolon after the expression so its \

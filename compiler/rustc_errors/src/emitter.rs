@@ -285,15 +285,11 @@ pub trait Emitter: Translate {
                     format!(
                         "help: {}{}: `{}`",
                         &msg,
-                        if self
-                            .source_map()
-                            .map(|sm| is_case_difference(
-                                sm,
-                                substitution,
-                                sugg.substitutions[0].parts[0].span,
-                            ))
-                            .unwrap_or(false)
-                        {
+                        if self.source_map().is_some_and(|sm| is_case_difference(
+                            sm,
+                            substitution,
+                            sugg.substitutions[0].parts[0].span,
+                        )) {
                             " (notice the capitalization)"
                         } else {
                             ""

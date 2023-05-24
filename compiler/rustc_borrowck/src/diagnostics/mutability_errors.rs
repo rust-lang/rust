@@ -289,8 +289,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     .body
                     .local_decls
                     .get(local)
-                    .map(|l| mut_borrow_of_mutable_ref(l, self.local_names[local]))
-                    .unwrap_or(false) =>
+                    .is_some_and(|l| mut_borrow_of_mutable_ref(l, self.local_names[local])) =>
             {
                 let decl = &self.body.local_decls[local];
                 err.span_label(span, format!("cannot {act}"));
