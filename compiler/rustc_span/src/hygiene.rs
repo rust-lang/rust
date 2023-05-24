@@ -204,8 +204,8 @@ impl LocalExpnId {
             let expn_id = data.local_expn_data.push(Some(expn_data));
             let _eid = data.local_expn_hashes.push(expn_hash);
             debug_assert_eq!(expn_id, _eid);
-            let _old_id = data.expn_hash_to_expn_id.insert(expn_hash, expn_id.to_expn_id());
-            if !_old_id.is_none() {
+            let old_id = data.expn_hash_to_expn_id.insert(expn_hash, expn_id.to_expn_id());
+            if old_id.is_some() {
                 panic!("Hash collision while creating expansion. Cannot continue.");
             }
             expn_id
@@ -229,8 +229,8 @@ impl LocalExpnId {
             *old_expn_data = Some(expn_data);
             debug_assert_eq!(data.local_expn_hashes[self].0, Fingerprint::ZERO);
             data.local_expn_hashes[self] = expn_hash;
-            let _old_id = data.expn_hash_to_expn_id.insert(expn_hash, self.to_expn_id());
-            if !_old_id.is_none() {
+            let old_id = data.expn_hash_to_expn_id.insert(expn_hash, self.to_expn_id());
+            if old_id.is_some() {
                 panic!("Hash collision while creating expansion. Cannot continue.");
             }
         });
@@ -1266,8 +1266,8 @@ pub fn register_local_expn_id(data: ExpnData, hash: ExpnHash) -> ExpnId {
 
         let expn_id = expn_id.to_expn_id();
 
-        let _old_id = hygiene_data.expn_hash_to_expn_id.insert(hash, expn_id);
-        if !_old_id.is_none() {
+        let old_id = hygiene_data.expn_hash_to_expn_id.insert(hash, expn_id);
+        if old_id.is_some() {
             panic!("Hash collision while creating expansion. Cannot continue.");
         }
         expn_id
@@ -1288,8 +1288,8 @@ pub fn register_expn_id(
         debug_assert!(_old_data.is_none());
         let _old_hash = hygiene_data.foreign_expn_hashes.insert(expn_id, hash);
         debug_assert!(_old_hash.is_none());
-        let _old_id = hygiene_data.expn_hash_to_expn_id.insert(hash, expn_id);
-        if !_old_id.is_none() {
+        let old_id = hygiene_data.expn_hash_to_expn_id.insert(hash, expn_id);
+        if old_id.is_some() {
             panic!("Hash collision while creating expansion. Cannot continue.");
         }
     });
