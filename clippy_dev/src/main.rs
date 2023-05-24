@@ -182,7 +182,7 @@ fn get_clap_config() -> ArgMatches {
                         .long("name")
                         .help("Name of the new lint in snake case, ex: fn_too_long")
                         .required(true)
-                        .value_parser(|name: &str| Ok::<_, Infallible>(name.replace("-", "_"))),
+                        .value_parser(|name: &str| Ok::<_, Infallible>(name.replace('-', "_"))),
                     Arg::new("category")
                         .short('c')
                         .long("category")
