@@ -1,3 +1,4 @@
+//@run-rustfix
 #![allow(unused)]
 #![warn(clippy::as_ptr_cast_mut)]
 #![allow(clippy::wrong_self_convention)]
