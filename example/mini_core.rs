@@ -526,7 +526,7 @@ impl<T: ?Sized, U: ?Sized> CoerceUnsized<Unique<U>> for Unique<T> where T: Unsiz
 impl<T: ?Sized, U: ?Sized> DispatchFromDyn<Unique<U>> for Unique<T> where T: Unsize<U> {}
 
 #[lang = "owned_box"]
-pub struct Box<T: ?Sized>(Unique<T>, ());
+pub struct Box<T: ?Sized, A = ()>(Unique<T>, A);
 
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
 
@@ -541,7 +541,7 @@ impl<T> Box<T> {
     }
 }
 
-impl<T: ?Sized> Drop for Box<T> {
+impl<T: ?Sized, A> Drop for Box<T, A> {
     fn drop(&mut self) {
         // drop is currently performed by compiler.
     }
