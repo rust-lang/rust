@@ -382,7 +382,7 @@ fn debug_dump<'a, 'tcx: 'a>(tcx: TyCtxt<'tcx>, label: &str, cgus: &[CodegenUnit<
         std::mem::take(s)
     };
 
-    eprintln!("{}", dump());
+    debug!("{}", dump());
 }
 
 #[inline(never)] // give this a place in the profiler

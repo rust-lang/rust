@@ -117,8 +117,8 @@ impl<'tcx> Partition<'tcx> for DefaultPartitioning {
             // njn: type ann?
             let total_size: usize = codegen_units.iter().map(|cgu| cgu.size_estimate()).sum();
             let target_size = total_size / cx.target_cgu_count;
-            eprintln!("----");
-            eprintln!("SPLIT0: total:{} target:{}", total_size, target_size);
+            //eprintln!("----");
+            //eprintln!("SPLIT0: total:{} target:{}", total_size, target_size);
             // njn: need a while loop because we're modifying codegen_units as we go
             // njn: make it a for loop?
             // njn: explain all this
@@ -126,14 +126,14 @@ impl<'tcx> Partition<'tcx> for DefaultPartitioning {
             let mut j = 0; // njn: explain
             let n = codegen_units.len();
             while i < n {
-                let old_cgu = &mut codegen_units[i]; 
+                let old_cgu = &mut codegen_units[i];
                 if old_cgu.size_estimate() > target_size && old_cgu.items().len() > 1 {
-                    eprintln!("SPLIT1: old:{} old:{}", old_cgu.size_estimate(), old_cgu.name());
+                    //eprintln!("SPLIT1: old:{} old:{}", old_cgu.size_estimate(), old_cgu.name());
 
                     // njn: too big; split
                     // njn: explain how a very big CGU will be split multiple
                     // times
-                    
+
                     let mut new_name = old_cgu.name().to_string();
                     new_name += &format!("-split{}", j);
                     let mut new_cgu = CodegenUnit::new(Symbol::intern(&new_name));
@@ -144,13 +144,17 @@ impl<'tcx> Partition<'tcx> for DefaultPartitioning {
 
                     // njn: what if this empties old_cgu?
 
+                    // njn: non-deterministic iteration results in
+                    // non-deterministic splitting, which messes up incremental
+                    // compilation
+
                     // njn: nicer way to do this?
                     // njn: don't move if it's the last item
                     old_cgu.items_mut().drain_filter(|item, rest| {
                         // njn: true->remove
                         if moved_size < target_size {
                             let item_size = item.size_estimate(cx.tcx);
-                            eprintln!("MOVE: {}", item_size);
+                            //eprintln!("MOVE: {}", item_size);
                             moved_size += item_size;
                             new_cgu.items_mut().insert(*item, *rest);
                             true
@@ -161,7 +165,7 @@ impl<'tcx> Partition<'tcx> for DefaultPartitioning {
                     new_cgu.increase_size_estimate(moved_size);
                     old_cgu.decrease_size_estimate(moved_size);
 
-                    eprintln!("SPLIT2: old:{} -> new:{} new:{}", old_cgu.size_estimate(), new_cgu.size_estimate(), new_cgu.name());
+                    //eprintln!("SPLIT2: old:{} -> new:{} new:{}", old_cgu.size_estimate(), new_cgu.size_estimate(), new_cgu.name());
 
                     codegen_units.push(new_cgu);
                     // njn: explain lack of `i += 1`;
