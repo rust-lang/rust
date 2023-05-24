@@ -15,8 +15,3 @@ pub fn step_forward(x: u32, n: usize) -> u32 {
 pub fn checked_shl(x: u32, rhs: u32) -> Option<u32> {
     x.checked_shl(rhs)
 }
-
-// EMIT_MIR checked_ops.ilog2.PreCodegen.after.mir
-pub fn ilog2(x: u32) -> u32 {
-    x.ilog2()
-}
