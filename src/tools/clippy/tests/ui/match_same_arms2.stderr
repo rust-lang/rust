@@ -192,5 +192,20 @@ note: other arm here
 LL |         Some(Bar { x: 0, y: 5, .. }) => 1,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 12 previous errors
+error: this match arm has an identical body to another arm
+  --> $DIR/match_same_arms2.rs:245:9
+   |
+LL |         1 => cfg!(not_enable),
+   |         -^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         help: try merging the arm patterns: `1 | 0`
+   |
+   = help: or try changing either arm body
+note: other arm here
+  --> $DIR/match_same_arms2.rs:244:9
+   |
+LL |         0 => cfg!(not_enable),
+   |         ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 13 previous errors
 

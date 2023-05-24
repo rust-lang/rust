@@ -18,7 +18,7 @@ pub(super) fn check(cx: &LateContext<'_>, e: &Expr<'_>, op: BinOpKind, lhs: &Exp
 }
 
 fn is_nan(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
-    if let Some((value, _)) = constant(cx, cx.typeck_results(), e) {
+    if let Some(value) = constant(cx, cx.typeck_results(), e) {
         match value {
             Constant::F32(num) => num.is_nan(),
             Constant::F64(num) => num.is_nan(),

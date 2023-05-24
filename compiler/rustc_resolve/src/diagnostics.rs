@@ -28,10 +28,10 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Span, SyntaxContext};
 use thin_vec::ThinVec;
 
-use crate::errors as errs;
 use crate::imports::{Import, ImportKind};
 use crate::late::{PatternSource, Rib};
 use crate::path_names_to_string;
+use crate::{errors as errs, BindingKey};
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BindingError, Finalize};
 use crate::{HasGenericParams, MacroRulesScope, Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{LexicalScopeBinding, NameBinding, NameBindingKind, PrivacyError, VisResolutionError};
@@ -550,7 +550,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                 let sm = self.tcx.sess.source_map();
                 let def_id = match outer_res {
-                    Res::SelfTyParam { .. } | Res::SelfCtor(_) => {
+                    Res::SelfTyParam { .. } => {
                         err.span_label(span, "can't use `Self` here");
                         return err;
                     }
@@ -1832,7 +1832,17 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
             (msg, None)
         } else if ident.name == kw::SelfUpper {
-            ("`Self` is only available in impls, traits, and type definitions".to_string(), None)
+            // As mentioned above, `opt_ns` being `None` indicates a module path in import.
+            // We can use this to improve a confusing error for, e.g. `use Self::Variant` in an
+            // impl
+            if opt_ns.is_none() {
+                ("`Self` cannot be used in imports".to_string(), None)
+            } else {
+                (
+                    "`Self` is only available in impls, traits, and type definitions".to_string(),
+                    None,
+                )
+            }
         } else if ident.name.as_str().chars().next().map_or(false, |c| c.is_ascii_uppercase()) {
             // Check whether the name refers to an item in the value namespace.
             let binding = if let Some(ribs) = ribs {
@@ -2081,7 +2091,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         let resolutions = self.resolutions(crate_module).borrow();
-        let resolution = resolutions.get(&self.new_key(ident, MacroNS))?;
+        let binding_key = BindingKey::new(ident, MacroNS);
+        let resolution = resolutions.get(&binding_key)?;
         let binding = resolution.borrow().binding()?;
         if let Res::Def(DefKind::Macro(MacroKind::Bang), _) = binding.res() {
             let module_name = crate_module.kind.name().unwrap();

@@ -29,6 +29,7 @@ smallvec = "1.7"
 # for more information.
 rustc-workspace-hack = "1.0.0"
 measureme = "10.0.0"
+ctrlc = "3.2.5"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

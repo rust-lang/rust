@@ -146,7 +146,12 @@ pub struct StableCrateId(pub(crate) Hash64);
 impl StableCrateId {
     /// Computes the stable ID for a crate with the given name and
     /// `-Cmetadata` arguments.
-    pub fn new(crate_name: Symbol, is_exe: bool, mut metadata: Vec<String>) -> StableCrateId {
+    pub fn new(
+        crate_name: Symbol,
+        is_exe: bool,
+        mut metadata: Vec<String>,
+        cfg_version: &'static str,
+    ) -> StableCrateId {
         let mut hasher = StableHasher::new();
         // We must hash the string text of the crate name, not the id, as the id is not stable
         // across builds.
@@ -180,7 +185,7 @@ impl StableCrateId {
         if let Some(val) = std::env::var_os("RUSTC_FORCE_RUSTC_VERSION") {
             hasher.write(val.to_string_lossy().into_owned().as_bytes())
         } else {
-            hasher.write(option_env!("CFG_VERSION").unwrap_or("unknown version").as_bytes());
+            hasher.write(cfg_version.as_bytes())
         }
 
         StableCrateId(hasher.finish())

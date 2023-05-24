@@ -14,7 +14,7 @@ itertools = "0.10.1"
 tracing = "0.1"
 jobserver = "0.1.22"
 tempfile = "3.2"
-thorin-dwp = "0.4"
+thorin-dwp = "0.6"
 pathdiff = "0.2.0"
 serde_json = "1.0.59"
 snap = "1"
@@ -46,7 +46,7 @@ rustc_session = { path = "../rustc_session" }
 libc = "0.2.50"
 
 [dependencies.object]
-version = "0.30.1"
+version = "0.31.1"
 default-features = false
 features = ["read_core", "elf", "macho", "pe", "unaligned", "archive", "write"]
 

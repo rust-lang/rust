@@ -6,6 +6,7 @@
 //! If you wonder why there's no `early.rs`, that's because it's split into three files -
 //! `build_reduced_graph.rs`, `macros.rs` and `imports.rs`.
 
+use crate::BindingKey;
 use crate::{path_names_to_string, rustdoc, BindingError, Finalize, LexicalScopeBinding};
 use crate::{Module, ModuleOrUniformRoot, NameBinding, ParentScope, PathResult};
 use crate::{ResolutionError, Resolver, Segment, UseError};
@@ -16,7 +17,7 @@ use rustc_ast::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::{Applicability, DiagnosticArgValue, DiagnosticId, IntoDiagnosticArg};
 use rustc_hir::def::Namespace::{self, *};
-use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, PartialRes, PerNS};
+use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::{BindingAnnotation, PrimTy, TraitCandidate};
 use rustc_middle::middle::resolve_bound_vars::Set1;
@@ -2967,7 +2968,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         // If there is a TraitRef in scope for an impl, then the method must be in the trait.
         let Some((module, _)) = &self.current_trait_ref else { return; };
         ident.span.normalize_to_macros_2_0_and_adjust(module.expansion);
-        let key = self.r.new_key(ident, ns);
+        let key = BindingKey::new(ident, ns);
         let mut binding = self.r.resolution(module, key).try_borrow().ok().and_then(|r| r.binding);
         debug!(?binding);
         if binding.is_none() {
@@ -2978,7 +2979,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 TypeNS => ValueNS,
                 _ => ns,
             };
-            let key = self.r.new_key(ident, ns);
+            let key = BindingKey::new(ident, ns);
             binding = self.r.resolution(module, key).try_borrow().ok().and_then(|r| r.binding);
             debug!(?binding);
         }
@@ -4286,12 +4287,12 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         }
     }
 
-    fn resolve_and_cache_rustdoc_path(&mut self, path_str: &str, ns: Namespace) -> bool {
+    fn resolve_and_cache_rustdoc_path(&mut self, path_str: &str, ns: Namespace) -> Option<Res> {
         // FIXME: This caching may be incorrect in case of multiple `macro_rules`
         // items with the same name in the same module.
         // Also hygiene is not considered.
         let mut doc_link_resolutions = std::mem::take(&mut self.r.doc_link_resolutions);
-        let res = doc_link_resolutions
+        let res = *doc_link_resolutions
             .entry(self.parent_scope.module.nearest_parent_mod().expect_local())
             .or_default()
             .entry((Symbol::intern(path_str), ns))
@@ -4306,8 +4307,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     return None;
                 }
                 res
-            })
-            .is_some();
+            });
         self.r.doc_link_resolutions = doc_link_resolutions;
         res
     }
@@ -4342,8 +4342,10 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             let mut any_resolved = false;
             let mut need_assoc = false;
             for ns in [TypeNS, ValueNS, MacroNS] {
-                if self.resolve_and_cache_rustdoc_path(&path_str, ns) {
-                    any_resolved = true;
+                if let Some(res) = self.resolve_and_cache_rustdoc_path(&path_str, ns) {
+                    // Rustdoc ignores tool attribute resolutions and attempts
+                    // to resolve their prefixes for diagnostics.
+                    any_resolved = !matches!(res, Res::NonMacroAttr(NonMacroAttrKind::Tool));
                 } else if ns != MacroNS {
                     need_assoc = true;
                 }

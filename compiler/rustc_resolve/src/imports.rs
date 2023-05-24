@@ -405,17 +405,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         t
     }
 
-    // Define a dummy resolution containing a `Res::Err` as a placeholder for a failed resolution,
-    // also mark such failed imports as used to avoid duplicate diagnostics.
-    fn import_dummy_binding(&mut self, import: &'a Import<'a>) {
+    // Define a dummy resolution containing a `Res::Err` as a placeholder for a failed
+    // or indeterminate resolution, also mark such failed imports as used to avoid duplicate diagnostics.
+    fn import_dummy_binding(&mut self, import: &'a Import<'a>, is_indeterminate: bool) {
         if let ImportKind::Single { target, ref target_bindings, .. } = import.kind {
-            if target_bindings.iter().any(|binding| binding.get().is_some()) {
+            if !(is_indeterminate || target_bindings.iter().all(|binding| binding.get().is_none()))
+            {
                 return; // Has resolution, do not create the dummy binding
             }
             let dummy_binding = self.dummy_binding;
             let dummy_binding = self.import(dummy_binding, import);
             self.per_ns(|this, ns| {
-                let key = this.new_key(target, ns);
+                let key = BindingKey::new(target, ns);
                 let _ = this.try_define(import.parent_scope.module, key, dummy_binding);
             });
             self.record_use(target, dummy_binding, false);
@@ -474,7 +475,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             // If this import is unresolved then create a dummy import
             // resolution for it so that later resolve stages won't complain.
-            self.import_dummy_binding(import);
+            self.import_dummy_binding(import, is_indeterminate);
 
             if let Some(err) = unresolved_import_error {
                 if let ImportKind::Single { source, ref source_bindings, .. } = import.kind {
@@ -712,7 +713,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 .span_label(import.span, "cannot be imported directly")
                                 .emit();
                         }
-                        let key = this.new_key(target, ns);
+                        let key = BindingKey::new(target, ns);
                         this.update_resolution(parent, key, |_, resolution| {
                             resolution.single_imports.remove(&Interned::new_unchecked(import));
                         });

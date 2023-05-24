@@ -2,7 +2,7 @@ use measureme::{StringComponent, StringId};
 use rustc_data_structures::profiling::SelfProfiler;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathData;
-use rustc_middle::ty::query::QueryKeyStringCache;
+use rustc_middle::query::plumbing::QueryKeyStringCache;
 use rustc_middle::ty::TyCtxt;
 use rustc_query_system::query::QueryCache;
 use std::fmt::Debug;
@@ -243,7 +243,7 @@ pub fn alloc_self_profile_query_strings(tcx: TyCtxt<'_>) {
 
     let mut string_cache = QueryKeyStringCache::new();
 
-    for query in &tcx.query_system.fns.query_structs {
-        (query.alloc_self_profile_query_strings)(tcx, &mut string_cache);
+    for alloc in super::ALLOC_SELF_PROFILE_QUERY_STRINGS.iter() {
+        alloc(tcx, &mut string_cache)
     }
 }

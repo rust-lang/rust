@@ -12,6 +12,7 @@ use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
 use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
+use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use crate::middle::lib_features::LibFeatures;
 use crate::middle::privacy::EffectiveVisibilities;
@@ -25,6 +26,7 @@ use crate::mir::interpret::{
 use crate::mir::interpret::{LitToConstError, LitToConstInput};
 use crate::mir::mono::CodegenUnit;
 use crate::query::erase::{erase, restore, Erase};
+use crate::query::plumbing::{query_ensure, query_get_at, DynamicQuery};
 use crate::thir;
 use crate::traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
@@ -36,13 +38,12 @@ use crate::traits::query::{
     OutlivesBound,
 };
 use crate::traits::specialization_graph;
-use crate::traits::{self, ImplSource};
+use crate::traits::{
+    CanonicalChalkEnvironmentAndGoal, CodegenObligationError, EvaluationResult, ImplSource,
+    ObjectSafetyViolation, ObligationCause, OverflowError, WellFormedLoc,
+};
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::ValidityRequirement;
-use crate::ty::query::{
-    query_ensure, query_get_at, DynamicQuery, IntoQueryParam, TyCtxtAt, TyCtxtEnsure,
-    TyCtxtEnsureWithValue,
-};
 use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::util::AlwaysRequiresDrop;
 use crate::ty::GeneratorDiagnosticData;
@@ -90,8 +91,11 @@ use std::sync::Arc;
 
 pub mod erase;
 mod keys;
-pub mod on_disk_cache;
 pub use keys::{AsLocalKey, Key, LocalCrate};
+pub mod on_disk_cache;
+#[macro_use]
+pub mod plumbing;
+pub use plumbing::{IntoQueryParam, TyCtxtAt, TyCtxtEnsure, TyCtxtEnsureWithValue};
 
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
@@ -726,12 +730,6 @@ rustc_queries! {
         desc { |tcx| "checking if item is promotable: `{}`", tcx.def_path_str(key) }
     }
 
-    /// Returns `true` if this is a foreign item (i.e., linked via `extern { ... }`).
-    query is_foreign_item(key: DefId) -> bool {
-        desc { |tcx| "checking if `{}` is a foreign item", tcx.def_path_str(key) }
-        separate_provide_extern
-    }
-
     /// Returns `Some(generator_kind)` if the node pointed to by `def_id` is a generator.
     query generator_kind(def_id: DefId) -> Option<hir::GeneratorKind> {
         desc { |tcx| "looking up generator kind of `{}`", tcx.def_path_str(def_id) }
@@ -1278,7 +1276,7 @@ rustc_queries! {
 
     query codegen_select_candidate(
         key: (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>)
-    ) -> Result<&'tcx ImplSource<'tcx, ()>, traits::CodegenObligationError> {
+    ) -> Result<&'tcx ImplSource<'tcx, ()>, CodegenObligationError> {
         cache_on_disk_if { true }
         desc { |tcx| "computing candidate for `{}`", key.1 }
     }
@@ -1299,7 +1297,7 @@ rustc_queries! {
         desc { |tcx| "building specialization graph of trait `{}`", tcx.def_path_str(trait_id) }
         cache_on_disk_if { true }
     }
-    query object_safety_violations(trait_id: DefId) -> &'tcx [traits::ObjectSafetyViolation] {
+    query object_safety_violations(trait_id: DefId) -> &'tcx [ObjectSafetyViolation] {
         desc { |tcx| "determining object safety of trait `{}`", tcx.def_path_str(trait_id) }
     }
     query check_is_object_safe(trait_id: DefId) -> bool {
@@ -1790,12 +1788,18 @@ rustc_queries! {
         desc { "looking at the source for a crate" }
         separate_provide_extern
     }
+
     /// Returns the debugger visualizers defined for this crate.
-    query debugger_visualizers(_: CrateNum) -> &'tcx Vec<rustc_span::DebuggerVisualizerFile> {
+    /// NOTE: This query has to be marked `eval_always` because it reads data
+    ///       directly from disk that is not tracked anywhere else. I.e. it
+    ///       represents a genuine input to the query system.
+    query debugger_visualizers(_: CrateNum) -> &'tcx Vec<DebuggerVisualizerFile> {
         arena_cache
         desc { "looking up the debugger visualizers for this crate" }
         separate_provide_extern
+        eval_always
     }
+
     query postorder_cnums(_: ()) -> &'tcx [CrateNum] {
         eval_always
         desc { "generating a postorder list of CrateNums" }
@@ -1837,8 +1841,7 @@ rustc_queries! {
     }
 
     /// A list of all traits in a crate, used by rustdoc and error reporting.
-    /// NOTE: Not named just `traits` due to a naming conflict.
-    query traits_in_crate(_: CrateNum) -> &'tcx [DefId] {
+    query traits(_: CrateNum) -> &'tcx [DefId] {
         desc { "fetching all traits in a crate" }
         separate_provide_extern
     }
@@ -1952,12 +1955,12 @@ rustc_queries! {
     /// `infcx.predicate_must_hold()` instead.
     query evaluate_obligation(
         goal: CanonicalPredicateGoal<'tcx>
-    ) -> Result<traits::EvaluationResult, traits::OverflowError> {
+    ) -> Result<EvaluationResult, OverflowError> {
         desc { "evaluating trait selection obligation `{}`", goal.value.value }
     }
 
     query evaluate_goal(
-        goal: traits::CanonicalChalkEnvironmentAndGoal<'tcx>
+        goal: CanonicalChalkEnvironmentAndGoal<'tcx>
     ) -> Result<
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>,
         NoSolution
@@ -2127,8 +2130,8 @@ rustc_queries! {
     /// all of the cases that the normal `ty::Ty`-based wfcheck does. This is fine,
     /// because the `ty::Ty`-based wfcheck is always run.
     query diagnostic_hir_wf_check(
-        key: (ty::Predicate<'tcx>, traits::WellFormedLoc)
-    ) -> &'tcx Option<traits::ObligationCause<'tcx>> {
+        key: (ty::Predicate<'tcx>, WellFormedLoc)
+    ) -> &'tcx Option<ObligationCause<'tcx>> {
         arena_cache
         eval_always
         no_hash

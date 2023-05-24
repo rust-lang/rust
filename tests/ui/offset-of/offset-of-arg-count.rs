@@ -12,6 +12,11 @@ fn main() {
     offset_of!(S, f.,); //~ ERROR expected identifier
     offset_of!(S, f..); //~ ERROR no rules expected the token
     offset_of!(S, f..,); //~ ERROR no rules expected the token
+    offset_of!(Lt<'static>, bar); // issue #111657
+    offset_of!(Lt<'_>, bar); // issue #111678
 }
 
 struct S { f: u8, }
+struct Lt<'a> {
+    bar: &'a (),
+}

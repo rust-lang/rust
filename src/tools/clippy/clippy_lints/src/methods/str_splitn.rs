@@ -316,7 +316,7 @@ fn parse_iter_usage<'tcx>(
                     };
                 },
                 ("nth" | "skip", [idx_expr]) if cx.tcx.trait_of_item(did) == Some(iter_id) => {
-                    if let Some((Constant::Int(idx), _)) = constant(cx, cx.typeck_results(), idx_expr) {
+                    if let Some(Constant::Int(idx)) = constant(cx, cx.typeck_results(), idx_expr) {
                         let span = if name.ident.as_str() == "nth" {
                             e.span
                         } else {

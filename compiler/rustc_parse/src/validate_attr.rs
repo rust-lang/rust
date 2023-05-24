@@ -186,7 +186,7 @@ fn emit_malformed_attribute(
         suggestions.push(code);
     }
     if should_warn(name) {
-        sess.buffer_lint(&ILL_FORMED_ATTRIBUTE_INPUT, span, ast::CRATE_NODE_ID, &msg);
+        sess.buffer_lint(&ILL_FORMED_ATTRIBUTE_INPUT, span, ast::CRATE_NODE_ID, msg);
     } else {
         sess.span_diagnostic
             .struct_span_err(span, error_msg)

@@ -117,6 +117,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "autocfg",
     "bitflags",
     "block-buffer",
+    "byteorder", // via ruzstd in object in thorin-dwp
     "cc",
     "cfg-if",
     "chalk-derive",
@@ -217,6 +218,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "rustc-rayon",
     "rustc-rayon-core",
     "rustc_version",
+    "ruzstd", // via object in thorin-dwp
     "ryu",
     "scoped-tls",
     "scopeguard",

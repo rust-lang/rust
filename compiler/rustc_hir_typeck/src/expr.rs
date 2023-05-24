@@ -721,7 +721,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // ICE this expression in particular (see #43162).
                 if let ExprKind::Path(QPath::Resolved(_, path)) = e.kind {
                     if path.segments.len() == 1 && path.segments[0].ident.name == sym::rust {
-                        fatally_break_rust(self.tcx.sess);
+                        fatally_break_rust(self.tcx);
                     }
                 }
             }
@@ -1245,6 +1245,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         error,
                         Some((rcvr, args)),
                         expected,
+                        false,
                     ) {
                         err.emit();
                     }
@@ -2468,7 +2469,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             self.suggest_method_call(
                 &mut err,
-                &format!("a method `{field}` also exists, call it with parentheses"),
+                format!("a method `{field}` also exists, call it with parentheses"),
                 field,
                 expr_t,
                 expr,

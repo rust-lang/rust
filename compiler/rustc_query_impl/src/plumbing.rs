@@ -81,8 +81,8 @@ impl QueryContext for QueryCtxt<'_> {
     fn try_collect_active_jobs(self) -> Option<QueryMap<DepKind>> {
         let mut jobs = QueryMap::default();
 
-        for query in &self.query_system.fns.query_structs {
-            (query.try_collect_active_jobs)(self.tcx, &mut jobs);
+        for collect in super::TRY_COLLECT_ACTIVE_JOBS.iter() {
+            collect(self.tcx, &mut jobs);
         }
 
         Some(jobs)
@@ -183,10 +183,8 @@ pub(super) fn encode_all_query_results<'tcx>(
     encoder: &mut CacheEncoder<'_, 'tcx>,
     query_result_index: &mut EncodedDepNodeIndex,
 ) {
-    for query in &tcx.query_system.fns.query_structs {
-        if let Some(encode) = query.encode_query_results {
-            encode(tcx, encoder, query_result_index);
-        }
+    for encode in super::ENCODE_QUERY_RESULTS.iter().copied().filter_map(|e| e) {
+        encode(tcx, encoder, query_result_index);
     }
 }
 
@@ -476,6 +474,16 @@ where
     }
 }
 
+macro_rules! item_if_cached {
+    ([] $tokens:tt) => {};
+    ([(cache) $($rest:tt)*] { $($tokens:tt)* }) => {
+        $($tokens)*
+    };
+    ([$other:tt $($modifiers:tt)*] $tokens:tt) => {
+        item_if_cached! { [$($modifiers)*] $tokens }
+    };
+}
+
 macro_rules! expand_if_cached {
     ([], $tokens:expr) => {{
         None
@@ -488,166 +496,226 @@ macro_rules! expand_if_cached {
     };
 }
 
+/// Don't show the backtrace for query system by default
+/// use `RUST_BACKTRACE=full` to show all the backtraces
+#[inline(never)]
+pub fn __rust_begin_short_backtrace<F, T>(f: F) -> T
+where
+    F: FnOnce() -> T,
+{
+    let result = f();
+    std::hint::black_box(());
+    result
+}
+
 // NOTE: `$V` isn't used here, but we still need to match on it so it can be passed to other macros
 // invoked by `rustc_query_append`.
 macro_rules! define_queries {
     (
      $($(#[$attr:meta])*
         [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,)*) => {
-        mod get_query_incr {
-            use super::*;
 
-            $(
-                #[inline(always)]
-                #[tracing::instrument(level = "trace", skip(tcx))]
-                pub(super) fn $name<'tcx>(
+        pub(crate) mod query_impl { $(pub mod $name {
+            use super::super::*;
+            use std::marker::PhantomData;
+
+            pub mod get_query_incr {
+                use super::*;
+
+                // Adding `__rust_end_short_backtrace` marker to backtraces so that we emit the frames
+                // when `RUST_BACKTRACE=1`, add a new mod with `$name` here is to allow duplicate naming
+                #[inline(never)]
+                pub fn __rust_end_short_backtrace<'tcx>(
                     tcx: TyCtxt<'tcx>,
                     span: Span,
-                    key: query_keys::$name<'tcx>,
+                    key: queries::$name::Key<'tcx>,
                     mode: QueryMode,
-                ) -> Option<Erase<query_values::$name<'tcx>>> {
+                ) -> Option<Erase<queries::$name::Value<'tcx>>> {
                     get_query_incr(
-                        queries::$name::config(tcx),
+                        QueryType::config(tcx),
                         QueryCtxt::new(tcx),
                         span,
                         key,
                         mode
                     )
                 }
-            )*
-        }
+            }
 
-        mod get_query_non_incr {
-            use super::*;
+            pub mod get_query_non_incr {
+                use super::*;
 
-            $(
-                #[inline(always)]
-                #[tracing::instrument(level = "trace", skip(tcx))]
-                pub(super) fn $name<'tcx>(
+                #[inline(never)]
+                pub fn __rust_end_short_backtrace<'tcx>(
                     tcx: TyCtxt<'tcx>,
                     span: Span,
-                    key: query_keys::$name<'tcx>,
+                    key: queries::$name::Key<'tcx>,
                     __mode: QueryMode,
-                ) -> Option<Erase<query_values::$name<'tcx>>> {
+                ) -> Option<Erase<queries::$name::Value<'tcx>>> {
                     Some(get_query_non_incr(
-                        queries::$name::config(tcx),
+                        QueryType::config(tcx),
                         QueryCtxt::new(tcx),
                         span,
                         key,
                     ))
                 }
-            )*
-        }
+            }
+
+            pub fn dynamic_query<'tcx>() -> DynamicQuery<'tcx, queries::$name::Storage<'tcx>> {
+                DynamicQuery {
+                    name: stringify!($name),
+                    eval_always: is_eval_always!([$($modifiers)*]),
+                    dep_kind: dep_graph::DepKind::$name,
+                    handle_cycle_error: handle_cycle_error!([$($modifiers)*]),
+                    query_state: offset_of!(QueryStates<'tcx> => $name),
+                    query_cache: offset_of!(QueryCaches<'tcx> => $name),
+                    cache_on_disk: |tcx, key| ::rustc_middle::query::cached::$name(tcx, key),
+                    execute_query: |tcx, key| erase(tcx.$name(key)),
+                    compute: |tcx, key| {
+                        __rust_begin_short_backtrace(||
+                            queries::$name::provided_to_erased(
+                                tcx,
+                                call_provider!([$($modifiers)*][tcx, $name, key])
+                            )
+                        )
+                    },
+                    can_load_from_disk: should_ever_cache_on_disk!([$($modifiers)*] true false),
+                    try_load_from_disk: should_ever_cache_on_disk!([$($modifiers)*] {
+                        |tcx, key, prev_index, index| {
+                            if ::rustc_middle::query::cached::$name(tcx, key) {
+                                let value = $crate::plumbing::try_load_from_disk::<
+                                    queries::$name::ProvidedValue<'tcx>
+                                >(
+                                    tcx,
+                                    prev_index,
+                                    index,
+                                );
+                                value.map(|value| queries::$name::provided_to_erased(tcx, value))
+                            } else {
+                                None
+                            }
+                        }
+                    } {
+                        |_tcx, _key, _prev_index, _index| None
+                    }),
+                    value_from_cycle_error: |tcx, cycle| {
+                        let result: queries::$name::Value<'tcx> = Value::from_cycle_error(tcx, cycle);
+                        erase(result)
+                    },
+                    loadable_from_disk: |_tcx, _key, _index| {
+                        should_ever_cache_on_disk!([$($modifiers)*] {
+                            ::rustc_middle::query::cached::$name(_tcx, _key) &&
+                                $crate::plumbing::loadable_from_disk(_tcx, _index)
+                        } {
+                            false
+                        })
+                    },
+                    hash_result: hash_result!([$($modifiers)*][queries::$name::Value<'tcx>]),
+                    format_value: |value| format!("{:?}", restore::<queries::$name::Value<'tcx>>(*value)),
+                }
+            }
+
+            #[derive(Copy, Clone, Default)]
+            pub struct QueryType<'tcx> {
+                data: PhantomData<&'tcx ()>
+            }
+
+            impl<'tcx> QueryConfigRestored<'tcx> for QueryType<'tcx> {
+                type RestoredValue = queries::$name::Value<'tcx>;
+                type Config = DynamicConfig<
+                    'tcx,
+                    queries::$name::Storage<'tcx>,
+                    { is_anon!([$($modifiers)*]) },
+                    { depth_limit!([$($modifiers)*]) },
+                    { feedable!([$($modifiers)*]) },
+                >;
+
+                #[inline(always)]
+                fn config(tcx: TyCtxt<'tcx>) -> Self::Config {
+                    DynamicConfig {
+                        dynamic: &tcx.query_system.dynamic_queries.$name,
+                    }
+                }
+
+                #[inline(always)]
+                fn restore(value: <Self::Config as QueryConfig<QueryCtxt<'tcx>>>::Value) -> Self::RestoredValue {
+                    restore::<queries::$name::Value<'tcx>>(value)
+                }
+            }
+
+            pub fn try_collect_active_jobs<'tcx>(tcx: TyCtxt<'tcx>, qmap: &mut QueryMap<DepKind>) {
+                let make_query = |tcx, key| {
+                    let kind = rustc_middle::dep_graph::DepKind::$name;
+                    let name = stringify!($name);
+                    $crate::plumbing::create_query_frame(tcx, rustc_middle::query::descs::$name, key, kind, name)
+                };
+                tcx.query_system.states.$name.try_collect_active_jobs(
+                    tcx,
+                    make_query,
+                    qmap,
+                ).unwrap();
+            }
+
+            pub fn alloc_self_profile_query_strings<'tcx>(tcx: TyCtxt<'tcx>, string_cache: &mut QueryKeyStringCache) {
+                $crate::profiling_support::alloc_self_profile_query_strings_for_query_cache(
+                    tcx,
+                    stringify!($name),
+                    &tcx.query_system.caches.$name,
+                    string_cache,
+                )
+            }
+
+            item_if_cached! { [$($modifiers)*] {
+                pub fn encode_query_results<'tcx>(
+                    tcx: TyCtxt<'tcx>,
+                    encoder: &mut CacheEncoder<'_, 'tcx>,
+                    query_result_index: &mut EncodedDepNodeIndex
+                ) {
+                    $crate::plumbing::encode_query_results::<query_impl::$name::QueryType<'tcx>>(
+                        query_impl::$name::QueryType::config(tcx),
+                        QueryCtxt::new(tcx),
+                        encoder,
+                        query_result_index,
+                    )
+                }
+            }}
+        })*}
 
         pub(crate) fn engine(incremental: bool) -> QueryEngine {
             if incremental {
                 QueryEngine {
-                    $($name: get_query_incr::$name,)*
+                    $($name: query_impl::$name::get_query_incr::__rust_end_short_backtrace,)*
                 }
             } else {
                 QueryEngine {
-                    $($name: get_query_non_incr::$name,)*
+                    $($name: query_impl::$name::get_query_non_incr::__rust_end_short_backtrace,)*
                 }
             }
         }
-
-        #[allow(nonstandard_style)]
-        mod queries {
-            use std::marker::PhantomData;
-
-            $(
-                #[derive(Copy, Clone, Default)]
-                pub struct $name<'tcx> {
-                    data: PhantomData<&'tcx ()>
-                }
-            )*
-        }
-
-        #[allow(nonstandard_style)]
-        mod dynamic_query {
-            use super::*;
-
-            $(
-                pub(super) fn $name<'tcx>() -> DynamicQuery<'tcx, query_storage::$name<'tcx>> {
-                    DynamicQuery {
-                        name: stringify!($name),
-                        eval_always: is_eval_always!([$($modifiers)*]),
-                        dep_kind: dep_graph::DepKind::$name,
-                        handle_cycle_error: handle_cycle_error!([$($modifiers)*]),
-                        query_state: offset_of!(QueryStates<'tcx> => $name),
-                        query_cache: offset_of!(QueryCaches<'tcx> => $name),
-                        cache_on_disk: |tcx, key| ::rustc_middle::query::cached::$name(tcx, key),
-                        execute_query: |tcx, key| erase(tcx.$name(key)),
-                        compute: |tcx, key| query_provided_to_value::$name(
-                            tcx,
-                            call_provider!([$($modifiers)*][tcx, $name, key])
-                        ),
-                        can_load_from_disk: should_ever_cache_on_disk!([$($modifiers)*] true false),
-                        try_load_from_disk: should_ever_cache_on_disk!([$($modifiers)*] {
-                            |tcx, key, prev_index, index| {
-                                if ::rustc_middle::query::cached::$name(tcx, key) {
-                                    let value = $crate::plumbing::try_load_from_disk::<query_provided::$name<'tcx>>(
-                                        tcx,
-                                        prev_index,
-                                        index,
-                                    );
-                                    value.map(|value| query_provided_to_value::$name(tcx, value))
-                                } else {
-                                    None
-                                }
-                            }
-                        } {
-                            |_tcx, _key, _prev_index, _index| None
-                        }),
-                        value_from_cycle_error: |tcx, cycle| {
-                            let result: query_values::$name<'tcx> = Value::from_cycle_error(tcx, cycle);
-                            erase(result)
-                        },
-                        loadable_from_disk: |_tcx, _key, _index| {
-                            should_ever_cache_on_disk!([$($modifiers)*] {
-                                ::rustc_middle::query::cached::$name(_tcx, _key) &&
-                                    $crate::plumbing::loadable_from_disk(_tcx, _index)
-                            } {
-                                false
-                            })
-                        },
-                        hash_result: hash_result!([$($modifiers)*][query_values::$name<'tcx>]),
-                        format_value: |value| format!("{:?}", restore::<query_values::$name<'tcx>>(*value)),
-                    }
-                }
-            )*
-        }
-
-        $(impl<'tcx> QueryConfigRestored<'tcx> for queries::$name<'tcx> {
-            type RestoredValue = query_values::$name<'tcx>;
-            type Config = DynamicConfig<
-                'tcx,
-                query_storage::$name<'tcx>,
-                { is_anon!([$($modifiers)*]) },
-                { depth_limit!([$($modifiers)*]) },
-                { feedable!([$($modifiers)*]) },
-            >;
-
-            #[inline(always)]
-            fn config(tcx: TyCtxt<'tcx>) -> Self::Config {
-                DynamicConfig {
-                    dynamic: &tcx.query_system.dynamic_queries.$name,
-                }
-            }
-
-            #[inline(always)]
-            fn restore(value: <Self::Config as QueryConfig<QueryCtxt<'tcx>>>::Value) -> Self::RestoredValue {
-                restore::<query_values::$name<'tcx>>(value)
-            }
-        })*
 
         pub fn dynamic_queries<'tcx>() -> DynamicQueries<'tcx> {
             DynamicQueries {
                 $(
-                    $name: dynamic_query::$name(),
+                    $name: query_impl::$name::dynamic_query(),
                 )*
             }
         }
+
+        // These arrays are used for iteration and can't be indexed by `DepKind`.
+
+        const TRY_COLLECT_ACTIVE_JOBS: &[for<'tcx> fn(TyCtxt<'tcx>, &mut QueryMap<DepKind>)] =
+            &[$(query_impl::$name::try_collect_active_jobs),*];
+
+        const ALLOC_SELF_PROFILE_QUERY_STRINGS: &[
+            for<'tcx> fn(TyCtxt<'tcx>, &mut QueryKeyStringCache)
+        ] = &[$(query_impl::$name::alloc_self_profile_query_strings),*];
+
+        const ENCODE_QUERY_RESULTS: &[
+            Option<for<'tcx> fn(
+                TyCtxt<'tcx>,
+                &mut CacheEncoder<'_, 'tcx>,
+                &mut EncodedDepNodeIndex)
+            >
+        ] = &[$(expand_if_cached!([$($modifiers)*], query_impl::$name::encode_query_results)),*];
 
         #[allow(nonstandard_style)]
         mod query_callbacks {
@@ -707,70 +775,11 @@ macro_rules! define_queries {
             }
 
             $(pub(crate) fn $name<'tcx>()-> DepKindStruct<'tcx> {
-                $crate::plumbing::query_callback::<queries::$name<'tcx>>(
+                $crate::plumbing::query_callback::<query_impl::$name::QueryType<'tcx>>(
                     is_anon!([$($modifiers)*]),
                     is_eval_always!([$($modifiers)*]),
                 )
             })*
-        }
-
-        mod query_structs {
-            use super::*;
-            use rustc_middle::ty::query::QueryStruct;
-            use rustc_middle::ty::query::QueryKeyStringCache;
-            use rustc_middle::dep_graph::DepKind;
-            use crate::QueryConfigRestored;
-
-            pub(super) const fn dummy_query_struct<'tcx>() -> QueryStruct<'tcx> {
-                fn noop_try_collect_active_jobs(_: TyCtxt<'_>, _: &mut QueryMap<DepKind>) -> Option<()> {
-                    None
-                }
-                fn noop_alloc_self_profile_query_strings(_: TyCtxt<'_>, _: &mut QueryKeyStringCache) {}
-
-                QueryStruct {
-                    try_collect_active_jobs: noop_try_collect_active_jobs,
-                    alloc_self_profile_query_strings: noop_alloc_self_profile_query_strings,
-                    encode_query_results: None,
-                }
-            }
-
-            pub(super) use dummy_query_struct as Null;
-            pub(super) use dummy_query_struct as Red;
-            pub(super) use dummy_query_struct as TraitSelect;
-            pub(super) use dummy_query_struct as CompileCodegenUnit;
-            pub(super) use dummy_query_struct as CompileMonoItem;
-
-            $(
-            pub(super) const fn $name<'tcx>() -> QueryStruct<'tcx> { QueryStruct {
-                try_collect_active_jobs: |tcx, qmap| {
-                    let make_query = |tcx, key| {
-                        let kind = rustc_middle::dep_graph::DepKind::$name;
-                        let name = stringify!($name);
-                        $crate::plumbing::create_query_frame(tcx, rustc_middle::query::descs::$name, key, kind, name)
-                    };
-                    tcx.query_system.states.$name.try_collect_active_jobs(
-                        tcx,
-                        make_query,
-                        qmap,
-                    )
-                },
-                alloc_self_profile_query_strings: |tcx, string_cache| {
-                    $crate::profiling_support::alloc_self_profile_query_strings_for_query_cache(
-                        tcx,
-                        stringify!($name),
-                        &tcx.query_system.caches.$name,
-                        string_cache,
-                    )
-                },
-                encode_query_results: expand_if_cached!([$($modifiers)*], |tcx, encoder, query_result_index|
-                    $crate::plumbing::encode_query_results::<super::queries::$name<'tcx>>(
-                        super::queries::$name::config(tcx),
-                        QueryCtxt::new(tcx),
-                        encoder,
-                        query_result_index,
-                    )
-                ),
-            }})*
         }
 
         pub fn query_callbacks<'tcx>(arena: &'tcx Arena<'tcx>) -> &'tcx [DepKindStruct<'tcx>] {

@@ -219,7 +219,7 @@ impl Config {
             "30", // timeout if cannot connect within 30 seconds
             "--retry",
             "3",
-            "-Sf",
+            "-SRf",
         ]);
         curl.arg(url);
         let f = File::create(tempfile).unwrap();

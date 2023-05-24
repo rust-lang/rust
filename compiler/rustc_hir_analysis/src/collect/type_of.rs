@@ -164,7 +164,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
             let Some(type_dependent_def) = tables.type_dependent_def_id(parent_node_id) else {
                 return tcx.ty_error_with_message(
                     tcx.def_span(def_id),
-                    &format!("unable to find type-dependent def for {:?}", parent_node_id),
+                    format!("unable to find type-dependent def for {:?}", parent_node_id),
                 );
             };
             let idx = segment
@@ -205,14 +205,14 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
                     } else {
                         return tcx.ty_error_with_message(
                             tcx.def_span(def_id),
-                            &format!("unable to find const parent for {} in pat {:?}", hir_id, pat),
+                            format!("unable to find const parent for {} in pat {:?}", hir_id, pat),
                         );
                     }
                 }
                 _ => {
                     return tcx.ty_error_with_message(
                         tcx.def_span(def_id),
-                        &format!("unexpected const parent path {:?}", parent_node),
+                        format!("unexpected const parent path {:?}", parent_node),
                     );
                 }
             };
@@ -243,7 +243,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
                 None => {
                     return tcx.ty_error_with_message(
                         tcx.def_span(def_id),
-                        &format!("unexpected anon const res {:?} in path: {:?}", segment.res, path),
+                        format!("unexpected anon const res {:?} in path: {:?}", segment.res, path),
                     );
                 }
             };
@@ -253,7 +253,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
 
         _ => return tcx.ty_error_with_message(
             tcx.def_span(def_id),
-            &format!("unexpected const parent in type_of(): {parent_node:?}"),
+            format!("unexpected const parent in type_of(): {parent_node:?}"),
         ),
     };
 
@@ -279,7 +279,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
     } else {
         return tcx.ty_error_with_message(
             tcx.def_span(def_id),
-            &format!("const generic parameter not found in {generics:?} at position {arg_idx:?}"),
+            format!("const generic parameter not found in {generics:?} at position {arg_idx:?}"),
         );
     }
 }
@@ -584,7 +584,8 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
                 debug!(?concrete_type, "found constraint");
                 if let Some(prev) = &mut self.found {
                     if concrete_type.ty != prev.ty && !(concrete_type, prev.ty).references_error() {
-                        let guar = prev.report_mismatch(&concrete_type, self.tcx);
+                        let guar =
+                            prev.report_mismatch(&concrete_type, self.def_id, self.tcx).emit();
                         prev.ty = self.tcx.ty_error(guar);
                     }
                 } else {
@@ -678,10 +679,10 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
     // Only check against typeck if we didn't already error
     if !hidden.ty.references_error() {
         for concrete_type in locator.typeck_types {
-            if tcx.erase_regions(concrete_type.ty) != tcx.erase_regions(hidden.ty)
+            if concrete_type.ty != tcx.erase_regions(hidden.ty)
                 && !(concrete_type, hidden).references_error()
             {
-                hidden.report_mismatch(&concrete_type, tcx);
+                hidden.report_mismatch(&concrete_type, def_id, tcx).emit();
             }
         }
     }
@@ -722,7 +723,7 @@ fn find_opaque_ty_constraints_for_rpit(
                 if concrete_type.ty != self.found.ty
                     && !(concrete_type, self.found).references_error()
                 {
-                    self.found.report_mismatch(&concrete_type, self.tcx);
+                    self.found.report_mismatch(&concrete_type, self.def_id, self.tcx).emit();
                 }
             }
         }

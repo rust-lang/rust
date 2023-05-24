@@ -1,6 +1,6 @@
 # loongarch\*-unknown-linux-\*
 
-**Tier: 3**
+**Tier: 2**
 
 [LoongArch] is a new RISC ISA developed by Loongson Technology Corporation Limited.
 

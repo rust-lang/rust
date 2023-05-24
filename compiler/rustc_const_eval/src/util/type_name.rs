@@ -58,11 +58,12 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
             // Types with identity (print the module path).
             ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), substs)
             | ty::FnDef(def_id, substs)
-            | ty::Alias(_, ty::AliasTy { def_id, substs, .. })
+            | ty::Alias(ty::Projection | ty::Opaque, ty::AliasTy { def_id, substs, .. })
             | ty::Closure(def_id, substs)
             | ty::Generator(def_id, substs, _) => self.print_def_path(def_id, substs),
             ty::Foreign(def_id) => self.print_def_path(def_id, &[]),
 
+            ty::Alias(ty::Inherent, _) => bug!("type_name: unexpected inherent projection"),
             ty::GeneratorWitness(_) => bug!("type_name: unexpected `GeneratorWitness`"),
             ty::GeneratorWitnessMIR(..) => bug!("type_name: unexpected `GeneratorWitnessMIR`"),
         }

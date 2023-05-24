@@ -1,0 +1,71 @@
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/issue-110164.rs:5:5
+   |
+LL | use _::a;
+   |     ^ expected identifier, found reserved identifier
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/issue-110164.rs:8:5
+   |
+LL | use _::*;
+   |     ^ expected identifier, found reserved identifier
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/issue-110164.rs:13:9
+   |
+LL |     use _::a;
+   |         ^ expected identifier, found reserved identifier
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/issue-110164.rs:16:9
+   |
+LL |     use _::*;
+   |         ^ expected identifier, found reserved identifier
+
+error[E0432]: unresolved import `self::*`
+  --> $DIR/issue-110164.rs:1:5
+   |
+LL | use self::*;
+   |     ^^^^^^^ cannot glob-import a module into itself
+
+error[E0432]: unresolved import `crate::*`
+  --> $DIR/issue-110164.rs:3:5
+   |
+LL | use crate::*;
+   |     ^^^^^^^^ cannot glob-import a module into itself
+
+error[E0432]: unresolved import `_`
+  --> $DIR/issue-110164.rs:8:5
+   |
+LL | use _::*;
+   |     ^ maybe a missing crate `_`?
+   |
+   = help: consider adding `extern crate _` to use the `_` crate
+
+error[E0432]: unresolved import `_`
+  --> $DIR/issue-110164.rs:5:5
+   |
+LL | use _::a;
+   |     ^ maybe a missing crate `_`?
+   |
+   = help: consider adding `extern crate _` to use the `_` crate
+
+error[E0432]: unresolved import `_`
+  --> $DIR/issue-110164.rs:13:9
+   |
+LL |     use _::a;
+   |         ^ maybe a missing crate `_`?
+   |
+   = help: consider adding `extern crate _` to use the `_` crate
+
+error[E0432]: unresolved import `_`
+  --> $DIR/issue-110164.rs:16:9
+   |
+LL |     use _::*;
+   |         ^ maybe a missing crate `_`?
+   |
+   = help: consider adding `extern crate _` to use the `_` crate
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0432`.

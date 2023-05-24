@@ -40,7 +40,6 @@
 //! [^2] `MTLockRef` is a typedef.
 
 pub use crate::marker::*;
-use crate::owned_slice::OwnedSlice;
 use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
 use std::ops::{Deref, DerefMut};
@@ -92,6 +91,7 @@ mod mode {
 }
 
 pub use mode::{is_dyn_thread_safe, set_dyn_thread_safe_mode};
+
 cfg_if! {
     if #[cfg(not(parallel_compiler))] {
         pub unsafe auto trait Send {}
@@ -243,8 +243,6 @@ cfg_if! {
             }
             r
         }
-
-        pub type MetadataRef = OwnedSlice;
 
         pub use std::rc::Rc as Lrc;
         pub use std::rc::Weak as Weak;
@@ -516,8 +514,6 @@ cfg_if! {
                 r
             }
         }
-
-        pub type MetadataRef = OwnedSlice;
 
         /// This makes locks panic if they are already held.
         /// It is only useful when you are running in a single thread

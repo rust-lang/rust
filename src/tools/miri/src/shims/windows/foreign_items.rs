@@ -219,7 +219,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     .copied()
                     .scan(Size::ZERO, |a, x| {
                         let res = Some(*a);
-                        *a += x;
+                        *a = a.checked_add(x, this).unwrap();
                         res
                     })
                     .collect();

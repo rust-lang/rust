@@ -220,7 +220,6 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::owned_slice::slice_owned;
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::MetadataRef;
 use rustc_errors::{DiagnosticArgValue, FatalError, IntoDiagnosticArg};
 use rustc_fs_util::try_canonicalize;
 use rustc_session::config::{self, CrateType};
@@ -246,6 +245,7 @@ pub(crate) struct CrateLocator<'a> {
     only_needs_metadata: bool,
     sysroot: &'a Path,
     metadata_loader: &'a dyn MetadataLoader,
+    cfg_version: &'static str,
 
     // Immutable per-search configuration.
     crate_name: Symbol,
@@ -323,6 +323,7 @@ impl<'a> CrateLocator<'a> {
             only_needs_metadata,
             sysroot: &sess.sysroot,
             metadata_loader,
+            cfg_version: sess.cfg_version,
             crate_name,
             exact_paths: if hash.is_none() {
                 sess.opts
@@ -655,7 +656,7 @@ impl<'a> CrateLocator<'a> {
     }
 
     fn crate_matches(&mut self, metadata: &MetadataBlob, libpath: &Path) -> Option<Svh> {
-        let rustc_version = rustc_version();
+        let rustc_version = rustc_version(self.cfg_version);
         let found_version = metadata.get_rustc_version();
         if found_version != rustc_version {
             info!("Rejecting via version: expected {} got {}", rustc_version, found_version);
@@ -782,7 +783,7 @@ fn get_metadata_section<'p>(
     if !filename.exists() {
         return Err(MetadataError::NotPresent(filename));
     }
-    let raw_bytes: MetadataRef = match flavor {
+    let raw_bytes = match flavor {
         CrateFlavor::Rlib => {
             loader.get_rlib_metadata(target, filename).map_err(MetadataError::LoadFailure)?
         }
@@ -843,7 +844,7 @@ fn get_metadata_section<'p>(
             slice_owned(mmap, Deref::deref)
         }
     };
-    let blob = MetadataBlob::new(raw_bytes);
+    let blob = MetadataBlob(raw_bytes);
     if blob.is_compatible() {
         Ok(blob)
     } else {
@@ -960,6 +961,7 @@ pub(crate) enum CrateError {
     DlSym(String),
     LocatorCombined(Box<CombinedLocatorError>),
     NonDylibPlugin(Symbol),
+    NotFound(Symbol),
 }
 
 enum MetadataError<'a> {
@@ -1097,7 +1099,7 @@ impl CrateError {
                         crate_name,
                         add_info,
                         found_crates,
-                        rustc_version: rustc_version(),
+                        rustc_version: rustc_version(sess.cfg_version),
                     });
                 } else if !locator.crate_rejections.via_invalid.is_empty() {
                     let mut crate_rejections = Vec::new();
@@ -1129,6 +1131,18 @@ impl CrateError {
             }
             CrateError::NonDylibPlugin(crate_name) => {
                 sess.emit_err(errors::NoDylibPlugin { span, crate_name });
+            }
+            CrateError::NotFound(crate_name) => {
+                sess.emit_err(errors::CannotFindCrate {
+                    span,
+                    crate_name,
+                    add_info: String::new(),
+                    missing_core,
+                    current_crate: sess.opts.crate_name.clone().unwrap_or("<unknown>".to_string()),
+                    is_nightly_build: sess.is_nightly_build(),
+                    profiler_runtime: Symbol::intern(&sess.opts.unstable_opts.profiler_runtime),
+                    locator_triple: sess.opts.target_triple.clone(),
+                });
             }
         }
     }

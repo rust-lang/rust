@@ -143,7 +143,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Before we go into the whole placeholder thing, just
         // quickly check if the self-type is a projection at all.
         match obligation.predicate.skip_binder().trait_ref.self_ty().kind() {
-            ty::Alias(..) => {}
+            // Excluding IATs here as they don't have meaningful item bounds.
+            ty::Alias(ty::Projection | ty::Opaque, _) => {}
             ty::Infer(ty::TyVar(_)) => {
                 span_bug!(
                     obligation.cause.span,
@@ -966,16 +967,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) {
         // The regions of a type don't affect the size of the type
         let tcx = self.tcx();
-        let self_ty =
-            tcx.erase_regions(tcx.erase_late_bound_regions(obligation.predicate.self_ty()));
-
+        let self_ty = tcx.erase_late_bound_regions(obligation.predicate.self_ty());
+        // We should erase regions from both the param-env and type, since both
+        // may have infer regions. Specifically, after canonicalizing and instantiating,
+        // early bound regions turn into region vars in both the new and old solver.
+        let key = tcx.erase_regions(obligation.param_env.and(self_ty));
         // But if there are inference variables, we have to wait until it's resolved.
-        if self_ty.has_non_region_infer() {
+        if key.has_non_region_infer() {
             candidates.ambiguous = true;
             return;
         }
 
-        if let Ok(layout) = tcx.layout_of(obligation.param_env.and(self_ty))
+        if let Ok(layout) = tcx.layout_of(key)
             && layout.layout.is_pointer_like(&tcx.data_layout)
         {
             candidates.vec.push(BuiltinCandidate { has_nested: false });

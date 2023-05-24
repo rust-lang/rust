@@ -124,7 +124,7 @@ impl<'tcx> std::ops::Deref for ExternalConstraints<'tcx> {
 pub struct ExternalConstraintsData<'tcx> {
     // FIXME: implement this.
     pub region_constraints: QueryRegionConstraints<'tcx>,
-    pub opaque_types: Vec<(Ty<'tcx>, Ty<'tcx>)>,
+    pub opaque_types: Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>,
 }
 
 // FIXME: Having to clone `region_constraints` for folding feels bad and

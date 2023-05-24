@@ -238,6 +238,7 @@ fn adjust_for_rust_scalar<'tcx>(
     layout: TyAndLayout<'tcx>,
     offset: Size,
     is_return: bool,
+    drop_target_pointee: Option<Ty<'tcx>>,
 ) {
     // Booleans are always a noundef i1 that needs to be zero-extended.
     if scalar.is_bool() {
@@ -251,14 +252,24 @@ fn adjust_for_rust_scalar<'tcx>(
     }
 
     // Only pointer types handled below.
-    let Scalar::Initialized { value: Pointer(_), valid_range} = scalar else { return };
+    let Scalar::Initialized { value: Pointer(_), valid_range } = scalar else { return };
 
-    if !valid_range.contains(0) {
+    // Set `nonnull` if the validity range excludes zero, or for the argument to `drop_in_place`,
+    // which must be nonnull per its documented safety requirements.
+    if !valid_range.contains(0) || drop_target_pointee.is_some() {
         attrs.set(ArgAttribute::NonNull);
     }
 
     if let Some(pointee) = layout.pointee_info_at(&cx, offset) {
-        if let Some(kind) = pointee.safe {
+        let kind = if let Some(kind) = pointee.safe {
+            Some(kind)
+        } else if let Some(pointee) = drop_target_pointee {
+            // The argument to `drop_in_place` is semantically equivalent to a mutable reference.
+            Some(PointerKind::MutableRef { unpin: pointee.is_unpin(cx.tcx, cx.param_env()) })
+        } else {
+            None
+        };
+        if let Some(kind) = kind {
             attrs.pointee_align = Some(pointee.align);
 
             // `Box` are not necessarily dereferenceable for the entire duration of the function as
@@ -362,10 +373,18 @@ fn fn_abi_new_uncached<'tcx>(
     use SpecAbi::*;
     let rust_abi = matches!(sig.abi, RustIntrinsic | PlatformIntrinsic | Rust | RustCall);
 
+    let is_drop_in_place =
+        fn_def_id.is_some() && fn_def_id == cx.tcx.lang_items().drop_in_place_fn();
+
     let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| -> Result<_, FnAbiError<'tcx>> {
         let span = tracing::debug_span!("arg_of");
         let _entered = span.enter();
         let is_return = arg_idx.is_none();
+        let is_drop_target = is_drop_in_place && arg_idx == Some(0);
+        let drop_target_pointee = is_drop_target.then(|| match ty.kind() {
+            ty::RawPtr(ty::TypeAndMut { ty, .. }) => *ty,
+            _ => bug!("argument to drop_in_place is not a raw ptr: {:?}", ty),
+        });
 
         let layout = cx.layout_of(ty)?;
         let layout = if force_thin_self_ptr && arg_idx == Some(0) {
@@ -379,7 +398,15 @@ fn fn_abi_new_uncached<'tcx>(
 
         let mut arg = ArgAbi::new(cx, layout, |layout, scalar, offset| {
             let mut attrs = ArgAttributes::new();
-            adjust_for_rust_scalar(*cx, &mut attrs, scalar, *layout, offset, is_return);
+            adjust_for_rust_scalar(
+                *cx,
+                &mut attrs,
+                scalar,
+                *layout,
+                offset,
+                is_return,
+                drop_target_pointee,
+            );
             attrs
         });
 

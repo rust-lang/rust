@@ -201,6 +201,9 @@ jobs:
           - name: dist-i686-linux
             os: ubuntu-20.04-8core-32gb
             env: {}
+          - name: dist-loongarch64-linux
+            os: ubuntu-20.04-8core-32gb
+            env: {}
           - name: dist-mips-linux
             os: ubuntu-20.04-8core-32gb
             env: {}

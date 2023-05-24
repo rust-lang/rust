@@ -102,7 +102,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let ptr_layout = this.layout_of(ptr_ty)?;
 
                 for (i, ptr) in ptrs.into_iter().enumerate() {
-                    let offset = ptr_layout.size * i.try_into().unwrap();
+                    let offset = ptr_layout.size.checked_mul(i.try_into().unwrap(), this).unwrap();
 
                     let op_place = buf_place.offset(offset, ptr_layout, this)?;
 

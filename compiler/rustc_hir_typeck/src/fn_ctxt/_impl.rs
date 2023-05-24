@@ -4,7 +4,7 @@ use crate::rvalue_scopes;
 use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, LocalTy, RawTy};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Applicability, Diagnostic, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{Applicability, Diagnostic, ErrorGuaranteed, MultiSpan, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -35,7 +35,9 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 use rustc_target::abi::FieldIdx;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
-use rustc_trait_selection::traits::{self, NormalizeExt, ObligationCauseCode, ObligationCtxt};
+use rustc_trait_selection::traits::{
+    self, NormalizeExt, ObligationCauseCode, ObligationCtxt, StructurallyNormalizeExt,
+};
 
 use std::collections::hash_map::Entry;
 use std::slice;
@@ -853,6 +855,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let item_name = item_segment.ident;
         let result = self
             .resolve_fully_qualified_call(span, item_name, ty.normalized, qself.span, hir_id)
+            .and_then(|r| {
+                // lint bare trait if the method is found in the trait
+                if span.edition().rust_2021() && let Some(mut diag) = self.tcx.sess.diagnostic().steal_diagnostic(qself.span, StashKey::TraitMissingMethod) {
+                    diag.emit();
+                }
+                Ok(r)
+            })
             .or_else(|error| {
                 let guar = self
                     .tcx
@@ -863,17 +872,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     _ => Err(guar),
                 };
 
+                let trait_missing_method =
+                    matches!(error, method::MethodError::NoMatch(_)) && ty.normalized.is_trait();
                 // If we have a path like `MyTrait::missing_method`, then don't register
                 // a WF obligation for `dyn MyTrait` when method lookup fails. Otherwise,
                 // register a WF obligation so that we can detect any additional
                 // errors in the self type.
-                if !(matches!(error, method::MethodError::NoMatch(_)) && ty.normalized.is_trait()) {
+                if !trait_missing_method {
                     self.register_wf_obligation(
                         ty.raw.into(),
                         qself.span,
                         traits::WellFormed(None),
                     );
                 }
+
+                // emit or cancel the diagnostic for bare traits
+                if span.edition().rust_2021() && let Some(mut diag) = self.tcx.sess.diagnostic().steal_diagnostic(qself.span, StashKey::TraitMissingMethod) {
+                    if trait_missing_method {
+                        // cancel the diag for bare traits when meeting `MyTrait::missing_method`
+                        diag.cancel();
+                    } else {
+                        diag.emit();
+                    }
+                }
+
                 if item_name.name != kw::Empty {
                     if let Some(mut e) = self.report_method_error(
                         span,
@@ -883,10 +905,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         error,
                         None,
                         Expectation::NoExpectation,
+                        trait_missing_method && span.edition().rust_2021(), // emits missing method for trait only after edition 2021
                     ) {
                         e.emit();
                     }
                 }
+
                 result
             });
 
@@ -1438,10 +1462,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Resolves `typ` by a single level if `typ` is a type variable.
+    ///
+    /// When the new solver is enabled, this will also attempt to normalize
+    /// the type if it's a projection (note that it will not deeply normalize
+    /// projections within the type, just the outermost layer of the type).
+    ///
     /// If no resolution is possible, then an error is reported.
     /// Numeric inference variables may be left unresolved.
     pub fn structurally_resolved_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let ty = self.resolve_vars_with_obligations(ty);
+        let mut ty = self.resolve_vars_with_obligations(ty);
+
+        if self.tcx.trait_solver_next()
+            && let ty::Alias(ty::Projection, _) = ty.kind()
+        {
+            match self
+                .at(&self.misc(sp), self.param_env)
+                .structurally_normalize(ty, &mut **self.fulfillment_cx.borrow_mut())
+            {
+                Ok(normalized_ty) => {
+                    ty = normalized_ty;
+                },
+                Err(errors) => {
+                    let guar = self.err_ctxt().report_fulfillment_errors(&errors);
+                    return self.tcx.ty_error(guar);
+                }
+            }
+        }
+
         if !ty.is_ty_var() {
             ty
         } else {

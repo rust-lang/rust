@@ -329,21 +329,21 @@ fn build_options<O: Default>(
                     match value {
                         None => early_error(
                             error_format,
-                            &format!(
+                            format!(
                                 "{0} option `{1}` requires {2} ({3} {1}=<value>)",
                                 outputname, key, type_desc, prefix
                             ),
                         ),
                         Some(value) => early_error(
                             error_format,
-                            &format!(
+                            format!(
                                 "incorrect value `{value}` for {outputname} option `{key}` - {type_desc} was expected"
                             ),
                         ),
                     }
                 }
             }
-            None => early_error(error_format, &format!("unknown {outputname} option: `{key}`")),
+            None => early_error(error_format, format!("unknown {outputname} option: `{key}`")),
         }
     }
     return op;

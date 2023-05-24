@@ -52,7 +52,8 @@ fn mk_session(matches: getopts::Matches) -> (Session, CfgSpecs) {
         output_file: None,
         temps_dir,
     };
-    let sess = build_session(sessopts, io, None, registry, vec![], Default::default(), None, None);
+    let sess =
+        build_session(sessopts, io, None, registry, vec![], Default::default(), None, None, "");
     (sess, cfg)
 }
 

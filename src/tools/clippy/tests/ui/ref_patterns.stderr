@@ -1,0 +1,27 @@
+error: usage of ref pattern
+  --> $DIR/ref_patterns.rs:8:14
+   |
+LL |         Some(ref opt) => {},
+   |              ^^^^^^^
+   |
+   = help: consider using `&` for clarity instead
+   = note: `-D clippy::ref-patterns` implied by `-D warnings`
+
+error: usage of ref pattern
+  --> $DIR/ref_patterns.rs:14:9
+   |
+LL |     let ref y = x;
+   |         ^^^^^
+   |
+   = help: consider using `&` for clarity instead
+
+error: usage of ref pattern
+  --> $DIR/ref_patterns.rs:17:21
+   |
+LL | fn use_in_parameter(ref x: i32) {}
+   |                     ^^^^^
+   |
+   = help: consider using `&` for clarity instead
+
+error: aborting due to 3 previous errors
+

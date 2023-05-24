@@ -3,6 +3,7 @@
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::num::TryFromIntError;
+use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
 use std::task::Poll;
 use std::time::{Duration, SystemTime};
 
@@ -1012,8 +1013,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Run the core interpreter loop. Returns only when an interrupt occurs (an error or program
     /// termination).
     fn run_threads(&mut self) -> InterpResult<'tcx, !> {
+        static SIGNALED: AtomicBool = AtomicBool::new(false);
+        ctrlc::set_handler(move || {
+            // Indicate that we have ben signaled to stop. If we were already signaled, exit
+            // immediately. In our interpreter loop we try to consult this value often, but if for
+            // whatever reason we don't get to that check or the cleanup we do upon finding that
+            // this bool has become true takes a long time, the exit here will promptly exit the
+            // process on the second Ctrl-C.
+            if SIGNALED.swap(true, Relaxed) {
+                std::process::exit(1);
+            }
+        })
+        .unwrap();
         let this = self.eval_context_mut();
         loop {
+            if SIGNALED.load(Relaxed) {
+                this.machine.handle_abnormal_termination();
+                std::process::exit(1);
+            }
             match this.machine.threads.schedule(&this.machine.clock)? {
                 SchedulingAction::ExecuteStep => {
                     if !this.step()? {

@@ -1,6 +1,5 @@
 .setting-line {
 	margin: 1.2em 0.6em;
-	position: relative;
 }
 
 .setting-radio input, .setting-check input {
@@ -14,11 +13,6 @@
 }
 .setting-radio input {
 	border-radius: 50%;
-}
-.setting-check input:checked {
-	content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">\
-		<path d="M7,25L17,32L33,12" fill="none" stroke="black" stroke-width="5"/>\
-		<path d="M7,23L17,30L33,10" fill="none" stroke="white" stroke-width="5"/></svg>');
 }
 
 .setting-radio span, .setting-check span {
@@ -52,6 +46,9 @@
 .setting-check input:checked {
 	background-color: var(--settings-input-color);
 	border-width: 1px;
+	content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">\
+		<path d="M7,25L17,32L33,12" fill="none" stroke="black" stroke-width="5"/>\
+		<path d="M7,23L17,30L33,10" fill="none" stroke="white" stroke-width="5"/></svg>');
 }
 .setting-radio input:focus, .setting-check input:focus {
 	box-shadow: 0 0 1px 1px var(--settings-input-color);

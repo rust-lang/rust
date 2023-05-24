@@ -1,4 +1,4 @@
-#![allow(drop_ref)]
+#![allow(dropping_references)]
 
 fn main() {
     let target = &mut 42;

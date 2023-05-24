@@ -17,6 +17,7 @@ pub mod query;
 mod select;
 mod specialize;
 mod structural_match;
+mod structural_normalize;
 mod util;
 mod vtable;
 pub mod wf;
@@ -62,6 +63,7 @@ pub use self::specialize::{
 pub use self::structural_match::{
     search_for_adt_const_param_violation, search_for_structural_match_violation,
 };
+pub use self::structural_normalize::StructurallyNormalizeExt;
 pub use self::util::elaborate;
 pub use self::util::{expand_trait_aliases, TraitAliasExpander};
 pub use self::util::{get_vtable_index_of_object_method, impl_item_is_final, upcast_choices};
@@ -143,35 +145,36 @@ pub fn type_known_to_meet_bound_modulo_regions<'tcx>(
 fn pred_known_to_hold_modulo_regions<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    pred: impl ToPredicate<'tcx> + TypeVisitable<TyCtxt<'tcx>>,
+    pred: impl ToPredicate<'tcx>,
 ) -> bool {
-    let has_non_region_infer = pred.has_non_region_infer();
     let obligation = Obligation::new(infcx.tcx, ObligationCause::dummy(), param_env, pred);
 
     let result = infcx.evaluate_obligation_no_overflow(&obligation);
     debug!(?result);
 
-    if result.must_apply_modulo_regions() && !has_non_region_infer {
+    if result.must_apply_modulo_regions() {
         true
     } else if result.may_apply() {
-        // Because of inference "guessing", selection can sometimes claim
-        // to succeed while the success requires a guess. To ensure
-        // this function's result remains infallible, we must confirm
-        // that guess. While imperfect, I believe this is sound.
+        // Sometimes obligations are ambiguous because the recursive evaluator
+        // is not smart enough, so we fall back to fulfillment when we're not certain
+        // that an obligation holds or not. Even still, we must make sure that
+        // the we do no inference in the process of checking this obligation.
+        let goal = infcx.resolve_vars_if_possible((obligation.predicate, obligation.param_env));
+        infcx.probe(|_| {
+            let ocx = ObligationCtxt::new_in_snapshot(infcx);
+            ocx.register_obligation(obligation);
 
-        // The handling of regions in this area of the code is terrible,
-        // see issue #29149. We should be able to improve on this with
-        // NLL.
-        let ocx = ObligationCtxt::new(infcx);
-        ocx.register_obligation(obligation);
-        let errors = ocx.select_all_or_error();
-        match errors.as_slice() {
-            [] => true,
-            errors => {
-                debug!(?errors);
-                false
+            let errors = ocx.select_all_or_error();
+            match errors.as_slice() {
+                // Only known to hold if we did no inference.
+                [] => infcx.shallow_resolve(goal) == goal,
+
+                errors => {
+                    debug!(?errors);
+                    false
+                }
             }
-        }
+        })
     } else {
         false
     }

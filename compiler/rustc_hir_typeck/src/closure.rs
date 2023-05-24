@@ -89,6 +89,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             expr_def_id,
             body,
             closure.movability,
+            // Closure "rust-call" ABI doesn't support unsized params
+            false,
         );
 
         let parent_substs = InternalSubsts::identity_for_item(

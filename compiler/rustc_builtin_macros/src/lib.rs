@@ -115,6 +115,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
     register_derive! {
         Clone: clone::expand_deriving_clone,
         Copy: bounds::expand_deriving_copy,
+        ConstParamTy: bounds::expand_deriving_const_param_ty,
         Debug: debug::expand_deriving_debug,
         Default: default::expand_deriving_default,
         Eq: eq::expand_deriving_eq,

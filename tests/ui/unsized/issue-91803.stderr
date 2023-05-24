@@ -4,11 +4,14 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn or<'a>(first: &'static dyn Foo<'a>) -> dyn Foo<'a> {
    |                                           ^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-help: use `impl Foo<'a>` as the return type, as all return paths are of type `Box<_>`, which implements `Foo<'a>`
+help: return an `impl Trait` instead of a `dyn Trait`, if all returned values are the same type
    |
 LL | fn or<'a>(first: &'static dyn Foo<'a>) -> impl Foo<'a> {
-   |                                           ~~~~~~~~~~~~
+   |                                           ~~~~
+help: box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL | fn or<'a>(first: &'static dyn Foo<'a>) -> Box<dyn Foo<'a>> {
+   |                                           ++++           +
 
 error: aborting due to previous error
 

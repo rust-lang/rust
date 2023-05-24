@@ -10,13 +10,13 @@ fn def_path_hash_depends_on_crate_id() {
     // the crate-id of the defining crate. This is a desirable property
     // because the crate-id can be more easily changed than the DefPath
     // of an item, so, in the case of a crate-local DefPathHash collision,
-    // the user can simply "role the dice again" for all DefPathHashes in
+    // the user can simply "roll the dice again" for all DefPathHashes in
     // the crate by changing the crate disambiguator (e.g. via bumping the
     // crate's version number).
 
     create_session_if_not_set_then(Edition::Edition2024, |_| {
-        let id0 = StableCrateId::new(Symbol::intern("foo"), false, vec!["1".to_string()]);
-        let id1 = StableCrateId::new(Symbol::intern("foo"), false, vec!["2".to_string()]);
+        let id0 = StableCrateId::new(Symbol::intern("foo"), false, vec!["1".to_string()], "");
+        let id1 = StableCrateId::new(Symbol::intern("foo"), false, vec!["2".to_string()], "");
 
         let h0 = mk_test_hash(id0);
         let h1 = mk_test_hash(id1);

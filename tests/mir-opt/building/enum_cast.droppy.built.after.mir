@@ -6,7 +6,7 @@ fn droppy() -> () {
     let _2: Droppy;                      // in scope 0 at $DIR/enum_cast.rs:+2:13: +2:14
     let _4: Droppy;                      // in scope 0 at $DIR/enum_cast.rs:+5:17: +5:18
     let mut _5: isize;                   // in scope 0 at $DIR/enum_cast.rs:+5:17: +5:18
-    let mut _6: bool;                    // in scope 0 at $DIR/enum_cast.rs:+5:17: +5:27
+    let mut _6: u8;                      // in scope 0 at $DIR/enum_cast.rs:+5:17: +5:27
     let mut _7: bool;                    // in scope 0 at $DIR/enum_cast.rs:+5:17: +5:27
     let _8: Droppy;                      // in scope 0 at $DIR/enum_cast.rs:+7:9: +7:10
     scope 1 {
@@ -31,10 +31,9 @@ fn droppy() -> () {
         StorageLive(_4);                 // scope 3 at $DIR/enum_cast.rs:+5:17: +5:18
         _4 = move _2;                    // scope 3 at $DIR/enum_cast.rs:+5:17: +5:18
         _5 = discriminant(_4);           // scope 3 at $DIR/enum_cast.rs:+5:17: +5:27
-        _6 = Ge(const 2_isize, _5);      // scope 3 at $DIR/enum_cast.rs:+5:17: +5:27
-        assume(_6);                      // scope 3 at $DIR/enum_cast.rs:+5:17: +5:27
-        _7 = Le(const 0_isize, _5);      // scope 3 at $DIR/enum_cast.rs:+5:17: +5:27
-        assume(_7);                      // scope 3 at $DIR/enum_cast.rs:+5:17: +5:27
+        _6 = _5 as u8 (IntToInt);        // scope 3 at $DIR/enum_cast.rs:+5:17: +5:27
+        _7 = Le(_6, const 2_u8);         // scope 3 at $DIR/enum_cast.rs:+5:17: +5:27
+        assume(move _7);                 // scope 3 at $DIR/enum_cast.rs:+5:17: +5:27
         _3 = move _5 as usize (IntToInt); // scope 3 at $DIR/enum_cast.rs:+5:17: +5:27
         drop(_4) -> [return: bb1, unwind: bb4]; // scope 3 at $DIR/enum_cast.rs:+5:26: +5:27
     }

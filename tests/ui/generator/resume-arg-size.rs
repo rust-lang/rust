@@ -1,5 +1,5 @@
 #![feature(generators)]
-#![allow(drop_copy)]
+#![allow(dropping_copy_types)]
 
 // run-pass
 

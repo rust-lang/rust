@@ -53,4 +53,84 @@ mod issue4244 {
     }
 }
 
-fn main() {}
+macro_rules! m {
+    (foo) => {};
+    (bar) => {};
+}
+macro_rules! foo {
+    () => {
+        1
+    };
+}
+macro_rules! bar {
+    () => {
+        1
+    };
+}
+
+fn main() {
+    let x = 0;
+    let _ = match 0 {
+        0 => {
+            m!(foo);
+            x
+        },
+        1 => {
+            m!(bar);
+            x
+        },
+        _ => 1,
+    };
+
+    let _ = match 0 {
+        0 => {
+            m!(foo);
+            0
+        },
+        1 => {
+            m!(bar);
+            0
+        },
+        _ => 1,
+    };
+
+    let _ = match 0 {
+        0 => {
+            let mut x = 0;
+            #[cfg(not_enabled)]
+            {
+                x = 5;
+            }
+            #[cfg(not(not_enabled))]
+            {
+                x = 6;
+            }
+            x
+        },
+        1 => {
+            let mut x = 0;
+            #[cfg(also_not_enabled)]
+            {
+                x = 5;
+            }
+            #[cfg(not(also_not_enabled))]
+            {
+                x = 6;
+            }
+            x
+        },
+        _ => 0,
+    };
+
+    let _ = match 0 {
+        0 => foo!(),
+        1 => bar!(),
+        _ => 1,
+    };
+
+    let _ = match 0 {
+        0 => cfg!(not_enabled),
+        1 => cfg!(also_not_enabled),
+        _ => false,
+    };
+}

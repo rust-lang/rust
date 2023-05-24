@@ -108,8 +108,9 @@ def test_cargo_miri_run():
         env={'MIRITESTVAR': "wrongval"}, # changing the env var causes a rebuild (re-runs build.rs),
                                          # so keep it set
     )
+    # This also covers passing arguments without `--`: Cargo will forward unused positional arguments to the program.
     test("`cargo miri run` (with arguments and target)",
-        cargo_miri("run") + ["--bin", "cargo-miri-test", "--", "hello world", '"hello world"', r'he\\llo\"world'],
+        cargo_miri("run") + ["--bin", "cargo-miri-test", "hello world", '"hello world"', r'he\\llo\"world'],
         "run.args.stdout.ref", "run.args.stderr.ref",
     )
     test("`cargo miri r` (subcrate, no isolation)",
