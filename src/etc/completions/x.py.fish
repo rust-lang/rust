@@ -19,6 +19,7 @@ complete -c x.py -n "__fish_use_subcommand" -l rust-profile-generate -d 'generat
 complete -c x.py -n "__fish_use_subcommand" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_use_subcommand" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_use_subcommand" -l llvm-bolt-profile-use -d 'use BOLT profile for LLVM build' -r -F
+complete -c x.py -n "__fish_use_subcommand" -l set -d 'override options in config.toml' -r -f
 complete -c x.py -n "__fish_use_subcommand" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_use_subcommand" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_use_subcommand" -l include-default-paths -d 'include default paths in addition to the provided ones'
@@ -62,6 +63,7 @@ complete -c x.py -n "__fish_seen_subcommand_from build" -l rust-profile-generate
 complete -c x.py -n "__fish_seen_subcommand_from build" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from build" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from build" -l llvm-bolt-profile-use -d 'use BOLT profile for LLVM build' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from build" -l set -d 'override options in config.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from build" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_seen_subcommand_from build" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_seen_subcommand_from build" -l include-default-paths -d 'include default paths in addition to the provided ones'
@@ -91,6 +93,7 @@ complete -c x.py -n "__fish_seen_subcommand_from check" -l rust-profile-generate
 complete -c x.py -n "__fish_seen_subcommand_from check" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from check" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from check" -l llvm-bolt-profile-use -d 'use BOLT profile for LLVM build' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from check" -l set -d 'override options in config.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from check" -l all-targets -d 'Check all targets'
 complete -c x.py -n "__fish_seen_subcommand_from check" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_seen_subcommand_from check" -s i -l incremental -d 'use incremental compilation'
@@ -125,6 +128,7 @@ complete -c x.py -n "__fish_seen_subcommand_from clippy" -l rust-profile-generat
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l llvm-bolt-profile-use -d 'use BOLT profile for LLVM build' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from clippy" -l set -d 'override options in config.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l fix
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -s i -l incremental -d 'use incremental compilation'
@@ -155,6 +159,7 @@ complete -c x.py -n "__fish_seen_subcommand_from fix" -l rust-profile-generate -
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l llvm-bolt-profile-use -d 'use BOLT profile for LLVM build' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from fix" -l set -d 'override options in config.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from fix" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_seen_subcommand_from fix" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l include-default-paths -d 'include default paths in addition to the provided ones'
@@ -184,6 +189,7 @@ complete -c x.py -n "__fish_seen_subcommand_from fmt" -l rust-profile-generate -
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l llvm-bolt-profile-use -d 'use BOLT profile for LLVM build' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from fmt" -l set -d 'override options in config.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l check -d 'check formatting instead of applying'
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -s i -l incremental -d 'use incremental compilation'
@@ -214,6 +220,7 @@ complete -c x.py -n "__fish_seen_subcommand_from doc" -l rust-profile-generate -
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l llvm-bolt-profile-use -d 'use BOLT profile for LLVM build' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from doc" -l set -d 'override options in config.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l open -d 'open the docs in a browser'
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l json -d 'render the documentation in JSON format in addition to the usual HTML format'
 complete -c x.py -n "__fish_seen_subcommand_from doc" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
@@ -251,6 +258,7 @@ complete -c x.py -n "__fish_seen_subcommand_from test" -l rust-profile-generate 
 complete -c x.py -n "__fish_seen_subcommand_from test" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from test" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from test" -l llvm-bolt-profile-use -d 'use BOLT profile for LLVM build' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from test" -l set -d 'override options in config.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from test" -l no-fail-fast -d 'run all tests regardless of failure'
 complete -c x.py -n "__fish_seen_subcommand_from test" -l no-doc -d 'do not run doc tests'
 complete -c x.py -n "__fish_seen_subcommand_from test" -l doc -d 'only run doc tests'
@@ -288,6 +296,7 @@ complete -c x.py -n "__fish_seen_subcommand_from bench" -l rust-profile-generate
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l llvm-bolt-profile-use -d 'use BOLT profile for LLVM build' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from bench" -l set -d 'override options in config.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from bench" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_seen_subcommand_from bench" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l include-default-paths -d 'include default paths in addition to the provided ones'
@@ -317,6 +326,7 @@ complete -c x.py -n "__fish_seen_subcommand_from clean" -l rust-profile-generate
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l llvm-bolt-profile-use -d 'use BOLT profile for LLVM build' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from clean" -l set -d 'override options in config.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l all
 complete -c x.py -n "__fish_seen_subcommand_from clean" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_seen_subcommand_from clean" -s i -l incremental -d 'use incremental compilation'
@@ -347,6 +357,7 @@ complete -c x.py -n "__fish_seen_subcommand_from dist" -l rust-profile-generate 
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l llvm-bolt-profile-use -d 'use BOLT profile for LLVM build' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from dist" -l set -d 'override options in config.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from dist" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_seen_subcommand_from dist" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l include-default-paths -d 'include default paths in addition to the provided ones'
@@ -376,6 +387,7 @@ complete -c x.py -n "__fish_seen_subcommand_from install" -l rust-profile-genera
 complete -c x.py -n "__fish_seen_subcommand_from install" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from install" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from install" -l llvm-bolt-profile-use -d 'use BOLT profile for LLVM build' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from install" -l set -d 'override options in config.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from install" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_seen_subcommand_from install" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_seen_subcommand_from install" -l include-default-paths -d 'include default paths in addition to the provided ones'
@@ -406,6 +418,7 @@ complete -c x.py -n "__fish_seen_subcommand_from run" -l rust-profile-generate -
 complete -c x.py -n "__fish_seen_subcommand_from run" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from run" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from run" -l llvm-bolt-profile-use -d 'use BOLT profile for LLVM build' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from run" -l set -d 'override options in config.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from run" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_seen_subcommand_from run" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_seen_subcommand_from run" -l include-default-paths -d 'include default paths in addition to the provided ones'
@@ -435,6 +448,7 @@ complete -c x.py -n "__fish_seen_subcommand_from setup" -l rust-profile-generate
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l llvm-bolt-profile-use -d 'use BOLT profile for LLVM build' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from setup" -l set -d 'override options in config.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from setup" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_seen_subcommand_from setup" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l include-default-paths -d 'include default paths in addition to the provided ones'
@@ -464,6 +478,7 @@ complete -c x.py -n "__fish_seen_subcommand_from suggest" -l rust-profile-genera
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l llvm-bolt-profile-use -d 'use BOLT profile for LLVM build' -r -F
+complete -c x.py -n "__fish_seen_subcommand_from suggest" -l set -d 'override options in config.toml' -r -f
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l run -d 'run suggested tests'
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -s i -l incremental -d 'use incremental compilation'
