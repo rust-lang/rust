@@ -98,14 +98,9 @@ pub fn merge_codegen_units<'tcx>(
         // If we are compiling non-incrementally we just generate simple CGU
         // names containing an index.
         for (index, cgu) in codegen_units.iter_mut().enumerate() {
-            cgu.set_name(numbered_codegen_unit_name(cgu_name_builder, index));
+            let numbered_codegen_unit_name =
+                cgu_name_builder.build_cgu_name_no_mangle(LOCAL_CRATE, &["cgu"], Some(index));
+            cgu.set_name(numbered_codegen_unit_name);
         }
     }
-}
-
-fn numbered_codegen_unit_name(
-    name_builder: &mut CodegenUnitNameBuilder<'_>,
-    index: usize,
-) -> Symbol {
-    name_builder.build_cgu_name_no_mangle(LOCAL_CRATE, &["cgu"], Some(index))
 }
