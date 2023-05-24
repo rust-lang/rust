@@ -485,7 +485,7 @@ impl CargoActor {
 
             error.push_str(line);
             error.push('\n');
-            return false;
+            false
         };
         let output = streaming_output(
             self.stdout,

@@ -205,7 +205,7 @@ impl<'t> Parser<'t> {
             marker.bomb.defuse();
             marker = new_marker;
         };
-        self.pos += 1 as usize;
+        self.pos += 1;
         self.push_event(Event::FloatSplitHack { ends_in_dot });
         (ends_in_dot, marker)
     }
