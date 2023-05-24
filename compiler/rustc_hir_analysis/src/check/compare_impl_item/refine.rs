@@ -1,17 +1,19 @@
 use std::ops::ControlFlow;
 
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::Obligation;
-use rustc_middle::traits::ObligationCause;
+use rustc_middle::traits::{ObligationCause, Reveal};
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 use rustc_span::ErrorGuaranteed;
 use rustc_span::{sym, Span};
-use rustc_trait_selection::traits::ObligationCtxt;
+use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt;
+use rustc_trait_selection::traits::{normalize_param_env_or_error, ObligationCtxt};
 use rustc_type_ir::fold::TypeFoldable;
 
 /// Check that an implementation does not refine an RPITIT from a trait method signature.
@@ -30,24 +32,48 @@ pub(super) fn compare_impl_trait_in_trait_predicate_entailment<'tcx>(
     let hidden_tys = tcx.collect_return_position_impl_trait_in_trait_tys(impl_m.def_id)?;
 
     let impl_def_id = impl_m.container_id(tcx);
-    //let trait_def_id = trait_m.container_id(tcx);
-    let trait_m_to_impl_m_substs = ty::InternalSubsts::identity_for_item(tcx, impl_m.def_id)
-        .rebase_onto(tcx, impl_def_id, impl_trait_ref.substs);
+    let trait_def_id = trait_m.container_id(tcx);
+    let trait_m_to_impl_m_args = ty::GenericArgs::identity_for_item(tcx, impl_m.def_id)
+        .rebase_onto(tcx, impl_def_id, impl_trait_ref.args);
 
-    let bound_trait_m_sig = tcx.fn_sig(trait_m.def_id).subst(tcx, trait_m_to_impl_m_substs);
-    let trait_m_sig = tcx.liberate_late_bound_regions(impl_m.def_id, bound_trait_m_sig);
+    let infcx = tcx.infer_ctxt().build();
+    let ocx = ObligationCtxt::new(&infcx);
+
+    let mut hybrid_preds = tcx.predicates_of(impl_def_id).instantiate_identity(tcx).predicates;
+    hybrid_preds.extend(
+        tcx.predicates_of(trait_m.def_id)
+            .instantiate_own(tcx, trait_m_to_impl_m_args)
+            .map(|(pred, _)| pred),
+    );
+    let normalize_cause =
+        ObligationCause::misc(tcx.def_span(impl_m.def_id), impl_m.def_id.expect_local());
+    let unnormalized_param_env = ty::ParamEnv::new(
+        tcx.mk_clauses(&hybrid_preds),
+        Reveal::HideReturnPositionImplTraitInTrait,
+    );
+    let param_env = normalize_param_env_or_error(tcx, unnormalized_param_env, normalize_cause);
+
+    let bound_trait_m_sig = tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_m_to_impl_m_args);
+    let unnormalized_trait_m_sig =
+        tcx.liberate_late_bound_regions(impl_m.def_id, bound_trait_m_sig);
+    let trait_m_sig = ocx.normalize(&ObligationCause::dummy(), param_env, unnormalized_trait_m_sig);
 
     let mut visitor = ImplTraitInTraitCollector { tcx, types: FxIndexMap::default() };
     trait_m_sig.visit_with(&mut visitor);
 
     let mut reverse_mapping = FxIndexMap::default();
     let mut bounds_to_prove = vec![];
-    for (rpitit_def_id, rpitit_substs) in visitor.types {
-        let hidden_ty = hidden_tys
-            .get(&rpitit_def_id)
-            .expect("expected hidden type for RPITIT")
-            .subst_identity();
-        reverse_mapping.insert(hidden_ty, tcx.mk_projection(rpitit_def_id, rpitit_substs));
+    for (rpitit_def_id, rpitit_args) in visitor.types {
+        let hidden_ty =
+            hidden_tys.get(&rpitit_def_id).expect("expected hidden type for RPITIT").instantiate(
+                tcx,
+                rpitit_args.rebase_onto(
+                    tcx,
+                    trait_def_id,
+                    ty::GenericArgs::identity_for_item(tcx, impl_def_id),
+                ),
+            );
+        reverse_mapping.insert(hidden_ty, Ty::new_projection(tcx, rpitit_def_id, rpitit_args));
 
         let ty::Alias(ty::Opaque, opaque_ty) = *hidden_ty.kind() else {
             return Err(report_mismatched_rpitit_signature(
@@ -82,11 +108,6 @@ pub(super) fn compare_impl_trait_in_trait_predicate_entailment<'tcx>(
         );
     }
 
-    let infcx = tcx.infer_ctxt().build();
-    let ocx = ObligationCtxt::new(&infcx);
-    let param_env =
-        tcx.param_env(impl_m.def_id).with_hidden_return_position_impl_trait_in_trait_tys();
-
     ocx.register_obligations(
         bounds_to_prove.fold_with(&mut ReverseMapper { tcx, reverse_mapping }).into_iter().map(
             |(pred, span)| {
@@ -104,6 +125,24 @@ pub(super) fn compare_impl_trait_in_trait_predicate_entailment<'tcx>(
             trait_m.def_id,
             impl_m.def_id,
             Some(span),
+        ));
+    }
+
+    let mut wf_tys = FxIndexSet::default();
+    wf_tys.extend(unnormalized_trait_m_sig.inputs_and_output);
+    wf_tys.extend(trait_m_sig.inputs_and_output);
+    let outlives_env = OutlivesEnvironment::with_bounds(
+        param_env,
+        ocx.infcx.implied_bounds_tys(param_env, impl_m.def_id.expect_local(), wf_tys.clone()),
+    );
+    let errors = ocx.infcx.resolve_regions(&outlives_env);
+    if !errors.is_empty() {
+        return Err(report_mismatched_rpitit_signature(
+            tcx,
+            trait_m_sig,
+            trait_m.def_id,
+            impl_m.def_id,
+            None,
         ));
     }
 

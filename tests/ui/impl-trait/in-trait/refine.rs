@@ -32,4 +32,16 @@ impl Late for D {
     //~^ ERROR impl method signature does not match trait method signature
 }
 
+trait Captures<'a, 'b> {}
+impl<T> Captures<'_, '_> for T {}
+trait Outlives {
+    fn bar<'a, 'b>() -> impl Captures<'a, 'b>;
+}
+
+struct E;
+impl Outlives for E {
+    fn bar<'a, 'b>() -> impl Captures<'a, 'b> + 'b {}
+    //~^ ERROR impl method signature does not match trait method signature
+}
+
 fn main() {}

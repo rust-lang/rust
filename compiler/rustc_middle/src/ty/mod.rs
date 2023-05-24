@@ -1774,15 +1774,6 @@ impl<'tcx> ParamEnv<'tcx> {
         Self::new(List::empty(), self.reveal())
     }
 
-    #[inline]
-    pub fn with_hidden_return_position_impl_trait_in_trait_tys(self) -> Self {
-        Self::new(
-            self.caller_bounds(),
-            Reveal::HideReturnPositionImplTraitInTrait,
-            self.constness(),
-        )
-    }
-
     /// Creates a suitable environment in which to perform trait
     /// queries on the given value. When type-checking, this is simply
     /// the pair of the environment plus value. But when reveal is set to

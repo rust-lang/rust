@@ -58,5 +58,19 @@ help: replace the return type so that it matches the trait
 LL |     fn bar(&self) -> impl Sized + '_ {}
    |                      ~~~~~~~~~~~~~~~
 
-error: aborting due to 4 previous errors
+error: impl method signature does not match trait method signature
+  --> $DIR/refine.rs:43:25
+   |
+LL |     fn bar<'a, 'b>() -> impl Captures<'a, 'b>;
+   |                         --------------------- return type from trait method defined here
+...
+LL |     fn bar<'a, 'b>() -> impl Captures<'a, 'b> + 'b {}
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace the return type so that it matches the trait
+   |
+LL |     fn bar<'a, 'b>() -> impl Captures<'a, 'b> {}
+   |                         ~~~~~~~~~~~~~~~~~~~~~
+
+error: aborting due to 5 previous errors
 
