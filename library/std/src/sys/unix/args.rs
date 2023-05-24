@@ -98,15 +98,30 @@ mod imp {
     #[inline(always)]
     pub unsafe fn init(_argc: isize, _argv: *const *const u8) {
         // On Linux-GNU, we rely on `ARGV_INIT_ARRAY` below to initialize
-        // `ARGC` and `ARGV`. But in Miri that does not actually happen so we
-        // still initialize here.
-        #[cfg(any(miri, not(all(target_os = "linux", target_env = "gnu"))))]
+        // `ARGC` and `ARGV` (unless opted-out with
+        // `explicit-init-args-with-glibc`. But in Miri that does not actually
+        // happen so we still initialize here.
+        #[cfg(any(
+            miri,
+            not(all(
+                target_os = "linux",
+                target_env = "gnu",
+                not(feature = "explicit-init-args-with-glibc")
+            ))
+        ))]
         really_init(_argc, _argv);
     }
 
-    /// glibc passes argc, argv, and envp to functions in .init_array, as a non-standard extension.
-    /// This allows `std::env::args` to work even in a `cdylib`, as it does on macOS and Windows.
-    #[cfg(all(target_os = "linux", target_env = "gnu"))]
+    /// glibc passes argc, argv, and envp to functions in .init_array, as a
+    /// non-standard extension. This allows `std::env::args` to work
+    /// even in a `cdylib`, as it does on macOS and Windows. The static
+    /// initializer can be removed (breaking `std::env::args` in a cdylib) with
+    /// the `explicit-init-args-with-glibc` feature.
+    #[cfg(all(
+        target_os = "linux",
+        target_env = "gnu",
+        not(feature = "explicit-init-args-with-glibc")
+    ))]
     #[used]
     #[link_section = ".init_array.00099"]
     static ARGV_INIT_ARRAY: extern "C" fn(
