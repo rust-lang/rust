@@ -333,10 +333,19 @@ impl<'tcx> CodegenUnit<'tcx> {
             .expect("create_size_estimate must be called before getting a size_estimate")
     }
 
-    pub fn modify_size_estimate(&mut self, delta: usize) {
+    pub fn increase_size_estimate(&mut self, delta: usize) {
+        // njn: make this nicer, with as_mut().expect()
         assert!(self.size_estimate.is_some());
         if let Some(size_estimate) = self.size_estimate {
             self.size_estimate = Some(size_estimate + delta);
+        }
+    }
+
+    pub fn decrease_size_estimate(&mut self, delta: usize) {
+        // njn: make this nicer, with as_mut().expect()
+        assert!(self.size_estimate.is_some());
+        if let Some(size_estimate) = self.size_estimate {
+            self.size_estimate = Some(size_estimate - delta);
         }
     }
 

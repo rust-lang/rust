@@ -111,6 +111,67 @@ impl<'tcx> Partition<'tcx> for DefaultPartitioning {
         // and deterministic.
         codegen_units.sort_by(|a, b| a.name().as_str().cmp(b.name().as_str()));
 
+        //---------------------------------------------------------------------------
+        // njn: split big CGUs if necessary
+        if false && codegen_units.len() > cx.target_cgu_count {
+            // njn: type ann?
+            let total_size: usize = codegen_units.iter().map(|cgu| cgu.size_estimate()).sum();
+            let target_size = total_size / cx.target_cgu_count;
+            eprintln!("----");
+            eprintln!("SPLIT0: total:{} target:{}", total_size, target_size);
+            // njn: need a while loop because we're modifying codegen_units as we go
+            // njn: make it a for loop?
+            // njn: explain all this
+            let mut i = 0;
+            let n = codegen_units.len();
+            while i < n {
+                let old_cgu = &mut codegen_units[i]; 
+                if old_cgu.size_estimate() > target_size && old_cgu.items().len() > 1 {
+                    eprintln!("SPLIT1: old:{} old:{}", old_cgu.size_estimate(), old_cgu.name());
+
+                    // njn: too big; split
+                    // njn: explain how a very big CGU will be split multiple
+                    // times
+                    
+                    let mut new_name = old_cgu.name().to_string();
+                    new_name += "-split";
+                    let mut new_cgu = CodegenUnit::new(Symbol::intern(&new_name));
+                    new_cgu.create_size_estimate(cx.tcx); // initially zero
+
+                    // njn: size stuff is a bit clumsy
+                    let mut moved_size = 0;
+
+                    // njn: what if this empties old_cgu?
+
+                    // njn: nicer way to do this?
+                    // njn: don't move if it's the last item
+                    old_cgu.items_mut().drain_filter(|item, rest| {
+                        // njn: true->remove
+                        if moved_size < target_size {
+                            let item_size = item.size_estimate(cx.tcx);
+                            eprintln!("MOVE: {}", item_size);
+                            moved_size += item_size;
+                            new_cgu.items_mut().insert(*item, *rest);
+                            true
+                        } else {
+                            false
+                        }
+                    });
+                    new_cgu.increase_size_estimate(moved_size);
+                    old_cgu.decrease_size_estimate(moved_size);
+
+                    eprintln!("SPLIT2: old:{} -> new:{} new:{}", old_cgu.size_estimate(), new_cgu.size_estimate(), new_cgu.name());
+
+                    codegen_units.push(new_cgu);
+                    // njn: explain lack of `i += 1`;
+                } else {
+                    // njn: explain this
+                    i += 1;
+                }
+            }
+        }
+        //---------------------------------------------------------------------------
+
         // This map keeps track of what got merged into what.
         let mut cgu_contents: FxHashMap<Symbol, Vec<Symbol>> =
             codegen_units.iter().map(|cgu| (cgu.name(), vec![cgu.name()])).collect();
@@ -124,7 +185,7 @@ impl<'tcx> Partition<'tcx> for DefaultPartitioning {
             let second_smallest = codegen_units.last_mut().unwrap();
 
             // Move the mono-items from `smallest` to `second_smallest`
-            second_smallest.modify_size_estimate(smallest.size_estimate());
+            second_smallest.increase_size_estimate(smallest.size_estimate());
             for (k, v) in smallest.items_mut().drain() {
                 second_smallest.items_mut().insert(k, v);
             }
