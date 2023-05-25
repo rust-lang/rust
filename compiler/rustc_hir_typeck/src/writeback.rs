@@ -583,25 +583,25 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 continue;
             }
 
-            let hidden_type =
-                self.tcx().erase_regions(hidden_type.remap_generic_params_to_declaration_params(
-                    opaque_type_key,
-                    self.tcx(),
-                    true,
-                ));
+            let hidden_type = hidden_type
+                .remap_generic_params_to_declaration_params(opaque_type_key, self.tcx(), true)
+                .map_bound(|hidden_type| self.tcx().erase_regions(hidden_type));
 
             if let Some(last_opaque_ty) = self
                 .typeck_results
                 .concrete_opaque_types
                 .insert(opaque_type_key.def_id, hidden_type)
-                && last_opaque_ty.ty != hidden_type.ty
             {
-                hidden_type
-                    .report_mismatch(&last_opaque_ty, opaque_type_key.def_id, self.tcx())
-                    .stash(
-                        self.tcx().def_span(opaque_type_key.def_id),
-                        StashKey::OpaqueHiddenTypeMismatch,
-                    );
+                let hidden_type = hidden_type.subst_identity();
+                let last_opaque_ty = last_opaque_ty.subst_identity();
+                if hidden_type.ty != last_opaque_ty.ty {
+                    hidden_type
+                        .report_mismatch(&last_opaque_ty, opaque_type_key.def_id, self.tcx())
+                        .stash(
+                            self.tcx().def_span(opaque_type_key.def_id),
+                            StashKey::OpaqueHiddenTypeMismatch,
+                        );
+                }
             }
         }
     }

@@ -244,7 +244,7 @@ fn do_mir_borrowck<'tcx>(
     // Compute non-lexical lifetimes.
     let nll::NllOutput {
         regioncx,
-        opaque_type_values,
+        concrete_opaque_types,
         polonius_input,
         polonius_output,
         opt_closure_req,
@@ -274,7 +274,7 @@ fn do_mir_borrowck<'tcx>(
         &body,
         &regioncx,
         &opt_closure_req,
-        &opaque_type_values,
+        &concrete_opaque_types,
         &mut errors,
     );
 
@@ -434,7 +434,7 @@ fn do_mir_borrowck<'tcx>(
     let tainted_by_errors = mbcx.emit_errors();
 
     let result = BorrowCheckResult {
-        concrete_opaque_types: opaque_type_values,
+        concrete_opaque_types,
         closure_requirements: opt_closure_req,
         used_mut_upvars: mbcx.used_mut_upvars,
         tainted_by_errors,

@@ -227,7 +227,10 @@ pub struct BorrowCheckResult<'tcx> {
     /// All the opaque types that are restricted to concrete types
     /// by this function. Unlike the value in `TypeckResults`, this has
     /// unerased regions.
-    pub concrete_opaque_types: FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>>,
+    ///
+    /// Unlike the rest of the borrow check results, the hidden types are
+    /// in the scope of the opaque type, not the scope of the body.
+    pub concrete_opaque_types: FxIndexMap<LocalDefId, ty::EarlyBinder<OpaqueHiddenType<'tcx>>>,
     pub closure_requirements: Option<ClosureRegionRequirements<'tcx>>,
     pub used_mut_upvars: SmallVec<[FieldIdx; 8]>,
     pub tainted_by_errors: Option<ErrorGuaranteed>,

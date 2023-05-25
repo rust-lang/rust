@@ -134,6 +134,8 @@ impl TaitConstraintLocator<'_> {
             debug!("no constraints in typeck results");
             return;
         };
+
+        let typeck_hidden_ty = typeck_hidden_ty.subst_identity();
         if self.typeck_types.iter().all(|prev| prev.ty != typeck_hidden_ty.ty) {
             self.typeck_types.push(typeck_hidden_ty);
         }
@@ -142,6 +144,7 @@ impl TaitConstraintLocator<'_> {
         let concrete_opaque_types = &self.tcx.mir_borrowck(item_def_id).concrete_opaque_types;
         debug!(?concrete_opaque_types);
         if let Some(&concrete_type) = concrete_opaque_types.get(&self.def_id) {
+            let concrete_type = concrete_type.subst_identity();
             debug!(?concrete_type, "found constraint");
             if let Some(prev) = &mut self.found {
                 if concrete_type.ty != prev.ty && !(concrete_type, prev.ty).references_error() {
@@ -197,7 +200,14 @@ pub(super) fn find_opaque_ty_constraints_for_rpit(
 ) -> Ty<'_> {
     let concrete = tcx.mir_borrowck(owner_def_id).concrete_opaque_types.get(&def_id).copied();
 
+    // In most cases the opaque type is defined by MIR typeck,
+    // in this case we check whether all nested bodies, e.g. closures,
+    // also have the same hidden type.
+    //
+    // If this is not the case we instead lookup the opaque type in the
+    // hir typeck results.
     if let Some(concrete) = concrete {
+        let concrete = concrete.subst_identity();
         let scope = tcx.hir().local_def_id_to_hir_id(owner_def_id);
         debug!(?scope);
         let mut locator = RpitConstraintChecker { def_id, tcx, found: concrete };
@@ -208,27 +218,28 @@ pub(super) fn find_opaque_ty_constraints_for_rpit(
             Node::TraitItem(it) => intravisit::walk_trait_item(&mut locator, it),
             other => bug!("{:?} is not a valid scope for an opaque type item", other),
         }
-    }
 
-    concrete.map(|concrete| concrete.ty).unwrap_or_else(|| {
+        concrete.ty
+    } else {
+        // If that isn't the case we use the type from HIR typeck.
         let table = tcx.typeck(owner_def_id);
         if let Some(guar) = table.tainted_by_errors {
             // Some error in the
             // owner fn prevented us from populating
             // the `concrete_opaque_types` table.
             tcx.ty_error(guar)
+        } else if let Some(ty) = table.concrete_opaque_types.get(&def_id) {
+            ty.subst_identity().ty
         } else {
-            table.concrete_opaque_types.get(&def_id).map(|ty| ty.ty).unwrap_or_else(|| {
-                // We failed to resolve the opaque type or it
-                // resolves to itself. We interpret this as the
-                // no values of the hidden type ever being constructed,
-                // so we can just make the hidden type be `!`.
-                // For backwards compatibility reasons, we fall back to
-                // `()` until we the diverging default is changed.
-                tcx.mk_diverging_default()
-            })
+            // We failed to resolve the opaque type or it
+            // resolves to itself. We interpret this as the
+            // no values of the hidden type ever being constructed,
+            // so we can just make the hidden type be `!`.
+            // For backwards compatibility reasons, we fall back to
+            // `()` until we the diverging default is changed.
+            tcx.mk_diverging_default()
         }
-    })
+    }
 }
 
 struct RpitConstraintChecker<'tcx> {
@@ -253,7 +264,7 @@ impl RpitConstraintChecker<'_> {
             }
 
             debug!(?concrete_type, "found constraint");
-
+            let concrete_type = concrete_type.subst_identity();
             if concrete_type.ty != self.found.ty && !(concrete_type, self.found).references_error()
             {
                 self.found.report_mismatch(&concrete_type, self.def_id, self.tcx).emit();

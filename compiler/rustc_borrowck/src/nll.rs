@@ -45,7 +45,7 @@ pub type PoloniusOutput = Output<RustcFacts>;
 /// closure requirements to propagate, and any generated errors.
 pub(crate) struct NllOutput<'tcx> {
     pub regioncx: RegionInferenceContext<'tcx>,
-    pub opaque_type_values: FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>>,
+    pub concrete_opaque_types: FxIndexMap<LocalDefId, ty::EarlyBinder<OpaqueHiddenType<'tcx>>>,
     pub polonius_input: Option<Box<AllFacts>>,
     pub polonius_output: Option<Rc<PoloniusOutput>>,
     pub opt_closure_req: Option<ClosureRegionRequirements<'tcx>>,
@@ -302,7 +302,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
     });
 
     // Solve the region constraints.
-    let (closure_region_requirements, nll_errors) =
+    let (opt_closure_req, nll_errors) =
         regioncx.solve(infcx, param_env, &body, polonius_output.clone());
 
     if !nll_errors.is_empty() {
@@ -313,14 +313,14 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
         ));
     }
 
-    let remapped_opaque_tys = regioncx.infer_opaque_types(&infcx, opaque_type_values);
+    let concrete_opaque_types = regioncx.infer_opaque_types(&infcx, opaque_type_values);
 
     NllOutput {
         regioncx,
-        opaque_type_values: remapped_opaque_tys,
+        concrete_opaque_types,
         polonius_input: all_facts.map(Box::new),
         polonius_output,
-        opt_closure_req: closure_region_requirements,
+        opt_closure_req,
         nll_errors,
     }
 }
@@ -382,7 +382,7 @@ pub(super) fn dump_annotation<'tcx>(
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
-    opaque_type_values: &FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>>,
+    concrete_opaque_types: &FxIndexMap<LocalDefId, ty::EarlyBinder<OpaqueHiddenType<'tcx>>>,
     errors: &mut crate::error::BorrowckErrors<'tcx>,
 ) {
     let tcx = infcx.tcx;
@@ -425,8 +425,8 @@ pub(super) fn dump_annotation<'tcx>(
         err
     };
 
-    if !opaque_type_values.is_empty() {
-        err.note(format!("Inferred opaque type values:\n{:#?}", opaque_type_values));
+    if !concrete_opaque_types.is_empty() {
+        err.note(format!("Inferred opaque type values:\n{:#?}", concrete_opaque_types));
     }
 
     errors.buffer_non_error_diag(err);

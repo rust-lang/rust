@@ -742,6 +742,18 @@ impl<T: Iterator> Iterator for EarlyBinderIter<T> {
 }
 
 impl<'tcx, T: TypeFoldable<TyCtxt<'tcx>>> ty::EarlyBinder<T> {
+    /// Wraps `value` in a binder, asserting that `value` does not
+    /// contain any generic parameters that would be bound by the
+    /// binder.
+    #[track_caller]
+    pub fn dummy(value: T) -> EarlyBinder<T> {
+        assert!(
+            !value.has_param(),
+            "`{value:?}` has generic parameters, so it cannot be wrapped in a dummy binder",
+        );
+        EarlyBinder(value)
+    }
+
     pub fn subst(self, tcx: TyCtxt<'tcx>, substs: &[GenericArg<'tcx>]) -> T {
         let mut folder = SubstFolder { tcx, substs, binders_passed: 0 };
         self.0.fold_with(&mut folder)

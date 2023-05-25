@@ -8,6 +8,7 @@ use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::visit::TypeVisitableExt;
+use rustc_middle::ty::EarlyBinder;
 use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
@@ -62,8 +63,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         infcx: &InferCtxt<'tcx>,
         opaque_ty_decls: FxIndexMap<OpaqueTypeKey<'tcx>, (OpaqueHiddenType<'tcx>, OpaqueTyOrigin)>,
-    ) -> FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>> {
-        let mut result: FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>> = FxIndexMap::default();
+    ) -> FxIndexMap<LocalDefId, EarlyBinder<OpaqueHiddenType<'tcx>>> {
+        let mut result: FxIndexMap<LocalDefId, EarlyBinder<OpaqueHiddenType<'tcx>>> =
+            FxIndexMap::default();
 
         let member_constraints: FxIndexMap<_, _> = self
             .member_constraints
@@ -144,11 +146,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 universal_concrete_type,
                 origin,
             );
+
             // Sometimes two opaque types are the same only after we remap the generic parameters
             // back to the opaque type definition. E.g. we may have `OpaqueType<X, Y>` mapped to `(X, Y)`
             // and `OpaqueType<Y, X>` mapped to `(Y, X)`, and those are the same, but we only know that
             // once we convert the generic parameters to those of the opaque type.
-            if let Some(prev) = result.get_mut(&opaque_type_key.def_id) {
+            if let Some(stored_hidden_ty) = result.get_mut(&opaque_type_key.def_id) {
+                let mut prev = stored_hidden_ty.subst_identity();
+                let ty = ty.subst_identity();
                 if prev.ty != ty {
                     let guar = ty.error_reported().err().unwrap_or_else(|| {
                         prev.report_mismatch(
@@ -163,10 +168,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // Pick a better span if there is one.
                 // FIXME(oli-obk): collect multiple spans for better diagnostics down the road.
                 prev.span = prev.span.substitute_dummy(concrete_type.span);
+                *stored_hidden_ty = EarlyBinder(prev);
             } else {
                 result.insert(
                     opaque_type_key.def_id,
-                    OpaqueHiddenType { ty, span: concrete_type.span },
+                    ty.map_bound(|ty| OpaqueHiddenType { ty, span: concrete_type.span }),
                 );
             }
         }
@@ -215,7 +221,7 @@ pub trait InferCtxtExt<'tcx> {
         opaque_type_key: OpaqueTypeKey<'tcx>,
         instantiated_ty: OpaqueHiddenType<'tcx>,
         origin: OpaqueTyOrigin,
-    ) -> Ty<'tcx>;
+    ) -> EarlyBinder<Ty<'tcx>>;
 }
 
 impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
@@ -248,14 +254,14 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         opaque_type_key: OpaqueTypeKey<'tcx>,
         instantiated_ty: OpaqueHiddenType<'tcx>,
         origin: OpaqueTyOrigin,
-    ) -> Ty<'tcx> {
+    ) -> EarlyBinder<Ty<'tcx>> {
         if let Some(e) = self.tainted_by_errors() {
-            return self.tcx.ty_error(e);
+            return EarlyBinder::dummy(self.tcx.ty_error(e));
         }
 
         let definition_ty = instantiated_ty
             .remap_generic_params_to_declaration_params(opaque_type_key, self.tcx, false)
-            .ty;
+            .map_bound(|ty| ty.ty);
 
         if let Err(guar) = check_opaque_type_parameter_valid(
             self.tcx,
@@ -263,7 +269,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             origin,
             instantiated_ty.span,
         ) {
-            return self.tcx.ty_error(guar);
+            return EarlyBinder::dummy(self.tcx.ty_error(guar));
         }
 
         // Only check this for TAIT. RPIT already supports `tests/ui/impl-trait/nested-return-type2.rs`
@@ -274,6 +280,9 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         let def_id = opaque_type_key.def_id;
         // This logic duplicates most of `check_opaque_meets_bounds`.
         // FIXME(oli-obk): Also do region checks here and then consider removing `check_opaque_meets_bounds` entirely.
+        //
+        // FIXME(lcnr): Move this check into a separate function which cannot access `self` here.
+        // This check runs in the context of the opaque type, not the defining scope.
         let param_env = self.tcx.param_env(def_id);
         // HACK This bubble is required for this tests to pass:
         // nested-return-type2-tait2.rs
@@ -281,10 +290,11 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         let infcx =
             self.tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bubble).build();
         let ocx = ObligationCtxt::new(&infcx);
+        let hidden_type = definition_ty.subst_identity();
         // Require the hidden type to be well-formed with only the generics of the opaque type.
         // Defining use functions may have more bounds than the opaque type, which is ok, as long as the
         // hidden type is well formed even without those bounds.
-        let predicate = ty::Binder::dummy(ty::PredicateKind::WellFormed(definition_ty.into()));
+        let predicate = ty::PredicateKind::WellFormed(hidden_type.into());
 
         let id_substs = InternalSubsts::identity_for_item(self.tcx, def_id);
 
@@ -295,14 +305,14 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             &ObligationCause::misc(instantiated_ty.span, def_id),
             param_env,
             opaque_ty,
-            definition_ty,
+            hidden_type,
         ) {
             infcx
                 .err_ctxt()
                 .report_mismatched_types(
                     &ObligationCause::misc(instantiated_ty.span, def_id),
                     opaque_ty,
-                    definition_ty,
+                    hidden_type,
                     err,
                 )
                 .emit();
@@ -328,7 +338,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             definition_ty
         } else {
             let reported = infcx.err_ctxt().report_fulfillment_errors(&errors);
-            self.tcx.ty_error(reported)
+            EarlyBinder::dummy(self.tcx.ty_error(reported))
         }
     }
 }

@@ -1043,8 +1043,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             .concrete_opaque_types
             .iter()
             .map(|(&def_id, &hidden_ty)| {
+                // FIXME(-Ztrait-solver=next): Using the identity substs for the opaques
+                // is incorrect and should be fixed.
                 let substs = ty::InternalSubsts::identity_for_item(self.infcx.tcx, def_id);
-                (ty::OpaqueTypeKey { def_id, substs }, hidden_ty)
+                (ty::OpaqueTypeKey { def_id, substs }, hidden_ty.subst_identity())
             })
             .collect();
 

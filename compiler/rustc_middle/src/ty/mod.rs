@@ -1467,7 +1467,7 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         tcx: TyCtxt<'tcx>,
         // typeck errors have subpar spans for opaque types, so delay error reporting until borrowck.
         ignore_errors: bool,
-    ) -> Self {
+    ) -> EarlyBinder<Self> {
         let OpaqueTypeKey { def_id, substs } = opaque_type_key;
 
         // Use substs to build up a reverse map from regions to their
@@ -1488,7 +1488,12 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         // Convert the type from the function into a type valid outside
         // the function, by replacing invalid regions with 'static,
         // after producing an error for each of them.
-        self.fold_with(&mut opaque_types::ReverseMapper::new(tcx, map, self.span, ignore_errors))
+        EarlyBinder(self.fold_with(&mut opaque_types::ReverseMapper::new(
+            tcx,
+            map,
+            self.span,
+            ignore_errors,
+        )))
     }
 }
 
