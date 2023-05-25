@@ -342,6 +342,18 @@ LL | |     /// level changes.
            to this: [`rebuild_interest_cache\`][rebuild] is called after the value of the max
 
 error: unescaped backtick
+  --> $DIR/unescaped_backticks.rs:348:56
+   |
+LL |     /// instead and use [`CloneCounterObserver::counter`] to increment.
+   |                                                        ^
+   |
+   = help: the opening or closing backtick of an inline code may be missing
+help: if you meant to use a literal backtick, escape it
+   |
+LL |     /// instead and use [`CloneCounterObserver::counter\`] to increment.
+   |                                                        +
+
+error: unescaped backtick
   --> $DIR/unescaped_backticks.rs:11:5
    |
 LL | /// `
@@ -955,5 +967,5 @@ help: if you meant to use a literal backtick, escape it
 LL | /// | table`( | )\`body |
    |                  +
 
-error: aborting due to 63 previous errors
+error: aborting due to 64 previous errors
 
