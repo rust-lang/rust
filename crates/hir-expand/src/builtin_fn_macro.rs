@@ -820,10 +820,10 @@ fn option_env_expand(
             )
         }
     };
-
+    // FIXME: Use `DOLLAR_CRATE` when that works in eager macros.
     let expanded = match get_env_inner(db, arg_id, &key) {
-        None => quote! { #DOLLAR_CRATE::option::Option::None::<&str> },
-        Some(s) => quote! { #DOLLAR_CRATE::option::Option::Some(#s) },
+        None => quote! { ::core::option::Option::None::<&str> },
+        Some(s) => quote! { ::core::option::Option::Some(#s) },
     };
 
     ExpandResult::ok(ExpandedEager::new(expanded))

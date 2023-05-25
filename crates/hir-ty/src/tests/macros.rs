@@ -947,7 +947,7 @@ fn infer_builtin_macros_concat_with_lazy() {
 
 #[test]
 fn infer_builtin_macros_env() {
-    check_infer(
+    check_types(
         r#"
         //- /main.rs env:foo=bar
         #[rustc_builtin_macro]
@@ -955,13 +955,26 @@ fn infer_builtin_macros_env() {
 
         fn main() {
             let x = env!("foo");
+              //^ &str
         }
         "#,
-        expect![[r#"
-            !0..22 '"__RA_...TED__"': &str
-            62..90 '{     ...o"); }': ()
-            72..73 'x': &str
-        "#]],
+    );
+}
+
+#[test]
+fn infer_builtin_macros_option_env() {
+    check_types(
+        r#"
+        //- minicore: option
+        //- /main.rs env:foo=bar
+        #[rustc_builtin_macro]
+        macro_rules! option_env {() => {}}
+
+        fn main() {
+            let x = option_env!("foo");
+              //^ Option<&str>
+        }
+        "#,
     );
 }
 

@@ -97,7 +97,7 @@ fn main() { option_env!("TEST_ENV_VAR"); }
 #[rustc_builtin_macro]
 macro_rules! option_env {() => {}}
 
-fn main() { $crate::option::Option::None:: < &str>; }
+fn main() { ::core::option::Option::None:: < &str>; }
 "#]],
     );
 }
