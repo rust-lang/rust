@@ -273,7 +273,7 @@ fn import_on_the_fly(
         .filter_map(|import| {
             render_resolution_with_import(RenderContext::new(ctx), path_ctx, import)
         })
-        .map(|builder| builder.build())
+        .map(|builder| builder.build(ctx.db))
         .for_each(|item| acc.add(item));
     Some(())
 }
@@ -315,7 +315,7 @@ fn import_on_the_fly_pat_(
         .filter_map(|import| {
             render_resolution_with_import_pat(RenderContext::new(ctx), pattern_ctx, import)
         })
-        .map(|builder| builder.build())
+        .map(|builder| builder.build(ctx.db))
         .for_each(|item| acc.add(item));
     Some(())
 }

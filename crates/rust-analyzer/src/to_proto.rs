@@ -306,12 +306,10 @@ fn completion_item(
             let imports: Vec<_> = item
                 .import_to_add
                 .into_iter()
-                .filter_map(|import_edit| {
-                    let import_path = &import_edit.import_path;
-                    let import_name = import_path.segments().last()?;
+                .filter_map(|(import_path, import_name)| {
                     Some(lsp_ext::CompletionImport {
-                        full_import_path: import_path.to_string(),
-                        imported_name: import_name.to_string(),
+                        full_import_path: import_path,
+                        imported_name: import_name,
                     })
                 })
                 .collect();

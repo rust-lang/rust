@@ -88,7 +88,7 @@ pub(crate) fn trait_solve_query(
 ) -> Option<Solution> {
     let _p = profile::span("trait_solve_query").detail(|| match &goal.value.goal.data(Interner) {
         GoalData::DomainGoal(DomainGoal::Holds(WhereClause::Implemented(it))) => {
-            db.trait_data(it.hir_trait_id()).name.to_string()
+            db.trait_data(it.hir_trait_id()).name.display(db.upcast()).to_string()
         }
         GoalData::DomainGoal(DomainGoal::Holds(WhereClause::AliasEq(_))) => "alias_eq".to_string(),
         _ => "??".to_string(),

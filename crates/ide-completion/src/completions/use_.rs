@@ -75,7 +75,7 @@ pub(crate) fn complete_use_path(
                                 is_name_already_imported,
                                 ..Default::default()
                             });
-                            acc.add(builder.build());
+                            acc.add(builder.build(ctx.db));
                         }
                     }
                 }
@@ -108,9 +108,9 @@ pub(crate) fn complete_use_path(
                             let item = CompletionItem::new(
                                 CompletionItemKind::SymbolKind(SymbolKind::Enum),
                                 ctx.source_range(),
-                                format!("{}::", e.name(ctx.db)),
+                                format!("{}::", e.name(ctx.db).display(ctx.db)),
                             );
-                            acc.add(item.build());
+                            acc.add(item.build(ctx.db));
                         }
                     }
                     _ => {}

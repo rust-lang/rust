@@ -114,7 +114,7 @@ fn compute_item_ranks(
             .iter()
             .flat_map(|i| i.name(ctx.db()))
             .enumerate()
-            .map(|(idx, name)| (name.to_string(), idx))
+            .map(|(idx, name)| (name.display(ctx.db()).to_string(), idx))
             .collect(),
     )
 }

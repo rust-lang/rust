@@ -158,7 +158,7 @@ fn existing_definition(db: &RootDatabase, variant_name: &ast::Name, variant: &Va
             ),
             _ => false,
         })
-        .any(|(name, _)| name.to_string() == variant_name.to_string())
+        .any(|(name, _)| name.display(db).to_string() == variant_name.to_string())
 }
 
 fn extract_generic_params(

@@ -24,7 +24,7 @@ pub(crate) mod env_vars;
 use std::iter;
 
 use hir::{known, HasAttrs, ScopeDef, Variant};
-use ide_db::{imports::import_assets::LocatedImport, SymbolKind};
+use ide_db::{imports::import_assets::LocatedImport, RootDatabase, SymbolKind};
 use syntax::ast;
 
 use crate::{
@@ -62,8 +62,8 @@ impl From<Completions> for Vec<CompletionItem> {
 impl Builder {
     /// Convenience method, which allows to add a freshly created completion into accumulator
     /// without binding it to the variable.
-    pub(crate) fn add_to(self, acc: &mut Completions) {
-        acc.add(self.build())
+    pub(crate) fn add_to(self, acc: &mut Completions, db: &RootDatabase) {
+        acc.add(self.build(db))
     }
 }
 
@@ -80,7 +80,7 @@ impl Completions {
 
     pub(crate) fn add_keyword(&mut self, ctx: &CompletionContext<'_>, keyword: &'static str) {
         let item = CompletionItem::new(CompletionItemKind::Keyword, ctx.source_range(), keyword);
-        item.add_to(self);
+        item.add_to(self, ctx.db);
     }
 
     pub(crate) fn add_nameref_keywords_with_colon(&mut self, ctx: &CompletionContext<'_>) {
@@ -134,7 +134,7 @@ impl Completions {
                 item.insert_text(if snippet.contains('$') { kw } else { snippet });
             }
         };
-        item.add_to(self);
+        item.add_to(self, ctx.db);
     }
 
     pub(crate) fn add_keyword_snippet(
@@ -149,7 +149,7 @@ impl Completions {
             Some(cap) => item.insert_snippet(cap, snippet),
             None => item.insert_text(if snippet.contains('$') { kw } else { snippet }),
         };
-        item.add_to(self);
+        item.add_to(self, ctx.db);
     }
 
     pub(crate) fn add_crate_roots(
@@ -190,7 +190,7 @@ impl Completions {
                 local_name,
                 resolution,
             )
-            .build(),
+            .build(ctx.db),
         );
     }
 
@@ -216,7 +216,7 @@ impl Completions {
                 local_name,
                 resolution,
             )
-            .build(),
+            .build(ctx.db),
         );
     }
 
@@ -276,7 +276,7 @@ impl Completions {
                 local_name,
                 mac,
             )
-            .build(),
+            .build(ctx.db),
         );
     }
 
@@ -305,7 +305,7 @@ impl Completions {
                 local_name,
                 func,
             )
-            .build(),
+            .build(ctx.db),
         );
     }
 
@@ -336,7 +336,7 @@ impl Completions {
                 local_name,
                 func,
             )
-            .build(),
+            .build(ctx.db),
         );
     }
 
@@ -367,7 +367,7 @@ impl Completions {
                 None,
                 func,
             )
-            .build(),
+            .build(ctx.db),
         );
     }
 
@@ -429,7 +429,7 @@ impl Completions {
         if let Some(builder) =
             render_variant_lit(RenderContext::new(ctx), path_ctx, None, variant, Some(path))
         {
-            self.add(builder.build());
+            self.add(builder.build(ctx.db));
         }
     }
 
@@ -452,7 +452,7 @@ impl Completions {
         if let Some(builder) =
             render_variant_lit(RenderContext::new(ctx), path_ctx, local_name, variant, None)
         {
-            self.add(builder.build());
+            self.add(builder.build(ctx.db));
         }
     }
 
@@ -497,7 +497,7 @@ impl Completions {
         if let Some(builder) =
             render_struct_literal(RenderContext::new(ctx), path_ctx, strukt, path, local_name)
         {
-            self.add(builder.build());
+            self.add(builder.build(ctx.db));
         }
     }
 
@@ -530,11 +530,12 @@ impl Completions {
 
     pub(crate) fn add_lifetime(&mut self, ctx: &CompletionContext<'_>, name: hir::Name) {
         CompletionItem::new(SymbolKind::LifetimeParam, ctx.source_range(), name.to_smol_str())
-            .add_to(self)
+            .add_to(self, ctx.db)
     }
 
     pub(crate) fn add_label(&mut self, ctx: &CompletionContext<'_>, name: hir::Name) {
-        CompletionItem::new(SymbolKind::Label, ctx.source_range(), name.to_smol_str()).add_to(self)
+        CompletionItem::new(SymbolKind::Label, ctx.source_range(), name.to_smol_str())
+            .add_to(self, ctx.db)
     }
 
     pub(crate) fn add_variant_pat(

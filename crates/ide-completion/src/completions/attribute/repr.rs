@@ -37,7 +37,7 @@ pub(super) fn complete_repr(
             if let Some((snippet, cap)) = snippet.zip(ctx.config.snippet_cap) {
                 item.insert_snippet(cap, snippet);
             }
-            item.add_to(acc);
+            item.add_to(acc, ctx.db);
         }
     }
 }

@@ -40,7 +40,7 @@ pub(crate) fn complete_cargo_env_vars(
     CARGO_DEFINED_VARS.into_iter().for_each(|&(var, detail)| {
         let mut item = CompletionItem::new(CompletionItemKind::Keyword, range, var);
         item.detail(detail);
-        item.add_to(acc);
+        item.add_to(acc, ctx.db);
     });
 
     Some(())

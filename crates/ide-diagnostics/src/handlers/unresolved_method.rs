@@ -26,7 +26,7 @@ pub(crate) fn unresolved_method(
         "unresolved-method",
         format!(
             "no method `{}` on type `{}`{field_suffix}",
-            d.name,
+            d.name.display(ctx.sema.db),
             d.receiver.display(ctx.sema.db)
         ),
         ctx.sema.diagnostics_display_range(d.expr.clone().map(|it| it.into())).range,

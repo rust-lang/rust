@@ -85,13 +85,16 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
 
     for method in methods {
         let adt = ast::Adt::Struct(strukt.clone());
-        let name = method.name(ctx.db()).to_string();
+        let name = method.name(ctx.db()).display(ctx.db()).to_string();
         // if `find_struct_impl` returns None, that means that a function named `name` already exists.
         let Some(impl_def) = find_struct_impl(ctx, &adt, &[name]) else { continue; };
         acc.add_group(
             &GroupLabel("Generate delegate methods…".to_owned()),
             AssistId("generate_delegate_methods", AssistKind::Generate),
-            format!("Generate delegate for `{field_name}.{}()`", method.name(ctx.db())),
+            format!(
+                "Generate delegate for `{field_name}.{}()`",
+                method.name(ctx.db()).display(ctx.db())
+            ),
             target,
             |builder| {
                 // Create the function
@@ -101,7 +104,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                 };
                 let method_name = method.name(ctx.db());
                 let vis = method_source.visibility();
-                let name = make::name(&method.name(ctx.db()).to_string());
+                let name = make::name(&method.name(ctx.db()).display(ctx.db()).to_string());
                 let params =
                     method_source.param_list().unwrap_or_else(|| make::param_list(None, []));
                 let type_params = method_source.generic_param_list();
@@ -111,7 +114,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                 };
                 let tail_expr = make::expr_method_call(
                     make::ext::field_from_idents(["self", &field_name]).unwrap(), // This unwrap is ok because we have at least 1 arg in the list
-                    make::name_ref(&method_name.to_string()),
+                    make::name_ref(&method_name.display(ctx.db()).to_string()),
                     arg_list,
                 );
                 let ret_type = method_source.ret_type();

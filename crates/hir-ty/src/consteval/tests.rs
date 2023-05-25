@@ -79,7 +79,7 @@ fn eval_goal(db: &TestDB, file_id: FileId) -> Result<Const, ConstEvalError> {
         .declarations()
         .find_map(|x| match x {
             hir_def::ModuleDefId::ConstId(x) => {
-                if db.const_data(x).name.as_ref()?.to_string() == "GOAL" {
+                if db.const_data(x).name.as_ref()?.display(db).to_string() == "GOAL" {
                     Some(x)
                 } else {
                     None

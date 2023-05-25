@@ -3,7 +3,7 @@
 use std::fmt;
 
 use hir::{Documentation, Mutability};
-use ide_db::{imports::import_assets::LocatedImport, SnippetCap, SymbolKind};
+use ide_db::{imports::import_assets::LocatedImport, RootDatabase, SnippetCap, SymbolKind};
 use itertools::Itertools;
 use smallvec::SmallVec;
 use stdx::{impl_from, never};
@@ -76,7 +76,8 @@ pub struct CompletionItem {
     pub ref_match: Option<(Mutability, TextSize)>,
 
     /// The import data to add to completion's edits.
-    pub import_to_add: SmallVec<[LocatedImport; 1]>,
+    /// (ImportPath, LastSegment)
+    pub import_to_add: SmallVec<[(String, String); 1]>,
 }
 
 // We use custom debug for CompletionItem to make snapshot tests more readable.
@@ -418,7 +419,7 @@ impl Builder {
         )
     }
 
-    pub(crate) fn build(self) -> CompletionItem {
+    pub(crate) fn build(self, db: &RootDatabase) -> CompletionItem {
         let _p = profile::span("item::Builder::build");
 
         let mut label = self.label;
@@ -433,7 +434,7 @@ impl Builder {
         if let [import_edit] = &*self.imports_to_add {
             // snippets can have multiple imports, but normal completions only have up to one
             if let Some(original_path) = import_edit.original_path.as_ref() {
-                label = SmolStr::from(format!("{label} (use {original_path})"));
+                label = SmolStr::from(format!("{label} (use {})", original_path.display(db)));
             }
         } else if let Some(trait_name) = self.trait_name {
             label = SmolStr::from(format!("{label} (as {trait_name})"));
@@ -443,6 +444,17 @@ impl Builder {
             Some(it) => it,
             None => TextEdit::replace(self.source_range, insert_text),
         };
+
+        let import_to_add = self
+            .imports_to_add
+            .into_iter()
+            .filter_map(|import| {
+                Some((
+                    import.import_path.display(db).to_string(),
+                    import.import_path.segments().last()?.display(db).to_string(),
+                ))
+            })
+            .collect();
 
         CompletionItem {
             source_range: self.source_range,
@@ -457,7 +469,7 @@ impl Builder {
             trigger_call_info: self.trigger_call_info,
             relevance: self.relevance,
             ref_match: self.ref_match,
-            import_to_add: self.imports_to_add,
+            import_to_add,
         }
     }
     pub(crate) fn lookup_by(&mut self, lookup: impl Into<SmolStr>) -> &mut Builder {

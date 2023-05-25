@@ -198,11 +198,11 @@ pub(crate) fn check_edit_with_config(
         &db,
         &config,
         position,
-        completion.import_to_add.iter().filter_map(|import_edit| {
-            let import_path = &import_edit.import_path;
-            let import_name = import_path.segments().last()?;
-            Some((import_path.to_string(), import_name.to_string()))
-        }),
+        completion
+            .import_to_add
+            .iter()
+            .cloned()
+            .filter_map(|(import_path, import_name)| Some((import_path, import_name))),
     )
     .into_iter()
     .flatten()

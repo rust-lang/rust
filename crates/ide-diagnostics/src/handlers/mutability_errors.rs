@@ -30,7 +30,10 @@ pub(crate) fn need_mut(ctx: &DiagnosticsContext<'_>, d: &hir::NeedMut) -> Diagno
     })();
     Diagnostic::new(
         "need-mut",
-        format!("cannot mutate immutable variable `{}`", d.local.name(ctx.sema.db)),
+        format!(
+            "cannot mutate immutable variable `{}`",
+            d.local.name(ctx.sema.db).display(ctx.sema.db)
+        ),
         ctx.sema.diagnostics_display_range(d.span.clone()).range,
     )
     .with_fixes(fixes)

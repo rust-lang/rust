@@ -1080,7 +1080,7 @@ macro_rules! mbe {
 
 #[test]
 fn collects_derive_helpers() {
-    let def_map = compute_crate_def_map(
+    let db = TestDB::with_files(
         r#"
 #![crate_type="proc-macro"]
 struct TokenStream;
@@ -1091,11 +1091,13 @@ pub fn derive_macro_2(_item: TokenStream) -> TokenStream {
 }
 "#,
     );
+    let krate = db.crate_graph().iter().next().unwrap();
+    let def_map = db.crate_def_map(krate);
 
     assert_eq!(def_map.exported_derives.len(), 1);
     match def_map.exported_derives.values().next() {
         Some(helpers) => match &**helpers {
-            [attr] => assert_eq!(attr.to_string(), "helper_attr"),
+            [attr] => assert_eq!(attr.display(&db).to_string(), "helper_attr"),
             _ => unreachable!(),
         },
         _ => unreachable!(),
@@ -1258,7 +1260,7 @@ struct A;
 
 #[test]
 fn macro_use_imports_all_macro_types() {
-    let def_map = compute_crate_def_map(
+    let db = TestDB::with_files(
         r#"
 //- /main.rs crate:main deps:lib
 #[macro_use]
@@ -1281,6 +1283,8 @@ struct TokenStream;
 fn proc_attr(a: TokenStream, b: TokenStream) -> TokenStream { a }
     "#,
     );
+    let krate = db.crate_graph().iter().next().unwrap();
+    let def_map = db.crate_def_map(krate);
 
     let root_module = &def_map[def_map.root()].scope;
     assert!(
@@ -1288,7 +1292,12 @@ fn proc_attr(a: TokenStream, b: TokenStream) -> TokenStream { a }
         "`#[macro_use]` shouldn't bring macros into textual macro scope",
     );
 
-    let actual = def_map.macro_use_prelude.iter().map(|(name, _)| name).sorted().join("\n");
+    let actual = def_map
+        .macro_use_prelude
+        .iter()
+        .map(|(name, _)| name.display(&db).to_string())
+        .sorted()
+        .join("\n");
 
     expect![[r#"
         legacy

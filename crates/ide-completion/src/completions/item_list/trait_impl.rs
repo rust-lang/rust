@@ -182,7 +182,7 @@ fn add_function_impl(
 
     let label = format!(
         "fn {}({})",
-        fn_name,
+        fn_name.display(ctx.db),
         if func.assoc_fn_params(ctx.db).is_empty() { "" } else { ".." }
     );
 
@@ -193,7 +193,7 @@ fn add_function_impl(
     };
 
     let mut item = CompletionItem::new(completion_kind, replacement_range, label);
-    item.lookup_by(format!("fn {fn_name}"))
+    item.lookup_by(format!("fn {}", fn_name.display(ctx.db)))
         .set_documentation(func.docs(ctx.db))
         .set_relevance(CompletionRelevance { is_item_from_trait: true, ..Default::default() });
 
@@ -216,7 +216,7 @@ fn add_function_impl(
                     item.text_edit(TextEdit::replace(replacement_range, header));
                 }
             };
-            item.add_to(acc);
+            item.add_to(acc, ctx.db);
         }
     }
 }
@@ -300,7 +300,7 @@ fn add_type_alias_impl(
                     item.text_edit(TextEdit::replace(replacement_range, decl));
                 }
             };
-            item.add_to(acc);
+            item.add_to(acc, ctx.db);
         }
     }
 }
@@ -340,7 +340,7 @@ fn add_const_impl(
                     ),
                     None => item.text_edit(TextEdit::replace(replacement_range, replacement)),
                 };
-                item.add_to(acc);
+                item.add_to(acc, ctx.db);
             }
         }
     }

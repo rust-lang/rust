@@ -132,7 +132,7 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
         acc.add_group(
             &group_label,
             AssistId("auto_import", AssistKind::QuickFix),
-            format!("Import `{import_path}`"),
+            format!("Import `{}`", import_path.display(ctx.db())),
             range,
             |builder| {
                 let scope = match scope.clone() {

@@ -9,7 +9,6 @@ use crate::{
     cli::load_cargo::ProcMacroServerChoice,
     line_index::{LineEndings, LineIndex, PositionEncoding},
 };
-use hir::Name;
 use ide::{
     LineCol, MonikerDescriptorKind, StaticIndex, StaticIndexedFile, TextRange, TokenId,
     TokenStaticData,
@@ -209,13 +208,12 @@ fn new_descriptor_str(
     }
 }
 
-fn new_descriptor(name: Name, suffix: scip_types::descriptor::Suffix) -> scip_types::Descriptor {
-    let mut name = name.to_string();
+fn new_descriptor(name: &str, suffix: scip_types::descriptor::Suffix) -> scip_types::Descriptor {
     if name.contains('\'') {
-        name = format!("`{name}`");
+        new_descriptor_str(&format!("`{name}`"), suffix)
+    } else {
+        new_descriptor_str(&name, suffix)
     }
-
-    new_descriptor_str(name.as_str(), suffix)
 }
 
 /// Loosely based on `def_to_moniker`
@@ -235,7 +233,7 @@ fn token_to_symbol(token: &TokenStaticData) -> Option<scip_types::Symbol> {
         .iter()
         .map(|desc| {
             new_descriptor(
-                desc.name.clone(),
+                &desc.name,
                 match desc.desc {
                     MonikerDescriptorKind::Namespace => Namespace,
                     MonikerDescriptorKind::Type => Type,

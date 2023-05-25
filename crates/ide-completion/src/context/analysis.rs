@@ -1190,7 +1190,7 @@ fn pattern_context_for(
                                     })
                                 }).and_then(|variants| {
                                    Some(variants.iter().filter_map(|variant| {
-                                        let variant_name = variant.name(sema.db).to_string();
+                                        let variant_name = variant.name(sema.db).display(sema.db).to_string();
 
                                         let variant_already_present = match_arm_list.arms().any(|arm| {
                                             arm.pat().and_then(|pat| {

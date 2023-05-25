@@ -904,7 +904,7 @@ fn compare_hir_and_ast_module(
 ) -> Option<()> {
     let hir_mod_name = hir_module.name(ctx.db())?;
     let ast_mod_name = ast_module.name()?;
-    if hir_mod_name.to_string() != ast_mod_name.to_string() {
+    if hir_mod_name.display(ctx.db()).to_string() != ast_mod_name.to_string() {
         return None;
     }
 

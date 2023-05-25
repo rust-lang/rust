@@ -56,7 +56,7 @@ impl HoverAction {
                     mod_path: render::path(
                         db,
                         it.module(db)?,
-                        it.name(db).map(|name| name.to_string()),
+                        it.name(db).map(|name| name.display(db).to_string()),
                     ),
                     nav: it.try_to_nav(db)?,
                 })

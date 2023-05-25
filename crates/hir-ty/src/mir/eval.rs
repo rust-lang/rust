@@ -309,7 +309,12 @@ impl MirEvalError {
             match func {
                 Either::Left(func) => {
                     let function_name = db.function_data(*func);
-                    writeln!(f, "In function {} ({:?})", function_name.name, func)?;
+                    writeln!(
+                        f,
+                        "In function {} ({:?})",
+                        function_name.name.display(db.upcast()),
+                        func
+                    )?;
                 }
                 Either::Right(clos) => {
                     writeln!(f, "In {:?}", clos)?;
@@ -349,7 +354,7 @@ impl MirEvalError {
                 writeln!(
                     f,
                     "Generic arg not provided for {}",
-                    param.name().unwrap_or(&Name::missing())
+                    param.name().unwrap_or(&Name::missing()).display(db.upcast())
                 )?;
                 writeln!(f, "Provided args: [")?;
                 for g in subst.iter(Interner) {
@@ -362,7 +367,8 @@ impl MirEvalError {
                 writeln!(
                     f,
                     "MIR lowering for function `{}` ({:?}) failed due:",
-                    function_name.name, func
+                    function_name.name.display(db.upcast()),
+                    func
                 )?;
                 err.pretty_print(f, db, span_formatter)?;
             }
@@ -2070,7 +2076,11 @@ impl Evaluator<'_> {
             Ok(r) => Ok(r),
             Err(e) => {
                 let data = self.db.enum_data(variant.parent);
-                let name = format!("{}::{}", data.name, data.variants[variant.local_id].name);
+                let name = format!(
+                    "{}::{}",
+                    data.name.display(self.db.upcast()),
+                    data.variants[variant.local_id].name.display(self.db.upcast())
+                );
                 Err(MirEvalError::ConstEvalError(name, Box::new(e)))
             }
         }
