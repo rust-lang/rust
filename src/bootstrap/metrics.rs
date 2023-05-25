@@ -14,6 +14,13 @@ use std::io::BufWriter;
 use std::time::{Duration, Instant, SystemTime};
 use sysinfo::{CpuExt, System, SystemExt};
 
+// Update this number whenever a breaking change is made to the build metrics.
+//
+// Versions:
+// 0: initial version
+// 1: replaced JsonNode::Test with JsonNode::TestSuite
+const CURRENT_METADATA_VERSION: usize = 1;
+
 pub(crate) struct BuildMetrics {
     state: RefCell<MetricsState>,
 }
@@ -145,7 +152,20 @@ impl BuildMetrics {
         // Some of our CI builds consist of multiple independent CI invocations. Ensure all the
         // previous invocations are still present in the resulting file.
         let mut invocations = match std::fs::read(&dest) {
-            Ok(contents) => t!(serde_json::from_slice::<JsonRoot>(&contents)).invocations,
+            Ok(contents) => {
+                // We first parse just the metadata_version field to have the check succeed even if
+                // the rest of the contents are not valid anymore.
+                let version: OnlyMetadataVersion = t!(serde_json::from_slice(&contents));
+                if version.metadata_version == CURRENT_METADATA_VERSION {
+                    t!(serde_json::from_slice::<JsonRoot>(&contents)).invocations
+                } else {
+                    println!(
+                        "warning: overriding existing build/metrics.json, as it's not \
+                         compatible with build metrics format version {CURRENT_METADATA_VERSION}."
+                    );
+                    Vec::new()
+                }
+            }
             Err(err) => {
                 if err.kind() != std::io::ErrorKind::NotFound {
                     panic!("failed to open existing metrics file at {}: {err}", dest.display());
@@ -163,7 +183,8 @@ impl BuildMetrics {
             children: steps.into_iter().map(|step| self.prepare_json_step(step)).collect(),
         });
 
-        let json = JsonRoot { system_stats, invocations };
+        let json =
+            JsonRoot { metadata_version: CURRENT_METADATA_VERSION, system_stats, invocations };
 
         t!(std::fs::create_dir_all(dest.parent().unwrap()));
         let mut file = BufWriter::new(t!(File::create(&dest)));
@@ -214,6 +235,8 @@ struct StepMetrics {
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 struct JsonRoot {
+    #[serde(default)] // For version 0 the field was not present.
+    metadata_version: usize,
     system_stats: JsonInvocationSystemStats,
     invocations: Vec<JsonInvocation>,
 }
@@ -298,4 +321,10 @@ struct JsonInvocationSystemStats {
 #[serde(rename_all = "snake_case")]
 struct JsonStepSystemStats {
     cpu_utilization_percent: f64,
+}
+
+#[derive(Deserialize)]
+struct OnlyMetadataVersion {
+    #[serde(default)] // For version 0 the field was not present.
+    metadata_version: usize,
 }
