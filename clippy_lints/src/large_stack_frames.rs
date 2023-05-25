@@ -1,6 +1,6 @@
 use std::ops::AddAssign;
 
-use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::diagnostics::span_lint_and_note;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::Body;
@@ -146,14 +146,13 @@ impl<'tcx> LateLintPass<'tcx> for LargeStackFrames {
         }
 
         if frame_size.exceeds_limit(self.maximum_allowed_size) {
-            span_lint_and_then(
+            span_lint_and_note(
                 cx,
                 LARGE_STACK_FRAMES,
                 span,
                 "this function allocates a large amount of stack space",
-                |diag| {
-                    diag.note("allocating large amounts of stack space can overflow the stack");
-                },
+                None,
+                "allocating large amounts of stack space can overflow the stack",
             );
         }
     }
