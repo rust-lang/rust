@@ -1450,11 +1450,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> OperandRef<'tcx, Bx::Value> {
         let tcx = bx.tcx();
 
-        let mut span_to_caller_location = |mut span: Span| {
-            // Remove `Inlined` marks as they pollute `expansion_cause`.
-            while span.is_inlined() {
-                span.remove_mark();
-            }
+        let mut span_to_caller_location = |span: Span| {
             let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
             let caller = tcx.sess.source_map().lookup_char_pos(topmost.lo());
             let const_loc = tcx.const_caller_location((

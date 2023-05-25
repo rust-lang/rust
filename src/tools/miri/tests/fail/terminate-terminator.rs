@@ -12,13 +12,13 @@ impl Drop for Foo {
 
 #[inline(always)]
 fn has_cleanup() {
+    //~^ ERROR: panic in a function that cannot unwind
     let _f = Foo;
     panic!();
 }
 
 extern "C" fn panic_abort() {
     has_cleanup();
-    //~^ ERROR: panic in a function that cannot unwind
 }
 
 fn main() {

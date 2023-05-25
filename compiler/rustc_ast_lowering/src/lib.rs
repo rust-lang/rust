@@ -1425,7 +1425,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             DefPathData::ImplTrait,
                             span,
                         );
-                        let ident = Ident::from_str_and_span(&pprust::ty_to_string(t), span);
+
+                        // HACK: pprust breaks strings with newlines when the type
+                        // gets too long. We don't want these to show up in compiler
+                        // output or built artifacts, so replace them here...
+                        // Perhaps we should instead format APITs more robustly.
+                        let ident = Ident::from_str_and_span(
+                            &pprust::ty_to_string(t).replace('\n', " "),
+                            span,
+                        );
+
                         let (param, bounds, path) = self.lower_universal_param_and_bounds(
                             *def_node_id,
                             span,
