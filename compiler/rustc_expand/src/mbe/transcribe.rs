@@ -6,14 +6,14 @@ use crate::errors::{
 use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, MatchedTokenTree, NamedMatch};
 use crate::mbe::{self, MetaVarExpr};
 use rustc_ast::mut_visit::{self, MutVisitor};
-use rustc_ast::token::{self, Delimiter, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, PResult};
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
 use rustc_span::hygiene::{LocalExpnId, Transparency};
 use rustc_span::symbol::{sym, Ident, MacroRulesNormalizedIdent};
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 
 use smallvec::{smallvec, SmallVec};
 use std::mem;
@@ -528,6 +528,26 @@ fn transcribe_metavar_expr<'a>(
         span
     };
     match *expr {
+        MetaVarExpr::Concat(lhs, rhs) => {
+            let string = |ident| {
+                let mrni = MacroRulesNormalizedIdent::new(ident);
+                if let Some(nm) = lookup_cur_matched(mrni, interp, &repeats)
+                    && let MatchedNonterminal(nt) = nm
+                    && let Nonterminal::NtIdent(nt_ident, _) = &**nt
+                {
+                    nt_ident.to_string()
+                } else {
+                    ident.to_string()
+                }
+            };
+            let symbol_span = lhs.span.to(rhs.span);
+            let mut symbol_string = string(lhs);
+            symbol_string.push_str(&string(rhs));
+            result.push(TokenTree::Token(
+                Token::from_ast_ident(Ident::new(Symbol::intern(&symbol_string), symbol_span)),
+                Spacing::Alone,
+            ));
+        }
         MetaVarExpr::Count(original_ident, depth_opt) => {
             let matched = matched_from_ident(cx, original_ident, interp)?;
             let count = count_repetitions(cx, depth_opt, matched, &repeats, sp)?;

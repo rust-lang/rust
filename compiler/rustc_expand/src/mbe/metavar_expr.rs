@@ -1,4 +1,4 @@
-use rustc_ast::token::{self, Delimiter};
+use rustc_ast::token::{self, Delimiter, TokenKind};
 use rustc_ast::tokenstream::{RefTokenTreeCursor, TokenStream, TokenTree};
 use rustc_ast::{LitIntType, LitKind};
 use rustc_ast_pretty::pprust;
@@ -10,6 +10,8 @@ use rustc_span::Span;
 /// A meta-variable expression, for expansions based on properties of meta-variables.
 #[derive(Debug, Clone, PartialEq, Encodable, Decodable)]
 pub(crate) enum MetaVarExpr {
+    Concat(Ident, Ident),
+
     /// The number of repetitions of an identifier, optionally limited to a number
     /// of outer-most repetition depths. If the depth limit is `None` then the depth is unlimited.
     Count(Ident, Option<usize>),
@@ -42,6 +44,14 @@ impl MetaVarExpr {
         check_trailing_token(&mut tts, sess)?;
         let mut iter = args.trees();
         let rslt = match ident.as_str() {
+            "concat" => {
+                let lhs = parse_ident_or_literal_as_ident(&mut iter, sess, ident.span)?;
+                if !try_eat_comma(&mut iter) {
+                    return Err(sess.span_diagnostic.struct_span_err(ident.span, "expected comma"));
+                }
+                let rhs = parse_ident_or_literal_as_ident(&mut iter, sess, ident.span)?;
+                MetaVarExpr::Concat(lhs, rhs)
+            }
             "count" => parse_count(&mut iter, sess, ident.span)?,
             "ignore" => MetaVarExpr::Ignore(parse_ident(&mut iter, sess, ident.span)?),
             "index" => MetaVarExpr::Index(parse_depth(&mut iter, sess, ident.span)?),
@@ -65,7 +75,7 @@ impl MetaVarExpr {
     pub(crate) fn ident(&self) -> Option<Ident> {
         match *self {
             MetaVarExpr::Count(ident, _) | MetaVarExpr::Ignore(ident) => Some(ident),
-            MetaVarExpr::Index(..) | MetaVarExpr::Length(..) => None,
+            MetaVarExpr::Concat(..) | MetaVarExpr::Index(..) | MetaVarExpr::Length(..) => None,
         }
     }
 }
@@ -148,6 +158,27 @@ fn parse_ident<'sess>(
         return Err(err);
     }
     Err(sess.span_diagnostic.struct_span_err(span, "expected identifier"))
+}
+
+fn parse_ident_or_literal_as_ident<'sess>(
+    iter: &mut RefTokenTreeCursor<'_>,
+    sess: &'sess ParseSess,
+    span: Span,
+) -> PResult<'sess, Ident> {
+    if let Some(tt) = iter.look_ahead(0)
+        && let TokenTree::Token(token, _) = tt
+        && let TokenKind::Literal(lit) = token.kind
+    {
+        let ident = Ident::new(lit.symbol, token.span);
+        let _ = iter.next();
+        Ok(ident)
+    }
+    else if let Ok(ident) = parse_ident(iter, sess, span) {
+        Ok(ident)
+    }
+    else {
+        Err(sess.span_diagnostic.struct_span_err(span, "expected identifier or literal"))
+    }
 }
 
 /// Tries to move the iterator forward returning `true` if there is a comma. If not, then the
