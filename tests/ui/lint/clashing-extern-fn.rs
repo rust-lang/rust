@@ -132,12 +132,12 @@ mod banana {
     mod three {
         // This _should_ trigger the lint, because repr(packed) should generate a struct that has a
         // different layout.
-        #[repr(packed)]
+        #[repr(C, packed)]
         struct Banana {
             weight: u32,
             length: u16,
         }
-        #[allow(improper_ctypes)]
+
         extern "C" {
             fn weigh_banana(count: *const Banana) -> u64;
             //~^ WARN `weigh_banana` redeclared with a different signature
@@ -223,7 +223,7 @@ mod transparent {
     }
 }
 
-#[allow(improper_ctypes)]
+#[allow(improper_ctypes)] // intentionally testing ZSTs
 mod zst {
     mod transparent {
         #[repr(transparent)]
@@ -382,7 +382,7 @@ mod null_optimised_enums {
     }
 }
 
-#[allow(improper_ctypes)]
+#[allow(improper_ctypes)] // intentionally testing repr(Rust)
 mod unknown_layout {
     mod a {
         extern "C" {

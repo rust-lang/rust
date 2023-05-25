@@ -92,12 +92,12 @@ mod ref_recursion_once_removed {
             reffy: &'a Reffy2<'a>,
         }
 
+        #[repr(C)]
         struct Reffy2<'a> {
             reffy: &'a Reffy1<'a>,
         }
 
         extern "C" {
-            #[allow(improper_ctypes)]
             fn reffy_once_removed(reffy: Reffy1);
         }
     }
@@ -107,6 +107,7 @@ mod ref_recursion_once_removed {
             reffy: &'a Reffy2<'a>,
         }
 
+        #[repr(C)]
         struct Reffy2<'a> {
             reffy: &'a Reffy1<'a>,
         }
