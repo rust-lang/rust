@@ -782,7 +782,9 @@ fn find_matching_impl(
                 .into_iter()
                 .map(|b| b.cast(Interner));
             let goal = crate::Goal::all(Interner, wcs);
-            table.try_obligation(goal).map(|_| (impl_data, table.resolve_completely(impl_substs)))
+            table.try_obligation(goal.clone())?;
+            table.register_obligation(goal);
+            Some((impl_data, table.resolve_completely(impl_substs)))
         })
     })
 }

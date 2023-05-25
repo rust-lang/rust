@@ -69,8 +69,7 @@ impl<'a> InferenceContext<'a> {
                     self.infer_mut_expr(*tail, Mutability::Not);
                 }
             }
-            &Expr::For { iterable: c, pat: _, body, label: _ }
-            | &Expr::While { condition: c, body, label: _ } => {
+            &Expr::While { condition: c, body, label: _ } => {
                 self.infer_mut_expr(c, Mutability::Not);
                 self.infer_mut_expr(body, Mutability::Not);
             }

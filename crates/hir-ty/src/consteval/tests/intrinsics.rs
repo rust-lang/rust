@@ -68,6 +68,30 @@ fn wrapping_add() {
 }
 
 #[test]
+fn saturating_add() {
+    check_number(
+        r#"
+        extern "rust-intrinsic" {
+            pub fn saturating_add<T>(a: T, b: T) -> T;
+        }
+
+        const GOAL: u8 = saturating_add(10, 250);
+        "#,
+        255,
+    );
+    check_number(
+        r#"
+        extern "rust-intrinsic" {
+            pub fn saturating_add<T>(a: T, b: T) -> T;
+        }
+
+        const GOAL: i8 = saturating_add(5, 8);
+        "#,
+        13,
+    );
+}
+
+#[test]
 fn allocator() {
     check_number(
         r#"

@@ -6,6 +6,7 @@ use super::{check, check_infer, check_infer_with_mismatches, check_no_mismatches
 fn infer_pattern() {
     check_infer(
         r#"
+        //- minicore: iterator
         fn test(x: &i32) {
             let y = x;
             let &z = x;
@@ -46,6 +47,15 @@ fn infer_pattern() {
             82..94 '(1, "hello")': (i32, &str)
             83..84 '1': i32
             86..93 '"hello"': &str
+            101..151 'for (e...     }': fn into_iter<{unknown}>({unknown}) -> <{unknown} as IntoIterator>::IntoIter
+            101..151 'for (e...     }': {unknown}
+            101..151 'for (e...     }': !
+            101..151 'for (e...     }': {unknown}
+            101..151 'for (e...     }': &mut {unknown}
+            101..151 'for (e...     }': fn next<{unknown}>(&mut {unknown}) -> Option<<{unknown} as Iterator>::Item>
+            101..151 'for (e...     }': Option<({unknown}, {unknown})>
+            101..151 'for (e...     }': ()
+            101..151 'for (e...     }': ()
             101..151 'for (e...     }': ()
             105..111 '(e, f)': ({unknown}, {unknown})
             106..107 'e': {unknown}

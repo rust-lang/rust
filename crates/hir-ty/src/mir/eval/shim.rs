@@ -1,6 +1,8 @@
 //! Interpret intrinsics, lang items and `extern "C"` wellknown functions which their implementation
 //! is not available.
 
+use std::cmp;
+
 use super::*;
 
 macro_rules! from_bytes {
@@ -254,6 +256,7 @@ impl Evaluator<'_> {
                     }
                     _ => not_supported!("write to arbitrary file descriptor"),
                 }
+                destination.write_from_interval(self, len.interval)?;
                 Ok(())
             }
             "pthread_key_create" => {
@@ -437,7 +440,7 @@ impl Evaluator<'_> {
                 let Some(ty) = generic_args.as_slice(Interner).get(0).and_then(|x| x.ty(Interner)) else {
                     return Err(MirEvalError::TypeError("align_of generic arg is not provided"));
                 };
-                let align = self.layout_filled(ty, locals)?.align.abi.bytes();
+                let align = self.layout(ty)?.align.abi.bytes();
                 destination.write_from_bytes(self, &align.to_le_bytes()[0..destination.size])
             }
             "needs_drop" => {
@@ -456,6 +459,22 @@ impl Evaluator<'_> {
                 let ans = lhs.get(self)? == rhs.get(self)?;
                 destination.write_from_bytes(self, &[u8::from(ans)])
             }
+            "saturating_add" => {
+                let [lhs, rhs] = args else {
+                    return Err(MirEvalError::TypeError("saturating_add args are not provided"));
+                };
+                let lhs = u128::from_le_bytes(pad16(lhs.get(self)?, false));
+                let rhs = u128::from_le_bytes(pad16(rhs.get(self)?, false));
+                let ans = lhs.saturating_add(rhs);
+                let bits = destination.size * 8;
+                // FIXME: signed
+                let is_signed = false;
+                let mx: u128 = if is_signed { (1 << (bits - 1)) - 1 } else { (1 << bits) - 1 };
+                // FIXME: signed
+                let mn: u128 = 0;
+                let ans = cmp::min(mx, cmp::max(mn, ans));
+                destination.write_from_bytes(self, &ans.to_le_bytes()[0..destination.size])
+            }
             "wrapping_add" | "unchecked_add" => {
                 let [lhs, rhs] = args else {
                     return Err(MirEvalError::TypeError("wrapping_add args are not provided"));
@@ -472,6 +491,15 @@ impl Evaluator<'_> {
                 let lhs = u128::from_le_bytes(pad16(lhs.get(self)?, false));
                 let rhs = u128::from_le_bytes(pad16(rhs.get(self)?, false));
                 let ans = lhs.wrapping_sub(rhs);
+                destination.write_from_bytes(self, &ans.to_le_bytes()[0..destination.size])
+            }
+            "wrapping_mul" | "unchecked_mul" => {
+                let [lhs, rhs] = args else {
+                    return Err(MirEvalError::TypeError("wrapping_mul args are not provided"));
+                };
+                let lhs = u128::from_le_bytes(pad16(lhs.get(self)?, false));
+                let rhs = u128::from_le_bytes(pad16(rhs.get(self)?, false));
+                let ans = lhs.wrapping_mul(rhs);
                 destination.write_from_bytes(self, &ans.to_le_bytes()[0..destination.size])
             }
             "unchecked_rem" => {
@@ -498,7 +526,7 @@ impl Evaluator<'_> {
                 })?;
                 destination.write_from_bytes(self, &ans.to_le_bytes()[0..destination.size])
             }
-            "add_with_overflow" => {
+            "add_with_overflow" | "sub_with_overflow" | "mul_with_overflow" => {
                 let [lhs, rhs] = args else {
                     return Err(MirEvalError::TypeError("const_eval_select args are not provided"));
                 };
@@ -511,8 +539,14 @@ impl Evaluator<'_> {
                     self.size_of_sized(&lhs.ty, locals, "operand of add_with_overflow")?;
                 let lhs = u128::from_le_bytes(pad16(lhs.get(self)?, false));
                 let rhs = u128::from_le_bytes(pad16(rhs.get(self)?, false));
-                let ans = lhs.wrapping_add(rhs);
-                let is_overflow = false;
+                let (ans, u128overflow) = match as_str {
+                    "add_with_overflow" => lhs.overflowing_add(rhs),
+                    "sub_with_overflow" => lhs.overflowing_sub(rhs),
+                    "mul_with_overflow" => lhs.overflowing_mul(rhs),
+                    _ => unreachable!(),
+                };
+                let is_overflow = u128overflow
+                    || ans.to_le_bytes()[op_size..].iter().any(|&x| x != 0 && x != 255);
                 let is_overflow = vec![u8::from(is_overflow)];
                 let layout = self.layout(&result_ty)?;
                 let result = self.make_by_layout(

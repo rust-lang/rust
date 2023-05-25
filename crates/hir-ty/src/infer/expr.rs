@@ -211,24 +211,6 @@ impl<'a> InferenceContext<'a> {
                 self.diverges = Diverges::Maybe;
                 TyBuilder::unit()
             }
-            &Expr::For { iterable, body, pat, label } => {
-                let iterable_ty = self.infer_expr(iterable, &Expectation::none());
-                let into_iter_ty =
-                    self.resolve_associated_type(iterable_ty, self.resolve_into_iter_item());
-                let pat_ty = self
-                    .resolve_associated_type(into_iter_ty.clone(), self.resolve_iterator_item());
-
-                self.result.type_of_for_iterator.insert(tgt_expr, into_iter_ty);
-
-                self.infer_top_pat(pat, &pat_ty);
-                self.with_breakable_ctx(BreakableKind::Loop, None, label, |this| {
-                    this.infer_expr(body, &Expectation::HasType(TyBuilder::unit()));
-                });
-
-                // the body may not run, so it diverging doesn't mean we diverge
-                self.diverges = Diverges::Maybe;
-                TyBuilder::unit()
-            }
             Expr::Closure { body, args, ret_type, arg_types, closure_kind, capture_by: _ } => {
                 assert_eq!(args.len(), arg_types.len());
 

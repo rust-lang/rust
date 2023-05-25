@@ -21,10 +21,15 @@ fn eval_main(db: &TestDB, file_id: FileId) -> Result<(String, String), MirEvalEr
             }
             _ => None,
         })
-        .unwrap();
-    let body =
-        db.mir_body(func_id.into()).map_err(|e| MirEvalError::MirLowerError(func_id.into(), e))?;
-    let (result, stdout, stderr) = interpret_mir(db, &body, Substitution::empty(Interner), false);
+        .expect("no main function found");
+    let body = db
+        .monomorphized_mir_body(
+            func_id.into(),
+            Substitution::empty(Interner),
+            db.trait_environment(func_id.into()),
+        )
+        .map_err(|e| MirEvalError::MirLowerError(func_id.into(), e))?;
+    let (result, stdout, stderr) = interpret_mir(db, &body, false);
     result?;
     Ok((stdout, stderr))
 }
@@ -34,7 +39,8 @@ fn check_pass(ra_fixture: &str) {
 }
 
 fn check_pass_and_stdio(ra_fixture: &str, expected_stdout: &str, expected_stderr: &str) {
-    let (db, file_id) = TestDB::with_single_file(ra_fixture);
+    let (db, file_ids) = TestDB::with_many_files(ra_fixture);
+    let file_id = *file_ids.last().unwrap();
     let x = eval_main(&db, file_id);
     match x {
         Err(e) => {
@@ -265,6 +271,243 @@ fn f<F: Fn()>(x: F) {
 
 fn main() {
     f(|| {});
+}
+        "#,
+    );
+}
+
+#[test]
+fn from_fn() {
+    check_pass(
+        r#"
+//- minicore: fn, iterator
+struct FromFn<F>(F);
+
+impl<T, F: FnMut() -> Option<T>> Iterator for FromFn<F> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        (self.0)()
+    }
+}
+
+fn main() {
+    let mut tokenize = {
+        FromFn(move || Some(2))
+    };
+    let s = tokenize.next();
+}
+        "#,
+    );
+}
+
+#[test]
+fn for_loop() {
+    check_pass(
+        r#"
+//- minicore: iterator, add
+fn should_not_reach() {
+    _ // FIXME: replace this function with panic when that works
+}
+
+struct X;
+struct XIter(i32);
+
+impl IntoIterator for X {
+    type Item = i32;
+
+    type IntoIter = XIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        XIter(0)
+    }
+}
+
+impl Iterator for XIter {
+    type Item = i32;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.0 == 5 {
+            None
+        } else {
+            self.0 += 1;
+            Some(self.0)
+        }
+    }
+}
+
+fn main() {
+    let mut s = 0;
+    for x in X {
+        s += x;
+    }
+    if s != 15 {
+        should_not_reach();
+    }
+}
+        "#,
+    );
+}
+
+#[test]
+fn field_with_associated_type() {
+    check_pass(
+        r#"
+//- /b/mod.rs crate:b
+pub trait Tr {
+    fn f(self);
+}
+
+pub trait Tr2 {
+    type Ty: Tr;
+}
+
+pub struct S<T: Tr2> {
+    pub t: T::Ty,
+}
+
+impl<T: Tr2> S<T> {
+    pub fn g(&self) {
+        let k = (self.t, self.t);
+        self.t.f();
+    }
+}
+
+//- /a/mod.rs crate:a deps:b
+use b::{Tr, Tr2, S};
+
+struct A(i32);
+struct B(u8);
+
+impl Tr for A {
+    fn f(&self) {
+    }
+}
+
+impl Tr2 for B {
+    type Ty = A;
+}
+
+#[test]
+fn main() {
+    let s: S<B> = S { t: A(2) };
+    s.g();
+}
+    "#,
+    );
+}
+
+#[test]
+fn specialization_array_clone() {
+    check_pass(
+        r#"
+//- minicore: copy, derive, slice, index, coerce_unsized
+impl<T: Clone, const N: usize> Clone for [T; N] {
+    #[inline]
+    fn clone(&self) -> Self {
+        SpecArrayClone::clone(self)
+    }
+}
+
+trait SpecArrayClone: Clone {
+    fn clone<const N: usize>(array: &[Self; N]) -> [Self; N];
+}
+
+impl<T: Clone> SpecArrayClone for T {
+    #[inline]
+    default fn clone<const N: usize>(array: &[T; N]) -> [T; N] {
+        // FIXME: panic here when we actually implement specialization.
+        from_slice(array)
+    }
+}
+
+fn from_slice<T, const N: usize>(s: &[T]) -> [T; N] {
+    [s[0]; N]
+}
+
+impl<T: Copy> SpecArrayClone for T {
+    #[inline]
+    fn clone<const N: usize>(array: &[T; N]) -> [T; N] {
+        *array
+    }
+}
+
+#[derive(Clone, Copy)]
+struct X(i32);
+
+fn main() {
+    let ar = [X(1), X(2)];
+    ar.clone();
+}
+        "#,
+    );
+}
+
+#[test]
+fn short_circuit_operator() {
+    check_pass(
+        r#"
+fn should_not_reach() -> bool {
+    _ // FIXME: replace this function with panic when that works
+}
+
+fn main() {
+    if false && should_not_reach() {
+        should_not_reach();
+    }
+    true || should_not_reach();
+
+}
+    "#,
+    );
+}
+
+#[test]
+fn closure_state() {
+    check_pass(
+        r#"
+//- minicore: fn, add, copy
+fn should_not_reach() {
+    _ // FIXME: replace this function with panic when that works
+}
+
+fn main() {
+    let mut x = 2;
+    let mut c = move || {
+        x += 1;
+        x
+    };
+    c();
+    c();
+    c();
+    if x != 2 {
+        should_not_reach();
+    }
+    if c() != 6 {
+        should_not_reach();
+    }
+}
+        "#,
+    );
+}
+
+#[test]
+fn closure_capture_array_const_generic() {
+    check_pass(
+        r#"
+//- minicore: fn, add, copy
+struct X(i32);
+
+fn f<const N: usize>(mut x: [X; N]) { // -> impl FnOnce() {
+    let c = || {
+        x;
+    };
+    c();
+}
+
+fn main() {
+    let s = f([X(1)]);
+    //s();
 }
         "#,
     );

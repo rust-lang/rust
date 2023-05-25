@@ -255,9 +255,9 @@ impl<'a> InferenceContext<'a> {
                 self.infer_slice_pat(&expected, prefix, slice, suffix, default_bm)
             }
             Pat::Wild => expected.clone(),
-            Pat::Range { start, end } => {
-                let start_ty = self.infer_expr(*start, &Expectation::has_type(expected.clone()));
-                self.infer_expr(*end, &Expectation::has_type(start_ty))
+            Pat::Range { .. } => {
+                // FIXME: do some checks here.
+                expected.clone()
             }
             &Pat::Lit(expr) => {
                 // Don't emit type mismatches again, the expression lowering already did that.

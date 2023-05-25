@@ -329,6 +329,7 @@ fn foo() {
     fn complete_label_in_for_iterable() {
         check(
             r#"
+//- minicore: iterator
 fn foo() {
     'outer: for _ in [{ 'inner: loop { break '$0 } }] {}
 }

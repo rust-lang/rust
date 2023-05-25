@@ -5,7 +5,7 @@ use std::{cmp, collections::HashMap, convert::Infallible, mem};
 use chalk_ir::{
     cast::Cast,
     fold::{FallibleTypeFolder, TypeFoldable},
-    AliasEq, AliasTy, BoundVar, DebruijnIndex, FnSubst, Mutability, TyKind, WhereClause,
+    AliasEq, AliasTy, BoundVar, ConstData, DebruijnIndex, FnSubst, Mutability, TyKind, WhereClause,
 };
 use hir_def::{
     data::adt::VariantData,
@@ -29,8 +29,8 @@ use crate::{
     static_lifetime, to_chalk_trait_id,
     traits::FnTrait,
     utils::{self, generics, pattern_matching_dereference_count, Generics},
-    Adjust, Adjustment, Binders, ChalkTraitId, ClosureId, DynTy, FnPointer, FnSig, Interner,
-    Substitution, Ty, TyExt,
+    Adjust, Adjustment, Binders, ChalkTraitId, ClosureId, ConstValue, DynTy, FnPointer, FnSig,
+    Interner, Substitution, Ty, TyExt,
 };
 
 use super::{Expectation, InferenceContext};
@@ -257,6 +257,23 @@ impl CapturedItemWithoutTy {
 
                 fn interner(&self) -> Interner {
                     Interner
+                }
+
+                fn try_fold_free_placeholder_const(
+                    &mut self,
+                    ty: chalk_ir::Ty<Interner>,
+                    idx: chalk_ir::PlaceholderIndex,
+                    outer_binder: DebruijnIndex,
+                ) -> Result<chalk_ir::Const<Interner>, Self::Error> {
+                    let x = from_placeholder_idx(self.db, idx);
+                    let Some(idx) = self.generics.param_idx(x) else {
+                        return Err(());
+                    };
+                    Ok(ConstData {
+                        ty,
+                        value: ConstValue::BoundVar(BoundVar::new(outer_binder, idx)),
+                    }
+                    .intern(Interner))
                 }
 
                 fn try_fold_free_placeholder_ty(
@@ -490,8 +507,7 @@ impl InferenceContext<'_> {
                     self.consume_expr(*tail);
                 }
             }
-            Expr::While { condition, body, label: _ }
-            | Expr::For { iterable: condition, pat: _, body, label: _ } => {
+            Expr::While { condition, body, label: _ } => {
                 self.consume_expr(*condition);
                 self.consume_expr(*body);
             }

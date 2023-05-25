@@ -19,11 +19,16 @@ mod eval;
 mod lower;
 mod borrowck;
 mod pretty;
+mod monomorphization;
 
 pub use borrowck::{borrowck_query, BorrowckResult, MutabilityReason};
 pub use eval::{interpret_mir, pad16, Evaluator, MirEvalError, VTableMap};
 pub use lower::{
     lower_to_mir, mir_body_for_closure_query, mir_body_query, mir_body_recover, MirLowerError,
+};
+pub use monomorphization::{
+    monomorphize_mir_body_bad, monomorphized_mir_body_for_closure_query,
+    monomorphized_mir_body_query, monomorphized_mir_body_recover,
 };
 use smallvec::{smallvec, SmallVec};
 use stdx::{impl_from, never};
@@ -37,7 +42,7 @@ fn return_slot() -> LocalId {
     LocalId::from_raw(RawIdx::from(0))
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Local {
     pub ty: Ty,
 }
@@ -780,7 +785,6 @@ pub enum CastKind {
     FloatToInt,
     FloatToFloat,
     IntToFloat,
-    PtrToPtr,
     FnPtrToPtr,
 }
 
@@ -952,7 +956,7 @@ pub struct Statement {
     pub span: MirSpan,
 }
 
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct BasicBlock {
     /// List of statements in this block.
     pub statements: Vec<Statement>,
@@ -974,7 +978,7 @@ pub struct BasicBlock {
     pub is_cleanup: bool,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MirBody {
     pub basic_blocks: Arena<BasicBlock>,
     pub locals: Arena<Local>,

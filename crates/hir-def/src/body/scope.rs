@@ -228,12 +228,6 @@ fn compute_expr_scopes(expr: ExprId, body: &Body, scopes: &mut ExprScopes, scope
             scopes.set_scope(expr, scope);
             compute_block_scopes(statements, *tail, body, scopes, &mut scope);
         }
-        Expr::For { iterable, pat, body: body_expr, label } => {
-            compute_expr_scopes(*iterable, body, scopes, scope);
-            let mut scope = scopes.new_labeled_scope(*scope, make_label(label));
-            scopes.add_pat_bindings(body, scope, *pat);
-            compute_expr_scopes(*body_expr, body, scopes, &mut scope);
-        }
         Expr::While { condition, body: body_expr, label } => {
             let mut scope = scopes.new_labeled_scope(*scope, make_label(label));
             compute_expr_scopes(*condition, body, scopes, &mut scope);
