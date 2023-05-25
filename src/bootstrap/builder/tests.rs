@@ -1,5 +1,6 @@
 use super::*;
 use crate::config::{Config, DryRun, TargetSelection};
+use crate::doc::DocumentationFormat;
 use std::thread;
 
 fn configure(cmd: &str, host: &[&str], target: &[&str]) -> Config {
@@ -62,6 +63,16 @@ macro_rules! std {
         compile::Std::new(
             Compiler { host: TargetSelection::from_user(stringify!($host)), stage: $stage },
             TargetSelection::from_user(stringify!($target)),
+        )
+    };
+}
+
+macro_rules! doc_std {
+    ($host:ident => $target:ident, stage = $stage:literal) => {
+        doc::Std::new(
+            $stage,
+            TargetSelection::from_user(stringify!($target)),
+            DocumentationFormat::HTML,
         )
     };
 }
@@ -144,6 +155,9 @@ fn alias_and_path_for_library() {
         first(cache.all::<compile::Std>()),
         &[std!(A => A, stage = 0), std!(A => A, stage = 1)]
     );
+
+    let mut cache = run_build(&["library".into(), "core".into()], configure("doc", &["A"], &["A"]));
+    assert_eq!(first(cache.all::<doc::Std>()), &[doc_std!(A => A, stage = 0)]);
 }
 
 #[test]
