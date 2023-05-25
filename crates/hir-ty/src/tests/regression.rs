@@ -1837,3 +1837,58 @@ fn foo() {
 }",
     );
 }
+
+#[test]
+fn regression_14844() {
+    check_no_mismatches(
+        r#"
+pub type Ty = Unknown;
+
+pub struct Inner<T>();
+
+pub struct Outer {
+    pub inner: Inner<Ty>,
+}
+
+fn main() {
+    _ = Outer {
+        inner: Inner::<i32>(),
+    };
+}
+        "#,
+    );
+    check_no_mismatches(
+        r#"
+pub const ONE: usize = 1;
+
+pub struct Inner<const P: usize>();
+
+pub struct Outer {
+    pub inner: Inner<ONE>,
+}
+
+fn main() {
+    _ = Outer {
+        inner: Inner::<1>(),
+    };
+}
+        "#,
+    );
+    check_no_mismatches(
+        r#"
+pub const ONE: usize = unknown();
+
+pub struct Inner<const P: usize>();
+
+pub struct Outer {
+    pub inner: Inner<ONE>,
+}
+
+fn main() {
+    _ = Outer {
+        inner: Inner::<1>(),
+    };
+}
+        "#,
+    );
+}

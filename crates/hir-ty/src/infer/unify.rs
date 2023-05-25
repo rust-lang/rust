@@ -781,8 +781,16 @@ impl<'a> InferenceTable<'a> {
     pub(super) fn insert_const_vars_shallow(&mut self, c: Const) -> Const {
         let data = c.data(Interner);
         match &data.value {
-            ConstValue::Concrete(cc) => match cc.interned {
+            ConstValue::Concrete(cc) => match &cc.interned {
                 crate::ConstScalar::Unknown => self.new_const_var(data.ty.clone()),
+                // try to evaluate unevaluated const. Replace with new var if const eval failed.
+                crate::ConstScalar::UnevaluatedConst(id, subst) => {
+                    if let Ok(eval) = self.db.const_eval(*id, subst.clone()) {
+                        eval
+                    } else {
+                        self.new_const_var(data.ty.clone())
+                    }
+                }
                 _ => c,
             },
             _ => c,

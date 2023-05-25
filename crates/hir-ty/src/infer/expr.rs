@@ -575,6 +575,9 @@ impl<'a> InferenceContext<'a> {
                     let field_ty = field_def.map_or(self.err_ty(), |it| {
                         field_types[it.local_id].clone().substitute(Interner, &substs)
                     });
+                    // Field type might have some unknown types
+                    // FIXME: we may want to emit a single type variable for all instance of type fields?
+                    let field_ty = self.insert_type_vars(field_ty);
                     self.infer_expr_coerce(field.expr, &Expectation::has_type(field_ty));
                 }
                 if let Some(expr) = spread {
