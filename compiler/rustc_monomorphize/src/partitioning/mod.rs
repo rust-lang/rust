@@ -182,7 +182,7 @@ impl<'tcx> Partition<'tcx> for Partitioner {
     }
 }
 
-pub struct PartitioningCx<'a, 'tcx> {
+struct PartitioningCx<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     target_cgu_count: usize,
     inlining_map: &'a InliningMap<'tcx>,
@@ -231,7 +231,7 @@ fn get_partitioner(tcx: TyCtxt<'_>) -> Partitioner {
     }
 }
 
-pub fn partition<'tcx, I>(
+fn partition<'tcx, I>(
     tcx: TyCtxt<'tcx>,
     mono_items: &mut I,
     max_cgu_count: usize,
