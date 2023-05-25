@@ -51,6 +51,10 @@ fn empty_foreign_enum(x: empty::EmptyForeignEnum) {
     }
 }
 
+fn empty_foreign_enum_private(x: Option<empty::SecretlyUninhabitedForeignStruct>) {
+    let None = x; //~ ERROR refutable pattern in local binding
+}
+
 fn never(x: !) {
     match x {} // ok
     match x {
