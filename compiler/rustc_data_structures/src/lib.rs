@@ -102,21 +102,27 @@ pub mod unord;
 pub use ena::undo_log;
 pub use ena::unify;
 
-pub struct OnDrop<F: Fn()>(pub F);
+/// Returns a structure that calls `f` when dropped.
+pub fn defer<F: FnOnce()>(f: F) -> OnDrop<F> {
+    OnDrop(Some(f))
+}
 
-impl<F: Fn()> OnDrop<F> {
-    /// Forgets the function which prevents it from running.
-    /// Ensure that the function owns no memory, otherwise it will be leaked.
+pub struct OnDrop<F: FnOnce()>(Option<F>);
+
+impl<F: FnOnce()> OnDrop<F> {
+    /// Disables on-drop call.
     #[inline]
-    pub fn disable(self) {
-        std::mem::forget(self);
+    pub fn disable(mut self) {
+        self.0.take();
     }
 }
 
-impl<F: Fn()> Drop for OnDrop<F> {
+impl<F: FnOnce()> Drop for OnDrop<F> {
     #[inline]
     fn drop(&mut self) {
-        (self.0)();
+        if let Some(f) = self.0.take() {
+            f();
+        }
     }
 }
 
