@@ -41,7 +41,6 @@ use rustc_span::{BytePos, DesugaringKind, ExpnKind, MacroKind, Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use std::borrow::Cow;
 use std::iter;
-use std::ops::Deref;
 
 use super::InferCtxtPrivExt;
 use crate::infer::InferCtxtExt as _;
@@ -3580,7 +3579,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             // to an associated type (as seen from `trait_pred`) in the predicate. Like in
             // trait_pred `S: Sum<<Self as Iterator>::Item>` and predicate `i32: Sum<&()>`
             let mut type_diffs = vec![];
-            if let ObligationCauseCode::ExprBindingObligation(def_id, _, _, idx) = parent_code.deref()
+            if let ObligationCauseCode::ExprBindingObligation(def_id, _, _, idx) = parent_code
                 && let Some(node_args) = typeck_results.node_args_opt(call_hir_id)
                 && let where_clauses = self.tcx.predicates_of(def_id).instantiate(self.tcx, node_args)
                 && let Some(where_pred) = where_clauses.predicates.get(*idx)
