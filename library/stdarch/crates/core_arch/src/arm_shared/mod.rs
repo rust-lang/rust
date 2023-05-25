@@ -59,9 +59,6 @@ pub use self::barrier::*;
 mod hints;
 pub use self::hints::*;
 
-mod registers;
-pub use self::registers::*;
-
 #[cfg(any(target_arch = "aarch64", target_feature = "v7", doc))]
 mod crc;
 #[cfg(any(target_arch = "aarch64", target_feature = "v7", doc))]

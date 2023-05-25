@@ -6,12 +6,6 @@
 //! [arm_ref]: http://infocenter.arm.com/help/topic/com.arm.doc.ihi0073a/IHI0073A_arm_neon_intrinsics_ref.pdf
 //! [arm_dat]: https://developer.arm.com/technologies/neon/intrinsics
 
-mod armclang;
-pub use self::armclang::*;
-
-mod v6;
-pub use self::v6::*;
-
 // Supported arches: 6, 7-M. See Section 10.1 of ACLE (e.g. SSAT)
 #[cfg(any(target_feature = "v6", doc))]
 mod sat;
@@ -61,14 +55,6 @@ mod simd32;
     doc,
 ))]
 pub use self::simd32::*;
-
-#[cfg(any(target_feature = "v7", doc))]
-mod v7;
-#[cfg(any(target_feature = "v7", doc))]
-pub use self::v7::*;
-
-mod ex;
-pub use self::ex::*;
 
 pub use crate::core_arch::arm_shared::*;
 
