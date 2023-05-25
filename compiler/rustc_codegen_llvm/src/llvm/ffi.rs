@@ -1133,6 +1133,7 @@ pub(crate) unsafe fn enzyme_rust_reverse_diff(
         1,                                        // vector mode width
         1,                                        // free memory
         Option::None,
+        0, // do not force anonymous tape
         dummy_type, // additional_arg, type info (return + args)
         args_uncacheable.as_ptr(),
         args_uncacheable.len(), // uncacheable arguments
@@ -1168,7 +1169,9 @@ extern "C" {
     pub fn LLVMGetFirstFunction(M: &Module) -> Option<&Value>;
     pub fn LLVMGetNextFunction(V: &Value) -> Option<&Value>;
     pub fn LLVMGetNamedFunction(M: &Module, Name: *const c_char) -> Option<&Value>;
+    pub fn LLVMGlobalGetValueType(val: &Value) -> &Type;
 
+    pub fn LLVMRustGetFunctionType(fnc: &Value) -> &Type;
     pub fn LLVMRustInstallFatalErrorHandler();
     pub fn LLVMRustDisableSystemDialogsOnCrash();
 
@@ -2813,6 +2816,7 @@ extern "C" {
         width: ::std::os::raw::c_uint,
         freeMemory: u8,
         additionalArg: Option<&Type>,
+        forceAnonymousTape: u8,
         typeInfo: CFnTypeInfo,
         _uncacheable_args: *const u8,
         uncacheable_args_size: size_t,

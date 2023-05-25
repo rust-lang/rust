@@ -23,7 +23,7 @@ use llvm::{
     LLVMCountParams, LLVMCountStructElementTypes, LLVMCreateBuilderInContext, LLVMDeleteFunction,
     LLVMDisposeBuilder, LLVMGetBasicBlockTerminator, LLVMGetElementType, LLVMGetModuleContext,
     LLVMGetParams, LLVMGetReturnType, LLVMPositionBuilderAtEnd, LLVMSetValueName2, LLVMTypeOf,
-    LLVMVoidTypeInContext,
+    LLVMVoidTypeInContext, LLVMGlobalGetValueType,
 };
 //use llvm::LLVMRustGetNamedValue;
 use rustc_codegen_ssa::back::link::ensure_removed;
@@ -694,8 +694,11 @@ pub(crate) unsafe fn enzyme_ad(
         ),
         _ => unreachable!(),
     };
-    let f_type = LLVMTypeOf(res);
-    let f_return_type = LLVMGetReturnType(LLVMGetElementType(f_type));
+    //let f_type = LLVMTypeOf(res);
+
+    let f_return_type = LLVMGetReturnType(LLVMGlobalGetValueType(res));
+
+    //let f_return_type = LLVMGetReturnType(LLVMGetElementType(f_type));
     let void_type = LLVMVoidTypeInContext(llcx);
     if item.attrs.mode == DiffMode::Reverse && f_return_type != void_type {
         //dbg!("Reverse Mode sanitizer");

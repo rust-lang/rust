@@ -1,4 +1,3 @@
-#![feature(bench_black_box)]
 use autodiff::autodiff;
 
 #[autodiff(cos_inplace, Reverse, Const)]
