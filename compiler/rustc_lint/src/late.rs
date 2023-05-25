@@ -240,8 +240,10 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
     }
 
     fn visit_arm(&mut self, a: &'tcx hir::Arm<'tcx>) {
-        lint_callback!(self, check_arm, a);
-        hir_visit::walk_arm(self, a);
+        self.with_lint_attrs(a.hir_id, |cx| {
+            lint_callback!(cx, check_arm, a);
+            hir_visit::walk_arm(cx, a);
+        })
     }
 
     fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam<'tcx>) {
