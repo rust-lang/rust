@@ -2,7 +2,7 @@ use crate::Lint;
 use clippy_utils::{diagnostics::span_lint_and_then, is_lint_allowed};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
+use rustc_middle::{lint::in_external_macro, ty::Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Symbol;
 use std::borrow::Cow;
@@ -102,11 +102,13 @@ impl LateLintPass<'_> for EndianBytes {
 
         if_chain! {
             if let ExprKind::MethodCall(method_name, receiver, args, ..) = expr.kind;
-            if let ExprKind::Lit(..) = receiver.kind;
             if args.is_empty();
-            if try_lint_endian_bytes(cx, expr, "to", method_name.ident.name);
+            let ty = cx.typeck_results().expr_ty(receiver);
+            if ty.is_primitive_ty();
             then {
-                return;
+                if try_lint_endian_bytes(cx, expr, "to", method_name.ident.name, ty) {
+                    return;
+                }
             }
         }
 
@@ -115,15 +117,16 @@ impl LateLintPass<'_> for EndianBytes {
             if let ExprKind::Path(qpath) = function.kind;
             if let Some(def_id) = cx.qpath_res(&qpath, function.hir_id).opt_def_id();
             if let Some(function_name) = cx.get_def_path(def_id).last();
-            if cx.typeck_results().expr_ty(expr).is_primitive_ty();
+            let ty = cx.typeck_results().expr_ty(expr);
+            if ty.is_primitive_ty();
             then {
-                try_lint_endian_bytes(cx, expr, "from", *function_name);
+                try_lint_endian_bytes(cx, expr, "from", *function_name, ty);
             }
         }
     }
 }
 
-fn try_lint_endian_bytes(cx: &LateContext<'_>, expr: &Expr<'_>, prefix: &str, name: Symbol) -> bool {
+fn try_lint_endian_bytes(cx: &LateContext<'_>, expr: &Expr<'_>, prefix: &str, name: Symbol, ty: Ty<'_>) -> bool {
     let ne = format!("{prefix}_ne_bytes");
     let le = format!("{prefix}_le_bytes");
     let be = format!("{prefix}_be_bytes");
@@ -171,7 +174,7 @@ fn try_lint_endian_bytes(cx: &LateContext<'_>, expr: &Expr<'_>, prefix: &str, na
                 help_str.push_str("either of ");
             }
 
-            help_str.push_str(&format!("`{}` ", lint.to_name(prefix)));
+            help_str.push_str(&format!("`{ty}::{}` ", lint.to_name(prefix)));
 
             if i != len && !only_one {
                 help_str.push_str("or ");
@@ -185,7 +188,12 @@ fn try_lint_endian_bytes(cx: &LateContext<'_>, expr: &Expr<'_>, prefix: &str, na
         cx,
         lint.as_lint(),
         expr.span,
-        &format!("usage of the method `{}`", lint.to_name(prefix)),
+        &format!(
+            "usage of the {}`{ty}::{}`{}",
+            if prefix == "from" { "function " } else { "" },
+            lint.to_name(prefix),
+            if prefix == "to" { " method" } else { "" },
+        ),
         move |diag| {
             if let Some(help) = help {
                 diag.help(help);

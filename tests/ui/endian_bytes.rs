@@ -65,7 +65,7 @@ macro_rules! fn_body {
 }
 
 // bless breaks if I use fn_body too much (oops)
-macro_rules! fn_body_small {
+macro_rules! fn_body_smol {
     () => {
         2u8.to_ne_bytes();
         u8::from_ne_bytes(todo!());
@@ -93,35 +93,35 @@ fn big() { fn_body!(); }
 #[rustfmt::skip]
 #[warn(clippy::host_endian_bytes)]
 #[warn(clippy::big_endian_bytes)]
-fn host_encourage_little() { fn_body_small!(); }
+fn host_encourage_little() { fn_body_smol!(); }
 
 #[rustfmt::skip]
 #[warn(clippy::host_endian_bytes)]
 #[warn(clippy::little_endian_bytes)]
-fn host_encourage_big() { fn_body_small!(); }
+fn host_encourage_big() { fn_body_smol!(); }
 
 #[rustfmt::skip]
 #[warn(clippy::host_endian_bytes)]
 #[warn(clippy::little_endian_bytes)]
 #[warn(clippy::big_endian_bytes)]
-fn no_help() { fn_body_small!(); }
+fn no_help() { fn_body_smol!(); }
 
 #[rustfmt::skip]
 #[warn(clippy::little_endian_bytes)]
 #[warn(clippy::big_endian_bytes)]
-fn little_encourage_host() { fn_body_small!(); }
+fn little_encourage_host() { fn_body_smol!(); }
 
 #[rustfmt::skip]
 #[warn(clippy::host_endian_bytes)]
 #[warn(clippy::little_endian_bytes)]
-fn little_encourage_big() { fn_body_small!(); }
+fn little_encourage_big() { fn_body_smol!(); }
 
 #[rustfmt::skip]
 #[warn(clippy::big_endian_bytes)]
 #[warn(clippy::little_endian_bytes)]
-fn big_encourage_host() { fn_body_small!(); }
+fn big_encourage_host() { fn_body_smol!(); }
 
 #[rustfmt::skip]
 #[warn(clippy::host_endian_bytes)]
 #[warn(clippy::big_endian_bytes)]
-fn big_encourage_little() { fn_body_small!(); }
+fn big_encourage_little() { fn_body_smol!(); }
