@@ -1,7 +1,7 @@
 use crate::util::check_builtin_macro_attribute;
 
 use rustc_ast::expand::allocator::{
-    AllocatorKind, AllocatorMethod, AllocatorTy, ALLOCATOR_METHODS,
+    global_fn_name, AllocatorMethod, AllocatorTy, ALLOCATOR_METHODS,
 };
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, AttrVec, Expr, FnHeader, FnSig, Generics, Param, StmtKind};
@@ -40,8 +40,7 @@ pub fn expand(
 
     // Generate a bunch of new items using the AllocFnFactory
     let span = ecx.with_def_site_ctxt(item.span);
-    let f =
-        AllocFnFactory { span, ty_span, kind: AllocatorKind::Global, global: item.ident, cx: ecx };
+    let f = AllocFnFactory { span, ty_span, global: item.ident, cx: ecx };
 
     // Generate item statements for the allocator methods.
     let stmts = ALLOCATOR_METHODS.iter().map(|method| f.allocator_fn(method)).collect();
@@ -63,7 +62,6 @@ pub fn expand(
 struct AllocFnFactory<'a, 'b> {
     span: Span,
     ty_span: Span,
-    kind: AllocatorKind,
     global: Ident,
     cx: &'b ExtCtxt<'a>,
 }
@@ -92,7 +90,7 @@ impl AllocFnFactory<'_, '_> {
         }));
         let item = self.cx.item(
             self.span,
-            Ident::from_str_and_span(&self.kind.fn_name(method.name), self.span),
+            Ident::from_str_and_span(&global_fn_name(method.name), self.span),
             self.attrs(),
             kind,
         );
