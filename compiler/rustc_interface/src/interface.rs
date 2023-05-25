@@ -3,9 +3,9 @@ use crate::util;
 use rustc_ast::token;
 use rustc_ast::{self as ast, LitKind, MetaItemKind};
 use rustc_codegen_ssa::traits::CodegenBackend;
+use rustc_data_structures::defer;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
-use rustc_data_structures::OnDrop;
 use rustc_errors::registry::Registry;
 use rustc_errors::{ErrorGuaranteed, Handler};
 use rustc_lint::LintStore;
@@ -325,7 +325,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
 
             rustc_span::set_source_map(compiler.sess.parse_sess.clone_source_map(), move || {
                 let r = {
-                    let _sess_abort_error = OnDrop(|| {
+                    let _sess_abort_error = defer(|| {
                         compiler.sess.finish_diagnostics(registry);
                     });
 

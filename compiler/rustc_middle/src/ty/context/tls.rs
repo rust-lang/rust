@@ -78,7 +78,7 @@ where
 {
     TLV.with(|tlv| {
         let old = tlv.replace(erase(context));
-        let _reset = rustc_data_structures::OnDrop(move || tlv.set(old));
+        let _reset = rustc_data_structures::defer(move || tlv.set(old));
         f()
     })
 }

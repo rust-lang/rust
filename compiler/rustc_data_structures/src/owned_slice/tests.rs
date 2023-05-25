@@ -7,8 +7,8 @@ use std::{
 };
 
 use crate::{
+    defer,
     owned_slice::{slice_owned, try_slice_owned, OwnedSlice},
-    OnDrop,
 };
 
 #[test]
@@ -66,7 +66,7 @@ fn boxed() {
 fn drop_drops() {
     let flag = Arc::new(AtomicBool::new(false));
     let flag_prime = Arc::clone(&flag);
-    let d = OnDrop(move || flag_prime.store(true, atomic::Ordering::Relaxed));
+    let d = defer(move || flag_prime.store(true, atomic::Ordering::Relaxed));
 
     let slice = slice_owned(d, |_| &[]);
 

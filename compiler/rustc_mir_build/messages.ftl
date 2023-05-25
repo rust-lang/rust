@@ -340,6 +340,8 @@ mir_build_uncovered = {$count ->
         *[other] patterns `{$witness_1}`, `{$witness_2}`, `{$witness_3}` and {$remainder} more
     } not covered
 
+mir_build_privately_uninhabited = pattern `{$witness_1}` is currently uninhabited, but this variant contains private fields which may become inhabited in the future
+
 mir_build_pattern_not_covered = refutable pattern in {$origin}
     .pattern_ty = the matched value is of type `{$pattern_ty}`
 
