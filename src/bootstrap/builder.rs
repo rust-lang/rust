@@ -644,12 +644,16 @@ impl Kind {
         }
     }
 
-    pub fn test_description(&self) -> &'static str {
+    pub fn description(&self) -> String {
         match self {
             Kind::Test => "Testing",
             Kind::Bench => "Benchmarking",
-            _ => panic!("not a test command: {}!", self.as_str()),
+            Kind::Doc => "Documenting",
+            Kind::Run => "Running",
+            Kind::Suggest => "Suggesting",
+            _ => return format!("{self:?}"),
         }
+        .to_owned()
     }
 }
 
