@@ -1119,7 +1119,7 @@ fn check_overlapping_tests(found_paths: &BTreeSet<PathBuf>) {
     for path in found_paths {
         for ancestor in path.ancestors().skip(1) {
             if found_paths.contains(ancestor) {
-                collisions.push((path, ancestor.clone()));
+                collisions.push((path, ancestor));
             }
         }
     }
