@@ -1,5 +1,5 @@
 #[cfg(feature = "master")]
-use gccjit::FnAttribute;
+use gccjit::{FnAttribute, VarAttribute, Visibility};
 use gccjit::{Function, GlobalKind, LValue, RValue, ToRValue, Type};
 use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods, DerivedTypeMethods, StaticMethods};
 use rustc_middle::span_bug;
@@ -249,7 +249,8 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             );
 
             if !self.tcx.is_reachable_non_generic(def_id) {
-                // TODO(antoyo): set visibility.
+                #[cfg(feature = "master")]
+                global.add_attribute(VarAttribute::Visibility(Visibility::Hidden));
             }
 
             global
