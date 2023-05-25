@@ -2,6 +2,7 @@ use core::cmp;
 use core::iter::TrustedLen;
 use core::ptr;
 
+use crate::falloc::{Allocator, Global};
 use crate::raw_vec::RawVec;
 
 use super::{SpecExtend, Vec};
@@ -40,7 +41,10 @@ where
         };
         // must delegate to spec_extend() since extend() itself delegates
         // to spec_from for empty Vecs
-        <Vec<T> as SpecExtend<T, I>>::spec_extend(&mut vector, iterator);
+        let () = <Global as Allocator>::map_result(<Vec<T> as SpecExtend<T, I>>::spec_extend(
+            &mut vector,
+            iterator,
+        ));
         vector
     }
 }
@@ -59,7 +63,7 @@ where
             _ => panic!("capacity overflow"),
         };
         // reuse extend specialization for TrustedLen
-        vector.spec_extend(iterator);
+        let () = <Global as Allocator>::map_result(vector.spec_extend(iterator));
         vector
     }
 }

@@ -1,5 +1,7 @@
 use core::mem::ManuallyDrop;
-use core::ptr::{self};
+use core::ptr;
+
+use crate::falloc::{Allocator, Global};
 
 use super::{IntoIter, SpecExtend, SpecFromIterNested, Vec};
 
@@ -58,7 +60,7 @@ impl<T> SpecFromIter<T, IntoIter<T>> for Vec<T> {
         let mut vec = Vec::new();
         // must delegate to spec_extend() since extend() itself delegates
         // to spec_from for empty Vecs
-        vec.spec_extend(iterator);
+        let () = <Global as Allocator>::map_result(vec.spec_extend(iterator));
         vec
     }
 }

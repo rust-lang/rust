@@ -1,4 +1,5 @@
 use crate::alloc::Allocator;
+use crate::collections::TryReserveError;
 use core::iter::TrustedLen;
 use core::slice::{self};
 
@@ -6,14 +7,14 @@ use super::{IntoIter, Vec};
 
 // Specialization trait used for Vec::extend
 pub(super) trait SpecExtend<T, I> {
-    fn spec_extend(&mut self, iter: I);
+    fn spec_extend(&mut self, iter: I) -> Result<(), TryReserveError>;
 }
 
 impl<T, I, A: Allocator> SpecExtend<T, I> for Vec<T, A>
 where
     I: Iterator<Item = T>,
 {
-    default fn spec_extend(&mut self, iter: I) {
+    default fn spec_extend(&mut self, iter: I) -> Result<(), TryReserveError> {
         self.extend_desugared(iter)
     }
 }
@@ -22,17 +23,19 @@ impl<T, I, A: Allocator> SpecExtend<T, I> for Vec<T, A>
 where
     I: TrustedLen<Item = T>,
 {
-    default fn spec_extend(&mut self, iterator: I) {
+    default fn spec_extend(&mut self, iterator: I) -> Result<(), TryReserveError> {
         self.extend_trusted(iterator)
     }
 }
 
 impl<T, A: Allocator> SpecExtend<T, IntoIter<T>> for Vec<T, A> {
-    fn spec_extend(&mut self, mut iterator: IntoIter<T>) {
+    fn spec_extend(&mut self, mut iterator: IntoIter<T>) -> Result<(), TryReserveError> {
         unsafe {
-            self.append_elements(iterator.as_slice() as _);
+            self.append_elements(iterator.as_slice() as _)?;
         }
         iterator.forget_remaining_elements();
+
+        Ok(())
     }
 }
 
@@ -41,7 +44,7 @@ where
     I: Iterator<Item = &'a T>,
     T: Clone,
 {
-    default fn spec_extend(&mut self, iterator: I) {
+    default fn spec_extend(&mut self, iterator: I) -> Result<(), TryReserveError> {
         self.spec_extend(iterator.cloned())
     }
 }
@@ -50,8 +53,8 @@ impl<'a, T: 'a, A: Allocator + 'a> SpecExtend<&'a T, slice::Iter<'a, T>> for Vec
 where
     T: Copy,
 {
-    fn spec_extend(&mut self, iterator: slice::Iter<'a, T>) {
+    fn spec_extend(&mut self, iterator: slice::Iter<'a, T>) -> Result<(), TryReserveError> {
         let slice = iterator.as_slice();
-        unsafe { self.append_elements(slice) };
+        unsafe { self.append_elements(slice) }
     }
 }

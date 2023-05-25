@@ -22,9 +22,9 @@ use core::slice;
 #[allow(unused_imports)]
 use core::mem;
 
-use crate::alloc::{Allocator, Global};
 use crate::collections::TryReserveError;
 use crate::collections::TryReserveErrorKind;
+use crate::falloc::{Allocator, Global};
 use crate::raw_vec::RawVec;
 use crate::vec::Vec;
 
@@ -106,7 +106,10 @@ pub struct VecDeque<
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Clone, A: Allocator + Clone> Clone for VecDeque<T, A> {
+impl<T: Clone, A> Clone for VecDeque<T, A>
+where
+    A: Allocator<Result<Self> = Self> + Clone,
+{
     fn clone(&self) -> Self {
         let mut deq = Self::with_capacity_in(self.len(), self.allocator().clone());
         deq.extend(self.iter().cloned());
@@ -577,6 +580,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
         VecDeque { head: 0, len: 0, buf: RawVec::new_in(alloc) }
     }
 
+    fn try_with_capacity_in(capacity: usize, alloc: A) -> Result<Self, TryReserveError> {
+        Ok(VecDeque { head: 0, len: 0, buf: RawVec::with_capacity_in(capacity, alloc)? })
+    }
+
     /// Creates an empty deque with space for at least `capacity` elements.
     ///
     /// # Examples
@@ -587,8 +594,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// let deque: VecDeque<u32> = VecDeque::with_capacity(10);
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn with_capacity_in(capacity: usize, alloc: A) -> VecDeque<T, A> {
-        VecDeque { head: 0, len: 0, buf: RawVec::with_capacity_in(capacity, alloc) }
+    pub fn with_capacity_in(capacity: usize, alloc: A) -> A::Result<VecDeque<T, A>> {
+        A::map_result(Self::try_with_capacity_in(capacity, alloc))
     }
 
     /// Creates a `VecDeque` from a raw allocation, when the initialized
@@ -751,16 +758,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// [`reserve`]: VecDeque::reserve
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn reserve_exact(&mut self, additional: usize) {
-        let new_cap = self.len.checked_add(additional).expect("capacity overflow");
-        let old_cap = self.capacity();
-
-        if new_cap > old_cap {
-            self.buf.reserve_exact(self.len, additional);
-            unsafe {
-                self.handle_capacity_increase(old_cap);
-            }
-        }
+    pub fn reserve_exact(&mut self, additional: usize) -> A::Result<()> {
+        A::map_result(self.try_reserve_exact(additional))
     }
 
     /// Reserves capacity for at least `additional` more elements to be inserted in the given
@@ -780,18 +779,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert!(buf.capacity() >= 11);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn reserve(&mut self, additional: usize) {
-        let new_cap = self.len.checked_add(additional).expect("capacity overflow");
-        let old_cap = self.capacity();
-
-        if new_cap > old_cap {
-            // we don't need to reserve_exact(), as the size doesn't have
-            // to be a power of 2.
-            self.buf.reserve(self.len, additional);
-            unsafe {
-                self.handle_capacity_increase(old_cap);
-            }
-        }
+    pub fn reserve(&mut self, additional: usize) -> A::Result<()> {
+        A::map_result(self.try_reserve(additional))
     }
 
     /// Tries to reserve the minimum capacity for at least `additional` more elements to
@@ -838,7 +827,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         let old_cap = self.capacity();
 
         if new_cap > old_cap {
-            self.buf.try_reserve_exact(self.len, additional)?;
+            self.buf.reserve_exact(self.len, additional)?;
             unsafe {
                 self.handle_capacity_increase(old_cap);
             }
@@ -886,7 +875,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         let old_cap = self.capacity();
 
         if new_cap > old_cap {
-            self.buf.try_reserve(self.len, additional)?;
+            self.buf.reserve(self.len, additional)?;
             unsafe {
                 self.handle_capacity_increase(old_cap);
             }
@@ -936,80 +925,85 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert!(buf.capacity() >= 4);
     /// ```
     #[stable(feature = "shrink_to", since = "1.56.0")]
-    pub fn shrink_to(&mut self, min_capacity: usize) {
-        let target_cap = min_capacity.max(self.len);
+    pub fn shrink_to(&mut self, min_capacity: usize) -> A::Result<()> {
+        A::map_result((|| {
+            // Substitute for try block
+            let target_cap = min_capacity.max(self.len);
 
-        // never shrink ZSTs
-        if T::IS_ZST || self.capacity() <= target_cap {
-            return;
-        }
-
-        // There are three cases of interest:
-        //   All elements are out of desired bounds
-        //   Elements are contiguous, and tail is out of desired bounds
-        //   Elements are discontiguous
-        //
-        // At all other times, element positions are unaffected.
-
-        // `head` and `len` are at most `isize::MAX` and `target_cap < self.capacity()`, so nothing can
-        // overflow.
-        let tail_outside = (target_cap + 1..=self.capacity()).contains(&(self.head + self.len));
-
-        if self.len == 0 {
-            self.head = 0;
-        } else if self.head >= target_cap && tail_outside {
-            // Head and tail are both out of bounds, so copy all of them to the front.
-            //
-            //  H := head
-            //  L := last element
-            //                    H           L
-            //   [. . . . . . . . o o o o o o o . ]
-            //    H           L
-            //   [o o o o o o o . ]
-            unsafe {
-                // nonoverlapping because `self.head >= target_cap >= self.len`.
-                self.copy_nonoverlapping(self.head, 0, self.len);
+            // never shrink ZSTs
+            if T::IS_ZST || self.capacity() <= target_cap {
+                return Ok(());
             }
-            self.head = 0;
-        } else if self.head < target_cap && tail_outside {
-            // Head is in bounds, tail is out of bounds.
-            // Copy the overflowing part to the beginning of the
-            // buffer. This won't overlap because `target_cap >= self.len`.
-            //
-            //  H := head
-            //  L := last element
-            //          H           L
-            //   [. . . o o o o o o o . . . . . . ]
-            //      L   H
-            //   [o o . o o o o o ]
-            let len = self.head + self.len - target_cap;
-            unsafe {
-                self.copy_nonoverlapping(target_cap, 0, len);
-            }
-        } else if !self.is_contiguous() {
-            // The head slice is at least partially out of bounds, tail is in bounds.
-            // Copy the head backwards so it lines up with the target capacity.
-            // This won't overlap because `target_cap >= self.len`.
-            //
-            //  H := head
-            //  L := last element
-            //            L                   H
-            //   [o o o o o . . . . . . . . . o o ]
-            //            L   H
-            //   [o o o o o . o o ]
-            let head_len = self.capacity() - self.head;
-            let new_head = target_cap - head_len;
-            unsafe {
-                // can't use `copy_nonoverlapping()` here because the new and old
-                // regions for the head might overlap.
-                self.copy(self.head, new_head, head_len);
-            }
-            self.head = new_head;
-        }
-        self.buf.shrink_to_fit(target_cap);
 
-        debug_assert!(self.head < self.capacity() || self.capacity() == 0);
-        debug_assert!(self.len <= self.capacity());
+            // There are three cases of interest:
+            //   All elements are out of desired bounds
+            //   Elements are contiguous, and tail is out of desired bounds
+            //   Elements are discontiguous
+            //
+            // At all other times, element positions are unaffected.
+
+            // `head` and `len` are at most `isize::MAX` and `target_cap < self.capacity()`, so nothing can
+            // overflow.
+            let tail_outside = (target_cap + 1..=self.capacity()).contains(&(self.head + self.len));
+
+            if self.len == 0 {
+                self.head = 0;
+            } else if self.head >= target_cap && tail_outside {
+                // Head and tail are both out of bounds, so copy all of them to the front.
+                //
+                //  H := head
+                //  L := last element
+                //                    H           L
+                //   [. . . . . . . . o o o o o o o . ]
+                //    H           L
+                //   [o o o o o o o . ]
+                unsafe {
+                    // nonoverlapping because `self.head >= target_cap >= self.len`.
+                    self.copy_nonoverlapping(self.head, 0, self.len);
+                }
+                self.head = 0;
+            } else if self.head < target_cap && tail_outside {
+                // Head is in bounds, tail is out of bounds.
+                // Copy the overflowing part to the beginning of the
+                // buffer. This won't overlap because `target_cap >= self.len`.
+                //
+                //  H := head
+                //  L := last element
+                //          H           L
+                //   [. . . o o o o o o o . . . . . . ]
+                //      L   H
+                //   [o o . o o o o o ]
+                let len = self.head + self.len - target_cap;
+                unsafe {
+                    self.copy_nonoverlapping(target_cap, 0, len);
+                }
+            } else if !self.is_contiguous() {
+                // The head slice is at least partially out of bounds, tail is in bounds.
+                // Copy the head backwards so it lines up with the target capacity.
+                // This won't overlap because `target_cap >= self.len`.
+                //
+                //  H := head
+                //  L := last element
+                //            L                   H
+                //   [o o o o o . . . . . . . . . o o ]
+                //            L   H
+                //   [o o o o o . o o ]
+                let head_len = self.capacity() - self.head;
+                let new_head = target_cap - head_len;
+                unsafe {
+                    // can't use `copy_nonoverlapping()` here because the new and old
+                    // regions for the head might overlap.
+                    self.copy(self.head, new_head, head_len);
+                }
+                self.head = new_head;
+            }
+            self.buf.shrink_to(target_cap)?;
+
+            debug_assert!(self.head < self.capacity() || self.capacity() == 0);
+            debug_assert!(self.len <= self.capacity());
+
+            Ok(())
+        })())
     }
 
     /// Shortens the deque, keeping the first `len` elements and dropping
@@ -1628,17 +1622,22 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(d.front(), Some(&2));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn push_front(&mut self, value: T) {
-        if self.is_full() {
-            self.grow();
-        }
+    pub fn push_front(&mut self, value: T) -> A::Result<()> {
+        A::map_result((|| {
+            // Substitute for try block
+            if self.is_full() {
+                self.grow()?;
+            }
 
-        self.head = self.wrap_sub(self.head, 1);
-        self.len += 1;
+            self.head = self.wrap_sub(self.head, 1);
+            self.len += 1;
 
-        unsafe {
-            self.buffer_write(self.head, value);
-        }
+            unsafe {
+                self.buffer_write(self.head, value);
+            }
+
+            Ok(())
+        })())
     }
 
     /// Appends an element to the back of the deque.
@@ -1654,13 +1653,18 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(3, *buf.back().unwrap());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn push_back(&mut self, value: T) {
-        if self.is_full() {
-            self.grow();
-        }
+    pub fn push_back(&mut self, value: T) -> A::Result<()> {
+        A::map_result((|| {
+            // Substsitute for try block
+            if self.is_full() {
+                self.grow()?;
+            }
 
-        unsafe { self.buffer_write(self.to_physical_idx(self.len), value) }
-        self.len += 1;
+            unsafe { self.buffer_write(self.to_physical_idx(self.len), value) }
+            self.len += 1;
+
+            Ok(())
+        })())
     }
 
     #[inline]
@@ -1763,32 +1767,37 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(vec_deque, &['a', 'd', 'b', 'c']);
     /// ```
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
-    pub fn insert(&mut self, index: usize, value: T) {
-        assert!(index <= self.len(), "index out of bounds");
-        if self.is_full() {
-            self.grow();
-        }
+    pub fn insert(&mut self, index: usize, value: T) -> A::Result<()> {
+        A::map_result((|| {
+            // Substitute for try block
+            assert!(index <= self.len(), "index out of bounds");
+            if self.is_full() {
+                self.grow()?;
+            }
 
-        let k = self.len - index;
-        if k < index {
-            // `index + 1` can't overflow, because if index was usize::MAX, then either the
-            // assert would've failed, or the deque would've tried to grow past usize::MAX
-            // and panicked.
-            unsafe {
-                // see `remove()` for explanation why this wrap_copy() call is safe.
-                self.wrap_copy(self.to_physical_idx(index), self.to_physical_idx(index + 1), k);
-                self.buffer_write(self.to_physical_idx(index), value);
-                self.len += 1;
+            let k = self.len - index;
+            if k < index {
+                // `index + 1` can't overflow, because if index was usize::MAX, then either the
+                // assert would've failed, or the deque would've tried to grow past usize::MAX
+                // and panicked.
+                unsafe {
+                    // see `remove()` for explanation why this wrap_copy() call is safe.
+                    self.wrap_copy(self.to_physical_idx(index), self.to_physical_idx(index + 1), k);
+                    self.buffer_write(self.to_physical_idx(index), value);
+                    self.len += 1;
+                }
+            } else {
+                let old_head = self.head;
+                self.head = self.wrap_sub(self.head, 1);
+                unsafe {
+                    self.wrap_copy(old_head, self.head, index);
+                    self.buffer_write(self.to_physical_idx(index), value);
+                    self.len += 1;
+                }
             }
-        } else {
-            let old_head = self.head;
-            self.head = self.wrap_sub(self.head, 1);
-            unsafe {
-                self.wrap_copy(old_head, self.head, index);
-                self.buffer_write(self.to_physical_idx(index), value);
-                self.len += 1;
-            }
-        }
+
+            Ok(())
+        })())
     }
 
     /// Removes and returns the element at `index` from the deque.
@@ -1865,51 +1874,57 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[inline]
     #[must_use = "use `.truncate()` if you don't need the other half"]
     #[stable(feature = "split_off", since = "1.4.0")]
-    pub fn split_off(&mut self, at: usize) -> Self
+    pub fn split_off(&mut self, at: usize) -> A::Result<Self>
     where
         A: Clone,
     {
-        let len = self.len;
-        assert!(at <= len, "`at` out of bounds");
+        A::map_result((|| {
+            let len = self.len;
+            assert!(at <= len, "`at` out of bounds");
 
-        let other_len = len - at;
-        let mut other = VecDeque::with_capacity_in(other_len, self.allocator().clone());
+            let other_len = len - at;
+            let mut other = VecDeque::try_with_capacity_in(other_len, self.allocator().clone())?;
 
-        unsafe {
-            let (first_half, second_half) = self.as_slices();
+            unsafe {
+                let (first_half, second_half) = self.as_slices();
 
-            let first_len = first_half.len();
-            let second_len = second_half.len();
-            if at < first_len {
-                // `at` lies in the first half.
-                let amount_in_first = first_len - at;
+                let first_len = first_half.len();
+                let second_len = second_half.len();
+                if at < first_len {
+                    // `at` lies in the first half.
+                    let amount_in_first = first_len - at;
 
-                ptr::copy_nonoverlapping(first_half.as_ptr().add(at), other.ptr(), amount_in_first);
+                    ptr::copy_nonoverlapping(
+                        first_half.as_ptr().add(at),
+                        other.ptr(),
+                        amount_in_first,
+                    );
 
-                // just take all of the second half.
-                ptr::copy_nonoverlapping(
-                    second_half.as_ptr(),
-                    other.ptr().add(amount_in_first),
-                    second_len,
-                );
-            } else {
-                // `at` lies in the second half, need to factor in the elements we skipped
-                // in the first half.
-                let offset = at - first_len;
-                let amount_in_second = second_len - offset;
-                ptr::copy_nonoverlapping(
-                    second_half.as_ptr().add(offset),
-                    other.ptr(),
-                    amount_in_second,
-                );
+                    // just take all of the second half.
+                    ptr::copy_nonoverlapping(
+                        second_half.as_ptr(),
+                        other.ptr().add(amount_in_first),
+                        second_len,
+                    );
+                } else {
+                    // `at` lies in the second half, need to factor in the elements we skipped
+                    // in the first half.
+                    let offset = at - first_len;
+                    let amount_in_second = second_len - offset;
+                    ptr::copy_nonoverlapping(
+                        second_half.as_ptr().add(offset),
+                        other.ptr(),
+                        amount_in_second,
+                    );
+                }
             }
-        }
 
-        // Cleanup where the ends of the buffers are
-        self.len = at;
-        other.len = other_len;
+            // Cleanup where the ends of the buffers are
+            self.len = at;
+            other.len = other_len;
 
-        other
+            Ok(other)
+        })())
     }
 
     /// Moves all the elements of `other` into `self`, leaving `other` empty.
@@ -2053,16 +2068,17 @@ impl<T, A: Allocator> VecDeque<T, A> {
     // be called in cold paths.
     // This may panic or abort
     #[inline(never)]
-    fn grow(&mut self) {
+    fn grow(&mut self) -> Result<(), TryReserveError> {
         // Extend or possibly remove this assertion when valid use-cases for growing the
         // buffer without it being full emerge
         debug_assert!(self.is_full());
         let old_cap = self.capacity();
-        self.buf.reserve_for_push(old_cap);
-        unsafe {
-            self.handle_capacity_increase(old_cap);
-        }
-        debug_assert!(!self.is_full());
+        self.buf.reserve_for_push(old_cap).map(|_| {
+            unsafe {
+                self.handle_capacity_increase(old_cap);
+            }
+            debug_assert!(!self.is_full());
+        })
     }
 
     /// Modifies the deque in-place so that `len()` is equal to `new_len`,

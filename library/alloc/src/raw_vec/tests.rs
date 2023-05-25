@@ -2,7 +2,7 @@ use super::*;
 use std::cell::Cell;
 
 #[test]
-fn allocator_param() {
+fn allocator_param() -> Result<(), TryReserveError> {
     use crate::alloc::AllocError;
 
     // Writing a test of integration between third-party
@@ -20,7 +20,7 @@ fn allocator_param() {
     struct BoundedAlloc {
         fuel: Cell<usize>,
     }
-    unsafe impl Allocator for BoundedAlloc {
+    unsafe impl core::alloc::Allocator for BoundedAlloc {
         fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
             let size = layout.size();
             if size > self.fuel.get() {
@@ -40,42 +40,46 @@ fn allocator_param() {
     }
 
     let a = BoundedAlloc { fuel: Cell::new(500) };
-    let mut v: RawVec<u8, _> = RawVec::with_capacity_in(50, a);
+    let mut v: RawVec<u8, _> = RawVec::with_capacity_in(50, a)?;
     assert_eq!(v.alloc.fuel.get(), 450);
-    v.reserve(50, 150); // (causes a realloc, thus using 50 + 150 = 200 units of fuel)
+    v.reserve(50, 150)?; // (causes a realloc, thus using 50 + 150 = 200 units of fuel)
     assert_eq!(v.alloc.fuel.get(), 250);
+
+    Ok(())
 }
 
 #[test]
-fn reserve_does_not_overallocate() {
+fn reserve_does_not_overallocate() -> Result<(), TryReserveError> {
     {
         let mut v: RawVec<u32> = RawVec::new();
         // First, `reserve` allocates like `reserve_exact`.
-        v.reserve(0, 9);
+        v.reserve(0, 9)?;
         assert_eq!(9, v.capacity());
     }
 
     {
         let mut v: RawVec<u32> = RawVec::new();
-        v.reserve(0, 7);
+        v.reserve(0, 7)?;
         assert_eq!(7, v.capacity());
         // 97 is more than double of 7, so `reserve` should work
         // like `reserve_exact`.
-        v.reserve(7, 90);
+        v.reserve(7, 90)?;
         assert_eq!(97, v.capacity());
     }
 
     {
         let mut v: RawVec<u32> = RawVec::new();
-        v.reserve(0, 12);
+        v.reserve(0, 12)?;
         assert_eq!(12, v.capacity());
-        v.reserve(12, 3);
+        v.reserve(12, 3)?;
         // 3 is less than half of 12, so `reserve` must grow
         // exponentially. At the time of writing this test grow
         // factor is 2, so new capacity is 24, however, grow factor
         // of 1.5 is OK too. Hence `>= 18` in assert.
         assert!(v.capacity() >= 12 + 12 / 2);
     }
+
+    Ok(())
 }
 
 struct ZST;
@@ -88,7 +92,7 @@ fn zst_sanity<T>(v: &RawVec<T>) {
 }
 
 #[test]
-fn zst() {
+fn zst() -> Result<(), TryReserveError> {
     let cap_err = Err(crate::collections::TryReserveErrorKind::CapacityOverflow.into());
 
     assert_eq!(std::mem::size_of::<ZST>(), 0);
@@ -98,19 +102,19 @@ fn zst() {
     let v: RawVec<ZST> = RawVec::new();
     zst_sanity(&v);
 
-    let v: RawVec<ZST> = RawVec::with_capacity_in(100, Global);
+    let v: RawVec<ZST> = RawVec::with_capacity_in(100, Global)?;
     zst_sanity(&v);
 
-    let v: RawVec<ZST> = RawVec::with_capacity_in(100, Global);
+    let v: RawVec<ZST> = RawVec::with_capacity_in(100, Global)?;
     zst_sanity(&v);
 
-    let v: RawVec<ZST> = RawVec::allocate_in(0, AllocInit::Uninitialized, Global);
+    let v: RawVec<ZST> = RawVec::allocate_in(0, AllocInit::Uninitialized, Global)?;
     zst_sanity(&v);
 
-    let v: RawVec<ZST> = RawVec::allocate_in(100, AllocInit::Uninitialized, Global);
+    let v: RawVec<ZST> = RawVec::allocate_in(100, AllocInit::Uninitialized, Global)?;
     zst_sanity(&v);
 
-    let mut v: RawVec<ZST> = RawVec::allocate_in(usize::MAX, AllocInit::Uninitialized, Global);
+    let mut v: RawVec<ZST> = RawVec::allocate_in(usize::MAX, AllocInit::Uninitialized, Global)?;
     zst_sanity(&v);
 
     // Check all these operations work as expected with zero-sized elements.
@@ -119,20 +123,20 @@ fn zst() {
     assert!(v.needs_to_grow(101, usize::MAX - 100));
     zst_sanity(&v);
 
-    v.reserve(100, usize::MAX - 100);
+    v.reserve(100, usize::MAX - 100)?;
     //v.reserve(101, usize::MAX - 100); // panics, in `zst_reserve_panic` below
     zst_sanity(&v);
 
-    v.reserve_exact(100, usize::MAX - 100);
+    v.reserve_exact(100, usize::MAX - 100)?;
     //v.reserve_exact(101, usize::MAX - 100); // panics, in `zst_reserve_exact_panic` below
     zst_sanity(&v);
 
-    assert_eq!(v.try_reserve(100, usize::MAX - 100), Ok(()));
-    assert_eq!(v.try_reserve(101, usize::MAX - 100), cap_err);
+    assert_eq!(v.reserve(100, usize::MAX - 100), Ok(()));
+    assert_eq!(v.reserve(101, usize::MAX - 100), cap_err);
     zst_sanity(&v);
 
-    assert_eq!(v.try_reserve_exact(100, usize::MAX - 100), Ok(()));
-    assert_eq!(v.try_reserve_exact(101, usize::MAX - 100), cap_err);
+    assert_eq!(v.reserve_exact(100, usize::MAX - 100), Ok(()));
+    assert_eq!(v.reserve_exact(101, usize::MAX - 100), cap_err);
     zst_sanity(&v);
 
     assert_eq!(v.grow_amortized(100, usize::MAX - 100), cap_err);
@@ -142,22 +146,26 @@ fn zst() {
     assert_eq!(v.grow_exact(100, usize::MAX - 100), cap_err);
     assert_eq!(v.grow_exact(101, usize::MAX - 100), cap_err);
     zst_sanity(&v);
+
+    Ok(())
 }
 
 #[test]
-#[should_panic(expected = "capacity overflow")]
 fn zst_reserve_panic() {
+    let cap_err = Err(crate::collections::TryReserveErrorKind::CapacityOverflow.into());
+
     let mut v: RawVec<ZST> = RawVec::new();
     zst_sanity(&v);
 
-    v.reserve(101, usize::MAX - 100);
+    assert_eq!(v.reserve(101, usize::MAX - 100), cap_err);
 }
 
 #[test]
-#[should_panic(expected = "capacity overflow")]
 fn zst_reserve_exact_panic() {
+    let cap_err = Err(crate::collections::TryReserveErrorKind::CapacityOverflow.into());
+
     let mut v: RawVec<ZST> = RawVec::new();
     zst_sanity(&v);
 
-    v.reserve_exact(101, usize::MAX - 100);
+    assert_eq!(v.reserve_exact(101, usize::MAX - 100), cap_err);
 }

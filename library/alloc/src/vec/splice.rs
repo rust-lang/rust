@@ -1,6 +1,6 @@
-use crate::alloc::{Allocator, Global};
-use core::ptr::{self};
-use core::slice::{self};
+use crate::falloc::{Allocator, Global};
+use core::ptr;
+use core::slice;
 
 use super::{Drain, Vec};
 
@@ -21,14 +21,14 @@ use super::{Drain, Vec};
 pub struct Splice<
     'a,
     I: Iterator + 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + 'a = Global,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator<Result<()> = ()> + 'a = Global,
 > {
     pub(super) drain: Drain<'a, I::Item, A>,
     pub(super) replace_with: I,
 }
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
-impl<I: Iterator, A: Allocator> Iterator for Splice<'_, I, A> {
+impl<I: Iterator, A: Allocator<Result<()> = ()>> Iterator for Splice<'_, I, A> {
     type Item = I::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -41,17 +41,17 @@ impl<I: Iterator, A: Allocator> Iterator for Splice<'_, I, A> {
 }
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
-impl<I: Iterator, A: Allocator> DoubleEndedIterator for Splice<'_, I, A> {
+impl<I: Iterator, A: Allocator<Result<()> = ()>> DoubleEndedIterator for Splice<'_, I, A> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.drain.next_back()
     }
 }
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
-impl<I: Iterator, A: Allocator> ExactSizeIterator for Splice<'_, I, A> {}
+impl<I: Iterator, A: Allocator<Result<()> = ()>> ExactSizeIterator for Splice<'_, I, A> {}
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
-impl<I: Iterator, A: Allocator> Drop for Splice<'_, I, A> {
+impl<I: Iterator, A: Allocator<Result<()> = ()>> Drop for Splice<'_, I, A> {
     fn drop(&mut self) {
         self.drain.by_ref().for_each(drop);
         // At this point draining is done and the only remaining tasks are splicing
@@ -98,7 +98,7 @@ impl<I: Iterator, A: Allocator> Drop for Splice<'_, I, A> {
 }
 
 /// Private helper methods for `Splice::drop`
-impl<T, A: Allocator> Drain<'_, T, A> {
+impl<T, A: Allocator<Result<()> = ()>> Drain<'_, T, A> {
     /// The range from `self.vec.len` to `self.tail_start` contains elements
     /// that have been moved out.
     /// Fill that range as much as possible with new elements from the `replace_with` iterator.
@@ -126,7 +126,7 @@ impl<T, A: Allocator> Drain<'_, T, A> {
     unsafe fn move_tail(&mut self, additional: usize) {
         let vec = unsafe { self.vec.as_mut() };
         let len = self.tail_start + self.tail_len;
-        vec.buf.reserve(len, additional);
+        let () = A::map_result(vec.buf.reserve(len, additional));
 
         let new_tail_start = self.tail_start + additional;
         unsafe {

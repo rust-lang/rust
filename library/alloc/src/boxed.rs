@@ -167,9 +167,9 @@ use core::task::{Context, Poll};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::{handle_alloc_error, WriteCloneIntoRaw};
-use crate::alloc::{AllocError, Allocator, Global, Layout};
 #[cfg(not(no_global_oom_handling))]
 use crate::borrow::Cow;
+use crate::falloc::{AllocError, Allocator, Global, Layout};
 use crate::raw_vec::RawVec;
 #[cfg(not(no_global_oom_handling))]
 use crate::str::from_boxed_utf8_unchecked;
@@ -624,7 +624,9 @@ impl<T> Box<[T]> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
     pub fn new_uninit_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
-        unsafe { RawVec::with_capacity(len).into_box(len) }
+        unsafe {
+            <Global as Allocator>::map_result(RawVec::with_capacity_in(len, Global)).into_box(len)
+        }
     }
 
     /// Constructs a new boxed slice with uninitialized contents, with the memory
@@ -649,7 +651,10 @@ impl<T> Box<[T]> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
     pub fn new_zeroed_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
-        unsafe { RawVec::with_capacity_zeroed(len).into_box(len) }
+        unsafe {
+            <Global as Allocator>::map_result(RawVec::with_capacity_zeroed_in(len, Global))
+                .into_box(len)
+        }
     }
 
     /// Constructs a new boxed slice with uninitialized contents. Returns an error if
@@ -675,14 +680,7 @@ impl<T> Box<[T]> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn try_new_uninit_slice(len: usize) -> Result<Box<[mem::MaybeUninit<T>]>, AllocError> {
-        unsafe {
-            let layout = match Layout::array::<mem::MaybeUninit<T>>(len) {
-                Ok(l) => l,
-                Err(_) => return Err(AllocError),
-            };
-            let ptr = Global.allocate(layout)?;
-            Ok(RawVec::from_raw_parts_in(ptr.as_mut_ptr() as *mut _, len, Global).into_box(len))
-        }
+        unsafe { Ok(RawVec::with_capacity_in(len, Global).map_err(|_| AllocError)?.into_box(len)) }
     }
 
     /// Constructs a new boxed slice with uninitialized contents, with the memory
@@ -708,12 +706,7 @@ impl<T> Box<[T]> {
     #[inline]
     pub fn try_new_zeroed_slice(len: usize) -> Result<Box<[mem::MaybeUninit<T>]>, AllocError> {
         unsafe {
-            let layout = match Layout::array::<mem::MaybeUninit<T>>(len) {
-                Ok(l) => l,
-                Err(_) => return Err(AllocError),
-            };
-            let ptr = Global.allocate_zeroed(layout)?;
-            Ok(RawVec::from_raw_parts_in(ptr.as_mut_ptr() as *mut _, len, Global).into_box(len))
+            Ok(RawVec::with_capacity_zeroed_in(len, Global).map_err(|_| AllocError)?.into_box(len))
         }
     }
 }
@@ -741,12 +734,11 @@ impl<T, A: Allocator> Box<[T], A> {
     ///
     /// assert_eq!(*values, [1, 2, 3])
     /// ```
-    #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
-    pub fn new_uninit_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {
-        unsafe { RawVec::with_capacity_in(len, alloc).into_box(len) }
+    pub fn new_uninit_slice_in(len: usize, alloc: A) -> A::Result<Box<[mem::MaybeUninit<T>], A>> {
+        unsafe { A::map_result(RawVec::with_capacity_in(len, alloc).map(|r| r.into_box(len))) }
     }
 
     /// Constructs a new boxed slice with uninitialized contents in the provided allocator,
@@ -769,12 +761,13 @@ impl<T, A: Allocator> Box<[T], A> {
     /// ```
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
-    #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
-    pub fn new_zeroed_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {
-        unsafe { RawVec::with_capacity_zeroed_in(len, alloc).into_box(len) }
+    pub fn new_zeroed_slice_in(len: usize, alloc: A) -> A::Result<Box<[mem::MaybeUninit<T>], A>> {
+        unsafe {
+            A::map_result(RawVec::with_capacity_zeroed_in(len, alloc).map(|r| r.into_box(len)))
+        }
     }
 }
 
@@ -1474,7 +1467,7 @@ impl<T: Copy> BoxFromSlice<T> for Box<[T]> {
     #[inline]
     fn from_slice(slice: &[T]) -> Self {
         let len = slice.len();
-        let buf = RawVec::with_capacity(len);
+        let buf = <Global as Allocator>::map_result(RawVec::with_capacity_in(len, Global));
         unsafe {
             ptr::copy_nonoverlapping(slice.as_ptr(), buf.ptr(), len);
             buf.into_box(slice.len()).assume_init()
@@ -2014,9 +2007,8 @@ impl<I> FromIterator<I> for Box<[I]> {
     }
 }
 
-#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_slice_clone", since = "1.3.0")]
-impl<T: Clone, A: Allocator + Clone> Clone for Box<[T], A> {
+impl<T: Clone, A: Allocator<Result<Self> = Self> + Clone> Clone for Box<[T], A> {
     fn clone(&self) -> Self {
         let alloc = Box::allocator(self).clone();
         self.to_vec_in(alloc).into_boxed_slice()
