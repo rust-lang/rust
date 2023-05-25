@@ -468,8 +468,7 @@ pub fn struct_lint_level(
 pub fn in_external_macro(sess: &Session, span: Span) -> bool {
     let expn_data = span.ctxt().outer_expn_data();
     match expn_data.kind {
-        ExpnKind::Inlined
-        | ExpnKind::Root
+        ExpnKind::Root
         | ExpnKind::Desugaring(
             DesugaringKind::ForLoop | DesugaringKind::WhileLoop | DesugaringKind::OpaqueTy,
         ) => false,
