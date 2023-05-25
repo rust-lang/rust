@@ -184,6 +184,7 @@ impl GlobalState {
         // NOTE: don't count blocking select! call as a loop-turn time
         let _p = profile::span("GlobalState::handle_event");
 
+        let event_dbg = format!("{event:?}");
         tracing::debug!("{:?} handle_event({:?})", loop_start, event);
         let task_queue_len = self.task_pool.handle.len();
         if task_queue_len > 0 {
@@ -394,8 +395,10 @@ impl GlobalState {
 
         let loop_duration = loop_start.elapsed();
         if loop_duration > Duration::from_millis(100) && was_quiescent {
-            tracing::warn!("overly long loop turn: {:?}", loop_duration);
-            self.poke_rust_analyzer_developer(format!("overly long loop turn: {loop_duration:?}"));
+            tracing::warn!("overly long loop turn took {loop_duration:?}: {event_dbg}");
+            self.poke_rust_analyzer_developer(format!(
+                "overly long loop turn took {loop_duration:?}: {event_dbg}"
+            ));
         }
         Ok(())
     }
