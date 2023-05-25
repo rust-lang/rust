@@ -2,6 +2,7 @@
 
 use std::{
     collections::{HashMap, HashSet},
+    path::PathBuf,
     time::Instant,
 };
 
@@ -165,7 +166,8 @@ impl flags::Scip {
             special_fields: Default::default(),
         };
 
-        scip::write_message_to_file("index.scip", index)
+        let out_path = self.output.unwrap_or_else(|| PathBuf::from(r"index.scip"));
+        scip::write_message_to_file(out_path, index)
             .map_err(|err| anyhow::anyhow!("Failed to write scip to file: {}", err))?;
 
         eprintln!("Generating SCIP finished {:?}", now.elapsed());

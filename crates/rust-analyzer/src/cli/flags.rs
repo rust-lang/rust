@@ -112,6 +112,9 @@ xflags::xflags! {
 
         cmd scip {
             required path: PathBuf
+
+            /// The output path where the SCIP file will be written to. Defaults to `index.scip`.
+            optional --output path: PathBuf
         }
     }
 }
@@ -208,6 +211,7 @@ pub struct Lsif {
 #[derive(Debug)]
 pub struct Scip {
     pub path: PathBuf,
+    pub output: Option<PathBuf>,
 }
 
 impl RustAnalyzer {
