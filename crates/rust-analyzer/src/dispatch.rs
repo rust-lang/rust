@@ -88,7 +88,8 @@ impl<'a> RequestDispatcher<'a> {
         self
     }
 
-    /// Dispatches the request onto thread pool
+    /// Dispatches a non-latency-sensitive request onto the thread pool
+    /// without retrying it if it panics.
     pub(crate) fn on_no_retry<R>(
         &mut self,
         f: fn(GlobalStateSnapshot, R::Params) -> Result<R::Result>,
@@ -103,7 +104,7 @@ impl<'a> RequestDispatcher<'a> {
             None => return self,
         };
 
-        self.global_state.task_pool.handle.spawn(QoSClass::Default, {
+        self.global_state.task_pool.handle.spawn(QoSClass::Utility, {
             let world = self.global_state.snapshot();
             move || {
                 let result = panic::catch_unwind(move || {
@@ -124,7 +125,7 @@ impl<'a> RequestDispatcher<'a> {
         self
     }
 
-    /// Dispatches the request onto thread pool
+    /// Dispatches a non-latency-sensitive request onto the thread pool.
     pub(crate) fn on<R>(
         &mut self,
         f: fn(GlobalStateSnapshot, R::Params) -> Result<R::Result>,
@@ -134,7 +135,7 @@ impl<'a> RequestDispatcher<'a> {
         R::Params: DeserializeOwned + panic::UnwindSafe + Send + fmt::Debug,
         R::Result: Serialize,
     {
-        self.on_with_qos::<R>(QoSClass::Default, f)
+        self.on_with_qos::<R>(QoSClass::Utility, f)
     }
 
     /// Dispatches a latency-sensitive request onto the thread pool.
@@ -147,7 +148,7 @@ impl<'a> RequestDispatcher<'a> {
         R::Params: DeserializeOwned + panic::UnwindSafe + Send + fmt::Debug,
         R::Result: Serialize,
     {
-        self.on_with_qos::<R>(QoSClass::Default, f)
+        self.on_with_qos::<R>(QoSClass::UserInitiated, f)
     }
 
     pub(crate) fn finish(&mut self) {

@@ -81,7 +81,7 @@ pub(crate) fn parallel_prime_caches(
             let worker = prime_caches_worker.clone();
             let db = db.snapshot();
 
-            stdx::thread::Builder::new(stdx::thread::QoSClass::Default)
+            stdx::thread::Builder::new(stdx::thread::QoSClass::Utility)
                 .allow_leak(true)
                 .spawn(move || Cancelled::catch(|| worker(db)))
                 .expect("failed to spawn thread");

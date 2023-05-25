@@ -90,7 +90,7 @@ impl FlycheckHandle {
     ) -> FlycheckHandle {
         let actor = FlycheckActor::new(id, sender, config, workspace_root);
         let (sender, receiver) = unbounded::<StateChange>();
-        let thread = stdx::thread::Builder::new(stdx::thread::QoSClass::Default)
+        let thread = stdx::thread::Builder::new(stdx::thread::QoSClass::Utility)
             .name("Flycheck".to_owned())
             .spawn(move || actor.run(receiver))
             .expect("failed to spawn thread");
@@ -409,7 +409,7 @@ impl CargoHandle {
 
         let (sender, receiver) = unbounded();
         let actor = CargoActor::new(sender, stdout, stderr);
-        let thread = stdx::thread::Builder::new(stdx::thread::QoSClass::Default)
+        let thread = stdx::thread::Builder::new(stdx::thread::QoSClass::Utility)
             .name("CargoHandle".to_owned())
             .spawn(move || actor.run())
             .expect("failed to spawn thread");

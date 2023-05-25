@@ -397,7 +397,7 @@ impl GlobalState {
         tracing::debug!(%cause, "will prime caches");
         let num_worker_threads = self.config.prime_caches_num_threads();
 
-        self.task_pool.handle.spawn_with_sender(stdx::thread::QoSClass::Default, {
+        self.task_pool.handle.spawn_with_sender(stdx::thread::QoSClass::Utility, {
             let analysis = self.snapshot().analysis;
             move |sender| {
                 sender.send(Task::PrimeCaches(PrimeCachesProgress::Begin)).unwrap();
@@ -787,7 +787,10 @@ impl GlobalState {
         tracing::trace!("updating notifications for {:?}", subscriptions);
 
         let snapshot = self.snapshot();
-        self.task_pool.handle.spawn(stdx::thread::QoSClass::Default, move || {
+
+        // Diagnostics are triggered by the user typing
+        // so we want computing them to run at the User Initiated QoS.
+        self.task_pool.handle.spawn(stdx::thread::QoSClass::UserInitiated, move || {
             let _p = profile::span("publish_diagnostics");
             let diagnostics = subscriptions
                 .into_iter()

@@ -85,7 +85,7 @@ fn try_main(flags: flags::RustAnalyzer) -> Result<()> {
             // will make actions like hitting enter in the editor slow.
             // rust-analyzer does not block the editor’s render loop,
             // so we don’t use User Interactive.
-            with_extra_thread("LspServer", stdx::thread::QoSClass::Default, run_server)?;
+            with_extra_thread("LspServer", stdx::thread::QoSClass::UserInitiated, run_server)?;
         }
         flags::RustAnalyzerCmd::Parse(cmd) => cmd.run()?,
         flags::RustAnalyzerCmd::Symbols(cmd) => cmd.run()?,
