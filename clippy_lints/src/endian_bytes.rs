@@ -105,10 +105,9 @@ impl LateLintPass<'_> for EndianBytes {
             if args.is_empty();
             let ty = cx.typeck_results().expr_ty(receiver);
             if ty.is_primitive_ty();
+            if try_lint_endian_bytes(cx, expr, "to", method_name.ident.name, ty);
             then {
-                if try_lint_endian_bytes(cx, expr, "to", method_name.ident.name, ty) {
-                    return;
-                }
+                return;
             }
         }
 
