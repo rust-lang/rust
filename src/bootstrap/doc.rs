@@ -7,7 +7,6 @@
 //! Everything here is basically just a shim around calling either `rustbook` or
 //! `rustdoc`.
 
-use std::ffi::OsStr;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -471,20 +470,21 @@ impl Step for Std {
             builder.ensure(SharedAssets { target: self.target });
         }
 
-        let index_page = builder.src.join("src/doc/index.md").into_os_string();
+        let index_page = builder
+            .src
+            .join("src/doc/index.md")
+            .into_os_string()
+            .into_string()
+            .expect("non-utf8 paths are unsupported");
         let mut extra_args = match self.format {
-            DocumentationFormat::HTML => vec![
-                OsStr::new("--markdown-css"),
-                OsStr::new("rust.css"),
-                OsStr::new("--markdown-no-toc"),
-                OsStr::new("--index-page"),
-                &index_page,
-            ],
-            DocumentationFormat::JSON => vec![OsStr::new("--output-format"), OsStr::new("json")],
+            DocumentationFormat::HTML => {
+                vec!["--markdown-css", "rust.css", "--markdown-no-toc", "--index-page", &index_page]
+            }
+            DocumentationFormat::JSON => vec!["--output-format", "json"],
         };
 
         if !builder.config.docs_minification {
-            extra_args.push(OsStr::new("--disable-minification"));
+            extra_args.push("--disable-minification");
         }
 
         doc_std(builder, self.format, stage, target, &out, &extra_args, &self.crates);
@@ -549,7 +549,7 @@ fn doc_std(
     stage: u32,
     target: TargetSelection,
     out: &Path,
-    extra_args: &[&OsStr],
+    extra_args: &[&str],
     requested_crates: &[String],
 ) {
     if builder.no_std(target) == Some(true) {
@@ -574,24 +574,39 @@ fn doc_std(
     // as a function parameter.
     let out_dir = target_dir.join(target.triple).join("doc");
 
-    let mut cargo = builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "rustdoc");
+    let mut cargo = builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "doc");
     compile::std_cargo(builder, target, compiler.stage, &mut cargo);
-    cargo.arg("--target-dir").arg(&*target_dir.to_string_lossy()).arg("-Zskip-rustdoc-fingerprint");
-
-    for krate in requested_crates {
-        cargo.arg("-p").arg(krate);
+    cargo
+        .arg("--no-deps")
+        .arg("--target-dir")
+        .arg(&*target_dir.to_string_lossy())
+        .arg("-Zskip-rustdoc-fingerprint")
+        .rustdocflag("-Z")
+        .rustdocflag("unstable-options")
+        .rustdocflag("--resource-suffix")
+        .rustdocflag(&builder.version);
+    for arg in extra_args {
+        cargo.rustdocflag(arg);
     }
 
-    cargo
-        .arg("--")
-        .arg("-Z")
-        .arg("unstable-options")
-        .arg("--resource-suffix")
-        .arg(&builder.version)
-        .args(extra_args);
-
     if builder.config.library_docs_private_items {
-        cargo.arg("--document-private-items").arg("--document-hidden-items");
+        cargo.rustdocflag("--document-private-items").rustdocflag("--document-hidden-items");
+    }
+
+    // HACK: because we use `--manifest-path library/sysroot/Cargo.toml`, cargo thinks we only want to document that specific crate, not its dependencies.
+    // Override its default.
+    let built_crates = if requested_crates.is_empty() {
+        builder
+            .in_tree_crates("sysroot", None)
+            .into_iter()
+            .map(|krate| krate.name.to_string())
+            .collect()
+    } else {
+        requested_crates.to_vec()
+    };
+
+    for krate in built_crates {
+        cargo.arg("-p").arg(krate);
     }
 
     builder.run(&mut cargo.into());
