@@ -1,7 +1,7 @@
 //@run-rustfix
 #![warn(clippy::unnecessary_cast)]
 #![allow(
-    unused_must_use,
+    unused,
     clippy::borrow_as_ptr,
     clippy::no_effect,
     clippy::nonstandard_macro_braces,
@@ -10,6 +10,14 @@
 
 type PtrConstU8 = *const u8;
 type PtrMutU8 = *mut u8;
+
+fn owo<T>(ptr: *const T) -> *const T {
+    ptr as *const T
+}
+
+fn uwu<T, U>(ptr: *const T) -> *const U {
+    ptr as *const U
+}
 
 #[rustfmt::skip]
 fn main() {
@@ -25,6 +33,8 @@ fn main() {
     1_i32 as i32;
     1_f32 as f32;
 
+    let _: *mut u8 = [1u8, 2].as_ptr() as *const u8 as *mut u8;
+
     [1u8, 2].as_ptr() as *const u8;
     [1u8, 2].as_ptr() as *mut u8;
     [1u8, 2].as_mut_ptr() as *mut u8;
@@ -35,6 +45,9 @@ fn main() {
     [1u8, 2].as_mut_ptr() as PtrConstU8;
     let _: *const u8 = [1u8, 2].as_ptr() as _;
     let _: *mut u8 = [1u8, 2].as_mut_ptr() as _;
+
+    owo::<u32>([1u32].as_ptr()) as *const u32;
+    uwu::<u32, u8>([1u32].as_ptr()) as *const u8;
 
     // macro version
     macro_rules! foo {
