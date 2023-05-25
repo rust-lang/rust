@@ -665,7 +665,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         sorted_cgus.sort_by_cached_key(|cgu| cgu.size_estimate());
 
         let (first_half, second_half) = sorted_cgus.split_at(sorted_cgus.len() / 2);
-        second_half.iter().rev().interleave(first_half).copied().collect()
+        first_half.iter().interleave(second_half.iter().rev()).copied().collect()
     };
 
     // Calculate the CGU reuse
