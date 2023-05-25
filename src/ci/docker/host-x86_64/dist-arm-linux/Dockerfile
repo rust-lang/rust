@@ -33,6 +33,11 @@ ENV CC_arm_unknown_linux_gnueabi=arm-unknown-linux-gnueabi-gcc \
 
 ENV HOSTS=arm-unknown-linux-gnueabi,aarch64-unknown-linux-musl
 
-ENV RUST_CONFIGURE_ARGS --enable-full-tools --disable-docs --musl-root-aarch64=/usr/local/aarch64-linux-musl \
-    --set target.aarch64-unknown-linux-musl.crt-static=false
+ENV RUST_CONFIGURE_ARGS \
+      --enable-full-tools \
+      --disable-docs \
+      --musl-root-aarch64=/usr/local/aarch64-linux-musl \
+      --enable-sanitizers \
+      --enable-profiler \
+      --set target.aarch64-unknown-linux-musl.crt-static=false
 ENV SCRIPT python3 ../x.py dist --host $HOSTS --target $HOSTS
