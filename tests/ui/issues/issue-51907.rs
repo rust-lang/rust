@@ -4,16 +4,18 @@ trait Foo {
     extern "C" fn take(self: Box<Self>);
 }
 
-struct Bar;
+#[repr(C)]
+struct Bar {
+    val: u8,
+}
+
 impl Foo for Bar {
-    #[allow(improper_ctypes_definitions)]
     extern "C" fn borrow(&self) {}
-    #[allow(improper_ctypes_definitions)]
     extern "C" fn take(self: Box<Self>) {}
 }
 
 fn main() {
-    let foo: Box<dyn Foo> = Box::new(Bar);
+    let foo: Box<dyn Foo> = Box::new(Bar { val: 0 });
     foo.borrow();
     foo.take()
 }
