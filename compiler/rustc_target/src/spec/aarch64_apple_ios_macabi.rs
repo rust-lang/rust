@@ -2,7 +2,7 @@ use super::apple_base::{opts, Arch};
 use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, Target, TargetOptions};
 
 pub fn target() -> Target {
-    let llvm_target = "arm64-apple-ios-macabi";
+    let llvm_target = "arm64-apple-ios14.0-macabi";
 
     let arch = Arch::Arm64_macabi;
     let mut base = opts("ios", arch);
