@@ -48,6 +48,17 @@ impl Std {
     }
 }
 
+/// Given an `alias` selected by the `Step` and the paths passed on the command line,
+/// return a list of the crates that should be built.
+///
+/// Normally, people will pass *just* `library` if they pass it.
+/// But it's possible (although strange) to pass something like `library std core`.
+/// Build all crates anyway, as if they hadn't passed the other args.
+pub(crate) fn make_run_crates(run: &RunConfig<'_>, alias: &str) -> Interned<Vec<String>> {
+    let has_alias = run.paths.iter().any(|set| set.assert_single_path().path.ends_with(alias));
+    if has_alias { Default::default() } else { run.cargo_crates_in_set() }
+}
+
 impl Step for Std {
     type Output = ();
     const DEFAULT: bool = true;
@@ -62,16 +73,10 @@ impl Step for Std {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        // Normally, people will pass *just* library if they pass it.
-        // But it's possible (although strange) to pass something like `library std core`.
-        // Build all crates anyway, as if they hadn't passed the other args.
-        let has_library =
-            run.paths.iter().any(|set| set.assert_single_path().path.ends_with("library"));
-        let crates = if has_library { Default::default() } else { run.cargo_crates_in_set() };
         run.builder.ensure(Std {
             compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
             target: run.target,
-            crates,
+            crates: make_run_crates(&run, "library"),
         });
     }
 

@@ -2,7 +2,9 @@
 
 use crate::builder::{crate_description, Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::Interned;
-use crate::compile::{add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo};
+use crate::compile::{
+    add_to_sysroot, make_run_crates, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo,
+};
 use crate::config::TargetSelection;
 use crate::tool::{prepare_tool_cargo, SourceType};
 use crate::INTERNER;
@@ -88,7 +90,7 @@ impl Step for Std {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let crates = run.cargo_crates_in_set();
+        let crates = make_run_crates(&run, "library");
         run.builder.ensure(Std { target: run.target, crates });
     }
 
@@ -218,7 +220,7 @@ impl Step for Rustc {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let crates = run.cargo_crates_in_set();
+        let crates = make_run_crates(&run, "compiler");
         run.builder.ensure(Rustc { target: run.target, crates });
     }
 
