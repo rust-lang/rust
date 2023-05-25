@@ -309,6 +309,13 @@ parse_inclusive_range_no_end = inclusive range with no end
 parse_incorrect_braces_trait_bounds = incorrect braces around trait bounds
     .suggestion = remove the parentheses
 
+parse_incorrect_restriction = incorrect {$noun} restriction
+    .help = some possible {$noun} restrictions are:
+            `{$keyword}(crate)`: {$adjective} only in the current crate
+            `{$keyword}(super)`: {$adjective} only in the current module's parent
+            `{$keyword}(in path::to::module)`: {$adjective} only in the specified path
+    .suggestion = make this {$adjective} only to module `{$path}` with `in`
+
 parse_incorrect_semicolon =
     expected item, found `;`
     .suggestion = remove this semicolon
@@ -519,20 +526,6 @@ parse_missing_comma_after_match_arm = expected `,` following `match` arm
 parse_missing_const_type = missing type for `{$kind}` item
     .suggestion = provide a type for the item
 
-parse_incorrect_restriction = incorrect {$noun} restriction
-    .help = some possible {$noun} restrictions are:
-            `{$keyword}(crate)`: {$adjective} only in the current crate
-            `{$keyword}(super)`: {$adjective} only in the current module's parent
-            `{$keyword}(in path::to::module)`: {$adjective} only in the specified path
-    .suggestion = make this {$adjective} only to module `{$path}` with `in`
-
-parse_restriction_missing_path = incorrect {$noun} restriction
-    .help = some possible {$noun} restrictions are:
-            `{$keyword}(crate)`: {$adjective} only in the current crate
-            `{$keyword}(super)`: {$adjective} only in the current module's parent
-            `{$keyword}(in path::to::module)`: {$adjective} only in the specified path
-    .suggestion = make this {$adjective} only to the current crate
-
 parse_missing_expression_in_for_loop = missing expression to iterate on in `for` loop
     .suggestion = try adding an expression to the `for` loop
 
@@ -681,6 +674,13 @@ parse_require_colon_after_labeled_expression = labeled expression must be follow
     .note = labels are used before loops and blocks, allowing e.g., `break 'label` to them
     .label = the label
     .suggestion = add `:` after the label
+
+parse_restriction_missing_path = incorrect {$noun} restriction
+    .help = some possible {$noun} restrictions are:
+            `{$keyword}(crate)`: {$adjective} only in the current crate
+            `{$keyword}(super)`: {$adjective} only in the current module's parent
+            `{$keyword}(in path::to::module)`: {$adjective} only in the specified path
+    .suggestion = make this {$adjective} only to the current crate
 
 parse_return_types_use_thin_arrow = return types are denoted using `->`
     .suggestion = use `->` instead
