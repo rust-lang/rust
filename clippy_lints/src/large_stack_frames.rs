@@ -116,9 +116,7 @@ impl AddAssign<u64> for Space {
         if let Self::Used(lhs) = self {
             match lhs.checked_add(rhs) {
                 Some(sum) => *self = Self::Used(sum),
-                None => {
-                    *self = Self::Overflow;
-                },
+                None => *self = Self::Overflow,
             }
         }
     }
