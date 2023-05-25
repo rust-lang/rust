@@ -3,10 +3,10 @@
 
 #![feature(associated_type_defaults)]
 #![deny(private_in_public)]
-#![allow(improper_ctypes)]
 
 mod types {
-    struct Priv;
+    #[repr(C)]
+    struct Priv(u8);
     pub struct Pub;
     pub trait PubTr {
         type Alias;
@@ -21,7 +21,7 @@ mod types {
         //~^ WARNING hard error
     }
     pub trait Tr {
-        const C: Priv = Priv; //~ ERROR private type `types::Priv` in public interface
+        const C: Priv = Priv(0); //~ ERROR private type `types::Priv` in public interface
         //~^ WARNING hard error
         type Alias = Priv; //~ ERROR private type `types::Priv` in public interface
         fn f1(arg: Priv) {} //~ ERROR private type `types::Priv` in public interface

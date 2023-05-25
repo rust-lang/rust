@@ -33,7 +33,7 @@ LL |         V2 { field: Priv },
 error: private type `types::Priv` in public interface (error E0446)
   --> $DIR/private-in-public-warn.rs:24:9
    |
-LL |         const C: Priv = Priv;
+LL |         const C: Priv = Priv(0);
    |         ^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -42,7 +42,7 @@ LL |         const C: Priv = Priv;
 error[E0446]: private type `types::Priv` in public interface
   --> $DIR/private-in-public-warn.rs:26:9
    |
-LL |     struct Priv;
+LL |     struct Priv(u8);
    |     ----------- `types::Priv` declared as private
 ...
 LL |         type Alias = Priv;
@@ -96,7 +96,7 @@ LL |         pub fn ef2() -> Priv;
 error[E0446]: private type `types::Priv` in public interface
   --> $DIR/private-in-public-warn.rs:41:9
    |
-LL |     struct Priv;
+LL |     struct Priv(u8);
    |     ----------- `types::Priv` declared as private
 ...
 LL |         type Alias = Priv;
