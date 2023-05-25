@@ -85,8 +85,7 @@ impl Step for Std {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let crates = run.builder.in_tree_crates("sysroot", None);
-        run.crates(crates).path("library")
+        run.crate_or_deps("sysroot").path("library")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -215,8 +214,7 @@ impl Step for Rustc {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let crates = run.builder.in_tree_crates("rustc-main", None);
-        run.crates(crates).path("compiler")
+        run.crate_or_deps("rustc-main").path("compiler")
     }
 
     fn make_run(run: RunConfig<'_>) {

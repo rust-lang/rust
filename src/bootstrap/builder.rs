@@ -442,6 +442,8 @@ impl<'a> ShouldRun<'a> {
     /// Indicates it should run if the command-line selects any of the given crates.
     ///
     /// `make_run` will be called a single time with all matching command-line paths.
+    ///
+    /// Prefer [`ShouldRun::crate_or_deps`] to this function where possible.
     pub(crate) fn crates(mut self, crates: Vec<&Crate>) -> Self {
         for krate in crates {
             let path = krate.local_path(self.builder);
