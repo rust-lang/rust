@@ -1,0 +1,16 @@
+error[E0366]: negative impls cannot be specialized
+  --> $DIR/coherence-overlap-negative-impls.rs:41:5
+   |
+LL |     impl !NotNil for Is<Nil> {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Nil` is not a generic parameter
+note: use the same sequence of generic lifetime, type and const parameters as the struct definition
+  --> $DIR/coherence-overlap-negative-impls.rs:37:5
+   |
+LL |     pub struct Is<T>(T);
+   |     ^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0366`.

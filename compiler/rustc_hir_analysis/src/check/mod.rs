@@ -62,6 +62,7 @@ a type parameter).
 
 */
 
+pub mod always_applicable;
 mod check;
 mod compare_impl_item;
 pub mod dropck;

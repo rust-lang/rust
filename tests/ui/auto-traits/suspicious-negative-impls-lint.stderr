@@ -19,7 +19,7 @@ LL | #![deny(suspicious_auto_trait_impls)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: cross-crate traits with a default impl, like `Send`, should not be specialized
-  --> $DIR/suspicious-negative-impls-lint.rs:12:1
+  --> $DIR/suspicious-negative-impls-lint.rs:13:1
    |
 LL | impl<T> !Send for WithPhantomDataSend<*const T, u8> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -28,13 +28,13 @@ LL | impl<T> !Send for WithPhantomDataSend<*const T, u8> {}
    = note: for more information, see issue #93367 <https://github.com/rust-lang/rust/issues/93367>
    = note: `*const T` is not a generic parameter
 note: try using the same sequence of generic parameters as the struct definition
-  --> $DIR/suspicious-negative-impls-lint.rs:11:1
+  --> $DIR/suspicious-negative-impls-lint.rs:12:1
    |
 LL | pub struct WithPhantomDataSend<T, U>(PhantomData<T>, U);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: cross-crate traits with a default impl, like `Sync`, should not be specialized
-  --> $DIR/suspicious-negative-impls-lint.rs:17:1
+  --> $DIR/suspicious-negative-impls-lint.rs:19:1
    |
 LL | impl<T> !Sync for WithLifetime<'static, Option<T>> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -43,10 +43,50 @@ LL | impl<T> !Sync for WithLifetime<'static, Option<T>> {}
    = note: for more information, see issue #93367 <https://github.com/rust-lang/rust/issues/93367>
    = note: `Option<T>` is not a generic parameter
 note: try using the same sequence of generic parameters as the struct definition
-  --> $DIR/suspicious-negative-impls-lint.rs:16:1
+  --> $DIR/suspicious-negative-impls-lint.rs:18:1
    |
 LL | pub struct WithLifetime<'a, T>(&'a (), T);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error[E0366]: negative impls cannot be specialized
+  --> $DIR/suspicious-negative-impls-lint.rs:7:1
+   |
+LL | impl !Send for ContainsVec<u32> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `u32` is not a generic parameter
+note: use the same sequence of generic lifetime, type and const parameters as the struct definition
+  --> $DIR/suspicious-negative-impls-lint.rs:6:1
+   |
+LL | struct ContainsVec<T>(Vec<T>);
+   | ^^^^^^^^^^^^^^^^^^^^^
 
+error[E0366]: negative impls cannot be specialized
+  --> $DIR/suspicious-negative-impls-lint.rs:13:1
+   |
+LL | impl<T> !Send for WithPhantomDataSend<*const T, u8> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `*const T` is not a generic parameter
+note: use the same sequence of generic lifetime, type and const parameters as the struct definition
+  --> $DIR/suspicious-negative-impls-lint.rs:12:1
+   |
+LL | pub struct WithPhantomDataSend<T, U>(PhantomData<T>, U);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0366]: negative impls cannot be specialized
+  --> $DIR/suspicious-negative-impls-lint.rs:19:1
+   |
+LL | impl<T> !Sync for WithLifetime<'static, Option<T>> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `'static` is not a generic parameter
+note: use the same sequence of generic lifetime, type and const parameters as the struct definition
+  --> $DIR/suspicious-negative-impls-lint.rs:18:1
+   |
+LL | pub struct WithLifetime<'a, T>(&'a (), T);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0366`.

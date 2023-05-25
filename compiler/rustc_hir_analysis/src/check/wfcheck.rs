@@ -1,3 +1,4 @@
+use super::always_applicable;
 use crate::autoderef::Autoderef;
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
 
@@ -177,6 +178,10 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
         // won't be allowed unless there's an *explicit* implementation of `Send`
         // for `T`
         hir::ItemKind::Impl(impl_) => {
+            if matches!(impl_.polarity, ast::ImplPolarity::Negative(_)) && impl_.of_trait.is_some()
+            {
+                let _ = always_applicable::check_trait_impl(tcx, def_id.to_def_id());
+            }
             let is_auto = tcx
                 .impl_trait_ref(def_id)
                 .is_some_and(|trait_ref| tcx.trait_is_auto(trait_ref.skip_binder().def_id));

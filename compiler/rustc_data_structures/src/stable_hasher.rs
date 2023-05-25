@@ -612,7 +612,7 @@ where
 // It is not safe to implement HashStable for HashSet or any other collection type
 // with unstable but observable iteration order.
 // See https://github.com/rust-lang/compiler-team/issues/533 for further information.
-impl<V, HCX> !HashStable<HCX> for std::collections::HashSet<V> {}
+impl<K, V, HCX: ?Sized> !HashStable<HCX> for std::collections::HashSet<K, V> {}
 
 impl<K, V, HCX> HashStable<HCX> for ::std::collections::BTreeMap<K, V>
 where

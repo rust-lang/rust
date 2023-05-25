@@ -1,4 +1,3 @@
-// check-pass
 // known-bug: #74629
 
 // Should fail. The `0` and `1` impls overlap, violating coherence. Eg, with
@@ -15,16 +14,20 @@ struct Test;
 
 trait Fold<F> {}
 
-impl<T, F> Fold<F> for Cons<T> // 0
+impl<T, F> Fold<F> for Cons<T>
+// 0
 where
     T: Fold<Nil>,
-{}
+{
+}
 
-impl<T, F> Fold<F> for Cons<T> // 1
+impl<T, F> Fold<F> for Cons<T>
+// 1
 where
     T: Fold<F>,
     private::Is<T>: private::NotNil,
-{}
+{
+}
 
 impl<F> Fold<F> for Test {} // 2
 

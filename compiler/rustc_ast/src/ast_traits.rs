@@ -23,10 +23,10 @@ pub trait AstDeref {
     fn ast_deref_mut(&mut self) -> &mut Self::Target;
 }
 
-impl !AstDeref for AssocItem {}
 impl !AstDeref for Expr {}
-impl !AstDeref for ForeignItem {}
-impl !AstDeref for Item {}
+impl<K> !AstDeref for Item<K> {}
+// AssocItem = Item<AssocItemKind> so it's already !AstDeref above.
+// ForeignItem = Item<ForeignItemKind> so it's already !AstDeref above.
 impl !AstDeref for Stmt {}
 
 impl<T> AstDeref for P<T> {
