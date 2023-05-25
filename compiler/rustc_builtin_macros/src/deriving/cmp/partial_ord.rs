@@ -19,8 +19,6 @@ pub fn expand_deriving_partial_ord(
     let ret_ty =
         Path(Path::new_(pathvec_std!(option::Option), vec![Box::new(ordering_ty)], PathKind::Std));
 
-    let attrs = thin_vec![cx.attr_word(sym::inline, span)];
-
     // Order in which to perform matching
     let tag_then_data = if let Annotatable::Item(item) = item
         && let ItemKind::Enum(def, _) = &item.kind {
@@ -48,7 +46,7 @@ pub fn expand_deriving_partial_ord(
         explicit_self: true,
         nonself_args: vec![(self_ref(), sym::other)],
         ret_ty,
-        attributes: attrs,
+        attributes: thin_vec![cx.attr_word(sym::inline, span)],
         fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
         combine_substructure: combine_substructure(Box::new(|cx, span, substr| {
             cs_partial_cmp(cx, span, substr, tag_then_data)

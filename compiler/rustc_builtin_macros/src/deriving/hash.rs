@@ -20,7 +20,6 @@ pub fn expand_deriving_hash(
     let typaram = sym::__H;
 
     let arg = Path::new_local(typaram);
-    let attrs = thin_vec![cx.attr_word(sym::inline, span)];
     let hash_trait_def = TraitDef {
         span,
         path,
@@ -34,7 +33,7 @@ pub fn expand_deriving_hash(
             explicit_self: true,
             nonself_args: vec![(Ref(Box::new(Path(arg)), Mutability::Mut), sym::state)],
             ret_ty: Unit,
-            attributes: attrs,
+            attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
             combine_substructure: combine_substructure(Box::new(|a, b, c| {
                 hash_substructure(a, b, c)
