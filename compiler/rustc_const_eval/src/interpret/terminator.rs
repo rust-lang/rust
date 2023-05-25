@@ -114,7 +114,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
             }
 
-            Drop { place, target, unwind } => {
+            Drop { place, target, unwind, replace: _ } => {
                 let frame = self.frame();
                 let ty = place.ty(&frame.body.local_decls, *self.tcx).ty;
                 let ty = self.subst_from_frame_and_normalize_erasing_regions(frame, ty)?;

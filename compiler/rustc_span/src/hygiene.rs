@@ -1151,7 +1151,6 @@ pub enum DesugaringKind {
     Await,
     ForLoop,
     WhileLoop,
-    Replace,
 }
 
 impl DesugaringKind {
@@ -1167,7 +1166,6 @@ impl DesugaringKind {
             DesugaringKind::OpaqueTy => "`impl Trait`",
             DesugaringKind::ForLoop => "`for` loop",
             DesugaringKind::WhileLoop => "`while` loop",
-            DesugaringKind::Replace => "drop and replace",
         }
     }
 }
