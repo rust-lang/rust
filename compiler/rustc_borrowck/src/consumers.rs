@@ -4,8 +4,9 @@
 
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::{IndexSlice, IndexVec};
-use rustc_infer::infer::{DefiningAnchor, TyCtxtInferExt};
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::{Body, Promoted};
+use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::TyCtxt;
 use std::rc::Rc;
 

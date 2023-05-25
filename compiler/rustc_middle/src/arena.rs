@@ -121,6 +121,7 @@ macro_rules! arena_types {
                 >,
             [] bit_set_u32: rustc_index::bit_set::BitSet<u32>,
             [] external_constraints: rustc_middle::traits::solve::ExternalConstraintsData<'tcx>,
+            [] predefined_opaques_in_body: rustc_middle::traits::solve::PredefinedOpaquesData<'tcx>,
             [decode] doc_link_resolutions: rustc_hir::def::DocLinkResMap,
             [] closure_kind_origin: (rustc_span::Span, rustc_middle::hir::place::Place<'tcx>),
             [] mod_child: rustc_middle::metadata::ModChild,

@@ -2,7 +2,6 @@
 
 use super::search_graph::OverflowHandler;
 use super::{EvalCtxt, SolverMode};
-use crate::solve::CanonicalResponseExt;
 use crate::traits::coherence;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def_id::DefId;
@@ -333,8 +332,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         candidates: &mut Vec<Candidate<'tcx>>,
     ) {
         let tcx = self.tcx();
-        // FIXME: We also have to normalize opaque types, not sure where to best fit that in.
-        let &ty::Alias(ty::Projection, projection_ty) = goal.predicate.self_ty().kind() else {
+        let &ty::Alias(_, projection_ty) = goal.predicate.self_ty().kind() else {
             return
         };
 
@@ -356,8 +354,11 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                         }),
                     );
                     ecx.add_goal(normalizes_to_goal);
-                    let _ = ecx.try_evaluate_added_goals()?;
+                    let _ = ecx.try_evaluate_added_goals().inspect_err(|_| {
+                        debug!("self type normalization failed");
+                    })?;
                     let normalized_ty = ecx.resolve_vars_if_possible(normalized_ty);
+                    debug!(?normalized_ty, "self type normalized");
                     // NOTE: Alternatively we could call `evaluate_goal` here and only
                     // have a `Normalized` candidate. This doesn't work as long as we
                     // use `CandidateSource` in winnowing.
@@ -742,13 +743,18 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             SolverMode::Normal => {
                 let param_env_responses = candidates
                     .iter()
-                    .filter(|c| matches!(c.source, CandidateSource::ParamEnv(_)))
+                    .filter(|c| {
+                        matches!(
+                            c.source,
+                            CandidateSource::ParamEnv(_) | CandidateSource::AliasBound
+                        )
+                    })
                     .map(|c| c.result)
                     .collect::<Vec<_>>();
                 if let Some(result) = self.try_merge_responses(&param_env_responses) {
-                    if result.has_only_region_constraints() {
-                        return Ok(result);
-                    }
+                    // We strongly prefer alias and param-env bounds here, even if they affect inference.
+                    // See https://github.com/rust-lang/trait-system-refactor-initiative/issues/11.
+                    return Ok(result);
                 }
             }
         }

@@ -3,8 +3,8 @@
 //! FIXME: Move this to a more general place. The utility of this extends to
 //! other areas of the compiler as well.
 
-use rustc_infer::infer::{DefiningAnchor, TyCtxtInferExt};
-use rustc_infer::traits::ObligationCause;
+use rustc_infer::infer::TyCtxtInferExt;
+use rustc_middle::traits::{DefiningAnchor, ObligationCause};
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_trait_selection::traits::ObligationCtxt;
 

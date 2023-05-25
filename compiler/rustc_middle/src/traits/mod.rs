@@ -1108,3 +1108,14 @@ pub enum CodegenObligationError {
     Unimplemented,
     FulfillmentError,
 }
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, TypeFoldable, TypeVisitable)]
+pub enum DefiningAnchor {
+    /// `DefId` of the item.
+    Bind(LocalDefId),
+    /// When opaque types are not resolved, we `Bubble` up, meaning
+    /// return the opaque/hidden type pair from query, for caller of query to handle it.
+    Bubble,
+    /// Used to catch type mismatch errors when handling opaque types.
+    Error,
+}

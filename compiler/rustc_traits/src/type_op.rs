@@ -1,8 +1,8 @@
 use rustc_hir as hir;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
-use rustc_infer::infer::{DefiningAnchor, TyCtxtInferExt};
-use rustc_infer::traits::ObligationCauseCode;
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::query::Providers;
+use rustc_middle::traits::{DefiningAnchor, ObligationCauseCode};
 use rustc_middle::ty::{self, FnSig, Lift, PolyFnSig, Ty, TyCtxt, TypeFoldable};
 use rustc_middle::ty::{ParamEnvAnd, Predicate};
 use rustc_middle::ty::{UserSelfTy, UserSubsts, UserType};

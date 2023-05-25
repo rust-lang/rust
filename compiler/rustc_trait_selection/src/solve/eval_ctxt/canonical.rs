@@ -8,16 +8,19 @@
 /// section of the [rustc-dev-guide][c].
 ///
 /// [c]: https://rustc-dev-guide.rust-lang.org/solve/canonicalization.html
-use super::{CanonicalGoal, Certainty, EvalCtxt, Goal};
+use super::{CanonicalInput, Certainty, EvalCtxt, Goal};
 use crate::solve::canonicalize::{CanonicalizeMode, Canonicalizer};
 use crate::solve::{CanonicalResponse, QueryResult, Response};
 use rustc_index::IndexVec;
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::canonical::CanonicalVarValues;
 use rustc_infer::infer::canonical::{CanonicalExt, QueryRegionConstraints};
+use rustc_infer::infer::InferOk;
 use rustc_middle::traits::query::NoSolution;
-use rustc_middle::traits::solve::{ExternalConstraints, ExternalConstraintsData, MaybeCause};
-use rustc_middle::ty::{self, BoundVar, GenericArgKind};
+use rustc_middle::traits::solve::{
+    ExternalConstraints, ExternalConstraintsData, MaybeCause, PredefinedOpaquesData, QueryInput,
+};
+use rustc_middle::ty::{self, BoundVar, GenericArgKind, Ty};
 use rustc_span::DUMMY_SP;
 use std::iter;
 use std::ops::Deref;
@@ -28,13 +31,21 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     pub(super) fn canonicalize_goal(
         &self,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
-    ) -> (Vec<ty::GenericArg<'tcx>>, CanonicalGoal<'tcx>) {
+    ) -> (Vec<ty::GenericArg<'tcx>>, CanonicalInput<'tcx>) {
         let mut orig_values = Default::default();
         let canonical_goal = Canonicalizer::canonicalize(
             self.infcx,
             CanonicalizeMode::Input,
             &mut orig_values,
-            goal,
+            QueryInput {
+                goal,
+                anchor: self.infcx.defining_use_anchor,
+                predefined_opaques_in_body: self.tcx().mk_predefined_opaques_in_body(
+                    PredefinedOpaquesData {
+                        opaque_types: self.infcx.clone_opaque_types_for_query_response(),
+                    },
+                ),
+            },
         );
         (orig_values, canonical_goal)
     }
@@ -138,7 +149,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 region_constraints,
             )
         });
-        let opaque_types = self.infcx.clone_opaque_types_for_query_response();
+
+        let mut opaque_types = self.infcx.clone_opaque_types_for_query_response();
+        // Only return opaque type keys for newly-defined opaques
+        opaque_types.retain(|(a, _)| {
+            self.predefined_opaques_in_body.opaque_types.iter().all(|(pa, _)| pa != a)
+        });
+
         Ok(self
             .tcx()
             .mk_external_constraints(ExternalConstraintsData { region_constraints, opaque_types }))
@@ -164,10 +181,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
         let nested_goals = self.unify_query_var_values(param_env, &original_values, var_values)?;
 
-        // FIXME: implement external constraints.
-        let ExternalConstraintsData { region_constraints, opaque_types: _ } =
+        let ExternalConstraintsData { region_constraints, opaque_types } =
             external_constraints.deref();
         self.register_region_constraints(region_constraints);
+        self.register_opaque_types(param_env, opaque_types)?;
 
         Ok((certainty, nested_goals))
     }
@@ -286,5 +303,20 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             // FIXME: Deal with member constraints :<
             let _ = member_constraint;
         }
+    }
+
+    fn register_opaque_types(
+        &mut self,
+        param_env: ty::ParamEnv<'tcx>,
+        opaque_types: &[(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)],
+    ) -> Result<(), NoSolution> {
+        for &(a, b) in opaque_types {
+            let InferOk { value: (), obligations } =
+                self.infcx.register_hidden_type_in_new_solver(a, param_env, b)?;
+            // It's sound to drop these obligations, since the normalizes-to goal
+            // is responsible for proving these obligations.
+            let _ = obligations;
+        }
+        Ok(())
     }
 }

@@ -113,10 +113,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 bug!()
             }
 
-            (_, ty::Alias(AliasKind::Projection | AliasKind::Inherent, _))
-            | (ty::Alias(AliasKind::Projection | AliasKind::Inherent, _), _)
-                if self.tcx.trait_solver_next() =>
-            {
+            (_, ty::Alias(..)) | (ty::Alias(..), _) if self.tcx.trait_solver_next() => {
                 relation.register_type_relate_obligation(a, b);
                 Ok(a)
             }

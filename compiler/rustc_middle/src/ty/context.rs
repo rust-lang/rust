@@ -21,7 +21,9 @@ use crate::query::{IntoQueryParam, TyCtxtAt};
 use crate::thir::Thir;
 use crate::traits;
 use crate::traits::solve;
-use crate::traits::solve::{ExternalConstraints, ExternalConstraintsData};
+use crate::traits::solve::{
+    ExternalConstraints, ExternalConstraintsData, PredefinedOpaques, PredefinedOpaquesData,
+};
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Const, ConstData, FloatTy, FloatVar, FloatVid,
     GenericParamDefKind, ImplPolarity, InferTy, IntTy, IntVar, IntVid, List, ParamConst, ParamTy,
@@ -140,6 +142,7 @@ pub struct CtxtInterners<'tcx> {
     layout: InternedSet<'tcx, LayoutS>,
     adt_def: InternedSet<'tcx, AdtDefData>,
     external_constraints: InternedSet<'tcx, ExternalConstraintsData<'tcx>>,
+    predefined_opaques_in_body: InternedSet<'tcx, PredefinedOpaquesData<'tcx>>,
     fields: InternedSet<'tcx, List<FieldIdx>>,
 }
 
@@ -164,6 +167,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             layout: Default::default(),
             adt_def: Default::default(),
             external_constraints: Default::default(),
+            predefined_opaques_in_body: Default::default(),
             fields: Default::default(),
         }
     }
@@ -1520,6 +1524,8 @@ direct_interners! {
     adt_def: pub mk_adt_def_from_data(AdtDefData): AdtDef -> AdtDef<'tcx>,
     external_constraints: pub mk_external_constraints(ExternalConstraintsData<'tcx>):
         ExternalConstraints -> ExternalConstraints<'tcx>,
+    predefined_opaques_in_body: pub mk_predefined_opaques_in_body(PredefinedOpaquesData<'tcx>):
+        PredefinedOpaques -> PredefinedOpaques<'tcx>,
 }
 
 macro_rules! slice_interners {
