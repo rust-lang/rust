@@ -128,7 +128,7 @@ impl<'tcx> Partition<'tcx> for Partitioner {
         &mut self,
         cx: &PartitioningCx<'_, 'tcx>,
         mono_items: &mut I,
-    ) -> (Vec<CodegenUnit<'tcx>>, FxHashSet<MonoItem<'tcx>>, FxHashSet<MonoItem<'tcx>>)
+    ) -> PlacedRootMonoItems<'tcx>
     where
         I: Iterator<Item = MonoItem<'tcx>>,
     {
@@ -188,12 +188,18 @@ struct PartitioningCx<'a, 'tcx> {
     inlining_map: &'a InliningMap<'tcx>,
 }
 
+pub struct PlacedRootMonoItems<'tcx> {
+    codegen_units: Vec<CodegenUnit<'tcx>>,
+    roots: FxHashSet<MonoItem<'tcx>>,
+    internalization_candidates: FxHashSet<MonoItem<'tcx>>,
+}
+
 trait Partition<'tcx> {
     fn place_root_mono_items<I>(
         &mut self,
         cx: &PartitioningCx<'_, 'tcx>,
         mono_items: &mut I,
-    ) -> (Vec<CodegenUnit<'tcx>>, FxHashSet<MonoItem<'tcx>>, FxHashSet<MonoItem<'tcx>>)
+    ) -> PlacedRootMonoItems<'tcx>
     where
         I: Iterator<Item = MonoItem<'tcx>>;
 
@@ -247,7 +253,7 @@ where
     // In the first step, we place all regular monomorphizations into their
     // respective 'home' codegen unit. Regular monomorphizations are all
     // functions and statics defined in the local crate.
-    let (mut codegen_units, roots, internalization_candidates) = {
+    let PlacedRootMonoItems { mut codegen_units, roots, internalization_candidates } = {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_place_roots");
         partitioner.place_root_mono_items(cx, mono_items)
     };

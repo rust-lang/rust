@@ -15,7 +15,7 @@ use rustc_span::symbol::Symbol;
 
 use super::PartitioningCx;
 use crate::collector::InliningMap;
-use crate::partitioning::{MonoItemPlacement, Partition};
+use crate::partitioning::{MonoItemPlacement, Partition, PlacedRootMonoItems};
 
 pub struct DefaultPartitioning;
 
@@ -24,7 +24,7 @@ impl<'tcx> Partition<'tcx> for DefaultPartitioning {
         &mut self,
         cx: &PartitioningCx<'_, 'tcx>,
         mono_items: &mut I,
-    ) -> (Vec<CodegenUnit<'tcx>>, FxHashSet<MonoItem<'tcx>>, FxHashSet<MonoItem<'tcx>>)
+    ) -> PlacedRootMonoItems<'tcx>
     where
         I: Iterator<Item = MonoItem<'tcx>>,
     {
@@ -89,7 +89,8 @@ impl<'tcx> Partition<'tcx> for DefaultPartitioning {
             codegen_units.insert(codegen_unit_name, CodegenUnit::new(codegen_unit_name));
         }
 
-        (codegen_units.into_values().collect(), roots, internalization_candidates)
+        let codegen_units = codegen_units.into_values().collect();
+        PlacedRootMonoItems { codegen_units, roots, internalization_candidates }
     }
 
     fn merge_codegen_units(
