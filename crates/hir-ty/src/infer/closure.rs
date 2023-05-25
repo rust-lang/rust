@@ -643,7 +643,21 @@ impl InferenceContext<'_> {
             }
             None => *result = Some(ck),
         };
-        self.body.walk_pats(pat, &mut |p| match &self.body[p] {
+
+        self.walk_pat_inner(
+            pat,
+            &mut update_result,
+            BorrowKind::Mut { allow_two_phase_borrow: false },
+        );
+    }
+
+    fn walk_pat_inner(
+        &mut self,
+        p: PatId,
+        update_result: &mut impl FnMut(CaptureKind),
+        mut for_mut: BorrowKind,
+    ) {
+        match &self.body[p] {
             Pat::Ref { .. }
             | Pat::Box { .. }
             | Pat::Missing
@@ -678,13 +692,15 @@ impl InferenceContext<'_> {
                     }
                 }
                 crate::BindingMode::Ref(r) => match r {
-                    Mutability::Mut => update_result(CaptureKind::ByRef(BorrowKind::Mut {
-                        allow_two_phase_borrow: false,
-                    })),
+                    Mutability::Mut => update_result(CaptureKind::ByRef(for_mut)),
                     Mutability::Not => update_result(CaptureKind::ByRef(BorrowKind::Shared)),
                 },
             },
-        });
+        }
+        if self.result.pat_adjustments.get(&p).map_or(false, |x| !x.is_empty()) {
+            for_mut = BorrowKind::Unique;
+        }
+        self.body.walk_pats_shallow(p, |p| self.walk_pat_inner(p, update_result, for_mut));
     }
 
     fn expr_ty(&self, expr: ExprId) -> Ty {

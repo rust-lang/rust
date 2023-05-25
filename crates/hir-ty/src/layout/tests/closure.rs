@@ -201,7 +201,7 @@ fn match_pattern() {
         ]
         |x: i64| {
             match y {
-                X(_a, _b, _c) => x,
+                X(_a, _, _c) => x,
             }
         }
     }
@@ -214,6 +214,18 @@ fn match_pattern() {
         |x: i64| {
             match y {
                 _y => x,
+            }
+        }
+    }
+    size_and_align_expr! {
+        minicore: copy;
+        stmts: [
+            struct X(i64, i32, (u8, i128));
+            let y: X = X(2, 5, (7, 3));
+        ]
+        |x: i64| {
+            match y {
+                ref _y => x,
             }
         }
     }
