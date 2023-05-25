@@ -84,143 +84,149 @@ error: casting raw pointers to the same type and constness is unnecessary (`*con
 LL |     uwu::<u32, u8>([1u32].as_ptr()) as *const u8;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `uwu::<u32, u8>([1u32].as_ptr())`
 
+error: casting raw pointers to the same type and constness is unnecessary (`*const u32` -> `*const u32`)
+  --> $DIR/unnecessary_cast.rs:52:5
+   |
+LL |     uwu::<u32, u32>([1u32].as_ptr()) as *const u32;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `uwu::<u32, u32>([1u32].as_ptr())`
+
 error: casting integer literal to `f32` is unnecessary
-  --> $DIR/unnecessary_cast.rs:91:9
+  --> $DIR/unnecessary_cast.rs:93:9
    |
 LL |         100 as f32;
    |         ^^^^^^^^^^ help: try: `100_f32`
 
 error: casting integer literal to `f64` is unnecessary
-  --> $DIR/unnecessary_cast.rs:92:9
+  --> $DIR/unnecessary_cast.rs:94:9
    |
 LL |         100 as f64;
    |         ^^^^^^^^^^ help: try: `100_f64`
 
 error: casting integer literal to `f64` is unnecessary
-  --> $DIR/unnecessary_cast.rs:93:9
+  --> $DIR/unnecessary_cast.rs:95:9
    |
 LL |         100_i32 as f64;
    |         ^^^^^^^^^^^^^^ help: try: `100_f64`
 
 error: casting integer literal to `f32` is unnecessary
-  --> $DIR/unnecessary_cast.rs:94:17
+  --> $DIR/unnecessary_cast.rs:96:17
    |
 LL |         let _ = -100 as f32;
    |                 ^^^^^^^^^^^ help: try: `-100_f32`
 
 error: casting integer literal to `f64` is unnecessary
-  --> $DIR/unnecessary_cast.rs:95:17
+  --> $DIR/unnecessary_cast.rs:97:17
    |
 LL |         let _ = -100 as f64;
    |                 ^^^^^^^^^^^ help: try: `-100_f64`
 
 error: casting integer literal to `f64` is unnecessary
-  --> $DIR/unnecessary_cast.rs:96:17
+  --> $DIR/unnecessary_cast.rs:98:17
    |
 LL |         let _ = -100_i32 as f64;
    |                 ^^^^^^^^^^^^^^^ help: try: `-100_f64`
 
 error: casting float literal to `f32` is unnecessary
-  --> $DIR/unnecessary_cast.rs:97:9
+  --> $DIR/unnecessary_cast.rs:99:9
    |
 LL |         100. as f32;
    |         ^^^^^^^^^^^ help: try: `100_f32`
 
 error: casting float literal to `f64` is unnecessary
-  --> $DIR/unnecessary_cast.rs:98:9
+  --> $DIR/unnecessary_cast.rs:100:9
    |
 LL |         100. as f64;
    |         ^^^^^^^^^^^ help: try: `100_f64`
 
 error: casting integer literal to `u32` is unnecessary
-  --> $DIR/unnecessary_cast.rs:110:9
+  --> $DIR/unnecessary_cast.rs:112:9
    |
 LL |         1 as u32;
    |         ^^^^^^^^ help: try: `1_u32`
 
 error: casting integer literal to `i32` is unnecessary
-  --> $DIR/unnecessary_cast.rs:111:9
+  --> $DIR/unnecessary_cast.rs:113:9
    |
 LL |         0x10 as i32;
    |         ^^^^^^^^^^^ help: try: `0x10_i32`
 
 error: casting integer literal to `usize` is unnecessary
-  --> $DIR/unnecessary_cast.rs:112:9
+  --> $DIR/unnecessary_cast.rs:114:9
    |
 LL |         0b10 as usize;
    |         ^^^^^^^^^^^^^ help: try: `0b10_usize`
 
 error: casting integer literal to `u16` is unnecessary
-  --> $DIR/unnecessary_cast.rs:113:9
+  --> $DIR/unnecessary_cast.rs:115:9
    |
 LL |         0o73 as u16;
    |         ^^^^^^^^^^^ help: try: `0o73_u16`
 
 error: casting integer literal to `u32` is unnecessary
-  --> $DIR/unnecessary_cast.rs:114:9
+  --> $DIR/unnecessary_cast.rs:116:9
    |
 LL |         1_000_000_000 as u32;
    |         ^^^^^^^^^^^^^^^^^^^^ help: try: `1_000_000_000_u32`
 
 error: casting float literal to `f64` is unnecessary
-  --> $DIR/unnecessary_cast.rs:116:9
+  --> $DIR/unnecessary_cast.rs:118:9
    |
 LL |         1.0 as f64;
    |         ^^^^^^^^^^ help: try: `1.0_f64`
 
 error: casting float literal to `f32` is unnecessary
-  --> $DIR/unnecessary_cast.rs:117:9
+  --> $DIR/unnecessary_cast.rs:119:9
    |
 LL |         0.5 as f32;
    |         ^^^^^^^^^^ help: try: `0.5_f32`
 
 error: casting integer literal to `i32` is unnecessary
-  --> $DIR/unnecessary_cast.rs:121:17
+  --> $DIR/unnecessary_cast.rs:123:17
    |
 LL |         let _ = -1 as i32;
    |                 ^^^^^^^^^ help: try: `-1_i32`
 
 error: casting float literal to `f32` is unnecessary
-  --> $DIR/unnecessary_cast.rs:122:17
+  --> $DIR/unnecessary_cast.rs:124:17
    |
 LL |         let _ = -1.0 as f32;
    |                 ^^^^^^^^^^^ help: try: `-1.0_f32`
 
 error: casting to the same type is unnecessary (`i32` -> `i32`)
-  --> $DIR/unnecessary_cast.rs:128:18
+  --> $DIR/unnecessary_cast.rs:130:18
    |
 LL |         let _ = &(x as i32);
    |                  ^^^^^^^^^^ help: try: `{ x }`
 
 error: casting integer literal to `i32` is unnecessary
-  --> $DIR/unnecessary_cast.rs:134:22
+  --> $DIR/unnecessary_cast.rs:136:22
    |
 LL |         let _: i32 = -(1) as i32;
    |                      ^^^^^^^^^^^ help: try: `-1_i32`
 
 error: casting integer literal to `i64` is unnecessary
-  --> $DIR/unnecessary_cast.rs:136:22
+  --> $DIR/unnecessary_cast.rs:138:22
    |
 LL |         let _: i64 = -(1) as i64;
    |                      ^^^^^^^^^^^ help: try: `-1_i64`
 
 error: casting float literal to `f64` is unnecessary
-  --> $DIR/unnecessary_cast.rs:143:22
+  --> $DIR/unnecessary_cast.rs:145:22
    |
 LL |         let _: f64 = (-8.0 as f64).exp();
    |                      ^^^^^^^^^^^^^ help: try: `(-8.0_f64)`
 
 error: casting float literal to `f64` is unnecessary
-  --> $DIR/unnecessary_cast.rs:145:23
+  --> $DIR/unnecessary_cast.rs:147:23
    |
 LL |         let _: f64 = -(8.0 as f64).exp(); // should suggest `-8.0_f64.exp()` here not to change code behavior
    |                       ^^^^^^^^^^^^ help: try: `8.0_f64`
 
 error: casting to the same type is unnecessary (`f32` -> `f32`)
-  --> $DIR/unnecessary_cast.rs:153:20
+  --> $DIR/unnecessary_cast.rs:155:20
    |
 LL |         let _num = foo() as f32;
    |                    ^^^^^^^^^^^^ help: try: `foo()`
 
-error: aborting due to 37 previous errors
+error: aborting due to 38 previous errors
 

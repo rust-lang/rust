@@ -48,6 +48,8 @@ fn main() {
 
     owo::<u32>([1u32].as_ptr()) as *const u32;
     uwu::<u32, u8>([1u32].as_ptr()) as *const u8;
+    // this will not lint in the function body even though they have the same type, instead here
+    uwu::<u32, u32>([1u32].as_ptr()) as *const u32;
 
     // macro version
     macro_rules! foo {
