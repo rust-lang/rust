@@ -31,7 +31,6 @@ oorandom = "11.1.3"
 rustc-hash = "1.1.0"
 serde_json = { workspace = true, features = ["preserve_order"] }
 serde.workspace = true
-threadpool = "1.8.1"
 rayon = "1.6.1"
 num_cpus = "1.15.0"
 mimalloc = { version = "0.1.30", default-features = false, optional = true }

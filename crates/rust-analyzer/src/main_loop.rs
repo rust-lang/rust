@@ -397,7 +397,7 @@ impl GlobalState {
         tracing::debug!(%cause, "will prime caches");
         let num_worker_threads = self.config.prime_caches_num_threads();
 
-        self.task_pool.handle.spawn_with_sender({
+        self.task_pool.handle.spawn_with_sender(stdx::thread::QoSClass::Default, {
             let analysis = self.snapshot().analysis;
             move |sender| {
                 sender.send(Task::PrimeCaches(PrimeCachesProgress::Begin)).unwrap();
@@ -678,7 +678,24 @@ impl GlobalState {
             .on_sync::<lsp_types::request::SelectionRangeRequest>(handlers::handle_selection_range)
             .on_sync::<lsp_ext::MatchingBrace>(handlers::handle_matching_brace)
             .on_sync::<lsp_ext::OnTypeFormatting>(handlers::handle_on_type_formatting)
-            // All other request handlers:
+            // We can’t run latency-sensitive request handlers which do semantic
+            // analysis on the main thread because that would block other
+            // requests. Instead, we run these request handlers on higher QoS
+            // threads in the threadpool.
+            .on_latency_sensitive::<lsp_types::request::Completion>(handlers::handle_completion)
+            .on_latency_sensitive::<lsp_types::request::ResolveCompletionItem>(
+                handlers::handle_completion_resolve,
+            )
+            .on_latency_sensitive::<lsp_types::request::SemanticTokensFullRequest>(
+                handlers::handle_semantic_tokens_full,
+            )
+            .on_latency_sensitive::<lsp_types::request::SemanticTokensFullDeltaRequest>(
+                handlers::handle_semantic_tokens_full_delta,
+            )
+            .on_latency_sensitive::<lsp_types::request::SemanticTokensRangeRequest>(
+                handlers::handle_semantic_tokens_range,
+            )
+            // All other request handlers
             .on::<lsp_ext::FetchDependencyList>(handlers::fetch_dependency_list)
             .on::<lsp_ext::AnalyzerStatus>(handlers::handle_analyzer_status)
             .on::<lsp_ext::SyntaxTree>(handlers::handle_syntax_tree)
@@ -706,8 +723,6 @@ impl GlobalState {
             .on::<lsp_types::request::GotoTypeDefinition>(handlers::handle_goto_type_definition)
             .on_no_retry::<lsp_types::request::InlayHintRequest>(handlers::handle_inlay_hints)
             .on::<lsp_types::request::InlayHintResolveRequest>(handlers::handle_inlay_hints_resolve)
-            .on::<lsp_types::request::Completion>(handlers::handle_completion)
-            .on::<lsp_types::request::ResolveCompletionItem>(handlers::handle_completion_resolve)
             .on::<lsp_types::request::CodeLensRequest>(handlers::handle_code_lens)
             .on::<lsp_types::request::CodeLensResolve>(handlers::handle_code_lens_resolve)
             .on::<lsp_types::request::FoldingRangeRequest>(handlers::handle_folding_range)
@@ -724,15 +739,6 @@ impl GlobalState {
             )
             .on::<lsp_types::request::CallHierarchyOutgoingCalls>(
                 handlers::handle_call_hierarchy_outgoing,
-            )
-            .on::<lsp_types::request::SemanticTokensFullRequest>(
-                handlers::handle_semantic_tokens_full,
-            )
-            .on::<lsp_types::request::SemanticTokensFullDeltaRequest>(
-                handlers::handle_semantic_tokens_full_delta,
-            )
-            .on::<lsp_types::request::SemanticTokensRangeRequest>(
-                handlers::handle_semantic_tokens_range,
             )
             .on::<lsp_types::request::WillRenameFiles>(handlers::handle_will_rename_files)
             .on::<lsp_ext::Ssr>(handlers::handle_ssr)
@@ -781,7 +787,7 @@ impl GlobalState {
         tracing::trace!("updating notifications for {:?}", subscriptions);
 
         let snapshot = self.snapshot();
-        self.task_pool.handle.spawn(move || {
+        self.task_pool.handle.spawn(stdx::thread::QoSClass::Default, move || {
             let _p = profile::span("publish_diagnostics");
             let diagnostics = subscriptions
                 .into_iter()

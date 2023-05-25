@@ -4,6 +4,7 @@ use std::{fmt, panic, thread};
 use ide::Cancelled;
 use lsp_server::ExtractError;
 use serde::{de::DeserializeOwned, Serialize};
+use stdx::thread::QoSClass;
 
 use crate::{
     global_state::{GlobalState, GlobalStateSnapshot},
@@ -102,7 +103,7 @@ impl<'a> RequestDispatcher<'a> {
             None => return self,
         };
 
-        self.global_state.task_pool.handle.spawn({
+        self.global_state.task_pool.handle.spawn(QoSClass::Default, {
             let world = self.global_state.snapshot();
             move || {
                 let result = panic::catch_unwind(move || {
@@ -133,12 +134,50 @@ impl<'a> RequestDispatcher<'a> {
         R::Params: DeserializeOwned + panic::UnwindSafe + Send + fmt::Debug,
         R::Result: Serialize,
     {
+        self.on_with_qos::<R>(QoSClass::Default, f)
+    }
+
+    /// Dispatches a latency-sensitive request onto the thread pool.
+    pub(crate) fn on_latency_sensitive<R>(
+        &mut self,
+        f: fn(GlobalStateSnapshot, R::Params) -> Result<R::Result>,
+    ) -> &mut Self
+    where
+        R: lsp_types::request::Request + 'static,
+        R::Params: DeserializeOwned + panic::UnwindSafe + Send + fmt::Debug,
+        R::Result: Serialize,
+    {
+        self.on_with_qos::<R>(QoSClass::Default, f)
+    }
+
+    pub(crate) fn finish(&mut self) {
+        if let Some(req) = self.req.take() {
+            tracing::error!("unknown request: {:?}", req);
+            let response = lsp_server::Response::new_err(
+                req.id,
+                lsp_server::ErrorCode::MethodNotFound as i32,
+                "unknown request".to_string(),
+            );
+            self.global_state.respond(response);
+        }
+    }
+
+    fn on_with_qos<R>(
+        &mut self,
+        qos_class: QoSClass,
+        f: fn(GlobalStateSnapshot, R::Params) -> Result<R::Result>,
+    ) -> &mut Self
+    where
+        R: lsp_types::request::Request + 'static,
+        R::Params: DeserializeOwned + panic::UnwindSafe + Send + fmt::Debug,
+        R::Result: Serialize,
+    {
         let (req, params, panic_context) = match self.parse::<R>() {
             Some(it) => it,
             None => return self,
         };
 
-        self.global_state.task_pool.handle.spawn({
+        self.global_state.task_pool.handle.spawn(qos_class, {
             let world = self.global_state.snapshot();
             move || {
                 let result = panic::catch_unwind(move || {
@@ -153,18 +192,6 @@ impl<'a> RequestDispatcher<'a> {
         });
 
         self
-    }
-
-    pub(crate) fn finish(&mut self) {
-        if let Some(req) = self.req.take() {
-            tracing::error!("unknown request: {:?}", req);
-            let response = lsp_server::Response::new_err(
-                req.id,
-                lsp_server::ErrorCode::MethodNotFound as i32,
-                "unknown request".to_string(),
-            );
-            self.global_state.respond(response);
-        }
     }
 
     fn parse<R>(&mut self) -> Option<(lsp_server::Request, R::Params, String)>

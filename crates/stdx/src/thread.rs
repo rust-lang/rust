@@ -13,6 +13,9 @@
 
 use std::fmt;
 
+mod pool;
+pub use pool::Pool;
+
 pub fn spawn<F, T>(qos_class: QoSClass, f: F) -> JoinHandle<T>
 where
     F: FnOnce() -> T,
@@ -152,6 +155,8 @@ pub enum QoSClass {
     /// performance, responsiveness and efficiency.
     Utility,
 
+    Default,
+
     /// TLDR: tasks that block using your app
     ///
     /// Contract:
@@ -229,6 +234,7 @@ mod imp {
         let c = match class {
             QoSClass::UserInteractive => libc::qos_class_t::QOS_CLASS_USER_INTERACTIVE,
             QoSClass::UserInitiated => libc::qos_class_t::QOS_CLASS_USER_INITIATED,
+            QoSClass::Default => libc::qos_class_t::QOS_CLASS_DEFAULT,
             QoSClass::Utility => libc::qos_class_t::QOS_CLASS_UTILITY,
             QoSClass::Background => libc::qos_class_t::QOS_CLASS_BACKGROUND,
         };

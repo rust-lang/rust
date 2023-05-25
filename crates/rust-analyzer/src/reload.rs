@@ -185,7 +185,7 @@ impl GlobalState {
     pub(crate) fn fetch_workspaces(&mut self, cause: Cause) {
         tracing::info!(%cause, "will fetch workspaces");
 
-        self.task_pool.handle.spawn_with_sender({
+        self.task_pool.handle.spawn_with_sender(stdx::thread::QoSClass::Default, {
             let linked_projects = self.config.linked_projects();
             let detached_files = self.config.detached_files().to_vec();
             let cargo_config = self.config.cargo();
@@ -260,7 +260,7 @@ impl GlobalState {
         tracing::info!(%cause, "will fetch build data");
         let workspaces = Arc::clone(&self.workspaces);
         let config = self.config.cargo();
-        self.task_pool.handle.spawn_with_sender(move |sender| {
+        self.task_pool.handle.spawn_with_sender(stdx::thread::QoSClass::Default, move |sender| {
             sender.send(Task::FetchBuildData(BuildDataProgress::Begin)).unwrap();
 
             let progress = {
@@ -280,7 +280,7 @@ impl GlobalState {
         let dummy_replacements = self.config.dummy_replacements().clone();
         let proc_macro_clients = self.proc_macro_clients.clone();
 
-        self.task_pool.handle.spawn_with_sender(move |sender| {
+        self.task_pool.handle.spawn_with_sender(stdx::thread::QoSClass::Default, move |sender| {
             sender.send(Task::LoadProcMacros(ProcMacroProgress::Begin)).unwrap();
 
             let dummy_replacements = &dummy_replacements;
