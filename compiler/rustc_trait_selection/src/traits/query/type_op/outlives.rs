@@ -1,5 +1,6 @@
 use crate::infer::canonical::{Canonical, CanonicalQueryResponse};
 use crate::traits::query::dropck_outlives::{trivial_dropck_outlives, DropckOutlivesResult};
+use crate::traits::ObligationCtxt;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::{ParamEnvAnd, Ty, TyCtxt};
 
@@ -47,5 +48,12 @@ impl<'tcx> super::QueryTypeOp<'tcx> for DropckOutlives<'tcx> {
         });
 
         tcx.dropck_outlives(canonicalized)
+    }
+
+    fn perform_locally_in_new_solver(
+        _ocx: &ObligationCtxt<'_, 'tcx>,
+        _key: ParamEnvAnd<'tcx, Self>,
+    ) -> Result<Self::QueryResponse, NoSolution> {
+        todo!()
     }
 }
