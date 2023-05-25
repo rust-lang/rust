@@ -387,6 +387,10 @@ define_Conf! {
     ///
     /// The maximum allowed size for arrays on the stack
     (array_size_threshold: u64 = 512_000),
+    /// Lint: LARGE_STACK_FRAMES.
+    ///
+    /// The maximum allowed stack size for functions in bytes
+    (stack_size_threshold: u64 = 512_000),
     /// Lint: VEC_BOX.
     ///
     /// The size of the boxed type in bytes, where boxing in a `Vec` is allowed

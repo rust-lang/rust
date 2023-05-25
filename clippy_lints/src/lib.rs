@@ -142,6 +142,7 @@ mod from_raw_with_void_ptr;
 mod from_str_radix_10;
 mod functions;
 mod future_not_send;
+mod large_stack_frames;
 mod if_let_mutex;
 mod if_not_else;
 mod if_then_some_else_none;
@@ -1042,6 +1043,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
             min_ident_chars_threshold,
         })
     });
+    let stack_size_threshold = conf.stack_size_threshold;
+    store.register_late_pass(move |_| Box::new(large_stack_frames::LargeStackFrames::new(stack_size_threshold)));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
