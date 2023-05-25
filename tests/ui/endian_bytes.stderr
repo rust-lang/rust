@@ -1,1152 +1,1031 @@
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:6:11
+error: usage of the method `to_ne_bytes`
+  --> $DIR/endian_bytes.rs:7:9
    |
-LL |   fn host() {
-   |  ___________^
-LL | |     2u8.to_ne_bytes();
-LL | |     2i8.to_ne_bytes();
-LL | |     2u16.to_ne_bytes();
-...  |
-LL | |     f64::from_ne_bytes(todo!());
-LL | | }
-   | |_^
+LL |         2u8.to_ne_bytes();
+   |         ^^^^^^^^^^^^^^^^^
+...
+LL | fn host() { fn_body!(); }
+   |             ---------- in this macro invocation
    |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).202), kind: Block(Block { stmts: [Stmt { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).4), kind: Semi(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).1), kind: MethodCall(PathSegment { ident: to_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).2), res: Err, args: None, infer_args: true }, Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).3), kind: Lit(Spanned { node: Int(2, Unsigned(U8)), span: $DIR/endian_bytes.rs:7:5: 7:8 (#0) }), span: $DIR/endian_bytes.rs:7:5: 7:8 (#0) }, [], $DIR/endian_bytes.rs:7:9: 7:22 (#0)), span: $DIR/endian_bytes.rs:7:5: 7:22 (#0) }), span: $DIR/endian_bytes.rs:7:5: 7:23 (#0) }, Stmt { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).8), kind: Semi(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).5), kind: MethodCall(PathSegment { ident: to_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).6), res: Err, args: None, infer_args: true }, Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).7), kind: Lit(Spanned { node: Int(2, Signed(I8)), span: $DIR/endian_bytes.rs:8:5: 8:8 (#0) }), span: $DIR/endian_bytes.rs:8:5: 8:8 (#0) }, [], $DIR/endian_bytes.rs:8:9: 8:22 (#0)), span: $DIR/endian_bytes.rs:8:5: 8:22 (#0) }), span: $DIR/endian_bytes.rs:8:5: 8:23 (#0) }, Stmt { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).12), kind: Semi(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).9), kind: MethodCall(PathSegment { ident: to_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).10), res: Err, args: None, infer_args: true }, Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).11), kind: Lit(Spanned { node: Int(2, Unsigned(U16)), span: $DIR/endian_bytes.rs:9:5: 9:9 (#0) }), span: $DIR/endian_bytes.rs:9:5: 9:9 (#0) }, [], $DIR/endian_bytes.rs:9:10: 9:23 (#0)), span: $DIR/endian_bytes.rs:9:5: 9:23 (#0) }), span: $DIR/endian_bytes.rs:9:5: 9:24 (#0) }, Stmt { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).16), kind: Semi(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).13), kind: MethodCall(PathSegment { ident: to_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).14), res: Err, args: None, infer_args: true }, Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).15), kind: Lit(Spanned { node: Int(2, Signed(I16)), span: $DIR/endian_bytes.rs:10:5: 10:9 (#0) }), span: $DIR/endian_bytes.rs:10:5: 10:9 (#0) }, [], $DIR/endian_bytes.rs:10:10: 10:23 (#0)), span: $DIR/endian_bytes.rs:10:5: 10:23 (#0) }), span: $DIR/endian_bytes.rs:10:5: 10:24 (#0) }, Stmt { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).20), kind: Semi(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).17), kind: MethodCall(PathSegment { ident: to_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).18), res: Err, args: None, infer_args: true }, Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).19), kind: Lit(Spanned { node: Int(2, Unsigned(U32)), span: $DIR/endian_bytes.rs:11:5: 11:9 (#0) }), span: $DIR/endian_bytes.rs:11:5: 11:9 (#0) }, [], $DIR/endian_bytes.rs:11:10: 11:23 (#0)), span: $DIR/endian_bytes.rs:11:5: 11:23 (#0) }), span: $DIR/endian_bytes.rs:11:5: 11:24 (#0) }, Stmt { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).24), kind: Semi(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).21), kind: MethodCall(PathSegment { ident: to_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).22), res: Err, args: None, infer_args: true }, Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).23), kind: Lit(Spanned { node: Int(2, Signed(I32)), span: $DIR/endian_bytes.rs:12:5: 12:9 (#0) }), span: $DIR/endian_bytes.rs:12:5: 12:9 (#0) }, [], $DIR/endian_bytes.rs:12:10: 12:23 (#0)), span: $DIR/endian_bytes.rs:12:5: 12:23 (#0) }), span: $DIR/endian_bytes.rs:12:5: 12:24 (#0) }, Stmt { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).28), kind: Semi(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).25), kind: MethodCall(PathSegment { ident: to_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).26), res: Err, args: None, infer_args: true }, Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).27), kind: Lit(Spanned { node: Int(2, Unsigned(U64)), span: $DIR/endian_bytes.rs:13:5: 13:9 (#0) }), span: $DIR/endian_bytes.rs:13:5: 13:9 (#0) }, [], $DIR/endian_bytes.rs:13:10: 13:23 (#0)), span: $DIR/endian_bytes.rs:13:5: 13:23 (#0) }), span: $DIR/endian_bytes.rs:13:5: 13:24 (#0) }, Stmt { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).32), kind: Semi(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).29), kind: MethodCall(PathSegment { ident: to_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).30), res: Err, args: None, infer_args: true }, Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).31), kind: Lit(Spanned { node: Int(2, Signed(I64)), span: $DIR/endian_bytes.rs:14:5: 14:9 (#0) }), span: $DIR/endian_bytes.rs:14:5: 14:9 (#0) }, [], $DIR/endian_bytes.rs:14:10: 14:23 (#0)), span: $DIR/endian_bytes.rs:14:5: 14:23 (#0) }), span: $DIR/endian_bytes.rs:14:5: 14:24 (#0) }, Stmt { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).36), kind: Semi(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).33), kind: MethodCall(PathSegment { ident: to_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).34), res: Err, args: None, infer_args: true }, Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).35), kind: Lit(Spanned { node: Int(2, Unsigned(U128)), span: $DIR/endian_bytes.rs:15:5: 15:10 (#0) }), span: $DIR/endian_bytes.rs:15:5: 15:10 (#0) }, [], $DIR/endian_bytes.rs:15:11: 15:24 (#0)), span: $DIR/endian_bytes.rs:15:5: 15:24 (#0) }), span: $DIR/endian_bytes.rs:15:5: 15:25 (#0) }, Stmt { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).40), kind: Semi(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).37), kind: MethodCall(PathSegment { ident: to_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).38), res: Err, args: None, infer_args: true }, Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).39), kind: Lit(Spanned { node: Int(2, Signed(I128)), span: $DIR/endian_bytes.rs:16:5: 16:10 (#0) }), span: $DIR/endian_bytes.rs:16:5: 16:10 (#0) }, [], $DIR/endian_bytes.rs:16:11: 16:24 (#0)), span: $DIR/endian_bytes.rs:16:5: 16:24 (#0) }), span: $DIR/endian_bytes.rs:16:5: 16:25 (#0) }, Stmt { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).44), kind: Semi(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).41), kind: MethodCall(PathSegment { ident: to_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).42), res: Err, args: None, infer_args: true }, Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).43), kind: Lit(Spanned { node: Int(2, Unsigned(Usize)), span: $DIR/endian_bytes.rs:17:5: 17:11 (#0) }), span: $DIR/endian_bytes.rs:17:5: 17:11 (#0) }, [], $DIR/endian_bytes.rs:17:12: 17:25 (#0)), span: $DIR/endian_bytes.rs:17:5: 17:25 (#0) }), span: $DIR/endian_bytes.rs:17:5: 17:26 (#0) }, Stmt { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).48), kind: Semi(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).45), kind: MethodCall(PathSegment { ident: to_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).46), res: Err, args: None, infer_args: true }, Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).47), kind: Lit(Spanned { node: Int(2, Signed(Isize)), span: $DIR/endian_bytes.rs:18:5: 18:11 (#0) }), span: $DIR/endian_bytes.rs:18:5: 18:11 (#0) }, [], $DIR/endian_bytes.rs:18:12: 18:25 (#0)), span: $DIR/endian_bytes.rs:18:5: 18:25 (#0) }), span: $DIR/endian_bytes.rs:18:5: 18:26 (#0) }, Stmt { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).52), kind: Semi(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).49), kind: MethodCall(PathSegment { ident: to_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).50), res: Err, args: None, infer_args: true }, Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).51), kind: Lit(Spanned { node: Float("2.0", Suffixed(F32)), span: $DIR/endian_bytes.rs:19:5: 19:11 (#0) }), span: $DIR/endian_bytes.rs:19:5: 19:11 (#0) }, [], $DIR/endian_bytes.rs:19:12: 19:25 (#0)), span: $DIR/endian_bytes.rs:19:5: 19:25 (#0) }), span: $DIR/endian_bytes.rs:19:5: 19:26 (#0) }, Stmt { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).56), kind: Semi(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).53), kind: MethodCall(PathSegment { ident: to_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).54), res: Err, args: None, infer_args: true }, Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).55), kind: Lit(Spanned { node: Float("2.0", Suffixed(F64)), span: $DIR/endian_bytes.rs:20:5: 20:11 (#0) }), span: $DIR/endian_bytes.rs:20:5: 20:11 (#0) }, [], $DIR/endian_bytes.rs:20:12: 20:25 (#0)), span: $DIR/endian_bytes.rs:20:5: 20:25 (#0) }), span: $DIR/endian_bytes.rs:20:5: 20:26 (#0) }, Stmt { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).68), kind: Semi(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).57), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).58), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).60), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:21:5: 21:7 (#0), res: PrimTy(Uint(U8)), segments: [PathSegment { ident: u8#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).59), res: PrimTy(Uint(U8)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:21:5: 21:7 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).61), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:21:5: 21:22 (#0) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).62), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).63), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#4), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#4, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).64), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#4, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).65), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#4, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).66), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#4) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).67), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#4) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#4) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#4) }]), span: $DIR/endian_bytes.rs:21:5: 21:31 (#0) }), span: $DIR/endian_bytes.rs:21:5: 21:32 (#0) }, Stmt { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).80), kind: Semi(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).69), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).70), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).72), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:22:5: 22:7 (#0), res: PrimTy(Int(I8)), segments: [PathSegment { ident: i8#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).71), res: PrimTy(Int(I8)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:22:5: 22:7 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).73), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:22:5: 22:22 (#0) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).74), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).75), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#5), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#5, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).76), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#5, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).77), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#5, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).78), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#5) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).79), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#5) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#5) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#5) }]), span: $DIR/endian_bytes.rs:22:5: 22:31 (#0) }), span: $DIR/endian_bytes.rs:22:5: 22:32 (#0) }, Stmt { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).92), kind: Semi(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).81), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).82), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).84), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:23:5: 23:8 (#0), res: PrimTy(Uint(U16)), segments: [PathSegment { ident: u16#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).83), res: PrimTy(Uint(U16)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:23:5: 23:8 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).85), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:23:5: 23:23 (#0) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).86), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).87), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#6), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#6, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).88), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#6, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).89), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#6, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).90), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#6) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).91), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#6) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#6) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#6) }]), span: $DIR/endian_bytes.rs:23:5: 23:32 (#0) }), span: $DIR/endian_bytes.rs:23:5: 23:33 (#0) }, Stmt { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).104), kind: Semi(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).93), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).94), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).96), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:24:5: 24:8 (#0), res: PrimTy(Int(I16)), segments: [PathSegment { ident: i16#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).95), res: PrimTy(Int(I16)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:24:5: 24:8 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).97), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:24:5: 24:23 (#0) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).98), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).99), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#7), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#7, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).100), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#7, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).101), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#7, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).102), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#7) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).103), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#7) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#7) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#7) }]), span: $DIR/endian_bytes.rs:24:5: 24:32 (#0) }), span: $DIR/endian_bytes.rs:24:5: 24:33 (#0) }, Stmt { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).116), kind: Semi(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).105), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).106), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).108), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:25:5: 25:8 (#0), res: PrimTy(Uint(U32)), segments: [PathSegment { ident: u32#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).107), res: PrimTy(Uint(U32)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:25:5: 25:8 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).109), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:25:5: 25:23 (#0) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).110), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).111), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#8), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#8, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).112), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#8, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).113), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#8, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).114), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#8) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).115), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#8) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#8) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#8) }]), span: $DIR/endian_bytes.rs:25:5: 25:32 (#0) }), span: $DIR/endian_bytes.rs:25:5: 25:33 (#0) }, Stmt { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).128), kind: Semi(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).117), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).118), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).120), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:26:5: 26:8 (#0), res: PrimTy(Int(I32)), segments: [PathSegment { ident: i32#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).119), res: PrimTy(Int(I32)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:26:5: 26:8 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).121), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:26:5: 26:23 (#0) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).122), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).123), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#9), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#9, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).124), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#9, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).125), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#9, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).126), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#9) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).127), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#9) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#9) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#9) }]), span: $DIR/endian_bytes.rs:26:5: 26:32 (#0) }), span: $DIR/endian_bytes.rs:26:5: 26:33 (#0) }, Stmt { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).140), kind: Semi(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).129), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).130), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).132), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:27:5: 27:8 (#0), res: PrimTy(Uint(U64)), segments: [PathSegment { ident: u64#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).131), res: PrimTy(Uint(U64)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:27:5: 27:8 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).133), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:27:5: 27:23 (#0) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).134), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).135), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#10), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#10, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).136), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#10, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).137), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#10, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).138), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#10) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).139), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#10) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#10) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#10) }]), span: $DIR/endian_bytes.rs:27:5: 27:32 (#0) }), span: $DIR/endian_bytes.rs:27:5: 27:33 (#0) }, Stmt { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).152), kind: Semi(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).141), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).142), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).144), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:28:5: 28:8 (#0), res: PrimTy(Int(I64)), segments: [PathSegment { ident: i64#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).143), res: PrimTy(Int(I64)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:28:5: 28:8 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).145), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:28:5: 28:23 (#0) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).146), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).147), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#11), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#11, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).148), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#11, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).149), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#11, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).150), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#11) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).151), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#11) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#11) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#11) }]), span: $DIR/endian_bytes.rs:28:5: 28:32 (#0) }), span: $DIR/endian_bytes.rs:28:5: 28:33 (#0) }, Stmt { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).164), kind: Semi(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).153), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).154), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).156), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:29:5: 29:9 (#0), res: PrimTy(Uint(U128)), segments: [PathSegment { ident: u128#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).155), res: PrimTy(Uint(U128)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:29:5: 29:9 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).157), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:29:5: 29:24 (#0) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).158), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).159), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#12), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#12, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).160), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#12, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).161), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#12, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).162), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#12) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).163), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#12) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#12) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#12) }]), span: $DIR/endian_bytes.rs:29:5: 29:33 (#0) }), span: $DIR/endian_bytes.rs:29:5: 29:34 (#0) }, Stmt { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).176), kind: Semi(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).165), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).166), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).168), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:30:5: 30:9 (#0), res: PrimTy(Int(I128)), segments: [PathSegment { ident: i128#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).167), res: PrimTy(Int(I128)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:30:5: 30:9 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).169), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:30:5: 30:24 (#0) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).170), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).171), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#13), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#13, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).172), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#13, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).173), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#13, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).174), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#13) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).175), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#13) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#13) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#13) }]), span: $DIR/endian_bytes.rs:30:5: 30:33 (#0) }), span: $DIR/endian_bytes.rs:30:5: 30:34 (#0) }, Stmt { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).188), kind: Semi(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).177), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).178), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).180), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:31:5: 31:8 (#0), res: PrimTy(Float(F32)), segments: [PathSegment { ident: f32#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).179), res: PrimTy(Float(F32)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:31:5: 31:8 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).181), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:31:5: 31:23 (#0) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).182), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).183), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#14), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#14, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).184), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#14, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).185), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#14, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).186), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#14) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).187), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#14) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#14) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#14) }]), span: $DIR/endian_bytes.rs:31:5: 31:32 (#0) }), span: $DIR/endian_bytes.rs:31:5: 31:33 (#0) }, Stmt { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).200), kind: Semi(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).189), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).190), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).192), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:32:5: 32:8 (#0), res: PrimTy(Float(F64)), segments: [PathSegment { ident: f64#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).191), res: PrimTy(Float(F64)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:32:5: 32:8 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).193), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:32:5: 32:23 (#0) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).194), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).195), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#15), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#15, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).196), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#15, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).197), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#15, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).198), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#15) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).199), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#15) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#15) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#15) }]), span: $DIR/endian_bytes.rs:32:5: 32:32 (#0) }), span: $DIR/endian_bytes.rs:32:5: 32:33 (#0) }], expr: None, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).201), rules: DefaultBlock, span: $DIR/endian_bytes.rs:6:11: 33:2 (#0), targeted_by_break: false }, None), span: $DIR/endian_bytes.rs:6:11: 33:2 (#0) }
+   = help: specify the desired endianness explicitly
    = note: `-D clippy::host-endian-bytes` implied by `-D warnings`
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `to_ne_bytes`
-  --> $DIR/endian_bytes.rs:7:5
+error: usage of the method `to_ne_bytes`
+  --> $DIR/endian_bytes.rs:8:9
    |
-LL |     2u8.to_ne_bytes();
-   |     ^^^^^^^^^^^^^^^^^
+LL |         2i8.to_ne_bytes();
+   |         ^^^^^^^^^^^^^^^^^
+...
+LL | fn host() { fn_body!(); }
+   |             ---------- in this macro invocation
    |
-   = help: consider specifying the desired endianness
+   = help: specify the desired endianness explicitly
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:7:5
+error: usage of the method `to_ne_bytes`
+  --> $DIR/endian_bytes.rs:9:9
    |
-LL |     2u8.to_ne_bytes();
-   |     ^^^
+LL |         2u16.to_ne_bytes();
+   |         ^^^^^^^^^^^^^^^^^^
+...
+LL | fn host() { fn_body!(); }
+   |             ---------- in this macro invocation
    |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).3), kind: Lit(Spanned { node: Int(2, Unsigned(U8)), span: $DIR/endian_bytes.rs:7:5: 7:8 (#0) }), span: $DIR/endian_bytes.rs:7:5: 7:8 (#0) }
+   = help: specify the desired endianness explicitly
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `to_ne_bytes`
-  --> $DIR/endian_bytes.rs:8:5
+error: usage of the method `to_ne_bytes`
+  --> $DIR/endian_bytes.rs:10:9
    |
-LL |     2i8.to_ne_bytes();
-   |     ^^^^^^^^^^^^^^^^^
+LL |         2i16.to_ne_bytes();
+   |         ^^^^^^^^^^^^^^^^^^
+...
+LL | fn host() { fn_body!(); }
+   |             ---------- in this macro invocation
    |
-   = help: consider specifying the desired endianness
+   = help: specify the desired endianness explicitly
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:8:5
+error: usage of the method `to_ne_bytes`
+  --> $DIR/endian_bytes.rs:11:9
    |
-LL |     2i8.to_ne_bytes();
-   |     ^^^
+LL |         2u32.to_ne_bytes();
+   |         ^^^^^^^^^^^^^^^^^^
+...
+LL | fn host() { fn_body!(); }
+   |             ---------- in this macro invocation
    |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).7), kind: Lit(Spanned { node: Int(2, Signed(I8)), span: $DIR/endian_bytes.rs:8:5: 8:8 (#0) }), span: $DIR/endian_bytes.rs:8:5: 8:8 (#0) }
+   = help: specify the desired endianness explicitly
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `to_ne_bytes`
-  --> $DIR/endian_bytes.rs:9:5
+error: usage of the method `to_ne_bytes`
+  --> $DIR/endian_bytes.rs:12:9
    |
-LL |     2u16.to_ne_bytes();
-   |     ^^^^^^^^^^^^^^^^^^
+LL |         2i32.to_ne_bytes();
+   |         ^^^^^^^^^^^^^^^^^^
+...
+LL | fn host() { fn_body!(); }
+   |             ---------- in this macro invocation
    |
-   = help: consider specifying the desired endianness
+   = help: specify the desired endianness explicitly
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:9:5
+error: usage of the method `to_ne_bytes`
+  --> $DIR/endian_bytes.rs:13:9
    |
-LL |     2u16.to_ne_bytes();
-   |     ^^^^
+LL |         2u64.to_ne_bytes();
+   |         ^^^^^^^^^^^^^^^^^^
+...
+LL | fn host() { fn_body!(); }
+   |             ---------- in this macro invocation
    |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).11), kind: Lit(Spanned { node: Int(2, Unsigned(U16)), span: $DIR/endian_bytes.rs:9:5: 9:9 (#0) }), span: $DIR/endian_bytes.rs:9:5: 9:9 (#0) }
+   = help: specify the desired endianness explicitly
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `to_ne_bytes`
-  --> $DIR/endian_bytes.rs:10:5
+error: usage of the method `to_ne_bytes`
+  --> $DIR/endian_bytes.rs:14:9
    |
-LL |     2i16.to_ne_bytes();
-   |     ^^^^^^^^^^^^^^^^^^
+LL |         2i64.to_ne_bytes();
+   |         ^^^^^^^^^^^^^^^^^^
+...
+LL | fn host() { fn_body!(); }
+   |             ---------- in this macro invocation
    |
-   = help: consider specifying the desired endianness
+   = help: specify the desired endianness explicitly
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:10:5
+error: usage of the method `to_ne_bytes`
+  --> $DIR/endian_bytes.rs:15:9
    |
-LL |     2i16.to_ne_bytes();
-   |     ^^^^
+LL |         2u128.to_ne_bytes();
+   |         ^^^^^^^^^^^^^^^^^^^
+...
+LL | fn host() { fn_body!(); }
+   |             ---------- in this macro invocation
    |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).15), kind: Lit(Spanned { node: Int(2, Signed(I16)), span: $DIR/endian_bytes.rs:10:5: 10:9 (#0) }), span: $DIR/endian_bytes.rs:10:5: 10:9 (#0) }
+   = help: specify the desired endianness explicitly
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `to_ne_bytes`
-  --> $DIR/endian_bytes.rs:11:5
+error: usage of the method `to_ne_bytes`
+  --> $DIR/endian_bytes.rs:16:9
    |
-LL |     2u32.to_ne_bytes();
-   |     ^^^^^^^^^^^^^^^^^^
+LL |         2i128.to_ne_bytes();
+   |         ^^^^^^^^^^^^^^^^^^^
+...
+LL | fn host() { fn_body!(); }
+   |             ---------- in this macro invocation
    |
-   = help: consider specifying the desired endianness
+   = help: specify the desired endianness explicitly
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:11:5
+error: usage of the method `to_ne_bytes`
+  --> $DIR/endian_bytes.rs:17:9
    |
-LL |     2u32.to_ne_bytes();
-   |     ^^^^
+LL |         2.0f32.to_ne_bytes();
+   |         ^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn host() { fn_body!(); }
+   |             ---------- in this macro invocation
    |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).19), kind: Lit(Spanned { node: Int(2, Unsigned(U32)), span: $DIR/endian_bytes.rs:11:5: 11:9 (#0) }), span: $DIR/endian_bytes.rs:11:5: 11:9 (#0) }
+   = help: specify the desired endianness explicitly
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `to_ne_bytes`
-  --> $DIR/endian_bytes.rs:12:5
+error: usage of the method `to_ne_bytes`
+  --> $DIR/endian_bytes.rs:18:9
    |
-LL |     2i32.to_ne_bytes();
-   |     ^^^^^^^^^^^^^^^^^^
+LL |         2.0f64.to_ne_bytes();
+   |         ^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn host() { fn_body!(); }
+   |             ---------- in this macro invocation
    |
-   = help: consider specifying the desired endianness
+   = help: specify the desired endianness explicitly
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:12:5
+error: usage of the method `to_ne_bytes`
+  --> $DIR/endian_bytes.rs:19:9
    |
-LL |     2i32.to_ne_bytes();
-   |     ^^^^
+LL |         2usize.to_ne_bytes();
+   |         ^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn host() { fn_body!(); }
+   |             ---------- in this macro invocation
    |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).23), kind: Lit(Spanned { node: Int(2, Signed(I32)), span: $DIR/endian_bytes.rs:12:5: 12:9 (#0) }), span: $DIR/endian_bytes.rs:12:5: 12:9 (#0) }
+   = help: specify the desired endianness explicitly
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `to_ne_bytes`
-  --> $DIR/endian_bytes.rs:13:5
+error: usage of the method `to_ne_bytes`
+  --> $DIR/endian_bytes.rs:20:9
    |
-LL |     2u64.to_ne_bytes();
-   |     ^^^^^^^^^^^^^^^^^^
+LL |         2isize.to_ne_bytes();
+   |         ^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn host() { fn_body!(); }
+   |             ---------- in this macro invocation
    |
-   = help: consider specifying the desired endianness
+   = help: specify the desired endianness explicitly
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:13:5
+error: usage of the method `from_ne_bytes`
+  --> $DIR/endian_bytes.rs:21:9
    |
-LL |     2u64.to_ne_bytes();
-   |     ^^^^
+LL |         u8::from_ne_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn host() { fn_body!(); }
+   |             ---------- in this macro invocation
    |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).27), kind: Lit(Spanned { node: Int(2, Unsigned(U64)), span: $DIR/endian_bytes.rs:13:5: 13:9 (#0) }), span: $DIR/endian_bytes.rs:13:5: 13:9 (#0) }
+   = help: specify the desired endianness explicitly
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `to_ne_bytes`
-  --> $DIR/endian_bytes.rs:14:5
+error: usage of the method `from_ne_bytes`
+  --> $DIR/endian_bytes.rs:22:9
    |
-LL |     2i64.to_ne_bytes();
-   |     ^^^^^^^^^^^^^^^^^^
+LL |         i8::from_ne_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn host() { fn_body!(); }
+   |             ---------- in this macro invocation
    |
-   = help: consider specifying the desired endianness
+   = help: specify the desired endianness explicitly
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:14:5
+error: usage of the method `from_ne_bytes`
+  --> $DIR/endian_bytes.rs:23:9
    |
-LL |     2i64.to_ne_bytes();
-   |     ^^^^
+LL |         u16::from_ne_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn host() { fn_body!(); }
+   |             ---------- in this macro invocation
    |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).31), kind: Lit(Spanned { node: Int(2, Signed(I64)), span: $DIR/endian_bytes.rs:14:5: 14:9 (#0) }), span: $DIR/endian_bytes.rs:14:5: 14:9 (#0) }
+   = help: specify the desired endianness explicitly
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `to_ne_bytes`
-  --> $DIR/endian_bytes.rs:15:5
+error: usage of the method `from_ne_bytes`
+  --> $DIR/endian_bytes.rs:24:9
    |
-LL |     2u128.to_ne_bytes();
-   |     ^^^^^^^^^^^^^^^^^^^
+LL |         i16::from_ne_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn host() { fn_body!(); }
+   |             ---------- in this macro invocation
    |
-   = help: consider specifying the desired endianness
+   = help: specify the desired endianness explicitly
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:15:5
+error: usage of the method `from_ne_bytes`
+  --> $DIR/endian_bytes.rs:25:9
    |
-LL |     2u128.to_ne_bytes();
-   |     ^^^^^
+LL |         u32::from_ne_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn host() { fn_body!(); }
+   |             ---------- in this macro invocation
    |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).35), kind: Lit(Spanned { node: Int(2, Unsigned(U128)), span: $DIR/endian_bytes.rs:15:5: 15:10 (#0) }), span: $DIR/endian_bytes.rs:15:5: 15:10 (#0) }
+   = help: specify the desired endianness explicitly
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `to_ne_bytes`
-  --> $DIR/endian_bytes.rs:16:5
+error: usage of the method `from_ne_bytes`
+  --> $DIR/endian_bytes.rs:26:9
    |
-LL |     2i128.to_ne_bytes();
-   |     ^^^^^^^^^^^^^^^^^^^
+LL |         i32::from_ne_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn host() { fn_body!(); }
+   |             ---------- in this macro invocation
    |
-   = help: consider specifying the desired endianness
+   = help: specify the desired endianness explicitly
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:16:5
+error: usage of the method `from_ne_bytes`
+  --> $DIR/endian_bytes.rs:27:9
    |
-LL |     2i128.to_ne_bytes();
-   |     ^^^^^
+LL |         u64::from_ne_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn host() { fn_body!(); }
+   |             ---------- in this macro invocation
    |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).39), kind: Lit(Spanned { node: Int(2, Signed(I128)), span: $DIR/endian_bytes.rs:16:5: 16:10 (#0) }), span: $DIR/endian_bytes.rs:16:5: 16:10 (#0) }
+   = help: specify the desired endianness explicitly
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `to_ne_bytes`
-  --> $DIR/endian_bytes.rs:17:5
+error: usage of the method `from_ne_bytes`
+  --> $DIR/endian_bytes.rs:28:9
    |
-LL |     2usize.to_ne_bytes();
-   |     ^^^^^^^^^^^^^^^^^^^^
+LL |         i64::from_ne_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn host() { fn_body!(); }
+   |             ---------- in this macro invocation
    |
-   = help: consider specifying the desired endianness
+   = help: specify the desired endianness explicitly
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:17:5
+error: usage of the method `from_ne_bytes`
+  --> $DIR/endian_bytes.rs:29:9
    |
-LL |     2usize.to_ne_bytes();
-   |     ^^^^^^
+LL |         u128::from_ne_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn host() { fn_body!(); }
+   |             ---------- in this macro invocation
    |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).43), kind: Lit(Spanned { node: Int(2, Unsigned(Usize)), span: $DIR/endian_bytes.rs:17:5: 17:11 (#0) }), span: $DIR/endian_bytes.rs:17:5: 17:11 (#0) }
+   = help: specify the desired endianness explicitly
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `to_ne_bytes`
-  --> $DIR/endian_bytes.rs:18:5
+error: usage of the method `from_ne_bytes`
+  --> $DIR/endian_bytes.rs:30:9
    |
-LL |     2isize.to_ne_bytes();
-   |     ^^^^^^^^^^^^^^^^^^^^
+LL |         i128::from_ne_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn host() { fn_body!(); }
+   |             ---------- in this macro invocation
    |
-   = help: consider specifying the desired endianness
+   = help: specify the desired endianness explicitly
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:18:5
+error: usage of the method `from_ne_bytes`
+  --> $DIR/endian_bytes.rs:31:9
    |
-LL |     2isize.to_ne_bytes();
-   |     ^^^^^^
+LL |         usize::from_ne_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn host() { fn_body!(); }
+   |             ---------- in this macro invocation
    |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).47), kind: Lit(Spanned { node: Int(2, Signed(Isize)), span: $DIR/endian_bytes.rs:18:5: 18:11 (#0) }), span: $DIR/endian_bytes.rs:18:5: 18:11 (#0) }
+   = help: specify the desired endianness explicitly
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `to_ne_bytes`
-  --> $DIR/endian_bytes.rs:19:5
+error: usage of the method `from_ne_bytes`
+  --> $DIR/endian_bytes.rs:32:9
    |
-LL |     2.0f32.to_ne_bytes();
-   |     ^^^^^^^^^^^^^^^^^^^^
+LL |         isize::from_ne_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn host() { fn_body!(); }
+   |             ---------- in this macro invocation
    |
-   = help: consider specifying the desired endianness
+   = help: specify the desired endianness explicitly
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:19:5
+error: usage of the method `from_ne_bytes`
+  --> $DIR/endian_bytes.rs:33:9
    |
-LL |     2.0f32.to_ne_bytes();
-   |     ^^^^^^
+LL |         f32::from_ne_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn host() { fn_body!(); }
+   |             ---------- in this macro invocation
    |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).51), kind: Lit(Spanned { node: Float("2.0", Suffixed(F32)), span: $DIR/endian_bytes.rs:19:5: 19:11 (#0) }), span: $DIR/endian_bytes.rs:19:5: 19:11 (#0) }
+   = help: specify the desired endianness explicitly
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `to_ne_bytes`
-  --> $DIR/endian_bytes.rs:20:5
+error: usage of the method `from_ne_bytes`
+  --> $DIR/endian_bytes.rs:34:9
    |
-LL |     2.0f64.to_ne_bytes();
-   |     ^^^^^^^^^^^^^^^^^^^^
+LL |         f64::from_ne_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn host() { fn_body!(); }
+   |             ---------- in this macro invocation
    |
-   = help: consider specifying the desired endianness
+   = help: specify the desired endianness explicitly
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:20:5
+error: usage of the method `to_le_bytes`
+  --> $DIR/endian_bytes.rs:36:9
    |
-LL |     2.0f64.to_ne_bytes();
-   |     ^^^^^^
+LL |         2u8.to_le_bytes();
+   |         ^^^^^^^^^^^^^^^^^
+...
+LL | fn little() { fn_body!(); }
+   |               ---------- in this macro invocation
    |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).55), kind: Lit(Spanned { node: Float("2.0", Suffixed(F64)), span: $DIR/endian_bytes.rs:20:5: 20:11 (#0) }), span: $DIR/endian_bytes.rs:20:5: 20:11 (#0) }
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:21:5
-   |
-LL |     u8::from_ne_bytes(todo!());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).57), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).58), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).60), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:21:5: 21:7 (#0), res: PrimTy(Uint(U8)), segments: [PathSegment { ident: u8#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).59), res: PrimTy(Uint(U8)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:21:5: 21:7 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).61), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:21:5: 21:22 (#0) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).62), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).63), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#4), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#4, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).64), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#4, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).65), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#4, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).66), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#4) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).67), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#4) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#4) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#4) }]), span: $DIR/endian_bytes.rs:21:5: 21:31 (#0) }
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:21:5
-   |
-LL |     u8::from_ne_bytes(todo!());
-   |     ^^^^^^^^^^^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).58), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).60), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:21:5: 21:7 (#0), res: PrimTy(Uint(U8)), segments: [PathSegment { ident: u8#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).59), res: PrimTy(Uint(U8)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:21:5: 21:7 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).61), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:21:5: 21:22 (#0) }
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:21:23
-   |
-LL |     u8::from_ne_bytes(todo!());
-   |                       ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).62), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).63), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#4), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#4, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).64), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#4, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).65), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#4, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).66), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#4) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).67), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#4) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#4) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#4) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:21:23
-   |
-LL |     u8::from_ne_bytes(todo!());
-   |                       ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).63), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#4), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#4, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).64), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#4, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).65), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#4, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).66), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#4) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:21:23
-   |
-LL |     u8::from_ne_bytes(todo!());
-   |                       ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).67), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#4) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#4) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:22:5
-   |
-LL |     i8::from_ne_bytes(todo!());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).69), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).70), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).72), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:22:5: 22:7 (#0), res: PrimTy(Int(I8)), segments: [PathSegment { ident: i8#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).71), res: PrimTy(Int(I8)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:22:5: 22:7 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).73), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:22:5: 22:22 (#0) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).74), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).75), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#5), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#5, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).76), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#5, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).77), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#5, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).78), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#5) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).79), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#5) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#5) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#5) }]), span: $DIR/endian_bytes.rs:22:5: 22:31 (#0) }
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:22:5
-   |
-LL |     i8::from_ne_bytes(todo!());
-   |     ^^^^^^^^^^^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).70), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).72), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:22:5: 22:7 (#0), res: PrimTy(Int(I8)), segments: [PathSegment { ident: i8#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).71), res: PrimTy(Int(I8)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:22:5: 22:7 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).73), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:22:5: 22:22 (#0) }
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:22:23
-   |
-LL |     i8::from_ne_bytes(todo!());
-   |                       ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).74), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).75), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#5), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#5, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).76), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#5, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).77), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#5, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).78), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#5) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).79), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#5) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#5) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#5) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:22:23
-   |
-LL |     i8::from_ne_bytes(todo!());
-   |                       ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).75), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#5), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#5, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).76), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#5, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).77), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#5, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).78), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#5) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:22:23
-   |
-LL |     i8::from_ne_bytes(todo!());
-   |                       ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).79), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#5) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#5) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:23:5
-   |
-LL |     u16::from_ne_bytes(todo!());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).81), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).82), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).84), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:23:5: 23:8 (#0), res: PrimTy(Uint(U16)), segments: [PathSegment { ident: u16#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).83), res: PrimTy(Uint(U16)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:23:5: 23:8 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).85), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:23:5: 23:23 (#0) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).86), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).87), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#6), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#6, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).88), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#6, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).89), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#6, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).90), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#6) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).91), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#6) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#6) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#6) }]), span: $DIR/endian_bytes.rs:23:5: 23:32 (#0) }
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:23:5
-   |
-LL |     u16::from_ne_bytes(todo!());
-   |     ^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).82), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).84), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:23:5: 23:8 (#0), res: PrimTy(Uint(U16)), segments: [PathSegment { ident: u16#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).83), res: PrimTy(Uint(U16)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:23:5: 23:8 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).85), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:23:5: 23:23 (#0) }
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:23:24
-   |
-LL |     u16::from_ne_bytes(todo!());
-   |                        ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).86), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).87), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#6), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#6, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).88), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#6, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).89), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#6, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).90), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#6) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).91), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#6) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#6) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#6) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:23:24
-   |
-LL |     u16::from_ne_bytes(todo!());
-   |                        ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).87), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#6), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#6, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).88), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#6, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).89), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#6, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).90), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#6) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:23:24
-   |
-LL |     u16::from_ne_bytes(todo!());
-   |                        ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).91), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#6) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#6) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:24:5
-   |
-LL |     i16::from_ne_bytes(todo!());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).93), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).94), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).96), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:24:5: 24:8 (#0), res: PrimTy(Int(I16)), segments: [PathSegment { ident: i16#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).95), res: PrimTy(Int(I16)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:24:5: 24:8 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).97), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:24:5: 24:23 (#0) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).98), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).99), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#7), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#7, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).100), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#7, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).101), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#7, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).102), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#7) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).103), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#7) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#7) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#7) }]), span: $DIR/endian_bytes.rs:24:5: 24:32 (#0) }
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:24:5
-   |
-LL |     i16::from_ne_bytes(todo!());
-   |     ^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).94), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).96), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:24:5: 24:8 (#0), res: PrimTy(Int(I16)), segments: [PathSegment { ident: i16#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).95), res: PrimTy(Int(I16)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:24:5: 24:8 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).97), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:24:5: 24:23 (#0) }
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:24:24
-   |
-LL |     i16::from_ne_bytes(todo!());
-   |                        ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).98), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).99), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#7), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#7, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).100), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#7, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).101), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#7, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).102), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#7) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).103), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#7) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#7) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#7) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:24:24
-   |
-LL |     i16::from_ne_bytes(todo!());
-   |                        ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).99), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#7), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#7, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).100), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#7, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).101), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#7, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).102), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#7) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:24:24
-   |
-LL |     i16::from_ne_bytes(todo!());
-   |                        ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).103), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#7) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#7) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:25:5
-   |
-LL |     u32::from_ne_bytes(todo!());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).105), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).106), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).108), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:25:5: 25:8 (#0), res: PrimTy(Uint(U32)), segments: [PathSegment { ident: u32#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).107), res: PrimTy(Uint(U32)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:25:5: 25:8 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).109), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:25:5: 25:23 (#0) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).110), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).111), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#8), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#8, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).112), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#8, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).113), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#8, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).114), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#8) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).115), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#8) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#8) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#8) }]), span: $DIR/endian_bytes.rs:25:5: 25:32 (#0) }
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:25:5
-   |
-LL |     u32::from_ne_bytes(todo!());
-   |     ^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).106), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).108), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:25:5: 25:8 (#0), res: PrimTy(Uint(U32)), segments: [PathSegment { ident: u32#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).107), res: PrimTy(Uint(U32)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:25:5: 25:8 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).109), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:25:5: 25:23 (#0) }
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:25:24
-   |
-LL |     u32::from_ne_bytes(todo!());
-   |                        ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).110), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).111), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#8), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#8, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).112), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#8, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).113), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#8, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).114), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#8) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).115), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#8) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#8) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#8) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:25:24
-   |
-LL |     u32::from_ne_bytes(todo!());
-   |                        ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).111), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#8), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#8, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).112), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#8, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).113), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#8, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).114), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#8) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:25:24
-   |
-LL |     u32::from_ne_bytes(todo!());
-   |                        ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).115), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#8) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#8) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:26:5
-   |
-LL |     i32::from_ne_bytes(todo!());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).117), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).118), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).120), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:26:5: 26:8 (#0), res: PrimTy(Int(I32)), segments: [PathSegment { ident: i32#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).119), res: PrimTy(Int(I32)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:26:5: 26:8 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).121), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:26:5: 26:23 (#0) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).122), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).123), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#9), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#9, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).124), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#9, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).125), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#9, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).126), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#9) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).127), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#9) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#9) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#9) }]), span: $DIR/endian_bytes.rs:26:5: 26:32 (#0) }
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:26:5
-   |
-LL |     i32::from_ne_bytes(todo!());
-   |     ^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).118), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).120), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:26:5: 26:8 (#0), res: PrimTy(Int(I32)), segments: [PathSegment { ident: i32#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).119), res: PrimTy(Int(I32)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:26:5: 26:8 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).121), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:26:5: 26:23 (#0) }
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:26:24
-   |
-LL |     i32::from_ne_bytes(todo!());
-   |                        ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).122), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).123), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#9), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#9, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).124), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#9, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).125), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#9, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).126), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#9) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).127), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#9) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#9) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#9) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:26:24
-   |
-LL |     i32::from_ne_bytes(todo!());
-   |                        ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).123), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#9), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#9, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).124), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#9, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).125), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#9, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).126), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#9) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:26:24
-   |
-LL |     i32::from_ne_bytes(todo!());
-   |                        ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).127), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#9) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#9) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:27:5
-   |
-LL |     u64::from_ne_bytes(todo!());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).129), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).130), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).132), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:27:5: 27:8 (#0), res: PrimTy(Uint(U64)), segments: [PathSegment { ident: u64#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).131), res: PrimTy(Uint(U64)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:27:5: 27:8 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).133), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:27:5: 27:23 (#0) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).134), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).135), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#10), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#10, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).136), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#10, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).137), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#10, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).138), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#10) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).139), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#10) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#10) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#10) }]), span: $DIR/endian_bytes.rs:27:5: 27:32 (#0) }
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:27:5
-   |
-LL |     u64::from_ne_bytes(todo!());
-   |     ^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).130), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).132), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:27:5: 27:8 (#0), res: PrimTy(Uint(U64)), segments: [PathSegment { ident: u64#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).131), res: PrimTy(Uint(U64)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:27:5: 27:8 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).133), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:27:5: 27:23 (#0) }
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:27:24
-   |
-LL |     u64::from_ne_bytes(todo!());
-   |                        ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).134), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).135), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#10), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#10, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).136), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#10, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).137), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#10, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).138), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#10) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).139), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#10) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#10) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#10) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:27:24
-   |
-LL |     u64::from_ne_bytes(todo!());
-   |                        ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).135), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#10), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#10, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).136), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#10, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).137), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#10, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).138), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#10) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:27:24
-   |
-LL |     u64::from_ne_bytes(todo!());
-   |                        ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).139), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#10) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#10) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:28:5
-   |
-LL |     i64::from_ne_bytes(todo!());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).141), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).142), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).144), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:28:5: 28:8 (#0), res: PrimTy(Int(I64)), segments: [PathSegment { ident: i64#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).143), res: PrimTy(Int(I64)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:28:5: 28:8 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).145), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:28:5: 28:23 (#0) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).146), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).147), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#11), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#11, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).148), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#11, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).149), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#11, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).150), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#11) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).151), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#11) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#11) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#11) }]), span: $DIR/endian_bytes.rs:28:5: 28:32 (#0) }
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:28:5
-   |
-LL |     i64::from_ne_bytes(todo!());
-   |     ^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).142), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).144), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:28:5: 28:8 (#0), res: PrimTy(Int(I64)), segments: [PathSegment { ident: i64#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).143), res: PrimTy(Int(I64)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:28:5: 28:8 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).145), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:28:5: 28:23 (#0) }
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:28:24
-   |
-LL |     i64::from_ne_bytes(todo!());
-   |                        ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).146), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).147), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#11), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#11, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).148), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#11, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).149), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#11, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).150), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#11) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).151), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#11) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#11) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#11) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:28:24
-   |
-LL |     i64::from_ne_bytes(todo!());
-   |                        ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).147), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#11), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#11, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).148), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#11, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).149), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#11, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).150), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#11) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:28:24
-   |
-LL |     i64::from_ne_bytes(todo!());
-   |                        ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).151), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#11) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#11) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:29:5
-   |
-LL |     u128::from_ne_bytes(todo!());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).153), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).154), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).156), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:29:5: 29:9 (#0), res: PrimTy(Uint(U128)), segments: [PathSegment { ident: u128#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).155), res: PrimTy(Uint(U128)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:29:5: 29:9 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).157), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:29:5: 29:24 (#0) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).158), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).159), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#12), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#12, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).160), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#12, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).161), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#12, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).162), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#12) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).163), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#12) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#12) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#12) }]), span: $DIR/endian_bytes.rs:29:5: 29:33 (#0) }
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:29:5
-   |
-LL |     u128::from_ne_bytes(todo!());
-   |     ^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).154), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).156), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:29:5: 29:9 (#0), res: PrimTy(Uint(U128)), segments: [PathSegment { ident: u128#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).155), res: PrimTy(Uint(U128)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:29:5: 29:9 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).157), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:29:5: 29:24 (#0) }
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:29:25
-   |
-LL |     u128::from_ne_bytes(todo!());
-   |                         ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).158), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).159), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#12), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#12, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).160), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#12, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).161), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#12, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).162), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#12) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).163), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#12) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#12) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#12) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:29:25
-   |
-LL |     u128::from_ne_bytes(todo!());
-   |                         ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).159), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#12), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#12, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).160), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#12, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).161), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#12, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).162), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#12) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:29:25
-   |
-LL |     u128::from_ne_bytes(todo!());
-   |                         ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).163), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#12) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#12) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:30:5
-   |
-LL |     i128::from_ne_bytes(todo!());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).165), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).166), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).168), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:30:5: 30:9 (#0), res: PrimTy(Int(I128)), segments: [PathSegment { ident: i128#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).167), res: PrimTy(Int(I128)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:30:5: 30:9 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).169), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:30:5: 30:24 (#0) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).170), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).171), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#13), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#13, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).172), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#13, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).173), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#13, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).174), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#13) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).175), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#13) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#13) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#13) }]), span: $DIR/endian_bytes.rs:30:5: 30:33 (#0) }
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:30:5
-   |
-LL |     i128::from_ne_bytes(todo!());
-   |     ^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).166), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).168), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:30:5: 30:9 (#0), res: PrimTy(Int(I128)), segments: [PathSegment { ident: i128#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).167), res: PrimTy(Int(I128)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:30:5: 30:9 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).169), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:30:5: 30:24 (#0) }
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:30:25
-   |
-LL |     i128::from_ne_bytes(todo!());
-   |                         ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).170), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).171), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#13), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#13, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).172), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#13, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).173), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#13, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).174), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#13) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).175), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#13) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#13) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#13) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:30:25
-   |
-LL |     i128::from_ne_bytes(todo!());
-   |                         ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).171), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#13), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#13, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).172), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#13, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).173), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#13, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).174), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#13) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:30:25
-   |
-LL |     i128::from_ne_bytes(todo!());
-   |                         ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).175), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#13) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#13) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:31:5
-   |
-LL |     f32::from_ne_bytes(todo!());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).177), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).178), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).180), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:31:5: 31:8 (#0), res: PrimTy(Float(F32)), segments: [PathSegment { ident: f32#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).179), res: PrimTy(Float(F32)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:31:5: 31:8 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).181), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:31:5: 31:23 (#0) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).182), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).183), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#14), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#14, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).184), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#14, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).185), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#14, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).186), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#14) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).187), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#14) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#14) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#14) }]), span: $DIR/endian_bytes.rs:31:5: 31:32 (#0) }
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:31:5
-   |
-LL |     f32::from_ne_bytes(todo!());
-   |     ^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).178), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).180), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:31:5: 31:8 (#0), res: PrimTy(Float(F32)), segments: [PathSegment { ident: f32#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).179), res: PrimTy(Float(F32)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:31:5: 31:8 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).181), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:31:5: 31:23 (#0) }
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:31:24
-   |
-LL |     f32::from_ne_bytes(todo!());
-   |                        ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).182), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).183), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#14), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#14, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).184), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#14, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).185), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#14, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).186), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#14) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).187), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#14) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#14) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#14) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:31:24
-   |
-LL |     f32::from_ne_bytes(todo!());
-   |                        ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).183), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#14), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#14, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).184), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#14, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).185), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#14, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).186), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#14) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:31:24
-   |
-LL |     f32::from_ne_bytes(todo!());
-   |                        ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).187), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#14) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#14) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:32:5
-   |
-LL |     f64::from_ne_bytes(todo!());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).189), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).190), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).192), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:32:5: 32:8 (#0), res: PrimTy(Float(F64)), segments: [PathSegment { ident: f64#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).191), res: PrimTy(Float(F64)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:32:5: 32:8 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).193), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:32:5: 32:23 (#0) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).194), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).195), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#15), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#15, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).196), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#15, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).197), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#15, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).198), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#15) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).199), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#15) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#15) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#15) }]), span: $DIR/endian_bytes.rs:32:5: 32:32 (#0) }
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:32:5
-   |
-LL |     f64::from_ne_bytes(todo!());
-   |     ^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).190), kind: Path(TypeRelative(Ty { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).192), kind: Path(Resolved(None, Path { span: $DIR/endian_bytes.rs:32:5: 32:8 (#0), res: PrimTy(Float(F64)), segments: [PathSegment { ident: f64#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).191), res: PrimTy(Float(F64)), args: None, infer_args: true }] })), span: $DIR/endian_bytes.rs:32:5: 32:8 (#0) }, PathSegment { ident: from_ne_bytes#0, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).193), res: Err, args: None, infer_args: true })), span: $DIR/endian_bytes.rs:32:5: 32:23 (#0) }
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:32:24
-   |
-LL |     f64::from_ne_bytes(todo!());
-   |                        ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).194), kind: Call(Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).195), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#15), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#15, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).196), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#15, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).197), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#15, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).198), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#15) }, [Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).199), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#15) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#15) }]), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:56 (#15) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:32:24
-   |
-LL |     f64::from_ne_bytes(todo!());
-   |                        ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).195), kind: Path(Resolved(None, Path { span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#15), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), segments: [PathSegment { ident: $crate#15, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).196), res: Err, args: None, infer_args: true }, PathSegment { ident: panicking#15, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).197), res: Def(Mod, DefId(2:8281 ~ core[690e]::panicking)), args: None, infer_args: true }, PathSegment { ident: panic#15, hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).198), res: Def(Fn, DefId(2:8292 ~ core[690e]::panicking::panic)), args: None, infer_args: true }] })), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:9: 773:33 (#15) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `from_ne_bytes`
-  --> $DIR/endian_bytes.rs:32:24
-   |
-LL |     f64::from_ne_bytes(todo!());
-   |                        ^^^^^^^
-   |
-   = help: consider specifying the desired endianness: Expr { hir_id: HirId(DefId(0:3 ~ endian_bytes[6e38]::host).199), kind: Lit(Spanned { node: Str("not yet implemented", Cooked), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#15) }), span: /home/centri/.rustup/toolchains/nightly-2023-05-05-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:773:34: 773:55 (#15) }
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: use of the method `to_le_bytes`
-  --> $DIR/endian_bytes.rs:37:5
-   |
-LL |     2u8.to_le_bytes();
-   |     ^^^^^^^^^^^^^^^^^
-   |
-   = help: use `to_be_bytes` instead
+   = help: use the native endianness instead
    = note: `-D clippy::little-endian-bytes` implied by `-D warnings`
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `to_le_bytes`
-  --> $DIR/endian_bytes.rs:38:5
+error: usage of the method `to_le_bytes`
+  --> $DIR/endian_bytes.rs:37:9
    |
-LL |     2i8.to_le_bytes();
-   |     ^^^^^^^^^^^^^^^^^
+LL |         2i8.to_le_bytes();
+   |         ^^^^^^^^^^^^^^^^^
+...
+LL | fn little() { fn_body!(); }
+   |               ---------- in this macro invocation
    |
-   = help: use `to_be_bytes` instead
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `to_le_bytes`
-  --> $DIR/endian_bytes.rs:39:5
+error: usage of the method `to_le_bytes`
+  --> $DIR/endian_bytes.rs:38:9
    |
-LL |     2u16.to_le_bytes();
-   |     ^^^^^^^^^^^^^^^^^^
+LL |         2u16.to_le_bytes();
+   |         ^^^^^^^^^^^^^^^^^^
+...
+LL | fn little() { fn_body!(); }
+   |               ---------- in this macro invocation
    |
-   = help: use `to_be_bytes` instead
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `to_le_bytes`
-  --> $DIR/endian_bytes.rs:40:5
+error: usage of the method `to_le_bytes`
+  --> $DIR/endian_bytes.rs:39:9
    |
-LL |     2i16.to_le_bytes();
-   |     ^^^^^^^^^^^^^^^^^^
+LL |         2i16.to_le_bytes();
+   |         ^^^^^^^^^^^^^^^^^^
+...
+LL | fn little() { fn_body!(); }
+   |               ---------- in this macro invocation
    |
-   = help: use `to_be_bytes` instead
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `to_le_bytes`
-  --> $DIR/endian_bytes.rs:41:5
+error: usage of the method `to_le_bytes`
+  --> $DIR/endian_bytes.rs:40:9
    |
-LL |     2u32.to_le_bytes();
-   |     ^^^^^^^^^^^^^^^^^^
+LL |         2u32.to_le_bytes();
+   |         ^^^^^^^^^^^^^^^^^^
+...
+LL | fn little() { fn_body!(); }
+   |               ---------- in this macro invocation
    |
-   = help: use `to_be_bytes` instead
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `to_le_bytes`
-  --> $DIR/endian_bytes.rs:42:5
+error: usage of the method `to_le_bytes`
+  --> $DIR/endian_bytes.rs:41:9
    |
-LL |     2i32.to_le_bytes();
-   |     ^^^^^^^^^^^^^^^^^^
+LL |         2i32.to_le_bytes();
+   |         ^^^^^^^^^^^^^^^^^^
+...
+LL | fn little() { fn_body!(); }
+   |               ---------- in this macro invocation
    |
-   = help: use `to_be_bytes` instead
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `to_le_bytes`
-  --> $DIR/endian_bytes.rs:43:5
+error: usage of the method `to_le_bytes`
+  --> $DIR/endian_bytes.rs:42:9
    |
-LL |     2u64.to_le_bytes();
-   |     ^^^^^^^^^^^^^^^^^^
+LL |         2u64.to_le_bytes();
+   |         ^^^^^^^^^^^^^^^^^^
+...
+LL | fn little() { fn_body!(); }
+   |               ---------- in this macro invocation
    |
-   = help: use `to_be_bytes` instead
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `to_le_bytes`
-  --> $DIR/endian_bytes.rs:44:5
+error: usage of the method `to_le_bytes`
+  --> $DIR/endian_bytes.rs:43:9
    |
-LL |     2i64.to_le_bytes();
-   |     ^^^^^^^^^^^^^^^^^^
+LL |         2i64.to_le_bytes();
+   |         ^^^^^^^^^^^^^^^^^^
+...
+LL | fn little() { fn_body!(); }
+   |               ---------- in this macro invocation
    |
-   = help: use `to_be_bytes` instead
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `to_le_bytes`
-  --> $DIR/endian_bytes.rs:45:5
+error: usage of the method `to_le_bytes`
+  --> $DIR/endian_bytes.rs:44:9
    |
-LL |     2u128.to_le_bytes();
-   |     ^^^^^^^^^^^^^^^^^^^
+LL |         2u128.to_le_bytes();
+   |         ^^^^^^^^^^^^^^^^^^^
+...
+LL | fn little() { fn_body!(); }
+   |               ---------- in this macro invocation
    |
-   = help: use `to_be_bytes` instead
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `to_le_bytes`
-  --> $DIR/endian_bytes.rs:46:5
+error: usage of the method `to_le_bytes`
+  --> $DIR/endian_bytes.rs:45:9
    |
-LL |     2i128.to_le_bytes();
-   |     ^^^^^^^^^^^^^^^^^^^
+LL |         2i128.to_le_bytes();
+   |         ^^^^^^^^^^^^^^^^^^^
+...
+LL | fn little() { fn_body!(); }
+   |               ---------- in this macro invocation
    |
-   = help: use `to_be_bytes` instead
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `to_le_bytes`
-  --> $DIR/endian_bytes.rs:47:5
+error: usage of the method `to_le_bytes`
+  --> $DIR/endian_bytes.rs:46:9
    |
-LL |     2usize.to_le_bytes();
-   |     ^^^^^^^^^^^^^^^^^^^^
+LL |         2.0f32.to_le_bytes();
+   |         ^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn little() { fn_body!(); }
+   |               ---------- in this macro invocation
    |
-   = help: use `to_be_bytes` instead
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `to_le_bytes`
-  --> $DIR/endian_bytes.rs:48:5
+error: usage of the method `to_le_bytes`
+  --> $DIR/endian_bytes.rs:47:9
    |
-LL |     2isize.to_le_bytes();
-   |     ^^^^^^^^^^^^^^^^^^^^
+LL |         2.0f64.to_le_bytes();
+   |         ^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn little() { fn_body!(); }
+   |               ---------- in this macro invocation
    |
-   = help: use `to_be_bytes` instead
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `to_le_bytes`
-  --> $DIR/endian_bytes.rs:49:5
+error: usage of the method `to_le_bytes`
+  --> $DIR/endian_bytes.rs:48:9
    |
-LL |     2.0f32.to_le_bytes();
-   |     ^^^^^^^^^^^^^^^^^^^^
+LL |         2usize.to_le_bytes();
+   |         ^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn little() { fn_body!(); }
+   |               ---------- in this macro invocation
    |
-   = help: use `to_be_bytes` instead
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `to_le_bytes`
-  --> $DIR/endian_bytes.rs:50:5
+error: usage of the method `to_le_bytes`
+  --> $DIR/endian_bytes.rs:49:9
    |
-LL |     2.0f64.to_le_bytes();
-   |     ^^^^^^^^^^^^^^^^^^^^
+LL |         2isize.to_le_bytes();
+   |         ^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn little() { fn_body!(); }
+   |               ---------- in this macro invocation
    |
-   = help: use `to_be_bytes` instead
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `to_be_bytes`
-  --> $DIR/endian_bytes.rs:69:5
+error: usage of the method `from_le_bytes`
+  --> $DIR/endian_bytes.rs:50:9
    |
-LL |     2u8.to_be_bytes();
-   |     ^^^^^^^^^^^^^^^^^
+LL |         u8::from_le_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn little() { fn_body!(); }
+   |               ---------- in this macro invocation
+   |
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `from_le_bytes`
+  --> $DIR/endian_bytes.rs:51:9
+   |
+LL |         i8::from_le_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn little() { fn_body!(); }
+   |               ---------- in this macro invocation
+   |
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `from_le_bytes`
+  --> $DIR/endian_bytes.rs:52:9
+   |
+LL |         u16::from_le_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn little() { fn_body!(); }
+   |               ---------- in this macro invocation
+   |
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `from_le_bytes`
+  --> $DIR/endian_bytes.rs:53:9
+   |
+LL |         i16::from_le_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn little() { fn_body!(); }
+   |               ---------- in this macro invocation
+   |
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `from_le_bytes`
+  --> $DIR/endian_bytes.rs:54:9
+   |
+LL |         u32::from_le_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn little() { fn_body!(); }
+   |               ---------- in this macro invocation
+   |
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `from_le_bytes`
+  --> $DIR/endian_bytes.rs:55:9
+   |
+LL |         i32::from_le_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn little() { fn_body!(); }
+   |               ---------- in this macro invocation
+   |
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `from_le_bytes`
+  --> $DIR/endian_bytes.rs:56:9
+   |
+LL |         u64::from_le_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn little() { fn_body!(); }
+   |               ---------- in this macro invocation
+   |
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `from_le_bytes`
+  --> $DIR/endian_bytes.rs:57:9
+   |
+LL |         i64::from_le_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn little() { fn_body!(); }
+   |               ---------- in this macro invocation
+   |
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `from_le_bytes`
+  --> $DIR/endian_bytes.rs:58:9
+   |
+LL |         u128::from_le_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn little() { fn_body!(); }
+   |               ---------- in this macro invocation
+   |
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `from_le_bytes`
+  --> $DIR/endian_bytes.rs:59:9
+   |
+LL |         i128::from_le_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn little() { fn_body!(); }
+   |               ---------- in this macro invocation
+   |
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `from_le_bytes`
+  --> $DIR/endian_bytes.rs:60:9
+   |
+LL |         usize::from_le_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn little() { fn_body!(); }
+   |               ---------- in this macro invocation
+   |
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `from_le_bytes`
+  --> $DIR/endian_bytes.rs:61:9
+   |
+LL |         isize::from_le_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn little() { fn_body!(); }
+   |               ---------- in this macro invocation
+   |
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `from_le_bytes`
+  --> $DIR/endian_bytes.rs:62:9
+   |
+LL |         f32::from_le_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn little() { fn_body!(); }
+   |               ---------- in this macro invocation
+   |
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `from_le_bytes`
+  --> $DIR/endian_bytes.rs:63:9
+   |
+LL |         f64::from_le_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn little() { fn_body!(); }
+   |               ---------- in this macro invocation
+   |
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `to_ne_bytes`
+  --> $DIR/endian_bytes.rs:70:9
+   |
+LL |         2u8.to_ne_bytes();
+   |         ^^^^^^^^^^^^^^^^^
+...
+LL | fn host_encourage_little() { fn_body_small!(); }
+   |                              ---------------- in this macro invocation
+   |
+   = help: use `to_le_bytes` instead
+   = note: this error originates in the macro `fn_body_small` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `from_ne_bytes`
+  --> $DIR/endian_bytes.rs:71:9
+   |
+LL |         u8::from_ne_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn host_encourage_little() { fn_body_small!(); }
+   |                              ---------------- in this macro invocation
+   |
+   = help: use `from_le_bytes` instead
+   = note: this error originates in the macro `fn_body_small` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `to_be_bytes`
+  --> $DIR/endian_bytes.rs:76:9
+   |
+LL |         2u8.to_be_bytes();
+   |         ^^^^^^^^^^^^^^^^^
+...
+LL | fn host_encourage_little() { fn_body_small!(); }
+   |                              ---------------- in this macro invocation
    |
    = help: use `to_le_bytes` instead
    = note: `-D clippy::big-endian-bytes` implied by `-D warnings`
+   = note: this error originates in the macro `fn_body_small` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `to_be_bytes`
-  --> $DIR/endian_bytes.rs:70:5
+error: usage of the method `from_be_bytes`
+  --> $DIR/endian_bytes.rs:77:9
    |
-LL |     2i8.to_be_bytes();
-   |     ^^^^^^^^^^^^^^^^^
+LL |         u8::from_be_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn host_encourage_little() { fn_body_small!(); }
+   |                              ---------------- in this macro invocation
+   |
+   = help: use `from_le_bytes` instead
+   = note: this error originates in the macro `fn_body_small` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `to_ne_bytes`
+  --> $DIR/endian_bytes.rs:70:9
+   |
+LL |         2u8.to_ne_bytes();
+   |         ^^^^^^^^^^^^^^^^^
+...
+LL | fn host_encourage_big() { fn_body_small!(); }
+   |                           ---------------- in this macro invocation
+   |
+   = help: use `to_be_bytes` instead
+   = note: this error originates in the macro `fn_body_small` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `from_ne_bytes`
+  --> $DIR/endian_bytes.rs:71:9
+   |
+LL |         u8::from_ne_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn host_encourage_big() { fn_body_small!(); }
+   |                           ---------------- in this macro invocation
+   |
+   = help: use `from_be_bytes` instead
+   = note: this error originates in the macro `fn_body_small` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `to_le_bytes`
+  --> $DIR/endian_bytes.rs:73:9
+   |
+LL |         2u8.to_le_bytes();
+   |         ^^^^^^^^^^^^^^^^^
+...
+LL | fn host_encourage_big() { fn_body_small!(); }
+   |                           ---------------- in this macro invocation
+   |
+   = help: use `to_be_bytes` instead
+   = note: this error originates in the macro `fn_body_small` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `from_le_bytes`
+  --> $DIR/endian_bytes.rs:74:9
+   |
+LL |         u8::from_le_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn host_encourage_big() { fn_body_small!(); }
+   |                           ---------------- in this macro invocation
+   |
+   = help: use `from_be_bytes` instead
+   = note: this error originates in the macro `fn_body_small` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `to_ne_bytes`
+  --> $DIR/endian_bytes.rs:70:9
+   |
+LL |         2u8.to_ne_bytes();
+   |         ^^^^^^^^^^^^^^^^^
+...
+LL | fn no_help() { fn_body_small!(); }
+   |                ---------------- in this macro invocation
+   |
+   = note: this error originates in the macro `fn_body_small` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `from_ne_bytes`
+  --> $DIR/endian_bytes.rs:71:9
+   |
+LL |         u8::from_ne_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn no_help() { fn_body_small!(); }
+   |                ---------------- in this macro invocation
+   |
+   = note: this error originates in the macro `fn_body_small` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `to_le_bytes`
+  --> $DIR/endian_bytes.rs:73:9
+   |
+LL |         2u8.to_le_bytes();
+   |         ^^^^^^^^^^^^^^^^^
+...
+LL | fn no_help() { fn_body_small!(); }
+   |                ---------------- in this macro invocation
+   |
+   = note: this error originates in the macro `fn_body_small` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `from_le_bytes`
+  --> $DIR/endian_bytes.rs:74:9
+   |
+LL |         u8::from_le_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn no_help() { fn_body_small!(); }
+   |                ---------------- in this macro invocation
+   |
+   = note: this error originates in the macro `fn_body_small` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `to_be_bytes`
+  --> $DIR/endian_bytes.rs:76:9
+   |
+LL |         2u8.to_be_bytes();
+   |         ^^^^^^^^^^^^^^^^^
+...
+LL | fn no_help() { fn_body_small!(); }
+   |                ---------------- in this macro invocation
+   |
+   = note: this error originates in the macro `fn_body_small` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `from_be_bytes`
+  --> $DIR/endian_bytes.rs:77:9
+   |
+LL |         u8::from_be_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn no_help() { fn_body_small!(); }
+   |                ---------------- in this macro invocation
+   |
+   = note: this error originates in the macro `fn_body_small` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `to_le_bytes`
+  --> $DIR/endian_bytes.rs:73:9
+   |
+LL |         2u8.to_le_bytes();
+   |         ^^^^^^^^^^^^^^^^^
+...
+LL | fn little_encourage_host() { fn_body_small!(); }
+   |                              ---------------- in this macro invocation
+   |
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body_small` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `from_le_bytes`
+  --> $DIR/endian_bytes.rs:74:9
+   |
+LL |         u8::from_le_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn little_encourage_host() { fn_body_small!(); }
+   |                              ---------------- in this macro invocation
+   |
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body_small` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `to_be_bytes`
+  --> $DIR/endian_bytes.rs:76:9
+   |
+LL |         2u8.to_be_bytes();
+   |         ^^^^^^^^^^^^^^^^^
+...
+LL | fn little_encourage_host() { fn_body_small!(); }
+   |                              ---------------- in this macro invocation
+   |
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body_small` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `from_be_bytes`
+  --> $DIR/endian_bytes.rs:77:9
+   |
+LL |         u8::from_be_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn little_encourage_host() { fn_body_small!(); }
+   |                              ---------------- in this macro invocation
+   |
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body_small` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `to_ne_bytes`
+  --> $DIR/endian_bytes.rs:70:9
+   |
+LL |         2u8.to_ne_bytes();
+   |         ^^^^^^^^^^^^^^^^^
+...
+LL | fn little_encourage_big() { fn_body_small!(); }
+   |                             ---------------- in this macro invocation
+   |
+   = help: use `to_be_bytes` instead
+   = note: this error originates in the macro `fn_body_small` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `from_ne_bytes`
+  --> $DIR/endian_bytes.rs:71:9
+   |
+LL |         u8::from_ne_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn little_encourage_big() { fn_body_small!(); }
+   |                             ---------------- in this macro invocation
+   |
+   = help: use `from_be_bytes` instead
+   = note: this error originates in the macro `fn_body_small` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `to_le_bytes`
+  --> $DIR/endian_bytes.rs:73:9
+   |
+LL |         2u8.to_le_bytes();
+   |         ^^^^^^^^^^^^^^^^^
+...
+LL | fn little_encourage_big() { fn_body_small!(); }
+   |                             ---------------- in this macro invocation
+   |
+   = help: use `to_be_bytes` instead
+   = note: this error originates in the macro `fn_body_small` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `from_le_bytes`
+  --> $DIR/endian_bytes.rs:74:9
+   |
+LL |         u8::from_le_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn little_encourage_big() { fn_body_small!(); }
+   |                             ---------------- in this macro invocation
+   |
+   = help: use `from_be_bytes` instead
+   = note: this error originates in the macro `fn_body_small` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `to_le_bytes`
+  --> $DIR/endian_bytes.rs:73:9
+   |
+LL |         2u8.to_le_bytes();
+   |         ^^^^^^^^^^^^^^^^^
+...
+LL | fn big_encourage_host() { fn_body_small!(); }
+   |                           ---------------- in this macro invocation
+   |
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body_small` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `from_le_bytes`
+  --> $DIR/endian_bytes.rs:74:9
+   |
+LL |         u8::from_le_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn big_encourage_host() { fn_body_small!(); }
+   |                           ---------------- in this macro invocation
+   |
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body_small` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `to_be_bytes`
+  --> $DIR/endian_bytes.rs:76:9
+   |
+LL |         2u8.to_be_bytes();
+   |         ^^^^^^^^^^^^^^^^^
+...
+LL | fn big_encourage_host() { fn_body_small!(); }
+   |                           ---------------- in this macro invocation
+   |
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body_small` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `from_be_bytes`
+  --> $DIR/endian_bytes.rs:77:9
+   |
+LL |         u8::from_be_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn big_encourage_host() { fn_body_small!(); }
+   |                           ---------------- in this macro invocation
+   |
+   = help: use the native endianness instead
+   = note: this error originates in the macro `fn_body_small` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `to_ne_bytes`
+  --> $DIR/endian_bytes.rs:70:9
+   |
+LL |         2u8.to_ne_bytes();
+   |         ^^^^^^^^^^^^^^^^^
+...
+LL | fn big_encourage_little() { fn_body_small!(); }
+   |                             ---------------- in this macro invocation
    |
    = help: use `to_le_bytes` instead
+   = note: this error originates in the macro `fn_body_small` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `to_be_bytes`
-  --> $DIR/endian_bytes.rs:71:5
+error: usage of the method `from_ne_bytes`
+  --> $DIR/endian_bytes.rs:71:9
    |
-LL |     2u16.to_be_bytes();
-   |     ^^^^^^^^^^^^^^^^^^
+LL |         u8::from_ne_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn big_encourage_little() { fn_body_small!(); }
+   |                             ---------------- in this macro invocation
+   |
+   = help: use `from_le_bytes` instead
+   = note: this error originates in the macro `fn_body_small` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: usage of the method `to_be_bytes`
+  --> $DIR/endian_bytes.rs:76:9
+   |
+LL |         2u8.to_be_bytes();
+   |         ^^^^^^^^^^^^^^^^^
+...
+LL | fn big_encourage_little() { fn_body_small!(); }
+   |                             ---------------- in this macro invocation
    |
    = help: use `to_le_bytes` instead
+   = note: this error originates in the macro `fn_body_small` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `to_be_bytes`
-  --> $DIR/endian_bytes.rs:72:5
+error: usage of the method `from_be_bytes`
+  --> $DIR/endian_bytes.rs:77:9
    |
-LL |     2i16.to_be_bytes();
-   |     ^^^^^^^^^^^^^^^^^^
+LL |         u8::from_be_bytes(todo!());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn big_encourage_little() { fn_body_small!(); }
+   |                             ---------------- in this macro invocation
    |
-   = help: use `to_le_bytes` instead
+   = help: use `from_le_bytes` instead
+   = note: this error originates in the macro `fn_body_small` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: use of the method `to_be_bytes`
-  --> $DIR/endian_bytes.rs:73:5
-   |
-LL |     2u32.to_be_bytes();
-   |     ^^^^^^^^^^^^^^^^^^
-   |
-   = help: use `to_le_bytes` instead
-
-error: use of the method `to_be_bytes`
-  --> $DIR/endian_bytes.rs:74:5
-   |
-LL |     2i32.to_be_bytes();
-   |     ^^^^^^^^^^^^^^^^^^
-   |
-   = help: use `to_le_bytes` instead
-
-error: use of the method `to_be_bytes`
-  --> $DIR/endian_bytes.rs:75:5
-   |
-LL |     2u64.to_be_bytes();
-   |     ^^^^^^^^^^^^^^^^^^
-   |
-   = help: use `to_le_bytes` instead
-
-error: use of the method `to_be_bytes`
-  --> $DIR/endian_bytes.rs:76:5
-   |
-LL |     2i64.to_be_bytes();
-   |     ^^^^^^^^^^^^^^^^^^
-   |
-   = help: use `to_le_bytes` instead
-
-error: use of the method `to_be_bytes`
-  --> $DIR/endian_bytes.rs:77:5
-   |
-LL |     2u128.to_be_bytes();
-   |     ^^^^^^^^^^^^^^^^^^^
-   |
-   = help: use `to_le_bytes` instead
-
-error: use of the method `to_be_bytes`
-  --> $DIR/endian_bytes.rs:78:5
-   |
-LL |     2i128.to_be_bytes();
-   |     ^^^^^^^^^^^^^^^^^^^
-   |
-   = help: use `to_le_bytes` instead
-
-error: use of the method `to_be_bytes`
-  --> $DIR/endian_bytes.rs:79:5
-   |
-LL |     2.0f32.to_be_bytes();
-   |     ^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: use `to_le_bytes` instead
-
-error: use of the method `to_be_bytes`
-  --> $DIR/endian_bytes.rs:80:5
-   |
-LL |     2.0f64.to_be_bytes();
-   |     ^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: use `to_le_bytes` instead
-
-error: use of the method `to_be_bytes`
-  --> $DIR/endian_bytes.rs:81:5
-   |
-LL |     2usize.to_be_bytes();
-   |     ^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: use `to_le_bytes` instead
-
-error: use of the method `to_be_bytes`
-  --> $DIR/endian_bytes.rs:82:5
-   |
-LL |     2isize.to_be_bytes();
-   |     ^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: use `to_le_bytes` instead
-
-error: use of the method `to_le_bytes`
-  --> $DIR/endian_bytes.rs:102:5
-   |
-LL |     2u8.to_le_bytes();
-   |     ^^^^^^^^^^^^^^^^^
-
-error: use of the method `to_le_bytes`
-  --> $DIR/endian_bytes.rs:103:5
-   |
-LL |     2i8.to_le_bytes();
-   |     ^^^^^^^^^^^^^^^^^
-
-error: use of the method `to_le_bytes`
-  --> $DIR/endian_bytes.rs:104:5
-   |
-LL |     2u16.to_le_bytes();
-   |     ^^^^^^^^^^^^^^^^^^
-
-error: use of the method `to_le_bytes`
-  --> $DIR/endian_bytes.rs:105:5
-   |
-LL |     2i16.to_le_bytes();
-   |     ^^^^^^^^^^^^^^^^^^
-
-error: use of the method `to_le_bytes`
-  --> $DIR/endian_bytes.rs:106:5
-   |
-LL |     2u32.to_le_bytes();
-   |     ^^^^^^^^^^^^^^^^^^
-
-error: use of the method `to_le_bytes`
-  --> $DIR/endian_bytes.rs:107:5
-   |
-LL |     2i32.to_le_bytes();
-   |     ^^^^^^^^^^^^^^^^^^
-
-error: use of the method `to_le_bytes`
-  --> $DIR/endian_bytes.rs:108:5
-   |
-LL |     2u64.to_le_bytes();
-   |     ^^^^^^^^^^^^^^^^^^
-
-error: use of the method `to_le_bytes`
-  --> $DIR/endian_bytes.rs:109:5
-   |
-LL |     2i64.to_le_bytes();
-   |     ^^^^^^^^^^^^^^^^^^
-
-error: use of the method `to_le_bytes`
-  --> $DIR/endian_bytes.rs:110:5
-   |
-LL |     2u128.to_le_bytes();
-   |     ^^^^^^^^^^^^^^^^^^^
-
-error: use of the method `to_le_bytes`
-  --> $DIR/endian_bytes.rs:111:5
-   |
-LL |     2i128.to_le_bytes();
-   |     ^^^^^^^^^^^^^^^^^^^
-
-error: use of the method `to_le_bytes`
-  --> $DIR/endian_bytes.rs:112:5
-   |
-LL |     2usize.to_le_bytes();
-   |     ^^^^^^^^^^^^^^^^^^^^
-
-error: use of the method `to_le_bytes`
-  --> $DIR/endian_bytes.rs:113:5
-   |
-LL |     2isize.to_le_bytes();
-   |     ^^^^^^^^^^^^^^^^^^^^
-
-error: use of the method `to_le_bytes`
-  --> $DIR/endian_bytes.rs:114:5
-   |
-LL |     2.0f32.to_le_bytes();
-   |     ^^^^^^^^^^^^^^^^^^^^
-
-error: use of the method `to_le_bytes`
-  --> $DIR/endian_bytes.rs:115:5
-   |
-LL |     2.0f64.to_le_bytes();
-   |     ^^^^^^^^^^^^^^^^^^^^
-
-error: use of the method `to_be_bytes`
-  --> $DIR/endian_bytes.rs:135:5
-   |
-LL |     2u8.to_be_bytes();
-   |     ^^^^^^^^^^^^^^^^^
-
-error: use of the method `to_be_bytes`
-  --> $DIR/endian_bytes.rs:136:5
-   |
-LL |     2i8.to_be_bytes();
-   |     ^^^^^^^^^^^^^^^^^
-
-error: use of the method `to_be_bytes`
-  --> $DIR/endian_bytes.rs:137:5
-   |
-LL |     2u16.to_be_bytes();
-   |     ^^^^^^^^^^^^^^^^^^
-
-error: use of the method `to_be_bytes`
-  --> $DIR/endian_bytes.rs:138:5
-   |
-LL |     2i16.to_be_bytes();
-   |     ^^^^^^^^^^^^^^^^^^
-
-error: use of the method `to_be_bytes`
-  --> $DIR/endian_bytes.rs:139:5
-   |
-LL |     2u32.to_be_bytes();
-   |     ^^^^^^^^^^^^^^^^^^
-
-error: use of the method `to_be_bytes`
-  --> $DIR/endian_bytes.rs:140:5
-   |
-LL |     2i32.to_be_bytes();
-   |     ^^^^^^^^^^^^^^^^^^
-
-error: use of the method `to_be_bytes`
-  --> $DIR/endian_bytes.rs:141:5
-   |
-LL |     2u64.to_be_bytes();
-   |     ^^^^^^^^^^^^^^^^^^
-
-error: use of the method `to_be_bytes`
-  --> $DIR/endian_bytes.rs:142:5
-   |
-LL |     2i64.to_be_bytes();
-   |     ^^^^^^^^^^^^^^^^^^
-
-error: use of the method `to_be_bytes`
-  --> $DIR/endian_bytes.rs:143:5
-   |
-LL |     2u128.to_be_bytes();
-   |     ^^^^^^^^^^^^^^^^^^^
-
-error: use of the method `to_be_bytes`
-  --> $DIR/endian_bytes.rs:144:5
-   |
-LL |     2i128.to_be_bytes();
-   |     ^^^^^^^^^^^^^^^^^^^
-
-error: use of the method `to_be_bytes`
-  --> $DIR/endian_bytes.rs:145:5
-   |
-LL |     2usize.to_be_bytes();
-   |     ^^^^^^^^^^^^^^^^^^^^
-
-error: use of the method `to_be_bytes`
-  --> $DIR/endian_bytes.rs:146:5
-   |
-LL |     2isize.to_be_bytes();
-   |     ^^^^^^^^^^^^^^^^^^^^
-
-error: use of the method `to_be_bytes`
-  --> $DIR/endian_bytes.rs:147:5
-   |
-LL |     2.0f32.to_be_bytes();
-   |     ^^^^^^^^^^^^^^^^^^^^
-
-error: use of the method `to_be_bytes`
-  --> $DIR/endian_bytes.rs:148:5
-   |
-LL |     2.0f64.to_be_bytes();
-   |     ^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 145 previous errors
+error: aborting due to 86 previous errors
 
