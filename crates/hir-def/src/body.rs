@@ -227,9 +227,8 @@ impl Body {
         });
     }
 
-    pub fn walk_pats(&self, pat_id: PatId, f: &mut impl FnMut(PatId)) {
+    pub fn walk_pats_shallow(&self, pat_id: PatId, mut f: impl FnMut(PatId)) {
         let pat = &self[pat_id];
-        f(pat_id);
         match pat {
             Pat::Range { .. }
             | Pat::Lit(..)
@@ -239,22 +238,27 @@ impl Body {
             | Pat::Missing => {}
             &Pat::Bind { subpat, .. } => {
                 if let Some(subpat) = subpat {
-                    self.walk_pats(subpat, f);
+                    f(subpat);
                 }
             }
             Pat::Or(args) | Pat::Tuple { args, .. } | Pat::TupleStruct { args, .. } => {
-                args.iter().copied().for_each(|p| self.walk_pats(p, f));
+                args.iter().copied().for_each(|p| f(p));
             }
-            Pat::Ref { pat, .. } => self.walk_pats(*pat, f),
+            Pat::Ref { pat, .. } => f(*pat),
             Pat::Slice { prefix, slice, suffix } => {
                 let total_iter = prefix.iter().chain(slice.iter()).chain(suffix.iter());
-                total_iter.copied().for_each(|p| self.walk_pats(p, f));
+                total_iter.copied().for_each(|p| f(p));
             }
             Pat::Record { args, .. } => {
-                args.iter().for_each(|RecordFieldPat { pat, .. }| self.walk_pats(*pat, f));
+                args.iter().for_each(|RecordFieldPat { pat, .. }| f(*pat));
             }
-            Pat::Box { inner } => self.walk_pats(*inner, f),
+            Pat::Box { inner } => f(*inner),
         }
+    }
+
+    pub fn walk_pats(&self, pat_id: PatId, f: &mut impl FnMut(PatId)) {
+        f(pat_id);
+        self.walk_pats_shallow(pat_id, |p| self.walk_pats(p, f));
     }
 }
 

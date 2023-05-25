@@ -353,6 +353,32 @@ fn main() {
     }
 
     #[test]
+    fn match_closure_capture() {
+        check_diagnostics(
+            r#"
+//- minicore: option
+fn main() {
+    let mut v = &mut Some(2);
+      //^^^^^ 💡 weak: variable does not need to be mutable
+    let _ = || match v {
+        Some(k) => {
+            *k = 5;
+        }
+        None => {}
+    };
+    let v = &mut Some(2);
+    let _ = || match v {
+                   //^ 💡 error: cannot mutate immutable variable `v`
+        ref mut k => {
+            *k = &mut Some(5);
+        }
+    };
+}
+"#,
+        );
+    }
+
+    #[test]
     fn match_bindings() {
         check_diagnostics(
             r#"
