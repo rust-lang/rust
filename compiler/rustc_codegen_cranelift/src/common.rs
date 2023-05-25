@@ -413,11 +413,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
 
     // Note: must be kept in sync with get_caller_location from cg_ssa
     pub(crate) fn get_caller_location(&mut self, mut source_info: mir::SourceInfo) -> CValue<'tcx> {
-        let span_to_caller_location = |fx: &mut FunctionCx<'_, '_, 'tcx>, mut span: Span| {
-            // Remove `Inlined` marks as they pollute `expansion_cause`.
-            while span.is_inlined() {
-                span.remove_mark();
-            }
+        let span_to_caller_location = |fx: &mut FunctionCx<'_, '_, 'tcx>, span: Span| {
             let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
             let caller = fx.tcx.sess.source_map().lookup_char_pos(topmost.lo());
             let const_loc = fx.tcx.const_caller_location((
