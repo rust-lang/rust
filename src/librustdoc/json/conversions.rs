@@ -40,7 +40,7 @@ impl JsonRenderer<'_> {
                 (String::from(&**link), id_from_item_default(id.into(), self.tcx))
             })
             .collect();
-        let docs = item.attrs.collapsed_doc_value();
+        let docs = item.opt_doc_value();
         let attrs = item.attributes(self.tcx, true);
         let span = item.span(self.tcx);
         let visibility = item.visibility(self.tcx);

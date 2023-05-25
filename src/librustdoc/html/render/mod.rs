@@ -468,7 +468,8 @@ fn document_short<'a, 'cx: 'a>(
         if !show_def_docs {
             return Ok(());
         }
-        if let Some(s) = item.doc_value() {
+        let s = item.doc_value();
+        if !s.is_empty() {
             let (mut summary_html, has_more_content) =
                 MarkdownSummaryLine(&s, &item.links(cx)).into_string_with_has_more_content();
 
@@ -511,7 +512,7 @@ fn document_full_inner<'a, 'cx: 'a>(
     heading_offset: HeadingOffset,
 ) -> impl fmt::Display + 'a + Captures<'cx> {
     display_fn(move |f| {
-        if let Some(s) = item.collapsed_doc_value() {
+        if let Some(s) = item.opt_doc_value() {
             debug!("Doc block: =====\n{}\n=====", s);
             if is_collapsible {
                 write!(
@@ -1476,7 +1477,7 @@ fn render_impl(
                     if let Some(it) = t.items.iter().find(|i| i.name == item.name) {
                         // We need the stability of the item from the trait
                         // because impls can't have a stability.
-                        if item.doc_value().is_some() {
+                        if !item.doc_value().is_empty() {
                             document_item_info(cx, it, Some(parent))
                                 .render_into(&mut info_buffer)
                                 .unwrap();
@@ -1747,7 +1748,7 @@ fn render_impl(
             write!(w, "</summary>")
         }
 
-        if let Some(ref dox) = i.impl_item.collapsed_doc_value() {
+        if let Some(ref dox) = i.impl_item.opt_doc_value() {
             if trait_.is_none() && i.inner_impl().items.is_empty() {
                 w.write_str(
                     "<div class=\"item-info\">\

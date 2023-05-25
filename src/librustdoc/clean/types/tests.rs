@@ -1,7 +1,5 @@
 use super::*;
 
-use crate::clean::collapse_doc_fragments;
-
 use rustc_resolve::rustdoc::{unindent_doc_fragments, DocFragment, DocFragmentKind};
 use rustc_span::create_default_session_globals_then;
 use rustc_span::source_map::DUMMY_SP;
@@ -22,7 +20,8 @@ fn run_test(input: &str, expected: &str) {
     create_default_session_globals_then(|| {
         let mut s = create_doc_fragment(input);
         unindent_doc_fragments(&mut s);
-        assert_eq!(collapse_doc_fragments(&s), expected);
+        let attrs = Attributes { doc_strings: s, other_attrs: Default::default() };
+        assert_eq!(attrs.doc_value(), expected);
     });
 }
 
