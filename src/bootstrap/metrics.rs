@@ -57,7 +57,7 @@ impl BuildMetrics {
             duration_excluding_children_sec: Duration::ZERO,
 
             children: Vec::new(),
-            tests: Vec::new(),
+            test_suites: Vec::new(),
         });
     }
 
@@ -84,6 +84,17 @@ impl BuildMetrics {
         }
     }
 
+    pub(crate) fn begin_test_suite(&self, metadata: TestSuiteMetadata, builder: &Builder<'_>) {
+        // Do not record dry runs, as they'd be duplicates of the actual steps.
+        if builder.config.dry_run() {
+            return;
+        }
+
+        let mut state = self.state.borrow_mut();
+        let step = state.running_steps.last_mut().unwrap();
+        step.test_suites.push(TestSuite { metadata, tests: Vec::new() });
+    }
+
     pub(crate) fn record_test(&self, name: &str, outcome: TestOutcome, builder: &Builder<'_>) {
         // Do not record dry runs, as they'd be duplicates of the actual steps.
         if builder.config.dry_run() {
@@ -91,12 +102,15 @@ impl BuildMetrics {
         }
 
         let mut state = self.state.borrow_mut();
-        state
-            .running_steps
-            .last_mut()
-            .unwrap()
-            .tests
-            .push(Test { name: name.to_string(), outcome });
+        let step = state.running_steps.last_mut().unwrap();
+
+        if let Some(test_suite) = step.test_suites.last_mut() {
+            test_suite.tests.push(Test { name: name.to_string(), outcome });
+        } else {
+            panic!(
+                "metrics.record_test() called without calling metrics.record_test_suite() first"
+            );
+        }
     }
 
     fn collect_stats(&self, state: &mut MetricsState) {
@@ -159,11 +173,7 @@ impl BuildMetrics {
     fn prepare_json_step(&self, step: StepMetrics) -> JsonNode {
         let mut children = Vec::new();
         children.extend(step.children.into_iter().map(|child| self.prepare_json_step(child)));
-        children.extend(
-            step.tests
-                .into_iter()
-                .map(|test| JsonNode::Test { name: test.name, outcome: test.outcome }),
-        );
+        children.extend(step.test_suites.into_iter().map(|suite| JsonNode::TestSuite(suite)));
 
         JsonNode::RustbuildStep {
             type_: step.type_,
@@ -198,12 +208,7 @@ struct StepMetrics {
     duration_excluding_children_sec: Duration,
 
     children: Vec<StepMetrics>,
-    tests: Vec<Test>,
-}
-
-struct Test {
-    name: String,
-    outcome: TestOutcome,
+    test_suites: Vec<TestSuite>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -237,11 +242,39 @@ enum JsonNode {
 
         children: Vec<JsonNode>,
     },
-    Test {
-        name: String,
-        #[serde(flatten)]
-        outcome: TestOutcome,
+    TestSuite(TestSuite),
+}
+
+#[derive(Serialize, Deserialize)]
+struct TestSuite {
+    metadata: TestSuiteMetadata,
+    tests: Vec<Test>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub(crate) enum TestSuiteMetadata {
+    Crate {
+        crates: Vec<String>,
+        target: String,
+        host: String,
+        stage: u32,
     },
+    Compiletest {
+        suite: String,
+        mode: String,
+        compare_mode: Option<String>,
+        target: String,
+        host: String,
+        stage: u32,
+    },
+}
+
+#[derive(Serialize, Deserialize)]
+pub(crate) struct Test {
+    name: String,
+    #[serde(flatten)]
+    outcome: TestOutcome,
 }
 
 #[derive(Serialize, Deserialize)]
