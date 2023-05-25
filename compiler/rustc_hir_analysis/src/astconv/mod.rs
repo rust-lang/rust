@@ -2625,7 +2625,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     && tcx.all_impls(*trait_def_id)
                         .any(|impl_def_id| {
                             let trait_ref = tcx.impl_trait_ref(impl_def_id);
-                            trait_ref.map_or(false, |trait_ref| {
+                            trait_ref.is_some_and(|trait_ref| {
                                 let impl_ = trait_ref.subst(
                                     tcx,
                                     infcx.fresh_substs_for_item(DUMMY_SP, impl_def_id),
@@ -3654,7 +3654,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             ..
         }) = tcx.hir().get_by_def_id(parent_id) && self_ty.hir_id == impl_self_ty.hir_id
         {
-            if !of_trait_ref.trait_def_id().map_or(false, |def_id| def_id.is_local()) {
+            if !of_trait_ref.trait_def_id().is_some_and(|def_id| def_id.is_local()) {
                 return;
             }
             let of_trait_span = of_trait_ref.path.span;
@@ -3693,7 +3693,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     .source_map()
                     .span_to_prev_source(self_ty.span)
                     .ok()
-                    .map_or(false, |s| s.trim_end().ends_with('<'));
+                    .is_some_and(|s| s.trim_end().ends_with('<'));
 
             let is_global = poly_trait_ref.trait_ref.path.is_global();
 

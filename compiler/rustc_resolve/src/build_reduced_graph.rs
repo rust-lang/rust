@@ -129,7 +129,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     expn_id,
                     self.def_span(def_id),
                     // FIXME: Account for `#[no_implicit_prelude]` attributes.
-                    parent.map_or(false, |module| module.no_implicit_prelude),
+                    parent.is_some_and(|module| module.no_implicit_prelude),
                 ));
             }
         }

@@ -823,8 +823,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 let is_allowed = |feature| {
                     self.active_features.contains(&feature) || span.allows_unstable(feature)
                 };
-                let allowed_by_implication =
-                    implied_by.map(|feature| is_allowed(feature)).unwrap_or(false);
+                let allowed_by_implication = implied_by.is_some_and(|feature| is_allowed(feature));
                 if !is_allowed(feature) && !allowed_by_implication {
                     let lint_buffer = &mut self.lint_buffer;
                     let soft_handler =

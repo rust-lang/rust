@@ -1188,7 +1188,7 @@ impl<'a> Parser<'a> {
                             // `token.kind` should not be compared here.
                             // This is because the `snapshot.token.kind` is treated as the same as
                             // that of the open delim in `TokenTreesReader::parse_token_tree`, even if they are different.
-                            self.span_to_snippet(close_paren).map_or(false, |snippet| snippet == ")")
+                            self.span_to_snippet(close_paren).is_ok_and(|snippet| snippet == ")")
                         {
                             let mut replacement_err = errors::ParenthesesWithStructFields {
                                 span,
@@ -2078,7 +2078,7 @@ impl<'a> Parser<'a> {
                     // Therefore, `token.kind` should not be compared here.
                     if snapshot
                         .span_to_snippet(snapshot.token.span)
-                        .map_or(false, |snippet| snippet == "]") =>
+                        .is_ok_and(|snippet| snippet == "]") =>
                 {
                     return Err(errors::MissingSemicolonBeforeArray {
                         open_delim: open_delim_span,
@@ -2773,7 +2773,7 @@ impl<'a> Parser<'a> {
                 // We might have a `=>` -> `=` or `->` typo (issue #89396).
                 if TokenKind::FatArrow
                     .similar_tokens()
-                    .map_or(false, |similar_tokens| similar_tokens.contains(&this.token.kind))
+                    .is_some_and(|similar_tokens| similar_tokens.contains(&this.token.kind))
                 {
                     err.span_suggestion(
                         this.token.span,
@@ -3059,7 +3059,7 @@ impl<'a> Parser<'a> {
                 }
             };
 
-            let is_shorthand = parsed_field.as_ref().map_or(false, |f| f.is_shorthand);
+            let is_shorthand = parsed_field.as_ref().is_some_and(|f| f.is_shorthand);
             // A shorthand field can be turned into a full field with `:`.
             // We should point this out.
             self.check_or_expected(!is_shorthand, TokenType::Token(token::Colon));

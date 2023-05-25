@@ -585,6 +585,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         self.universal_regions.to_region_vid(r)
     }
 
+    /// Returns an iterator over all the outlives constraints.
+    pub fn outlives_constraints(&self) -> impl Iterator<Item = OutlivesConstraint<'tcx>> + '_ {
+        self.constraints.outlives().iter().copied()
+    }
+
     /// Adds annotations for `#[rustc_regions]`; see `UniversalRegions::annotate`.
     pub(crate) fn annotate(&self, tcx: TyCtxt<'tcx>, err: &mut Diagnostic) {
         self.universal_regions.annotate(tcx, err)
@@ -712,7 +717,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     #[instrument(skip(self, _body), level = "debug")]
     fn propagate_constraints(&mut self, _body: &Body<'tcx>) {
         debug!("constraints={:#?}", {
-            let mut constraints: Vec<_> = self.constraints.outlives().iter().collect();
+            let mut constraints: Vec<_> = self.outlives_constraints().collect();
             constraints.sort_by_key(|c| (c.sup, c.sub));
             constraints
                 .into_iter()

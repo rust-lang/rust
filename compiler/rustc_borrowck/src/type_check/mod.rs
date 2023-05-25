@@ -20,7 +20,7 @@ use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::region_constraints::RegionConstraintData;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{
-    InferCtxt, InferOk, LateBoundRegion, LateBoundRegionConversionTime, NllRegionVariableOrigin,
+    InferCtxt, LateBoundRegion, LateBoundRegionConversionTime, NllRegionVariableOrigin,
 };
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
@@ -211,16 +211,16 @@ pub(crate) fn type_check<'mir, 'tcx>(
                     Locations::All(body.span),
                     ConstraintCategory::OpaqueType,
                     CustomTypeOp::new(
-                        |infcx| {
-                            infcx.register_member_constraints(
+                        |ocx| {
+                            ocx.infcx.register_member_constraints(
                                 param_env,
                                 opaque_type_key,
                                 decl.hidden_type.ty,
                                 decl.hidden_type.span,
                             );
-                            Ok(InferOk { value: (), obligations: vec![] })
+                            Ok(())
                         },
-                        || "opaque_type_map".to_string(),
+                        "opaque_type_map",
                     ),
                 )
                 .unwrap();
@@ -2695,8 +2695,9 @@ impl<'tcx> TypeOp<'tcx> for InstantiateOpaqueType<'tcx> {
     type ErrorInfo = InstantiateOpaqueType<'tcx>;
 
     fn fully_perform(mut self, infcx: &InferCtxt<'tcx>) -> Fallible<TypeOpOutput<'tcx, Self>> {
-        let (mut output, region_constraints) = scrape_region_constraints(infcx, || {
-            Ok(InferOk { value: (), obligations: self.obligations.clone() })
+        let (mut output, region_constraints) = scrape_region_constraints(infcx, |ocx| {
+            ocx.register_obligations(self.obligations.clone());
+            Ok(())
         })?;
         self.region_constraints = Some(region_constraints);
         output.error_info = Some(self);

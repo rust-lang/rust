@@ -420,7 +420,7 @@ fn suggest_restriction<'tcx>(
 ) {
     if hir_generics.where_clause_span.from_expansion()
         || hir_generics.where_clause_span.desugaring_kind().is_some()
-        || projection.map_or(false, |projection| tcx.opt_rpitit_info(projection.def_id).is_some())
+        || projection.is_some_and(|projection| tcx.opt_rpitit_info(projection.def_id).is_some())
     {
         return;
     }
@@ -2936,7 +2936,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                     "note_obligation_cause_code: check for async fn"
                                 );
                                 if is_future
-                                    && obligated_types.last().map_or(false, |ty| match ty.kind() {
+                                    && obligated_types.last().is_some_and(|ty| match ty.kind() {
                                         ty::Generator(last_def_id, ..) => {
                                             tcx.generator_is_async(*last_def_id)
                                         }

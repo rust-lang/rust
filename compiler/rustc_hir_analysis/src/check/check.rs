@@ -800,16 +800,15 @@ fn check_impl_items_against_trait<'tcx>(
 
             let is_implemented = leaf_def
                 .as_ref()
-                .map_or(false, |node_item| node_item.item.defaultness(tcx).has_value());
+                .is_some_and(|node_item| node_item.item.defaultness(tcx).has_value());
 
             if !is_implemented && tcx.impl_defaultness(impl_id).is_final() {
                 missing_items.push(tcx.associated_item(trait_item_id));
             }
 
             // true if this item is specifically implemented in this impl
-            let is_implemented_here = leaf_def
-                .as_ref()
-                .map_or(false, |node_item| !node_item.defining_node.is_from_trait());
+            let is_implemented_here =
+                leaf_def.as_ref().is_some_and(|node_item| !node_item.defining_node.is_from_trait());
 
             if !is_implemented_here {
                 let full_impl_span =
@@ -1082,8 +1081,8 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         let layout = tcx.layout_of(param_env.and(ty));
         // We are currently checking the type this field came from, so it must be local
         let span = tcx.hir().span_if_local(field.did).unwrap();
-        let zst = layout.map_or(false, |layout| layout.is_zst());
-        let align1 = layout.map_or(false, |layout| layout.align.abi.bytes() == 1);
+        let zst = layout.is_ok_and(|layout| layout.is_zst());
+        let align1 = layout.is_ok_and(|layout| layout.align.abi.bytes() == 1);
         if !zst {
             return (span, zst, align1, None);
         }

@@ -125,8 +125,7 @@ impl OutlivesSuggestionBuilder {
                     |(r, _)| {
                         self.constraints_to_add
                             .get(r)
-                            .map(|r_outlived| r_outlived.as_slice().contains(fr))
-                            .unwrap_or(false)
+                            .is_some_and(|r_outlived| r_outlived.as_slice().contains(fr))
                     },
                 );
 

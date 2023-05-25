@@ -699,7 +699,7 @@ impl<'a> Parser<'a> {
                         // ```
                         && self
                             .span_to_snippet(self.prev_token.span)
-                            .map_or(false, |snippet| snippet == "}")
+                            .is_ok_and(|snippet| snippet == "}")
                         && self.token.kind == token::Semi;
                     let mut semicolon_span = self.token.span;
                     if !is_unnecessary_semicolon {

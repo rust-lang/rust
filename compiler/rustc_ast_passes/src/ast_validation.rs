@@ -348,7 +348,7 @@ impl<'a> AstValidator<'a> {
         let source_map = self.session.source_map();
         let end = source_map.end_point(sp);
 
-        if source_map.span_to_snippet(end).map(|s| s == ";").unwrap_or(false) {
+        if source_map.span_to_snippet(end).is_ok_and(|s| s == ";") {
             end
         } else {
             sp.shrink_to_hi()

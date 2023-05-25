@@ -185,17 +185,25 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
     }
 
     fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
-        self.type_checker
-            .fully_perform_op(
-                self.locations,
-                self.category,
-                InstantiateOpaqueType {
-                    obligations,
-                    // These fields are filled in during execution of the operation
-                    base_universe: None,
-                    region_constraints: None,
-                },
-            )
-            .unwrap();
+        match self.type_checker.fully_perform_op(
+            self.locations,
+            self.category,
+            InstantiateOpaqueType {
+                obligations,
+                // These fields are filled in during execution of the operation
+                base_universe: None,
+                region_constraints: None,
+            },
+        ) {
+            Ok(()) => {}
+            Err(_) => {
+                // It's a bit redundant to delay a bug here, but I'd rather
+                // delay more bugs than accidentally not delay a bug at all.
+                self.type_checker.tcx().sess.delay_span_bug(
+                    self.locations.span(self.type_checker.body),
+                    "errors selecting obligation during MIR typeck",
+                );
+            }
+        };
     }
 }
