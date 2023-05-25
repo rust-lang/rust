@@ -290,25 +290,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             tcx: TyCtxt<'tcx>,
             obligation: &TraitObligation<'tcx>,
             predicate: TraitPredicate<'tcx>,
-            answer: rustc_transmute::Answer<rustc_transmute::layout::rustc::Ref<'tcx>>,
-        ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
+            answer: rustc_transmute::Condition<rustc_transmute::layout::rustc::Ref<'tcx>>,
+        ) -> Vec<PredicateObligation<'tcx>> {
             match answer {
-                Ok(None) => Ok(vec![]),
-                Err(_) => Err(Unimplemented),
                 // FIXME(bryangarza): Add separate `IfAny` case, instead of treating as `IfAll`
                 // Not possible until the trait solver supports disjunctions of obligations
-                Ok(Some(rustc_transmute::Condition::IfAll(answers)))
-                | Ok(Some(rustc_transmute::Condition::IfAny(answers))) => {
+                rustc_transmute::Condition::IfAll(answers)
+                | rustc_transmute::Condition::IfAny(answers) => {
                     let mut nested = vec![];
                     for flattened in answers
                         .into_iter()
                         .map(|answer| flatten_answer_tree(tcx, obligation, predicate, answer))
                     {
-                        nested.extend(flattened?);
+                        nested.extend(flattened);
                     }
-                    Ok(nested)
+                    nested
                 }
-                Ok(Some(rustc_transmute::Condition::IfTransmutable { src, dst })) => {
+                rustc_transmute::Condition::IfTransmutable { src, dst } => {
                     let trait_def_id = obligation.predicate.def_id();
                     let scope = predicate.trait_ref.substs.type_at(2);
                     let assume_const = predicate.trait_ref.substs.const_at(3);
@@ -339,7 +337,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     if dst.mutability == Mutability::Mut {
                         obligations.push(make_obl(dst.ty, src.ty));
                     }
-                    Ok(obligations)
+                    obligations
                 }
             }
         }
@@ -371,8 +369,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             assume,
         );
 
-        let fully_flattened =
-            flatten_answer_tree(self.tcx(), obligation, predicate, maybe_transmutable)?;
+        let fully_flattened = match maybe_transmutable {
+            Err(_) => Err(Unimplemented)?,
+            Ok(Some(mt)) => flatten_answer_tree(self.tcx(), obligation, predicate, mt),
+            Ok(None) => vec![],
+        };
+
         debug!(?fully_flattened);
         Ok(ImplSourceBuiltinData { nested: fully_flattened })
     }

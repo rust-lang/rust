@@ -29,10 +29,10 @@ pub enum Condition<R> {
     IfTransmutable { src: R, dst: R },
 
     /// `Src` is transmutable into `Dst`, if all of the enclosed requirements are met.
-    IfAll(Vec<Answer<R>>),
+    IfAll(Vec<Condition<R>>),
 
     /// `Src` is transmutable into `Dst` if any of the enclosed requirements are met.
-    IfAny(Vec<Answer<R>>),
+    IfAny(Vec<Condition<R>>),
 }
 
 /// Answers: Why wasn't the source type transmutable into the destination type?
@@ -49,7 +49,7 @@ pub enum Reason {
     /// `Dst` is larger than `Src`, and the excess bytes were not exclusively uninitialized.
     DstIsTooBig,
     /// Src should have a stricter alignment than Dst, but it does not.
-    DstHasStricterAlignment,
+    DstHasStricterAlignment { src_min_align: usize, dst_min_align: usize },
     /// Can't go from shared pointer to unique pointer
     DstIsMoreUnique,
 }

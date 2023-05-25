@@ -303,7 +303,10 @@ where
                                         } else if !self.assume.alignment
                                             && src_ref.min_align() < dst_ref.min_align()
                                         {
-                                            Err(Reason::DstHasStricterAlignment)
+                                            Err(Reason::DstHasStricterAlignment {
+                                                src_min_align: src_ref.min_align(),
+                                                dst_min_align: dst_ref.min_align(),
+                                            })
                                         } else {
                                             // ...such that `src` is transmutable into `dst`, if
                                             // `src_ref` is transmutability into `dst_ref`.
@@ -360,13 +363,13 @@ where
             Some(Condition::IfAll(lhs))
         }
         // If only one side is an IfAll, add the other Condition to it
-        (constraint, Some(Condition::IfAll(mut constraints)))
-        | (Some(Condition::IfAll(mut constraints)), constraint) => {
-            constraints.push(Ok(constraint));
-            Some(Condition::IfAll(constraints))
+        (Some(cond), Some(Condition::IfAll(mut conds)))
+        | (Some(Condition::IfAll(mut conds)), Some(cond)) => {
+            conds.push(cond);
+            Some(Condition::IfAll(conds))
         }
         // Otherwise, both lhs and rhs conditions can be combined in a parent IfAll
-        (lhs, rhs) => Some(Condition::IfAll(vec![Ok(lhs), Ok(rhs)])),
+        (Some(lhs), Some(rhs)) => Some(Condition::IfAll(vec![lhs, rhs])),
     })
 }
 
@@ -394,13 +397,13 @@ where
             Some(Condition::IfAny(lhs))
         }
         // If only one side is an IfAny, add the other Condition to it
-        (constraint, Some(Condition::IfAny(mut constraints)))
-        | (Some(Condition::IfAny(mut constraints)), constraint) => {
-            constraints.push(Ok(constraint));
-            Some(Condition::IfAny(constraints))
+        (Some(cond), Some(Condition::IfAny(mut conds)))
+        | (Some(Condition::IfAny(mut conds)), Some(cond)) => {
+            conds.push(cond);
+            Some(Condition::IfAny(conds))
         }
         // Otherwise, both lhs and rhs conditions can be combined in a parent IfAny
-        (lhs, rhs) => Some(Condition::IfAny(vec![Ok(lhs), Ok(rhs)])),
+        (Some(lhs), Some(rhs)) => Some(Condition::IfAny(vec![lhs, rhs])),
     })
 }
 

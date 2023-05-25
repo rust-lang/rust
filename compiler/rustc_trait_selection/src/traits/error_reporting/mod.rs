@@ -2751,8 +2751,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             rustc_transmute::Assume::from_const(self.infcx.tcx, obligation.param_env, trait_ref.substs.const_at(3)) else {
                 span_bug!(span, "Unable to construct rustc_transmute::Assume where it was previously possible");
             };
-        // FIXME(bryangarza): Is this enough, or should we resolve all nested
-        // obligations like we do for `confirm_transmutability_candidate(...)?`
+
         match rustc_transmute::TransmuteTypeEnv::new(self.infcx).is_transmutable(
             obligation.cause,
             src_and_dst,
@@ -2784,10 +2783,12 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     rustc_transmute::Reason::DstIsTooBig => {
                         format!("The size of `{src}` is smaller than the size of `{dst}`")
                     }
-                    // FIXME(bryangarza): Say exactly what the minimum alignments of src and dst are
-                    rustc_transmute::Reason::DstHasStricterAlignment => {
+                    rustc_transmute::Reason::DstHasStricterAlignment {
+                        src_min_align,
+                        dst_min_align,
+                    } => {
                         format!(
-                            "The minimum alignment of `{src}` should be greater than that of `{dst}`, but it is not"
+                            "The minimum alignment of `{src}` ({src_min_align}) should be greater than that of `{dst}` ({dst_min_align})"
                         )
                     }
                     rustc_transmute::Reason::DstIsMoreUnique => {
