@@ -4,6 +4,7 @@ error[E0658]: restrictions are experimental
 LL |     pub mut(self) alpha: u8,
    |         ^^^^^^^^^
    |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
    = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
 
 error: aborting due to previous error

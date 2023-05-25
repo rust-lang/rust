@@ -845,7 +845,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                         }
                         ret_fields.push(field_vis.to_def_id());
 
-                        // TODO(jhpratt) add resolutions for enum variant fields
+                        // FIXME(jhpratt) add resolutions for enum variant fields
                     }
                     let ctor_def_id = self.r.local_def_id(ctor_node_id);
                     let ctor_res =
