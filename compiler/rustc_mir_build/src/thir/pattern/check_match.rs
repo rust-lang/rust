@@ -479,12 +479,30 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
             AdtDefinedHere { adt_def_span, ty, variants }
         };
 
+        // Emit an extra note if the first uncovered witness is
+        // visibly uninhabited anywhere in the current crate.
+        let witness_1_is_privately_uninhabited =
+            if cx.tcx.features().exhaustive_patterns
+                && let Some(witness_1) = witnesses.get(0)
+                && let ty::Adt(adt, substs) = witness_1.ty().kind()
+                && adt.is_enum()
+                && let Constructor::Variant(variant_index) = witness_1.ctor()
+            {
+                let variant = adt.variant(*variant_index);
+                let inhabited = variant.inhabited_predicate(cx.tcx, *adt).subst(cx.tcx, substs);
+                assert!(inhabited.apply(cx.tcx, cx.param_env, cx.module));
+                !inhabited.apply_ignore_module(cx.tcx, cx.param_env)
+            } else {
+                false
+            };
+
         self.error = Err(self.tcx.sess.emit_err(PatternNotCovered {
             span: pat.span,
             origin,
             uncovered: Uncovered::new(pat.span, &cx, witnesses),
             inform,
             interpreted_as_const,
+            witness_1_is_privately_uninhabited: witness_1_is_privately_uninhabited.then_some(()),
             _p: (),
             pattern_ty,
             let_suggestion,
