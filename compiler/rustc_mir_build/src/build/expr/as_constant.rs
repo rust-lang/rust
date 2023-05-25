@@ -106,7 +106,7 @@ pub fn as_constant_inner<'tcx>(
 }
 
 #[instrument(skip(tcx, lit_input))]
-pub(crate) fn lit_to_mir_constant<'tcx>(
+fn lit_to_mir_constant<'tcx>(
     tcx: TyCtxt<'tcx>,
     lit_input: LitToConstInput<'tcx>,
 ) -> Result<ConstantKind<'tcx>, LitToConstError> {

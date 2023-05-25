@@ -20,7 +20,7 @@ use rustc_index::Idx;
 use rustc_middle::mir::interpret::{
     ConstValue, ErrorHandled, GlobalId, LitToConstError, LitToConstInput, Scalar,
 };
-use rustc_middle::mir::{self, UserTypeProjection};
+use rustc_middle::mir::{self, ConstantKind, UserTypeProjection};
 use rustc_middle::mir::{BorrowKind, Mutability};
 use rustc_middle::thir::{Ascription, BindingMode, FieldPat, LocalVarId, Pat, PatKind, PatRange};
 use rustc_middle::ty::subst::{GenericArg, SubstsRef};
@@ -646,14 +646,10 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         let lit_input =
             LitToConstInput { lit: &lit.node, ty: self.typeck_results.expr_ty(expr), neg };
-        match self
-            .tcx
-            .at(expr.span)
-            .lit_to_const(lit_input)
-            .map(mir::ConstantKind::Ty)
-            .or_else(|_| self.tcx.at(expr.span).lit_to_mir_constant(lit_input))
-        {
-            Ok(constant) => self.const_to_pat(constant, expr.hir_id, lit.span, None).kind,
+        match self.tcx.at(expr.span).lit_to_const(lit_input) {
+            Ok(constant) => {
+                self.const_to_pat(ConstantKind::Ty(constant), expr.hir_id, lit.span, None).kind
+            }
             Err(LitToConstError::Reported(_)) => PatKind::Wild,
             Err(LitToConstError::TypeError) => bug!("lower_lit: had type error"),
         }
