@@ -103,11 +103,14 @@ impl RunConfig<'_> {
     }
 
     /// Return a list of crate names selected by `run.paths`.
+    #[track_caller]
     pub fn cargo_crates_in_set(&self) -> Interned<Vec<String>> {
         let mut crates = Vec::new();
         for krate in &self.paths {
             let path = krate.assert_single_path();
-            let crate_name = self.builder.crate_paths[&path.path];
+            let Some(crate_name) = self.builder.crate_paths.get(&path.path) else {
+                panic!("missing crate for path {}", path.path.display())
+            };
             crates.push(crate_name.to_string());
         }
         INTERNER.intern_list(crates)
