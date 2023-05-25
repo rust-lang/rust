@@ -1,7 +1,9 @@
 use crate::infer::canonical::{Canonical, CanonicalQueryResponse};
-use crate::traits::query::dropck_outlives::{trivial_dropck_outlives, DropckOutlivesResult};
+use crate::traits::query::dropck_outlives::{
+    compute_dropck_outlives_inner, trivial_dropck_outlives,
+};
 use crate::traits::ObligationCtxt;
-use rustc_middle::traits::query::NoSolution;
+use rustc_middle::traits::query::{DropckOutlivesResult, NoSolution};
 use rustc_middle::ty::{ParamEnvAnd, Ty, TyCtxt};
 
 #[derive(Copy, Clone, Debug, HashStable, TypeFoldable, TypeVisitable, Lift)]
@@ -51,9 +53,9 @@ impl<'tcx> super::QueryTypeOp<'tcx> for DropckOutlives<'tcx> {
     }
 
     fn perform_locally_in_new_solver(
-        _ocx: &ObligationCtxt<'_, 'tcx>,
-        _key: ParamEnvAnd<'tcx, Self>,
+        ocx: &ObligationCtxt<'_, 'tcx>,
+        key: ParamEnvAnd<'tcx, Self>,
     ) -> Result<Self::QueryResponse, NoSolution> {
-        todo!()
+        compute_dropck_outlives_inner(ocx, key.param_env.and(key.value.dropped_ty))
     }
 }
