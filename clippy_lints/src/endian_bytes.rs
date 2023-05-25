@@ -30,7 +30,7 @@ declare_clippy_lint! {
     /// Checks for the usage of the `to_le_bytes` method.
     ///
     /// ### Why is this bad?
-    /// It's not, but some may wish to lint usages of this method, either to suggest using the host
+    /// It's not, but some may wish to lint usage of this method, either to suggest using the host
     /// endianness or big endian.
     ///
     /// ### Example
@@ -49,7 +49,7 @@ declare_clippy_lint! {
     /// Checks for the usage of the `to_be_bytes` method.
     ///
     /// ### Why is this bad?
-    /// It's not, but some may wish to lint usages of this method, either to suggest using the host
+    /// It's not, but some may wish to lint usage of this method, either to suggest using the host
     /// endianness or little endian.
     ///
     /// ### Example
