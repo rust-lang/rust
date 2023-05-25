@@ -114,6 +114,7 @@ mod else_if_without_else;
 mod empty_drop;
 mod empty_enum;
 mod empty_structs_with_brackets;
+mod endian_bytes;
 mod entry;
 mod enum_clike;
 mod enum_variants;
@@ -996,6 +997,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(default_constructed_unit_structs::DefaultConstructedUnitStructs));
     store.register_early_pass(|| Box::new(needless_else::NeedlessElse));
     store.register_late_pass(|_| Box::new(missing_fields_in_debug::MissingFieldsInDebug));
+    store.register_late_pass(|_| Box::new(endian_bytes::EndianBytes));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
