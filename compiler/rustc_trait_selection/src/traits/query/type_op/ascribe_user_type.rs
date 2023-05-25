@@ -1,5 +1,5 @@
 use crate::infer::canonical::{Canonical, CanonicalQueryResponse};
-use crate::traits::query::Fallible;
+use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
 
 pub use rustc_middle::traits::query::type_op::AscribeUserType;
@@ -17,7 +17,7 @@ impl<'tcx> super::QueryTypeOp<'tcx> for AscribeUserType<'tcx> {
     fn perform_query(
         tcx: TyCtxt<'tcx>,
         canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Self>>,
-    ) -> Fallible<CanonicalQueryResponse<'tcx, ()>> {
+    ) -> Result<CanonicalQueryResponse<'tcx, ()>, NoSolution> {
         tcx.type_op_ascribe_user_type(canonicalized)
     }
 }

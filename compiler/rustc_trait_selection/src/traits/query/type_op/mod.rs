@@ -2,11 +2,11 @@ use crate::infer::canonical::{
     Canonical, CanonicalQueryResponse, OriginalQueryValues, QueryRegionConstraints,
 };
 use crate::infer::{InferCtxt, InferOk};
-use crate::traits::query::Fallible;
 use crate::traits::ObligationCause;
 use rustc_errors::ErrorGuaranteed;
 use rustc_infer::infer::canonical::Certainty;
 use rustc_infer::traits::PredicateObligations;
+use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
 use rustc_span::Span;
@@ -79,18 +79,21 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
     fn perform_query(
         tcx: TyCtxt<'tcx>,
         canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Self>>,
-    ) -> Fallible<CanonicalQueryResponse<'tcx, Self::QueryResponse>>;
+    ) -> Result<CanonicalQueryResponse<'tcx, Self::QueryResponse>, NoSolution>;
 
     fn fully_perform_into(
         query_key: ParamEnvAnd<'tcx, Self>,
         infcx: &InferCtxt<'tcx>,
         output_query_region_constraints: &mut QueryRegionConstraints<'tcx>,
-    ) -> Fallible<(
-        Self::QueryResponse,
-        Option<Canonical<'tcx, ParamEnvAnd<'tcx, Self>>>,
-        PredicateObligations<'tcx>,
-        Certainty,
-    )> {
+    ) -> Result<
+        (
+            Self::QueryResponse,
+            Option<Canonical<'tcx, ParamEnvAnd<'tcx, Self>>>,
+            PredicateObligations<'tcx>,
+            Certainty,
+        ),
+        NoSolution,
+    > {
         if let Some(result) = QueryTypeOp::try_fast_path(infcx.tcx, &query_key) {
             return Ok((result, None, vec![], Certainty::Proven));
         }

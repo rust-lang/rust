@@ -27,6 +27,7 @@ use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::AssertKind;
 use rustc_middle::mir::*;
+use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::subst::{SubstsRef, UserSubsts};
@@ -42,7 +43,7 @@ use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 use rustc_trait_selection::traits::query::type_op::custom::scrape_region_constraints;
 use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
-use rustc_trait_selection::traits::query::Fallible;
+
 use rustc_trait_selection::traits::PredicateObligation;
 
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
@@ -1133,7 +1134,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         sup: Ty<'tcx>,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
-    ) -> Fallible<()> {
+    ) -> Result<(), NoSolution> {
         // Use this order of parameters because the sup type is usually the
         // "expected" type in diagnostics.
         self.relate_types(sup, ty::Variance::Contravariant, sub, locations, category)
@@ -1146,7 +1147,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         found: Ty<'tcx>,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
-    ) -> Fallible<()> {
+    ) -> Result<(), NoSolution> {
         self.relate_types(expected, ty::Variance::Invariant, found, locations, category)
     }
 
@@ -1158,7 +1159,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         user_ty: &UserTypeProjection,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
-    ) -> Fallible<()> {
+    ) -> Result<(), NoSolution> {
         let annotated_type = self.user_type_annotations[user_ty.base].inferred_ty;
         trace!(?annotated_type);
         let mut curr_projected_ty = PlaceTy::from_ty(annotated_type);

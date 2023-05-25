@@ -1,10 +1,10 @@
 use crate::infer::canonical::query_response;
 use crate::infer::InferCtxt;
 use crate::traits::query::type_op::TypeOpOutput;
-use crate::traits::query::Fallible;
 use crate::traits::ObligationCtxt;
 use rustc_errors::ErrorGuaranteed;
 use rustc_infer::infer::region_constraints::RegionConstraintData;
+use rustc_middle::traits::query::NoSolution;
 use rustc_span::source_map::DUMMY_SP;
 use rustc_span::Span;
 
@@ -18,7 +18,7 @@ pub struct CustomTypeOp<F> {
 impl<F> CustomTypeOp<F> {
     pub fn new<'tcx, R>(closure: F, description: &'static str) -> Self
     where
-        F: FnOnce(&ObligationCtxt<'_, 'tcx>) -> Fallible<R>,
+        F: FnOnce(&ObligationCtxt<'_, 'tcx>) -> Result<R, NoSolution>,
     {
         CustomTypeOp { closure, description }
     }
@@ -26,7 +26,7 @@ impl<F> CustomTypeOp<F> {
 
 impl<'tcx, F, R: fmt::Debug> super::TypeOp<'tcx> for CustomTypeOp<F>
 where
-    F: FnOnce(&ObligationCtxt<'_, 'tcx>) -> Fallible<R>,
+    F: FnOnce(&ObligationCtxt<'_, 'tcx>) -> Result<R, NoSolution>,
 {
     type Output = R;
     /// We can't do any custom error reporting for `CustomTypeOp`, so
@@ -59,7 +59,7 @@ impl<F> fmt::Debug for CustomTypeOp<F> {
 /// constraints that result, creating query-region-constraints.
 pub fn scrape_region_constraints<'tcx, Op: super::TypeOp<'tcx, Output = R>, R>(
     infcx: &InferCtxt<'tcx>,
-    op: impl FnOnce(&ObligationCtxt<'_, 'tcx>) -> Fallible<R>,
+    op: impl FnOnce(&ObligationCtxt<'_, 'tcx>) -> Result<R, NoSolution>,
     name: &'static str,
     span: Span,
 ) -> Result<(TypeOpOutput<'tcx, Op>, RegionConstraintData<'tcx>), ErrorGuaranteed> {
