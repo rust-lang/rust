@@ -3,7 +3,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, Expr, ImplItem, Item, Node, TraitItem};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
-use rustc_span::DUMMY_SP;
+use rustc_span::{ErrorGuaranteed, DUMMY_SP};
 
 use crate::errors::UnconstrainedOpaqueType;
 
@@ -210,7 +210,8 @@ pub(super) fn find_opaque_ty_constraints_for_rpit(
         let concrete = concrete.subst_identity();
         let scope = tcx.hir().local_def_id_to_hir_id(owner_def_id);
         debug!(?scope);
-        let mut locator = RpitConstraintChecker { def_id, tcx, found: concrete };
+        let mut locator =
+            RpitConstraintChecker { def_id, tcx, found: concrete, tainted_by_errors: None };
 
         match tcx.hir().get(scope) {
             Node::Item(it) => intravisit::walk_item(&mut locator, it),
@@ -219,7 +220,30 @@ pub(super) fn find_opaque_ty_constraints_for_rpit(
             other => bug!("{:?} is not a valid scope for an opaque type item", other),
         }
 
-        concrete.ty
+        if let Some(guar) = locator.tainted_by_errors {
+            tcx.ty_error(guar)
+        } else {
+            // As a sanity check we also compare the type defined by mir typeck to
+            // the one defined by hir typeck. This should never fail unless there
+            // is some different error somewhere.
+            //
+            // We still return the type inferred by mir borrowck as we otherwise get
+            // ICE in tests with recursive opaque types. For those we only error
+            // when checking the opaque returned by `type_of`.
+            if let Some(typeck_ty) = tcx.typeck(owner_def_id).concrete_opaque_types.get(&def_id) {
+                let typeck_ty = typeck_ty.subst_identity();
+                if tcx.erase_regions(concrete.ty) != typeck_ty.ty {
+                    concrete.report_mismatch(&typeck_ty, def_id, tcx).delay_as_bug();
+                }
+            } else {
+                tcx.sess.delay_span_bug(
+                    concrete.span,
+                    format!("opaque type defined in MIR not in HIR: {concrete:?}"),
+                );
+            }
+
+            concrete.ty
+        }
     } else {
         // If that isn't the case we use the type from HIR typeck.
         let table = tcx.typeck(owner_def_id);
@@ -249,11 +273,13 @@ struct RpitConstraintChecker<'tcx> {
     def_id: LocalDefId,
 
     found: ty::OpaqueHiddenType<'tcx>,
+
+    tainted_by_errors: Option<ErrorGuaranteed>,
 }
 
 impl RpitConstraintChecker<'_> {
     #[instrument(skip(self), level = "debug")]
-    fn check(&self, def_id: LocalDefId) {
+    fn check(&mut self, def_id: LocalDefId) {
         // Use borrowck to get the type with unerased regions.
         let concrete_opaque_types = &self.tcx.mir_borrowck(def_id).concrete_opaque_types;
         debug!(?concrete_opaque_types);
@@ -267,7 +293,8 @@ impl RpitConstraintChecker<'_> {
             let concrete_type = concrete_type.subst_identity();
             if concrete_type.ty != self.found.ty && !(concrete_type, self.found).references_error()
             {
-                self.found.report_mismatch(&concrete_type, self.def_id, self.tcx).emit();
+                let guar = self.found.report_mismatch(&concrete_type, self.def_id, self.tcx).emit();
+                self.tainted_by_errors = Some(guar);
             }
         }
     }

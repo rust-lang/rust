@@ -13,14 +13,13 @@ use rustc_middle::hir::place::Place as HirPlace;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCast};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
-use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt};
+use rustc_middle::ty::visit::{TypeVisitableExt};
 use rustc_middle::ty::TypeckResults;
 use rustc_middle::ty::{self, ClosureSizeProfileData, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 
 use std::mem;
-use std::ops::ControlFlow;
 
 ///////////////////////////////////////////////////////////////////////////
 // Entry point
@@ -561,26 +560,13 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         for (opaque_type_key, decl) in opaque_types {
             let hidden_type = self.resolve(decl.hidden_type, &decl.hidden_type.span);
             let opaque_type_key = self.resolve(opaque_type_key, &decl.hidden_type.span);
-
-            struct RecursionChecker {
-                def_id: LocalDefId,
-            }
-            impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for RecursionChecker {
-                type BreakTy = ();
-                fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-                    if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *t.kind() {
-                        if def_id == self.def_id.to_def_id() {
-                            return ControlFlow::Break(());
-                        }
-                    }
-                    t.super_visit_with(self)
+            
+            // When defining an opaque to be literally itself we don't record that
+            // as it may be a non-defining use. MIR typecheck will handle this instead.
+            if let ty::Alias(ty::Opaque, alias_ty) =  hidden_type.ty.kind() {
+                if alias_ty.def_id == opaque_type_key.def_id.to_def_id() {
+                    continue;
                 }
-            }
-            if hidden_type
-                .visit_with(&mut RecursionChecker { def_id: opaque_type_key.def_id })
-                .is_break()
-            {
-                continue;
             }
 
             let hidden_type = hidden_type
