@@ -90,35 +90,34 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for MatchVisitor<'a, '_, 'tcx> {
 
     #[instrument(level = "trace", skip(self))]
     fn visit_arm(&mut self, arm: &Arm<'tcx>) {
-        match arm.guard {
-            Some(Guard::If(expr)) => {
-                self.with_let_source(LetSource::IfLetGuard, |this| {
-                    this.visit_expr(&this.thir[expr])
-                });
+        self.with_lint_level(arm.lint_level, |this| {
+            match arm.guard {
+                Some(Guard::If(expr)) => {
+                    this.with_let_source(LetSource::IfLetGuard, |this| {
+                        this.visit_expr(&this.thir[expr])
+                    });
+                }
+                Some(Guard::IfLet(ref pat, expr)) => {
+                    this.with_let_source(LetSource::IfLetGuard, |this| {
+                        this.check_let(pat, expr, LetSource::IfLetGuard, pat.span);
+                        this.visit_pat(pat);
+                        this.visit_expr(&this.thir[expr]);
+                    });
+                }
+                None => {}
             }
-            Some(Guard::IfLet(ref pat, expr)) => {
-                self.with_let_source(LetSource::IfLetGuard, |this| {
-                    this.check_let(pat, expr, LetSource::IfLetGuard, pat.span);
-                    this.visit_pat(pat);
-                    this.visit_expr(&this.thir[expr]);
-                });
-            }
-            None => {}
-        }
-        self.visit_pat(&arm.pattern);
-        self.visit_expr(&self.thir[arm.body]);
+            this.visit_pat(&arm.pattern);
+            this.visit_expr(&self.thir[arm.body]);
+        });
     }
 
     #[instrument(level = "trace", skip(self))]
     fn visit_expr(&mut self, ex: &Expr<'tcx>) {
         match ex.kind {
             ExprKind::Scope { value, lint_level, .. } => {
-                let old_lint_level = self.lint_level;
-                if let LintLevel::Explicit(hir_id) = lint_level {
-                    self.lint_level = hir_id;
-                }
-                self.visit_expr(&self.thir[value]);
-                self.lint_level = old_lint_level;
+                self.with_lint_level(lint_level, |this| {
+                    this.visit_expr(&this.thir[value]);
+                });
                 return;
             }
             ExprKind::If { cond, then, else_opt, if_then_scope: _ } => {
@@ -190,6 +189,17 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         self.let_source = old_let_source;
     }
 
+    fn with_lint_level(&mut self, new_lint_level: LintLevel, f: impl FnOnce(&mut Self)) {
+        if let LintLevel::Explicit(hir_id) = new_lint_level {
+            let old_lint_level = self.lint_level;
+            self.lint_level = hir_id;
+            f(self);
+            self.lint_level = old_lint_level;
+        } else {
+            f(self);
+        }
+    }
+
     fn check_patterns(&self, pat: &Pat<'tcx>, rf: RefutableFlag) {
         pat.walk_always(|pat| check_borrow_conflicts_in_at_patterns(self, pat));
         check_for_bindings_named_same_as_variants(self, pat, rf);
@@ -236,7 +246,9 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         for &arm in arms {
             // Check the arm for some things unrelated to exhaustiveness.
             let arm = &self.thir.arms[arm];
-            self.check_patterns(&arm.pattern, Refutable);
+            self.with_lint_level(arm.lint_level, |this| {
+                this.check_patterns(&arm.pattern, Refutable);
+            });
         }
 
         let tarms: Vec<_> = arms
