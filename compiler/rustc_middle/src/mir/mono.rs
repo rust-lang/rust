@@ -3,7 +3,7 @@ use crate::ty::{subst::InternalSubsts, Instance, InstanceDef, SymbolName, TyCtxt
 use rustc_attr::InlineAttr;
 use rustc_data_structures::base_n;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::ItemId;
@@ -230,7 +230,7 @@ pub struct CodegenUnit<'tcx> {
     /// contain something unique to this crate (e.g., a module path)
     /// as well as the crate name and disambiguator.
     name: Symbol,
-    items: FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)>,
+    items: FxIndexMap<MonoItem<'tcx>, (Linkage, Visibility)>,
     size_estimate: Option<usize>,
     primary: bool,
     /// True if this is CGU is used to hold code coverage information for dead code,
@@ -291,11 +291,11 @@ impl<'tcx> CodegenUnit<'tcx> {
         self.primary = true;
     }
 
-    pub fn items(&self) -> &FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)> {
+    pub fn items(&self) -> &FxIndexMap<MonoItem<'tcx>, (Linkage, Visibility)> {
         &self.items
     }
 
-    pub fn items_mut(&mut self) -> &mut FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)> {
+    pub fn items_mut(&mut self) -> &mut FxIndexMap<MonoItem<'tcx>, (Linkage, Visibility)> {
         &mut self.items
     }
 
@@ -362,6 +362,47 @@ impl<'tcx> CodegenUnit<'tcx> {
         tcx.dep_graph
             .previous_work_product(&work_product_id)
             .unwrap_or_else(|| panic!("Could not find work-product for CGU `{}`", self.name()))
+    }
+
+    // njn: dups code in items_in_deterministic_order
+    pub fn sort_items(&mut self, tcx: TyCtxt<'tcx>) {
+        // The codegen tests rely on items being process in the same order as
+        // they appear in the file, so for local items, we sort by node_id first
+        #[derive(PartialEq, Eq, PartialOrd, Ord)]
+        pub struct ItemSortKey<'tcx>(Option<usize>, SymbolName<'tcx>);
+
+        fn item_sort_key<'tcx>(tcx: TyCtxt<'tcx>, item: MonoItem<'tcx>) -> ItemSortKey<'tcx> {
+            ItemSortKey(
+                match item {
+                    MonoItem::Fn(ref instance) => {
+                        match instance.def {
+                            // We only want to take HirIds of user-defined
+                            // instances into account. The others don't matter for
+                            // the codegen tests and can even make item order
+                            // unstable.
+                            InstanceDef::Item(def) => def.as_local().map(Idx::index),
+                            InstanceDef::VTableShim(..)
+                            | InstanceDef::ReifyShim(..)
+                            | InstanceDef::Intrinsic(..)
+                            | InstanceDef::FnPtrShim(..)
+                            | InstanceDef::Virtual(..)
+                            | InstanceDef::ClosureOnceShim { .. }
+                            | InstanceDef::DropGlue(..)
+                            | InstanceDef::CloneShim(..)
+                            | InstanceDef::ThreadLocalShim(..)
+                            | InstanceDef::FnPtrAddrShim(..) => None,
+                        }
+                    }
+                    MonoItem::Static(def_id) => def_id.as_local().map(Idx::index),
+                    MonoItem::GlobalAsm(item_id) => Some(item_id.owner_id.def_id.index()),
+                },
+                item.symbol_name(tcx),
+            )
+        }
+
+        self.items_mut().sort_by(|&i1, _, &i2, _| {
+            std::cmp::Ord::cmp(&item_sort_key(tcx, i1), &item_sort_key(tcx, i2))
+        });
     }
 
     pub fn items_in_deterministic_order(

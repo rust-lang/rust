@@ -148,20 +148,27 @@ impl<'tcx> Partition<'tcx> for DefaultPartitioning {
                     // non-deterministic splitting, which messes up incremental
                     // compilation
 
+                    old_cgu.sort_items(cx.tcx);
+                    while moved_size < target_size {
+                        let (item, rest) = old_cgu.items_mut().pop().unwrap();
+                        moved_size += item.size_estimate(cx.tcx);
+                        new_cgu.items_mut().insert(item, rest);
+                    }
+
                     // njn: nicer way to do this?
                     // njn: don't move if it's the last item
-                    old_cgu.items_mut().drain_filter(|item, rest| {
-                        // njn: true->remove
-                        if moved_size < target_size {
-                            let item_size = item.size_estimate(cx.tcx);
-                            //eprintln!("MOVE: {}", item_size);
-                            moved_size += item_size;
-                            new_cgu.items_mut().insert(*item, *rest);
-                            true
-                        } else {
-                            false
-                        }
-                    });
+                    //old_cgu.items_mut().drain_filter(|item, rest| {
+                    //    // njn: true->remove
+                    //    if moved_size < target_size {
+                    //        let item_size = item.size_estimate(cx.tcx);
+                    //        //eprintln!("MOVE: {}", item_size);
+                    //        moved_size += item_size;
+                    //        new_cgu.items_mut().insert(*item, *rest);
+                    //        true
+                    //    } else {
+                    //        false
+                    //    }
+                    //});
                     new_cgu.increase_size_estimate(moved_size);
                     old_cgu.decrease_size_estimate(moved_size);
 
@@ -193,7 +200,7 @@ impl<'tcx> Partition<'tcx> for DefaultPartitioning {
 
             // Move the mono-items from `cgu_n` to `cgu_n_minus_1`
             cgu_n_minus_1.increase_size_estimate(cgu_n.size_estimate());
-            for (k, v) in cgu_n.items_mut().drain() {
+            for (k, v) in cgu_n.items_mut().drain(..) {
                 cgu_n_minus_1.items_mut().insert(k, v);
             }
 
