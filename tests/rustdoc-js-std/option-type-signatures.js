@@ -12,4 +12,11 @@ const EXPECTED = [
             { 'path': 'std::option::Option', 'name': 'get_or_insert_default' },
         ],
     },
+    {
+        'query': 'option -> []',
+        'others': [
+            { 'path': 'std::option::Option', 'name': 'as_slice' },
+            { 'path': 'std::option::Option', 'name': 'as_mut_slice' },
+        ],
+    },
 ];
