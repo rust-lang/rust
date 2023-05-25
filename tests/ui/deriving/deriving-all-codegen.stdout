@@ -44,6 +44,7 @@ impl ::core::default::Default for Empty {
 }
 #[automatically_derived]
 impl ::core::hash::Hash for Empty {
+    #[inline]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {}
 }
 #[automatically_derived]
@@ -113,6 +114,7 @@ impl ::core::default::Default for Point {
 }
 #[automatically_derived]
 impl ::core::hash::Hash for Point {
+    #[inline]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         ::core::hash::Hash::hash(&self.x, state);
         ::core::hash::Hash::hash(&self.y, state)
@@ -198,6 +200,7 @@ impl ::core::default::Default for PackedPoint {
 }
 #[automatically_derived]
 impl ::core::hash::Hash for PackedPoint {
+    #[inline]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         ::core::hash::Hash::hash(&{ self.x }, state);
         ::core::hash::Hash::hash(&{ self.y }, state)
@@ -301,6 +304,7 @@ impl ::core::default::Default for Big {
 }
 #[automatically_derived]
 impl ::core::hash::Hash for Big {
+    #[inline]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         ::core::hash::Hash::hash(&self.b1, state);
         ::core::hash::Hash::hash(&self.b2, state);
@@ -478,6 +482,7 @@ impl ::core::fmt::Debug for Unsized {
 }
 #[automatically_derived]
 impl ::core::hash::Hash for Unsized {
+    #[inline]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         ::core::hash::Hash::hash(&self.0, state)
     }
@@ -529,6 +534,7 @@ impl ::core::fmt::Debug for PackedUnsizedU8 {
 }
 #[automatically_derived]
 impl ::core::hash::Hash for PackedUnsizedU8 {
+    #[inline]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         ::core::hash::Hash::hash(&self.0, state)
     }
@@ -584,6 +590,7 @@ impl<T: ::core::default::Default + Trait, U: ::core::default::Default>
 #[automatically_derived]
 impl<T: ::core::hash::Hash + Trait, U: ::core::hash::Hash> ::core::hash::Hash
     for Generic<T, U> where T::A: ::core::hash::Hash {
+    #[inline]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         ::core::hash::Hash::hash(&self.t, state);
         ::core::hash::Hash::hash(&self.ta, state);
@@ -701,6 +708,7 @@ impl<T: ::core::hash::Hash + ::core::marker::Copy + Trait,
     U: ::core::hash::Hash + ::core::marker::Copy> ::core::hash::Hash for
     PackedGeneric<T, U> where T::A: ::core::hash::Hash + ::core::marker::Copy
     {
+    #[inline]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         ::core::hash::Hash::hash(&{ self.0 }, state);
         ::core::hash::Hash::hash(&{ self.1 }, state);
@@ -795,6 +803,7 @@ impl ::core::fmt::Debug for Enum0 {
 }
 #[automatically_derived]
 impl ::core::hash::Hash for Enum0 {
+    #[inline]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         unsafe { ::core::intrinsics::unreachable() }
     }
@@ -861,6 +870,7 @@ impl ::core::fmt::Debug for Enum1 {
 }
 #[automatically_derived]
 impl ::core::hash::Hash for Enum1 {
+    #[inline]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         match self {
             Enum1::Single { x: __self_0 } =>
@@ -937,6 +947,7 @@ impl ::core::default::Default for Fieldless1 {
 }
 #[automatically_derived]
 impl ::core::hash::Hash for Fieldless1 {
+    #[inline]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {}
 }
 #[automatically_derived]
@@ -1004,6 +1015,7 @@ impl ::core::default::Default for Fieldless {
 }
 #[automatically_derived]
 impl ::core::hash::Hash for Fieldless {
+    #[inline]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         let __self_tag = ::core::intrinsics::discriminant_value(self);
         ::core::hash::Hash::hash(&__self_tag, state)
@@ -1095,6 +1107,7 @@ impl ::core::default::Default for Mixed {
 }
 #[automatically_derived]
 impl ::core::hash::Hash for Mixed {
+    #[inline]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         let __self_tag = ::core::intrinsics::discriminant_value(self);
         ::core::hash::Hash::hash(&__self_tag, state);
@@ -1224,6 +1237,7 @@ impl ::core::fmt::Debug for Fielded {
 }
 #[automatically_derived]
 impl ::core::hash::Hash for Fielded {
+    #[inline]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         let __self_tag = ::core::intrinsics::discriminant_value(self);
         ::core::hash::Hash::hash(&__self_tag, state);
@@ -1345,6 +1359,7 @@ impl<T: ::core::fmt::Debug, U: ::core::fmt::Debug> ::core::fmt::Debug for
 #[automatically_derived]
 impl<T: ::core::hash::Hash, U: ::core::hash::Hash> ::core::hash::Hash for
     EnumGeneric<T, U> {
+    #[inline]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         let __self_tag = ::core::intrinsics::discriminant_value(self);
         ::core::hash::Hash::hash(&__self_tag, state);
