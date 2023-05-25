@@ -1541,7 +1541,7 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
     write!(w, "{}", document_type_layout(cx, def_id));
 }
 
-fn item_static(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Static) {
+fn item_static(w: &mut impl Write, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Static) {
     wrap_item(w, |w| {
         render_attributes_in_code(w, it, cx.tcx());
         write!(
