@@ -12,6 +12,7 @@ use rustc_hir::QPath;
 use rustc_lint::LateContext;
 use rustc_middle::query::Key;
 use rustc_middle::ty;
+use rustc_middle::ty::Ty;
 use rustc_span::sym;
 use rustc_span::Symbol;
 
@@ -21,7 +22,7 @@ use rustc_span::Symbol;
 ///  ^^^^^^^^^                     ^^^^^^   true
 /// `vec![1,2].drain(..).collect::<HashSet<_>>()`
 ///  ^^^^^^^^^                     ^^^^^^^^^^  false
-fn types_match_diagnostic_item(cx: &LateContext<'_>, expr: ty::Ty<'_>, recv: ty::Ty<'_>, sym: Symbol) -> bool {
+fn types_match_diagnostic_item(cx: &LateContext<'_>, expr: Ty<'_>, recv: Ty<'_>, sym: Symbol) -> bool {
     if let Some(expr_adt_did) = expr.ty_adt_id()
         && let Some(recv_adt_did) = recv.ty_adt_id()
     {
@@ -32,33 +33,21 @@ fn types_match_diagnostic_item(cx: &LateContext<'_>, expr: ty::Ty<'_>, recv: ty:
 }
 
 /// Checks `std::{vec::Vec, collections::VecDeque}`.
-fn check_vec(
-    cx: &LateContext<'_>,
-    args: &[Expr<'_>],
-    expr: ty::Ty<'_>,
-    recv: ty::Ty<'_>,
-    recv_path: &Path<'_>,
-) -> bool {
+fn check_vec(cx: &LateContext<'_>, args: &[Expr<'_>], expr: Ty<'_>, recv: Ty<'_>, recv_path: &Path<'_>) -> bool {
     (types_match_diagnostic_item(cx, expr, recv, sym::Vec)
         || types_match_diagnostic_item(cx, expr, recv, sym::VecDeque))
         && matches!(args, [arg] if is_range_full(cx, arg, Some(recv_path)))
 }
 
 /// Checks `std::string::String`
-fn check_string(
-    cx: &LateContext<'_>,
-    args: &[Expr<'_>],
-    expr: ty::Ty<'_>,
-    recv: ty::Ty<'_>,
-    recv_path: &Path<'_>,
-) -> bool {
+fn check_string(cx: &LateContext<'_>, args: &[Expr<'_>], expr: Ty<'_>, recv: Ty<'_>, recv_path: &Path<'_>) -> bool {
     is_type_lang_item(cx, expr, LangItem::String)
         && is_type_lang_item(cx, recv, LangItem::String)
         && matches!(args, [arg] if is_range_full(cx, arg, Some(recv_path)))
 }
 
 /// Checks `std::collections::{HashSet, HashMap, BinaryHeap}`.
-fn check_collections(cx: &LateContext<'_>, expr: ty::Ty<'_>, recv: ty::Ty<'_>) -> Option<&'static str> {
+fn check_collections(cx: &LateContext<'_>, expr: Ty<'_>, recv: Ty<'_>) -> Option<&'static str> {
     types_match_diagnostic_item(cx, expr, recv, sym::HashSet)
         .then_some("HashSet")
         .or_else(|| types_match_diagnostic_item(cx, expr, recv, sym::HashMap).then_some("HashMap"))
@@ -83,9 +72,10 @@ pub(super) fn check(cx: &LateContext<'_>, args: &[Expr<'_>], expr: &Expr<'_>, re
             expr.span,
             &format!("you seem to be trying to move all elements into a new `{typename}`"),
             "consider using `mem::take`",
-            match recv_ty.kind() {
-                ty::Ref(..) => format!("std::mem::take({recv})"),
-                _ => format!("std::mem::take(&mut {recv})"),
+            if let ty::Ref(..) = recv_ty.kind() {
+                format!("std::mem::take({recv})")
+            } else {
+                format!("std::mem::take(&mut {recv})")
             },
             Applicability::MachineApplicable,
         );
