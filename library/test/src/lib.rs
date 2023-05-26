@@ -240,16 +240,6 @@ impl FilteredTests {
         self.tests.push((TestId(self.next_id), test));
         self.next_id += 1;
     }
-    fn add_bench_as_test(
-        &mut self,
-        desc: TestDesc,
-        benchfn: impl Fn(&mut Bencher) -> Result<(), String> + Send + 'static,
-    ) {
-        let testfn = DynTestFn(Box::new(move || {
-            bench::run_once(|b| __rust_begin_short_backtrace(|| benchfn(b)))
-        }));
-        self.add_test(desc, testfn);
-    }
     fn total_len(&self) -> usize {
         self.tests.len() + self.benches.len()
     }
@@ -307,14 +297,14 @@ where
                 if opts.bench_benchmarks {
                     filtered.add_bench(desc, DynBenchFn(benchfn));
                 } else {
-                    filtered.add_bench_as_test(desc, benchfn);
+                    filtered.add_test(desc, DynBenchAsTestFn(benchfn));
                 }
             }
             StaticBenchFn(benchfn) => {
                 if opts.bench_benchmarks {
                     filtered.add_bench(desc, StaticBenchFn(benchfn));
                 } else {
-                    filtered.add_bench_as_test(desc, benchfn);
+                    filtered.add_test(desc, StaticBenchAsTestFn(benchfn));
                 }
             }
             testfn => {
@@ -525,12 +515,8 @@ pub fn convert_benchmarks_to_tests(tests: Vec<TestDescAndFn>) -> Vec<TestDescAnd
         .into_iter()
         .map(|x| {
             let testfn = match x.testfn {
-                DynBenchFn(benchfn) => DynTestFn(Box::new(move || {
-                    bench::run_once(|b| __rust_begin_short_backtrace(|| benchfn(b)))
-                })),
-                StaticBenchFn(benchfn) => DynTestFn(Box::new(move || {
-                    bench::run_once(|b| __rust_begin_short_backtrace(|| benchfn(b)))
-                })),
+                DynBenchFn(benchfn) => DynBenchAsTestFn(benchfn),
+                StaticBenchFn(benchfn) => StaticBenchAsTestFn(benchfn),
                 f => f,
             };
             TestDescAndFn { desc: x.desc, testfn }
