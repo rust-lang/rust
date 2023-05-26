@@ -93,7 +93,6 @@
 //! inlining, even when they are not marked `#[inline]`.
 
 mod default;
-mod merging;
 
 use std::cmp;
 use std::fs::{self, File};
@@ -129,7 +128,7 @@ impl<'tcx> Partition<'tcx> for Partitioner {
         &mut self,
         cx: &PartitioningCx<'_, 'tcx>,
         mono_items: &mut I,
-    ) -> PreInliningPartitioning<'tcx>
+    ) -> PlacedRootMonoItems<'tcx>
     where
         I: Iterator<Item = MonoItem<'tcx>>,
     {
@@ -142,12 +141,10 @@ impl<'tcx> Partition<'tcx> for Partitioner {
     fn merge_codegen_units(
         &mut self,
         cx: &PartitioningCx<'_, 'tcx>,
-        initial_partitioning: &mut PreInliningPartitioning<'tcx>,
+        codegen_units: &mut Vec<CodegenUnit<'tcx>>,
     ) {
         match self {
-            Partitioner::Default(partitioner) => {
-                partitioner.merge_codegen_units(cx, initial_partitioning)
-            }
+            Partitioner::Default(partitioner) => partitioner.merge_codegen_units(cx, codegen_units),
             Partitioner::Unknown => cx.tcx.sess.emit_fatal(UnknownPartitionStrategy),
         }
     }
@@ -155,11 +152,12 @@ impl<'tcx> Partition<'tcx> for Partitioner {
     fn place_inlined_mono_items(
         &mut self,
         cx: &PartitioningCx<'_, 'tcx>,
-        initial_partitioning: PreInliningPartitioning<'tcx>,
-    ) -> PostInliningPartitioning<'tcx> {
+        codegen_units: &mut [CodegenUnit<'tcx>],
+        roots: FxHashSet<MonoItem<'tcx>>,
+    ) -> FxHashMap<MonoItem<'tcx>, MonoItemPlacement> {
         match self {
             Partitioner::Default(partitioner) => {
-                partitioner.place_inlined_mono_items(cx, initial_partitioning)
+                partitioner.place_inlined_mono_items(cx, codegen_units, roots)
             }
             Partitioner::Unknown => cx.tcx.sess.emit_fatal(UnknownPartitionStrategy),
         }
@@ -168,21 +166,32 @@ impl<'tcx> Partition<'tcx> for Partitioner {
     fn internalize_symbols(
         &mut self,
         cx: &PartitioningCx<'_, 'tcx>,
-        post_inlining_partitioning: &mut PostInliningPartitioning<'tcx>,
+        codegen_units: &mut [CodegenUnit<'tcx>],
+        mono_item_placements: FxHashMap<MonoItem<'tcx>, MonoItemPlacement>,
+        internalization_candidates: FxHashSet<MonoItem<'tcx>>,
     ) {
         match self {
-            Partitioner::Default(partitioner) => {
-                partitioner.internalize_symbols(cx, post_inlining_partitioning)
-            }
+            Partitioner::Default(partitioner) => partitioner.internalize_symbols(
+                cx,
+                codegen_units,
+                mono_item_placements,
+                internalization_candidates,
+            ),
             Partitioner::Unknown => cx.tcx.sess.emit_fatal(UnknownPartitionStrategy),
         }
     }
 }
 
-pub struct PartitioningCx<'a, 'tcx> {
+struct PartitioningCx<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     target_cgu_count: usize,
     inlining_map: &'a InliningMap<'tcx>,
+}
+
+pub struct PlacedRootMonoItems<'tcx> {
+    codegen_units: Vec<CodegenUnit<'tcx>>,
+    roots: FxHashSet<MonoItem<'tcx>>,
+    internalization_candidates: FxHashSet<MonoItem<'tcx>>,
 }
 
 trait Partition<'tcx> {
@@ -190,26 +199,29 @@ trait Partition<'tcx> {
         &mut self,
         cx: &PartitioningCx<'_, 'tcx>,
         mono_items: &mut I,
-    ) -> PreInliningPartitioning<'tcx>
+    ) -> PlacedRootMonoItems<'tcx>
     where
         I: Iterator<Item = MonoItem<'tcx>>;
 
     fn merge_codegen_units(
         &mut self,
         cx: &PartitioningCx<'_, 'tcx>,
-        initial_partitioning: &mut PreInliningPartitioning<'tcx>,
+        codegen_units: &mut Vec<CodegenUnit<'tcx>>,
     );
 
     fn place_inlined_mono_items(
         &mut self,
         cx: &PartitioningCx<'_, 'tcx>,
-        initial_partitioning: PreInliningPartitioning<'tcx>,
-    ) -> PostInliningPartitioning<'tcx>;
+        codegen_units: &mut [CodegenUnit<'tcx>],
+        roots: FxHashSet<MonoItem<'tcx>>,
+    ) -> FxHashMap<MonoItem<'tcx>, MonoItemPlacement>;
 
     fn internalize_symbols(
         &mut self,
         cx: &PartitioningCx<'_, 'tcx>,
-        partitioning: &mut PostInliningPartitioning<'tcx>,
+        codegen_units: &mut [CodegenUnit<'tcx>],
+        mono_item_placements: FxHashMap<MonoItem<'tcx>, MonoItemPlacement>,
+        internalization_candidates: FxHashSet<MonoItem<'tcx>>,
     );
 }
 
@@ -225,7 +237,7 @@ fn get_partitioner(tcx: TyCtxt<'_>) -> Partitioner {
     }
 }
 
-pub fn partition<'tcx, I>(
+fn partition<'tcx, I>(
     tcx: TyCtxt<'tcx>,
     mono_items: &mut I,
     max_cgu_count: usize,
@@ -241,44 +253,51 @@ where
     // In the first step, we place all regular monomorphizations into their
     // respective 'home' codegen unit. Regular monomorphizations are all
     // functions and statics defined in the local crate.
-    let mut initial_partitioning = {
+    let PlacedRootMonoItems { mut codegen_units, roots, internalization_candidates } = {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_place_roots");
         partitioner.place_root_mono_items(cx, mono_items)
     };
 
-    for cgu in &mut initial_partitioning.codegen_units {
+    for cgu in &mut codegen_units {
         cgu.create_size_estimate(tcx);
     }
 
-    debug_dump(tcx, "INITIAL PARTITIONING", &initial_partitioning.codegen_units);
+    debug_dump(tcx, "INITIAL PARTITIONING", &codegen_units);
 
     // Merge until we have at most `max_cgu_count` codegen units.
+    // `merge_codegen_units` is responsible for updating the CGU size
+    // estimates.
     {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_merge_cgus");
-        partitioner.merge_codegen_units(cx, &mut initial_partitioning);
-        debug_dump(tcx, "POST MERGING", &initial_partitioning.codegen_units);
+        partitioner.merge_codegen_units(cx, &mut codegen_units);
+        debug_dump(tcx, "POST MERGING", &codegen_units);
     }
 
     // In the next step, we use the inlining map to determine which additional
     // monomorphizations have to go into each codegen unit. These additional
     // monomorphizations can be drop-glue, functions from external crates, and
     // local functions the definition of which is marked with `#[inline]`.
-    let mut post_inlining = {
+    let mono_item_placements = {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_place_inline_items");
-        partitioner.place_inlined_mono_items(cx, initial_partitioning)
+        partitioner.place_inlined_mono_items(cx, &mut codegen_units, roots)
     };
 
-    for cgu in &mut post_inlining.codegen_units {
+    for cgu in &mut codegen_units {
         cgu.create_size_estimate(tcx);
     }
 
-    debug_dump(tcx, "POST INLINING", &post_inlining.codegen_units);
+    debug_dump(tcx, "POST INLINING", &codegen_units);
 
     // Next we try to make as many symbols "internal" as possible, so LLVM has
     // more freedom to optimize.
     if !tcx.sess.link_dead_code() {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_internalize_symbols");
-        partitioner.internalize_symbols(cx, &mut post_inlining);
+        partitioner.internalize_symbols(
+            cx,
+            &mut codegen_units,
+            mono_item_placements,
+            internalization_candidates,
+        );
     }
 
     let instrument_dead_code =
@@ -286,7 +305,7 @@ where
 
     if instrument_dead_code {
         assert!(
-            post_inlining.codegen_units.len() > 0,
+            codegen_units.len() > 0,
             "There must be at least one CGU that code coverage data can be generated in."
         );
 
@@ -297,7 +316,7 @@ where
         // the object file (CGU) containing the dead function stubs is included
         // in the final binary. This will probably require forcing these
         // function symbols to be included via `-u` or `/include` linker args.
-        let mut cgus: Vec<_> = post_inlining.codegen_units.iter_mut().collect();
+        let mut cgus: Vec<_> = codegen_units.iter_mut().collect();
         cgus.sort_by_key(|cgu| cgu.size_estimate());
 
         let dead_code_cgu =
@@ -308,29 +327,17 @@ where
             } else {
                 // If there are no CGUs that have externally linked items,
                 // then we just pick the first CGU as a fallback.
-                &mut post_inlining.codegen_units[0]
+                &mut codegen_units[0]
             };
         dead_code_cgu.make_code_coverage_dead_code_cgu();
     }
 
     // Finally, sort by codegen unit name, so that we get deterministic results.
-    let PostInliningPartitioning {
-        codegen_units: mut result,
-        mono_item_placements: _,
-        internalization_candidates: _,
-    } = post_inlining;
+    codegen_units.sort_by(|a, b| a.name().as_str().cmp(b.name().as_str()));
 
-    result.sort_by(|a, b| a.name().as_str().cmp(b.name().as_str()));
+    debug_dump(tcx, "FINAL", &codegen_units);
 
-    debug_dump(tcx, "FINAL", &result);
-
-    result
-}
-
-pub struct PreInliningPartitioning<'tcx> {
-    codegen_units: Vec<CodegenUnit<'tcx>>,
-    roots: FxHashSet<MonoItem<'tcx>>,
-    internalization_candidates: FxHashSet<MonoItem<'tcx>>,
+    codegen_units
 }
 
 /// For symbol internalization, we need to know whether a symbol/mono-item is
@@ -340,12 +347,6 @@ pub struct PreInliningPartitioning<'tcx> {
 enum MonoItemPlacement {
     SingleCgu { cgu_name: Symbol },
     MultipleCgus,
-}
-
-struct PostInliningPartitioning<'tcx> {
-    codegen_units: Vec<CodegenUnit<'tcx>>,
-    mono_item_placements: FxHashMap<MonoItem<'tcx>, MonoItemPlacement>,
-    internalization_candidates: FxHashSet<MonoItem<'tcx>>,
 }
 
 fn debug_dump<'a, 'tcx: 'a>(tcx: TyCtxt<'tcx>, label: &str, cgus: &[CodegenUnit<'tcx>]) {
