@@ -465,6 +465,11 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.showDependenciesExplorer": {
+                    "markdownDescription": "Whether to show the dependencies view.",
+                    "default": true,
+                    "type": "boolean"
+                },
                 "$generated-start": {},
                 "rust-analyzer.assist.emitMustUse": {
                     "markdownDescription": "Whether to insert #[must_use] when generating `as_` methods\nfor enum variants.",
@@ -2013,7 +2018,7 @@
                 {
                     "id": "rustDependencies",
                     "name": "Rust Dependencies",
-                    "when": "inRustProject"
+                    "when": "inRustProject && config.rust-analyzer.showDependenciesExplorer"
                 }
             ]
         },

@@ -284,6 +284,10 @@ export class Config {
     get useRustcErrorCode() {
         return this.get<boolean>("diagnostics.useRustcErrorCode");
     }
+
+    get showDependenciesExplorer() {
+        return this.get<boolean>("showDependenciesExplorer");
+    }
 }
 
 // the optional `cb?` parameter is meant to be used to add additional
