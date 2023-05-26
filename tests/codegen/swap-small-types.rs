@@ -1,4 +1,4 @@
-// compile-flags: -O
+// compile-flags: -O -Z merge-functions=disabled
 // only-x86_64
 // ignore-debug: the debug assertions get in the way
 
@@ -12,13 +12,10 @@ type RGB48 = [u16; 3];
 #[no_mangle]
 pub fn swap_rgb48_manually(x: &mut RGB48, y: &mut RGB48) {
     // CHECK-NOT: alloca
-    // CHECK: %temp = alloca [3 x i16]
-    // CHECK-NOT: alloca
-    // CHECK-NOT: call void @llvm.memcpy
-    // CHECK: call void @llvm.memcpy.{{.+}}({{.+}} %temp, {{.+}} %x, {{.+}} 6, {{.+}})
-    // CHECK: call void @llvm.memcpy.{{.+}}({{.+}} %x, {{.+}} %y, {{.+}} 6, {{.+}})
-    // CHECK: call void @llvm.memcpy.{{.+}}({{.+}} %y, {{.+}} %temp, {{.+}} 6, {{.+}})
-    // CHECK-NOT: call void @llvm.memcpy
+    // CHECK: %[[TEMP0:.+]] = load <3 x i16>, ptr %x, align 2
+    // CHECK: %[[TEMP1:.+]] = load <3 x i16>, ptr %y, align 2
+    // CHECK: store <3 x i16> %[[TEMP1]], ptr %x, align 2
+    // CHECK: store <3 x i16> %[[TEMP0]], ptr %y, align 2
 
     let temp = *x;
     *x = *y;
@@ -28,13 +25,11 @@ pub fn swap_rgb48_manually(x: &mut RGB48, y: &mut RGB48) {
 // CHECK-LABEL: @swap_rgb48
 #[no_mangle]
 pub fn swap_rgb48(x: &mut RGB48, y: &mut RGB48) {
-    // FIXME MIR inlining messes up LLVM optimizations.
-    // If these checks start failing, please update this test.
-    // CHECK: alloca [3 x i16]
-    // CHECK: call void @llvm.memcpy
-// WOULD-CHECK-NOT: alloca
-// WOULD-CHECK: load i48
-// WOULD-CHECK: store i48
+    // CHECK-NOT: alloca
+    // CHECK: load <3 x i16>
+    // CHECK: load <3 x i16>
+    // CHECK: store <3 x i16>
+    // CHECK: store <3 x i16>
     swap(x, y)
 }
 

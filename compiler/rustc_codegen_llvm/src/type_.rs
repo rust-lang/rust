@@ -288,6 +288,9 @@ impl<'ll, 'tcx> LayoutTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn reg_backend_type(&self, ty: &Reg) -> &'ll Type {
         ty.llvm_type(self)
     }
+    fn scalar_copy_backend_type(&self, layout: TyAndLayout<'tcx>) -> Option<Self::Type> {
+        layout.scalar_copy_llvm_type(self)
+    }
 }
 
 impl<'ll, 'tcx> TypeMembershipMethods<'tcx> for CodegenCx<'ll, 'tcx> {
