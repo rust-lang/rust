@@ -3,8 +3,8 @@ use std::fmt::Display;
 
 use either::Either;
 use hir::{
-    Adt, AsAssocItem, AttributeTemplate, CaptureKind, HasAttrs, HasSource, HirDisplay, Semantics,
-    TypeInfo,
+    db::HirDatabase, Adt, AsAssocItem, AttributeTemplate, CaptureKind, HasAttrs, HasCrate,
+    HasSource, HirDisplay, Layout, Semantics, TypeInfo,
 };
 use ide_db::{
     base_db::SourceDatabase,
@@ -404,8 +404,9 @@ pub(super) fn definition(
                     .map(|layout| format!(", offset = {:#X}", layout.fields.offset(id).bytes())),
                 _ => None,
             };
+            let niches = niches(db, it, &layout).unwrap_or_default();
             Some(format!(
-                "size = {:#X}, align = {:#X}{}",
+                "size = {:#X}, align = {:#X}{}{niches}",
                 layout.size.bytes(),
                 layout.align.abi.bytes(),
                 offset.as_deref().unwrap_or_default()
@@ -415,8 +416,9 @@ pub(super) fn definition(
         Definition::Function(it) => label_and_docs(db, it),
         Definition::Adt(it) => label_and_layout_info_and_docs(db, it, config, |&it| {
             let layout = it.layout(db).ok()?;
+            let niches = niches(db, it, &layout).unwrap_or_default();
             Some(format!(
-                "size = {:#X}, align = {:#X}",
+                "size = {:#X}, align = {:#X}{niches}",
                 layout.size.bytes(),
                 layout.align.abi.bytes()
             ))
@@ -437,14 +439,15 @@ pub(super) fn definition(
                     None
                 }
             },
-            |it| {
+            |&it| {
                 let (layout, tag_size) = it.layout(db).ok()?;
                 let size = layout.size.bytes_usize() - tag_size;
                 if size == 0 {
                     // There is no value in showing layout info for fieldless variants
                     return None;
                 }
-                Some(format!("size = {:#X}", layout.size.bytes()))
+                let niches = niches(db, it, &layout).unwrap_or_default();
+                Some(format!("size = {:#X}{niches}", layout.size.bytes()))
             },
         ),
         Definition::Const(it) => label_value_and_docs(db, it, |it| {
@@ -473,10 +476,11 @@ pub(super) fn definition(
         Definition::TraitAlias(it) => label_and_docs(db, it),
         Definition::TypeAlias(it) => label_and_layout_info_and_docs(db, it, config, |&it| {
             let layout = it.ty(db).layout(db).ok()?;
+            let niches = niches(db, it, &layout).unwrap_or_default();
             Some(format!(
-                "size = {:#X}, align = {:#X}",
+                "size = {:#X}, align = {:#X}{niches}",
                 layout.size.bytes(),
-                layout.align.abi.bytes()
+                layout.align.abi.bytes(),
             ))
         }),
         Definition::BuiltinType(it) => {
@@ -511,6 +515,13 @@ pub(super) fn definition(
         })
         .map(Into::into);
     markup(docs, label, mod_path)
+}
+
+fn niches(db: &RootDatabase, it: impl HasCrate, layout: &Layout) -> Option<String> {
+    Some(format!(
+        ", niches = {}",
+        layout.largest_niche?.available(&*db.target_data_layout(it.krate(db).into())?)
+    ))
 }
 
 fn type_info(

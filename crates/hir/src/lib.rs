@@ -62,7 +62,7 @@ use hir_ty::{
     consteval::{try_const_usize, unknown_const_as_generic, ConstEvalError, ConstExt},
     diagnostics::BodyValidationDiagnostic,
     display::HexifiedConst,
-    layout::{Layout, LayoutError, RustcEnumVariantIdx, TagEncoding},
+    layout::{LayoutError, RustcEnumVariantIdx, TagEncoding},
     method_resolution::{self, TyFingerprint},
     mir::{self, interpret_mir},
     primitive::UintTy,
@@ -133,8 +133,11 @@ pub use {
     },
     hir_ty::{
         display::{ClosureStyle, HirDisplay, HirDisplayError, HirWrite},
+        // FIXME: This just needs a HIR wrapper
+        layout::Layout,
         mir::MirEvalError,
-        PointerCast, Safety,
+        PointerCast,
+        Safety,
     },
 };
 
@@ -4501,6 +4504,12 @@ impl HasCrate for Struct {
 }
 
 impl HasCrate for Union {
+    fn krate(&self, db: &dyn HirDatabase) -> Crate {
+        self.module(db).krate()
+    }
+}
+
+impl HasCrate for Enum {
     fn krate(&self, db: &dyn HirDatabase) -> Crate {
         self.module(db).krate()
     }
