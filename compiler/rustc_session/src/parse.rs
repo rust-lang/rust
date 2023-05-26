@@ -84,6 +84,7 @@ impl SymbolGallery {
 
 /// Construct a diagnostic for a language feature error due to the given `span`.
 /// The `feature`'s `Symbol` is the one you used in `active.rs` and `rustc_span::symbols`.
+#[track_caller]
 pub fn feature_err(
     sess: &ParseSess,
     feature: Symbol,
