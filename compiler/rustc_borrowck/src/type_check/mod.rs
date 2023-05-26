@@ -10,6 +10,7 @@ use either::Either;
 use hir::OpaqueTyOrigin;
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
@@ -26,6 +27,7 @@ use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::AssertKind;
 use rustc_middle::mir::*;
+use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::subst::{SubstsRef, UserSubsts};
@@ -41,7 +43,7 @@ use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 use rustc_trait_selection::traits::query::type_op::custom::scrape_region_constraints;
 use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
-use rustc_trait_selection::traits::query::Fallible;
+
 use rustc_trait_selection::traits::PredicateObligation;
 
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
@@ -216,24 +218,22 @@ pub(crate) fn type_check<'mir, 'tcx>(
     let opaque_type_values = opaque_type_values
         .into_iter()
         .map(|(opaque_type_key, decl)| {
-            checker
-                .fully_perform_op(
-                    Locations::All(body.span),
-                    ConstraintCategory::OpaqueType,
-                    CustomTypeOp::new(
-                        |ocx| {
-                            ocx.infcx.register_member_constraints(
-                                param_env,
-                                opaque_type_key,
-                                decl.hidden_type.ty,
-                                decl.hidden_type.span,
-                            );
-                            Ok(())
-                        },
-                        "opaque_type_map",
-                    ),
-                )
-                .unwrap();
+            let _: Result<_, ErrorGuaranteed> = checker.fully_perform_op(
+                Locations::All(body.span),
+                ConstraintCategory::OpaqueType,
+                CustomTypeOp::new(
+                    |ocx| {
+                        ocx.infcx.register_member_constraints(
+                            param_env,
+                            opaque_type_key,
+                            decl.hidden_type.ty,
+                            decl.hidden_type.span,
+                        );
+                        Ok(())
+                    },
+                    "opaque_type_map",
+                ),
+            );
             let mut hidden_type = infcx.resolve_vars_if_possible(decl.hidden_type);
             trace!("finalized opaque type {:?} to {:#?}", opaque_type_key, hidden_type.ty.kind());
             if hidden_type.has_non_region_infer() {
@@ -1134,7 +1134,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         sup: Ty<'tcx>,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
-    ) -> Fallible<()> {
+    ) -> Result<(), NoSolution> {
         // Use this order of parameters because the sup type is usually the
         // "expected" type in diagnostics.
         self.relate_types(sup, ty::Variance::Contravariant, sub, locations, category)
@@ -1147,7 +1147,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         found: Ty<'tcx>,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
-    ) -> Fallible<()> {
+    ) -> Result<(), NoSolution> {
         self.relate_types(expected, ty::Variance::Invariant, found, locations, category)
     }
 
@@ -1159,7 +1159,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         user_ty: &UserTypeProjection,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
-    ) -> Fallible<()> {
+    ) -> Result<(), NoSolution> {
         let annotated_type = self.user_type_annotations[user_ty.base].inferred_ty;
         trace!(?annotated_type);
         let mut curr_projected_ty = PlaceTy::from_ty(annotated_type);
@@ -2755,11 +2755,20 @@ impl<'tcx> TypeOp<'tcx> for InstantiateOpaqueType<'tcx> {
     /// constraints in our `InferCtxt`
     type ErrorInfo = InstantiateOpaqueType<'tcx>;
 
-    fn fully_perform(mut self, infcx: &InferCtxt<'tcx>) -> Fallible<TypeOpOutput<'tcx, Self>> {
-        let (mut output, region_constraints) = scrape_region_constraints(infcx, |ocx| {
-            ocx.register_obligations(self.obligations.clone());
-            Ok(())
-        })?;
+    fn fully_perform(
+        mut self,
+        infcx: &InferCtxt<'tcx>,
+        span: Span,
+    ) -> Result<TypeOpOutput<'tcx, Self>, ErrorGuaranteed> {
+        let (mut output, region_constraints) = scrape_region_constraints(
+            infcx,
+            |ocx| {
+                ocx.register_obligations(self.obligations.clone());
+                Ok(())
+            },
+            "InstantiateOpaqueType",
+            span,
+        )?;
         self.region_constraints = Some(region_constraints);
         output.error_info = Some(self);
         Ok(output)

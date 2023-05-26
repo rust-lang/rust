@@ -1,11 +1,12 @@
 use crate::infer::canonical::query_response;
 use crate::infer::InferCtxt;
 use crate::traits::query::type_op::TypeOpOutput;
-use crate::traits::query::Fallible;
 use crate::traits::ObligationCtxt;
+use rustc_errors::ErrorGuaranteed;
 use rustc_infer::infer::region_constraints::RegionConstraintData;
 use rustc_middle::traits::query::NoSolution;
 use rustc_span::source_map::DUMMY_SP;
+use rustc_span::Span;
 
 use std::fmt;
 
@@ -17,7 +18,7 @@ pub struct CustomTypeOp<F> {
 impl<F> CustomTypeOp<F> {
     pub fn new<'tcx, R>(closure: F, description: &'static str) -> Self
     where
-        F: FnOnce(&ObligationCtxt<'_, 'tcx>) -> Fallible<R>,
+        F: FnOnce(&ObligationCtxt<'_, 'tcx>) -> Result<R, NoSolution>,
     {
         CustomTypeOp { closure, description }
     }
@@ -25,7 +26,7 @@ impl<F> CustomTypeOp<F> {
 
 impl<'tcx, F, R: fmt::Debug> super::TypeOp<'tcx> for CustomTypeOp<F>
 where
-    F: FnOnce(&ObligationCtxt<'_, 'tcx>) -> Fallible<R>,
+    F: FnOnce(&ObligationCtxt<'_, 'tcx>) -> Result<R, NoSolution>,
 {
     type Output = R;
     /// We can't do any custom error reporting for `CustomTypeOp`, so
@@ -35,12 +36,16 @@ where
     /// Processes the operation and all resulting obligations,
     /// returning the final result along with any region constraints
     /// (they will be given over to the NLL region solver).
-    fn fully_perform(self, infcx: &InferCtxt<'tcx>) -> Fallible<TypeOpOutput<'tcx, Self>> {
+    fn fully_perform(
+        self,
+        infcx: &InferCtxt<'tcx>,
+        span: Span,
+    ) -> Result<TypeOpOutput<'tcx, Self>, ErrorGuaranteed> {
         if cfg!(debug_assertions) {
             info!("fully_perform({:?})", self);
         }
 
-        Ok(scrape_region_constraints(infcx, self.closure)?.0)
+        Ok(scrape_region_constraints(infcx, self.closure, self.description, span)?.0)
     }
 }
 
@@ -54,8 +59,10 @@ impl<F> fmt::Debug for CustomTypeOp<F> {
 /// constraints that result, creating query-region-constraints.
 pub fn scrape_region_constraints<'tcx, Op: super::TypeOp<'tcx, Output = R>, R>(
     infcx: &InferCtxt<'tcx>,
-    op: impl FnOnce(&ObligationCtxt<'_, 'tcx>) -> Fallible<R>,
-) -> Fallible<(TypeOpOutput<'tcx, Op>, RegionConstraintData<'tcx>)> {
+    op: impl FnOnce(&ObligationCtxt<'_, 'tcx>) -> Result<R, NoSolution>,
+    name: &'static str,
+    span: Span,
+) -> Result<(TypeOpOutput<'tcx, Op>, RegionConstraintData<'tcx>), ErrorGuaranteed> {
     // During NLL, we expect that nobody will register region
     // obligations **except** as part of a custom type op (and, at the
     // end of each custom type op, we scrape out the region
@@ -70,16 +77,17 @@ pub fn scrape_region_constraints<'tcx, Op: super::TypeOp<'tcx, Output = R>, R>(
 
     let value = infcx.commit_if_ok(|_| {
         let ocx = ObligationCtxt::new_in_snapshot(infcx);
-        let value = op(&ocx)?;
+        let value = op(&ocx).map_err(|_| {
+            infcx.tcx.sess.delay_span_bug(span, format!("error performing operation: {name}"))
+        })?;
         let errors = ocx.select_all_or_error();
         if errors.is_empty() {
             Ok(value)
         } else {
-            infcx.tcx.sess.delay_span_bug(
+            Err(infcx.tcx.sess.delay_span_bug(
                 DUMMY_SP,
                 format!("errors selecting obligation during MIR typeck: {:?}", errors),
-            );
-            Err(NoSolution)
+            ))
         }
     })?;
 
