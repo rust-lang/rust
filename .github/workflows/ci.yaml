@@ -66,7 +66,9 @@ jobs:
           rustup component add rustfmt rust-src
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@76686c56f2b581d1bb5bda44b51f7e24bd9b8b8e
+        uses: Swatinem/rust-cache@988c164c3d0e93c4dbab36aaf5bbeb77425b2894
+        with:
+          key: ${{ env.RUST_CHANNEL }}
 
       - name: Bump opt-level
         if: matrix.os == 'ubuntu-latest'
@@ -113,7 +115,7 @@ jobs:
           rustup target add ${{ env.targets }} ${{ env.targets_ide }}
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@76686c56f2b581d1bb5bda44b51f7e24bd9b8b8e
+        uses: Swatinem/rust-cache@988c164c3d0e93c4dbab36aaf5bbeb77425b2894
 
       - name: Check
         run: |
