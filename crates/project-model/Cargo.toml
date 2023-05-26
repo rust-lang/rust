@@ -21,6 +21,7 @@ serde.workspace = true
 triomphe.workspace = true
 anyhow = "1.0.62"
 la-arena = { version = "0.3.0", path = "../../lib/la-arena" }
+itertools = "0.10.5"
 
 # local deps
 base-db.workspace = true

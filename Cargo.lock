@@ -1334,6 +1334,7 @@ dependencies = [
  "cargo_metadata",
  "cfg",
  "expect-test",
+ "itertools",
  "la-arena",
  "paths",
  "profile",

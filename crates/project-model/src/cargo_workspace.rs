@@ -10,7 +10,7 @@ use base_db::Edition;
 use cargo_metadata::{CargoOpt, MetadataCommand};
 use la_arena::{Arena, Idx};
 use paths::{AbsPath, AbsPathBuf};
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
 use serde_json::from_value;
 
@@ -489,6 +489,21 @@ impl CargoWorkspace {
 
         // not in this workspace
         None
+    }
+
+    /// Returns the union of the features of all member crates in this workspace.
+    pub fn workspace_features(&self) -> FxHashSet<String> {
+        self.packages()
+            .filter_map(|package| {
+                let package = &self[package];
+                if package.is_member {
+                    Some(package.features.keys().cloned())
+                } else {
+                    None
+                }
+            })
+            .flatten()
+            .collect()
     }
 
     fn is_unique(&self, name: &str) -> bool {
