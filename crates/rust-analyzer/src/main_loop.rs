@@ -602,21 +602,18 @@ impl GlobalState {
                         (Progress::Begin, None)
                     }
                     flycheck::Progress::DidCheckCrate(target) => (Progress::Report, Some(target)),
-                    flycheck::Progress::DidCancel => (Progress::End, None),
+                    flycheck::Progress::DidCancel => {
+                        self.last_flycheck_error = None;
+                        (Progress::End, None)
+                    }
                     flycheck::Progress::DidFailToRestart(err) => {
-                        self.show_and_log_error(
-                            "cargo check failed to start".to_string(),
-                            Some(err),
-                        );
+                        self.last_flycheck_error =
+                            Some(format!("cargo check failed to start: {err}"));
                         return;
                     }
                     flycheck::Progress::DidFinish(result) => {
-                        if let Err(err) = result {
-                            self.show_and_log_error(
-                                "cargo check failed".to_string(),
-                                Some(err.to_string()),
-                            );
-                        }
+                        self.last_flycheck_error =
+                            result.err().map(|err| format!("cargo check failed to start: {err}"));
                         (Progress::End, None)
                     }
                 };

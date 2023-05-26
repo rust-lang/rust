@@ -734,7 +734,6 @@ impl fmt::Display for ConfigError {
         write!(
             f,
             "invalid config value{}:\n{}",
-            self.errors.len(),
             if self.errors.len() == 1 { "" } else { "s" },
             errors
         )

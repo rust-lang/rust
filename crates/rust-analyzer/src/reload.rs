@@ -139,6 +139,11 @@ impl GlobalState {
             status.health = lsp_ext::Health::Warning;
             format_to!(message, "{err}\n");
         }
+        if let Some(err) = &self.last_flycheck_error {
+            status.health = lsp_ext::Health::Warning;
+            message.push_str(err);
+            message.push('\n');
+        }
 
         for ws in self.workspaces.iter() {
             let (ProjectWorkspace::Cargo { sysroot, .. }

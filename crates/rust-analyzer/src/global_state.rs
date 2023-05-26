@@ -75,6 +75,7 @@ pub(crate) struct GlobalState {
     pub(crate) flycheck: Arc<[FlycheckHandle]>,
     pub(crate) flycheck_sender: Sender<flycheck::Message>,
     pub(crate) flycheck_receiver: Receiver<flycheck::Message>,
+    pub(crate) last_flycheck_error: Option<String>,
 
     // VFS
     pub(crate) loader: Handle<Box<dyn vfs::loader::Handle>, Receiver<vfs::loader::Message>>,
@@ -179,6 +180,7 @@ impl GlobalState {
             flycheck: Arc::from(Vec::new()),
             flycheck_sender,
             flycheck_receiver,
+            last_flycheck_error: None,
 
             vfs: Arc::new(RwLock::new((vfs::Vfs::default(), IntMap::default()))),
             vfs_config_version: 0,
