@@ -326,7 +326,7 @@ fn main() {
         not(jit),
         not(no_unstable_features),
         target_arch = "x86_64",
-        any(target_os = "linux", target_os = "darwin")
+        any(target_os = "linux", target_os = "macos")
     ))]
     unsafe {
         global_asm_test();
@@ -359,7 +359,7 @@ fn main() {
     not(jit),
     not(no_unstable_features),
     target_arch = "x86_64",
-    any(target_os = "linux", target_os = "darwin")
+    any(target_os = "linux", target_os = "macos")
 ))]
 extern "C" {
     fn global_asm_test();
@@ -375,7 +375,7 @@ global_asm! {
     "
 }
 
-#[cfg(all(not(jit), not(no_unstable_features), target_arch = "x86_64", target_os = "darwin"))]
+#[cfg(all(not(jit), not(no_unstable_features), target_arch = "x86_64", target_os = "macos"))]
 global_asm! {
     "
     .global _global_asm_test
