@@ -16,9 +16,21 @@ use sysinfo::{CpuExt, System, SystemExt};
 
 // Update this number whenever a breaking change is made to the build metrics.
 //
-// Versions:
-// 0: initial version
-// 1: replaced JsonNode::Test with JsonNode::TestSuite
+// The output format is versioned for two reasons:
+//
+// - The metadata is intended to be consumed by external tooling, and exposing a format version
+//   helps the tools determine whether they're compatible with a metrics file.
+//
+// - If a developer enables build metrics in their local checkout, making a breaking change to the
+//   metrics format would result in a hard-to-diagnose error message when an existing metrics file
+//   is not compatible with the new changes. With a format version number, bootstrap can discard
+//   incompatible metrics files instead of appending metrics to them.
+//
+// Version changelog:
+//
+// - v0: initial version
+// - v1: replaced JsonNode::Test with JsonNode::TestSuite
+//
 const CURRENT_FORMAT_VERSION: usize = 1;
 
 pub(crate) struct BuildMetrics {
