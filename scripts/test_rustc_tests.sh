@@ -138,6 +138,7 @@ rm -r tests/run-make/issue-30063 # same
 rm -r tests/run-make/multiple-emits # same
 rm -r tests/run-make/output-type-permutations # same
 rm -r tests/run-make/used # same
+rm -r tests/run-make/no-alloc-shim
 
 # bugs in the test suite
 # ======================
