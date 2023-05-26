@@ -44,7 +44,7 @@ pub use crate::{
     build_scripts::WorkspaceBuildScripts,
     cargo_workspace::{
         CargoConfig, CargoFeatures, CargoWorkspace, Package, PackageData, PackageDependency,
-        RustLibSource, Target, TargetData, TargetKind, UnsetTestCrates,
+        RustLibSource, Target, TargetData, TargetKind,
     },
     manifest_path::ManifestPath,
     project_json::{ProjectJson, ProjectJsonData},

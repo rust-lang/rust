@@ -28,29 +28,17 @@ use crate::{
 };
 
 /// A set of cfg-overrides per crate.
-///
-/// `Wildcard(..)` is useful e.g. disabling `#[cfg(test)]` on all crates,
-/// without having to first obtain a list of all crates.
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub enum CfgOverrides {
-    /// A single global set of overrides matching all crates.
-    Wildcard(CfgDiff),
+#[derive(Default, Debug, Clone, Eq, PartialEq)]
+pub struct CfgOverrides {
+    /// A global set of overrides matching all crates.
+    pub global: CfgDiff,
     /// A set of overrides matching specific crates.
-    Selective(FxHashMap<String, CfgDiff>),
-}
-
-impl Default for CfgOverrides {
-    fn default() -> Self {
-        Self::Selective(FxHashMap::default())
-    }
+    pub selective: FxHashMap<String, CfgDiff>,
 }
 
 impl CfgOverrides {
     pub fn len(&self) -> usize {
-        match self {
-            CfgOverrides::Wildcard(_) => 1,
-            CfgOverrides::Selective(hash_map) => hash_map.len(),
-        }
+        self.global.len() + self.selective.iter().map(|(_, it)| it.len()).sum::<usize>()
     }
 }
 
@@ -292,7 +280,7 @@ impl ProjectWorkspace {
                 let rustc_cfg =
                     rustc_cfg::get(Some(&cargo_toml), config.target.as_deref(), &config.extra_env);
 
-                let cfg_overrides = config.cfg_overrides();
+                let cfg_overrides = config.cfg_overrides.clone();
                 let data_layout = target_data_layout::get(
                     Some(&cargo_toml),
                     config.target.as_deref(),
@@ -886,12 +874,10 @@ fn cargo_to_crate_graph(
                 cfg_options.insert_atom("test".into());
             }
 
-            let overrides = match override_cfg {
-                CfgOverrides::Wildcard(cfg_diff) => Some(cfg_diff),
-                CfgOverrides::Selective(cfg_overrides) => cfg_overrides.get(&cargo[pkg].name),
+            if !override_cfg.global.is_empty() {
+                cfg_options.apply_diff(override_cfg.global.clone());
             };
-
-            if let Some(overrides) = overrides {
+            if let Some(diff) = override_cfg.selective.get(&cargo[pkg].name) {
                 // FIXME: this is sort of a hack to deal with #![cfg(not(test))] vanishing such as seen
                 // in ed25519_dalek (#7243), and libcore (#9203) (although you only hit that one while
                 // working on rust-lang/rust as that's the only time it appears outside sysroot).
@@ -899,7 +885,7 @@ fn cargo_to_crate_graph(
                 // A more ideal solution might be to reanalyze crates based on where the cursor is and
                 // figure out the set of cfgs that would have to apply to make it active.
 
-                cfg_options.apply_diff(overrides.clone());
+                cfg_options.apply_diff(diff.clone());
             };
             cfg_options
         });
@@ -1109,14 +1095,10 @@ fn handle_rustc_crates(
 
             let mut cfg_options = cfg_options.clone();
 
-            let overrides = match override_cfg {
-                CfgOverrides::Wildcard(cfg_diff) => Some(cfg_diff),
-                CfgOverrides::Selective(cfg_overrides) => {
-                    cfg_overrides.get(&rustc_workspace[pkg].name)
-                }
+            if !override_cfg.global.is_empty() {
+                cfg_options.apply_diff(override_cfg.global.clone());
             };
-
-            if let Some(overrides) = overrides {
+            if let Some(diff) = override_cfg.selective.get(&rustc_workspace[pkg].name) {
                 // FIXME: this is sort of a hack to deal with #![cfg(not(test))] vanishing such as seen
                 // in ed25519_dalek (#7243), and libcore (#9203) (although you only hit that one while
                 // working on rust-lang/rust as that's the only time it appears outside sysroot).
@@ -1124,7 +1106,7 @@ fn handle_rustc_crates(
                 // A more ideal solution might be to reanalyze crates based on where the cursor is and
                 // figure out the set of cfgs that would have to apply to make it active.
 
-                cfg_options.apply_diff(overrides.clone());
+                cfg_options.apply_diff(diff.clone());
             };
 
             for &tgt in rustc_workspace[pkg].targets.iter() {

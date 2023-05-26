@@ -158,9 +158,10 @@ fn check_crate_graph(crate_graph: CrateGraph, expect: ExpectFile) {
 
 #[test]
 fn cargo_hello_world_project_model_with_wildcard_overrides() {
-    let cfg_overrides = CfgOverrides::Wildcard(
-        CfgDiff::new(Vec::new(), vec![CfgAtom::Flag("test".into())]).unwrap(),
-    );
+    let cfg_overrides = CfgOverrides {
+        global: CfgDiff::new(Vec::new(), vec![CfgAtom::Flag("test".into())]).unwrap(),
+        selective: Default::default(),
+    };
     let (crate_graph, _proc_macros) =
         load_cargo_with_overrides("hello-world-metadata.json", cfg_overrides);
     check_crate_graph(
@@ -173,14 +174,13 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
 
 #[test]
 fn cargo_hello_world_project_model_with_selective_overrides() {
-    let cfg_overrides = {
-        CfgOverrides::Selective(
-            std::iter::once((
-                "libc".to_owned(),
-                CfgDiff::new(Vec::new(), vec![CfgAtom::Flag("test".into())]).unwrap(),
-            ))
-            .collect(),
-        )
+    let cfg_overrides = CfgOverrides {
+        global: Default::default(),
+        selective: std::iter::once((
+            "libc".to_owned(),
+            CfgDiff::new(Vec::new(), vec![CfgAtom::Flag("test".into())]).unwrap(),
+        ))
+        .collect(),
     };
     let (crate_graph, _proc_macros) =
         load_cargo_with_overrides("hello-world-metadata.json", cfg_overrides);
