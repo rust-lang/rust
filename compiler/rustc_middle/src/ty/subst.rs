@@ -586,6 +586,9 @@ impl<T> EarlyBinder<T> {
     /// arguments of an `FnSig`). Otherwise, consider using
     /// [`subst_identity`](EarlyBinder::subst_identity).
     ///
+    /// To skip the binder on `x: &EarlyBinder<T>` to obtain `&T`, leverage
+    /// [`EarlyBinder::as_ref`](EarlyBinder::as_ref): `x.as_ref().skip_binder()`.
+    ///
     /// See also [`Binder::skip_binder`](super::Binder::skip_binder), which is
     /// the analogous operation on [`super::Binder`].
     pub fn skip_binder(self) -> T {
