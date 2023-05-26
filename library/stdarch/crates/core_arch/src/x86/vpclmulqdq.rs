@@ -24,7 +24,7 @@ extern "C" {
 // so we need to special-case on that...
 
 /// Performs a carry-less multiplication of two 64-bit polynomials over the
-/// finite field GF(2^k) - in each of the 4 128-bit lanes.
+/// finite field GF(2) - in each of the 4 128-bit lanes.
 ///
 /// The immediate byte is used for determining which halves of each lane `a` and `b`
 /// should be used. Immediate bits other than 0 and 4 are ignored.
@@ -42,7 +42,7 @@ pub unsafe fn _mm512_clmulepi64_epi128<const IMM8: i32>(a: __m512i, b: __m512i) 
 }
 
 /// Performs a carry-less multiplication of two 64-bit polynomials over the
-/// finite field GF(2^k) - in each of the 2 128-bit lanes.
+/// finite field GF(2) - in each of the 2 128-bit lanes.
 ///
 /// The immediate byte is used for determining which halves of each lane `a` and `b`
 /// should be used. Immediate bits other than 0 and 4 are ignored.

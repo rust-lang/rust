@@ -17,7 +17,7 @@ extern "C" {
 }
 
 /// Performs a carry-less multiplication of two 64-bit polynomials over the
-/// finite field GF(2^k).
+/// finite field GF(2).
 ///
 /// The immediate byte is used for determining which halves of `a` and `b`
 /// should be used. Immediate bits other than 0 and 4 are ignored.
