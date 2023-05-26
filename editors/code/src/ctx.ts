@@ -263,7 +263,10 @@ export class Ctx {
         }
         await client.start();
         this.updateCommands();
-        this.prepareTreeDependenciesView(client);
+
+        if (this.config.showDependenciesExplorer) {
+            this.prepareTreeDependenciesView(client);
+        }
     }
 
     private prepareTreeDependenciesView(client: lc.LanguageClient) {
