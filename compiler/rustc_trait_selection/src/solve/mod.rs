@@ -231,13 +231,21 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
 
                 let mut candidates = Vec::new();
                 // LHS normalizes-to RHS
-                candidates.extend(
-                    evaluate_normalizes_to(self, alias_lhs, rhs, direction, Invert::No).ok(),
-                );
+                candidates.extend(evaluate_normalizes_to(
+                    self,
+                    alias_lhs,
+                    rhs,
+                    direction,
+                    Invert::No,
+                ));
                 // RHS normalizes-to RHS
-                candidates.extend(
-                    evaluate_normalizes_to(self, alias_rhs, lhs, direction, Invert::Yes).ok(),
-                );
+                candidates.extend(evaluate_normalizes_to(
+                    self,
+                    alias_rhs,
+                    lhs,
+                    direction,
+                    Invert::Yes,
+                ));
                 // Relate via substs
                 let subst_relate_response = self.probe(|ecx| {
                     let span = tracing::span!(
