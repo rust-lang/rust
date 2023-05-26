@@ -1125,6 +1125,25 @@ impl Enum {
     pub fn is_data_carrying(self, db: &dyn HirDatabase) -> bool {
         self.variants(db).iter().any(|v| !matches!(v.kind(db), StructKind::Unit))
     }
+
+    pub fn layout(self, db: &dyn HirDatabase) -> Result<(Layout, usize), LayoutError> {
+        let layout = Adt::from(self).layout(db)?;
+        let tag_size =
+            if let layout::Variants::Multiple { tag, tag_encoding, .. } = &layout.variants {
+                match tag_encoding {
+                    TagEncoding::Direct => {
+                        let target_data_layout = db
+                            .target_data_layout(self.module(db).krate().id)
+                            .ok_or(LayoutError::TargetLayoutNotAvailable)?;
+                        tag.size(&*target_data_layout).bytes_usize()
+                    }
+                    TagEncoding::Niche { .. } => 0,
+                }
+            } else {
+                0
+            };
+        Ok((layout, tag_size))
+    }
 }
 
 impl HasVisibility for Enum {
@@ -1185,23 +1204,16 @@ impl Variant {
     /// Return layout of the variant and tag size of the parent enum.
     pub fn layout(&self, db: &dyn HirDatabase) -> Result<(Layout, usize), LayoutError> {
         let parent_enum = self.parent_enum(db);
-        let parent_layout = Adt::from(parent_enum).layout(db)?;
-        if let layout::Variants::Multiple { variants, tag, tag_encoding, tag_field: _ } =
-            parent_layout.variants
-        {
-            let tag_size = match tag_encoding {
-                TagEncoding::Direct => {
-                    let target_data_layout = db
-                        .target_data_layout(parent_enum.module(db).krate().id)
-                        .ok_or(LayoutError::TargetLayoutNotAvailable)?;
-                    tag.size(&*target_data_layout).bytes_usize()
+        let (parent_layout, tag_size) = parent_enum.layout(db)?;
+        Ok((
+            match parent_layout.variants {
+                layout::Variants::Multiple { variants, .. } => {
+                    variants[RustcEnumVariantIdx(self.id)].clone()
                 }
-                TagEncoding::Niche { .. } => 0,
-            };
-            Ok((variants[RustcEnumVariantIdx(self.id)].clone(), tag_size))
-        } else {
-            Ok((parent_layout, 0))
-        }
+                _ => parent_layout,
+            },
+            tag_size,
+        ))
     }
 }
 

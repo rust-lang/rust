@@ -1,7 +1,7 @@
 //! Compute the binary representation of a type
 
 use base_db::CrateId;
-use chalk_ir::{AdtId, TyKind};
+use chalk_ir::{AdtId, FloatTy, IntTy, TyKind, UintTy};
 use hir_def::{
     layout::{
         Abi, FieldsShape, Integer, LayoutCalculator, LayoutS, Primitive, ReprOptions, Scalar, Size,
@@ -83,7 +83,7 @@ pub fn layout_of_ty(db: &dyn HirDatabase, ty: &Ty, krate: CrateId) -> Result<Lay
     let dl = &*cx.current_data_layout();
     let trait_env = Arc::new(TraitEnvironment::empty(krate));
     let ty = normalize(db, trait_env, ty.clone());
-    Ok(match ty.kind(Interner) {
+    let layout = match ty.kind(Interner) {
         TyKind::Adt(AdtId(def), subst) => db.layout_of_adt(*def, subst.clone(), krate)?,
         TyKind::Scalar(s) => match s {
             chalk_ir::Scalar::Bool => Layout::scalar(
@@ -104,12 +104,12 @@ pub fn layout_of_ty(db: &dyn HirDatabase, ty: &Ty, krate: CrateId) -> Result<Lay
                 dl,
                 Primitive::Int(
                     match i {
-                        chalk_ir::IntTy::Isize => dl.ptr_sized_integer(),
-                        chalk_ir::IntTy::I8 => Integer::I8,
-                        chalk_ir::IntTy::I16 => Integer::I16,
-                        chalk_ir::IntTy::I32 => Integer::I32,
-                        chalk_ir::IntTy::I64 => Integer::I64,
-                        chalk_ir::IntTy::I128 => Integer::I128,
+                        IntTy::Isize => dl.ptr_sized_integer(),
+                        IntTy::I8 => Integer::I8,
+                        IntTy::I16 => Integer::I16,
+                        IntTy::I32 => Integer::I32,
+                        IntTy::I64 => Integer::I64,
+                        IntTy::I128 => Integer::I128,
                     },
                     true,
                 ),
@@ -118,12 +118,12 @@ pub fn layout_of_ty(db: &dyn HirDatabase, ty: &Ty, krate: CrateId) -> Result<Lay
                 dl,
                 Primitive::Int(
                     match i {
-                        chalk_ir::UintTy::Usize => dl.ptr_sized_integer(),
-                        chalk_ir::UintTy::U8 => Integer::I8,
-                        chalk_ir::UintTy::U16 => Integer::I16,
-                        chalk_ir::UintTy::U32 => Integer::I32,
-                        chalk_ir::UintTy::U64 => Integer::I64,
-                        chalk_ir::UintTy::U128 => Integer::I128,
+                        UintTy::Usize => dl.ptr_sized_integer(),
+                        UintTy::U8 => Integer::I8,
+                        UintTy::U16 => Integer::I16,
+                        UintTy::U32 => Integer::I32,
+                        UintTy::U64 => Integer::I64,
+                        UintTy::U128 => Integer::I128,
                     },
                     false,
                 ),
@@ -131,8 +131,8 @@ pub fn layout_of_ty(db: &dyn HirDatabase, ty: &Ty, krate: CrateId) -> Result<Lay
             chalk_ir::Scalar::Float(f) => scalar(
                 dl,
                 match f {
-                    chalk_ir::FloatTy::F32 => Primitive::F32,
-                    chalk_ir::FloatTy::F64 => Primitive::F64,
+                    FloatTy::F32 => Primitive::F32,
+                    FloatTy::F64 => Primitive::F64,
                 },
             ),
         },
@@ -283,7 +283,8 @@ pub fn layout_of_ty(db: &dyn HirDatabase, ty: &Ty, krate: CrateId) -> Result<Lay
         | TyKind::Placeholder(_)
         | TyKind::BoundVar(_)
         | TyKind::InferenceVar(_, _) => return Err(LayoutError::HasPlaceholder),
-    })
+    };
+    Ok(layout)
 }
 
 fn layout_of_unit(cx: &LayoutCx<'_>, dl: &TargetDataLayout) -> Result<Layout, LayoutError> {
