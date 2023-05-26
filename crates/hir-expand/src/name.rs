@@ -366,6 +366,8 @@ pub mod known {
         crate_type,
         derive,
         global_allocator,
+        no_core,
+        no_std,
         test,
         test_case,
         recursion_limit,

@@ -127,6 +127,8 @@ pub struct DefMap {
     unstable_features: FxHashSet<SmolStr>,
     /// #[rustc_coherence_is_core]
     rustc_coherence_is_core: bool,
+    no_core: bool,
+    no_std: bool,
 
     edition: Edition,
     recursion_limit: Option<u32>,
@@ -294,6 +296,8 @@ impl DefMap {
             unstable_features: FxHashSet::default(),
             diagnostics: Vec::new(),
             rustc_coherence_is_core: false,
+            no_core: false,
+            no_std: false,
         }
     }
 
@@ -329,6 +333,10 @@ impl DefMap {
 
     pub fn is_rustc_coherence_is_core(&self) -> bool {
         self.rustc_coherence_is_core
+    }
+
+    pub fn is_no_std(&self) -> bool {
+        self.no_std || self.no_core
     }
 
     pub fn root(&self) -> LocalModuleId {
@@ -528,6 +536,8 @@ impl DefMap {
             prelude: _,
             root: _,
             rustc_coherence_is_core: _,
+            no_core: _,
+            no_std: _,
         } = self;
 
         extern_prelude.shrink_to_fit();
