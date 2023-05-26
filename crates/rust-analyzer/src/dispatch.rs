@@ -4,7 +4,7 @@ use std::{fmt, panic, thread};
 use ide::Cancelled;
 use lsp_server::ExtractError;
 use serde::{de::DeserializeOwned, Serialize};
-use stdx::thread::QoSClass;
+use stdx::thread::ThreadIntent;
 
 use crate::{
     global_state::{GlobalState, GlobalStateSnapshot},
@@ -104,7 +104,7 @@ impl<'a> RequestDispatcher<'a> {
             None => return self,
         };
 
-        self.global_state.task_pool.handle.spawn(QoSClass::Utility, {
+        self.global_state.task_pool.handle.spawn(ThreadIntent::Worker, {
             let world = self.global_state.snapshot();
             move || {
                 let result = panic::catch_unwind(move || {
@@ -135,7 +135,7 @@ impl<'a> RequestDispatcher<'a> {
         R::Params: DeserializeOwned + panic::UnwindSafe + Send + fmt::Debug,
         R::Result: Serialize,
     {
-        self.on_with_qos::<R>(QoSClass::Utility, f)
+        self.on_with_thread_intent::<R>(ThreadIntent::Worker, f)
     }
 
     /// Dispatches a latency-sensitive request onto the thread pool.
@@ -148,7 +148,7 @@ impl<'a> RequestDispatcher<'a> {
         R::Params: DeserializeOwned + panic::UnwindSafe + Send + fmt::Debug,
         R::Result: Serialize,
     {
-        self.on_with_qos::<R>(QoSClass::UserInitiated, f)
+        self.on_with_thread_intent::<R>(ThreadIntent::LatencySensitive, f)
     }
 
     pub(crate) fn finish(&mut self) {
@@ -163,9 +163,9 @@ impl<'a> RequestDispatcher<'a> {
         }
     }
 
-    fn on_with_qos<R>(
+    fn on_with_thread_intent<R>(
         &mut self,
-        qos_class: QoSClass,
+        intent: ThreadIntent,
         f: fn(GlobalStateSnapshot, R::Params) -> Result<R::Result>,
     ) -> &mut Self
     where
@@ -178,7 +178,7 @@ impl<'a> RequestDispatcher<'a> {
             None => return self,
         };
 
-        self.global_state.task_pool.handle.spawn(qos_class, {
+        self.global_state.task_pool.handle.spawn(intent, {
             let world = self.global_state.snapshot();
             move || {
                 let result = panic::catch_unwind(move || {

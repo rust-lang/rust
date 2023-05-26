@@ -397,7 +397,7 @@ impl GlobalState {
         tracing::debug!(%cause, "will prime caches");
         let num_worker_threads = self.config.prime_caches_num_threads();
 
-        self.task_pool.handle.spawn_with_sender(stdx::thread::QoSClass::Utility, {
+        self.task_pool.handle.spawn_with_sender(stdx::thread::ThreadIntent::Worker, {
             let analysis = self.snapshot().analysis;
             move |sender| {
                 sender.send(Task::PrimeCaches(PrimeCachesProgress::Begin)).unwrap();
@@ -680,7 +680,7 @@ impl GlobalState {
             .on_sync::<lsp_ext::OnTypeFormatting>(handlers::handle_on_type_formatting)
             // We can’t run latency-sensitive request handlers which do semantic
             // analysis on the main thread because that would block other
-            // requests. Instead, we run these request handlers on higher QoS
+            // requests. Instead, we run these request handlers on higher priority
             // threads in the threadpool.
             .on_latency_sensitive::<lsp_types::request::Completion>(handlers::handle_completion)
             .on_latency_sensitive::<lsp_types::request::ResolveCompletionItem>(
@@ -789,8 +789,8 @@ impl GlobalState {
         let snapshot = self.snapshot();
 
         // Diagnostics are triggered by the user typing
-        // so we want computing them to run at the User Initiated QoS.
-        self.task_pool.handle.spawn(stdx::thread::QoSClass::UserInitiated, move || {
+        // so we run them on a latency sensitive thread.
+        self.task_pool.handle.spawn(stdx::thread::ThreadIntent::LatencySensitive, move || {
             let _p = profile::span("publish_diagnostics");
             let diagnostics = subscriptions
                 .into_iter()

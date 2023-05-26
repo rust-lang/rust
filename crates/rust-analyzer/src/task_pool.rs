@@ -2,7 +2,7 @@
 //! It is used in [`crate::global_state::GlobalState`] throughout the main loop.
 
 use crossbeam_channel::Sender;
-use stdx::thread::{Pool, QoSClass};
+use stdx::thread::{Pool, ThreadIntent};
 
 pub(crate) struct TaskPool<T> {
     sender: Sender<T>,
@@ -14,23 +14,23 @@ impl<T> TaskPool<T> {
         TaskPool { sender, pool: Pool::new(threads) }
     }
 
-    pub(crate) fn spawn<F>(&mut self, qos_class: QoSClass, task: F)
+    pub(crate) fn spawn<F>(&mut self, intent: ThreadIntent, task: F)
     where
         F: FnOnce() -> T + Send + 'static,
         T: Send + 'static,
     {
-        self.pool.spawn(qos_class, {
+        self.pool.spawn(intent, {
             let sender = self.sender.clone();
             move || sender.send(task()).unwrap()
         })
     }
 
-    pub(crate) fn spawn_with_sender<F>(&mut self, qos_class: QoSClass, task: F)
+    pub(crate) fn spawn_with_sender<F>(&mut self, intent: ThreadIntent, task: F)
     where
         F: FnOnce(Sender<T>) + Send + 'static,
         T: Send + 'static,
     {
-        self.pool.spawn(qos_class, {
+        self.pool.spawn(intent, {
             let sender = self.sender.clone();
             move || task(sender)
         })

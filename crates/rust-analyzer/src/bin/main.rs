@@ -79,13 +79,15 @@ fn try_main(flags: flags::RustAnalyzer) -> Result<()> {
                 return Ok(());
             }
 
-            // rust-analyzer’s “main thread” is actually a secondary thread
-            // with an increased stack size at the User Initiated QoS class.
-            // We use this QoS class because any delay in the main loop
+            // rust-analyzer’s “main thread” is actually
+            // a secondary latency-sensitive thread with an increased stack size.
+            // We use this thread intent because any delay in the main loop
             // will make actions like hitting enter in the editor slow.
-            // rust-analyzer does not block the editor’s render loop,
-            // so we don’t use User Interactive.
-            with_extra_thread("LspServer", stdx::thread::QoSClass::UserInitiated, run_server)?;
+            with_extra_thread(
+                "LspServer",
+                stdx::thread::ThreadIntent::LatencySensitive,
+                run_server,
+            )?;
         }
         flags::RustAnalyzerCmd::Parse(cmd) => cmd.run()?,
         flags::RustAnalyzerCmd::Symbols(cmd) => cmd.run()?,
@@ -143,10 +145,10 @@ const STACK_SIZE: usize = 1024 * 1024 * 8;
 /// space.
 fn with_extra_thread(
     thread_name: impl Into<String>,
-    qos_class: stdx::thread::QoSClass,
+    thread_intent: stdx::thread::ThreadIntent,
     f: impl FnOnce() -> Result<()> + Send + 'static,
 ) -> Result<()> {
-    let handle = stdx::thread::Builder::new(qos_class)
+    let handle = stdx::thread::Builder::new(thread_intent)
         .name(thread_name.into())
         .stack_size(STACK_SIZE)
         .spawn(f)?;

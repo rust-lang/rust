@@ -1,6 +1,7 @@
 //! [`Pool`] implements a basic custom thread pool
 //! inspired by the [`threadpool` crate](http://docs.rs/threadpool).
-//! It allows the spawning of tasks under different QoS classes.
+//! When you spawn a task you specify a thread intent
+//! so the pool can schedule it to run on a thread with that intent.
 //! rust-analyzer uses this to prioritize work based on latency requirements.
 //!
 //! The thread pool is implemented entirely using
@@ -13,10 +14,7 @@ use std::sync::{
 
 use crossbeam_channel::{Receiver, Sender};
 
-use super::{
-    get_current_thread_qos_class, set_current_thread_qos_class, Builder, JoinHandle, QoSClass,
-    IS_QOS_AVAILABLE,
-};
+use super::{Builder, JoinHandle, ThreadIntent};
 
 pub struct Pool {
     // `_handles` is never read: the field is present
@@ -32,32 +30,32 @@ pub struct Pool {
 }
 
 struct Job {
-    requested_qos_class: QoSClass,
+    requested_intent: ThreadIntent,
     f: Box<dyn FnOnce() + Send + 'static>,
 }
 
 impl Pool {
     pub fn new(threads: usize) -> Pool {
         const STACK_SIZE: usize = 8 * 1024 * 1024;
-        const INITIAL_QOS_CLASS: QoSClass = QoSClass::Utility;
+        const INITIAL_INTENT: ThreadIntent = ThreadIntent::Worker;
 
         let (job_sender, job_receiver) = crossbeam_channel::unbounded();
         let extant_tasks = Arc::new(AtomicUsize::new(0));
 
         let mut handles = Vec::with_capacity(threads);
         for _ in 0..threads {
-            let handle = Builder::new(INITIAL_QOS_CLASS)
+            let handle = Builder::new(INITIAL_INTENT)
                 .stack_size(STACK_SIZE)
                 .name("Worker".into())
                 .spawn({
                     let extant_tasks = Arc::clone(&extant_tasks);
                     let job_receiver: Receiver<Job> = job_receiver.clone();
                     move || {
-                        let mut current_qos_class = INITIAL_QOS_CLASS;
+                        let mut current_intent = INITIAL_INTENT;
                         for job in job_receiver {
-                            if job.requested_qos_class != current_qos_class {
-                                set_current_thread_qos_class(job.requested_qos_class);
-                                current_qos_class = job.requested_qos_class;
+                            if job.requested_intent != current_intent {
+                                job.requested_intent.apply_to_current_thread();
+                                current_intent = job.requested_intent;
                             }
                             extant_tasks.fetch_add(1, Ordering::SeqCst);
                             (job.f)();
@@ -73,19 +71,18 @@ impl Pool {
         Pool { _handles: handles, extant_tasks, job_sender }
     }
 
-    pub fn spawn<F>(&self, qos_class: QoSClass, f: F)
+    pub fn spawn<F>(&self, intent: ThreadIntent, f: F)
     where
         F: FnOnce() + Send + 'static,
     {
         let f = Box::new(move || {
-            if IS_QOS_AVAILABLE {
-                debug_assert_eq!(get_current_thread_qos_class(), Some(qos_class));
+            if cfg!(debug_assertions) {
+                intent.assert_is_used_on_current_thread();
             }
-
             f()
         });
 
-        let job = Job { requested_qos_class: qos_class, f };
+        let job = Job { requested_intent: intent, f };
         self.job_sender.send(job).unwrap();
     }
 
