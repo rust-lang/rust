@@ -257,7 +257,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// would result in an error (basically, the same criteria we
     /// would use to decide if a method is a plausible fit for
     /// ambiguity purposes).
-    #[instrument(level = "debug", skip(self, candidate_filter))]
+    #[instrument(level = "trace", skip(self, candidate_filter))]
     pub fn probe_for_return_type(
         &self,
         span: Span,
@@ -300,7 +300,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .collect()
     }
 
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     pub fn probe_for_name(
         &self,
         mode: Mode,
@@ -324,7 +324,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         )
     }
 
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     pub(crate) fn probe_for_name_many(
         &self,
         mode: Mode,
@@ -1841,7 +1841,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         self.static_candidates.borrow_mut().push(source);
     }
 
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn xform_self_ty(
         &self,
         item: ty::AssocItem,
@@ -1856,7 +1856,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         }
     }
 
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn xform_method_sig(&self, method: DefId, substs: SubstsRef<'tcx>) -> ty::FnSig<'tcx> {
         let fn_sig = self.tcx.fn_sig(method);
         trace!(?fn_sig);

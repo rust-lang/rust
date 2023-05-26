@@ -181,7 +181,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Note that inspecting a type's structure *directly* may expose the fact
     /// that there are actually multiple representations for `Error`, so avoid
     /// that when err needs to be handled differently.
-    #[instrument(skip(self, expr), level = "debug")]
+    #[instrument(skip(self, expr), level = "trace")]
     pub(super) fn check_expr_with_expectation(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
@@ -278,7 +278,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty
     }
 
-    #[instrument(skip(self, expr), level = "debug")]
+    #[instrument(skip(self, expr), level = "trace")]
     fn check_expr_kind(
         &self,
         expr: &'tcx hir::Expr<'tcx>,

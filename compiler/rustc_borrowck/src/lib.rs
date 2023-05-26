@@ -155,7 +155,7 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def: LocalDefId) -> &BorrowCheckResult<'_> {
 /// Use `consumer_options: None` for the default behavior of returning
 /// [`BorrowCheckResult`] only. Otherwise, return [`BodyWithBorrowckFacts`] according
 /// to the given [`ConsumerOptions`].
-#[instrument(skip(infcx, input_body, input_promoted), fields(id=?input_body.source.def_id()), level = "debug")]
+#[instrument(skip(infcx, input_body, input_promoted), fields(id=?input_body.source.def_id()), level = "trace")]
 fn do_mir_borrowck<'tcx>(
     infcx: &InferCtxt<'tcx>,
     input_body: &Body<'tcx>,
@@ -491,7 +491,7 @@ impl<'cx, 'tcx> BorrowckInferCtxt<'cx, 'tcx> {
         next_region
     }
 
-    #[instrument(skip(self, get_ctxt_fn), level = "debug")]
+    #[instrument(skip(self, get_ctxt_fn), level = "trace")]
     pub(crate) fn next_nll_region_var<F>(
         &self,
         origin: NllRegionVariableOrigin,
@@ -1022,7 +1022,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
     }
 
-    #[instrument(level = "debug", skip(self, flow_state))]
+    #[instrument(level = "trace", skip(self, flow_state))]
     fn check_access_for_conflict(
         &mut self,
         location: Location,
@@ -1485,7 +1485,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     /// Checks whether a borrow of this place is invalidated when the function
     /// exits
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn check_for_invalidation_at_exit(
         &mut self,
         location: Location,

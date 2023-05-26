@@ -193,7 +193,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         self.inverse_outlives.add(fr_b, fr_a);
     }
 
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     pub(crate) fn create(mut self) -> CreateResult<'tcx> {
         let span = self.infcx.tcx.def_span(self.universal_regions.defining_ty.def_id());
 
@@ -290,7 +290,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         }
     }
 
-    #[instrument(skip(self, data), level = "debug")]
+    #[instrument(skip(self, data), level = "trace")]
     fn push_region_constraints(&mut self, data: &QueryRegionConstraints<'tcx>, span: Span) {
         trace!("constraints generated: {:#?}", data);
 
@@ -312,7 +312,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
     /// either the return type of the MIR or one of its arguments. At
     /// the same time, compute and add any implied bounds that come
     /// from this local.
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn add_implied_bounds(&mut self, ty: Ty<'tcx>) -> Option<&'tcx QueryRegionConstraints<'tcx>> {
         let TypeOpOutput { output: bounds, constraints, .. } = self
             .param_env

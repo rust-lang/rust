@@ -46,7 +46,7 @@ pub fn places_conflict<'tcx>(
 /// access depth. The `bias` parameter is used to determine how the unknowable (comparing runtime
 /// array indices, for example) should be interpreted - this depends on what the caller wants in
 /// order to make the conservative choice and preserve soundness.
-#[instrument(level = "debug", skip(tcx, body))]
+#[instrument(level = "trace", skip(tcx, body))]
 pub(super) fn borrow_conflicts_with_place<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,

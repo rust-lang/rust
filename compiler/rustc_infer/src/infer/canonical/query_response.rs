@@ -98,7 +98,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
     /// Helper for `make_canonicalized_query_response` that does
     /// everything up until the final canonicalization.
-    #[instrument(skip(self, fulfill_cx), level = "debug")]
+    #[instrument(skip(self, fulfill_cx), level = "trace")]
     fn make_query_response<T>(
         &self,
         inference_vars: CanonicalVarValues<'tcx>,
@@ -404,7 +404,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// will instantiate fresh inference variables for each canonical
     /// variable instead. Therefore, the result of this method must be
     /// properly unified
-    #[instrument(level = "debug", skip(self, cause, param_env))]
+    #[instrument(level = "trace", skip(self, cause, param_env))]
     fn query_response_substitution_guess<R>(
         &self,
         cause: &ObligationCause<'tcx>,

@@ -87,7 +87,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.resolve_vars_with_obligations_and_mutate_fulfillment(ty, |_| {})
     }
 
-    #[instrument(skip(self, mutate_fulfillment_errors), level = "debug", ret)]
+    #[instrument(skip(self, mutate_fulfillment_errors), level = "trace", ret)]
     pub(in super::super) fn resolve_vars_with_obligations_and_mutate_fulfillment(
         &self,
         mut ty: Ty<'tcx>,
@@ -155,7 +155,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.typeck_results.borrow_mut().field_indices_mut().insert(hir_id, index);
     }
 
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     pub(in super::super) fn write_resolution(
         &self,
         hir_id: hir::HirId,
@@ -164,7 +164,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.typeck_results.borrow_mut().type_dependent_defs_mut().insert(hir_id, r);
     }
 
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     pub fn write_method_call(&self, hir_id: hir::HirId, method: MethodCallee<'tcx>) {
         self.write_resolution(hir_id, Ok((DefKind::AssocFn, method.def_id)));
         self.write_substs(hir_id, method.substs);
@@ -185,7 +185,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// This should be invoked **before any unifications have
     /// occurred**, so that annotations like `Vec<_>` are preserved
     /// properly.
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     pub fn write_user_type_annotation_from_substs(
         &self,
         hir_id: hir::HirId,
@@ -205,7 +205,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     pub fn write_user_type_annotation(
         &self,
         hir_id: hir::HirId,
@@ -223,7 +223,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    #[instrument(skip(self, expr), level = "debug")]
+    #[instrument(skip(self, expr), level = "trace")]
     pub fn apply_adjustments(&self, expr: &hir::Expr<'_>, adj: Vec<Adjustment<'tcx>>) {
         trace!("expr = {:#?}", expr);
 
@@ -538,7 +538,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// We must not attempt to select obligations after this method has run, or risk query cycle
     /// ICE.
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn save_generator_interior_predicates(&self, def_id: DefId) {
         // Try selecting all obligations that are not blocked on inference variables.
         // Once we start unifying generator witnesses, trying to select obligations on them will
@@ -579,7 +579,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     pub(in super::super) fn report_ambiguity_errors(&self) {
         let mut errors = self.fulfillment_cx.borrow_mut().collect_remaining_errors(self);
 
@@ -617,7 +617,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ret_ty.builtin_deref(true).unwrap()
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     fn self_type_matches_expected_vid(&self, self_ty: Ty<'tcx>, expected_vid: ty::TyVid) -> bool {
         let self_ty = self.shallow_resolve(self_ty);
         trace!(?self_ty);
@@ -634,7 +634,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     pub(in super::super) fn obligations_for_self_ty<'b>(
         &'b self,
         self_ty: ty::TyVid,
@@ -707,7 +707,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Unifies the output type with the expected type early, for more coercions
     /// and forward type information on the input expressions.
-    #[instrument(skip(self, call_span), level = "debug")]
+    #[instrument(skip(self, call_span), level = "trace")]
     pub(in super::super) fn expected_inputs_for_expected_output(
         &self,
         call_span: Span,
@@ -1078,7 +1078,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     // Instantiates the given path, which must refer to an item with the given
     // number of type parameters and type.
-    #[instrument(skip(self, span), level = "debug")]
+    #[instrument(skip(self, span), level = "trace")]
     pub fn instantiate_value_path(
         &self,
         segments: &[hir::PathSegment<'_>],
@@ -1441,7 +1441,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         })
     }
 
-    #[instrument(level = "debug", skip(self, code, span, substs))]
+    #[instrument(level = "trace", skip(self, code, span, substs))]
     fn add_required_obligations_with_code(
         &self,
         span: Span,

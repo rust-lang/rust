@@ -155,7 +155,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// * From each pre-binding block to the next pre-binding block.
     /// * From each otherwise block to the next pre-binding block.
-    #[instrument(level = "debug", skip(self, arms))]
+    #[instrument(level = "trace", skip(self, arms))]
     pub(crate) fn match_expr(
         &mut self,
         destination: Place<'tcx>,
@@ -636,7 +636,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// scope for the bindings in these patterns, if such a scope had to be
     /// created. NOTE: Declaring the bindings should always be done in their
     /// drop scope.
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     pub(crate) fn declare_bindings(
         &mut self,
         mut visibility_scope: Option<SourceScope>,
@@ -1040,7 +1040,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// if `x.0` matches `false` (for the third arm). In the (impossible at
     /// runtime) case when `x.0` is now `true`, we branch to
     /// `otherwise_block`.
-    #[instrument(skip(self, fake_borrows), level = "debug")]
+    #[instrument(skip(self, fake_borrows), level = "trace")]
     fn match_candidates<'pat>(
         &mut self,
         span: Span,
@@ -1369,7 +1369,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     #[instrument(
         skip(self, otherwise, or_span, place, fake_borrows, candidate, pats),
-        level = "debug"
+        level = "trace"
     )]
     fn test_or_pattern<'pat>(
         &mut self,
@@ -2198,7 +2198,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// first local is a binding for occurrences of `var` in the guard, which
     /// will have type `&T`. The second local is a binding for occurrences of
     /// `var` in the arm body, which will have type `T`.
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     fn declare_binding(
         &mut self,
         source_info: SourceInfo,

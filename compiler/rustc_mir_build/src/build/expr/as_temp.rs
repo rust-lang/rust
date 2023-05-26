@@ -23,7 +23,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         ensure_sufficient_stack(|| self.as_temp_inner(block, temp_lifetime, expr, mutability))
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     fn as_temp_inner(
         &mut self,
         mut block: BasicBlock,

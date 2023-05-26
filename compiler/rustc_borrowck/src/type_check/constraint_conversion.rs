@@ -68,7 +68,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         }
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     pub(super) fn convert_all(&mut self, query_constraints: &QueryRegionConstraints<'tcx>) {
         let QueryRegionConstraints { outlives, member_constraints } = query_constraints;
 
@@ -90,7 +90,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
     /// Given an instance of the closure type, this method instantiates the "extra" requirements
     /// that we computed for the closure. This has the effect of adding new outlives obligations
     /// to existing region variables in `closure_substs`.
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     pub fn apply_closure_requirements(
         &mut self,
         closure_requirements: &ClosureRegionRequirements<'tcx>,

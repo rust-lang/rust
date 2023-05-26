@@ -748,7 +748,7 @@ trait InferCtxtExt<'tcx> {
 }
 
 impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     fn replace_free_regions_with_nll_infer_vars<T>(
         &self,
         origin: NllRegionVariableOrigin,
@@ -765,7 +765,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
         })
     }
 
-    #[instrument(level = "debug", skip(self, indices))]
+    #[instrument(level = "trace", skip(self, indices))]
     fn replace_bound_regions_with_nll_infer_vars<T>(
         &self,
         origin: NllRegionVariableOrigin,

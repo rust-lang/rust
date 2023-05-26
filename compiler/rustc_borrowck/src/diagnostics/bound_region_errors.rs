@@ -161,7 +161,7 @@ trait TypeOpInfo<'tcx> {
         error_region: Option<ty::Region<'tcx>>,
     ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>>;
 
-    #[instrument(level = "debug", skip(self, mbcx))]
+    #[instrument(level = "trace", skip(self, mbcx))]
     fn report_error(
         &self,
         mbcx: &mut MirBorrowckCtxt<'_, 'tcx>,
@@ -374,7 +374,7 @@ impl<'tcx> TypeOpInfo<'tcx> for crate::type_check::InstantiateOpaqueType<'tcx> {
     }
 }
 
-#[instrument(skip(ocx), level = "debug")]
+#[instrument(skip(ocx), level = "trace")]
 fn try_extract_error_from_fulfill_cx<'tcx>(
     ocx: &ObligationCtxt<'_, 'tcx>,
     placeholder_region: ty::Region<'tcx>,
@@ -395,7 +395,7 @@ fn try_extract_error_from_fulfill_cx<'tcx>(
     )
 }
 
-#[instrument(level = "debug", skip(infcx, region_var_origin, universe_of_region))]
+#[instrument(level = "trace", skip(infcx, region_var_origin, universe_of_region))]
 fn try_extract_error_from_region_constraints<'tcx>(
     infcx: &InferCtxt<'tcx>,
     placeholder_region: ty::Region<'tcx>,

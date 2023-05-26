@@ -359,7 +359,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ///   - second half is the place being accessed
     ///
     /// [d]: https://rust-lang.github.io/rfcs/2094-nll.html#leveraging-intuition-framing-errors-in-terms-of-points
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     pub(crate) fn explain_why_borrow_contains_point(
         &self,
         location: Location,
@@ -461,7 +461,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// First span returned points to the location of the conflicting use
     /// Second span if `Some` is returned in the case of closures and points
     /// to the use of the path
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn later_use_kind(
         &self,
         borrow: &BorrowData<'tcx>,

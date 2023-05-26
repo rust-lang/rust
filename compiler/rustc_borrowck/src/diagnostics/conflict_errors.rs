@@ -1169,7 +1169,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         err
     }
 
-    #[instrument(level = "debug", skip(self, err))]
+    #[instrument(level = "trace", skip(self, err))]
     fn suggest_using_local_if_applicable(
         &self,
         err: &mut Diagnostic,
@@ -1651,7 +1651,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// short a lifetime. (But sometimes it is more useful to report
     /// it as a more direct conflict between the execution of a
     /// `Drop::drop` with an aliasing borrow.)
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     pub(crate) fn report_borrowed_value_does_not_live_long_enough(
         &mut self,
         location: Location,
@@ -2008,7 +2008,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         err
     }
 
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn report_temporary_value_does_not_live_long_enough(
         &mut self,
         location: Location,
@@ -2223,7 +2223,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         Some(err)
     }
 
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn report_escaping_closure_capture(
         &mut self,
         use_span: UseSpans<'tcx>,

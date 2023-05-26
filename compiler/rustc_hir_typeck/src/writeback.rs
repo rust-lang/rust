@@ -555,7 +555,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     fn visit_opaque_types(&mut self) {
         let opaque_types = self.fcx.infcx.take_opaque_types();
         for (opaque_type_key, decl) in opaque_types {
@@ -613,7 +613,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
-    #[instrument(skip(self, span), level = "debug")]
+    #[instrument(skip(self, span), level = "trace")]
     fn visit_node_id(&mut self, span: Span, hir_id: hir::HirId) {
         // Export associated path extensions and method resolutions.
         if let Some(def) =
@@ -640,7 +640,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
-    #[instrument(skip(self, span), level = "debug")]
+    #[instrument(skip(self, span), level = "trace")]
     fn visit_adjustments(&mut self, span: Span, hir_id: hir::HirId) {
         let adjustment = self.fcx.typeck_results.borrow_mut().adjustments_mut().remove(hir_id);
         match adjustment {
@@ -656,7 +656,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
-    #[instrument(skip(self, span), level = "debug")]
+    #[instrument(skip(self, span), level = "trace")]
     fn visit_pat_adjustments(&mut self, span: Span, hir_id: hir::HirId) {
         let adjustment = self.fcx.typeck_results.borrow_mut().pat_adjustments_mut().remove(hir_id);
         match adjustment {

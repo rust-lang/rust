@@ -151,7 +151,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// Outside of this module, `check_pat_top` should always be used.
     /// Conversely, inside this module, `check_pat_top` should never be used.
-    #[instrument(level = "debug", skip(self, ti))]
+    #[instrument(level = "trace", skip(self, ti))]
     fn check_pat(
         &self,
         pat: &'tcx Pat<'tcx>,

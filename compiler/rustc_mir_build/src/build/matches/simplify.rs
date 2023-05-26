@@ -37,7 +37,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// only generates a single switch. If this happens this method returns
     /// `true`.
-    #[instrument(skip(self, candidate), level = "debug")]
+    #[instrument(skip(self, candidate), level = "trace")]
     pub(super) fn simplify_candidate<'pat>(
         &mut self,
         candidate: &mut Candidate<'pat, 'tcx>,

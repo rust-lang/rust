@@ -12,7 +12,7 @@ use rustc_span::{Span, Symbol};
 
 /// Replaces all free regions appearing in the MIR with fresh
 /// inference variables, returning the number of variables created.
-#[instrument(skip(infcx, body, promoted), level = "debug")]
+#[instrument(skip(infcx, body, promoted), level = "trace")]
 pub fn renumber_mir<'tcx>(
     infcx: &BorrowckInferCtxt<'_, 'tcx>,
     body: &mut Body<'tcx>,
@@ -86,21 +86,21 @@ impl<'a, 'tcx> MutVisitor<'tcx> for RegionRenumberer<'a, 'tcx> {
         self.infcx.tcx
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     fn visit_ty(&mut self, ty: &mut Ty<'tcx>, ty_context: TyContext) {
         *ty = self.renumber_regions(*ty, || RegionCtxt::TyContext(ty_context));
 
         trace!(?ty);
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     fn visit_substs(&mut self, substs: &mut SubstsRef<'tcx>, location: Location) {
         *substs = self.renumber_regions(*substs, || RegionCtxt::Location(location));
 
         trace!(?substs);
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     fn visit_region(&mut self, region: &mut ty::Region<'tcx>, location: Location) {
         let old_region = *region;
         *region = self.renumber_regions(old_region, || RegionCtxt::Location(location));
@@ -108,7 +108,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for RegionRenumberer<'a, 'tcx> {
         trace!(?region);
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     fn visit_ty_const(&mut self, ct: &mut ty::Const<'tcx>, location: Location) {
         let old_ct = *ct;
         *ct = self.renumber_regions(old_ct, || RegionCtxt::Location(location));
@@ -116,7 +116,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for RegionRenumberer<'a, 'tcx> {
         trace!(?ct);
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     fn visit_constant(&mut self, constant: &mut Constant<'tcx>, location: Location) {
         let literal = constant.literal;
         constant.literal = self.renumber_regions(literal, || RegionCtxt::Location(location));

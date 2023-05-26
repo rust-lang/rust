@@ -19,7 +19,7 @@ use super::{Locations, TypeChecker};
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     /// Check explicit closure signature annotation,
     /// e.g., `|x: FxIndexMap<_, &'static u32>| ...`.
-    #[instrument(skip(self, body), level = "debug")]
+    #[instrument(skip(self, body), level = "trace")]
     pub(super) fn check_signature_annotation(&mut self, body: &Body<'tcx>) {
         let mir_def_id = body.source.def_id().expect_local();
         if !self.tcx().is_closure(mir_def_id.to_def_id()) {
@@ -59,7 +59,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         );
     }
 
-    #[instrument(skip(self, body, universal_regions), level = "debug")]
+    #[instrument(skip(self, body, universal_regions), level = "trace")]
     pub(super) fn equate_inputs_and_outputs(
         &mut self,
         body: &Body<'tcx>,
@@ -141,7 +141,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         };
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     fn equate_normalized_input_or_output(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, span: Span) {
         if let Err(_) =
             self.eq_types(a, b, Locations::All(span), ConstraintCategory::BoringNoLocation)

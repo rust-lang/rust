@@ -245,7 +245,7 @@ pub enum ExtraConstraintInfo {
     PlaceholderFromPredicate(Span),
 }
 
-#[instrument(skip(infcx, sccs), level = "debug")]
+#[instrument(skip(infcx, sccs), level = "trace")]
 fn sccs_info<'cx, 'tcx>(
     infcx: &'cx BorrowckInferCtxt<'cx, 'tcx>,
     sccs: Rc<Sccs<RegionVid, ConstraintSccIndex>>,
@@ -655,7 +655,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Performs region inference and report errors if we see any
     /// unsatisfiable constraints. If this is a closure, returns the
     /// region requirements to propagate to our creator, if any.
-    #[instrument(skip(self, infcx, body, polonius_output), level = "debug")]
+    #[instrument(skip(self, infcx, body, polonius_output), level = "trace")]
     pub(super) fn solve(
         &mut self,
         infcx: &InferCtxt<'tcx>,
@@ -717,7 +717,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// for each region variable until all the constraints are
     /// satisfied. Note that some values may grow **too** large to be
     /// feasible, but we check this later.
-    #[instrument(skip(self, _body), level = "debug")]
+    #[instrument(skip(self, _body), level = "trace")]
     fn propagate_constraints(&mut self, _body: &Body<'tcx>) {
         trace!("constraints={:#?}", {
             let mut constraints: Vec<_> = self.outlives_constraints().collect();
@@ -746,7 +746,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// computed, by unioning the values of its successors.
     /// Assumes that all successors have been computed already
     /// (which is assured by iterating over SCCs in dependency order).
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     fn compute_value_for_scc(&mut self, scc_a: ConstraintSccIndex) {
         let constraint_sccs = self.constraint_sccs.clone();
 
@@ -787,7 +787,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// is considered a *lower bound*. If possible, we will modify
     /// the constraint to set it equal to one of the option regions.
     /// If we make any changes, returns true, else false.
-    #[instrument(skip(self, member_constraint_index), level = "debug")]
+    #[instrument(skip(self, member_constraint_index), level = "trace")]
     fn apply_member_constraint(
         &mut self,
         scc: ConstraintSccIndex,
@@ -1014,7 +1014,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// The idea then is to lower the `T: 'X` constraint into multiple
     /// bounds -- e.g., if `'X` is the union of two free lifetimes,
     /// `'1` and `'2`, then we would create `T: '1` and `T: '2`.
-    #[instrument(level = "debug", skip(self, infcx, propagated_outlives_requirements))]
+    #[instrument(level = "trace", skip(self, infcx, propagated_outlives_requirements))]
     fn try_promote_type_test(
         &self,
         infcx: &InferCtxt<'tcx>,
@@ -1114,7 +1114,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// variables in the type `T` with an equal universal region from the
     /// closure signature.
     /// This is not always possible, so this is a fallible process.
-    #[instrument(level = "debug", skip(self, infcx))]
+    #[instrument(level = "trace", skip(self, infcx))]
     fn try_promote_type_test_subject(
         &self,
         infcx: &InferCtxt<'tcx>,
@@ -1195,7 +1195,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ///   include the CFG anyhow.
     /// - For each `end('x)` element in `'r`, compute the mutual LUB, yielding
     ///   a result `'y`.
-    #[instrument(skip(self), level = "debug", ret)]
+    #[instrument(skip(self), level = "trace", ret)]
     pub(crate) fn universal_upper_bound(&self, r: RegionVid) -> RegionVid {
         trace!(r = %self.region_value_str(r));
 
@@ -1221,7 +1221,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Therefore, this method should only be used in diagnostic code,
     /// where displaying *some* named universal region is better than
     /// falling back to 'static.
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     pub(crate) fn approx_universal_upper_bound(&self, r: RegionVid) -> RegionVid {
         trace!("{}", self.region_value_str(r));
 
@@ -1372,7 +1372,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     // Evaluate whether `sup_region: sub_region`.
-    #[instrument(skip(self), level = "debug", ret)]
+    #[instrument(skip(self), level = "trace", ret)]
     fn eval_outlives(&self, sup_region: RegionVid, sub_region: RegionVid) -> bool {
         trace!(
             "sup_region's value = {:?} universal={:?}",
@@ -1589,7 +1589,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ///
     /// Things that are to be propagated are accumulated into the
     /// `outlives_requirements` vector.
-    #[instrument(skip(self, propagated_outlives_requirements, errors_buffer), level = "debug")]
+    #[instrument(skip(self, propagated_outlives_requirements, errors_buffer), level = "trace")]
     fn check_universal_region(
         &self,
         longer_fr: RegionVid,
@@ -1760,7 +1760,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         trace!("check_bound_universal_region: all bounds satisfied");
     }
 
-    #[instrument(level = "debug", skip(self, infcx, errors_buffer))]
+    #[instrument(level = "trace", skip(self, infcx, errors_buffer))]
     fn check_member_constraints(
         &self,
         infcx: &InferCtxt<'tcx>,
@@ -2042,7 +2042,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// creating a constraint path that forces `R` to outlive
     /// `from_region`, and then finding the best choices within that
     /// path to blame.
-    #[instrument(level = "debug", skip(self, target_test))]
+    #[instrument(level = "trace", skip(self, target_test))]
     pub(crate) fn best_blame_constraint(
         &self,
         from_region: RegionVid,

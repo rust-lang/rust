@@ -136,7 +136,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         }
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     pub fn consume_body(&mut self, body: &hir::Body<'_>) {
         for param in body.params {
             let param_ty = return_if_err!(self.mc.pat_ty_adjusted(param.pat));

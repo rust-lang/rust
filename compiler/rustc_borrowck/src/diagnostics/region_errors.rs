@@ -641,7 +641,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     /// LL |     ref_obj(x)
     ///    |     ^^^^^^^^^^ `x` escapes the function body here
     /// ```
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn report_escaping_data_error(
         &self,
         errci: &ErrorConstraintInfo<'tcx>,
@@ -941,7 +941,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         self.suggest_constrain_dyn_trait_in_impl(diag, &visitor.0, ident, self_ty);
     }
 
-    #[instrument(skip(self, err), level = "debug")]
+    #[instrument(skip(self, err), level = "trace")]
     fn suggest_constrain_dyn_trait_in_impl(
         &self,
         err: &mut Diagnostic,

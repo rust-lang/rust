@@ -43,7 +43,7 @@ struct ClosureSignatures<'tcx> {
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    #[instrument(skip(self, closure), level = "debug")]
+    #[instrument(skip(self, closure), level = "trace")]
     pub fn check_expr_closure(
         &self,
         closure: &hir::Closure<'tcx>,
@@ -63,7 +63,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.check_closure(closure, expr_span, expected_kind, body, expected_sig)
     }
 
-    #[instrument(skip(self, closure, body), level = "debug", ret)]
+    #[instrument(skip(self, closure, body), level = "trace", ret)]
     fn check_closure(
         &self,
         closure: &hir::Closure<'tcx>,
@@ -165,7 +165,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Given the expected type, figures out what it can about this closure we
     /// are about to type check:
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     fn deduce_closure_signature(
         &self,
         expected_ty: Ty<'tcx>,
@@ -283,7 +283,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// The `cause_span` should be the span that caused us to
     /// have this expected signature, or `None` if we can't readily
     /// know that.
-    #[instrument(level = "debug", skip(self, cause_span), ret)]
+    #[instrument(level = "trace", skip(self, cause_span), ret)]
     fn deduce_sig_from_projection(
         &self,
         cause_span: Option<Span>,
@@ -357,7 +357,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// If there is no expected signature, then we will convert the
     /// types that the user gave into a signature.
-    #[instrument(skip(self, expr_def_id, decl, body), level = "debug")]
+    #[instrument(skip(self, expr_def_id, decl, body), level = "trace")]
     fn sig_of_closure_no_expectation(
         &self,
         expr_def_id: LocalDefId,
@@ -416,7 +416,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// - `expected_sig`: the expected signature (if any). Note that
     ///   this is missing a binder: that is, there may be late-bound
     ///   regions with depth 1, which are bound then by the closure.
-    #[instrument(skip(self, expr_def_id, decl, body), level = "debug")]
+    #[instrument(skip(self, expr_def_id, decl, body), level = "trace")]
     fn sig_of_closure_with_expectation(
         &self,
         expr_def_id: LocalDefId,
@@ -512,7 +512,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Enforce the user's types against the expectation. See
     /// `sig_of_closure_with_expectation` for details on the overall
     /// strategy.
-    #[instrument(level = "debug", skip(self, expr_def_id, decl, body, expected_sigs))]
+    #[instrument(level = "trace", skip(self, expr_def_id, decl, body, expected_sigs))]
     fn merge_supplied_sig_with_expectation(
         &self,
         expr_def_id: LocalDefId,
@@ -606,7 +606,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// types that the user gave into a signature.
     ///
     /// Also, record this closure signature for later.
-    #[instrument(skip(self, decl, body), level = "debug", ret)]
+    #[instrument(skip(self, decl, body), level = "trace", ret)]
     fn supplied_sig_of_closure(
         &self,
         expr_def_id: LocalDefId,
@@ -674,7 +674,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// user specified. The "desugared" return type is an `impl
     /// Future<Output = T>`, so we do this by searching through the
     /// obligations to extract the `T`.
-    #[instrument(skip(self), level = "debug", ret)]
+    #[instrument(skip(self), level = "trace", ret)]
     fn deduce_future_output_from_obligations(
         &self,
         expr_def_id: LocalDefId,

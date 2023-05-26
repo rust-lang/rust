@@ -96,7 +96,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// Like `as_local_call_operand`, except that the argument will
     /// not be valid once `scope` ends.
-    #[instrument(level = "debug", skip(self, scope))]
+    #[instrument(level = "trace", skip(self, scope))]
     pub(crate) fn as_operand(
         &mut self,
         mut block: BasicBlock,

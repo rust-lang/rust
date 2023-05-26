@@ -81,7 +81,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         instantiated
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     pub(super) fn prove_trait_ref(
         &mut self,
         trait_ref: ty::TraitRef<'tcx>,
@@ -99,7 +99,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         );
     }
 
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     pub(super) fn normalize_and_prove_instantiated_predicates(
         &mut self,
         // Keep this parameter for now, in case we start using
@@ -127,7 +127,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     pub(super) fn prove_predicate(
         &mut self,
         predicate: impl ToPredicate<'tcx> + std::fmt::Debug,
@@ -150,7 +150,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         self.normalize_with_category(value, location, ConstraintCategory::Boring)
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     pub(super) fn normalize_with_category<T>(
         &mut self,
         value: T,
@@ -169,7 +169,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         result.unwrap_or(value)
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     pub(super) fn ascribe_user_type(
         &mut self,
         mir_ty: Ty<'tcx>,
@@ -186,7 +186,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     /// *Incorrectly* skips the WF checks we normally do in `ascribe_user_type`.
     ///
     /// FIXME(#104478, #104477): This is a hack for backward-compatibility.
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     pub(super) fn ascribe_user_type_skip_wf(
         &mut self,
         mir_ty: Ty<'tcx>,

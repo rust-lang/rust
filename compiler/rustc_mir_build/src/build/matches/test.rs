@@ -144,7 +144,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    #[instrument(skip(self, make_target_blocks, place_builder), level = "debug")]
+    #[instrument(skip(self, make_target_blocks, place_builder), level = "trace")]
     pub(super) fn perform_test(
         &mut self,
         match_start_span: Span,

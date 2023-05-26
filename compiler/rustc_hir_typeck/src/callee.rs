@@ -129,7 +129,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         output
     }
 
-    #[instrument(level = "debug", skip(self, call_expr, callee_expr, arg_exprs, autoderef), ret)]
+    #[instrument(level = "trace", skip(self, call_expr, callee_expr, arg_exprs, autoderef), ret)]
     fn try_overloaded_call_step(
         &self,
         call_expr: &'tcx hir::Expr<'tcx>,

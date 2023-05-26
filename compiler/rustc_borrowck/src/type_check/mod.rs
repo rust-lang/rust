@@ -623,7 +623,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         }
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     fn sanitize_projection(
         &mut self,
         base: PlaceTy<'tcx>,
@@ -1094,7 +1094,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     }
 
     /// Equate the inferred type and the annotated type for user type annotations
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     fn check_user_type_annotations(&mut self) {
         trace!(?self.user_type_annotations);
         for user_annotation in self.user_type_annotations {
@@ -1104,7 +1104,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
-    #[instrument(skip(self, data), level = "debug")]
+    #[instrument(skip(self, data), level = "trace")]
     fn push_region_constraints(
         &mut self,
         locations: Locations,
@@ -1140,7 +1140,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         self.relate_types(sup, ty::Variance::Contravariant, sub, locations, category)
     }
 
-    #[instrument(skip(self, category), level = "debug")]
+    #[instrument(skip(self, category), level = "trace")]
     fn eq_types(
         &mut self,
         expected: Ty<'tcx>,
@@ -1151,7 +1151,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         self.relate_types(expected, ty::Variance::Invariant, found, locations, category)
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     fn relate_type_and_user_type(
         &mut self,
         a: Ty<'tcx>,
@@ -1197,7 +1197,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         self.infcx.tcx
     }
 
-    #[instrument(skip(self, body, location), level = "debug")]
+    #[instrument(skip(self, body, location), level = "trace")]
     fn check_stmt(&mut self, body: &Body<'tcx>, stmt: &Statement<'tcx>, location: Location) {
         let tcx = self.tcx();
         trace!("stmt kind: {:?}", stmt.kind);
@@ -1334,7 +1334,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
-    #[instrument(skip(self, body, term_location), level = "debug")]
+    #[instrument(skip(self, body, term_location), level = "trace")]
     fn check_terminator(
         &mut self,
         body: &Body<'tcx>,
@@ -1828,7 +1828,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
-    #[instrument(skip(self, body), level = "debug")]
+    #[instrument(skip(self, body), level = "trace")]
     fn check_rvalue(&mut self, body: &Body<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
         let tcx = self.tcx();
         let span = body.source_info(location).span;
@@ -2698,7 +2698,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         tcx.predicates_of(def_id).instantiate(tcx, substs)
     }
 
-    #[instrument(skip(self, body), level = "debug")]
+    #[instrument(skip(self, body), level = "trace")]
     fn typeck_mir(&mut self, body: &Body<'tcx>) {
         self.last_span = body.span;
         trace!(?body.span);

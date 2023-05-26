@@ -717,7 +717,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         );
     }
 
-    #[instrument(skip(fcx), level = "debug")]
+    #[instrument(skip(fcx), level = "trace")]
     pub fn check(mut self, fcx: &FnCtxt<'a, 'tcx>) {
         self.expr_ty = fcx.structurally_resolved_type(self.expr_span, self.expr_ty);
         self.cast_ty = fcx.structurally_resolved_type(self.cast_span, self.cast_ty);

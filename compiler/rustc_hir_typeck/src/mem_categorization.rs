@@ -262,7 +262,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         self.cat_expr_adjusted_with(expr, || Ok(previous), adjustment)
     }
 
-    #[instrument(level = "debug", skip(self, previous))]
+    #[instrument(level = "trace", skip(self, previous))]
     fn cat_expr_adjusted_with<F>(
         &self,
         expr: &hir::Expr<'_>,
@@ -297,7 +297,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         }
     }
 
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     pub(crate) fn cat_expr_unadjusted(
         &self,
         expr: &hir::Expr<'_>,
@@ -386,7 +386,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         }
     }
 
-    #[instrument(level = "debug", skip(self, span))]
+    #[instrument(level = "trace", skip(self, span))]
     pub(crate) fn cat_res(
         &self,
         hir_id: hir::HirId,
@@ -473,7 +473,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         ret
     }
 
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn cat_overloaded_place(
         &self,
         expr: &hir::Expr<'_>,
@@ -494,7 +494,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         self.cat_deref(expr, base)
     }
 
-    #[instrument(level = "debug", skip(self, node))]
+    #[instrument(level = "trace", skip(self, node))]
     fn cat_deref(
         &self,
         node: &impl HirNode,

@@ -157,7 +157,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InferBorrowKindVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Analysis starting point.
-    #[instrument(skip(self, body), level = "debug")]
+    #[instrument(skip(self, body), level = "trace")]
     fn analyze_closure(
         &self,
         closure_hir_id: hir::HirId,
@@ -1045,7 +1045,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// This function only returns a HashSet of CapturesInfo for significant drops. If there
     /// are no significant drops than None is returned
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn compute_2229_migrations_for_drop(
         &self,
         closure_def_id: LocalDefId,
@@ -1147,7 +1147,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Returns a tuple containing a vector of MigrationDiagnosticInfo, as well as a String
     /// containing the reason why root variables whose HirId is contained in the vector should
     /// be captured
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn compute_2229_migrations(
         &self,
         closure_def_id: LocalDefId,
@@ -1761,7 +1761,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
         self.fake_reads.push((place, cause, diag_expr_id));
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     fn consume(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId) {
         let PlaceBase::Upvar(upvar_id) = place_with_id.place.base else { return };
         assert_eq!(self.closure_def_id, upvar_id.closure_expr_id);
@@ -1776,7 +1776,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
         ));
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     fn borrow(
         &mut self,
         place_with_id: &PlaceWithHirId<'tcx>,
@@ -1814,7 +1814,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
         ));
     }
 
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "trace")]
     fn mutate(&mut self, assignee_place: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId) {
         self.borrow(assignee_place, diag_expr_id, ty::BorrowKind::MutBorrow);
     }
@@ -2004,7 +2004,7 @@ fn var_name(tcx: TyCtxt<'_>, var_hir_id: hir::HirId) -> Symbol {
     tcx.hir().name(var_hir_id)
 }
 
-#[instrument(level = "debug", skip(tcx))]
+#[instrument(level = "trace", skip(tcx))]
 fn should_do_rust_2021_incompatible_closure_captures_analysis(
     tcx: TyCtxt<'_>,
     closure_id: hir::HirId,
