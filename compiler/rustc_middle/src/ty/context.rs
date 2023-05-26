@@ -21,7 +21,9 @@ use crate::query::{IntoQueryParam, TyCtxtAt};
 use crate::thir::Thir;
 use crate::traits;
 use crate::traits::solve;
-use crate::traits::solve::{ExternalConstraints, ExternalConstraintsData};
+use crate::traits::solve::{
+    ExternalConstraints, ExternalConstraintsData, PredefinedOpaques, PredefinedOpaquesData,
+};
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Const, ConstData, FloatTy, FloatVar, FloatVid,
     GenericParamDefKind, ImplPolarity, InferTy, IntTy, IntVar, IntVid, List, ParamConst, ParamTy,
@@ -140,6 +142,7 @@ pub struct CtxtInterners<'tcx> {
     layout: InternedSet<'tcx, LayoutS>,
     adt_def: InternedSet<'tcx, AdtDefData>,
     external_constraints: InternedSet<'tcx, ExternalConstraintsData<'tcx>>,
+    predefined_opaques_in_body: InternedSet<'tcx, PredefinedOpaquesData<'tcx>>,
     fields: InternedSet<'tcx, List<FieldIdx>>,
 }
 
@@ -164,6 +167,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             layout: Default::default(),
             adt_def: Default::default(),
             external_constraints: Default::default(),
+            predefined_opaques_in_body: Default::default(),
             fields: Default::default(),
         }
     }
@@ -1199,7 +1203,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn all_traits(self) -> impl Iterator<Item = DefId> + 'tcx {
         iter::once(LOCAL_CRATE)
             .chain(self.crates(()).iter().copied())
-            .flat_map(move |cnum| self.traits_in_crate(cnum).iter().copied())
+            .flat_map(move |cnum| self.traits(cnum).iter().copied())
     }
 
     #[inline]
@@ -1520,6 +1524,8 @@ direct_interners! {
     adt_def: pub mk_adt_def_from_data(AdtDefData): AdtDef -> AdtDef<'tcx>,
     external_constraints: pub mk_external_constraints(ExternalConstraintsData<'tcx>):
         ExternalConstraints -> ExternalConstraints<'tcx>,
+    predefined_opaques_in_body: pub mk_predefined_opaques_in_body(PredefinedOpaquesData<'tcx>):
+        PredefinedOpaques -> PredefinedOpaques<'tcx>,
 }
 
 macro_rules! slice_interners {
@@ -2341,7 +2347,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn is_late_bound(self, id: HirId) -> bool {
-        self.is_late_bound_map(id.owner).map_or(false, |set| set.contains(&id.local_id))
+        self.is_late_bound_map(id.owner).is_some_and(|set| set.contains(&id.local_id))
     }
 
     pub fn late_bound_vars(self, id: HirId) -> &'tcx List<ty::BoundVariableKind> {
@@ -2474,7 +2480,7 @@ pub fn provide(providers: &mut Providers) {
         |tcx, LocalCrate| attr::contains_name(tcx.hir().krate_attrs(), sym::compiler_builtins);
     providers.has_panic_handler = |tcx, LocalCrate| {
         // We want to check if the panic handler was defined in this crate
-        tcx.lang_items().panic_impl().map_or(false, |did| did.is_local())
+        tcx.lang_items().panic_impl().is_some_and(|did| did.is_local())
     };
     providers.source_span = |tcx, def_id| tcx.untracked.source_span.get(def_id).unwrap_or(DUMMY_SP);
 }

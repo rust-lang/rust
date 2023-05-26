@@ -367,7 +367,7 @@ pub(crate) fn run_global_ctxt(
 
     let mut krate = tcx.sess.time("clean_crate", || clean::krate(&mut ctxt));
 
-    if krate.module.doc_value().map(|d| d.is_empty()).unwrap_or(true) {
+    if krate.module.doc_value().is_empty() {
         let help = format!(
             "The following guide may be of use:\n\
             {}/rustdoc/how-to-write-documentation.html",

@@ -2,13 +2,14 @@ use crate::infer::canonical::{
     Canonical, CanonicalQueryResponse, OriginalQueryValues, QueryRegionConstraints,
 };
 use crate::infer::{InferCtxt, InferOk};
-use crate::traits::query::Fallible;
 use crate::traits::ObligationCause;
+use rustc_errors::ErrorGuaranteed;
 use rustc_infer::infer::canonical::Certainty;
-use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::PredicateObligations;
+use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
+use rustc_span::Span;
 use std::fmt;
 
 pub mod ascribe_user_type;
@@ -32,7 +33,11 @@ pub trait TypeOp<'tcx>: Sized + fmt::Debug {
     /// Processes the operation and all resulting obligations,
     /// returning the final result along with any region constraints
     /// (they will be given over to the NLL region solver).
-    fn fully_perform(self, infcx: &InferCtxt<'tcx>) -> Fallible<TypeOpOutput<'tcx, Self>>;
+    fn fully_perform(
+        self,
+        infcx: &InferCtxt<'tcx>,
+        span: Span,
+    ) -> Result<TypeOpOutput<'tcx, Self>, ErrorGuaranteed>;
 }
 
 /// The output from performing a type op
@@ -74,18 +79,21 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
     fn perform_query(
         tcx: TyCtxt<'tcx>,
         canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Self>>,
-    ) -> Fallible<CanonicalQueryResponse<'tcx, Self::QueryResponse>>;
+    ) -> Result<CanonicalQueryResponse<'tcx, Self::QueryResponse>, NoSolution>;
 
     fn fully_perform_into(
         query_key: ParamEnvAnd<'tcx, Self>,
         infcx: &InferCtxt<'tcx>,
         output_query_region_constraints: &mut QueryRegionConstraints<'tcx>,
-    ) -> Fallible<(
-        Self::QueryResponse,
-        Option<Canonical<'tcx, ParamEnvAnd<'tcx, Self>>>,
-        PredicateObligations<'tcx>,
-        Certainty,
-    )> {
+    ) -> Result<
+        (
+            Self::QueryResponse,
+            Option<Canonical<'tcx, ParamEnvAnd<'tcx, Self>>>,
+            PredicateObligations<'tcx>,
+            Certainty,
+        ),
+        NoSolution,
+    > {
         if let Some(result) = QueryTypeOp::try_fast_path(infcx.tcx, &query_key) {
             return Ok((result, None, vec![], Certainty::Proven));
         }
@@ -120,10 +128,16 @@ where
     type Output = Q::QueryResponse;
     type ErrorInfo = Canonical<'tcx, ParamEnvAnd<'tcx, Q>>;
 
-    fn fully_perform(self, infcx: &InferCtxt<'tcx>) -> Fallible<TypeOpOutput<'tcx, Self>> {
+    fn fully_perform(
+        self,
+        infcx: &InferCtxt<'tcx>,
+        span: Span,
+    ) -> Result<TypeOpOutput<'tcx, Self>, ErrorGuaranteed> {
         let mut region_constraints = QueryRegionConstraints::default();
         let (output, error_info, mut obligations, _) =
-            Q::fully_perform_into(self, infcx, &mut region_constraints)?;
+            Q::fully_perform_into(self, infcx, &mut region_constraints).map_err(|_| {
+                infcx.tcx.sess.delay_span_bug(span, format!("error performing {self:?}"))
+            })?;
 
         // Typically, instantiating NLL query results does not
         // create obligations. However, in some cases there
@@ -151,7 +165,10 @@ where
                 }
             }
             if !progress {
-                return Err(NoSolution);
+                return Err(infcx.tcx.sess.delay_span_bug(
+                    span,
+                    format!("ambiguity processing {obligations:?} from {self:?}"),
+                ));
             }
         }
 

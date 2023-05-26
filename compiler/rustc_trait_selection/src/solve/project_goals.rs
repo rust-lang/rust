@@ -22,19 +22,25 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         &mut self,
         goal: Goal<'tcx, ProjectionPredicate<'tcx>>,
     ) -> QueryResult<'tcx> {
-        // To only compute normalization once for each projection we only
-        // normalize if the expected term is an unconstrained inference variable.
-        //
-        // E.g. for `<T as Trait>::Assoc == u32` we recursively compute the goal
-        // `exists<U> <T as Trait>::Assoc == U` and then take the resulting type for
-        // `U` and equate it with `u32`. This means that we don't need a separate
-        // projection cache in the solver.
-        if self.term_is_fully_unconstrained(goal) {
-            let candidates = self.assemble_and_evaluate_candidates(goal);
-            self.merge_candidates(candidates)
-        } else {
-            self.set_normalizes_to_hack_goal(goal);
-            self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        match goal.predicate.projection_ty.kind(self.tcx()) {
+            ty::AliasKind::Projection => {
+                // To only compute normalization once for each projection we only
+                // normalize if the expected term is an unconstrained inference variable.
+                //
+                // E.g. for `<T as Trait>::Assoc == u32` we recursively compute the goal
+                // `exists<U> <T as Trait>::Assoc == U` and then take the resulting type for
+                // `U` and equate it with `u32`. This means that we don't need a separate
+                // projection cache in the solver.
+                if self.term_is_fully_unconstrained(goal) {
+                    let candidates = self.assemble_and_evaluate_candidates(goal);
+                    self.merge_candidates(candidates)
+                } else {
+                    self.set_normalizes_to_hack_goal(goal);
+                    self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                }
+            }
+            ty::AliasKind::Opaque => self.normalize_opaque_type(goal),
+            ty::AliasKind::Inherent => bug!("IATs not supported here yet"),
         }
     }
 }

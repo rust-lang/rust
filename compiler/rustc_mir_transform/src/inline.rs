@@ -10,7 +10,6 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
-use rustc_span::{hygiene::ExpnKind, ExpnData, LocalExpnId, Span};
 use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 use rustc_target::spec::abi::Abi;
 
@@ -551,16 +550,6 @@ impl<'tcx> Inliner<'tcx> {
                 // Copy the arguments if needed.
                 let args: Vec<_> = self.make_call_args(args, &callsite, caller_body, &callee_body);
 
-                let mut expn_data = ExpnData::default(
-                    ExpnKind::Inlined,
-                    callsite.source_info.span,
-                    self.tcx.sess.edition(),
-                    None,
-                    None,
-                );
-                expn_data.def_site = callee_body.span;
-                let expn_data =
-                    self.tcx.with_stable_hashing_context(|hcx| LocalExpnId::fresh(expn_data, hcx));
                 let mut integrator = Integrator {
                     args: &args,
                     new_locals: Local::new(caller_body.local_decls.len())..,
@@ -572,7 +561,6 @@ impl<'tcx> Inliner<'tcx> {
                     cleanup_block: unwind,
                     in_cleanup_block: false,
                     tcx: self.tcx,
-                    expn_data,
                     always_live_locals: BitSet::new_filled(callee_body.local_decls.len()),
                 };
 
@@ -956,7 +944,6 @@ struct Integrator<'a, 'tcx> {
     cleanup_block: UnwindAction,
     in_cleanup_block: bool,
     tcx: TyCtxt<'tcx>,
-    expn_data: LocalExpnId,
     always_live_locals: BitSet<Local>,
 }
 
@@ -1040,11 +1027,6 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
 
     fn visit_source_scope(&mut self, scope: &mut SourceScope) {
         *scope = self.map_scope(*scope);
-    }
-
-    fn visit_span(&mut self, span: &mut Span) {
-        // Make sure that all spans track the fact that they were inlined.
-        *span = span.fresh_expansion(self.expn_data);
     }
 
     fn visit_basic_block_data(&mut self, block: BasicBlock, data: &mut BasicBlockData<'tcx>) {

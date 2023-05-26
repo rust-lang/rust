@@ -128,7 +128,7 @@ impl<'tcx> ToUniverseInfo<'tcx>
     }
 }
 
-impl<'tcx, F, G> ToUniverseInfo<'tcx> for Canonical<'tcx, type_op::custom::CustomTypeOp<F, G>> {
+impl<'tcx, F> ToUniverseInfo<'tcx> for Canonical<'tcx, type_op::custom::CustomTypeOp<F>> {
     fn to_universe_info(self, _base_universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
         // We can't rerun custom type ops.
         UniverseInfo::other()

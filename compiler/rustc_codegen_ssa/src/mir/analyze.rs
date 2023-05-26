@@ -84,7 +84,7 @@ impl DefLocation {
 
 struct LocalAnalyzer<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     fx: &'mir FunctionCx<'a, 'tcx, Bx>,
-    dominators: Dominators<mir::BasicBlock>,
+    dominators: &'mir Dominators<mir::BasicBlock>,
     locals: IndexVec<mir::Local, LocalKind>,
 }
 

@@ -395,7 +395,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     ) -> String {
         let fn_sig = self.tcx.hir().get_if_local(self.def_id).and_then(hir::Node::fn_sig);
         let is_used_in_input = |def_id| {
-            fn_sig.map_or(false, |fn_sig| {
+            fn_sig.is_some_and(|fn_sig| {
                 fn_sig.decl.inputs.iter().any(|ty| match ty.kind {
                     hir::TyKind::Path(hir::QPath::Resolved(
                         None,

@@ -39,6 +39,20 @@ impl<T, U> Trait3<U> for T {
     }
 }
 
+pub trait Trait4<'a, T> {
+    type Output: 'a;
+    fn qux(&self, _: &T) -> Self::Output;
+}
+
+pub struct Type4;
+
+impl<'a, T, U> Trait4<'a, U> for T {
+    type Output = &'a i32;
+    fn qux(&self, _: &U) -> Self::Output {
+        &0
+    }
+}
+
 pub fn foo1(a: &dyn Trait1) {
     a.foo();
     // CHECK-LABEL: define{{.*}}4foo1{{.*}}!type !{{[0-9]+}}
@@ -84,6 +98,23 @@ pub fn bar3() {
     // CHECK:       call i1 @llvm.type.test({{i8\*|ptr}} {{%f|%[0-9]}}, metadata !"[[TYPE3:[[:print:]]+]]")
 }
 
+pub fn foo4<'a>(a: &dyn Trait4<'a, Type4, Output = &'a i32>) {
+    let b = Type4;
+    a.qux(&b);
+    // CHECK-LABEL: define{{.*}}4foo4{{.*}}!type !{{[0-9]+}}
+    // CHECK:       call i1 @llvm.type.test({{i8\*|ptr}} {{%f|%[0-9]}}, metadata !"[[TYPE4:[[:print:]]+]]")
+}
+
+pub fn bar4<'a>() {
+    let a = Type4;
+    foo4(&a);
+    let b = &a as &dyn Trait4<'a, Type4, Output = &'a i32>;
+    b.qux(&a);
+    // CHECK-LABEL: define{{.*}}4bar4{{.*}}!type !{{[0-9]+}}
+    // CHECK:       call i1 @llvm.type.test({{i8\*|ptr}} {{%f|%[0-9]}}, metadata !"[[TYPE4:[[:print:]]+]]")
+}
+
 // CHECK: !{{[0-9]+}} = !{i64 0, !"[[TYPE1]]"}
 // CHECK: !{{[0-9]+}} = !{i64 0, !"[[TYPE2]]"}
 // CHECK: !{{[0-9]+}} = !{i64 0, !"[[TYPE3]]"}
+// CHECK: !{{[0-9]+}} = !{i64 0, !"[[TYPE4]]"}

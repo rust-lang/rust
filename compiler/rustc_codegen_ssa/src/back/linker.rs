@@ -144,7 +144,7 @@ pub fn get_linker<'a>(
             cmd,
             sess,
             target_cpu,
-            hinted_static: false,
+            hinted_static: None,
             is_ld: cc == Cc::No,
             is_gnu: flavor.is_gnu(),
         }) as Box<dyn Linker>,
@@ -214,7 +214,7 @@ pub struct GccLinker<'a> {
     cmd: Command,
     sess: &'a Session,
     target_cpu: &'a str,
-    hinted_static: bool, // Keeps track of the current hinting mode.
+    hinted_static: Option<bool>, // Keeps track of the current hinting mode.
     // Link as ld
     is_ld: bool,
     is_gnu: bool,
@@ -275,9 +275,9 @@ impl<'a> GccLinker<'a> {
         if !self.takes_hints() {
             return;
         }
-        if !self.hinted_static {
+        if self.hinted_static != Some(true) {
             self.linker_arg("-Bstatic");
-            self.hinted_static = true;
+            self.hinted_static = Some(true);
         }
     }
 
@@ -285,9 +285,9 @@ impl<'a> GccLinker<'a> {
         if !self.takes_hints() {
             return;
         }
-        if self.hinted_static {
+        if self.hinted_static != Some(false) {
             self.linker_arg("-Bdynamic");
-            self.hinted_static = false;
+            self.hinted_static = Some(false);
         }
     }
 
@@ -1484,25 +1484,25 @@ impl<'a> L4Bender<'a> {
 pub struct AixLinker<'a> {
     cmd: Command,
     sess: &'a Session,
-    hinted_static: bool,
+    hinted_static: Option<bool>,
 }
 
 impl<'a> AixLinker<'a> {
     pub fn new(cmd: Command, sess: &'a Session) -> AixLinker<'a> {
-        AixLinker { cmd: cmd, sess: sess, hinted_static: false }
+        AixLinker { cmd: cmd, sess: sess, hinted_static: None }
     }
 
     fn hint_static(&mut self) {
-        if !self.hinted_static {
+        if self.hinted_static != Some(true) {
             self.cmd.arg("-bstatic");
-            self.hinted_static = true;
+            self.hinted_static = Some(true);
         }
     }
 
     fn hint_dynamic(&mut self) {
-        if self.hinted_static {
+        if self.hinted_static != Some(false) {
             self.cmd.arg("-bdynamic");
-            self.hinted_static = false;
+            self.hinted_static = Some(false);
         }
     }
 

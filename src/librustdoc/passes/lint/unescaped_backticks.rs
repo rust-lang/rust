@@ -16,7 +16,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
         return;
     };
 
-    let dox = item.attrs.collapsed_doc_value().unwrap_or_default();
+    let dox = item.doc_value();
     if dox.is_empty() {
         return;
     }

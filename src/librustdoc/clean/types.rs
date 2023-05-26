@@ -401,10 +401,16 @@ impl Item {
             .unwrap_or_else(|| self.span(tcx).map_or(rustc_span::DUMMY_SP, |span| span.inner()))
     }
 
-    /// Finds the `doc` attribute as a NameValue and returns the corresponding
-    /// value found.
-    pub(crate) fn doc_value(&self) -> Option<String> {
+    /// Combine all doc strings into a single value handling indentation and newlines as needed.
+    pub(crate) fn doc_value(&self) -> String {
         self.attrs.doc_value()
+    }
+
+    /// Combine all doc strings into a single value handling indentation and newlines as needed.
+    /// Returns `None` is there's no documentation at all, and `Some("")` if there is some
+    /// documentation but it is empty (e.g. `#[doc = ""]`).
+    pub(crate) fn opt_doc_value(&self) -> Option<String> {
+        self.attrs.opt_doc_value()
     }
 
     pub(crate) fn from_def_id_and_parts(
@@ -441,12 +447,6 @@ impl Item {
             cfg,
             inline_stmt_id: None,
         }
-    }
-
-    /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined
-    /// with newlines.
-    pub(crate) fn collapsed_doc_value(&self) -> Option<String> {
-        self.attrs.collapsed_doc_value()
     }
 
     pub(crate) fn links(&self, cx: &Context<'_>) -> Vec<RenderedLink> {
@@ -1068,17 +1068,6 @@ impl<I: Iterator<Item = ast::NestedMetaItem>> NestedAttributesExt for I {
     }
 }
 
-/// Collapse a collection of [`DocFragment`]s into one string,
-/// handling indentation and newlines as needed.
-pub(crate) fn collapse_doc_fragments(doc_strings: &[DocFragment]) -> String {
-    let mut acc = String::new();
-    for frag in doc_strings {
-        add_doc_fragment(&mut acc, frag);
-    }
-    acc.pop();
-    acc
-}
-
 /// A link that has not yet been rendered.
 ///
 /// This link will be turned into a rendered link by [`Item::links`].
@@ -1163,29 +1152,23 @@ impl Attributes {
         Attributes { doc_strings, other_attrs }
     }
 
-    /// Finds the `doc` attribute as a NameValue and returns the corresponding
-    /// value found.
-    pub(crate) fn doc_value(&self) -> Option<String> {
-        let mut iter = self.doc_strings.iter();
-
-        let ori = iter.next()?;
-        let mut out = String::new();
-        add_doc_fragment(&mut out, ori);
-        for new_frag in iter {
-            add_doc_fragment(&mut out, new_frag);
-        }
-        out.pop();
-        if out.is_empty() { None } else { Some(out) }
+    /// Combine all doc strings into a single value handling indentation and newlines as needed.
+    pub(crate) fn doc_value(&self) -> String {
+        self.opt_doc_value().unwrap_or_default()
     }
 
-    /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined
-    /// with newlines.
-    pub(crate) fn collapsed_doc_value(&self) -> Option<String> {
-        if self.doc_strings.is_empty() {
-            None
-        } else {
-            Some(collapse_doc_fragments(&self.doc_strings))
-        }
+    /// Combine all doc strings into a single value handling indentation and newlines as needed.
+    /// Returns `None` is there's no documentation at all, and `Some("")` if there is some
+    /// documentation but it is empty (e.g. `#[doc = ""]`).
+    pub(crate) fn opt_doc_value(&self) -> Option<String> {
+        (!self.doc_strings.is_empty()).then(|| {
+            let mut res = String::new();
+            for frag in &self.doc_strings {
+                add_doc_fragment(&mut res, frag);
+            }
+            res.pop();
+            res
+        })
     }
 
     pub(crate) fn get_doc_aliases(&self) -> Box<[Symbol]> {

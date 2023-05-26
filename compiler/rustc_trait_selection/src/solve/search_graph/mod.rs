@@ -8,7 +8,7 @@ use cache::ProvisionalCache;
 use overflow::OverflowData;
 use rustc_index::IndexVec;
 use rustc_middle::dep_graph::DepKind;
-use rustc_middle::traits::solve::{CanonicalGoal, Certainty, MaybeCause, QueryResult};
+use rustc_middle::traits::solve::{CanonicalInput, Certainty, MaybeCause, QueryResult};
 use rustc_middle::ty::TyCtxt;
 use std::{collections::hash_map::Entry, mem};
 
@@ -19,7 +19,7 @@ rustc_index::newtype_index! {
 }
 
 struct StackElem<'tcx> {
-    goal: CanonicalGoal<'tcx>,
+    input: CanonicalInput<'tcx>,
     has_been_used: bool,
 }
 
@@ -77,7 +77,7 @@ impl<'tcx> SearchGraph<'tcx> {
             }
 
             // ...or it depends on a goal with a lower depth.
-            let current_goal = self.stack[stack_depth].goal;
+            let current_goal = self.stack[stack_depth].input;
             let entry_index = self.provisional_cache.lookup_table[&current_goal];
             self.provisional_cache.entries[entry_index].depth != stack_depth
         } else {
@@ -92,20 +92,20 @@ impl<'tcx> SearchGraph<'tcx> {
     fn try_push_stack(
         &mut self,
         tcx: TyCtxt<'tcx>,
-        goal: CanonicalGoal<'tcx>,
+        input: CanonicalInput<'tcx>,
     ) -> Result<(), QueryResult<'tcx>> {
         // Look at the provisional cache to check for cycles.
         let cache = &mut self.provisional_cache;
-        match cache.lookup_table.entry(goal) {
+        match cache.lookup_table.entry(input) {
             // No entry, simply push this goal on the stack after dealing with overflow.
             Entry::Vacant(v) => {
                 if self.overflow_data.has_overflow(self.stack.len()) {
-                    return Err(self.deal_with_overflow(tcx, goal));
+                    return Err(self.deal_with_overflow(tcx, input));
                 }
 
-                let depth = self.stack.push(StackElem { goal, has_been_used: false });
-                let response = super::response_no_constraints(tcx, goal, Certainty::Yes);
-                let entry_index = cache.entries.push(ProvisionalEntry { response, depth, goal });
+                let depth = self.stack.push(StackElem { input, has_been_used: false });
+                let response = super::response_no_constraints(tcx, input, Certainty::Yes);
+                let entry_index = cache.entries.push(ProvisionalEntry { response, depth, input });
                 v.insert(entry_index);
                 Ok(())
             }
@@ -135,13 +135,13 @@ impl<'tcx> SearchGraph<'tcx> {
                 // the stack is enough.
                 if self.stack.raw[stack_depth.index()..]
                     .iter()
-                    .all(|g| g.goal.value.predicate.is_coinductive(tcx))
+                    .all(|g| g.input.value.goal.predicate.is_coinductive(tcx))
                 {
                     Err(cache.provisional_result(entry_index))
                 } else {
                     Err(super::response_no_constraints(
                         tcx,
-                        goal,
+                        input,
                         Certainty::Maybe(MaybeCause::Overflow),
                     ))
                 }
@@ -161,18 +161,18 @@ impl<'tcx> SearchGraph<'tcx> {
     /// updated the provisional cache and we have to recompute the current goal.
     ///
     /// FIXME: Refer to the rustc-dev-guide entry once it exists.
-    #[instrument(level = "debug", skip(self, actual_goal), ret)]
+    #[instrument(level = "debug", skip(self, actual_input), ret)]
     fn try_finalize_goal(
         &mut self,
-        actual_goal: CanonicalGoal<'tcx>,
+        actual_input: CanonicalInput<'tcx>,
         response: QueryResult<'tcx>,
     ) -> bool {
         let stack_elem = self.stack.pop().unwrap();
-        let StackElem { goal, has_been_used } = stack_elem;
-        assert_eq!(goal, actual_goal);
+        let StackElem { input, has_been_used } = stack_elem;
+        assert_eq!(input, actual_input);
 
         let cache = &mut self.provisional_cache;
-        let provisional_entry_index = *cache.lookup_table.get(&goal).unwrap();
+        let provisional_entry_index = *cache.lookup_table.get(&input).unwrap();
         let provisional_entry = &mut cache.entries[provisional_entry_index];
         // We eagerly update the response in the cache here. If we have to reevaluate
         // this goal we use the new response when hitting a cycle, and we definitely
@@ -194,7 +194,7 @@ impl<'tcx> SearchGraph<'tcx> {
             cache.entries.truncate(provisional_entry_index.index() + 1);
 
             // ...and finally push our goal back on the stack and reevaluate it.
-            self.stack.push(StackElem { goal, has_been_used: false });
+            self.stack.push(StackElem { input, has_been_used: false });
             false
         } else {
             true
@@ -204,17 +204,17 @@ impl<'tcx> SearchGraph<'tcx> {
     pub(super) fn with_new_goal(
         &mut self,
         tcx: TyCtxt<'tcx>,
-        canonical_goal: CanonicalGoal<'tcx>,
+        canonical_input: CanonicalInput<'tcx>,
         mut loop_body: impl FnMut(&mut Self) -> QueryResult<'tcx>,
     ) -> QueryResult<'tcx> {
         if self.should_use_global_cache() {
-            if let Some(result) = tcx.new_solver_evaluation_cache.get(&canonical_goal, tcx) {
-                debug!(?canonical_goal, ?result, "cache hit");
+            if let Some(result) = tcx.new_solver_evaluation_cache.get(&canonical_input, tcx) {
+                debug!(?canonical_input, ?result, "cache hit");
                 return result;
             }
         }
 
-        match self.try_push_stack(tcx, canonical_goal) {
+        match self.try_push_stack(tcx, canonical_input) {
             Ok(()) => {}
             // Our goal is already on the stack, eager return.
             Err(response) => return response,
@@ -226,19 +226,19 @@ impl<'tcx> SearchGraph<'tcx> {
         let (result, dep_node) = tcx.dep_graph.with_anon_task(tcx, DepKind::TraitSelect, || {
             self.repeat_while_none(
                 |this| {
-                    let result = this.deal_with_overflow(tcx, canonical_goal);
+                    let result = this.deal_with_overflow(tcx, canonical_input);
                     let _ = this.stack.pop().unwrap();
                     result
                 },
                 |this| {
                     let result = loop_body(this);
-                    this.try_finalize_goal(canonical_goal, result).then(|| result)
+                    this.try_finalize_goal(canonical_input, result).then(|| result)
                 },
             )
         });
 
         let cache = &mut self.provisional_cache;
-        let provisional_entry_index = *cache.lookup_table.get(&canonical_goal).unwrap();
+        let provisional_entry_index = *cache.lookup_table.get(&canonical_input).unwrap();
         let provisional_entry = &mut cache.entries[provisional_entry_index];
         let depth = provisional_entry.depth;
 
@@ -254,13 +254,13 @@ impl<'tcx> SearchGraph<'tcx> {
             // cycle participants without moving them to the global cache.
             let other_cycle_participants = provisional_entry_index.index() + 1;
             for (i, entry) in cache.entries.drain_enumerated(other_cycle_participants..) {
-                let actual_index = cache.lookup_table.remove(&entry.goal);
+                let actual_index = cache.lookup_table.remove(&entry.input);
                 debug_assert_eq!(Some(i), actual_index);
                 debug_assert!(entry.depth == depth);
             }
 
             let current_goal = cache.entries.pop().unwrap();
-            let actual_index = cache.lookup_table.remove(&current_goal.goal);
+            let actual_index = cache.lookup_table.remove(&current_goal.input);
             debug_assert_eq!(Some(provisional_entry_index), actual_index);
             debug_assert!(current_goal.depth == depth);
 
@@ -274,7 +274,7 @@ impl<'tcx> SearchGraph<'tcx> {
             let can_cache = !self.overflow_data.did_overflow() || self.stack.is_empty();
             if self.should_use_global_cache() && can_cache {
                 tcx.new_solver_evaluation_cache.insert(
-                    current_goal.goal,
+                    current_goal.input,
                     dep_node,
                     current_goal.response,
                 );

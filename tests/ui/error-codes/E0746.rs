@@ -1,5 +1,5 @@
-// run-rustfix
 #![allow(dead_code)]
+
 struct Struct;
 trait Trait {}
 impl Trait for Struct {}

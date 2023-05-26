@@ -350,7 +350,7 @@ impl SplitDebuginfo {
 }
 
 /// LTO mode used for compiling rustc itself.
-#[derive(Default, Clone, PartialEq)]
+#[derive(Default, Clone, PartialEq, Debug)]
 pub enum RustcLto {
     Off,
     #[default]
@@ -508,29 +508,42 @@ struct TomlConfig {
     profile: Option<String>,
 }
 
+/// Describes how to handle conflicts in merging two [`TomlConfig`]
+#[derive(Copy, Clone, Debug)]
+enum ReplaceOpt {
+    /// Silently ignore a duplicated value
+    IgnoreDuplicate,
+    /// Override the current value, even if it's `Some`
+    Override,
+    /// Exit with an error on duplicate values
+    ErrorOnDuplicate,
+}
+
 trait Merge {
-    fn merge(&mut self, other: Self);
+    fn merge(&mut self, other: Self, replace: ReplaceOpt);
 }
 
 impl Merge for TomlConfig {
     fn merge(
         &mut self,
-        TomlConfig { build, install, llvm, rust, dist, target, profile: _, changelog_seen: _ }: Self,
+        TomlConfig { build, install, llvm, rust, dist, target, profile: _, changelog_seen }: Self,
+        replace: ReplaceOpt,
     ) {
-        fn do_merge<T: Merge>(x: &mut Option<T>, y: Option<T>) {
+        fn do_merge<T: Merge>(x: &mut Option<T>, y: Option<T>, replace: ReplaceOpt) {
             if let Some(new) = y {
                 if let Some(original) = x {
-                    original.merge(new);
+                    original.merge(new, replace);
                 } else {
                     *x = Some(new);
                 }
             }
         }
-        do_merge(&mut self.build, build);
-        do_merge(&mut self.install, install);
-        do_merge(&mut self.llvm, llvm);
-        do_merge(&mut self.rust, rust);
-        do_merge(&mut self.dist, dist);
+        self.changelog_seen.merge(changelog_seen, replace);
+        do_merge(&mut self.build, build, replace);
+        do_merge(&mut self.install, install, replace);
+        do_merge(&mut self.llvm, llvm, replace);
+        do_merge(&mut self.rust, rust, replace);
+        do_merge(&mut self.dist, dist, replace);
         assert!(target.is_none(), "merging target-specific config is not currently supported");
     }
 }
@@ -547,10 +560,33 @@ macro_rules! define_config {
         }
 
         impl Merge for $name {
-            fn merge(&mut self, other: Self) {
+            fn merge(&mut self, other: Self, replace: ReplaceOpt) {
                 $(
-                    if !self.$field.is_some() {
-                        self.$field = other.$field;
+                    match replace {
+                        ReplaceOpt::IgnoreDuplicate => {
+                            if self.$field.is_none() {
+                                self.$field = other.$field;
+                            }
+                        },
+                        ReplaceOpt::Override => {
+                            if other.$field.is_some() {
+                                self.$field = other.$field;
+                            }
+                        }
+                        ReplaceOpt::ErrorOnDuplicate => {
+                            if other.$field.is_some() {
+                                if self.$field.is_some() {
+                                    if cfg!(test) {
+                                        panic!("overriding existing option")
+                                    } else {
+                                        eprintln!("overriding existing option: `{}`", stringify!($field));
+                                        crate::detail_exit(2);
+                                    }
+                                } else {
+                                    self.$field = other.$field;
+                                }
+                            }
+                        }
                     }
                 )*
             }
@@ -618,6 +654,37 @@ macro_rules! define_config {
                     FIELDS,
                     Field,
                 )
+            }
+        }
+    }
+}
+
+impl<T> Merge for Option<T> {
+    fn merge(&mut self, other: Self, replace: ReplaceOpt) {
+        match replace {
+            ReplaceOpt::IgnoreDuplicate => {
+                if self.is_none() {
+                    *self = other;
+                }
+            }
+            ReplaceOpt::Override => {
+                if other.is_some() {
+                    *self = other;
+                }
+            }
+            ReplaceOpt::ErrorOnDuplicate => {
+                if other.is_some() {
+                    if self.is_some() {
+                        if cfg!(test) {
+                            panic!("overriding existing option")
+                        } else {
+                            eprintln!("overriding existing option");
+                            crate::detail_exit(2);
+                        }
+                    } else {
+                        *self = other;
+                    }
+                }
             }
         }
     }
@@ -864,28 +931,27 @@ impl Config {
 
     pub fn parse(args: &[String]) -> Config {
         #[cfg(test)]
-        let get_toml = |_: &_| TomlConfig::default();
+        fn get_toml(_: &Path) -> TomlConfig {
+            TomlConfig::default()
+        }
+
         #[cfg(not(test))]
-        let get_toml = |file: &Path| {
+        fn get_toml(file: &Path) -> TomlConfig {
             let contents =
                 t!(fs::read_to_string(file), format!("config file {} not found", file.display()));
             // Deserialize to Value and then TomlConfig to prevent the Deserialize impl of
             // TomlConfig and sub types to be monomorphized 5x by toml.
-            match toml::from_str(&contents)
+            toml::from_str(&contents)
                 .and_then(|table: toml::Value| TomlConfig::deserialize(table))
-            {
-                Ok(table) => table,
-                Err(err) => {
-                    eprintln!("failed to parse TOML configuration '{}': {}", file.display(), err);
+                .unwrap_or_else(|err| {
+                    eprintln!("failed to parse TOML configuration '{}': {err}", file.display());
                     crate::detail_exit(2);
-                }
-            }
-        };
-
+                })
+        }
         Self::parse_inner(args, get_toml)
     }
 
-    fn parse_inner<'a>(args: &[String], get_toml: impl 'a + Fn(&Path) -> TomlConfig) -> Config {
+    fn parse_inner(args: &[String], get_toml: impl Fn(&Path) -> TomlConfig) -> Config {
         let mut flags = Flags::parse(&args);
         let mut config = Config::default_opts();
 
@@ -998,8 +1064,40 @@ impl Config {
             include_path.push("defaults");
             include_path.push(format!("config.{}.toml", include));
             let included_toml = get_toml(&include_path);
-            toml.merge(included_toml);
+            toml.merge(included_toml, ReplaceOpt::IgnoreDuplicate);
         }
+
+        let mut override_toml = TomlConfig::default();
+        for option in flags.set.iter() {
+            fn get_table(option: &str) -> Result<TomlConfig, toml::de::Error> {
+                toml::from_str(&option)
+                    .and_then(|table: toml::Value| TomlConfig::deserialize(table))
+            }
+
+            let mut err = match get_table(option) {
+                Ok(v) => {
+                    override_toml.merge(v, ReplaceOpt::ErrorOnDuplicate);
+                    continue;
+                }
+                Err(e) => e,
+            };
+            // We want to be able to set string values without quotes,
+            // like in `configure.py`. Try adding quotes around the right hand side
+            if let Some((key, value)) = option.split_once("=") {
+                if !value.contains('"') {
+                    match get_table(&format!(r#"{key}="{value}""#)) {
+                        Ok(v) => {
+                            override_toml.merge(v, ReplaceOpt::ErrorOnDuplicate);
+                            continue;
+                        }
+                        Err(e) => err = e,
+                    }
+                }
+            }
+            eprintln!("failed to parse override `{option}`: `{err}");
+            crate::detail_exit(2)
+        }
+        toml.merge(override_toml, ReplaceOpt::Override);
 
         config.changelog_seen = toml.changelog_seen;
 

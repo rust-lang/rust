@@ -351,7 +351,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             let popped = this.block_context.pop();
-            assert!(popped.map_or(false, |bf| bf.is_statement()));
+            assert!(popped.is_some_and(|bf| bf.is_statement()));
         }
 
         // Then, the block may have an optional trailing expression which is a “return” value
@@ -367,7 +367,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             unpack!(block = this.expr_into_dest(destination, block, expr));
             let popped = this.block_context.pop();
 
-            assert!(popped.map_or(false, |bf| bf.is_tail_expr()));
+            assert!(popped.is_some_and(|bf| bf.is_tail_expr()));
         } else {
             // If a block has no trailing expression, then it is given an implicit return type.
             // This return type is usually `()`, unless the block is diverging, in which case the

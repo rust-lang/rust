@@ -1164,6 +1164,22 @@ pub trait PrettyPrinter<'tcx>:
         traits.entry(trait_ref).or_default().extend(proj_ty);
     }
 
+    fn pretty_print_inherent_projection(
+        self,
+        alias_ty: &ty::AliasTy<'tcx>,
+    ) -> Result<Self::Path, Self::Error> {
+        let def_key = self.tcx().def_key(alias_ty.def_id);
+        self.path_generic_args(
+            |cx| {
+                cx.path_append(
+                    |cx| cx.path_qualified(alias_ty.self_ty(), None),
+                    &def_key.disambiguated_data,
+                )
+            },
+            &alias_ty.substs[1..],
+        )
+    }
+
     fn ty_infer_name(&self, _: ty::TyVid) -> Option<Symbol> {
         None
     }
@@ -2821,7 +2837,11 @@ define_print_and_forward_display! {
     }
 
     ty::AliasTy<'tcx> {
-        p!(print_def_path(self.def_id, self.substs));
+        if let DefKind::Impl { of_trait: false } = cx.tcx().def_kind(cx.tcx().parent(self.def_id)) {
+            p!(pretty_print_inherent_projection(self))
+        } else {
+            p!(print_def_path(self.def_id, self.substs));
+        }
     }
 
     ty::ClosureKind {

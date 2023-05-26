@@ -1825,7 +1825,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         s
                     };
                     if !(values.expected.is_simple_text() && values.found.is_simple_text())
-                        || (exp_found.map_or(false, |ef| {
+                        || (exp_found.is_some_and(|ef| {
                             // This happens when the type error is a subset of the expectation,
                             // like when you have two references but one is `usize` and the other
                             // is `f32`. In those cases we still want to show the `note`. If the
@@ -1877,7 +1877,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let exp_found = match terr {
             // `terr` has more accurate type information than `exp_found` in match expressions.
             ty::error::TypeError::Sorts(terr)
-                if exp_found.map_or(false, |ef| terr.found == ef.found) =>
+                if exp_found.is_some_and(|ef| terr.found == ef.found) =>
             {
                 Some(terr)
             }
@@ -1961,7 +1961,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     if let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span)
                         && let Some(code) = code.strip_prefix('\'').and_then(|s| s.strip_suffix('\''))
                         && !code.starts_with("\\u") // forbid all Unicode escapes
-                        && code.chars().next().map_or(false, |c| c.is_ascii()) // forbids literal Unicode characters beyond ASCII
+                        && code.chars().next().is_some_and(|c| c.is_ascii()) // forbids literal Unicode characters beyond ASCII
                     {
                         suggestions.push(TypeErrorAdditionalDiags::MeantByteLiteral { span, code: escape_literal(code) })
                     }
@@ -2329,7 +2329,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         .source_map()
                         .span_to_prev_source(p.span.shrink_to_hi())
                         .ok()
-                        .map_or(false, |s| *s.as_bytes().last().unwrap() == b'&')
+                        .is_some_and(|s| *s.as_bytes().last().unwrap() == b'&')
                     {
                         add_lt_suggs
                             .push(Some(

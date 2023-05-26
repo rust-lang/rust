@@ -1,6 +1,6 @@
 use crate::infer::canonical::{Canonical, CanonicalQueryResponse};
-use crate::traits::query::Fallible;
 use rustc_infer::traits::query::OutlivesBound;
+use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt};
 
 #[derive(Copy, Clone, Debug, HashStable, TypeFoldable, TypeVisitable, Lift)]
@@ -28,7 +28,7 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ImpliedOutlivesBounds<'tcx> {
     fn perform_query(
         tcx: TyCtxt<'tcx>,
         canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Self>>,
-    ) -> Fallible<CanonicalQueryResponse<'tcx, Self::QueryResponse>> {
+    ) -> Result<CanonicalQueryResponse<'tcx, Self::QueryResponse>, NoSolution> {
         // FIXME this `unchecked_map` is only necessary because the
         // query is defined as taking a `ParamEnvAnd<Ty>`; it should
         // take an `ImpliedOutlivesBounds` instead

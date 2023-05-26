@@ -1,12 +1,13 @@
+use rustc_errors::ErrorGuaranteed;
 use rustc_infer::infer::nll_relate::{TypeRelating, TypeRelatingDelegate};
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_infer::traits::PredicateObligations;
 use rustc_middle::mir::ConstraintCategory;
+use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
-use rustc_trait_selection::traits::query::Fallible;
 
 use crate::constraints::OutlivesConstraint;
 use crate::diagnostics::UniverseInfo;
@@ -30,7 +31,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         b: Ty<'tcx>,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
-    ) -> Fallible<()> {
+    ) -> Result<(), NoSolution> {
         TypeRelating::new(
             self.infcx,
             NllTypeRelatingDelegate::new(self, locations, category, UniverseInfo::relate(a, b)),
@@ -47,7 +48,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         b: ty::SubstsRef<'tcx>,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
-    ) -> Fallible<()> {
+    ) -> Result<(), NoSolution> {
         TypeRelating::new(
             self.infcx,
             NllTypeRelatingDelegate::new(self, locations, category, UniverseInfo::other()),
@@ -185,17 +186,15 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
     }
 
     fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
-        self.type_checker
-            .fully_perform_op(
-                self.locations,
-                self.category,
-                InstantiateOpaqueType {
-                    obligations,
-                    // These fields are filled in during execution of the operation
-                    base_universe: None,
-                    region_constraints: None,
-                },
-            )
-            .unwrap();
+        let _: Result<_, ErrorGuaranteed> = self.type_checker.fully_perform_op(
+            self.locations,
+            self.category,
+            InstantiateOpaqueType {
+                obligations,
+                // These fields are filled in during execution of the operation
+                base_universe: None,
+                region_constraints: None,
+            },
+        );
     }
 }

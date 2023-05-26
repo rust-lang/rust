@@ -363,7 +363,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             let left_size = self.ecx.layout_of(left_ty).ok()?.size;
             let right_size = r.layout.size;
             let r_bits = r.to_scalar().to_bits(right_size).ok();
-            if r_bits.map_or(false, |b| b >= left_size.bits() as u128) {
+            if r_bits.is_some_and(|b| b >= left_size.bits() as u128) {
                 debug!("check_binary_op: reporting assert for {:?}", location);
                 let source_info = self.body().source_info(location);
                 let panic = AssertKind::Overflow(

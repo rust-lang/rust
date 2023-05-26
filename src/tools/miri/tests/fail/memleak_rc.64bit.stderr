@@ -1,8 +1,8 @@
 error: memory leaked: ALLOC (Rust heap, size: 32, align: 8), allocated here:
   --> RUSTLIB/alloc/src/alloc.rs:LL:CC
    |
-LL |     unsafe { __rust_alloc(layout.size(), layout.align()) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         __rust_alloc(layout.size(), layout.align())
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: inside `std::alloc::alloc` at RUSTLIB/alloc/src/alloc.rs:LL:CC
    = note: inside `std::alloc::Global::alloc_impl` at RUSTLIB/alloc/src/alloc.rs:LL:CC

@@ -149,7 +149,7 @@ impl TryFrom<ResolveRes> for Res {
             Def(kind, id) => Ok(Res::Def(kind, id)),
             PrimTy(prim) => Ok(Res::Primitive(PrimitiveType::from_hir(prim))),
             // e.g. `#[derive]`
-            NonMacroAttr(..) | Err => Result::Err(()),
+            ToolMod | NonMacroAttr(..) | Err => Result::Err(()),
             other => bug!("unrecognized res {:?}", other),
         }
     }

@@ -6,5 +6,4 @@ extern {
 }
 
 // @is "$.index[*][?(@.docs=='No inner information')].name" '"Foo"'
-// @is "$.index[*][?(@.docs=='No inner information')].kind" '"foreign_type"'
-// @!has "$.index[*][?(@.docs=='No inner information')].inner"
+// @is "$.index[*][?(@.docs=='No inner information')].inner" \"foreign_type\"

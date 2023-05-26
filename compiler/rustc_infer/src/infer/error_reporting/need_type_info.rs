@@ -671,7 +671,7 @@ impl<'tcx> InferSource<'tcx> {
                 receiver.span.from_expansion()
             }
             InferSourceKind::ClosureReturn { data, should_wrap_expr, .. } => {
-                data.span().from_expansion() || should_wrap_expr.map_or(false, Span::from_expansion)
+                data.span().from_expansion() || should_wrap_expr.is_some_and(Span::from_expansion)
             }
         };
         source_from_expansion || self.span.from_expansion()
@@ -984,7 +984,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
     ) -> impl Iterator<Item = InsertableGenericArgs<'tcx>> + 'a {
         let tcx = self.infcx.tcx;
         let have_turbofish = path.segments.iter().any(|segment| {
-            segment.args.map_or(false, |args| args.args.iter().any(|arg| arg.is_ty_or_const()))
+            segment.args.is_some_and(|args| args.args.iter().any(|arg| arg.is_ty_or_const()))
         });
         // The last segment of a path often has `Res::Err` and the
         // correct `Res` is the one of the whole path.

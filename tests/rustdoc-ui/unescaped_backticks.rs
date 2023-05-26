@@ -340,3 +340,15 @@ id! {
     /// level changes.
     pub mod tracing_macro {}
 }
+
+/// Regression test for <https://github.com/rust-lang/rust/issues/111117>
+pub mod trillium_server_common {
+    /// One-indexed, because the first CloneCounter is included. If you don't
+    /// want the original to count, construct a [``CloneCounterObserver`]
+    /// instead and use [`CloneCounterObserver::counter`] to increment.
+    //~^ ERROR unescaped backtick
+    pub struct CloneCounter;
+
+    /// This is used by the above.
+    pub struct CloneCounterObserver;
+}

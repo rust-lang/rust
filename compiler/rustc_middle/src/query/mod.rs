@@ -38,7 +38,10 @@ use crate::traits::query::{
     OutlivesBound,
 };
 use crate::traits::specialization_graph;
-use crate::traits::{self, ImplSource};
+use crate::traits::{
+    CanonicalChalkEnvironmentAndGoal, CodegenObligationError, EvaluationResult, ImplSource,
+    ObjectSafetyViolation, ObligationCause, OverflowError, WellFormedLoc,
+};
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::ValidityRequirement;
 use crate::ty::subst::{GenericArg, SubstsRef};
@@ -1273,7 +1276,7 @@ rustc_queries! {
 
     query codegen_select_candidate(
         key: (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>)
-    ) -> Result<&'tcx ImplSource<'tcx, ()>, traits::CodegenObligationError> {
+    ) -> Result<&'tcx ImplSource<'tcx, ()>, CodegenObligationError> {
         cache_on_disk_if { true }
         desc { |tcx| "computing candidate for `{}`", key.1 }
     }
@@ -1294,7 +1297,7 @@ rustc_queries! {
         desc { |tcx| "building specialization graph of trait `{}`", tcx.def_path_str(trait_id) }
         cache_on_disk_if { true }
     }
-    query object_safety_violations(trait_id: DefId) -> &'tcx [traits::ObjectSafetyViolation] {
+    query object_safety_violations(trait_id: DefId) -> &'tcx [ObjectSafetyViolation] {
         desc { |tcx| "determining object safety of trait `{}`", tcx.def_path_str(trait_id) }
     }
     query check_is_object_safe(trait_id: DefId) -> bool {
@@ -1838,8 +1841,7 @@ rustc_queries! {
     }
 
     /// A list of all traits in a crate, used by rustdoc and error reporting.
-    /// NOTE: Not named just `traits` due to a naming conflict.
-    query traits_in_crate(_: CrateNum) -> &'tcx [DefId] {
+    query traits(_: CrateNum) -> &'tcx [DefId] {
         desc { "fetching all traits in a crate" }
         separate_provide_extern
     }
@@ -1953,12 +1955,12 @@ rustc_queries! {
     /// `infcx.predicate_must_hold()` instead.
     query evaluate_obligation(
         goal: CanonicalPredicateGoal<'tcx>
-    ) -> Result<traits::EvaluationResult, traits::OverflowError> {
+    ) -> Result<EvaluationResult, OverflowError> {
         desc { "evaluating trait selection obligation `{}`", goal.value.value }
     }
 
     query evaluate_goal(
-        goal: traits::CanonicalChalkEnvironmentAndGoal<'tcx>
+        goal: CanonicalChalkEnvironmentAndGoal<'tcx>
     ) -> Result<
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>,
         NoSolution
@@ -2128,8 +2130,8 @@ rustc_queries! {
     /// all of the cases that the normal `ty::Ty`-based wfcheck does. This is fine,
     /// because the `ty::Ty`-based wfcheck is always run.
     query diagnostic_hir_wf_check(
-        key: (ty::Predicate<'tcx>, traits::WellFormedLoc)
-    ) -> &'tcx Option<traits::ObligationCause<'tcx>> {
+        key: (ty::Predicate<'tcx>, WellFormedLoc)
+    ) -> &'tcx Option<ObligationCause<'tcx>> {
         arena_cache
         eval_always
         no_hash

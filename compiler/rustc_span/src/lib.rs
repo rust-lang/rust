@@ -594,12 +594,6 @@ impl Span {
         matches!(outer_expn.kind, ExpnKind::Macro(..)) && outer_expn.collapse_debuginfo
     }
 
-    /// Returns `true` if this span comes from MIR inlining.
-    pub fn is_inlined(self) -> bool {
-        let outer_expn = self.ctxt().outer_expn_data();
-        matches!(outer_expn.kind, ExpnKind::Inlined)
-    }
-
     /// Returns `true` if `span` originates in a derive-macro's expansion.
     pub fn in_derive_expansion(self) -> bool {
         matches!(self.ctxt().outer_expn_data().kind, ExpnKind::Macro(MacroKind::Derive, _))
@@ -754,7 +748,7 @@ impl Span {
         self.ctxt()
             .outer_expn_data()
             .allow_internal_unstable
-            .map_or(false, |features| features.iter().any(|&f| f == feature))
+            .is_some_and(|features| features.iter().any(|&f| f == feature))
     }
 
     /// Checks if this span arises from a compiler desugaring of kind `kind`.

@@ -106,7 +106,7 @@ impl Determinacy {
 /// A specific scope in which a name can be looked up.
 /// This enum is currently used only for early resolution (imports and macros),
 /// but not for late resolution yet.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 enum Scope<'a> {
     DeriveHelpers(LocalExpnId),
     DeriveHelpersCompat,
@@ -1477,7 +1477,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     fn is_builtin_macro(&mut self, res: Res) -> bool {
-        self.get_macro(res).map_or(false, |macro_data| macro_data.ext.builtin_name.is_some())
+        self.get_macro(res).is_some_and(|macro_data| macro_data.ext.builtin_name.is_some())
     }
 
     fn macro_def(&self, mut ctxt: SyntaxContext) -> DefId {

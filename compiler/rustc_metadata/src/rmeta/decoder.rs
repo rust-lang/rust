@@ -1060,7 +1060,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .expect("argument names not encoded for a function")
             .decode((self, sess))
             .nth(0)
-            .map_or(false, |ident| ident.name == kw::SelfLower)
+            .is_some_and(|ident| ident.name == kw::SelfLower)
     }
 
     fn get_associated_item_or_field_def_ids(

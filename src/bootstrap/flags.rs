@@ -158,6 +158,9 @@ pub struct Flags {
     #[arg(global(true))]
     /// paths for the subcommand
     pub paths: Vec<PathBuf>,
+    /// override options in config.toml
+    #[arg(global(true), value_hint = clap::ValueHint::Other, long, value_name = "section.option=value")]
+    pub set: Vec<String>,
     /// arguments passed to subcommands
     #[arg(global(true), last(true), value_name = "ARGS")]
     pub free_args: Vec<String>,

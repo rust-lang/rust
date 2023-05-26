@@ -95,8 +95,6 @@ pub type CanonicalTypeOpNormalizeGoal<'tcx, T> =
 #[derive(Copy, Clone, Debug, HashStable, PartialEq, Eq)]
 pub struct NoSolution;
 
-pub type Fallible<T> = Result<T, NoSolution>;
-
 impl<'tcx> From<TypeError<'tcx>> for NoSolution {
     fn from(_: TypeError<'tcx>) -> NoSolution {
         NoSolution

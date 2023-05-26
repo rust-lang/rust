@@ -118,7 +118,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let category = Category::of(&expr.kind).unwrap();
         debug!(?category, ?expr.kind);
         match category {
-            Category::Constant if let NeedsTemporary::No = needs_temporary || !expr.ty.needs_drop(this.tcx, this.param_env) => {
+            Category::Constant
+                if matches!(needs_temporary, NeedsTemporary::No)
+                    || !expr.ty.needs_drop(this.tcx, this.param_env) =>
+            {
                 let constant = this.as_constant(expr);
                 block.and(Operand::Constant(Box::new(constant)))
             }
@@ -126,7 +129,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let operand = unpack!(block = this.as_temp(block, scope, expr, Mutability::Mut));
                 // Overwrite temp local info if we have something more interesting to record.
                 if !matches!(local_info, LocalInfo::Boring) {
-                    let decl_info = this.local_decls[operand].local_info.as_mut().assert_crate_local();
+                    let decl_info =
+                        this.local_decls[operand].local_info.as_mut().assert_crate_local();
                     if let LocalInfo::Boring | LocalInfo::BlockTailTemp(_) = **decl_info {
                         **decl_info = local_info;
                     }

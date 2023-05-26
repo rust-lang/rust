@@ -17,9 +17,10 @@ use crate::traits::{
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID, LOCAL_CRATE};
-use rustc_infer::infer::{DefineOpaqueTypes, DefiningAnchor, InferCtxt, TyCtxtInferExt};
+use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::util;
 use rustc_middle::traits::specialization_graph::OverlapMode;
+use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt, TypeVisitor};
@@ -706,7 +707,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OrphanChecker<'tcx> {
             }
             ty::Dynamic(tt, ..) => {
                 let principal = tt.principal().map(|p| p.def_id());
-                if principal.map_or(false, |p| self.def_id_is_local(p)) {
+                if principal.is_some_and(|p| self.def_id_is_local(p)) {
                     ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty))
                 } else {
                     self.found_non_local_ty(ty)

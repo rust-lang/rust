@@ -28,9 +28,7 @@ pub(crate) fn build_index<'tcx>(
     // has since been learned.
     for &OrphanImplItem { parent, ref item, ref impl_generics } in &cache.orphan_impl_items {
         if let Some((fqp, _)) = cache.paths.get(&parent) {
-            let desc = item
-                .doc_value()
-                .map_or_else(String::new, |s| short_markdown_summary(&s, &item.link_names(cache)));
+            let desc = short_markdown_summary(&item.doc_value(), &item.link_names(cache));
             cache.search_index.push(IndexItem {
                 ty: item.type_(),
                 name: item.name.unwrap(),
@@ -45,10 +43,8 @@ pub(crate) fn build_index<'tcx>(
         }
     }
 
-    let crate_doc = krate
-        .module
-        .doc_value()
-        .map_or_else(String::new, |s| short_markdown_summary(&s, &krate.module.link_names(cache)));
+    let crate_doc =
+        short_markdown_summary(&krate.module.doc_value(), &krate.module.link_names(cache));
 
     // Aliases added through `#[doc(alias = "...")]`. Since a few items can have the same alias,
     // we need the alias element to have an array of items.

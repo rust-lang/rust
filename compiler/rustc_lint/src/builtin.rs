@@ -961,7 +961,7 @@ fn warn_if_doc(cx: &EarlyContext<'_>, node_span: Span, node_kind: &str, attrs: &
                 Some(sugared_span.map_or(attr.span, |span| span.with_hi(attr.span.hi())));
         }
 
-        if attrs.peek().map_or(false, |next_attr| next_attr.is_doc_comment()) {
+        if attrs.peek().is_some_and(|next_attr| next_attr.is_doc_comment()) {
             continue;
         }
 

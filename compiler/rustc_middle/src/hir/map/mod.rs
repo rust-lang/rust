@@ -410,7 +410,7 @@ impl<'hir> Map<'hir> {
     /// item (possibly associated), a closure, or a `hir::AnonConst`.
     pub fn body_owner(self, BodyId { hir_id }: BodyId) -> HirId {
         let parent = self.parent_id(hir_id);
-        assert!(self.find(parent).map_or(false, |n| is_body_owner(n, hir_id)), "{hir_id:?}");
+        assert!(self.find(parent).is_some_and(|n| is_body_owner(n, hir_id)), "{hir_id:?}");
         parent
     }
 

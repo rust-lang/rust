@@ -554,10 +554,8 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
 
         let is_const = self.tcx.is_const_fn(def_id.to_def_id())
             || self.tcx.is_const_trait_impl_raw(def_id.to_def_id());
-        let is_stable = self
-            .tcx
-            .lookup_stability(def_id)
-            .map_or(false, |stability| stability.level.is_stable());
+        let is_stable =
+            self.tcx.lookup_stability(def_id).is_some_and(|stability| stability.level.is_stable());
         let missing_const_stability_attribute = self.tcx.lookup_const_stability(def_id).is_none();
         let is_reachable = self.effective_visibilities.is_reachable(def_id);
 
@@ -772,7 +770,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     // needs to have an error emitted.
                     if features.const_trait_impl
                         && *constness == hir::Constness::Const
-                        && const_stab.map_or(false, |(stab, _)| stab.is_const_stable())
+                        && const_stab.is_some_and(|(stab, _)| stab.is_const_stable())
                     {
                         self.tcx.sess.emit_err(errors::TraitImplConstStable { span: item.span });
                     }
@@ -809,15 +807,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
             );
 
             let is_allowed_through_unstable_modules = |def_id| {
-                self.tcx
-                    .lookup_stability(def_id)
-                    .map(|stab| match stab.level {
-                        StabilityLevel::Stable { allowed_through_unstable_modules, .. } => {
-                            allowed_through_unstable_modules
-                        }
-                        _ => false,
-                    })
-                    .unwrap_or(false)
+                self.tcx.lookup_stability(def_id).is_some_and(|stab| match stab.level {
+                    StabilityLevel::Stable { allowed_through_unstable_modules, .. } => {
+                        allowed_through_unstable_modules
+                    }
+                    _ => false,
+                })
             };
 
             if item_is_allowed && !is_allowed_through_unstable_modules(def_id) {
