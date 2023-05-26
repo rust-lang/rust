@@ -449,7 +449,7 @@ impl<'tcx> Inliner<'tcx> {
             checker.visit_basic_block_data(bb, blk);
 
             let term = blk.terminator();
-            if let TerminatorKind::Drop { ref place, target, unwind } = term.kind {
+            if let TerminatorKind::Drop { ref place, target, unwind, replace: _ } = term.kind {
                 work_list.push(target);
 
                 // If the place doesn't actually need dropping, treat it like a regular goto.
@@ -457,8 +457,8 @@ impl<'tcx> Inliner<'tcx> {
                     .callee
                     .subst_mir(self.tcx, ty::EarlyBinder(&place.ty(callee_body, tcx).ty));
                 if ty.needs_drop(tcx, self.param_env) && let UnwindAction::Cleanup(unwind) = unwind {
-                        work_list.push(unwind);
-                    }
+                    work_list.push(unwind);
+                }
             } else if callee_attrs.instruction_set != self.codegen_fn_attrs.instruction_set
                 && matches!(term.kind, TerminatorKind::InlineAsm { .. })
             {

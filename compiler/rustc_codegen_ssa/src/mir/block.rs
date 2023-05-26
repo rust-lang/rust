@@ -1256,7 +1256,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 MergingSucc::False
             }
 
-            mir::TerminatorKind::Drop { place, target, unwind } => {
+            mir::TerminatorKind::Drop { place, target, unwind, replace: _ } => {
                 self.codegen_drop_terminator(helper, bx, place, target, unwind, mergeable_succ())
             }
 

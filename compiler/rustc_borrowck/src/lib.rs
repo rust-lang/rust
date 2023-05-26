@@ -685,17 +685,19 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
             TerminatorKind::SwitchInt { discr, targets: _ } => {
                 self.consume_operand(loc, (discr, span), flow_state);
             }
-            TerminatorKind::Drop { place, target: _, unwind: _ } => {
+            TerminatorKind::Drop { place, target: _, unwind: _, replace } => {
                 debug!(
                     "visit_terminator_drop \
                      loc: {:?} term: {:?} place: {:?} span: {:?}",
                     loc, term, place, span
                 );
 
+                let write_kind =
+                    if *replace { WriteKind::Replace } else { WriteKind::StorageDeadOrDrop };
                 self.access_place(
                     loc,
                     (*place, span),
-                    (AccessDepth::Drop, Write(WriteKind::StorageDeadOrDrop)),
+                    (AccessDepth::Drop, Write(write_kind)),
                     LocalMutationIsAllowed::Yes,
                     flow_state,
                 );
@@ -885,6 +887,7 @@ enum ReadKind {
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum WriteKind {
     StorageDeadOrDrop,
+    Replace,
     MutableBorrow(BorrowKind),
     Mutate,
     Move,
@@ -1132,12 +1135,20 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             this.buffer_error(err);
                         }
                         WriteKind::StorageDeadOrDrop => this
-                            .report_storage_dead_or_drop_of_borrowed(location, place_span, borrow),
+                            .report_borrowed_value_does_not_live_long_enough(
+                                location,
+                                borrow,
+                                place_span,
+                                Some(WriteKind::StorageDeadOrDrop),
+                            ),
                         WriteKind::Mutate => {
                             this.report_illegal_mutation_of_borrowed(location, place_span, borrow)
                         }
                         WriteKind::Move => {
                             this.report_move_out_while_borrowed(location, place_span, borrow)
+                        }
+                        WriteKind::Replace => {
+                            this.report_illegal_mutation_of_borrowed(location, place_span, borrow)
                         }
                     }
                     Control::Break
@@ -1982,12 +1993,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
             Reservation(
                 WriteKind::Move
+                | WriteKind::Replace
                 | WriteKind::StorageDeadOrDrop
                 | WriteKind::MutableBorrow(BorrowKind::Shared)
                 | WriteKind::MutableBorrow(BorrowKind::Shallow),
             )
             | Write(
                 WriteKind::Move
+                | WriteKind::Replace
                 | WriteKind::StorageDeadOrDrop
                 | WriteKind::MutableBorrow(BorrowKind::Shared)
                 | WriteKind::MutableBorrow(BorrowKind::Shallow),

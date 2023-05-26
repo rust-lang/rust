@@ -14,7 +14,7 @@ use rustc_mir_dataflow::un_derefer::UnDerefer;
 use rustc_mir_dataflow::MoveDataParamEnv;
 use rustc_mir_dataflow::{on_all_children_bits, on_all_drop_children_bits};
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
-use rustc_span::{DesugaringKind, Span};
+use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use std::fmt;
 
@@ -401,7 +401,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             let terminator = data.terminator();
 
             match terminator.kind {
-                TerminatorKind::Drop { mut place, target, unwind } => {
+                TerminatorKind::Drop { mut place, target, unwind, replace } => {
                     if let Some(new_place) = self.un_derefer.derefer(place.as_ref(), self.body) {
                         place = new_place;
                     }
@@ -434,10 +434,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                             )
                         }
                         LookupResult::Parent(..) => {
-                            if !matches!(
-                                terminator.source_info.span.desugaring_kind(),
-                                Some(DesugaringKind::Replace),
-                            ) {
+                            if !replace {
                                 self.tcx.sess.delay_span_bug(
                                     terminator.source_info.span,
                                     format!("drop of untracked value {:?}", bb),
