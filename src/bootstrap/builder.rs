@@ -264,7 +264,7 @@ impl PathSet {
 
     /// A convenience wrapper for Steps which know they have no aliases and all their sets contain only a single path.
     ///
-    /// This can be used with [`ShouldRun::krate`], [`ShouldRun::path`], or [`ShouldRun::alias`].
+    /// This can be used with [`ShouldRun::crate_or_deps`], [`ShouldRun::path`], or [`ShouldRun::alias`].
     #[track_caller]
     pub fn assert_single_path(&self) -> &TaskPath {
         match self {
@@ -787,6 +787,7 @@ impl<'a> Builder<'a> {
                 doc::EditionGuide,
                 doc::StyleGuide,
                 doc::Tidy,
+                doc::Bootstrap,
             ),
             Kind::Dist => describe!(
                 dist::Docs,
@@ -1915,10 +1916,10 @@ impl<'a> Builder<'a> {
         }
 
         // For `cargo doc` invocations, make rustdoc print the Rust version into the docs
-        // This replaces spaces with newlines because RUSTDOCFLAGS does not
+        // This replaces spaces with tabs because RUSTDOCFLAGS does not
         // support arguments with regular spaces. Hopefully someday Cargo will
         // have space support.
-        let rust_version = self.rust_version().replace(' ', "\n");
+        let rust_version = self.rust_version().replace(' ', "\t");
         rustdocflags.arg("--crate-version").arg(&rust_version);
 
         // Environment variables *required* throughout the build

@@ -49,8 +49,8 @@ pub struct StructExprNonExhaustive {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_method_call_on_unknown_type, code = "E0699")]
-pub struct MethodCallOnUnknownType {
+#[diag(hir_typeck_method_call_on_unknown_raw_pointee, code = "E0699")]
+pub struct MethodCallOnUnknownRawPointee {
     #[primary_span]
     pub span: Span,
 }
