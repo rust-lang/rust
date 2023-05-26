@@ -1095,6 +1095,8 @@ impl Config {
         let mut llvm_assertions = None;
         let mut llvm_tests = None;
         let mut llvm_plugins = None;
+        let mut rust_codegen_units = None;
+        let mut rust_codegen_units_std = None;
         let mut debug = None;
         let mut debug_assertions = None;
         let mut debug_assertions_std = None;
@@ -1173,8 +1175,8 @@ impl Config {
                     backends.iter().map(|s| INTERNER.intern_str(s)).collect();
             }
 
-            config.rust_codegen_units = rust.codegen_units.map(threads_from_config);
-            config.rust_codegen_units_std = rust.codegen_units_std.map(threads_from_config);
+            rust_codegen_units = rust.codegen_units.map(threads_from_config);
+            rust_codegen_units_std = rust.codegen_units_std.map(threads_from_config);
             config.rust_profile_use = flags.rust_profile_use.or(rust.profile_use);
             config.rust_profile_generate = flags.rust_profile_generate.or(rust.profile_generate);
             config.download_rustc_commit = config.download_ci_rustc_commit(rust.download_rustc);
@@ -1367,6 +1369,16 @@ impl Config {
         config.llvm_tests = llvm_tests.unwrap_or(false);
         config.llvm_plugins = llvm_plugins.unwrap_or(false);
         config.rust_optimize = optimize.unwrap_or(true);
+
+        let fully_optimized = config.rust_optimize && debug != Some(true) && !config.incremental;
+        if fully_optimized && rust_codegen_units.is_none() {
+            rust_codegen_units = Some(1)
+        }
+        if fully_optimized && rust_codegen_units_std.is_none() {
+            rust_codegen_units_std = Some(1)
+        }
+        config.rust_codegen_units = rust_codegen_units;
+        config.rust_codegen_units_std = rust_codegen_units_std;
 
         let default = debug == Some(true);
         config.rust_debug_assertions = debug_assertions.unwrap_or(default);

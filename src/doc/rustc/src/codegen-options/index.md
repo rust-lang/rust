@@ -31,6 +31,7 @@ Supported values can also be discovered by running `rustc --print code-models`.
 
 ## codegen-units
 
+njn: wrong about 0
 This flag controls how many code generation units the crate is split into. It
 takes an integer greater than 0.
 
@@ -39,6 +40,7 @@ them in parallel. Increasing parallelism may speed up compile times, but may
 also produce slower code. Setting this to 1 may improve the performance of
 generated code, but may be slower to compile.
 
+njn: update
 The default value, if not specified, is 16 for non-incremental builds. For
 incremental builds the default is 256 which allows caching to be more granular.
 

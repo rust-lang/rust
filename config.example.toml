@@ -429,12 +429,13 @@ changelog-seen = 2
 # Set this to `true` to download unconditionally (useful if e.g. you are only changing doc-comments).
 #download-rustc = false
 
-# Number of codegen units to use for each compiler invocation. A value of 0
-# means "the number of cores on this machine", and 1+ is passed through to the
-# compiler.
+# Number of codegen units to use for each compiler invocation. If specified: a
+# value of 0 means "the number of cores on this machine", and 1+ is passed
+# through to the compiler.
 #
-# Uses the rustc defaults: https://doc.rust-lang.org/rustc/codegen-options/index.html#codegen-units
-#codegen-units = if incremental { 256 } else { 16 }
+# The default value depends on various things, and is also described here:
+# https://doc.rust-lang.org/rustc/codegen-options/index.html#codegen-units
+#codegen-units = if optimize && !debug && !incremental { 1 } else if incremental { 256 } else { 16 }
 
 # Sets the number of codegen units to build the standard library with,
 # regardless of what the codegen-unit setting for the rest of the compiler is.
