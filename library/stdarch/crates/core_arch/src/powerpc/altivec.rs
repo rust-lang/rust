@@ -2363,8 +2363,8 @@ mod sealed {
         ($fun:ident ($a:ident) -> $r:ident [$little:ident, $big:ident]) => {
             #[inline]
             #[target_feature(enable = "altivec")]
-            #[cfg_attr(all(test, target_endiant = "little"), assert_instr($little))]
-            #[cfg_attr(all(test, target_endiant = "big"), assert_instr($big))]
+            #[cfg_attr(all(test, target_endian = "little"), assert_instr($little))]
+            #[cfg_attr(all(test, target_endian = "big"), assert_instr($big))]
             unsafe fn $fun(a: $a) -> $r {
                 if cfg!(target_endian = "little") {
                     $little(a)
