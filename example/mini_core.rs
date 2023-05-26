@@ -502,6 +502,9 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
     drop_in_place(to_drop);
 }
 
+#[lang = "unpin"]
+pub auto trait Unpin {}
+
 #[lang = "deref"]
 pub trait Deref {
     type Target: ?Sized;
