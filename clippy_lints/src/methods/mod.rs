@@ -14,6 +14,7 @@ mod clone_on_copy;
 mod clone_on_ref_ptr;
 mod cloned_instead_of_copied;
 mod collapsible_str_replace;
+mod drain_collect;
 mod err_expect;
 mod expect_fun_call;
 mod expect_used;
@@ -3247,6 +3248,42 @@ declare_clippy_lint! {
     "manual reverse iteration of `DoubleEndedIterator`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for calls to `.drain()` that clear the collection, immediately followed by a call to `.collect()`.
+    ///
+    /// > "Collection" in this context refers to any type with a `drain` method:
+    /// > `Vec`, `VecDeque`, `BinaryHeap`, `HashSet`,`HashMap`, `String`
+    ///
+    /// ### Why is this bad?
+    /// Using `mem::take` is faster as it avoids the allocation.
+    /// When using `mem::take`, the old collection is replaced with an empty one and ownership of
+    /// the old collection is returned.
+    ///
+    /// ### Drawback
+    /// `mem::take(&mut vec)` is almost equivalent to `vec.drain(..).collect()`, except that
+    /// it also moves the **capacity**. The user might have explicitly written it this way
+    /// to keep the capacity on the original `Vec`.
+    ///
+    /// ### Example
+    /// ```rust
+    /// fn remove_all(v: &mut Vec<i32>) -> Vec<i32> {
+    ///     v.drain(..).collect()
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// use std::mem;
+    /// fn remove_all(v: &mut Vec<i32>) -> Vec<i32> {
+    ///     mem::take(v)
+    /// }
+    /// ```
+    #[clippy::version = "1.71.0"]
+    pub DRAIN_COLLECT,
+    perf,
+    "description"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -3377,6 +3414,7 @@ impl_lint_pass!(Methods => [
     CLEAR_WITH_DRAIN,
     MANUAL_NEXT_BACK,
     UNNECESSARY_LITERAL_UNWRAP,
+    DRAIN_COLLECT
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -3606,6 +3644,9 @@ impl Methods {
                                 manual_str_repeat::check(cx, expr, recv, take_self_arg, take_arg);
                             }
                         },
+                        Some(("drain", recv, args, ..)) => {
+                            drain_collect::check(cx, args, expr, recv);
+                        }
                         _ => {},
                     }
                 },
