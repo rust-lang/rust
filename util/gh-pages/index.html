@@ -517,7 +517,8 @@ Otherwise, have a great day =^.^=
                     <h2 class="panel-title">
                         <div class="panel-title-name">
                             <span>{{lint.id}}</span>
-                            <a href="#{{lint.id}}" class="anchor label label-default" ng-click="open[lint.id] = true; $event.stopPropagation()">&para;</a>
+                            <a href="#{{lint.id}}" class="anchor label label-default"
+                                ng-click="openLint(lint); $event.preventDefault(); $event.stopPropagation()">&para;</a>
                             <a href="" id="clipboard-{{lint.id}}" class="anchor label label-default" ng-click="copyToClipboard(lint); $event.stopPropagation()">
                                 &#128203;
                             </a>

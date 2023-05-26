@@ -24,9 +24,9 @@
         target.scrollIntoView();
     }
 
-    function scrollToLintByURL($scope) {
-        var removeListener = $scope.$on('ngRepeatFinished', function(ngRepeatFinishedEvent) {
-            scrollToLint(window.location.hash.slice(1));
+    function scrollToLintByURL($scope, $location) {
+        var removeListener = $scope.$on('ngRepeatFinished', function (ngRepeatFinishedEvent) {
+            scrollToLint($location.path().substring(1));
             removeListener();
         });
     }
@@ -106,10 +106,10 @@
                 }
             };
         })
-        .controller("lintList", function ($scope, $http, $timeout) {
+        .controller("lintList", function ($scope, $http, $location) {
             // Level filter
             var LEVEL_FILTERS_DEFAULT = {allow: true, warn: true, deny: true, none: true};
-            $scope.levels = LEVEL_FILTERS_DEFAULT;
+            $scope.levels = { ...LEVEL_FILTERS_DEFAULT };
             $scope.byLevels = function (lint) {
                 return $scope.levels[lint.level];
             };
@@ -145,6 +145,137 @@
                 "≤": {enabled: false, minorVersion: null },
                 "=": {enabled: false, minorVersion: null },
             };
+
+            // Map the versionFilters to the query parameters in a way that is easier to work with in a URL
+            const versionFilterKeyMap = {
+                "≥": "gte",
+                "≤": "lte",
+                "=": "eq"
+            };
+            const reverseVersionFilterKeyMap = Object.fromEntries(
+                Object.entries(versionFilterKeyMap).map(([key, value]) => [value, key])
+            );
+
+            // loadFromURLParameters retrieves filter settings from the URL parameters and assigns them
+            // to corresponding $scope variables.
+            function loadFromURLParameters() {
+                // Extract parameters from URL
+                const urlParameters = $location.search();
+
+                // Define a helper function that assigns URL parameters to a provided scope variable
+                const handleParameter = (parameter, scopeVariable) => {
+                    if (urlParameters[parameter]) {
+                        const items = urlParameters[parameter].split(',');
+                        for (const key in scopeVariable) {
+                            if (scopeVariable.hasOwnProperty(key)) {
+                                scopeVariable[key] = items.includes(key);
+                            }
+                        }
+                    }
+                };
+
+                handleParameter('levels', $scope.levels);
+                handleParameter('groups', $scope.groups);
+
+                // Handle 'versions' parameter separately because it needs additional processing
+                if (urlParameters.versions) {
+                    const versionFilters = urlParameters.versions.split(',');
+                    for (const versionFilter of versionFilters) {
+                        const [key, minorVersion] = versionFilter.split(':');
+                        const parsedMinorVersion = parseInt(minorVersion);
+
+                        // Map the key from the URL parameter to its original form
+                        const originalKey = reverseVersionFilterKeyMap[key];
+
+                        if (originalKey in $scope.versionFilters && !isNaN(parsedMinorVersion)) {
+                            $scope.versionFilters[originalKey].enabled = true;
+                            $scope.versionFilters[originalKey].minorVersion = parsedMinorVersion;
+                        }
+                    }
+                }
+
+                // Load the search parameter from the URL path
+                const searchParameter = $location.path().substring(1); // Remove the leading slash
+                if (searchParameter) {
+                    $scope.search = searchParameter;
+                    $scope.open[searchParameter] = true;
+                    scrollToLintByURL($scope, $location);
+                }
+
+                // If there are any filters in the URL, mark that the filters have been changed
+                if (urlParameters.levels || urlParameters.groups || urlParameters.versions) {
+                    $scope.filtersChanged = true;
+                }
+            }
+
+            // updateURLParameter updates the URL parameter with the given key to the given value
+            function updateURLParameter(filterObj, urlKey, processFilter = filter => filter) {
+                const parameter = Object.keys(filterObj)
+                    .filter(filter => filterObj[filter])
+                    .map(processFilter)
+                    .filter(Boolean) // Filters out any falsy values, including null
+                    .join(',');
+
+                $location.search(urlKey, parameter || null);
+            }
+
+            // updateVersionURLParameter updates the version URL parameter with the given version filters
+            function updateVersionURLParameter(versionFilters) {
+                updateURLParameter(
+                    versionFilters,
+                    'versions',
+                    versionFilter => versionFilters[versionFilter].enabled && versionFilters[versionFilter].minorVersion != null
+                        ? `${versionFilterKeyMap[versionFilter]}:${versionFilters[versionFilter].minorVersion}`
+                        : null
+                );
+            }
+
+            // updateAllURLParameters updates all the URL parameters with the current filter settings
+            function updateAllURLParameters() {
+                updateURLParameter($scope.levels, 'levels');
+                updateURLParameter($scope.groups, 'groups');
+                updateVersionURLParameter($scope.versionFilters);
+            }
+
+            // Add $watches to automatically update URL parameters when the data changes
+            $scope.$watch('levels', function (newVal, oldVal) {
+                if (newVal !== oldVal) {
+                    $scope.filtersChanged = true;
+                    updateURLParameter(newVal, 'levels');
+                }
+            }, true);
+
+            $scope.$watch('groups', function (newVal, oldVal) {
+                if (newVal !== oldVal) {
+                    $scope.filtersChanged = true;
+                    updateURLParameter(newVal, 'groups');
+                }
+            }, true);
+
+            $scope.$watch('versionFilters', function (newVal, oldVal) {
+                if (newVal !== oldVal) {
+                    $scope.filtersChanged = true;
+                    updateVersionURLParameter(newVal);
+                }
+            }, true);
+
+            $scope.$watch('search', function (newVal, oldVal) {
+                if (newVal !== oldVal) {
+                    $location.path(newVal);
+                }
+            });
+
+            // Watch for changes in the URL path and update the search and lint display
+            $scope.$watch(function () {
+                return $location.path();
+            }, function (newPath) {
+                const searchParameter = newPath.substring(1);
+                if ($scope.search !== searchParameter) {
+                    $scope.search = searchParameter;
+                    $scope.open[searchParameter] = true;
+                    scrollToLintByURL($scope, $location);
+                }
+            });
 
             $scope.selectTheme = function (theme) {
                 setTheme(theme, true);
@@ -272,6 +403,16 @@
                 return true;
             }
 
+            // Show details for one lint
+            $scope.openLint = function (lint) {
+                $scope.open[lint.id] = true;
+                $location.path(lint.id);
+                if ($scope.filtersChanged) {
+                    updateAllURLParameters();
+                    $scope.filtersChanged = false;
+                }
+            };
+
             $scope.copyToClipboard = function (lint) {
                 const clipboard = document.getElementById("clipboard-" + lint.id);
                 if (clipboard) {
@@ -296,14 +437,13 @@
             // Get data
             $scope.open = {};
             $scope.loading = true;
+            $scope.filtersChanged = false;
+
             // This will be used to jump into the source code of the version that this documentation is for.
             $scope.docVersion = window.location.pathname.split('/')[2] || "master";
 
-            if (window.location.hash.length > 1) {
-                $scope.search = window.location.hash.slice(1);
-                $scope.open[window.location.hash.slice(1)] = true;
-                scrollToLintByURL($scope);
-            }
+            // Set up the filters from the URL parameters before we start loading the data
+            loadFromURLParameters();
 
             $http.get('./lints.json')
                 .success(function (data) {
@@ -315,7 +455,7 @@
                         selectGroup($scope, selectedGroup.toLowerCase());
                     }
 
-                    scrollToLintByURL($scope);
+                    scrollToLintByURL($scope, $location);
 
                     setTimeout(function () {
                         var el = document.getElementById('filter-input');
@@ -326,18 +466,6 @@
                     $scope.error = data;
                     $scope.loading = false;
                 });
-
-            window.addEventListener('hashchange', function () {
-                // trigger re-render
-                $timeout(function () {
-                    $scope.levels = LEVEL_FILTERS_DEFAULT;
-                    $scope.search = window.location.hash.slice(1);
-                    $scope.open[window.location.hash.slice(1)] = true;
-
-                    scrollToLintByURL($scope);
-                });
-                return true;
-            }, false);
         });
 })();
 
