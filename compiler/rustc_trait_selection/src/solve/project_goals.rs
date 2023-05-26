@@ -1,7 +1,7 @@
 use crate::traits::specialization_graph;
 
 use super::assembly::{self, structural_traits};
-use super::EvalCtxt;
+use super::{EvalCtxt, SolverMode};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -167,17 +167,34 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                     .map(|pred| goal.with(tcx, pred));
                 ecx.add_goals(where_clause_bounds);
 
-                // In case the associated item is hidden due to specialization, we have to
-                // return ambiguity this would otherwise be incomplete, resulting in
-                // unsoundness during coherence (#105782).
-                let Some(assoc_def) = fetch_eligible_assoc_item_def(
+                let assoc_def = match fetch_eligible_assoc_item_def(
                     ecx,
                     goal.param_env,
                     goal_trait_ref,
                     goal.predicate.def_id(),
-                    impl_def_id
-                )? else {
-                    return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
+                    impl_def_id,
+                ) {
+                    Ok(assoc_def) => assoc_def,
+                    Err(NotAvailableReason::ErrorGuaranteed(guar)) => {
+                        let error_term = ecx.term_error_of_kind(goal.predicate.term, guar);
+                        ecx.eq(goal.param_env, goal.predicate.term, error_term)
+                            .expect("expected goal term to be fully unconstrained");
+                        return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
+                    }
+                    // In case the associated item is hidden due to specialization, we have to
+                    // return ambiguity during coherence as it would otherwise be incomplete,
+                    // resulting in unsoundness (#105782).
+                    //
+                    // Outside of coherence we want to fail here as we want to treat defaulted
+                    // associated items as opaque.
+                    Err(NotAvailableReason::DefaultItem) => match ecx.solver_mode() {
+                        SolverMode::Normal => return Err(NoSolution),
+                        SolverMode::Coherence => {
+                            return ecx.evaluate_added_goals_and_make_canonical_response(
+                                Certainty::AMBIGUOUS,
+                            );
+                        }
+                    },
                 };
 
                 if !assoc_def.item.defaultness(tcx).has_value() {
@@ -574,6 +591,12 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
     }
 }
 
+#[derive(Debug)]
+enum NotAvailableReason {
+    ErrorGuaranteed(ErrorGuaranteed),
+    DefaultItem,
+}
+
 /// This behavior is also implemented in `rustc_ty_utils` and in the old `project` code.
 ///
 /// FIXME: We should merge these 3 implementations as it's likely that they otherwise
@@ -585,13 +608,13 @@ fn fetch_eligible_assoc_item_def<'tcx>(
     goal_trait_ref: ty::TraitRef<'tcx>,
     trait_assoc_def_id: DefId,
     impl_def_id: DefId,
-) -> Result<Option<LeafDef>, NoSolution> {
+) -> Result<LeafDef, NotAvailableReason> {
     let node_item = specialization_graph::assoc_def(ecx.tcx(), impl_def_id, trait_assoc_def_id)
-        .map_err(|ErrorGuaranteed { .. }| NoSolution)?;
+        .map_err(NotAvailableReason::ErrorGuaranteed)?;
 
-    let eligible = if node_item.is_final() {
+    if node_item.is_final() {
         // Non-specializable items are always projectable.
-        true
+        Ok(node_item)
     } else {
         // Only reveal a specializable default if we're past type-checking
         // and the obligation is monomorphic, otherwise passes such as
@@ -599,12 +622,18 @@ fn fetch_eligible_assoc_item_def<'tcx>(
         // get a result which isn't correct for all monomorphizations.
         if param_env.reveal() == Reveal::All {
             let poly_trait_ref = ecx.resolve_vars_if_possible(goal_trait_ref);
-            !poly_trait_ref.still_further_specializable()
+            if poly_trait_ref.still_further_specializable() {
+                // We'd have to deal with inference variables and return
+                // ambiguity or something, that's annoying so I am going to
+                // just ICE here until there's a need to actually implement
+                // this.
+                assert!(!poly_trait_ref.has_infer());
+                Err(NotAvailableReason::DefaultItem)
+            } else {
+                Ok(node_item)
+            }
         } else {
-            debug!(?node_item.item.def_id, "not eligible due to default");
-            false
+            Err(NotAvailableReason::DefaultItem)
         }
-    };
-
-    if eligible { Ok(Some(node_item)) } else { Ok(None) }
+    }
 }

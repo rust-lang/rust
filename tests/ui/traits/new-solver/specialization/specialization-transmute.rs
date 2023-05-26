@@ -14,7 +14,7 @@ impl<T> Default for T {
 
    fn intu(&self) -> &Self::Id {
         self
-        //~^ ERROR cannot satisfy `T <: <T as Default>::Id`
+        //~^ ERROR mismatched types
    }
 }
 
@@ -25,6 +25,6 @@ fn transmute<T: Default<Id = U>, U: Copy>(t: T) -> U {
 use std::num::NonZeroU8;
 fn main() {
     let s = transmute::<u8, Option<NonZeroU8>>(0);
-    //~^ ERROR cannot satisfy `<u8 as Default>::Id == Option<NonZeroU8>
+    //~^ ERROR type mismatch resolving `<u8 as Default>::Id == Option<NonZeroU8>`
     assert_eq!(s, None);
 }

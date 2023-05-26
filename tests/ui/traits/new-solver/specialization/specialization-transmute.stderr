@@ -8,18 +8,30 @@ LL | #![feature(specialization)]
    = help: consider using `min_specialization` instead, which is more stable and complete
    = note: `#[warn(incomplete_features)]` on by default
 
-error[E0284]: type annotations needed: cannot satisfy `T <: <T as Default>::Id`
+error[E0308]: mismatched types
   --> $DIR/specialization-transmute.rs:16:9
    |
+LL |    fn intu(&self) -> &Self::Id {
+   |                      --------- expected `&<T as Default>::Id` because of return type
 LL |         self
-   |         ^^^^ cannot satisfy `T <: <T as Default>::Id`
+   |         ^^^^ types differ
+   |
+   = note: expected reference `&<T as Default>::Id`
+              found reference `&T`
 
-error[E0284]: type annotations needed: cannot satisfy `<u8 as Default>::Id == Option<NonZeroU8>`
-  --> $DIR/specialization-transmute.rs:27:13
+error[E0271]: type mismatch resolving `<u8 as Default>::Id == Option<NonZeroU8>`
+  --> $DIR/specialization-transmute.rs:27:48
    |
 LL |     let s = transmute::<u8, Option<NonZeroU8>>(0);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot satisfy `<u8 as Default>::Id == Option<NonZeroU8>`
+   |             ---------------------------------- ^ type mismatch resolving `<u8 as Default>::Id == Option<NonZeroU8>`
+   |             |
+   |             required by a bound introduced by this call
    |
+note: types differ
+  --> $DIR/specialization-transmute.rs:13:22
+   |
+LL |    default type Id = T;
+   |                      ^
 note: required by a bound in `transmute`
   --> $DIR/specialization-transmute.rs:21:25
    |
@@ -28,4 +40,5 @@ LL | fn transmute<T: Default<Id = U>, U: Copy>(t: T) -> U {
 
 error: aborting due to 2 previous errors; 1 warning emitted
 
-For more information about this error, try `rustc --explain E0284`.
+Some errors have detailed explanations: E0271, E0308.
+For more information about an error, try `rustc --explain E0271`.

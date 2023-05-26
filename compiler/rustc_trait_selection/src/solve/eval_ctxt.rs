@@ -19,7 +19,7 @@ use rustc_middle::ty::{
     self, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor,
 };
-use rustc_span::DUMMY_SP;
+use rustc_span::{ErrorGuaranteed, DUMMY_SP};
 use std::ops::ControlFlow;
 
 use crate::traits::specialization_graph;
@@ -558,6 +558,17 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         match kind.unpack() {
             ty::TermKind::Ty(_) => self.next_ty_infer().into(),
             ty::TermKind::Const(ct) => self.next_const_infer(ct.ty()).into(),
+        }
+    }
+
+    pub(super) fn term_error_of_kind(
+        &self,
+        kind: ty::Term<'tcx>,
+        guar: ErrorGuaranteed,
+    ) -> ty::Term<'tcx> {
+        match kind.unpack() {
+            ty::TermKind::Ty(_) => self.tcx().ty_error(guar).into(),
+            ty::TermKind::Const(ct) => self.tcx().const_error(ct.ty(), guar).into(),
         }
     }
 
