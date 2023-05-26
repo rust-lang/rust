@@ -1159,7 +1159,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             // those that do.
             self.one_bound_for_assoc_type(
                 || traits::supertraits(tcx, trait_ref),
-                trait_ref.print_only_trait_path(),
+                trait_ref.skip_binder().print_only_trait_name(),
                 binding.item_name,
                 path_span,
                 match binding.kind {
