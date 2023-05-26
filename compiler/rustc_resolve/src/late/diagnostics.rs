@@ -197,8 +197,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             .sess
                             .source_map()
                             .span_to_snippet(span)
-                            .map(|snippet| snippet.ends_with(')'))
-                            .unwrap_or(false)
+                            .is_ok_and(|snippet| snippet.ends_with(')'))
                     }
                     Res::Def(
                         DefKind::Ctor(..) | DefKind::AssocFn | DefKind::Const | DefKind::AssocConst,
@@ -722,7 +721,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         if let TypoCandidate::Shadowed(res, Some(sugg_span)) = typo_sugg
             && res
                 .opt_def_id()
-                .map_or(false, |id| id.is_local() || is_in_same_file(span, sugg_span))
+                .is_some_and(|id| id.is_local() || is_in_same_file(span, sugg_span))
         {
             err.span_label(
                 sugg_span,
@@ -856,7 +855,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             // The current function has a `self` parameter, but we were unable to resolve
             // a reference to `self`. This can only happen if the `self` identifier we
             // are resolving came from a different hygiene context.
-            if fn_kind.decl().inputs.get(0).map_or(false, |p| p.is_self()) {
+            if fn_kind.decl().inputs.get(0).is_some_and(|p| p.is_self()) {
                 err.span_label(*span, "this function has a `self` parameter, but a macro invocation can only access identifiers it receives from parameters");
             } else {
                 let doesnt = if is_assoc_fn {
@@ -1632,7 +1631,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             .tcx
                             .fn_arg_names(def_id)
                             .first()
-                            .map_or(false, |ident| ident.name == kw::SelfLower),
+                            .is_some_and(|ident| ident.name == kw::SelfLower),
                     };
                     if has_self {
                         return Some(AssocSuggestion::MethodWithSelf { called });
@@ -1931,10 +1930,9 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 let def_id = self.r.tcx.parent(ctor_def_id);
                 match kind {
                     CtorKind::Const => false,
-                    CtorKind::Fn => !self
-                        .r
-                        .field_def_ids(def_id)
-                        .map_or(false, |field_ids| field_ids.is_empty()),
+                    CtorKind::Fn => {
+                        !self.r.field_def_ids(def_id).is_some_and(|field_ids| field_ids.is_empty())
+                    }
                 }
             };
 

@@ -5,13 +5,13 @@ use rustc_query_system::cache::Cache;
 
 use crate::infer::canonical::{CanonicalVarValues, QueryRegionConstraints};
 use crate::traits::query::NoSolution;
-use crate::traits::Canonical;
+use crate::traits::{Canonical, DefiningAnchor};
 use crate::ty::{
     self, FallibleTypeFolder, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeVisitable,
     TypeVisitor,
 };
 
-pub type EvaluationCache<'tcx> = Cache<CanonicalGoal<'tcx>, QueryResult<'tcx>>;
+pub type EvaluationCache<'tcx> = Cache<CanonicalInput<'tcx>, QueryResult<'tcx>>;
 
 /// A goal is a statement, i.e. `predicate`, we want to prove
 /// given some assumptions, i.e. `param_env`.
@@ -96,7 +96,31 @@ pub enum MaybeCause {
     Overflow,
 }
 
-pub type CanonicalGoal<'tcx, T = ty::Predicate<'tcx>> = Canonical<'tcx, Goal<'tcx, T>>;
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, TypeFoldable, TypeVisitable)]
+pub struct QueryInput<'tcx, T> {
+    pub goal: Goal<'tcx, T>,
+    pub anchor: DefiningAnchor,
+    pub predefined_opaques_in_body: PredefinedOpaques<'tcx>,
+}
+
+/// Additional constraints returned on success.
+#[derive(Debug, PartialEq, Eq, Clone, Hash, Default)]
+pub struct PredefinedOpaquesData<'tcx> {
+    pub opaque_types: Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>,
+}
+
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
+pub struct PredefinedOpaques<'tcx>(pub(crate) Interned<'tcx, PredefinedOpaquesData<'tcx>>);
+
+impl<'tcx> std::ops::Deref for PredefinedOpaques<'tcx> {
+    type Target = PredefinedOpaquesData<'tcx>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+pub type CanonicalInput<'tcx, T = ty::Predicate<'tcx>> = Canonical<'tcx, QueryInput<'tcx, T>>;
 
 pub type CanonicalResponse<'tcx> = Canonical<'tcx, Response<'tcx>>;
 
@@ -163,5 +187,42 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
         self.region_constraints.visit_with(visitor)?;
         self.opaque_types.visit_with(visitor)?;
         ControlFlow::Continue(())
+    }
+}
+
+// FIXME: Having to clone `region_constraints` for folding feels bad and
+// probably isn't great wrt performance.
+//
+// Not sure how to fix this, maybe we should also intern `opaque_types` and
+// `region_constraints` here or something.
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for PredefinedOpaques<'tcx> {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        Ok(FallibleTypeFolder::interner(folder).mk_predefined_opaques_in_body(
+            PredefinedOpaquesData {
+                opaque_types: self
+                    .opaque_types
+                    .iter()
+                    .map(|opaque| opaque.try_fold_with(folder))
+                    .collect::<Result<_, F::Error>>()?,
+            },
+        ))
+    }
+
+    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        TypeFolder::interner(folder).mk_predefined_opaques_in_body(PredefinedOpaquesData {
+            opaque_types: self.opaque_types.iter().map(|opaque| opaque.fold_with(folder)).collect(),
+        })
+    }
+}
+
+impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for PredefinedOpaques<'tcx> {
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(
+        &self,
+        visitor: &mut V,
+    ) -> std::ops::ControlFlow<V::BreakTy> {
+        self.opaque_types.visit_with(visitor)
     }
 }

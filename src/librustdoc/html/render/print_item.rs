@@ -420,9 +420,9 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                     _ => "",
                 };
 
-                let doc_value = myitem.doc_value().unwrap_or_default();
                 w.write_str(ITEM_TABLE_ROW_OPEN);
-                let docs = MarkdownSummaryLine(&doc_value, &myitem.links(cx)).into_string();
+                let docs =
+                    MarkdownSummaryLine(&myitem.doc_value(), &myitem.links(cx)).into_string();
                 let (docs_before, docs_after) = if docs.is_empty() {
                     ("", "")
                 } else {
@@ -1338,7 +1338,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
                 clean::VariantKind::Tuple(fields) => {
                     // Documentation on tuple variant fields is rare, so to reduce noise we only emit
                     // the section if at least one field is documented.
-                    if fields.iter().any(|f| f.doc_value().is_some()) {
+                    if fields.iter().any(|f| !f.doc_value().is_empty()) {
                         Some(("Tuple Fields", fields))
                     } else {
                         None

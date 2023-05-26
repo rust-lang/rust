@@ -63,6 +63,20 @@ impl<T, U> Trait3<U> for T {
     }
 }
 
+pub trait Trait4<'a, T> {
+    type Output: 'a;
+    fn qux(&self, _: &T) -> Self::Output;
+}
+
+pub struct Type4;
+
+impl<'a, T, U> Trait4<'a, U> for T {
+    type Output = &'a i32;
+    fn qux(&self, _: &U) -> Self::Output {
+        &0
+    }
+}
+
 pub fn foo1(a: &dyn Trait1) {
     a.foo();
     // CHECK-LABEL: define{{.*}}4foo1{{.*}}!{{<unknown kind #36>|kcfi_type}} !{{[0-9]+}}
@@ -108,6 +122,23 @@ pub fn bar3() {
     // CHECK:       call void %{{[0-9]}}({{\{\}\*|ptr}} align 1 {{%[a-z]\.0|%_[0-9]}}, {{\{\}\*|ptr|%Type3\*}} align 1 {{%[a-z]\.0|%_[0-9]}}){{.*}}[ "kcfi"(i32 [[TYPE3:[[:print:]]+]]) ]
 }
 
+pub fn foo4<'a>(a: &dyn Trait4<'a, Type4, Output = &'a i32>) {
+    let b = Type4;
+    a.qux(&b);
+    // CHECK-LABEL: define{{.*}}4foo4{{.*}}!{{<unknown kind #36>|kcfi_type}} !{{[0-9]+}}
+    // CHECK:       call align 4 {{ptr|i32\*}} %{{[0-9]}}({{\{\}\*|ptr}} align 1 {{%[a-z]\.0|%_[0-9]}}, {{\{\}\*|ptr|%Type4\*}} align 1 {{%[a-z]\.0|%_[0-9]}}){{.*}}[ "kcfi"(i32 [[TYPE4:[[:print:]]+]]) ]
+}
+
+pub fn bar4<'a>() {
+    let a = Type4;
+    foo4(&a);
+    let b = &a as &dyn Trait4<'a, Type4, Output = &'a i32>;
+    b.qux(&a);
+    // CHECK-LABEL: define{{.*}}4bar4{{.*}}!{{<unknown kind #36>|kcfi_type}} !{{[0-9]+}}
+    // CHECK:       call align 4 {{ptr|i32\*}} %{{[0-9]}}({{\{\}\*|ptr}} align 1 {{%[a-z]\.0|%_[0-9]}}, {{\{\}\*|ptr|%Type4\*}} align 1 {{%[a-z]\.0|%_[0-9]}}){{.*}}[ "kcfi"(i32 [[TYPE4:[[:print:]]+]]) ]
+}
+
 // CHECK: !{{[0-9]+}} = !{i32 [[TYPE1]]}
 // CHECK: !{{[0-9]+}} = !{i32 [[TYPE2]]}
 // CHECK: !{{[0-9]+}} = !{i32 [[TYPE3]]}
+// CHECK: !{{[0-9]+}} = !{i32 [[TYPE4]]}

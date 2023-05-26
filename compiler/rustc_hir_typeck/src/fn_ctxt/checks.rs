@@ -876,7 +876,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut errors = errors.into_iter().peekable();
         let mut only_extras_so_far = errors
             .peek()
-            .map_or(false, |first| matches!(first, Error::Extra(arg_idx) if arg_idx.index() == 0));
+            .is_some_and(|first| matches!(first, Error::Extra(arg_idx) if arg_idx.index() == 0));
         let mut suggestions = vec![];
         while let Some(error) = errors.next() {
             only_extras_so_far &= matches!(error, Error::Extra(_));

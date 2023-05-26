@@ -1156,7 +1156,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 ty::Adt(def, ..) => Some(def.did()),
                                 _ => None,
                             });
-                    let is_option_or_result = parent_self_ty.map_or(false, |def_id| {
+                    let is_option_or_result = parent_self_ty.is_some_and(|def_id| {
                         matches!(tcx.get_diagnostic_name(def_id), Some(sym::Option | sym::Result))
                     });
                     if is_option_or_result && maybe_reinitialized_locations_is_empty {

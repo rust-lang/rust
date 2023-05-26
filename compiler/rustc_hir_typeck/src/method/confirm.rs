@@ -471,7 +471,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             self_ty, method_self_ty, self.span, pick
         );
         let cause = self.cause(
-            self.span,
+            self.self_expr.span,
             ObligationCauseCode::UnifyReceiver(Box::new(UnifyReceiverContext {
                 assoc_item: pick.item,
                 param_env: self.param_env,
@@ -482,13 +482,22 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
             }
-            Err(_) => {
-                span_bug!(
-                    self.span,
-                    "{} was a subtype of {} but now is not?",
-                    self_ty,
-                    method_self_ty
-                );
+            Err(terr) => {
+                // FIXME(arbitrary_self_types): We probably should limit the
+                // situations where this can occur by adding additional restrictions
+                // to the feature, like the self type can't reference method substs.
+                if self.tcx.features().arbitrary_self_types {
+                    self.err_ctxt()
+                        .report_mismatched_types(&cause, method_self_ty, self_ty, terr)
+                        .emit();
+                } else {
+                    span_bug!(
+                        self.span,
+                        "{} was a subtype of {} but now is not?",
+                        self_ty,
+                        method_self_ty
+                    );
+                }
             }
         }
     }

@@ -171,39 +171,20 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn hat() -> dyn std::fmt::Display {
    |             ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
-   = note: if all the returned values were of the same type you could use `impl std::fmt::Display` as the return type
-   = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-   = note: you can create a new `enum` with a variant for each returned type
-help: return a boxed trait object instead
+help: return an `impl Trait` instead of a `dyn Trait`, if all returned values are the same type
    |
-LL | fn hat() -> Box<dyn std::fmt::Display> {
-   |             ++++                     +
-help: ... and box this value
+LL | fn hat() -> impl std::fmt::Display {
+   |             ~~~~
+help: box the return type, and wrap all of the returned values in `Box::new`
    |
-LL |             return Box::new(0i32);
-   |                    +++++++++    +
-help: ... and box this value
+LL ~ fn hat() -> Box<dyn std::fmt::Display> {
+LL |     match 13 {
+LL |         0 => {
+LL ~             return Box::new(0i32);
+LL |         }
+LL |         _ => {
+LL ~             Box::new(1u32)
    |
-LL |             Box::new(1u32)
-   |             +++++++++    +
-
-error[E0308]: `match` arms have incompatible types
-  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:80:14
-   |
-LL | /     match 13 {
-LL | |         0 => 0i32,
-   | |              ---- this is found to be of type `i32`
-LL | |         1 => 1u32,
-   | |              ^^^^ expected `i32`, found `u32`
-LL | |         _ => 2u32,
-LL | |     }
-   | |_____- `match` arms have incompatible types
-   |
-help: change the type of the numeric literal from `u32` to `i32`
-   |
-LL |         1 => 1i32,
-   |               ~~~
 
 error[E0746]: return type cannot have an unboxed trait object
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:77:13
@@ -211,43 +192,18 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn pug() -> dyn std::fmt::Display {
    |             ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
-   = note: if all the returned values were of the same type you could use `impl std::fmt::Display` as the return type
-   = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-   = note: you can create a new `enum` with a variant for each returned type
-help: return a boxed trait object instead
+help: return an `impl Trait` instead of a `dyn Trait`, if all returned values are the same type
    |
-LL | fn pug() -> Box<dyn std::fmt::Display> {
-   |             ++++                     +
-help: ... and box this value
+LL | fn pug() -> impl std::fmt::Display {
+   |             ~~~~
+help: box the return type, and wrap all of the returned values in `Box::new`
    |
-LL |         0 => Box::new(0i32),
-   |              +++++++++    +
-help: ... and box this value
+LL ~ fn pug() -> Box<dyn std::fmt::Display> {
+LL |     match 13 {
+LL ~         0 => Box::new(0i32),
+LL ~         1 => Box::new(1u32),
+LL ~         _ => Box::new(2u32),
    |
-LL |         1 => Box::new(1u32),
-   |              +++++++++    +
-help: ... and box this value
-   |
-LL |         _ => Box::new(2u32),
-   |              +++++++++    +
-
-error[E0308]: `if` and `else` have incompatible types
-  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:89:9
-   |
-LL | /     if false {
-LL | |         0i32
-   | |         ---- expected because of this
-LL | |     } else {
-LL | |         1u32
-   | |         ^^^^ expected `i32`, found `u32`
-LL | |     }
-   | |_____- `if` and `else` have incompatible types
-   |
-help: change the type of the numeric literal from `u32` to `i32`
-   |
-LL |         1i32
-   |          ~~~
 
 error[E0746]: return type cannot have an unboxed trait object
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:85:13
@@ -255,24 +211,20 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn man() -> dyn std::fmt::Display {
    |             ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
-   = note: if all the returned values were of the same type you could use `impl std::fmt::Display` as the return type
-   = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-   = note: you can create a new `enum` with a variant for each returned type
-help: return a boxed trait object instead
+help: return an `impl Trait` instead of a `dyn Trait`, if all returned values are the same type
    |
-LL | fn man() -> Box<dyn std::fmt::Display> {
-   |             ++++                     +
-help: ... and box this value
+LL | fn man() -> impl std::fmt::Display {
+   |             ~~~~
+help: box the return type, and wrap all of the returned values in `Box::new`
    |
-LL |         Box::new(0i32)
-   |         +++++++++    +
-help: ... and box this value
+LL ~ fn man() -> Box<dyn std::fmt::Display> {
+LL |     if false {
+LL ~         Box::new(0i32)
+LL |     } else {
+LL ~         Box::new(1u32)
    |
-LL |         Box::new(1u32)
-   |         +++++++++    +
 
-error: aborting due to 14 previous errors
+error: aborting due to 12 previous errors
 
 Some errors have detailed explanations: E0308, E0746.
 For more information about an error, try `rustc --explain E0308`.

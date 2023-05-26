@@ -781,6 +781,8 @@ pub(crate) struct PatternNotCovered<'s, 'tcx> {
     pub interpreted_as_const: Option<InterpretedAsConst>,
     #[subdiagnostic]
     pub adt_defined_here: Option<AdtDefinedHere<'tcx>>,
+    #[note(mir_build_privately_uninhabited)]
+    pub witness_1_is_privately_uninhabited: Option<()>,
     #[note(mir_build_pattern_ty)]
     pub _p: (),
     pub pattern_ty: Ty<'tcx>,

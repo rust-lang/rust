@@ -1,10 +1,10 @@
 // @is "$.index[*][?(@.name=='EnumTupleStruct')].visibility" \"public\"
-// @is "$.index[*][?(@.name=='EnumTupleStruct')].kind" \"enum\"
+// @has "$.index[*][?(@.name=='EnumTupleStruct')].inner.enum"
 pub enum EnumTupleStruct {
-    // @is "$.index[*][?(@.name=='0')].kind" \"struct_field\"
+    // @has "$.index[*][?(@.name=='0')].inner.struct_field"
     // @set f0 = "$.index[*][?(@.name=='0')].id"
-    // @is "$.index[*][?(@.name=='1')].kind" \"struct_field\"
+    // @has "$.index[*][?(@.name=='1')].inner.struct_field"
     // @set f1 = "$.index[*][?(@.name=='1')].id"
-    // @ismany "$.index[*][?(@.name=='VariantA')].inner.kind.tuple[*]" $f0 $f1
+    // @ismany "$.index[*][?(@.name=='VariantA')].inner.variant.kind.tuple[*]" $f0 $f1
     VariantA(u32, String),
 }

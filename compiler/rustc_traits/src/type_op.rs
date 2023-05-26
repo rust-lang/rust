@@ -1,8 +1,9 @@
 use rustc_hir as hir;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
-use rustc_infer::infer::{DefiningAnchor, TyCtxtInferExt};
-use rustc_infer::traits::ObligationCauseCode;
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::query::Providers;
+use rustc_middle::traits::query::NoSolution;
+use rustc_middle::traits::{DefiningAnchor, ObligationCauseCode};
 use rustc_middle::ty::{self, FnSig, Lift, PolyFnSig, Ty, TyCtxt, TypeFoldable};
 use rustc_middle::ty::{ParamEnvAnd, Predicate};
 use rustc_middle::ty::{UserSelfTy, UserSubsts, UserType};
@@ -15,7 +16,6 @@ use rustc_trait_selection::traits::query::type_op::eq::Eq;
 use rustc_trait_selection::traits::query::type_op::normalize::Normalize;
 use rustc_trait_selection::traits::query::type_op::prove_predicate::ProvePredicate;
 use rustc_trait_selection::traits::query::type_op::subtype::Subtype;
-use rustc_trait_selection::traits::query::{Fallible, NoSolution};
 use rustc_trait_selection::traits::{Normalized, Obligation, ObligationCause, ObligationCtxt};
 use std::fmt;
 
@@ -160,7 +160,7 @@ fn type_op_eq<'tcx>(
 fn type_op_normalize<'tcx, T>(
     ocx: &ObligationCtxt<'_, 'tcx>,
     key: ParamEnvAnd<'tcx, Normalize<T>>,
-) -> Fallible<T>
+) -> Result<T, NoSolution>
 where
     T: fmt::Debug + TypeFoldable<TyCtxt<'tcx>> + Lift<'tcx>,
 {

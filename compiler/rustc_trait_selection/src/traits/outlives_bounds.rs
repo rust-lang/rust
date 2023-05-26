@@ -1,8 +1,8 @@
 use crate::infer::InferCtxt;
 use crate::traits::query::type_op::{self, TypeOp, TypeOpOutput};
-use crate::traits::query::NoSolution;
 use crate::traits::{ObligationCause, ObligationCtxt};
 use rustc_data_structures::fx::FxIndexSet;
+use rustc_errors::ErrorGuaranteed;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_middle::ty::{self, ParamEnv, Ty, TypeFolder, TypeVisitableExt};
 use rustc_span::def_id::LocalDefId;
@@ -69,16 +69,12 @@ impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
         }
 
         let span = self.tcx.def_span(body_id);
-        let result = param_env
+        let result: Result<_, ErrorGuaranteed> = param_env
             .and(type_op::implied_outlives_bounds::ImpliedOutlivesBounds { ty })
-            .fully_perform(self);
+            .fully_perform(self, span);
         let result = match result {
             Ok(r) => r,
-            Err(NoSolution) => {
-                self.tcx.sess.delay_span_bug(
-                    span,
-                    "implied_outlives_bounds failed to solve all obligations",
-                );
+            Err(_) => {
                 return vec![];
             }
         };

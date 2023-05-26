@@ -177,14 +177,18 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             return Err(NoSolution);
         }
 
-        if goal.predicate.self_ty().has_non_region_infer() {
+        // The regions of a type don't affect the size of the type
+        let tcx = ecx.tcx();
+        // We should erase regions from both the param-env and type, since both
+        // may have infer regions. Specifically, after canonicalizing and instantiating,
+        // early bound regions turn into region vars in both the new and old solver.
+        let key = tcx.erase_regions(goal.param_env.and(goal.predicate.self_ty()));
+        // But if there are inference variables, we have to wait until it's resolved.
+        if key.has_non_region_infer() {
             return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
         }
 
-        let tcx = ecx.tcx();
-        let self_ty = tcx.erase_regions(goal.predicate.self_ty());
-
-        if let Ok(layout) = tcx.layout_of(goal.param_env.and(self_ty))
+        if let Ok(layout) = tcx.layout_of(key)
             && layout.layout.is_pointer_like(&tcx.data_layout)
         {
             // FIXME: We could make this faster by making a no-constraints response
@@ -354,7 +358,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                     // Can only unsize to an object-safe type
                     if data
                         .principal_def_id()
-                        .map_or(false, |def_id| !tcx.check_is_object_safe(def_id))
+                        .is_some_and(|def_id| !tcx.check_is_object_safe(def_id))
                     {
                         return Err(NoSolution);
                     }

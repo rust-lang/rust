@@ -35,7 +35,9 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 use rustc_target::abi::FieldIdx;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
-use rustc_trait_selection::traits::{self, NormalizeExt, ObligationCauseCode, ObligationCtxt};
+use rustc_trait_selection::traits::{
+    self, NormalizeExt, ObligationCauseCode, ObligationCtxt, StructurallyNormalizeExt,
+};
 
 use std::collections::hash_map::Entry;
 use std::slice;
@@ -1015,8 +1017,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .typeck_results
             .borrow()
             .expr_ty_adjusted_opt(rcvr)
-            .and_then(|ty| expected.map(|expected_ty| expected_ty.peel_refs() == ty.peel_refs()))
-            .unwrap_or(false);
+            .zip(expected)
+            .is_some_and(|(ty, expected_ty)| expected_ty.peel_refs() == ty.peel_refs());
 
         let prev_call_mutates_and_returns_unit = || {
             self.typeck_results
@@ -1024,14 +1026,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .type_dependent_def_id(expr.hir_id)
                 .map(|def_id| self.tcx.fn_sig(def_id).skip_binder().skip_binder())
                 .and_then(|sig| sig.inputs_and_output.split_last())
-                .map(|(output, inputs)| {
+                .is_some_and(|(output, inputs)| {
                     output.is_unit()
                         && inputs
                             .get(0)
                             .and_then(|self_ty| self_ty.ref_mutability())
-                            .map_or(false, rustc_ast::Mutability::is_mut)
+                            .is_some_and(rustc_ast::Mutability::is_mut)
                 })
-                .unwrap_or(false)
         };
 
         if !(rcvr_has_the_expected_type || prev_call_mutates_and_returns_unit()) {
@@ -1198,10 +1199,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        let has_self = path_segs
-            .last()
-            .map(|PathSeg(def_id, _)| tcx.generics_of(*def_id).has_self)
-            .unwrap_or(false);
+        let has_self =
+            path_segs.last().is_some_and(|PathSeg(def_id, _)| tcx.generics_of(*def_id).has_self);
 
         let (res, self_ctor_substs) = if let Res::SelfCtor(impl_def_id) = res {
             let ty = self.handle_raw_ty(span, tcx.at(span).type_of(impl_def_id).subst_identity());
@@ -1460,10 +1459,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Resolves `typ` by a single level if `typ` is a type variable.
+    ///
+    /// When the new solver is enabled, this will also attempt to normalize
+    /// the type if it's a projection (note that it will not deeply normalize
+    /// projections within the type, just the outermost layer of the type).
+    ///
     /// If no resolution is possible, then an error is reported.
     /// Numeric inference variables may be left unresolved.
     pub fn structurally_resolved_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let ty = self.resolve_vars_with_obligations(ty);
+        let mut ty = self.resolve_vars_with_obligations(ty);
+
+        if self.tcx.trait_solver_next()
+            && let ty::Alias(ty::Projection, _) = ty.kind()
+        {
+            match self
+                .at(&self.misc(sp), self.param_env)
+                .structurally_normalize(ty, &mut **self.fulfillment_cx.borrow_mut())
+            {
+                Ok(normalized_ty) => {
+                    ty = normalized_ty;
+                },
+                Err(errors) => {
+                    let guar = self.err_ctxt().report_fulfillment_errors(&errors);
+                    return self.tcx.ty_error(guar);
+                }
+            }
+        }
+
         if !ty.is_ty_var() {
             ty
         } else {

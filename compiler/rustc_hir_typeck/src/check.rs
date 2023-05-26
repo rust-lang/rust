@@ -32,6 +32,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     fn_def_id: LocalDefId,
     body: &'tcx hir::Body<'tcx>,
     can_be_generator: Option<hir::Movability>,
+    params_can_be_unsized: bool,
 ) -> Option<GeneratorTypes<'tcx>> {
     let fn_id = fcx.tcx.hir().local_def_id_to_hir_id(fn_def_id);
 
@@ -94,7 +95,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         // The check for a non-trivial pattern is a hack to avoid duplicate warnings
         // for simple cases like `fn foo(x: Trait)`,
         // where we would error once on the parameter as a whole, and once on the binding `x`.
-        if param.pat.simple_ident().is_none() && !tcx.features().unsized_fn_params {
+        if param.pat.simple_ident().is_none() && !params_can_be_unsized {
             fcx.require_type_is_sized(param_ty, param.pat.span, traits::SizedArgumentType(ty_span));
         }
 
@@ -103,24 +104,8 @@ pub(super) fn check_fn<'a, 'tcx>(
 
     fcx.typeck_results.borrow_mut().liberated_fn_sigs_mut().insert(fn_id, fn_sig);
 
-    if let ty::Dynamic(_, _, ty::Dyn) = declared_ret_ty.kind() {
-        // FIXME: We need to verify that the return type is `Sized` after the return expression has
-        // been evaluated so that we have types available for all the nodes being returned, but that
-        // requires the coerced evaluated type to be stored. Moving `check_return_expr` before this
-        // causes unsized errors caused by the `declared_ret_ty` to point at the return expression,
-        // while keeping the current ordering we will ignore the tail expression's type because we
-        // don't know it yet. We can't do `check_expr_kind` while keeping `check_return_expr`
-        // because we will trigger "unreachable expression" lints unconditionally.
-        // Because of all of this, we perform a crude check to know whether the simplest `!Sized`
-        // case that a newcomer might make, returning a bare trait, and in that case we populate
-        // the tail expression's type so that the suggestion will be correct, but ignore all other
-        // possible cases.
-        fcx.check_expr(&body.value);
-        fcx.require_type_is_sized(declared_ret_ty, decl.output.span(), traits::SizedReturnType);
-    } else {
-        fcx.require_type_is_sized(declared_ret_ty, decl.output.span(), traits::SizedReturnType);
-        fcx.check_return_expr(&body.value, false);
-    }
+    fcx.require_type_is_sized(declared_ret_ty, decl.output.span(), traits::SizedReturnType);
+    fcx.check_return_expr(&body.value, false);
 
     // We insert the deferred_generator_interiors entry after visiting the body.
     // This ensures that all nested generators appear before the entry of this generator.

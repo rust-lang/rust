@@ -11,7 +11,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::source_map::DUMMY_SP;
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
-use rustc_trait_selection::traits::query::{CanonicalTyGoal, Fallible, NoSolution};
+use rustc_trait_selection::traits::query::{CanonicalTyGoal, NoSolution};
 use rustc_trait_selection::traits::wf;
 use rustc_trait_selection::traits::ObligationCtxt;
 use smallvec::{smallvec, SmallVec};
@@ -37,7 +37,7 @@ fn compute_implied_outlives_bounds<'tcx>(
     ocx: &ObligationCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     ty: Ty<'tcx>,
-) -> Fallible<Vec<OutlivesBound<'tcx>>> {
+) -> Result<Vec<OutlivesBound<'tcx>>, NoSolution> {
     let tcx = ocx.infcx.tcx;
 
     // Sometimes when we ask what it takes for T: WF, we get back that

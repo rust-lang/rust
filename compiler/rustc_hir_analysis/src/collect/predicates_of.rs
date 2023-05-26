@@ -427,6 +427,8 @@ pub(super) fn explicit_predicates_of<'tcx>(
             //   supertrait).
             if let ty::Alias(ty::Projection, projection) = ty.kind() {
                 projection.substs == trait_identity_substs
+                    // FIXME(return_type_notation): This check should be more robust
+                    && !tcx.is_impl_trait_in_trait(projection.def_id)
                     && tcx.associated_item(projection.def_id).container_id(tcx)
                         == def_id.to_def_id()
             } else {

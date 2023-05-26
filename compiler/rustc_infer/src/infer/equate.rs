@@ -104,7 +104,8 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
             (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
             | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
                 if self.fields.define_opaque_types == DefineOpaqueTypes::Yes
-                    && def_id.is_local() =>
+                    && def_id.is_local()
+                    && !self.tcx().trait_solver_next() =>
             {
                 self.fields.obligations.extend(
                     infcx

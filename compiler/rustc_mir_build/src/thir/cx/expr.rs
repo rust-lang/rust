@@ -333,7 +333,7 @@ impl<'tcx> Cx<'tcx> {
                         } else if let Some(box_item) = tcx.lang_items().owned_box() {
                             if let hir::ExprKind::Path(hir::QPath::TypeRelative(ty, fn_path)) = fun.kind
                                 && let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = ty.kind
-                                && path.res.opt_def_id().map_or(false, |did| did == box_item)
+                                && path.res.opt_def_id().is_some_and(|did| did == box_item)
                                 && fn_path.ident.name == sym::new
                                 && let [value] = args
                             {
@@ -956,7 +956,7 @@ impl<'tcx> Cx<'tcx> {
         let is_upvar = self
             .tcx
             .upvars_mentioned(self.body_owner)
-            .map_or(false, |upvars| upvars.contains_key(&var_hir_id));
+            .is_some_and(|upvars| upvars.contains_key(&var_hir_id));
 
         debug!(
             "convert_var({:?}): is_upvar={}, body_owner={:?}",

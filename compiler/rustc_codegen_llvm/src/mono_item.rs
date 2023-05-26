@@ -125,8 +125,7 @@ impl CodegenCx<'_, '_> {
 
         // Thread-local variables generally don't support copy relocations.
         let is_thread_local_var = llvm::LLVMIsAGlobalVariable(llval)
-            .map(|v| llvm::LLVMIsThreadLocal(v) == llvm::True)
-            .unwrap_or(false);
+            .is_some_and(|v| llvm::LLVMIsThreadLocal(v) == llvm::True);
         if is_thread_local_var {
             return false;
         }

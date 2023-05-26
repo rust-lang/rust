@@ -96,6 +96,7 @@ fn main() {
 
         // Checks that only make sense for the compiler.
         check!(error_codes, &root_path, &[&compiler_path, &librustdoc_path], verbose);
+        check!(fluent_alphabetical, &compiler_path, bless);
 
         // Checks that only make sense for the std libs.
         check!(pal, &library_path);

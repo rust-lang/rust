@@ -3,11 +3,11 @@
 #![no_core]
 #![feature(no_core)]
 
-// @!has "$.index[*][?(@.kind=='inner')]"
+// @!has "$.index[*][?(@.name=='inner')]"
 mod inner {
     // @has "$.index[*][?(@.name=='Public')]"
     pub struct Public;
 }
 
-// @is "$.index[*][?(@.kind=='import')].inner.name" \"NewName\"
+// @is "$.index[*][?(@.inner.import)].inner.import.name" \"NewName\"
 pub use inner::Public as NewName;

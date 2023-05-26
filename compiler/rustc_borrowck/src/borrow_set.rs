@@ -30,7 +30,7 @@ pub struct BorrowSet<'tcx> {
     /// Map from local to all the borrows on that local.
     pub local_map: FxIndexMap<mir::Local, FxIndexSet<BorrowIndex>>,
 
-    pub(crate) locals_state_at_exit: LocalsStateAtExit,
+    pub locals_state_at_exit: LocalsStateAtExit,
 }
 
 impl<'tcx> Index<BorrowIndex> for BorrowSet<'tcx> {
@@ -153,7 +153,7 @@ impl<'tcx> BorrowSet<'tcx> {
         self.activation_map.get(&location).map_or(&[], |activations| &activations[..])
     }
 
-    pub(crate) fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.location_map.len()
     }
 

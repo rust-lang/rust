@@ -27,6 +27,7 @@ use rustc_mir_dataflow::ResultsCursor;
 use crate::{
     borrow_set::BorrowSet,
     constraint_generation,
+    consumers::ConsumerOptions,
     diagnostics::RegionErrors,
     facts::{AllFacts, AllFactsExt, RustcFacts},
     invalidation,
@@ -165,10 +166,14 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
     move_data: &MoveData<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
     upvars: &[Upvar<'tcx>],
-    use_polonius: bool,
+    consumer_options: Option<ConsumerOptions>,
 ) -> NllOutput<'tcx> {
+    let polonius_input = consumer_options.map(|c| c.polonius_input()).unwrap_or_default()
+        || infcx.tcx.sess.opts.unstable_opts.polonius;
+    let polonius_output = consumer_options.map(|c| c.polonius_output()).unwrap_or_default()
+        || infcx.tcx.sess.opts.unstable_opts.polonius;
     let mut all_facts =
-        (use_polonius || AllFacts::enabled(infcx.tcx)).then_some(AllFacts::default());
+        (polonius_input || AllFacts::enabled(infcx.tcx)).then_some(AllFacts::default());
 
     let universal_regions = Rc::new(universal_regions);
 
@@ -189,7 +194,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
             move_data,
             elements,
             upvars,
-            use_polonius,
+            polonius_input,
         );
 
     if let Some(all_facts) = &mut all_facts {
@@ -284,7 +289,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
             all_facts.write_to_dir(dir_path, location_table).unwrap();
         }
 
-        if use_polonius {
+        if polonius_output {
             let algorithm =
                 env::var("POLONIUS_ALGORITHM").unwrap_or_else(|_| String::from("Hybrid"));
             let algorithm = Algorithm::from_str(&algorithm).unwrap();

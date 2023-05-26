@@ -24,6 +24,7 @@ mod assembly;
 mod canonicalize;
 mod eval_ctxt;
 mod fulfill;
+mod opaques;
 mod project_goals;
 mod search_graph;
 mod trait_goals;
@@ -212,7 +213,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             );
         }
 
-        match (lhs.to_projection_term(tcx), rhs.to_projection_term(tcx)) {
+        match (lhs.to_alias_ty(tcx), rhs.to_alias_ty(tcx)) {
             (None, None) => bug!("`AliasRelate` goal without an alias on either lhs or rhs"),
 
             // RHS is not a projection, only way this is true is if LHS normalizes-to RHS
@@ -238,34 +239,34 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                     evaluate_normalizes_to(self, alias_rhs, lhs, direction, Invert::Yes).ok(),
                 );
                 // Relate via substs
-                candidates.extend(
-                    self.probe(|ecx| {
-                        let span = tracing::span!(
-                            tracing::Level::DEBUG,
-                            "compute_alias_relate_goal(relate_via_substs)",
-                            ?alias_lhs,
-                            ?alias_rhs,
-                            ?direction
-                        );
-                        let _enter = span.enter();
+                let subst_relate_response = self.probe(|ecx| {
+                    let span = tracing::span!(
+                        tracing::Level::DEBUG,
+                        "compute_alias_relate_goal(relate_via_substs)",
+                        ?alias_lhs,
+                        ?alias_rhs,
+                        ?direction
+                    );
+                    let _enter = span.enter();
 
-                        match direction {
-                            ty::AliasRelationDirection::Equate => {
-                                ecx.eq(goal.param_env, alias_lhs, alias_rhs)?;
-                            }
-                            ty::AliasRelationDirection::Subtype => {
-                                ecx.sub(goal.param_env, alias_lhs, alias_rhs)?;
-                            }
+                    match direction {
+                        ty::AliasRelationDirection::Equate => {
+                            ecx.eq(goal.param_env, alias_lhs, alias_rhs)?;
                         }
+                        ty::AliasRelationDirection::Subtype => {
+                            ecx.sub(goal.param_env, alias_lhs, alias_rhs)?;
+                        }
+                    }
 
-                        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                    })
-                    .ok(),
-                );
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                });
+                candidates.extend(subst_relate_response);
                 debug!(?candidates);
 
                 if let Some(merged) = self.try_merge_responses(&candidates) {
                     Ok(merged)
+                } else if let Ok(subst_relate_response) = subst_relate_response {
+                    Ok(subst_relate_response)
                 } else {
                     self.flounder(&candidates)
                 }
