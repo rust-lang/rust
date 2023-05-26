@@ -1,7 +1,7 @@
 DefId(0:3 ~ thir_flat[7b97]::main):
 Thir {
     body_type: Fn(
-        ([]; c_variadic: false)->(),
+        fn(),
     ),
     arms: [],
     blocks: [

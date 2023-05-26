@@ -115,6 +115,16 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type FreeRegion = ty::FreeRegion;
     type RegionVid = ty::RegionVid;
     type PlaceholderRegion = ty::PlaceholderRegion;
+
+    fn ty_and_mut_to_parts(
+        TypeAndMut { ty, mutbl }: TypeAndMut<'tcx>,
+    ) -> (Self::Ty, Self::Mutability) {
+        (ty, mutbl)
+    }
+
+    fn mutability_is_mut(mutbl: Self::Mutability) -> bool {
+        mutbl.is_mut()
+    }
 }
 
 type InternedSet<'tcx, T> = ShardedHashMap<InternedInSet<'tcx, T>, ()>;
