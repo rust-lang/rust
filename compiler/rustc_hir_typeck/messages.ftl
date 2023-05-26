@@ -59,8 +59,8 @@ hir_typeck_lang_start_incorrect_param = parameter {$param_num} of the `start` la
 hir_typeck_lang_start_incorrect_ret_ty = the return type of the `start` lang item is incorrect
     .suggestion = change the type from `{$found_ty}` to `{$expected_ty}`
 
-hir_typeck_method_call_on_unknown_type =
-    the type of this value must be known to call a method on a raw pointer on it
+hir_typeck_method_call_on_unknown_raw_pointee =
+    cannot call a method on a raw pointer with an unknown pointee type
 
 hir_typeck_missing_parentheses_in_range = can't call method `{$method_name}` on type `{$ty_str}`
 
