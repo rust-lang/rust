@@ -1541,11 +1541,12 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
     write!(w, "{}", document_type_layout(cx, def_id));
 }
 
-fn item_static(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Static) {
-    wrap_item(w, |w| {
-        render_attributes_in_code(w, it, cx.tcx());
+fn item_static(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Static) {
+    let mut buffer = Buffer::new();
+    wrap_item(&mut buffer, |buffer| {
+        render_attributes_in_code(buffer, it, cx.tcx());
         write!(
-            w,
+            buffer,
             "{vis}static {mutability}{name}: {typ}",
             vis = visibility_print_with_space(it.visibility(cx.tcx()), it.item_id, cx),
             mutability = s.mutability.print_with_space(),
@@ -1553,7 +1554,10 @@ fn item_static(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
             typ = s.type_.print(cx)
         );
     });
-    write!(w, "{}", document(cx, it, None, HeadingOffset::H2))
+
+    write!(w, "{}", buffer.into_inner()).unwrap();
+
+    write!(w, "{}", document(cx, it, None, HeadingOffset::H2)).unwrap();
 }
 
 fn item_foreign_type(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
