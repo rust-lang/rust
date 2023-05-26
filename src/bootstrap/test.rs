@@ -319,7 +319,7 @@ impl Step for Cargo {
 
         #[cfg(feature = "build-metrics")]
         builder.metrics.begin_test_suite(
-            crate::metrics::TestSuiteMetadata::Crate {
+            crate::metrics::TestSuiteMetadata::CargoPackage {
                 crates: vec!["cargo".into()],
                 target: self.host.triple.to_string(),
                 host: self.host.triple.to_string(),
@@ -2135,7 +2135,7 @@ fn run_cargo_test(
 
     #[cfg(feature = "build-metrics")]
     builder.metrics.begin_test_suite(
-        crate::metrics::TestSuiteMetadata::Crate {
+        crate::metrics::TestSuiteMetadata::CargoPackage {
             crates: crates.iter().map(|c| c.to_string()).collect(),
             target: target.triple.to_string(),
             host: compiler.host.triple.to_string(),

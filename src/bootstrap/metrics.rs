@@ -114,9 +114,7 @@ impl BuildMetrics {
         if let Some(test_suite) = step.test_suites.last_mut() {
             test_suite.tests.push(Test { name: name.to_string(), outcome });
         } else {
-            panic!(
-                "metrics.record_test() called without calling metrics.record_test_suite() first"
-            );
+            panic!("metrics.record_test() called without calling metrics.begin_test_suite() first");
         }
     }
 
@@ -194,7 +192,7 @@ impl BuildMetrics {
     fn prepare_json_step(&self, step: StepMetrics) -> JsonNode {
         let mut children = Vec::new();
         children.extend(step.children.into_iter().map(|child| self.prepare_json_step(child)));
-        children.extend(step.test_suites.into_iter().map(|suite| JsonNode::TestSuite(suite)));
+        children.extend(step.test_suites.into_iter().map(JsonNode::TestSuite));
 
         JsonNode::RustbuildStep {
             type_: step.type_,
@@ -277,7 +275,7 @@ struct TestSuite {
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub(crate) enum TestSuiteMetadata {
-    Crate {
+    CargoPackage {
         crates: Vec<String>,
         target: String,
         host: String,
