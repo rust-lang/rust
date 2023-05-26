@@ -1891,4 +1891,24 @@ fn main() {
 }
         "#,
     );
+    check_no_mismatches(
+        r#"
+pub const N: usize = 2 + 2;
+
+fn f(t: [u8; N]) {}
+
+fn main() {
+    let a = [1, 2, 3, 4];
+    f(a);
+    let b = [1; 4];
+    let c: [u8; N] = b;
+    let d = [1; N];
+    let e: [u8; N] = d;
+    let f = [1; N];
+    let g = match f {
+        [a, b, c, d] => a + b + c + d,
+    };
+}
+        "#,
+    );
 }

@@ -1025,7 +1025,8 @@ impl<'a> InferenceContext<'a> {
                 )
             }
         };
-
+        // Try to evaluate unevaluated constant, and insert variable if is not possible.
+        let len = self.table.insert_const_vars_shallow(len);
         TyKind::Array(elem_ty, len).intern(Interner)
     }
 
@@ -1681,9 +1682,10 @@ impl<'a> InferenceContext<'a> {
                 } else {
                     param_ty
                 };
-                if !coercion_target.is_unknown()
-                    && self.coerce(Some(arg), &ty, &coercion_target).is_err()
-                {
+                // The function signature may contain some unknown types, so we need to insert
+                // type vars here to avoid type mismatch false positive.
+                let coercion_target = self.insert_type_vars(coercion_target);
+                if self.coerce(Some(arg), &ty, &coercion_target).is_err() {
                     self.result.type_mismatches.insert(
                         arg.into(),
                         TypeMismatch { expected: coercion_target, actual: ty.clone() },
