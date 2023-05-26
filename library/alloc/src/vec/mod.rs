@@ -673,7 +673,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn with_capacity_in(capacity: usize, alloc: A) -> A::Result<Self> {
+    pub fn with_capacity_in(capacity: usize, alloc: A) -> A::Result<Self, TryReserveError> {
         A::map_result(Self::try_with_capacity_in(capacity, alloc))
     }
 
@@ -908,7 +908,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert!(vec.capacity() >= 11);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn reserve(&mut self, additional: usize) -> A::Result<()> {
+    pub fn reserve(&mut self, additional: usize) -> A::Result<(), TryReserveError> {
         A::map_result(self.try_reserve(additional))
     }
 
@@ -937,7 +937,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert!(vec.capacity() >= 11);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn reserve_exact(&mut self, additional: usize) -> A::Result<()> {
+    pub fn reserve_exact(&mut self, additional: usize) -> A::Result<(), TryReserveError> {
         A::map_result(self.try_reserve_exact(additional))
     }
 
@@ -1047,7 +1047,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert!(vec.capacity() >= 3);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn shrink_to_fit(&mut self) -> A::Result<()> {
+    pub fn shrink_to_fit(&mut self) -> A::Result<(), TryReserveError> {
         A::map_result(self.try_shrink_to_fit())
     }
 
@@ -1070,7 +1070,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert!(vec.capacity() >= 3);
     /// ```
     #[stable(feature = "shrink_to", since = "1.56.0")]
-    pub fn shrink_to(&mut self, min_capacity: usize) -> A::Result<()> {
+    pub fn shrink_to(&mut self, min_capacity: usize) -> A::Result<(), TryReserveError> {
         A::map_result(if self.capacity() > min_capacity {
             self.buf.shrink_to(cmp::max(self.len, min_capacity))
         } else {
@@ -1104,7 +1104,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(slice.into_vec().capacity(), 3);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn into_boxed_slice(mut self) -> A::Result<Box<[T], A>> {
+    pub fn into_boxed_slice(mut self) -> A::Result<Box<[T], A>, TryReserveError> {
         A::map_result((|| {
             // Substitute for try block
             self.try_shrink_to_fit()?;
@@ -1442,7 +1442,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(vec, [1, 4, 2, 3, 5]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn insert(&mut self, index: usize, element: T) -> A::Result<()> {
+    pub fn insert(&mut self, index: usize, element: T) -> A::Result<(), TryReserveError> {
         A::map_result((|| {
             // Substitute for try block
             #[cold]
@@ -1835,7 +1835,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn push(&mut self, value: T) -> A::Result<()> {
+    pub fn push(&mut self, value: T) -> A::Result<(), TryReserveError> {
         A::map_result((|| {
             // Substitute for try block
             // This will panic or abort if we would allocate > isize::MAX bytes
@@ -1943,7 +1943,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "append", since = "1.4.0")]
-    pub fn append(&mut self, other: &mut Self) -> A::Result<()> {
+    pub fn append(&mut self, other: &mut Self) -> A::Result<(), TryReserveError> {
         A::map_result((|| {
             // Substitute for try block
             unsafe {
@@ -2111,7 +2111,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[must_use = "use `.truncate()` if you don't need the other half"]
     #[stable(feature = "split_off", since = "1.4.0")]
-    pub fn split_off(&mut self, at: usize) -> A::Result<Self>
+    pub fn split_off(&mut self, at: usize) -> A::Result<Self, TryReserveError>
     where
         A: Clone,
     {
@@ -2176,7 +2176,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(vec, [2, 4, 8, 16]);
     /// ```
     #[stable(feature = "vec_resize_with", since = "1.33.0")]
-    pub fn resize_with<F>(&mut self, new_len: usize, f: F) -> A::Result<()>
+    pub fn resize_with<F>(&mut self, new_len: usize, f: F) -> A::Result<(), TryReserveError>
     where
         F: FnMut() -> T,
     {
@@ -2380,7 +2380,7 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// assert_eq!(vec, [1, 2]);
     /// ```
     #[stable(feature = "vec_resize", since = "1.5.0")]
-    pub fn resize(&mut self, new_len: usize, value: T) -> A::Result<()> {
+    pub fn resize(&mut self, new_len: usize, value: T) -> A::Result<(), TryReserveError> {
         A::map_result((|| {
             // Substitute for try block
             let len = self.len();
@@ -2416,7 +2416,7 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// [`extend`]: Vec::extend
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "vec_extend_from_slice", since = "1.6.0")]
-    pub fn extend_from_slice(&mut self, other: &[T]) -> A::Result<()> {
+    pub fn extend_from_slice(&mut self, other: &[T]) -> A::Result<(), TryReserveError> {
         A::map_result(self.spec_extend(other.iter()))
     }
 
@@ -2443,7 +2443,7 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "vec_extend_from_within", since = "1.53.0")]
-    pub fn extend_from_within<R>(&mut self, src: R) -> A::Result<()>
+    pub fn extend_from_within<R>(&mut self, src: R) -> A::Result<(), TryReserveError>
     where
         R: RangeBounds<usize>,
     {
@@ -2570,13 +2570,20 @@ impl<T: PartialEq, A: Allocator> Vec<T, A> {
 
 #[doc(hidden)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn from_elem<T: Clone>(elem: T, n: usize) -> <Global as Allocator>::Result<Vec<T>> {
+pub fn from_elem<T: Clone>(
+    elem: T,
+    n: usize,
+) -> <Global as Allocator>::Result<Vec<T>, TryReserveError> {
     <Global as Allocator>::map_result(<T as SpecFromElem>::from_elem(elem, n, Global))
 }
 
 #[doc(hidden)]
 #[unstable(feature = "allocator_api", issue = "32838")]
-pub fn from_elem_in<T: Clone, A: Allocator>(elem: T, n: usize, alloc: A) -> A::Result<Vec<T, A>> {
+pub fn from_elem_in<T: Clone, A: Allocator>(
+    elem: T,
+    n: usize,
+    alloc: A,
+) -> A::Result<Vec<T, A>, TryReserveError> {
     A::map_result(<T as SpecFromElem>::from_elem(elem, n, alloc))
 }
 
@@ -2801,7 +2808,7 @@ impl<'a, T, A: Allocator> IntoIterator for &'a mut Vec<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator<Result<()> = ()>> Extend<T> for Vec<T, A> {
+impl<T, A: Allocator<Result<(), TryReserveError> = ()>> Extend<T> for Vec<T, A> {
     #[inline]
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         A::map_result(<Self as SpecExtend<T, I::IntoIter>>::spec_extend(self, iter.into_iter()))
@@ -2928,7 +2935,7 @@ impl<T, A: Allocator> Vec<T, A> {
     where
         R: RangeBounds<usize>,
         I: IntoIterator<Item = T>,
-        A: Allocator<Result<()> = ()>,
+        A: Allocator<Result<(), TryReserveError> = ()>,
     {
         Splice { drain: self.drain(range), replace_with: replace_with.into_iter() }
     }
@@ -3000,7 +3007,9 @@ impl<T, A: Allocator> Vec<T, A> {
 ///
 /// [`copy_from_slice`]: slice::copy_from_slice
 #[stable(feature = "extend_ref", since = "1.2.0")]
-impl<'a, T: Copy + 'a, A: Allocator<Result<()> = ()> + 'a> Extend<&'a T> for Vec<T, A> {
+impl<'a, T: Copy + 'a, A: Allocator<Result<(), TryReserveError> = ()> + 'a> Extend<&'a T>
+    for Vec<T, A>
+{
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         A::map_result(self.spec_extend(iter.into_iter()))
     }
@@ -3203,7 +3212,7 @@ impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A> {
 #[stable(feature = "box_from_vec", since = "1.20.0")]
 impl<T, A> From<Vec<T, A>> for Box<[T], A>
 where
-    A: Allocator<Result<Self> = Self>,
+    A: Allocator<Result<Self, TryReserveError> = Self>,
 {
     /// Convert a vector into a boxed slice.
     ///

@@ -108,7 +108,7 @@ pub struct VecDeque<
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone, A> Clone for VecDeque<T, A>
 where
-    A: Allocator<Result<Self> = Self> + Clone,
+    A: Allocator<Result<Self, TryReserveError> = Self> + Clone,
 {
     fn clone(&self) -> Self {
         let mut deq = Self::with_capacity_in(self.len(), self.allocator().clone());
@@ -594,7 +594,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// let deque: VecDeque<u32> = VecDeque::with_capacity(10);
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn with_capacity_in(capacity: usize, alloc: A) -> A::Result<VecDeque<T, A>> {
+    pub fn with_capacity_in(
+        capacity: usize,
+        alloc: A,
+    ) -> A::Result<VecDeque<T, A>, TryReserveError> {
         A::map_result(Self::try_with_capacity_in(capacity, alloc))
     }
 
@@ -758,7 +761,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// [`reserve`]: VecDeque::reserve
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn reserve_exact(&mut self, additional: usize) -> A::Result<()> {
+    pub fn reserve_exact(&mut self, additional: usize) -> A::Result<(), TryReserveError> {
         A::map_result(self.try_reserve_exact(additional))
     }
 
@@ -779,7 +782,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert!(buf.capacity() >= 11);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn reserve(&mut self, additional: usize) -> A::Result<()> {
+    pub fn reserve(&mut self, additional: usize) -> A::Result<(), TryReserveError> {
         A::map_result(self.try_reserve(additional))
     }
 
@@ -925,7 +928,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert!(buf.capacity() >= 4);
     /// ```
     #[stable(feature = "shrink_to", since = "1.56.0")]
-    pub fn shrink_to(&mut self, min_capacity: usize) -> A::Result<()> {
+    pub fn shrink_to(&mut self, min_capacity: usize) -> A::Result<(), TryReserveError> {
         A::map_result((|| {
             // Substitute for try block
             let target_cap = min_capacity.max(self.len);
@@ -1622,7 +1625,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(d.front(), Some(&2));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn push_front(&mut self, value: T) -> A::Result<()> {
+    pub fn push_front(&mut self, value: T) -> A::Result<(), TryReserveError> {
         A::map_result((|| {
             // Substitute for try block
             if self.is_full() {
@@ -1653,7 +1656,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(3, *buf.back().unwrap());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn push_back(&mut self, value: T) -> A::Result<()> {
+    pub fn push_back(&mut self, value: T) -> A::Result<(), TryReserveError> {
         A::map_result((|| {
             // Substsitute for try block
             if self.is_full() {
@@ -1767,7 +1770,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(vec_deque, &['a', 'd', 'b', 'c']);
     /// ```
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
-    pub fn insert(&mut self, index: usize, value: T) -> A::Result<()> {
+    pub fn insert(&mut self, index: usize, value: T) -> A::Result<(), TryReserveError> {
         A::map_result((|| {
             // Substitute for try block
             assert!(index <= self.len(), "index out of bounds");
@@ -1874,7 +1877,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[inline]
     #[must_use = "use `.truncate()` if you don't need the other half"]
     #[stable(feature = "split_off", since = "1.4.0")]
-    pub fn split_off(&mut self, at: usize) -> A::Result<Self>
+    pub fn split_off(&mut self, at: usize) -> A::Result<Self, TryReserveError>
     where
         A: Clone,
     {

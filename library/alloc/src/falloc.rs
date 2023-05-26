@@ -1,3 +1,5 @@
+use core::error::Error;
+
 pub use crate::alloc::{AllocError, Global, GlobalAlloc, Layout, LayoutError};
 
 /// An implementation of `Allocator` can allocate, grow, shrink, and deallocate arbitrary blocks of
@@ -59,10 +61,14 @@ pub use crate::alloc::{AllocError, Global, GlobalAlloc, Layout, LayoutError};
 #[unstable(feature = "allocator_api", issue = "32838")]
 pub unsafe trait Allocator: crate::alloc::Allocator {
     #[must_use] // Doesn't actually work
-    type Result<T>;
+    type Result<T, E>
+    where
+        E: Error + IntoLayout;
 
     #[must_use]
-    fn map_result<T>(result: Result<T, TryReserveError>) -> Self::Result<T>;
+    fn map_result<T, E>(result: Result<T, E>) -> Self::Result<T, E>
+    where
+        E: Error + IntoLayout;
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -79,17 +85,33 @@ pub(crate) fn capacity_overflow() -> ! {
 }
 
 #[unstable(feature = "allocator_api", issue = "32838")]
+pub trait IntoLayout {
+    #[cfg(not(no_global_oom_handling))]
+    fn into_layout(self) -> Layout;
+}
+
+#[unstable(feature = "allocator_api", issue = "32838")]
+impl IntoLayout for TryReserveError {
+    #[cfg(not(no_global_oom_handling))]
+    fn into_layout(self) -> Layout {
+        match self.kind() {
+            TryReserveErrorKind::CapacityOverflow => capacity_overflow(),
+            TryReserveErrorKind::AllocError { layout, .. } => layout,
+        }
+    }
+}
+
+#[unstable(feature = "allocator_api", issue = "32838")]
 #[cfg(not(no_global_oom_handling))]
 unsafe impl<X: crate::alloc::Allocator> Allocator for X {
-    type Result<T> = T;
+    type Result<T, E> = T
+    where
+        E: Error + IntoLayout;
 
-    fn map_result<T>(result: Result<T, TryReserveError>) -> Self::Result<T> {
-        match result {
-            Err(error) => match error.kind() {
-                TryReserveErrorKind::CapacityOverflow => capacity_overflow(),
-                TryReserveErrorKind::AllocError { layout, .. } => handle_alloc_error(layout),
-            },
-            Ok(x) => x,
-        }
+    fn map_result<T, E>(result: Result<T, E>) -> Self::Result<T, E>
+    where
+        E: Error + IntoLayout,
+    {
+        result.unwrap_or_else(|error| handle_alloc_error(error.into_layout()))
     }
 }

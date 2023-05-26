@@ -169,6 +169,7 @@ use core::task::{Context, Poll};
 use crate::alloc::{handle_alloc_error, WriteCloneIntoRaw};
 #[cfg(not(no_global_oom_handling))]
 use crate::borrow::Cow;
+use crate::collections::TryReserveError;
 use crate::falloc::{AllocError, Allocator, Global, Layout};
 use crate::raw_vec::RawVec;
 #[cfg(not(no_global_oom_handling))]
@@ -737,7 +738,10 @@ impl<T, A: Allocator> Box<[T], A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
-    pub fn new_uninit_slice_in(len: usize, alloc: A) -> A::Result<Box<[mem::MaybeUninit<T>], A>> {
+    pub fn new_uninit_slice_in(
+        len: usize,
+        alloc: A,
+    ) -> A::Result<Box<[mem::MaybeUninit<T>], A>, TryReserveError> {
         unsafe { A::map_result(RawVec::with_capacity_in(len, alloc).map(|r| r.into_box(len))) }
     }
 
@@ -764,7 +768,10 @@ impl<T, A: Allocator> Box<[T], A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
-    pub fn new_zeroed_slice_in(len: usize, alloc: A) -> A::Result<Box<[mem::MaybeUninit<T>], A>> {
+    pub fn new_zeroed_slice_in(
+        len: usize,
+        alloc: A,
+    ) -> A::Result<Box<[mem::MaybeUninit<T>], A>, TryReserveError> {
         unsafe {
             A::map_result(RawVec::with_capacity_zeroed_in(len, alloc).map(|r| r.into_box(len)))
         }
@@ -2008,7 +2015,7 @@ impl<I> FromIterator<I> for Box<[I]> {
 }
 
 #[stable(feature = "box_slice_clone", since = "1.3.0")]
-impl<T: Clone, A: Allocator<Result<Self> = Self> + Clone> Clone for Box<[T], A> {
+impl<T: Clone, A: Allocator<Result<Self, TryReserveError> = Self> + Clone> Clone for Box<[T], A> {
     fn clone(&self) -> Self {
         let alloc = Box::allocator(self).clone();
         self.to_vec_in(alloc).into_boxed_slice()
