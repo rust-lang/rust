@@ -535,7 +535,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }
                     }
                 }
-
+                ty::Adt(def, _) => {
+                    let ty = def.sized_constraint(self.tcx()).0;
+                    if !(ty.len() == 1 && matches!(ty[0].kind(), ty::Error(_))) {
+                        candidates.vec.push(AutoImplCandidate)
+                    }
+                }
                 _ => candidates.vec.push(AutoImplCandidate),
             }
         }
