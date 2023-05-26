@@ -583,19 +583,15 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 continue;
             }
 
-            let hidden_type =
-                self.tcx().erase_regions(hidden_type.remap_generic_params_to_declaration_params(
-                    opaque_type_key,
-                    self.tcx(),
-                    true,
-                ));
-
+            // Here we only detect impl trait definition conflicts when they
+            // are equal modulo regions.
             if let Some(last_opaque_ty) = self
                 .typeck_results
                 .concrete_opaque_types
-                .insert(opaque_type_key.def_id, hidden_type)
+                .insert(opaque_type_key, hidden_type)
                 && last_opaque_ty.ty != hidden_type.ty
             {
+                assert!(!self.tcx().trait_solver_next());
                 hidden_type
                     .report_mismatch(&last_opaque_ty, opaque_type_key.def_id, self.tcx())
                     .stash(
