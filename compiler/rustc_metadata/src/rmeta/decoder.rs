@@ -851,7 +851,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         } else {
             tcx.arena.alloc_from_iter(lazy.decode((self, tcx)))
         };
-        ty::EarlyBinder(&*output)
+        ty::EarlyBinder::new(&*output)
     }
 
     fn get_variant(

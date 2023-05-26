@@ -508,7 +508,7 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<EarlyBinder<Ty<'
 
     if self_ty_matches {
         debug!("issue33140_self_ty - MATCHES!");
-        Some(EarlyBinder(self_ty))
+        Some(EarlyBinder::new(self_ty))
     } else {
         debug!("issue33140_self_ty - non-matching self type");
         None

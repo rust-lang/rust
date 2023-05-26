@@ -73,7 +73,7 @@ pub(super) fn infer_predicates(
             if item_required_predicates.len() > item_predicates_len {
                 predicates_added = true;
                 global_inferred_outlives
-                    .insert(item_did.to_def_id(), ty::EarlyBinder(item_required_predicates));
+                    .insert(item_did.to_def_id(), ty::EarlyBinder::new(item_required_predicates));
             }
         }
 

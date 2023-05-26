@@ -343,7 +343,7 @@ impl<'tcx> GenericPredicates<'tcx> {
         substs: SubstsRef<'tcx>,
     ) -> impl Iterator<Item = (Predicate<'tcx>, Span)> + DoubleEndedIterator + ExactSizeIterator
     {
-        EarlyBinder(self.predicates).subst_iter_copied(tcx, substs)
+        EarlyBinder::new(self.predicates).subst_iter_copied(tcx, substs)
     }
 
     #[instrument(level = "debug", skip(self, tcx))]
@@ -358,7 +358,7 @@ impl<'tcx> GenericPredicates<'tcx> {
         }
         instantiated
             .predicates
-            .extend(self.predicates.iter().map(|(p, _)| EarlyBinder(*p).subst(tcx, substs)));
+            .extend(self.predicates.iter().map(|(p, _)| EarlyBinder::new(*p).subst(tcx, substs)));
         instantiated.spans.extend(self.predicates.iter().map(|(_, sp)| *sp));
     }
 
