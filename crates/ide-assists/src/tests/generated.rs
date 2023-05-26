@@ -2339,6 +2339,19 @@ fn handle(action: Action) {
 }
 
 #[test]
+fn doctest_replace_named_generic_with_impl() {
+    check_doc_test(
+        "replace_named_generic_with_impl",
+        r#####"
+fn new<P$0: AsRef<Path>>(location: P) -> Self {}
+"#####,
+        r#####"
+fn new(location: impl AsRef<Path>) -> Self {}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_replace_qualified_name_with_use() {
     check_doc_test(
         "replace_qualified_name_with_use",
