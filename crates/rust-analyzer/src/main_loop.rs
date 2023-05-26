@@ -419,7 +419,11 @@ impl GlobalState {
 
             if self.config.server_status_notification() {
                 self.send_notification::<lsp_ext::ServerStatusNotification>(status);
-            } else if let (health, Some(message)) = (status.health, &status.message) {
+            } else if let (
+                health @ (lsp_ext::Health::Warning | lsp_ext::Health::Error),
+                Some(message),
+            ) = (status.health, &status.message)
+            {
                 let open_log_button = tracing::enabled!(tracing::Level::ERROR)
                     && (self.fetch_build_data_error().is_err()
                         || self.fetch_workspace_error().is_err());

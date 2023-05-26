@@ -27,6 +27,7 @@ use ide_db::{
 use itertools::Itertools;
 use proc_macro_api::{MacroDylib, ProcMacroServer};
 use project_model::{PackageRoot, ProjectWorkspace, WorkspaceBuildScripts};
+use stdx::format_to;
 use syntax::SmolStr;
 use triomphe::Arc;
 use vfs::{file_set::FileSetConfig, AbsPath, AbsPathBuf, ChangeKind};
@@ -133,6 +134,10 @@ impl GlobalState {
             status.health = lsp_ext::Health::Warning;
             message.push_str("Failed to discover workspace.\n");
             message.push_str("Consider adding the `Cargo.toml` of the workspace to the [`linkedProjects`](https://rust-analyzer.github.io/manual.html#rust-analyzer.linkedProjects) setting.\n\n");
+        }
+        if let Some(err) = &self.config_errors {
+            status.health = lsp_ext::Health::Warning;
+            format_to!(message, "{err}\n");
         }
 
         for ws in self.workspaces.iter() {

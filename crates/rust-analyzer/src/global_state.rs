@@ -19,7 +19,7 @@ use triomphe::Arc;
 use vfs::AnchoredPathBuf;
 
 use crate::{
-    config::Config,
+    config::{Config, ConfigError},
     diagnostics::{CheckFixes, DiagnosticCollection},
     from_proto,
     line_index::{LineEndings, LineIndex},
@@ -56,6 +56,7 @@ pub(crate) struct GlobalState {
     pub(crate) task_pool: Handle<TaskPool<Task>, Receiver<Task>>,
 
     pub(crate) config: Arc<Config>,
+    pub(crate) config_errors: Option<ConfigError>,
     pub(crate) analysis_host: AnalysisHost,
     pub(crate) diagnostics: DiagnosticCollection,
     pub(crate) mem_docs: MemDocs,
@@ -168,6 +169,7 @@ impl GlobalState {
             shutdown_requested: false,
             last_reported_status: None,
             source_root_config: SourceRootConfig::default(),
+            config_errors: Default::default(),
 
             proc_macro_changed: false,
             // FIXME: use `Arc::from_iter` when it becomes available

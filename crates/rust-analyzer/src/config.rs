@@ -720,11 +720,11 @@ pub struct ClientCommandsConfig {
 }
 
 #[derive(Debug)]
-pub struct ConfigUpdateError {
+pub struct ConfigError {
     errors: Vec<(String, serde_json::Error)>,
 }
 
-impl fmt::Display for ConfigUpdateError {
+impl fmt::Display for ConfigError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let errors = self.errors.iter().format_with("\n", |(key, e), f| {
             f(key)?;
@@ -733,7 +733,7 @@ impl fmt::Display for ConfigUpdateError {
         });
         write!(
             f,
-            "rust-analyzer found {} invalid config value{}:\n{}",
+            "invalid config value{}:\n{}",
             self.errors.len(),
             if self.errors.len() == 1 { "" } else { "s" },
             errors
@@ -777,7 +777,7 @@ impl Config {
         self.workspace_roots.extend(paths);
     }
 
-    pub fn update(&mut self, mut json: serde_json::Value) -> Result<(), ConfigUpdateError> {
+    pub fn update(&mut self, mut json: serde_json::Value) -> Result<(), ConfigError> {
         tracing::info!("updating config from JSON: {:#}", json);
         if json.is_null() || json.as_object().map_or(false, |it| it.is_empty()) {
             return Ok(());
@@ -824,7 +824,7 @@ impl Config {
         if errors.is_empty() {
             Ok(())
         } else {
-            Err(ConfigUpdateError { errors })
+            Err(ConfigError { errors })
         }
     }
 
