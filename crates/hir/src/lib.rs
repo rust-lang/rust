@@ -62,7 +62,7 @@ use hir_ty::{
     consteval::{try_const_usize, unknown_const_as_generic, ConstEvalError, ConstExt},
     diagnostics::BodyValidationDiagnostic,
     display::HexifiedConst,
-    layout::{LayoutError, RustcEnumVariantIdx, TagEncoding},
+    layout::{Layout as TyLayout, LayoutError, RustcEnumVariantIdx, TagEncoding},
     method_resolution::{self, TyFingerprint},
     mir::{self, interpret_mir},
     primitive::UintTy,
@@ -133,11 +133,8 @@ pub use {
     },
     hir_ty::{
         display::{ClosureStyle, HirDisplay, HirDisplayError, HirWrite},
-        // FIXME: This just needs a HIR wrapper
-        layout::Layout,
         mir::MirEvalError,
-        PointerCast,
-        Safety,
+        PointerCast, Safety,
     },
 };
 
@@ -964,8 +961,8 @@ impl Field {
         Type::new(db, var_id, ty)
     }
 
-    pub fn layout(&self, db: &dyn HirDatabase) -> Result<Arc<Layout>, LayoutError> {
-        db.layout_of_ty(self.ty(db).ty.clone(), self.parent.module(db).krate().into())
+    pub fn layout(&self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
+        db.layout_of_ty(self.ty(db).ty.clone(), self.parent.module(db).krate().into()).map(Layout)
     }
 
     pub fn parent_def(&self, _db: &dyn HirDatabase) -> VariantDef {
@@ -1138,10 +1135,10 @@ impl Enum {
         self.variants(db).iter().any(|v| !matches!(v.kind(db), StructKind::Unit))
     }
 
-    pub fn layout(self, db: &dyn HirDatabase) -> Result<(Arc<Layout>, usize), LayoutError> {
+    pub fn layout(self, db: &dyn HirDatabase) -> Result<(Layout, usize), LayoutError> {
         let layout = Adt::from(self).layout(db)?;
         let tag_size =
-            if let layout::Variants::Multiple { tag, tag_encoding, .. } = &layout.variants {
+            if let layout::Variants::Multiple { tag, tag_encoding, .. } = &layout.0.variants {
                 match tag_encoding {
                     TagEncoding::Direct => {
                         let target_data_layout = db
@@ -1222,11 +1219,11 @@ impl Variant {
         let parent_enum = self.parent_enum(db);
         let (parent_layout, tag_size) = parent_enum.layout(db)?;
         Ok((
-            match &parent_layout.variants {
+            match &parent_layout.0.variants {
                 layout::Variants::Multiple { variants, .. } => {
-                    variants[RustcEnumVariantIdx(self.id)].clone()
+                    Layout(Arc::new(variants[RustcEnumVariantIdx(self.id)].clone()))
                 }
-                _ => (*parent_layout).clone(),
+                _ => parent_layout,
             },
             tag_size,
         ))
@@ -1258,11 +1255,11 @@ impl Adt {
         })
     }
 
-    pub fn layout(self, db: &dyn HirDatabase) -> Result<Arc<Layout>, LayoutError> {
+    pub fn layout(self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
         if db.generic_params(self.into()).iter().count() != 0 {
             return Err(LayoutError::HasPlaceholder);
         }
-        db.layout_of_adt(self.into(), Substitution::empty(Interner), self.krate(db).id)
+        db.layout_of_adt(self.into(), Substitution::empty(Interner), self.krate(db).id).map(Layout)
     }
 
     /// Turns this ADT into a type. Any type parameters of the ADT will be
@@ -4246,8 +4243,8 @@ impl Type {
             .collect()
     }
 
-    pub fn layout(&self, db: &dyn HirDatabase) -> Result<Arc<Layout>, LayoutError> {
-        db.layout_of_ty(self.ty.clone(), self.env.krate)
+    pub fn layout(&self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
+        db.layout_of_ty(self.ty.clone(), self.env.krate).map(Layout)
     }
 }
 
@@ -4355,6 +4352,35 @@ fn closure_source(db: &dyn HirDatabase, closure: ClosureId) -> Option<ast::Closu
     match expr {
         ast::Expr::ClosureExpr(it) => Some(it),
         _ => None,
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Layout(Arc<TyLayout>);
+
+impl Layout {
+    pub fn size(&self) -> u64 {
+        self.0.size.bytes()
+    }
+
+    pub fn align(&self) -> u64 {
+        self.0.align.abi.bytes()
+    }
+
+    pub fn niches(&self, db: &dyn HirDatabase, krate: Crate) -> Option<u128> {
+        Some(self.0.largest_niche?.available(&*db.target_data_layout(krate.id)?))
+    }
+
+    pub fn field_offset(&self, idx: usize) -> Option<u64> {
+        match self.0.fields {
+            layout::FieldsShape::Primitive => None,
+            layout::FieldsShape::Union(_) => Some(0),
+            layout::FieldsShape::Array { stride, count } => {
+                let i = u64::try_from(idx).ok()?;
+                (i < count).then_some((stride * i).bytes())
+            }
+            layout::FieldsShape::Arbitrary { ref offsets, .. } => Some(offsets.get(idx)?.bytes()),
+        }
     }
 }
 
