@@ -108,6 +108,30 @@ jobs:
       run: ./y.rs test
 
 
+  # This job doesn't use cg_clif in any way. It checks that all cg_clif tests work with cg_llvm too.
+  test_llvm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Prepare dependencies
+      run: ./y.rs prepare
+
+    - name: Disable JIT tests
+      run: |
+        sed -i 's/jit./#jit./' config.txt
+
+    - name: Test
+      env:
+        TARGET_TRIPLE: x86_64-unknown-linux-gnu
+      run: ./y.rs test --use-backend llvm
+
   bench:
     runs-on: ubuntu-latest
     timeout-minutes: 60
