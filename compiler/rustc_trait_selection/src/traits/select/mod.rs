@@ -2149,13 +2149,11 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             ty::Adt(def, substs) => {
                 let sized_crit = def.sized_constraint(self.tcx());
                 // (*) binder moved here
-                Where(obligation.predicate.rebind({
-                    sized_crit
-                        .0
-                        .iter()
-                        .map(|ty| sized_crit.rebind(*ty).subst(self.tcx(), substs))
-                        .collect()
-                }))
+                Where(
+                    obligation
+                        .predicate
+                        .rebind(sized_crit.subst_iter_copied(self.tcx(), substs).collect()),
+                )
             }
 
             ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) => None,

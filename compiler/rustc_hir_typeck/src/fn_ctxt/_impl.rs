@@ -1386,7 +1386,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // the referenced item.
         let ty = tcx.type_of(def_id);
         assert!(!substs.has_escaping_bound_vars());
-        assert!(!ty.0.has_escaping_bound_vars());
+        assert!(!ty.skip_binder().has_escaping_bound_vars());
         let ty_substituted = self.normalize(span, ty.subst(tcx, substs));
 
         if let Some(UserSelfTy { impl_def_id, self_ty }) = user_self_ty {
