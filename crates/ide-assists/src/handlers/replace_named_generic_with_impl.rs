@@ -1,3 +1,10 @@
+use hir::{Semantics, TypeParam};
+use ide_db::{
+    base_db::{FileId, FileRange},
+    defs::Definition,
+    search::SearchScope,
+    RootDatabase,
+};
 use syntax::{
     ast::{self, make::impl_trait_type, HasGenericParams, HasName, HasTypeBounds},
     ted, AstNode,
@@ -22,12 +29,11 @@ pub(crate) fn replace_named_generic_with_impl(
 ) -> Option<()> {
     // finds `<P: AsRef<Path>>`
     let type_param = ctx.find_node_at_offset::<ast::TypeParam>()?;
+    // returns `P`
+    let type_param_name = type_param.name()?;
 
     // The list of type bounds / traits: `AsRef<Path>`
     let type_bound_list = type_param.type_bound_list()?;
-
-    // returns `P`
-    let type_param_name = type_param.name()?;
 
     let fn_ = type_param.syntax().ancestors().find_map(ast::Fn::cast)?;
     let params = fn_
@@ -50,6 +56,11 @@ pub(crate) fn replace_named_generic_with_impl(
         .collect::<Vec<_>>();
 
     if params.is_empty() {
+        return None;
+    }
+
+    let type_param_hir_def = ctx.sema.to_def(&type_param)?;
+    if is_referenced_outside(ctx.db(), type_param_hir_def, &fn_, ctx.file_id()) {
         return None;
     }
 
@@ -88,11 +99,36 @@ pub(crate) fn replace_named_generic_with_impl(
     )
 }
 
+fn is_referenced_outside(
+    db: &RootDatabase,
+    type_param: TypeParam,
+    fn_: &ast::Fn,
+    file_id: FileId,
+) -> bool {
+    let semantics = Semantics::new(db);
+    let type_param_def = Definition::GenericParam(hir::GenericParam::TypeParam(type_param));
+
+    // limit search scope to function body & return type
+    let search_ranges = vec![
+        fn_.body().map(|body| body.syntax().text_range()),
+        fn_.ret_type().map(|ret_type| ret_type.syntax().text_range()),
+    ];
+
+    search_ranges.into_iter().filter_map(|search_range| search_range).any(|search_range| {
+        let file_range = FileRange { file_id, range: search_range };
+        !type_param_def
+            .usages(&semantics)
+            .in_scope(SearchScope::file_range(file_range))
+            .all()
+            .is_empty()
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    use crate::tests::check_assist;
+    use crate::tests::{check_assist, check_assist_not_applicable};
 
     #[test]
     fn replace_generic_moves_into_function() {
@@ -122,11 +158,21 @@ mod tests {
     }
 
     #[test]
-    fn replace_generic_with_multiple_generic_names() {
+    fn replace_generic_with_multiple_generic_params() {
         check_assist(
             replace_named_generic_with_impl,
             r#"fn new<P: AsRef<Path>, T$0: ToString>(t: T, p: P) -> Self {}"#,
             r#"fn new<P: AsRef<Path>>(t: impl ToString, p: P) -> Self {}"#,
+        );
+        check_assist(
+            replace_named_generic_with_impl,
+            r#"fn new<T$0: ToString, P: AsRef<Path>>(t: T, p: P) -> Self {}"#,
+            r#"fn new<P: AsRef<Path>>(t: impl ToString, p: P) -> Self {}"#,
+        );
+        check_assist(
+            replace_named_generic_with_impl,
+            r#"fn new<A: Send, B$0: ToString, C: Debug>(a: A, b: B, c: C) -> Self {}"#,
+            r#"fn new<A: Send, C: Debug>(a: A, b: impl ToString, c: C) -> Self {}"#,
         );
     }
 
@@ -136,6 +182,37 @@ mod tests {
             replace_named_generic_with_impl,
             r#"fn new<P$0: Send + Sync>(p: P) -> Self {}"#,
             r#"fn new(p: impl Send + Sync) -> Self {}"#,
+        );
+    }
+
+    #[test]
+    fn replace_generic_not_applicable_if_param_used_as_return_type() {
+        check_assist_not_applicable(
+            replace_named_generic_with_impl,
+            r#"fn new<P$0: Send + Sync>(p: P) -> P {}"#,
+        );
+    }
+
+    #[test]
+    fn replace_generic_not_applicable_if_param_used_in_fn_body() {
+        check_assist_not_applicable(
+            replace_named_generic_with_impl,
+            r#"fn new<P$0: ToString>(p: P) { let x: &dyn P = &O; }"#,
+        );
+    }
+
+    #[test]
+    fn replace_generic_ignores_another_function_with_same_param_type() {
+        check_assist(
+            replace_named_generic_with_impl,
+            r#"
+            fn new<P$0: Send + Sync>(p: P) {}
+            fn hello<P: Debug>(p: P) { println!("{:?}", p); }
+            "#,
+            r#"
+            fn new(p: impl Send + Sync) {}
+            fn hello<P: Debug>(p: P) { println!("{:?}", p); }
+            "#,
         );
     }
 }
