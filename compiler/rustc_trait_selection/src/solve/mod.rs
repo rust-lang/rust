@@ -231,13 +231,21 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
 
                 let mut candidates = Vec::new();
                 // LHS normalizes-to RHS
-                candidates.extend(
-                    evaluate_normalizes_to(self, alias_lhs, rhs, direction, Invert::No).ok(),
-                );
+                candidates.extend(evaluate_normalizes_to(
+                    self,
+                    alias_lhs,
+                    rhs,
+                    direction,
+                    Invert::No,
+                ));
                 // RHS normalizes-to RHS
-                candidates.extend(
-                    evaluate_normalizes_to(self, alias_rhs, lhs, direction, Invert::Yes).ok(),
-                );
+                candidates.extend(evaluate_normalizes_to(
+                    self,
+                    alias_rhs,
+                    lhs,
+                    direction,
+                    Invert::Yes,
+                ));
                 // Relate via substs
                 let subst_relate_response = self.probe(|ecx| {
                     let span = tracing::span!(
@@ -265,10 +273,18 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
 
                 if let Some(merged) = self.try_merge_responses(&candidates) {
                     Ok(merged)
-                } else if let Ok(subst_relate_response) = subst_relate_response {
-                    Ok(subst_relate_response)
                 } else {
-                    self.flounder(&candidates)
+                    // When relating two aliases and we have ambiguity, we prefer
+                    // relating the generic arguments of the aliases over normalizing
+                    // them. This is necessary for inference during typeck.
+                    //
+                    // As this is incomplete, we must not do so during coherence.
+                    match (self.solver_mode(), subst_relate_response) {
+                        (SolverMode::Normal, Ok(response)) => Ok(response),
+                        (SolverMode::Normal, Err(NoSolution)) | (SolverMode::Coherence, _) => {
+                            self.flounder(&candidates)
+                        }
+                    }
                 }
             }
         }
