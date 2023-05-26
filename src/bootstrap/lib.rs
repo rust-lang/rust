@@ -1011,6 +1011,8 @@ impl Build {
     }
 
     /// Return a `Group` guard for a [`Step`] that is built for each `--stage`.
+    ///
+    /// [`Step`]: crate::builder::Step
     fn msg(
         &self,
         action: impl Into<Kind>,
@@ -1035,6 +1037,8 @@ impl Build {
     }
 
     /// Return a `Group` guard for a [`Step`] that is only built once and isn't affected by `--stage`.
+    ///
+    /// [`Step`]: crate::builder::Step
     fn msg_unstaged(
         &self,
         action: impl Into<Kind>,
