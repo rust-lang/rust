@@ -26,22 +26,22 @@ impl UseFactsExtractor<'_, '_> {
     }
 
     fn insert_def(&mut self, local: Local, location: Location) {
-        debug!("UseFactsExtractor::insert_def()");
+        trace!("UseFactsExtractor::insert_def()");
         self.var_defined_at.push((local, self.location_to_index(location)));
     }
 
     fn insert_use(&mut self, local: Local, location: Location) {
-        debug!("UseFactsExtractor::insert_use()");
+        trace!("UseFactsExtractor::insert_use()");
         self.var_used_at.push((local, self.location_to_index(location)));
     }
 
     fn insert_drop_use(&mut self, local: Local, location: Location) {
-        debug!("UseFactsExtractor::insert_drop_use()");
+        trace!("UseFactsExtractor::insert_drop_use()");
         self.var_dropped_at.push((local, self.location_to_index(location)));
     }
 
     fn insert_path_access(&mut self, path: MovePathIndex, location: Location) {
-        debug!("UseFactsExtractor::insert_path_access({:?}, {:?})", path, location);
+        trace!("UseFactsExtractor::insert_path_access({:?}, {:?})", path, location);
         self.path_accessed_at_base.push((path, self.location_to_index(location)));
     }
 
@@ -89,7 +89,7 @@ pub(super) fn populate_access_facts<'a, 'tcx>(
     move_data: &MoveData<'tcx>,
     dropped_at: &mut Vec<(Local, Location)>,
 ) {
-    debug!("populate_access_facts()");
+    trace!("populate_access_facts()");
 
     if let Some(facts) = typeck.borrowck_context.all_facts.as_mut() {
         let mut extractor = UseFactsExtractor {
@@ -107,9 +107,10 @@ pub(super) fn populate_access_facts<'a, 'tcx>(
         );
 
         for (local, local_decl) in body.local_decls.iter_enumerated() {
-            debug!(
+            trace!(
                 "add use_of_var_derefs_origin facts - local={:?}, type={:?}",
-                local, local_decl.ty
+                local,
+                local_decl.ty
             );
             let _prof_timer = typeck.infcx.tcx.prof.generic_activity("polonius_fact_generation");
             let universal_regions = &typeck.borrowck_context.universal_regions;
@@ -128,7 +129,7 @@ pub(super) fn add_drop_of_var_derefs_origin<'tcx>(
     local: Local,
     kind: &GenericArg<'tcx>,
 ) {
-    debug!("add_drop_of_var_derefs_origin(local={:?}, kind={:?}", local, kind);
+    trace!("add_drop_of_var_derefs_origin(local={:?}, kind={:?}", local, kind);
     if let Some(facts) = typeck.borrowck_context.all_facts.as_mut() {
         let _prof_timer = typeck.infcx.tcx.prof.generic_activity("polonius_fact_generation");
         let universal_regions = &typeck.borrowck_context.universal_regions;

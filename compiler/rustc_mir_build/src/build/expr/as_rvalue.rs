@@ -42,7 +42,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scope: Option<region::Scope>,
         expr: &Expr<'tcx>,
     ) -> BlockAnd<Rvalue<'tcx>> {
-        debug!("expr_as_rvalue(block={:?}, scope={:?}, expr={:?})", block, scope, expr);
+        trace!("expr_as_rvalue(block={:?}, scope={:?}, expr={:?})", block, scope, expr);
 
         let this = self;
         let expr_span = expr.span;
@@ -296,7 +296,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 };
                 let from_ty = CastTy::from_ty(ty);
                 let cast_ty = CastTy::from_ty(expr.ty);
-                debug!("ExprKind::Cast from_ty={from_ty:?}, cast_ty={:?}/{cast_ty:?}", expr.ty,);
+                trace!("ExprKind::Cast from_ty={from_ty:?}, cast_ty={:?}/{cast_ty:?}", expr.ty,);
                 let cast_kind = mir_cast_kind(ty, expr.ty);
                 block.and(Rvalue::Cast(cast_kind, source, expr.ty))
             }

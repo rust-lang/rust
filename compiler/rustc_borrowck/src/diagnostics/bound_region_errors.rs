@@ -171,7 +171,7 @@ trait TypeOpInfo<'tcx> {
     ) {
         let tcx = mbcx.infcx.tcx;
         let base_universe = self.base_universe();
-        debug!(?base_universe);
+        trace!(?base_universe);
 
         let Some(adjusted_universe) =
             placeholder.universe.as_u32().checked_sub(base_universe.as_u32())
@@ -200,7 +200,7 @@ trait TypeOpInfo<'tcx> {
             None
         };
 
-        debug!(?placeholder_region);
+        trace!(?placeholder_region);
 
         let span = cause.span;
         let nice_error = self.nice_error(mbcx, cause, placeholder_region, error_region);
@@ -418,7 +418,7 @@ fn try_extract_error_from_region_constraints<'tcx>(
             }
         })?;
 
-    debug!(?sub_region, "cause = {:#?}", cause);
+    trace!(?sub_region, "cause = {:#?}", cause);
     let error = match (error_region, *sub_region) {
         (Some(error_region), ty::ReVar(vid)) => RegionResolutionError::SubSupConflict(
             vid,

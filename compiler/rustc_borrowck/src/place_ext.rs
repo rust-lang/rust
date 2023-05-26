@@ -40,7 +40,7 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
         {
             let ignore = !has_storage_dead_or_moved.contains(self.local)
                 && body.local_decls[self.local].mutability == Mutability::Not;
-            debug!("ignore_borrow: local {:?} => {:?}", self.local, ignore);
+            trace!("ignore_borrow: local {:?} => {:?}", self.local, ignore);
             if ignore {
                 return true;
             }

@@ -771,7 +771,7 @@ pub struct DeferredCallResolution<'tcx> {
 
 impl<'a, 'tcx> DeferredCallResolution<'tcx> {
     pub fn resolve(self, fcx: &FnCtxt<'a, 'tcx>) {
-        debug!("DeferredCallResolution::resolve() {:?}", self);
+        trace!("DeferredCallResolution::resolve() {:?}", self);
 
         // we should not be invoked until the closure kind has been
         // determined by upvar inference
@@ -790,7 +790,7 @@ impl<'a, 'tcx> DeferredCallResolution<'tcx> {
                 // refactor it.)
                 let method_sig = method_callee.sig;
 
-                debug!("attempt_resolution: method_callee={:?}", method_callee);
+                trace!("attempt_resolution: method_callee={:?}", method_callee);
 
                 for (method_arg_ty, self_arg_ty) in
                     iter::zip(method_sig.inputs().iter().skip(1), self.fn_sig.inputs())

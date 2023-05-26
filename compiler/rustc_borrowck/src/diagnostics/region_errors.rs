@@ -218,7 +218,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
             })
             .collect::<Vec<_>>();
-        debug!(?gat_id_and_generics);
+        trace!(?gat_id_and_generics);
 
         // find higher-ranked trait bounds bounded to the generic associated types
         let mut hrtb_bounds = vec![];
@@ -241,7 +241,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
             }
         });
-        debug!(?hrtb_bounds);
+        trace!(?hrtb_bounds);
 
         hrtb_bounds.iter().for_each(|bound| {
             let Trait(PolyTraitRef { trait_ref, span: trait_span, .. }, _) = bound else { return; };
@@ -251,7 +251,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             );
             let Some(generics_fn) = hir.get_generics(self.body.source.def_id().expect_local()) else { return; };
             let Def(_, trait_res_defid) = trait_ref.path.res else { return; };
-            debug!(?generics_fn);
+            trace!(?generics_fn);
             generics_fn.predicates.iter().for_each(|predicate| {
                 let BoundPredicate(
                     WhereBoundPredicate {
@@ -395,9 +395,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         // FIXME: currently we do nothing with these, but perhaps we can do better?
                         // FIXME: try collecting these constraints on the outlives suggestion
                         // builder. Does it make the suggestions any better?
-                        debug!(
+                        trace!(
                             "Unreported region error: can't prove that {:?}: {:?}",
-                            longer_fr, shorter_fr
+                            longer_fr,
+                            shorter_fr
                         );
                     }
                 }
@@ -423,7 +424,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         outlived_fr: RegionVid,
         outlives_suggestion: &mut OutlivesSuggestionBuilder,
     ) {
-        debug!("report_region_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
+        trace!("report_region_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
 
         let (blame_constraint, extra_info) =
             self.regioncx.best_blame_constraint(fr, fr_origin, |r| {
@@ -431,7 +432,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             });
         let BlameConstraint { category, cause, variance_info, .. } = blame_constraint;
 
-        debug!("report_region_error: category={:?} {:?} {:?}", category, cause, variance_info);
+        trace!("report_region_error: category={:?} {:?} {:?}", category, cause, variance_info);
 
         // Check if we can use one of the "nice region errors".
         if let (Some(f), Some(o)) = (self.to_error_region(fr), self.to_error_region(outlived_fr)) {
@@ -448,9 +449,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             self.regioncx.universal_regions().is_local_free_region(outlived_fr),
         );
 
-        debug!(
+        trace!(
             "report_region_error: fr_is_local={:?} outlived_fr_is_local={:?} category={:?}",
-            fr_is_local, outlived_fr_is_local, category
+            fr_is_local,
+            outlived_fr_is_local,
+            category
         );
 
         let errci = ErrorConstraintInfo {
@@ -578,7 +581,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             output_ty = self.infcx.tcx.type_of(def_id).subst_identity()
         };
 
-        debug!("report_fnmut_error: output_ty={:?}", output_ty);
+        trace!("report_fnmut_error: output_ty={:?}", output_ty);
 
         let err = FnMutError {
             span: *span,
@@ -900,11 +903,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 ty::FnDef(fn_did, substs) => (fn_did, substs),
                 _ => return,
             };
-            debug!(?fn_did, ?substs);
+            trace!(?fn_did, ?substs);
 
             // Only suggest this on function calls, not closures
             let ty = tcx.type_of(fn_did).subst_identity();
-            debug!("ty: {:?}, ty.kind: {:?}", ty, ty.kind());
+            trace!("ty: {:?}, ty.kind: {:?}", ty, ty.kind());
             if let ty::Closure(_, _) = ty.kind() {
                 return;
             }
@@ -927,7 +930,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             Some(param) => param,
             None => return,
         };
-        debug!(?param);
+        trace!(?param);
 
         let mut visitor = TraitObjectVisitor(FxIndexSet::default());
         visitor.visit_ty(param.param_ty);
@@ -946,13 +949,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         ident: Ident,
         self_ty: &hir::Ty<'_>,
     ) -> bool {
-        debug!("err: {:#?}", err);
+        trace!("err: {:#?}", err);
         let mut suggested = false;
         for found_did in found_dids {
             let mut traits = vec![];
             let mut hir_v = HirTraitObjectVisitor(&mut traits, *found_did);
             hir_v.visit_ty(&self_ty);
-            debug!("trait spans found: {:?}", traits);
+            trace!("trait spans found: {:?}", traits);
             for span in &traits {
                 let mut multi_span: MultiSpan = vec![*span].into();
                 multi_span

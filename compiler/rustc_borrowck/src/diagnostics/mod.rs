@@ -79,12 +79,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         place: PlaceRef<'tcx>,
         diag: &mut Diagnostic,
     ) -> bool {
-        debug!("add_moved_or_invoked_closure_note: location={:?} place={:?}", location, place);
+        trace!("add_moved_or_invoked_closure_note: location={:?} place={:?}", location, place);
         let mut target = place.local_or_deref_local();
         for stmt in &self.body[location.block].statements[location.statement_index..] {
-            debug!("add_moved_or_invoked_closure_note: stmt={:?} target={:?}", stmt, target);
+            trace!("add_moved_or_invoked_closure_note: stmt={:?} target={:?}", stmt, target);
             if let StatementKind::Assign(box (into, Rvalue::Use(from))) = &stmt.kind {
-                debug!("add_fnonce_closure_note: into={:?} from={:?}", into, from);
+                trace!("add_fnonce_closure_note: into={:?} from={:?}", into, from);
                 match from {
                     Operand::Copy(place) | Operand::Move(place)
                         if target == place.local_or_deref_local() =>
@@ -98,7 +98,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         // Check if we are attempting to call a closure after it has been invoked.
         let terminator = self.body[location.block].terminator();
-        debug!("add_moved_or_invoked_closure_note: terminator={:?}", terminator);
+        trace!("add_moved_or_invoked_closure_note: terminator={:?}", terminator);
         if let TerminatorKind::Call {
             func: Operand::Constant(box Constant { literal, .. }),
             args,
@@ -106,7 +106,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         } = &terminator.kind
         {
             if let ty::FnDef(id, _) = *literal.ty().kind() {
-                debug!("add_moved_or_invoked_closure_note: id={:?}", id);
+                trace!("add_moved_or_invoked_closure_note: id={:?}", id);
                 if Some(self.infcx.tcx.parent(id)) == self.infcx.tcx.lang_items().fn_once_trait() {
                     let closure = match args.first() {
                         Some(Operand::Copy(place) | Operand::Move(place))
@@ -117,7 +117,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         _ => return false,
                     };
 
-                    debug!("add_moved_or_invoked_closure_note: closure={:?}", closure);
+                    trace!("add_moved_or_invoked_closure_note: closure={:?}", closure);
                     if let ty::Closure(did, _) = self.body.local_decls[closure].ty.kind() {
                         let did = did.expect_local();
                         if let Some((span, hir_place)) = self.infcx.tcx.closure_kind_origin(did) {
@@ -396,20 +396,21 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // operator.
         match self.move_data.rev_lookup.find(deref_base) {
             LookupResult::Exact(mpi) | LookupResult::Parent(Some(mpi)) => {
-                debug!("borrowed_content_source: mpi={:?}", mpi);
+                trace!("borrowed_content_source: mpi={:?}", mpi);
 
                 for i in &self.move_data.init_path_map[mpi] {
                     let init = &self.move_data.inits[*i];
-                    debug!("borrowed_content_source: init={:?}", init);
+                    trace!("borrowed_content_source: init={:?}", init);
                     // We're only interested in statements that initialized a value, not the
                     // initializations from arguments.
                     let InitLocation::Statement(loc) = init.location else { continue };
 
                     let bbd = &self.body[loc.block];
                     let is_terminator = bbd.statements.len() == loc.statement_index;
-                    debug!(
+                    trace!(
                         "borrowed_content_source: loc={:?} is_terminator={:?}",
-                        loc, is_terminator,
+                        loc,
+                        is_terminator,
                     );
                     if !is_terminator {
                         continue;
@@ -770,11 +771,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             return OtherUse(self.body.source_info(location).span);
         };
 
-        debug!("move_spans: moved_place={:?} location={:?} stmt={:?}", moved_place, location, stmt);
+        trace!("move_spans: moved_place={:?} location={:?} stmt={:?}", moved_place, location, stmt);
         if let StatementKind::Assign(box (_, Rvalue::Aggregate(kind, places))) = &stmt.kind
             && let AggregateKind::Closure(def_id, _) | AggregateKind::Generator(def_id, _, _) = **kind
         {
-            debug!("move_spans: def_id={:?} places={:?}", def_id, places);
+            trace!("move_spans: def_id={:?} places={:?}", def_id, places);
             let def_id = def_id.expect_local();
             if let Some((args_span, generator_kind, capture_kind_span, path_span)) =
                 self.closure_span(def_id, moved_place, places)
@@ -794,7 +795,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             match cause {
                 FakeReadCause::ForMatchedPlace(Some(closure_def_id))
                 | FakeReadCause::ForLet(Some(closure_def_id)) => {
-                    debug!("move_spans: def_id={:?} place={:?}", closure_def_id, place);
+                    trace!("move_spans: def_id={:?} place={:?}", closure_def_id, place);
                     let places = &[Operand::Move(place)];
                     if let Some((args_span, generator_kind, capture_kind_span, path_span)) =
                         self.closure_span(closure_def_id, moved_place, IndexSlice::from_raw(places))
@@ -836,7 +837,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             _ => return normal_ret,
         };
 
-        debug!("move_spans: target_temp = {:?}", target_temp);
+        trace!("move_spans: target_temp = {:?}", target_temp);
 
         if let Some(Terminator {
             kind: TerminatorKind::Call { fn_span, from_hir_call, .. }, ..
@@ -879,7 +880,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// and originating from `maybe_closure_span`.
     pub(super) fn borrow_spans(&self, use_span: Span, location: Location) -> UseSpans<'tcx> {
         use self::UseSpans::*;
-        debug!("borrow_spans: use_span={:?} location={:?}", use_span, location);
+        trace!("borrow_spans: use_span={:?} location={:?}", use_span, location);
 
         let target = match self.body[location.block].statements.get(location.statement_index) {
             Some(Statement { kind: StatementKind::Assign(box (place, _)), .. }) => {
@@ -919,9 +920,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 };
                 let def_id = def_id.expect_local();
 
-                debug!(
+                trace!(
                     "borrow_spans: def_id={:?} is_generator={:?} places={:?}",
-                    def_id, is_generator, places
+                    def_id,
+                    is_generator,
+                    places
                 );
                 if let Some((args_span, generator_kind, capture_kind_span, path_span)) =
                     self.closure_span(def_id, Place::from(target).as_ref(), places)
@@ -949,13 +952,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         target_place: PlaceRef<'tcx>,
         places: &IndexSlice<FieldIdx, Operand<'tcx>>,
     ) -> Option<(Span, Option<GeneratorKind>, Span, Span)> {
-        debug!(
+        trace!(
             "closure_span: def_id={:?} target_place={:?} places={:?}",
-            def_id, target_place, places
+            def_id,
+            target_place,
+            places
         );
         let hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(def_id);
         let expr = &self.infcx.tcx.hir().expect_expr(hir_id).kind;
-        debug!("closure_span: hir_id={:?} expr={:?}", hir_id, expr);
+        trace!("closure_span: hir_id={:?} expr={:?}", hir_id, expr);
         if let hir::ExprKind::Closure(&hir::Closure { body, fn_decl_span, .. }) = expr {
             for (captured_place, place) in
                 self.infcx.tcx.closure_captures(def_id).iter().zip(places)
@@ -964,7 +969,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     Operand::Copy(place) | Operand::Move(place)
                         if target_place == place.as_ref() =>
                     {
-                        debug!("closure_span: found captured local {:?}", place);
+                        trace!("closure_span: found captured local {:?}", place);
                         let body = self.infcx.tcx.hir().body(body);
                         let generator_kind = body.generator_kind();
 

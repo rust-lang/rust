@@ -108,10 +108,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Option<(/*index type*/ Ty<'tcx>, /*element type*/ Ty<'tcx>)> {
         let adjusted_ty =
             self.structurally_resolved_type(autoderef.span(), autoderef.final_ty(false));
-        debug!(
+        trace!(
             "try_index_step(expr={:?}, base_expr={:?}, adjusted_ty={:?}, \
              index_ty={:?})",
-            expr, base_expr, adjusted_ty, index_ty
+            expr,
+            base_expr,
+            adjusted_ty,
+            index_ty
         );
 
         if let hir::ExprKind::Unary(
@@ -155,7 +158,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.try_overloaded_place_op(expr.span, self_ty, &[input_ty], PlaceOp::Index);
 
             if let Some(result) = method {
-                debug!("try_index_step: success, using overloaded indexing");
+                trace!("try_index_step: success, using overloaded indexing");
                 let method = self.register_infer_ok_obligations(result);
 
                 let mut adjustments = self.adjust_steps(autoderef);
@@ -198,7 +201,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         arg_tys: &[Ty<'tcx>],
         op: PlaceOp,
     ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
-        debug!("try_overloaded_place_op({:?},{:?},{:?})", span, base_ty, op);
+        trace!("try_overloaded_place_op({:?},{:?},{:?})", span, base_ty, op);
 
         let (Some(imm_tr), imm_op) = (match op {
             PlaceOp::Deref => (self.tcx.lang_items().deref_trait(), sym::deref),
@@ -238,7 +241,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         arg_tys: &[Ty<'tcx>],
         op: PlaceOp,
     ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
-        debug!("try_mutable_overloaded_place_op({:?},{:?},{:?})", span, base_ty, op);
+        trace!("try_mutable_overloaded_place_op({:?},{:?},{:?})", span, base_ty, op);
 
         let (Some(mut_tr), mut_op) = (match op {
             PlaceOp::Deref => (self.tcx.lang_items().deref_mut_trait(), sym::deref_mut),
@@ -289,12 +292,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             exprs.push(expr);
         }
 
-        debug!("convert_place_derefs_to_mutable: exprs={:?}", exprs);
+        trace!("convert_place_derefs_to_mutable: exprs={:?}", exprs);
 
         // Fix up autoderefs and derefs.
         let mut inside_union = false;
         for (i, &expr) in exprs.iter().rev().enumerate() {
-            debug!("convert_place_derefs_to_mutable: i={} expr={:?}", i, expr);
+            trace!("convert_place_derefs_to_mutable: i={} expr={:?}", i, expr);
 
             let mut source = self.node_ty(expr.hir_id);
             if matches!(expr.kind, hir::ExprKind::Unary(hir::UnOp::Deref, _)) {
@@ -365,9 +368,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'_>,
         base_expr: &hir::Expr<'_>,
     ) {
-        debug!("convert_place_op_to_mutable({:?}, {:?}, {:?})", op, expr, base_expr);
+        trace!("convert_place_op_to_mutable({:?}, {:?}, {:?})", op, expr, base_expr);
         if !self.typeck_results.borrow().is_method_call(expr) {
-            debug!("convert_place_op_to_mutable - builtin, nothing to do");
+            trace!("convert_place_op_to_mutable - builtin, nothing to do");
             return;
         }
 
@@ -402,7 +405,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // current, immutable version.
             None => return,
         };
-        debug!("convert_place_op_to_mutable: method={:?}", method);
+        trace!("convert_place_op_to_mutable: method={:?}", method);
         self.write_method_call(expr.hir_id, method);
 
         let ty::Ref(region, _, hir::Mutability::Mut) = method.sig.inputs()[0].kind() else {
@@ -418,7 +421,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut source = base_expr_ty;
             for adjustment in &mut adjustments[..] {
                 if let Adjust::Borrow(AutoBorrow::Ref(..)) = adjustment.kind {
-                    debug!("convert_place_op_to_mutable: converting autoref {:?}", adjustment);
+                    trace!("convert_place_op_to_mutable: converting autoref {:?}", adjustment);
                     let mutbl = AutoBorrowMutability::Mut {
                         // Deref/indexing can be desugared to a method call,
                         // so maybe we could use two-phase here.

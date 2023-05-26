@@ -43,8 +43,8 @@ impl LocationTable {
             })
             .collect();
 
-        debug!("LocationTable(statements_before_block={:#?})", statements_before_block);
-        debug!("LocationTable: num_points={:#?}", num_points);
+        trace!("LocationTable(statements_before_block={:#?})", statements_before_block);
+        trace!("LocationTable: num_points={:#?}", num_points);
 
         Self { num_points, statements_before_block }
     }

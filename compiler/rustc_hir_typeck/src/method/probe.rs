@@ -390,9 +390,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         span,
                         &param_env_and_self_ty,
                     );
-                debug!(
+                trace!(
                     "probe_op: Mode::Path, param_env_and_self_ty={:?} self_ty={:?}",
-                    param_env_and_self_ty, self_ty
+                    param_env_and_self_ty,
+                    self_ty
                 );
                 MethodAutoderefStepsResult {
                     steps: infcx.tcx.arena.alloc_from_iter([CandidateStep {
@@ -432,7 +433,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Some(bad_ty) = &steps.opt_bad_ty {
             if is_suggestion.0 {
                 // Ambiguity was encountered during a suggestion. Just keep going.
-                debug!("ProbeContext: encountered ambiguity in suggestion");
+                trace!("ProbeContext: encountered ambiguity in suggestion");
             } else if bad_ty.reached_raw_pointer && !self.tcx.features().arbitrary_self_types {
                 // this case used to be allowed by the compiler,
                 // so we do a future-compat lint here for the 2015 edition
@@ -468,7 +469,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        debug!("ProbeContext: steps for self_ty={:?} are {:?}", self_ty, steps);
+        trace!("ProbeContext: steps for self_ty={:?} are {:?}", self_ty, steps);
 
         // this creates one big transaction so that all type variables etc
         // that we create during the probe process are removed later
@@ -504,7 +505,7 @@ fn method_autoderef_steps<'tcx>(
     tcx: TyCtxt<'tcx>,
     goal: CanonicalTyGoal<'tcx>,
 ) -> MethodAutoderefStepsResult<'tcx> {
-    debug!("method_autoderef_steps({:?})", goal);
+    trace!("method_autoderef_steps({:?})", goal);
 
     let (ref infcx, goal, inference_vars) = tcx.infer_ctxt().build_with_canonical(DUMMY_SP, &goal);
     let ParamEnvAnd { param_env, value: self_ty } = goal;
@@ -557,7 +558,7 @@ fn method_autoderef_steps<'tcx>(
         _ => None,
     };
 
-    debug!("method_autoderef_steps: steps={:?} opt_bad_ty={:?}", steps, opt_bad_ty);
+    trace!("method_autoderef_steps: steps={:?} opt_bad_ty={:?}", steps, opt_bad_ty);
 
     MethodAutoderefStepsResult {
         steps: tcx.arena.alloc_from_iter(steps),
@@ -637,7 +638,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     }
 
     fn assemble_probe(&mut self, self_ty: &Canonical<'tcx, QueryResponse<'tcx, Ty<'tcx>>>) {
-        debug!("assemble_probe: self_ty={:?}", self_ty);
+        trace!("assemble_probe: self_ty={:?}", self_ty);
         let raw_self_ty = self_ty.value.value;
         match *raw_self_ty.kind() {
             ty::Dynamic(data, ..) if let Some(p) = data.principal() => {
@@ -721,7 +722,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             return; // already visited
         }
 
-        debug!("assemble_inherent_impl_probe {:?}", impl_def_id);
+        trace!("assemble_inherent_impl_probe {:?}", impl_def_id);
 
         for item in self.impl_or_trait_item(impl_def_id) {
             if !self.has_applicable_self(&item) {
@@ -733,11 +734,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             let (impl_ty, impl_substs) = self.impl_ty_and_substs(impl_def_id);
             let impl_ty = impl_ty.subst(self.tcx, impl_substs);
 
-            debug!("impl_ty: {:?}", impl_ty);
+            trace!("impl_ty: {:?}", impl_ty);
 
             // Determine the receiver type that the method itself expects.
             let (xform_self_ty, xform_ret_ty) = self.xform_self_ty(item, impl_ty, impl_substs);
-            debug!("xform_self_ty: {:?}, xform_ret_ty: {:?}", xform_self_ty, xform_ret_ty);
+            trace!("xform_self_ty: {:?}, xform_ret_ty: {:?}", xform_self_ty, xform_ret_ty);
 
             // We can't use normalize_associated_types_in as it will pollute the
             // fcx's fulfillment context after this probe is over.
@@ -752,9 +753,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             let InferOk { value: xform_self_ty, obligations } =
                 self.fcx.at(&cause, self.param_env).normalize(xform_self_ty);
 
-            debug!(
+            trace!(
                 "assemble_inherent_impl_probe after normalization: xform_self_ty = {:?}/{:?}",
-                xform_self_ty, xform_ret_ty
+                xform_self_ty,
+                xform_ret_ty
             );
 
             self.push_candidate(
@@ -771,7 +773,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     }
 
     fn assemble_inherent_candidates_from_object(&mut self, self_ty: Ty<'tcx>) {
-        debug!("assemble_inherent_candidates_from_object(self_ty={:?})", self_ty);
+        trace!("assemble_inherent_candidates_from_object(self_ty={:?})", self_ty);
 
         let principal = match self_ty.kind() {
             ty::Dynamic(ref data, ..) => Some(data),
@@ -821,7 +823,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     fn assemble_inherent_candidates_from_param(&mut self, param_ty: ty::ParamTy) {
         // FIXME: do we want to commit to this behavior for param bounds?
-        debug!("assemble_inherent_candidates_from_param(param_ty={:?})", param_ty);
+        trace!("assemble_inherent_candidates_from_param(param_ty={:?})", param_ty);
 
         let bounds = self.param_env.caller_bounds().iter().filter_map(|predicate| {
             let bound_predicate = predicate.kind();
@@ -885,7 +887,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     {
         let tcx = self.tcx;
         for bound_trait_ref in traits::transitive_bounds(tcx, bounds) {
-            debug!("elaborate_bounds(bound_trait_ref={:?})", bound_trait_ref);
+            trace!("elaborate_bounds(bound_trait_ref={:?})", bound_trait_ref);
             for item in self.impl_or_trait_item(bound_trait_ref.def_id()) {
                 if !self.has_applicable_self(&item) {
                     self.record_static_candidate(CandidateSource::Trait(bound_trait_ref.def_id()));
@@ -953,7 +955,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         import_ids: &SmallVec<[LocalDefId; 1]>,
         trait_def_id: DefId,
     ) {
-        debug!("assemble_extension_candidates_for_trait(trait_def_id={:?})", trait_def_id);
+        trace!("assemble_extension_candidates_for_trait(trait_def_id={:?})", trait_def_id);
         let trait_substs = self.fresh_item_substs(trait_def_id);
         let trait_ref = ty::TraitRef::new(self.tcx, trait_def_id, trait_substs);
 
@@ -999,7 +1001,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             for item in self.impl_or_trait_item(trait_def_id) {
                 // Check whether `trait_def_id` defines a method with suitable name.
                 if !self.has_applicable_self(&item) {
-                    debug!("method has inapplicable self");
+                    trace!("method has inapplicable self");
                     self.record_static_candidate(CandidateSource::Trait(trait_def_id));
                     continue;
                 }
@@ -1065,7 +1067,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             return r;
         }
 
-        debug!("pick: actual search failed, assemble diagnostics");
+        trace!("pick: actual search failed, assemble diagnostics");
 
         let static_candidates = std::mem::take(self.static_candidates.get_mut());
         let private_candidate = self.private_candidate.take();
@@ -1126,7 +1128,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         self.steps
             .iter()
             .filter(|step| {
-                debug!("pick_all_method: step={:?}", step);
+                trace!("pick_all_method: step={:?}", step);
                 // skip types that are from a type error or that would require dereferencing
                 // a raw pointer
                 !step.self_ty.references_error() && !step.from_unsafe_deref
@@ -1260,14 +1262,14 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         self_ty: Ty<'tcx>,
         mut unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
     ) -> Option<PickResult<'tcx>> {
-        debug!("pick_method(self_ty={})", self.ty_to_string(self_ty));
+        trace!("pick_method(self_ty={})", self.ty_to_string(self_ty));
 
         let mut possibly_unsatisfied_predicates = Vec::new();
 
         for (kind, candidates) in
             &[("inherent", &self.inherent_candidates), ("extension", &self.extension_candidates)]
         {
-            debug!("searching {} candidates", kind);
+            trace!("searching {} candidates", kind);
             let res = self.consider_candidates(
                 self_ty,
                 candidates,
@@ -1306,7 +1308,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             .filter(|&(_, status)| status != ProbeResult::NoMatch)
             .collect();
 
-        debug!("applicable_candidates: {:?}", applicable_candidates);
+        trace!("applicable_candidates: {:?}", applicable_candidates);
 
         if applicable_candidates.len() > 1 {
             if let Some(pick) =
@@ -1482,7 +1484,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             Option<ObligationCause<'tcx>>,
         )>,
     ) -> ProbeResult {
-        debug!("consider_probe: self_ty={:?} probe={:?}", self_ty, probe);
+        trace!("consider_probe: self_ty={:?} probe={:?}", self_ty, probe);
 
         self.probe(|_| {
             // First check that the self type can be related.
@@ -1493,14 +1495,14 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             ) {
                 Ok(InferOk { obligations, value: () }) => obligations,
                 Err(err) => {
-                    debug!("--> cannot relate self-types {:?}", err);
+                    trace!("--> cannot relate self-types {:?}", err);
                     return ProbeResult::NoMatch;
                 }
             };
 
             let mut result = ProbeResult::Match;
             let mut xform_ret_ty = probe.xform_ret_ty;
-            debug!(?xform_ret_ty);
+            trace!(?xform_ret_ty);
 
             let cause = traits::ObligationCause::misc(self.span, self.body_id);
 
@@ -1520,7 +1522,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         obligations: normalization_obligations,
                     } = self.fcx.at(&cause, self.param_env).normalize(xform_ret_ty);
                     xform_ret_ty = normalized_xform_ret_ty;
-                    debug!("xform_ret_ty after normalization: {:?}", xform_ret_ty);
+                    trace!("xform_ret_ty after normalization: {:?}", xform_ret_ty);
 
                     // Check whether the impl imposes obligations we have to worry about.
                     let impl_def_id = probe.item.container_id(self.tcx);
@@ -1677,7 +1679,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         obligations: normalization_obligations,
                     } = self.fcx.at(&cause, self.param_env).normalize(xform_ret_ty);
                     xform_ret_ty = normalized_xform_ret_ty;
-                    debug!("xform_ret_ty after normalization: {:?}", xform_ret_ty);
+                    trace!("xform_ret_ty after normalization: {:?}", xform_ret_ty);
                     // Evaluate those obligations to see if they might possibly hold.
                     for o in normalization_obligations {
                         let o = self.resolve_vars_if_possible(o);
@@ -1692,7 +1694,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     }
                 }
 
-                debug!(
+                trace!(
                     "comparing return_ty {:?} with xform ret ty {:?}",
                     return_ty, xform_ret_ty
                 );
@@ -1758,7 +1760,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     /// candidate method where the method name may have been misspelled. Similarly to other
     /// edit distance based suggestions, we provide at most one such suggestion.
     fn probe_for_similar_candidate(&mut self) -> Result<Option<ty::AssocItem>, MethodError<'tcx>> {
-        debug!("probing for method names similar to {:?}", self.method_name);
+        trace!("probing for method names similar to {:?}", self.method_name);
 
         self.probe(|_| {
             let mut pcx = ProbeContext::new(
@@ -1857,7 +1859,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn xform_method_sig(&self, method: DefId, substs: SubstsRef<'tcx>) -> ty::FnSig<'tcx> {
         let fn_sig = self.tcx.fn_sig(method);
-        debug!(?fn_sig);
+        trace!(?fn_sig);
 
         assert!(!substs.has_escaping_bound_vars());
 

@@ -25,7 +25,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let acrb = arms_contain_ref_bindings(arms);
         let scrutinee_ty = self.demand_scrutinee_type(scrut, acrb, arms.is_empty());
-        debug!(?scrutinee_ty);
+        trace!(?scrutinee_ty);
 
         // If there are no arms, that is a diverging match; a special case.
         if arms.is_empty() {
@@ -56,7 +56,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut all_arms_diverge = Diverges::WarnedAlways;
 
         let expected = orig_expected.adjust_for_branches(self);
-        debug!(?expected);
+        trace!(?expected);
 
         let mut coercion = {
             let coerce_first = match expected {

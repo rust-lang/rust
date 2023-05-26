@@ -17,14 +17,14 @@ fn evaluate_obligation<'tcx>(
     canonical_goal: CanonicalPredicateGoal<'tcx>,
 ) -> Result<EvaluationResult, OverflowError> {
     assert!(!tcx.trait_solver_next());
-    debug!("evaluate_obligation(canonical_goal={:#?})", canonical_goal);
+    trace!("evaluate_obligation(canonical_goal={:#?})", canonical_goal);
     // HACK This bubble is required for this tests to pass:
     // impl-trait/issue99642.rs
     let (ref infcx, goal, _canonical_inference_vars) = tcx
         .infer_ctxt()
         .with_opaque_type_inference(DefiningAnchor::Bubble)
         .build_with_canonical(DUMMY_SP, &canonical_goal);
-    debug!("evaluate_obligation: goal={:#?}", goal);
+    trace!("evaluate_obligation: goal={:#?}", goal);
     let ParamEnvAnd { param_env, value: predicate } = goal;
 
     let mut selcx = SelectionContext::with_query_mode(&infcx, TraitQueryMode::Canonical);

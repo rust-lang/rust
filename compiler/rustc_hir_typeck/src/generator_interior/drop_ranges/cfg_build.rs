@@ -109,7 +109,7 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
         places: ConsumedAndBorrowedPlaces,
         num_exprs: usize,
     ) -> Self {
-        debug!("consumed_places: {:?}", places.consumed);
+        trace!("consumed_places: {:?}", places.consumed);
         let drop_ranges = DropRangesBuilder::new(
             places.consumed.iter().flat_map(|(_, places)| places.iter().cloned()),
             infcx.tcx.hir(),
@@ -132,9 +132,9 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
 
     fn record_drop(&mut self, value: TrackedValue) {
         if self.places.borrowed.contains(&value) {
-            debug!("not marking {:?} as dropped because it is borrowed at some point", value);
+            trace!("not marking {:?} as dropped because it is borrowed at some point", value);
         } else {
-            debug!("marking {:?} as dropped at {:?}", value, self.expr_index);
+            trace!("marking {:?} as dropped at {:?}", value, self.expr_index);
             let count = self.expr_index;
             self.drop_ranges.drop_at(value, count);
         }
@@ -143,7 +143,7 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
     /// ExprUseVisitor's consume callback doesn't go deep enough for our purposes in all
     /// expressions. This method consumes a little deeper into the expression when needed.
     fn consume_expr(&mut self, expr: &hir::Expr<'_>) {
-        debug!("consuming expr {:?}, count={:?}", expr.kind, self.expr_index);
+        trace!("consuming expr {:?}, count={:?}", expr.kind, self.expr_index);
         let places = self
             .places
             .consumed
@@ -179,7 +179,7 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
                 // This is the base case, where we have found an actual named variable.
 
                 let location = self.expr_index;
-                debug!("reinitializing {:?} at {:?}", hir_id, location);
+                trace!("reinitializing {:?} at {:?}", hir_id, location);
                 self.drop_ranges.reinit_at(TrackedValue::Variable(*hir_id), location);
             }
 
@@ -535,7 +535,7 @@ impl DropRangesBuilder {
                 }
             });
         }
-        debug!("hir_id_map: {:#?}", tracked_value_map);
+        trace!("hir_id_map: {:#?}", tracked_value_map);
         let num_values = tracked_value_map.len();
         Self {
             tracked_value_map,

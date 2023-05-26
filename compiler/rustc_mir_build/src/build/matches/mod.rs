@@ -327,7 +327,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let arm_end_blocks: Vec<_> = arm_candidates
             .into_iter()
             .map(|(arm, candidate)| {
-                debug!("lowering arm {:?}\ncandidate = {:?}", arm, candidate);
+                trace!("lowering arm {:?}\ncandidate = {:?}", arm, candidate);
 
                 let arm_source_info = self.source_info(arm.span);
                 let arm_scope = (arm.scope, arm_source_info);
@@ -726,9 +726,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             UserTypeProjections,
         ),
     ) {
-        debug!(
+        trace!(
             "visit_primary_bindings: pattern={:?} pattern_user_ty={:?}",
-            pattern, pattern_user_ty
+            pattern,
+            pattern_user_ty
         );
         match pattern.kind {
             PatKind::Binding {
@@ -799,7 +800,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             PatKind::Leaf { ref subpatterns } => {
                 for subpattern in subpatterns {
                     let subpattern_user_ty = pattern_user_ty.clone().leaf(subpattern.field);
-                    debug!("visit_primary_bindings: subpattern_user_ty={:?}", subpattern_user_ty);
+                    trace!("visit_primary_bindings: subpattern_user_ty={:?}", subpattern_user_ty);
                     self.visit_primary_bindings(&subpattern.pattern, subpattern_user_ty, f);
                 }
             }
@@ -1100,7 +1101,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // higher priority candidates (and hence at the front of the slice)
         // have satisfied all their match pairs.
         let fully_matched = candidates.iter().take_while(|c| c.match_pairs.is_empty()).count();
-        debug!("match_candidates: {:?} candidates fully matched", fully_matched);
+        trace!("match_candidates: {:?} candidates fully matched", fully_matched);
         let (matched_candidates, unmatched_candidates) = candidates.split_at_mut(fully_matched);
 
         let block = if !matched_candidates.is_empty() {
@@ -1239,7 +1240,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        debug!(
+        trace!(
             "match_candidates: add pre_binding_blocks for unreachable {:?}",
             unreachable_candidates,
         );
@@ -1379,7 +1380,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         place: &PlaceBuilder<'tcx>,
         fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
     ) {
-        debug!("candidate={:#?}\npats={:#?}", candidate, pats);
+        trace!("candidate={:#?}\npats={:#?}", candidate, pats);
         let mut or_candidates: Vec<_> = pats
             .iter()
             .map(|pat| Candidate::new(place.clone(), pat, candidate.has_guard, self))
@@ -1604,7 +1605,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // those N possible outcomes, create a (initially empty)
         // vector of candidates. Those are the candidates that still
         // apply if the test has that particular outcome.
-        debug!("test_candidates: test={:?} match_pair={:?}", test, match_pair);
+        trace!("test_candidates: test={:?} match_pair={:?}", test, match_pair);
         let mut target_candidates: Vec<Vec<&mut Candidate<'pat, 'tcx>>> = vec![];
         target_candidates.resize_with(test.targets(), Default::default);
 
@@ -1629,8 +1630,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             total_candidate_count,
             candidates
         );
-        debug!("tested_candidates: {}", total_candidate_count - candidates.len());
-        debug!("untested_candidates: {}", candidates.len());
+        trace!("tested_candidates: {}", total_candidate_count - candidates.len());
+        trace!("untested_candidates: {}", candidates.len());
 
         // HACK(matthewjasper) This is a closure so that we can let the test
         // create its blocks before the rest of the match. This currently
@@ -1716,7 +1717,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> Vec<(Place<'tcx>, Local)> {
         let tcx = self.tcx;
 
-        debug!("add_fake_borrows fake_borrows = {:?}", fake_borrows);
+        trace!("add_fake_borrows fake_borrows = {:?}", fake_borrows);
 
         let mut all_fake_borrows = Vec::with_capacity(fake_borrows.len());
 
@@ -1741,7 +1742,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let mut dedup = FxHashSet::default();
         all_fake_borrows.retain(|b| dedup.insert(*b));
 
-        debug!("add_fake_borrows all_fake_borrows = {:?}", all_fake_borrows);
+        trace!("add_fake_borrows all_fake_borrows = {:?}", all_fake_borrows);
 
         all_fake_borrows
             .into_iter()
@@ -1831,7 +1832,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         schedule_drops: bool,
         storages_alive: bool,
     ) -> BasicBlock {
-        debug!("bind_and_guard_matched_candidate(candidate={:?})", candidate);
+        trace!("bind_and_guard_matched_candidate(candidate={:?})", candidate);
 
         debug_assert!(candidate.match_pairs.is_empty());
 
@@ -1953,7 +1954,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let guard_frame = GuardFrame {
                 locals: bindings.map(|b| GuardFrameLocal::new(b.var_id, b.binding_mode)).collect(),
             };
-            debug!("entering guard building context: {:?}", guard_frame);
+            trace!("entering guard building context: {:?}", guard_frame);
             self.guard_context.push(guard_frame);
 
             let re_erased = tcx.lifetimes.re_erased;
@@ -1988,7 +1989,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let source_info = self.source_info(guard_span);
             let guard_end = self.source_info(tcx.sess.source_map().end_point(guard_span));
             let guard_frame = self.guard_context.pop().unwrap();
-            debug!("Exiting guard building context with locals: {:?}", guard_frame);
+            trace!("Exiting guard building context with locals: {:?}", guard_frame);
 
             for &(_, temp) in fake_borrows {
                 let cause = FakeReadCause::ForMatchGuard;
@@ -2106,14 +2107,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) where
         'tcx: 'b,
     {
-        debug!("bind_matched_candidate_for_guard(block={:?})", block);
+        trace!("bind_matched_candidate_for_guard(block={:?})", block);
 
         // Assign each of the bindings. Since we are binding for a
         // guard expression, this will never trigger moves out of the
         // candidate.
         let re_erased = self.tcx.lifetimes.re_erased;
         for binding in bindings {
-            debug!("bind_matched_candidate_for_guard(binding={:?})", binding);
+            trace!("bind_matched_candidate_for_guard(binding={:?})", binding);
             let source_info = self.source_info(binding.span);
 
             // For each pattern ident P of type T, `ref_for_guard` is
@@ -2159,7 +2160,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) where
         'tcx: 'b,
     {
-        debug!("bind_matched_candidate_for_arm_body(block={:?})", block);
+        trace!("bind_matched_candidate_for_arm_body(block={:?})", block);
 
         let re_erased = self.tcx.lifetimes.re_erased;
         // Assign each of the bindings. This may trigger moves out of the candidate.
@@ -2269,7 +2270,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         } else {
             LocalsForNode::One(for_arm_body)
         };
-        debug!(?locals);
+        trace!(?locals);
         self.var_indices.insert(var_id, locals);
     }
 

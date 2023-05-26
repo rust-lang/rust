@@ -63,7 +63,7 @@ impl OutlivesSuggestionBuilder {
             | RegionNameSource::AnonRegionFromYieldTy(..)
             | RegionNameSource::AnonRegionFromAsyncFn(..)
             | RegionNameSource::AnonRegionFromImplSignature(..) => {
-                debug!("Region {:?} is NOT suggestable", name);
+                trace!("Region {:?} is NOT suggestable", name);
                 false
             }
         }
@@ -149,7 +149,7 @@ impl OutlivesSuggestionBuilder {
 
     /// Add the outlives constraint `fr: outlived_fr` to the set of constraints we need to suggest.
     pub(crate) fn collect_constraint(&mut self, fr: RegionVid, outlived_fr: RegionVid) {
-        debug!("Collected {:?}: {:?}", fr, outlived_fr);
+        trace!("Collected {:?}: {:?}", fr, outlived_fr);
 
         // Add to set of constraints for final help note.
         self.constraints_to_add.entry(fr).or_default().push(outlived_fr);
@@ -181,7 +181,7 @@ impl OutlivesSuggestionBuilder {
     pub(crate) fn add_suggestion(&self, mbcx: &mut MirBorrowckCtxt<'_, '_>) {
         // No constraints to add? Done.
         if self.constraints_to_add.is_empty() {
-            debug!("No constraints to suggest.");
+            trace!("No constraints to suggest.");
             return;
         }
 
@@ -190,7 +190,7 @@ impl OutlivesSuggestionBuilder {
         if self.constraints_to_add.len() == 1
             && self.constraints_to_add.values().next().unwrap().len() == 1
         {
-            debug!("Only 1 suggestion. Skipping.");
+            trace!("Only 1 suggestion. Skipping.");
             return;
         }
 
@@ -199,7 +199,7 @@ impl OutlivesSuggestionBuilder {
 
         // If there are no suggestable constraints...
         if suggested.is_empty() {
-            debug!("Only 1 suggestable constraint. Skipping.");
+            trace!("Only 1 suggestable constraint. Skipping.");
             return;
         }
 

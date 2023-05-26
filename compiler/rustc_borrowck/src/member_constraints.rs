@@ -84,12 +84,12 @@ impl<'tcx> MemberConstraintSet<'tcx, ty::RegionVid> {
         m_c: &MemberConstraint<'tcx>,
         mut to_region_vid: impl FnMut(ty::Region<'tcx>) -> ty::RegionVid,
     ) {
-        debug!("push_constraint(m_c={:?})", m_c);
+        trace!("push_constraint(m_c={:?})", m_c);
         let member_region_vid: ty::RegionVid = to_region_vid(m_c.member_region);
         let next_constraint = self.first_constraints.get(&member_region_vid).cloned();
         let start_index = self.choice_regions.len();
         let end_index = start_index + m_c.choice_regions.len();
-        debug!("push_constraint: member_region_vid={:?}", member_region_vid);
+        trace!("push_constraint: member_region_vid={:?}", member_region_vid);
         let constraint_index = self.constraints.push(NllMemberConstraint {
             next_constraint,
             member_region_vid,

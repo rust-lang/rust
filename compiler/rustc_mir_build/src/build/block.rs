@@ -331,7 +331,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             block.unit()
                         }));
 
-                        debug!("ast_block_stmts: pattern={:?}", pattern);
+                        trace!("ast_block_stmts: pattern={:?}", pattern);
                         this.visit_primary_bindings(
                             pattern,
                             UserTypeProjections::none(),
@@ -396,7 +396,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     /// If we are entering an unsafe block, create a new source scope
     fn update_source_scope_for_safety_mode(&mut self, span: Span, safety_mode: BlockSafety) {
-        debug!("update_source_scope_for({:?}, {:?})", span, safety_mode);
+        trace!("update_source_scope_for({:?}, {:?})", span, safety_mode);
         let new_unsafety = match safety_mode {
             BlockSafety::Safe => return,
             BlockSafety::BuiltinUnsafe => Safety::BuiltinUnsafe,

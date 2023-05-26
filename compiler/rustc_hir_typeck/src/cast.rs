@@ -91,7 +91,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         t: Ty<'tcx>,
         span: Span,
     ) -> Result<Option<PointerKind<'tcx>>, ErrorGuaranteed> {
-        debug!("pointer_kind({:?}, {:?})", t, span);
+        trace!("pointer_kind({:?}, {:?})", t, span);
 
         let t = self.resolve_vars_if_possible(t);
         t.error_reported()?;
@@ -722,7 +722,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         self.expr_ty = fcx.structurally_resolved_type(self.expr_span, self.expr_ty);
         self.cast_ty = fcx.structurally_resolved_type(self.cast_span, self.cast_ty);
 
-        debug!("check_cast({}, {:?} as {:?})", self.expr.hir_id, self.expr_ty, self.cast_ty);
+        trace!("check_cast({}, {:?} as {:?})", self.expr.hir_id, self.expr_ty, self.cast_ty);
 
         if !fcx.type_is_sized_modulo_regions(fcx.param_env, self.cast_ty)
             && !self.cast_ty.has_infer_types()
@@ -734,13 +734,13 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             match self.try_coercion_cast(fcx) {
                 Ok(()) => {
                     self.trivial_cast_lint(fcx);
-                    debug!(" -> CoercionCast");
+                    trace!(" -> CoercionCast");
                     fcx.typeck_results.borrow_mut().set_coercion_cast(self.expr.hir_id.local_id);
                 }
                 Err(_) => {
                     match self.do_check(fcx) {
                         Ok(k) => {
-                            debug!(" -> {:?}", k);
+                            trace!(" -> {:?}", k);
                         }
                         Err(e) => self.report_cast_error(fcx, e),
                     };
@@ -880,7 +880,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         m_expr: ty::TypeAndMut<'tcx>,
         m_cast: ty::TypeAndMut<'tcx>,
     ) -> Result<CastKind, CastError> {
-        debug!("check_ptr_ptr_cast m_expr={:?} m_cast={:?}", m_expr, m_cast);
+        trace!("check_ptr_ptr_cast m_expr={:?} m_cast={:?}", m_expr, m_cast);
         // ptr-ptr cast. vtables must match.
 
         let expr_kind = fcx.pointer_kind(m_expr.ty, self.span)?;

@@ -40,7 +40,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         // Take the union of the existed `used_mut` set with those variables we've found were
         // never initialized.
-        debug!("gather_used_muts: never_initialized_mut_locals={:?}", never_initialized_mut_locals);
+        trace!("gather_used_muts: never_initialized_mut_locals={:?}", never_initialized_mut_locals);
         self.used_mut = self.used_mut.union(&never_initialized_mut_locals).cloned().collect();
     }
 }
@@ -66,7 +66,7 @@ impl GatherUsedMutsVisitor<'_, '_, '_> {
 
 impl<'visit, 'cx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'cx, 'tcx> {
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
-        debug!("visit_terminator: terminator={:?}", terminator);
+        trace!("visit_terminator: terminator={:?}", terminator);
         match &terminator.kind {
             TerminatorKind::Call { destination, .. } => {
                 self.remove_never_initialized_mut_locals(*destination);
@@ -79,10 +79,12 @@ impl<'visit, 'cx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'cx, 'tc
 
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         if let StatementKind::Assign(box (into, _)) = &statement.kind {
-            debug!(
+            trace!(
                 "visit_statement: statement={:?} local={:?} \
                     never_initialized_mut_locals={:?}",
-                statement, into.local, self.never_initialized_mut_locals
+                statement,
+                into.local,
+                self.never_initialized_mut_locals
             );
             self.remove_never_initialized_mut_locals(*into);
         }
@@ -96,9 +98,11 @@ impl<'visit, 'cx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'cx, 'tc
             for moi in &self.mbcx.move_data.loc_map[location] {
                 let mpi = &self.mbcx.move_data.moves[*moi].path;
                 let path = &self.mbcx.move_data.move_paths[*mpi];
-                debug!(
+                trace!(
                     "assignment of {:?} to {:?}, adding {:?} to used mutable set",
-                    path.place, local, path.place
+                    path.place,
+                    local,
+                    path.place
                 );
                 if let Some(user_local) = path.place.as_local() {
                     self.mbcx.used_mut.insert(user_local);

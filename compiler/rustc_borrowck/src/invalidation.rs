@@ -345,10 +345,13 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
         sd: AccessDepth,
         rw: ReadOrWrite,
     ) {
-        debug!(
+        trace!(
             "invalidation::check_access_for_conflict(location={:?}, place={:?}, sd={:?}, \
              rw={:?})",
-            location, place, sd, rw,
+            location,
+            place,
+            sd,
+            rw,
         );
         let tcx = self.tcx;
         let body = self.body;

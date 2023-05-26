@@ -43,7 +43,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // when writing to `self.param_env`.
         let mut deferred_cast_checks = mem::take(&mut *self.deferred_cast_checks.borrow_mut());
 
-        debug!("FnCtxt::check_casts: {} deferred checks", deferred_cast_checks.len());
+        trace!("FnCtxt::check_casts: {} deferred checks", deferred_cast_checks.len());
         for cast in deferred_cast_checks.drain(..) {
             let prev_env = self.param_env;
             self.param_env = self.param_env.with_constness(cast.constness);
@@ -58,7 +58,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(in super::super) fn check_transmutes(&self) {
         let mut deferred_transmute_checks = self.deferred_transmute_checks.borrow_mut();
-        debug!("FnCtxt::check_transmutes: {} deferred checks", deferred_transmute_checks.len());
+        trace!("FnCtxt::check_transmutes: {} deferred checks", deferred_transmute_checks.len());
         for (from, to, hir_id) in deferred_transmute_checks.drain(..) {
             self.check_transmute(from, to, hir_id);
         }
@@ -66,7 +66,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(in super::super) fn check_asms(&self) {
         let mut deferred_asm_checks = self.deferred_asm_checks.borrow_mut();
-        debug!("FnCtxt::check_asm: {} deferred checks", deferred_asm_checks.len());
+        trace!("FnCtxt::check_asm: {} deferred checks", deferred_asm_checks.len());
         for (asm, hir_id) in deferred_asm_checks.drain(..) {
             let enclosing_id = self.tcx.hir().enclosing_body_owner(hir_id);
             let get_operand_ty = |expr| {
@@ -246,7 +246,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let expected_input_ty: Ty<'tcx> = expected_input_tys[idx];
             let provided_arg = &provided_args[idx];
 
-            debug!("checking argument {}: {:?} = {:?}", idx, provided_arg, formal_input_ty);
+            trace!("checking argument {}: {:?} = {:?}", idx, provided_arg, formal_input_ty);
 
             // We're on the happy path here, so we'll do a more involved check and write back types
             // To check compatibility, we'll do 3 things:
@@ -1341,7 +1341,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         if let Some((variant, did, ty::UserSubsts { substs, user_self_ty })) = variant {
-            debug!("check_struct_path: did={:?} substs={:?}", did, substs);
+            trace!("check_struct_path: did={:?} substs={:?}", did, substs);
 
             // Register type annotation.
             self.write_user_type_annotation_from_substs(hir_id, did, substs, user_self_ty);

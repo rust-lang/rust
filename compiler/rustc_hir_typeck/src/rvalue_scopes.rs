@@ -54,7 +54,7 @@ fn record_rvalue_scope(
     expr: &hir::Expr<'_>,
     candidate: &RvalueCandidateType,
 ) {
-    debug!("resolve_rvalue_scope(expr={expr:?}, candidate={candidate:?})");
+    trace!("resolve_rvalue_scope(expr={expr:?}, candidate={candidate:?})");
     match candidate {
         RvalueCandidateType::Borrow { lifetime, .. }
         | RvalueCandidateType::Pattern { lifetime, .. } => {
@@ -71,8 +71,8 @@ pub fn resolve_rvalue_scopes<'a, 'tcx>(
     let tcx = &fcx.tcx;
     let hir_map = tcx.hir();
     let mut rvalue_scopes = RvalueScopes::new();
-    debug!("start resolving rvalue scopes, def_id={def_id:?}");
-    debug!("rvalue_scope: rvalue_candidates={:?}", scope_tree.rvalue_candidates);
+    trace!("start resolving rvalue scopes, def_id={def_id:?}");
+    trace!("rvalue_scope: rvalue_candidates={:?}", scope_tree.rvalue_candidates);
     for (&hir_id, candidate) in &scope_tree.rvalue_candidates {
         let Some(Node::Expr(expr)) = hir_map.find(hir_id) else {
             bug!("hir node does not exist")

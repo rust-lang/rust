@@ -183,7 +183,7 @@ impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
                 let kill_location = Location { block: bb, statement_index: kill_stmt };
                 // If region does not contain a point at the location, then add to list and skip
                 // successor locations.
-                debug!("borrow {:?} gets killed at {:?}", borrow_index, kill_location);
+                trace!("borrow {:?} gets killed at {:?}", borrow_index, kill_location);
                 self.borrows_out_of_scope_at_location
                     .entry(kill_location)
                     .or_default()
@@ -285,7 +285,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
 
     /// Kill any borrows that conflict with `place`.
     fn kill_borrows_on_place(&self, trans: &mut impl GenKill<BorrowIndex>, place: Place<'tcx>) {
-        debug!("kill_borrows_on_place: place={:?}", place);
+        trace!("kill_borrows_on_place: place={:?}", place);
 
         let other_borrows_of_local = self
             .borrow_set

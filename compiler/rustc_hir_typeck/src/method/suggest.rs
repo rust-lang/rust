@@ -1692,7 +1692,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// if `rect` is a local variable and `area` is a valid assoc method for it,
     /// we try to suggest `rect.area()`
     pub(crate) fn suggest_assoc_method_call(&self, segs: &[PathSegment<'_>]) {
-        debug!("suggest_assoc_method_call segs: {:?}", segs);
+        trace!("suggest_assoc_method_call segs: {:?}", segs);
         let [seg1, seg2] = segs else { return; };
         let Some(mut diag) =
                 self.tcx.sess.diagnostic().steal_diagnostic(seg1.ident.span, StashKey::CallAssocMethod)
@@ -2281,7 +2281,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let method_exists =
             self.method_exists(item_name, output_ty, call.hir_id, true, return_type);
-        debug!("suggest_await_before_method: is_method_exist={}", method_exists);
+        trace!("suggest_await_before_method: is_method_exist={}", method_exists);
         if method_exists {
             err.span_suggestion_verbose(
                 span.shrink_to_lo(),
@@ -2399,9 +2399,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let mut alt_rcvr_sugg = false;
         if let (SelfSource::MethodCall(rcvr), false) = (source, unsatisfied_bounds) {
-            debug!(
+            trace!(
                 "suggest_traits_to_import: span={:?}, item_name={:?}, rcvr_ty={:?}, rcvr={:?}",
-                span, item_name, rcvr_ty, rcvr
+                span,
+                item_name,
+                rcvr_ty,
+                rcvr
             );
             let skippable = [
                 self.tcx.lang_items().clone_trait(),
@@ -2465,7 +2468,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             return_type,
                         )
                     {
-                        debug!("try_alt_rcvr: pick candidate {:?}", pick);
+                        trace!("try_alt_rcvr: pick candidate {:?}", pick);
                         let did = Some(pick.item.container_id(self.tcx));
                         // We don't want to suggest a container type when the missing
                         // method is `.clone()` or `.deref()` otherwise we'd suggest

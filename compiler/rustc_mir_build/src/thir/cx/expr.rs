@@ -374,7 +374,7 @@ impl<'tcx> Cx<'tcx> {
                                 }
                                 Box::new(u_ty)
                             });
-                        debug!("make_mirror_unadjusted: (call) user_ty={:?}", user_ty);
+                        trace!("make_mirror_unadjusted: (call) user_ty={:?}", user_ty);
 
                         let field_refs = args
                             .iter()
@@ -508,7 +508,7 @@ impl<'tcx> Cx<'tcx> {
                     AdtKind::Struct | AdtKind::Union => {
                         let user_provided_types = self.typeck_results().user_provided_types();
                         let user_ty = user_provided_types.get(expr.hir_id).copied().map(Box::new);
-                        debug!("make_mirror_unadjusted: (struct/union) user_ty={:?}", user_ty);
+                        trace!("make_mirror_unadjusted: (struct/union) user_ty={:?}", user_ty);
                         ExprKind::Adt(Box::new(AdtExpr {
                             adt_def: *adt,
                             variant_index: FIRST_VARIANT,
@@ -535,7 +535,7 @@ impl<'tcx> Cx<'tcx> {
                                     self.typeck_results().user_provided_types();
                                 let user_ty =
                                     user_provided_types.get(expr.hir_id).copied().map(Box::new);
-                                debug!("make_mirror_unadjusted: (variant) user_ty={:?}", user_ty);
+                                trace!("make_mirror_unadjusted: (variant) user_ty={:?}", user_ty);
                                 ExprKind::Adt(Box::new(AdtExpr {
                                     adt_def: *adt,
                                     variant_index: index,
@@ -749,9 +749,11 @@ impl<'tcx> Cx<'tcx> {
                 let user_provided_types = self.typeck_results.user_provided_types();
                 let user_ty = user_provided_types.get(cast_ty.hir_id);
 
-                debug!(
+                trace!(
                     "cast({:?}) has ty w/ hir_id {:?} and user provided ty {:?}",
-                    expr, cast_ty.hir_id, user_ty,
+                    expr,
+                    cast_ty.hir_id,
+                    user_ty,
                 );
 
                 let cast = self.mirror_expr_cast(*source, temp_lifetime, expr.span);
@@ -765,7 +767,7 @@ impl<'tcx> Cx<'tcx> {
                         span: expr.span,
                         kind: cast,
                     });
-                    debug!("make_mirror_unadjusted: (cast) user_ty={:?}", user_ty);
+                    trace!("make_mirror_unadjusted: (cast) user_ty={:?}", user_ty);
 
                     ExprKind::ValueTypeAscription {
                         source: cast_expr,
@@ -778,7 +780,7 @@ impl<'tcx> Cx<'tcx> {
             hir::ExprKind::Type(ref source, ref ty) => {
                 let user_provided_types = self.typeck_results.user_provided_types();
                 let user_ty = user_provided_types.get(ty.hir_id).copied().map(Box::new);
-                debug!("make_mirror_unadjusted: (type) user_ty={:?}", user_ty);
+                trace!("make_mirror_unadjusted: (type) user_ty={:?}", user_ty);
                 let mirrored = self.mirror_expr(source);
                 if source.is_syntactic_place_expr() {
                     ExprKind::PlaceTypeAscription { source: mirrored, user_ty }
@@ -806,7 +808,7 @@ impl<'tcx> Cx<'tcx> {
         hir_id: hir::HirId,
         res: Res,
     ) -> Option<Box<ty::CanonicalUserType<'tcx>>> {
-        debug!("user_substs_applied_to_res: res={:?}", res);
+        trace!("user_substs_applied_to_res: res={:?}", res);
         let user_provided_type = match res {
             // A reference to something callable -- e.g., a fn, method, or
             // a tuple-struct or tuple-variant. This has the type of a
@@ -832,7 +834,7 @@ impl<'tcx> Cx<'tcx> {
 
             _ => bug!("user_substs_applied_to_res: unexpected res {:?} at {:?}", res, hir_id),
         };
-        debug!("user_substs_applied_to_res: user_provided_type={:?}", user_provided_type);
+        trace!("user_substs_applied_to_res: user_provided_type={:?}", user_provided_type);
         user_provided_type
     }
 
@@ -852,7 +854,7 @@ impl<'tcx> Cx<'tcx> {
                         span_bug!(expr.span, "no type-dependent def for method callee")
                     });
                 let user_ty = self.user_substs_applied_to_res(expr.hir_id, Res::Def(kind, def_id));
-                debug!("method_callee: user_ty={:?}", user_ty);
+                trace!("method_callee: user_ty={:?}", user_ty);
                 (
                     self.tcx().mk_fn_def(def_id, self.typeck_results().node_substs(expr.hir_id)),
                     user_ty,
@@ -909,7 +911,7 @@ impl<'tcx> Cx<'tcx> {
             Res::Def(DefKind::Ctor(_, CtorKind::Const), def_id) => {
                 let user_provided_types = self.typeck_results.user_provided_types();
                 let user_ty = user_provided_types.get(expr.hir_id).copied().map(Box::new);
-                debug!("convert_path_expr: user_ty={:?}", user_ty);
+                trace!("convert_path_expr: user_ty={:?}", user_ty);
                 let ty = self.typeck_results().node_type(expr.hir_id);
                 match ty.kind() {
                     // A unit struct/variant which is used as a value.
@@ -958,9 +960,11 @@ impl<'tcx> Cx<'tcx> {
             .upvars_mentioned(self.body_owner)
             .is_some_and(|upvars| upvars.contains_key(&var_hir_id));
 
-        debug!(
+        trace!(
             "convert_var({:?}): is_upvar={}, body_owner={:?}",
-            var_hir_id, is_upvar, self.body_owner
+            var_hir_id,
+            is_upvar,
+            self.body_owner
         );
 
         if is_upvar {

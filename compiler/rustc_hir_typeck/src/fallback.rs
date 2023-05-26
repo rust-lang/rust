@@ -10,7 +10,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     /// Performs type inference fallback, setting `FnCtxt::fallback_has_occurred`
     /// if fallback has occurred.
     pub(super) fn type_inference_fallback(&self) {
-        debug!(
+        trace!(
             "type-inference-fallback start obligations: {:#?}",
             self.fulfillment_cx.borrow_mut().pending_obligations()
         );
@@ -18,7 +18,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         // All type checking constraints were added, try to fallback unsolved variables.
         self.select_obligations_where_possible(|_| {});
 
-        debug!(
+        trace!(
             "type-inference-fallback post selection obligations: {:#?}",
             self.fulfillment_cx.borrow_mut().pending_obligations()
         );
@@ -35,7 +35,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         // better error messages.
         // The first time, we do *not* replace opaque types.
         for ty in unsolved_variables {
-            debug!("unsolved_variable = {:?}", ty);
+            trace!("unsolved_variable = {:?}", ty);
             self.fallback_if_possible(ty, &diverging_fallback);
         }
 
@@ -112,7 +112,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 None => return,
             },
         };
-        debug!("fallback_if_possible(ty={:?}): defaulting to `{:?}`", ty, fallback);
+        trace!("fallback_if_possible(ty={:?}): defaulting to `{:?}`", ty, fallback);
 
         let span = self
             .infcx
@@ -194,7 +194,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         &self,
         unsolved_variables: &[Ty<'tcx>],
     ) -> FxHashMap<Ty<'tcx>, Ty<'tcx>> {
-        debug!("calculate_diverging_fallback({:?})", unsolved_variables);
+        trace!("calculate_diverging_fallback({:?})", unsolved_variables);
 
         // Construct a coercion graph where an edge `A -> B` indicates
         // a type variable is that is coerced
@@ -218,11 +218,11 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             .filter_map(|ty| ty.ty_vid())
             .map(|vid| self.root_var(vid))
             .collect();
-        debug!(
+        trace!(
             "calculate_diverging_fallback: diverging_type_vars={:?}",
             self.diverging_type_vars.borrow()
         );
-        debug!("calculate_diverging_fallback: diverging_roots={:?}", diverging_roots);
+        trace!("calculate_diverging_fallback: diverging_roots={:?}", diverging_roots);
 
         // Find all type variables that are reachable from a diverging
         // type variable. These will typically default to `!`, unless
@@ -233,7 +233,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         let mut non_diverging_vids = vec![];
         for unsolved_vid in unsolved_vids {
             let root_vid = self.root_var(unsolved_vid);
-            debug!(
+            trace!(
                 "calculate_diverging_fallback: unsolved_vid={:?} root_vid={:?} diverges={:?}",
                 unsolved_vid,
                 root_vid,
@@ -243,7 +243,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 diverging_vids.push(unsolved_vid);
                 roots_reachable_from_diverging.push_start_node(root_vid);
 
-                debug!(
+                trace!(
                     "calculate_diverging_fallback: root_vid={:?} reaches {:?}",
                     root_vid,
                     coercion_graph.depth_first_search(root_vid).collect::<Vec<_>>()
@@ -256,7 +256,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             }
         }
 
-        debug!(
+        trace!(
             "calculate_diverging_fallback: roots_reachable_from_diverging={:?}",
             roots_reachable_from_diverging,
         );
@@ -274,12 +274,12 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             roots_reachable_from_non_diverging.push_start_node(root_vid);
             roots_reachable_from_non_diverging.complete_search();
         }
-        debug!(
+        trace!(
             "calculate_diverging_fallback: roots_reachable_from_non_diverging={:?}",
             roots_reachable_from_non_diverging,
         );
 
-        debug!("obligations: {:#?}", self.fulfillment_cx.borrow_mut().pending_obligations());
+        trace!("obligations: {:#?}", self.fulfillment_cx.borrow_mut().pending_obligations());
 
         // For each diverging variable, figure out whether it can
         // reach a member of N. If so, it falls back to `()`. Else
@@ -327,13 +327,13 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 // For details on the requirements for these relationships to be
                 // set, see the relationship finding module in
                 // compiler/rustc_trait_selection/src/traits/relationships.rs.
-                debug!("fallback to () - found trait and projection: {:?}", diverging_vid);
+                trace!("fallback to () - found trait and projection: {:?}", diverging_vid);
                 diverging_fallback.insert(diverging_ty, self.tcx.types.unit);
             } else if can_reach_non_diverging {
-                debug!("fallback to () - reached non-diverging: {:?}", diverging_vid);
+                trace!("fallback to () - reached non-diverging: {:?}", diverging_vid);
                 diverging_fallback.insert(diverging_ty, self.tcx.types.unit);
             } else {
-                debug!("fallback to ! - all diverging: {:?}", diverging_vid);
+                trace!("fallback to ! - all diverging: {:?}", diverging_vid);
                 diverging_fallback.insert(diverging_ty, self.tcx.mk_diverging_default());
             }
         }
@@ -345,7 +345,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     /// an edge `?A -> ?B` indicates that the variable `?A` is coerced to `?B`.
     fn create_coercion_graph(&self) -> VecGraph<ty::TyVid> {
         let pending_obligations = self.fulfillment_cx.borrow_mut().pending_obligations();
-        debug!("create_coercion_graph: pending_obligations={:?}", pending_obligations);
+        trace!("create_coercion_graph: pending_obligations={:?}", pending_obligations);
         let coercion_edges: Vec<(ty::TyVid, ty::TyVid)> = pending_obligations
             .into_iter()
             .filter_map(|obligation| {
@@ -380,7 +380,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 Some((a_vid, b_vid))
             })
             .collect();
-        debug!("create_coercion_graph: coercion_edges={:?}", coercion_edges);
+        trace!("create_coercion_graph: coercion_edges={:?}", coercion_edges);
         let num_ty_vars = self.num_ty_vars();
         VecGraph::new(num_ty_vars, coercion_edges)
     }

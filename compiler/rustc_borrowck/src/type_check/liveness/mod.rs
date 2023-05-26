@@ -38,7 +38,7 @@ pub(super) fn generate<'mir, 'tcx>(
     location_table: &LocationTable,
     use_polonius: bool,
 ) {
-    debug!("liveness::generate");
+    trace!("liveness::generate");
 
     let free_regions = regions_that_outlive_free_regions(
         typeck.infcx.num_region_vars(),
@@ -86,9 +86,9 @@ fn compute_relevant_live_locals<'tcx>(
             }
         });
 
-    debug!("{} total variables", body.local_decls.len());
-    debug!("{} variables need liveness", relevant_live_locals.len());
-    debug!("{} regions outlive free regions", free_regions.len());
+    trace!("{} total variables", body.local_decls.len());
+    trace!("{} variables need liveness", relevant_live_locals.len());
+    trace!("{} regions outlive free regions", free_regions.len());
 
     (relevant_live_locals, boring_locals)
 }

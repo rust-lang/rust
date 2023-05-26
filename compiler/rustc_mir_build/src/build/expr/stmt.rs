@@ -34,7 +34,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // is better for borrowck interaction with overloaded
                 // operators like x[j] = x[i].
 
-                debug!("stmt_expr Assign block_context.push(SubExpr) : {:?}", expr);
+                trace!("stmt_expr Assign block_context.push(SubExpr) : {:?}", expr);
                 this.block_context.push(BlockFrame::SubExpr);
 
                 // Generate better code for things that don't need to be
@@ -65,7 +65,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let rhs = &this.thir[rhs];
                 let lhs_ty = lhs.ty;
 
-                debug!("stmt_expr AssignOp block_context.push(SubExpr) : {:?}", expr);
+                trace!("stmt_expr AssignOp block_context.push(SubExpr) : {:?}", expr);
                 this.block_context.push(BlockFrame::SubExpr);
 
                 // As above, RTL.

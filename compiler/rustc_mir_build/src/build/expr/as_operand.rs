@@ -116,7 +116,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         let category = Category::of(&expr.kind).unwrap();
-        debug!(?category, ?expr.kind);
+        trace!(?category, ?expr.kind);
         match category {
             Category::Constant
                 if matches!(needs_temporary, NeedsTemporary::No)
@@ -146,7 +146,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scope: Option<region::Scope>,
         expr: &Expr<'tcx>,
     ) -> BlockAnd<Operand<'tcx>> {
-        debug!("as_call_operand(block={:?}, expr={:?})", block, expr);
+        trace!("as_call_operand(block={:?}, expr={:?})", block, expr);
         let this = self;
 
         if let ExprKind::Scope { region_scope, lint_level, value } = expr.kind {

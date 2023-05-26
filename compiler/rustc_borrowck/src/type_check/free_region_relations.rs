@@ -87,7 +87,7 @@ impl UniversalRegionRelations<'_> {
     ///
     /// (*) If there are multiple competing choices, we return all of them.
     pub(crate) fn non_local_upper_bounds(&self, fr: RegionVid) -> Vec<RegionVid> {
-        debug!("non_local_upper_bound(fr={:?})", fr);
+        trace!("non_local_upper_bound(fr={:?})", fr);
         let res = self.non_local_bounds(&self.inverse_outlives, fr);
         assert!(!res.is_empty(), "can't find an upper bound!?");
         res
@@ -100,7 +100,7 @@ impl UniversalRegionRelations<'_> {
     /// (*) If there are multiple competing choices, we pick the "postdominating"
     /// one. See `TransitiveRelation::postdom_upper_bound` for details.
     pub(crate) fn non_local_lower_bound(&self, fr: RegionVid) -> Option<RegionVid> {
-        debug!("non_local_lower_bound(fr={:?})", fr);
+        trace!("non_local_lower_bound(fr={:?})", fr);
         let lower_bounds = self.non_local_bounds(&self.outlives, fr);
 
         // In case we find more than one, reduce to one for
@@ -108,7 +108,7 @@ impl UniversalRegionRelations<'_> {
         // complex constraints, but it will cause spurious errors.
         let post_dom = self.outlives.mutual_immediate_postdominator(lower_bounds);
 
-        debug!("non_local_bound: post_dom={:?}", post_dom);
+        trace!("non_local_bound: post_dom={:?}", post_dom);
 
         post_dom.and_then(|post_dom| {
             // If the mutual immediate postdom is not local, then
@@ -147,7 +147,7 @@ impl UniversalRegionRelations<'_> {
             queue.extend(relation.parents(fr));
         }
 
-        debug!("non_local_bound: external_parents={:?}", external_parents);
+        trace!("non_local_bound: external_parents={:?}", external_parents);
 
         external_parents
     }
@@ -188,7 +188,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
     /// Records in the `outlives_relation` (and
     /// `inverse_outlives_relation`) that `fr_a: fr_b`.
     fn relate_universal_regions(&mut self, fr_a: RegionVid, fr_b: RegionVid) {
-        debug!("relate_universal_regions: fr_a={:?} outlives fr_b={:?}", fr_a, fr_b);
+        trace!("relate_universal_regions: fr_a={:?} outlives fr_b={:?}", fr_a, fr_b);
         self.outlives.add(fr_a, fr_b);
         self.inverse_outlives.add(fr_b, fr_a);
     }
@@ -208,7 +208,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         let fr_static = self.universal_regions.fr_static;
         let fr_fn_body = self.universal_regions.fr_fn_body;
         for fr in self.universal_regions.universal_regions() {
-            debug!("build: relating free region {:?} to itself and to 'static", fr);
+            trace!("build: relating free region {:?} to itself and to 'static", fr);
             self.relate_universal_regions(fr, fr);
             self.relate_universal_regions(fr_static, fr);
             self.relate_universal_regions(fr, fr_fn_body);
@@ -233,7 +233,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             Vec::with_capacity(self.universal_regions.unnormalized_input_tys.len() + 1);
         let mut constraints = vec![];
         for ty in unnormalized_input_output_tys {
-            debug!("build: input_or_output={:?}", ty);
+            trace!("build: input_or_output={:?}", ty);
             // We add implied bounds from both the unnormalized and normalized ty.
             // See issue #87748
             let constraints_unnorm = self.add_implied_bounds(ty);
@@ -292,7 +292,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
 
     #[instrument(skip(self, data), level = "debug")]
     fn push_region_constraints(&mut self, data: &QueryRegionConstraints<'tcx>, span: Span) {
-        debug!("constraints generated: {:#?}", data);
+        trace!("constraints generated: {:#?}", data);
 
         constraint_conversion::ConstraintConversion::new(
             self.infcx,
@@ -319,7 +319,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             .and(type_op::implied_outlives_bounds::ImpliedOutlivesBounds { ty })
             .fully_perform(self.infcx, DUMMY_SP)
             .unwrap_or_else(|_| bug!("failed to compute implied bounds {:?}", ty));
-        debug!(?bounds, ?constraints);
+        trace!(?bounds, ?constraints);
         self.add_outlives_bounds(bounds);
         constraints
     }
@@ -332,7 +332,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         I: IntoIterator<Item = OutlivesBound<'tcx>>,
     {
         for outlives_bound in outlives_bounds {
-            debug!("add_outlives_bounds(bound={:?})", outlives_bound);
+            trace!("add_outlives_bounds(bound={:?})", outlives_bound);
 
             match outlives_bound {
                 OutlivesBound::RegionSubRegion(r1, r2) => {

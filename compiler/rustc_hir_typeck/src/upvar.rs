@@ -208,9 +208,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         )
         .consume_body(body);
 
-        debug!(
+        trace!(
             "For closure={:?}, capture_information={:#?}",
-            closure_def_id, delegate.capture_information
+            closure_def_id,
+            delegate.capture_information
         );
 
         self.log_capture_analysis_first_pass(closure_def_id, &delegate.capture_information, span);
@@ -237,7 +238,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 for var_hir_id in upvars.keys() {
                     let place = self.place_for_root_variable(closure_def_id, *var_hir_id);
 
-                    debug!("seed place {:?}", place);
+                    trace!("seed place {:?}", place);
 
                     let capture_kind = self.init_capture_kind_for_place(&place, capture_clause);
                     let fake_info = ty::CaptureInfo {
@@ -293,9 +294,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Equate the type variables for the upvars with the actual types.
         let final_upvar_tys = self.final_upvar_tys(closure_def_id);
-        debug!(
+        trace!(
             "analyze_closure: id={:?} substs={:?} final_upvar_tys={:?}",
-            closure_hir_id, substs, final_upvar_tys
+            closure_hir_id,
+            substs,
+            final_upvar_tys
         );
 
         // Build a tuple (U0..Un) of the final upvar types U0..Un
@@ -337,9 +340,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let upvar_ty = captured_place.place.ty();
                 let capture = captured_place.info.capture_kind;
 
-                debug!(
+                trace!(
                     "final_upvar_tys: place={:?} upvar_ty={:?} capture={:?}, mutability={:?}",
-                    captured_place.place, upvar_ty, capture, captured_place.mutability,
+                    captured_place.place,
+                    upvar_ty,
+                    capture,
+                    captured_place.mutability,
                 );
 
                 apply_capture_kind_on_capture_ty(self.tcx, upvar_ty, capture, captured_place.region)
@@ -654,9 +660,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        debug!(
+        trace!(
             "For closure={:?}, min_captures before sorting={:?}",
-            closure_def_id, root_var_min_capture_list
+            closure_def_id,
+            root_var_min_capture_list
         );
 
         // Now that we have the minimized list of captures, sort the captures by field id.
@@ -722,9 +729,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             });
         }
 
-        debug!(
+        trace!(
             "For closure={:?}, min_captures after sorting={:#?}",
-            closure_def_id, root_var_min_capture_list
+            closure_def_id,
+            root_var_min_capture_list
         );
         typeck_results.closure_min_captures.insert(closure_def_id, root_var_min_capture_list);
     }
@@ -1049,7 +1057,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty = self.resolve_vars_if_possible(self.node_ty(var_hir_id));
 
         if !ty.has_significant_drop(self.tcx, self.tcx.param_env(closure_def_id)) {
-            debug!("does not have significant drop");
+            trace!("does not have significant drop");
             return None;
         }
 
@@ -1062,7 +1070,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             //     let _ = y;
             // });
             // ```
-            debug!("no path starting from it is used");
+            trace!("no path starting from it is used");
 
 
             match closure_clause {
@@ -1079,7 +1087,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             return None;
         };
-        debug!(?root_var_min_capture_list);
+        trace!(?root_var_min_capture_list);
 
         let mut projections_list = Vec::new();
         let mut diagnostics_info = FxHashSet::default();
@@ -1098,15 +1106,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        debug!(?projections_list);
-        debug!(?diagnostics_info);
+        trace!(?projections_list);
+        trace!(?diagnostics_info);
 
         let is_moved = !projections_list.is_empty();
-        debug!(?is_moved);
+        trace!(?is_moved);
 
         let is_not_completely_captured =
             root_var_min_capture_list.iter().any(|capture| !capture.place.projections.is_empty());
-        debug!(?is_not_completely_captured);
+        trace!(?is_not_completely_captured);
 
         if is_moved
             && is_not_completely_captured
@@ -1630,14 +1638,14 @@ fn restrict_repr_packed_field_ref_capture<'tcx>(
                         Ok(layout) if layout.align.abi.bytes() == 1 => {
                             // if the alignment is 1, the type can't be further
                             // disaligned.
-                            debug!(
+                            trace!(
                                 "restrict_repr_packed_field_ref_capture: ({:?}) - align = 1",
                                 place
                             );
                             false
                         }
                         _ => {
-                            debug!("restrict_repr_packed_field_ref_capture: ({:?}) - true", place);
+                            trace!("restrict_repr_packed_field_ref_capture: ({:?}) - true", place);
                             true
                         }
                     }

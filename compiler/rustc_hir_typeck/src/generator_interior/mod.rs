@@ -48,9 +48,14 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
 
         let ty = self.fcx.resolve_vars_if_possible(ty);
 
-        debug!(
+        trace!(
             "attempting to record type ty={:?}; hir_id={:?}; scope={:?}; expr={:?}; source_span={:?}; expr_count={:?}",
-            ty, hir_id, scope, expr, source_span, self.expr_count,
+            ty,
+            hir_id,
+            scope,
+            expr,
+            source_span,
+            self.expr_count,
         );
 
         let live_across_yield = scope
@@ -66,15 +71,17 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                     yield_data
                         .iter()
                         .find(|yield_data| {
-                            debug!(
+                            trace!(
                                 "comparing counts yield: {} self: {}, source_span = {:?}",
-                                yield_data.expr_and_pat_count, self.expr_count, source_span
+                                yield_data.expr_and_pat_count,
+                                self.expr_count,
+                                source_span
                             );
 
                             if self
                                 .is_dropped_at_yield_location(hir_id, yield_data.expr_and_pat_count)
                             {
-                                debug!("value is dropped at yield point; not recording");
+                                trace!("value is dropped at yield point; not recording");
                                 return false;
                             }
 
@@ -91,9 +98,13 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
             });
 
         if let Some(yield_data) = live_across_yield {
-            debug!(
+            trace!(
                 "type in expr = {:?}, scope = {:?}, type = {:?}, count = {}, yield_span = {:?}",
-                expr, scope, ty, self.expr_count, yield_data.span
+                expr,
+                scope,
+                ty,
+                self.expr_count,
+                yield_data.span
             );
 
             if let Some((unresolved_term, unresolved_type_span)) =
@@ -154,7 +165,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                 });
             }
         } else {
-            debug!(
+            trace!(
                 "no type in expr = {:?}, count = {:?}, span = {:?}",
                 expr,
                 self.expr_count,
@@ -163,9 +174,10 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
             if let Some((unresolved_type, unresolved_type_span)) =
                 self.fcx.first_unresolved_const_or_ty_var(&ty)
             {
-                debug!(
+                trace!(
                     "remained unresolved_type = {:?}, unresolved_type_span: {:?}",
-                    unresolved_type, unresolved_type_span
+                    unresolved_type,
+                    unresolved_type_span
                 );
                 self.prev_unresolved_span = unresolved_type_span;
             }
@@ -223,7 +235,7 @@ pub fn resolve_interior<'a, 'tcx>(
     // if a Sync generator contains an &'α T, we need to check whether &'α T: Sync),
     // so knowledge of the exact relationships between them isn't particularly important.
 
-    debug!("types in generator {:?}, span = {:?}", types, body.value.span);
+    trace!("types in generator {:?}, span = {:?}", types, body.value.span);
 
     // We want to deduplicate if the lifetimes are the same modulo some non-informative counter.
     // So, we need to actually do two passes: first by type to anonymize (preserving information
@@ -319,9 +331,10 @@ pub fn resolve_interior<'a, 'tcx>(
     fcx.inh.typeck_results.borrow_mut().generator_interior_types =
         ty::Binder::bind_with_vars(type_causes, bound_vars);
 
-    debug!(
+    trace!(
         "types in generator after region replacement {:?}, span = {:?}",
-        witness, body.value.span
+        witness,
+        body.value.span
     );
 
     // Unify the type variable inside the generator with the new witness
@@ -441,7 +454,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
 
         self.expr_count += 1;
 
-        debug!("is_borrowed_temporary: {:?}", self.drop_ranges.is_borrowed_temporary(expr));
+        trace!("is_borrowed_temporary: {:?}", self.drop_ranges.is_borrowed_temporary(expr));
 
         let ty = self.fcx.typeck_results.borrow().expr_ty_adjusted_opt(expr);
 
@@ -483,7 +496,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                 .parent_iter(expr.hir_id)
                 .find(|(_, node)| matches!(node, hir::Node::Expr(_)))
                 .map(|(id, _)| id);
-            debug!("parent_expr: {:?}", parent_expr);
+            trace!("parent_expr: {:?}", parent_expr);
             match parent_expr {
                 Some(parent) => Some(Scope { id: parent.local_id, data: ScopeData::Node }),
                 None => {
@@ -563,7 +576,7 @@ fn check_must_not_suspend_ty<'tcx>(
 
     let plural_suffix = pluralize!(data.plural_len);
 
-    debug!("Checking must_not_suspend for {}", ty);
+    trace!("Checking must_not_suspend for {}", ty);
 
     match *ty.kind() {
         ty::Adt(..) if ty.is_box() => {

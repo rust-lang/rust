@@ -109,7 +109,7 @@ macro_rules! return_if_err {
         match $inp {
             Ok(v) => v,
             Err(()) => {
-                debug!("mc reported err");
+                trace!("mc reported err");
                 return;
             }
         }
@@ -140,7 +140,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     pub fn consume_body(&mut self, body: &hir::Body<'_>) {
         for param in body.params {
             let param_ty = return_if_err!(self.mc.pat_ty_adjusted(param.pat));
-            debug!("consume_body: param_ty = {:?}", param_ty);
+            trace!("consume_body: param_ty = {:?}", param_ty);
 
             let param_place = self.mc.cat_rvalue(param.hir_id, param.pat.span, param_ty);
 
@@ -165,7 +165,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     }
 
     pub fn consume_expr(&mut self, expr: &hir::Expr<'_>) {
-        debug!("consume_expr(expr={:?})", expr);
+        trace!("consume_expr(expr={:?})", expr);
 
         let place_with_id = return_if_err!(self.mc.cat_expr(expr));
         self.delegate_consume(&place_with_id, place_with_id.hir_id);
@@ -179,7 +179,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     }
 
     fn borrow_expr(&mut self, expr: &hir::Expr<'_>, bk: ty::BorrowKind) {
-        debug!("borrow_expr(expr={:?}, bk={:?})", expr, bk);
+        trace!("borrow_expr(expr={:?}, bk={:?})", expr, bk);
 
         let place_with_id = return_if_err!(self.mc.cat_expr(expr));
         self.delegate.borrow(&place_with_id, place_with_id.hir_id, bk);
@@ -192,7 +192,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     }
 
     pub fn walk_expr(&mut self, expr: &hir::Expr<'_>) {
-        debug!("walk_expr(expr={:?})", expr);
+        trace!("walk_expr(expr={:?})", expr);
 
         self.walk_adjustment(expr);
 
@@ -507,7 +507,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     /// Indicates that the value of `blk` will be consumed, meaning either copied or moved
     /// depending on its type.
     fn walk_block(&mut self, blk: &hir::Block<'_>) {
-        debug!("walk_block(blk.hir_id={})", blk.hir_id);
+        trace!("walk_block(blk.hir_id={})", blk.hir_id);
 
         for stmt in blk.stmts {
             self.walk_stmt(stmt);
@@ -585,7 +585,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         let adjustments = self.mc.typeck_results.expr_adjustments(expr);
         let mut place_with_id = return_if_err!(self.mc.cat_expr_unadjusted(expr));
         for adjustment in adjustments {
-            debug!("walk_adjustment expr={:?} adj={:?}", expr, adjustment);
+            trace!("walk_adjustment expr={:?} adj={:?}", expr, adjustment);
             match adjustment.kind {
                 adjustment::Adjust::NeverToAny
                 | adjustment::Adjust::Pointer(_)
@@ -625,9 +625,11 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         base_place: &PlaceWithHirId<'tcx>,
         autoref: &adjustment::AutoBorrow<'tcx>,
     ) {
-        debug!(
+        trace!(
             "walk_autoref(expr.hir_id={} base_place={:?} autoref={:?})",
-            expr.hir_id, base_place, autoref
+            expr.hir_id,
+            base_place,
+            autoref
         );
 
         match *autoref {
@@ -640,7 +642,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             }
 
             adjustment::AutoBorrow::RawPtr(m) => {
-                debug!("walk_autoref: expr.hir_id={} base_place={:?}", expr.hir_id, base_place);
+                trace!("walk_autoref: expr.hir_id={} base_place={:?}", expr.hir_id, base_place);
 
                 self.delegate.borrow(base_place, base_place.hir_id, ty::BorrowKind::from_mutbl(m));
             }
@@ -692,21 +694,21 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         pat: &hir::Pat<'_>,
         has_guard: bool,
     ) {
-        debug!("walk_pat(discr_place={:?}, pat={:?}, has_guard={:?})", discr_place, pat, has_guard);
+        trace!("walk_pat(discr_place={:?}, pat={:?}, has_guard={:?})", discr_place, pat, has_guard);
 
         let tcx = self.tcx();
         let ExprUseVisitor { ref mc, body_owner: _, ref mut delegate } = *self;
         return_if_err!(mc.cat_pattern(discr_place.clone(), pat, |place, pat| {
             if let PatKind::Binding(_, canonical_id, ..) = pat.kind {
-                debug!("walk_pat: binding place={:?} pat={:?}", place, pat);
+                trace!("walk_pat: binding place={:?} pat={:?}", place, pat);
                 if let Some(bm) =
                     mc.typeck_results.extract_binding_mode(tcx.sess, pat.hir_id, pat.span)
                 {
-                    debug!("walk_pat: pat.hir_id={:?} bm={:?}", pat.hir_id, bm);
+                    trace!("walk_pat: pat.hir_id={:?} bm={:?}", pat.hir_id, bm);
 
                     // pat_ty: the type of the binding being produced.
                     let pat_ty = return_if_err!(mc.node_ty(pat.hir_id));
-                    debug!("walk_pat: pat_ty={:?}", pat_ty);
+                    trace!("walk_pat: pat_ty={:?}", pat_ty);
 
                     let def = Res::Local(canonical_id);
                     if let Ok(ref binding_place) = mc.cat_res(pat.hir_id, pat.span, pat_ty, def) {
@@ -730,7 +732,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                             delegate.borrow(place, discr_place.hir_id, bk);
                         }
                         ty::BindByValue(..) => {
-                            debug!("walk_pat binding consuming pat");
+                            trace!("walk_pat binding consuming pat");
                             delegate_consume(mc, *delegate, place, discr_place.hir_id);
                         }
                     }
@@ -767,7 +769,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             upvars.map(|upvars| !upvars.contains_key(&upvar_id)).unwrap_or(body_owner_is_closure)
         }
 
-        debug!("walk_captures({:?})", closure_expr);
+        trace!("walk_captures({:?})", closure_expr);
 
         let tcx = self.tcx();
         let closure_def_id = closure_expr.def_id;
@@ -889,7 +891,7 @@ fn delegate_consume<'a, 'tcx>(
     place_with_id: &PlaceWithHirId<'tcx>,
     diag_expr_id: hir::HirId,
 ) {
-    debug!("delegate_consume(place_with_id={:?})", place_with_id);
+    trace!("delegate_consume(place_with_id={:?})", place_with_id);
 
     let mode = copy_or_move(mc, place_with_id);
 

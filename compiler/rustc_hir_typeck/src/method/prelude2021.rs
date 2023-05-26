@@ -26,9 +26,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pick: &Pick<'tcx>,
         args: &'tcx [hir::Expr<'tcx>],
     ) {
-        debug!(
+        trace!(
             "lookup(method_name={}, self_ty={:?}, call_expr={:?}, self_expr={:?})",
-            segment.ident, self_ty, call_expr, self_expr
+            segment.ident,
+            self_ty,
+            call_expr,
+            self_expr
         );
 
         // Rust 2021 and later is already using the new prelude

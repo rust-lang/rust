@@ -76,13 +76,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let used_trait_imports =
             mem::take(&mut self.typeck_results.borrow_mut().used_trait_imports);
-        debug!("used_trait_imports({:?}) = {:?}", item_def_id, used_trait_imports);
+        trace!("used_trait_imports({:?}) = {:?}", item_def_id, used_trait_imports);
         wbcx.typeck_results.used_trait_imports = used_trait_imports;
 
         wbcx.typeck_results.treat_byte_string_as_slice =
             mem::take(&mut self.typeck_results.borrow_mut().treat_byte_string_as_slice);
 
-        debug!("writeback: typeck results for {:?} are {:#?}", item_def_id, wbcx.typeck_results);
+        trace!("writeback: typeck results for {:?} are {:#?}", item_def_id, wbcx.typeck_results);
 
         self.tcx.arena.alloc(wbcx.typeck_results)
     }
@@ -136,7 +136,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     }
 
     fn write_ty_to_typeck_results(&mut self, hir_id: hir::HirId, ty: Ty<'tcx>) {
-        debug!("write_ty_to_typeck_results({:?}, {:?})", hir_id, ty);
+        trace!("write_ty_to_typeck_results({:?}, {:?})", hir_id, ty);
         assert!(!ty.has_infer() && !ty.has_placeholders() && !ty.has_free_regions());
         self.typeck_results.node_types_mut().insert(hir_id, ty);
     }
@@ -629,12 +629,12 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         let n_ty = self.fcx.node_ty(hir_id);
         let n_ty = self.resolve(n_ty, &span);
         self.write_ty_to_typeck_results(hir_id, n_ty);
-        debug!(?n_ty);
+        trace!(?n_ty);
 
         // Resolve any substitutions
         if let Some(substs) = self.fcx.typeck_results.borrow().node_substs_opt(hir_id) {
             let substs = self.resolve(substs, &span);
-            debug!("write_substs_to_tcx({:?}, {:?})", hir_id, substs);
+            trace!("write_substs_to_tcx({:?}, {:?})", hir_id, substs);
             assert!(!substs.has_infer() && !substs.has_placeholders());
             self.typeck_results.node_substs_mut().insert(hir_id, substs);
         }
@@ -645,12 +645,12 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         let adjustment = self.fcx.typeck_results.borrow_mut().adjustments_mut().remove(hir_id);
         match adjustment {
             None => {
-                debug!("no adjustments for node");
+                trace!("no adjustments for node");
             }
 
             Some(adjustment) => {
                 let resolved_adjustment = self.resolve(adjustment, &span);
-                debug!(?resolved_adjustment);
+                trace!(?resolved_adjustment);
                 self.typeck_results.adjustments_mut().insert(hir_id, resolved_adjustment);
             }
         }
@@ -661,12 +661,12 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         let adjustment = self.fcx.typeck_results.borrow_mut().pat_adjustments_mut().remove(hir_id);
         match adjustment {
             None => {
-                debug!("no pat_adjustments for node");
+                trace!("no pat_adjustments for node");
             }
 
             Some(adjustment) => {
                 let resolved_adjustment = self.resolve(adjustment, &span);
-                debug!(?resolved_adjustment);
+                trace!(?resolved_adjustment);
                 self.typeck_results.pat_adjustments_mut().insert(hir_id, resolved_adjustment);
             }
         }
@@ -830,7 +830,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Resolver<'cx, 'tcx> {
                 EraseEarlyRegions { tcx: self.fcx.tcx }.fold_ty(t)
             }
             Err(_) => {
-                debug!("Resolver::fold_ty: input type `{:?}` not fully resolvable", t);
+                trace!("Resolver::fold_ty: input type `{:?}` not fully resolvable", t);
                 let e = self.report_error(t);
                 self.replaced_with_error = Some(e);
                 self.fcx.tcx.ty_error(e)
@@ -847,7 +847,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Resolver<'cx, 'tcx> {
         match self.fcx.fully_resolve(ct) {
             Ok(ct) => self.fcx.tcx.erase_regions(ct),
             Err(_) => {
-                debug!("Resolver::fold_const: input const `{:?}` not fully resolvable", ct);
+                trace!("Resolver::fold_const: input const `{:?}` not fully resolvable", ct);
                 let e = self.report_error(ct);
                 self.replaced_with_error = Some(e);
                 self.fcx.tcx.const_error(ct.ty(), e)

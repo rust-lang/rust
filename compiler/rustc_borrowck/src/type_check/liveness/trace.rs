@@ -46,7 +46,7 @@ pub(super) fn trace<'mir, 'tcx>(
     boring_locals: Vec<Local>,
     polonius_drop_used: Option<Vec<(Local, Location)>>,
 ) {
-    debug!("trace()");
+    trace!("trace()");
 
     let local_use_map = &LocalUseMap::build(&relevant_live_locals, elements, body);
 
@@ -212,7 +212,7 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
     /// Adds the definitions of `local` into `self.defs`.
     fn add_defs_for(&mut self, local: Local) {
         for def in self.cx.local_use_map.defs(local) {
-            debug!("- defined at {:?}", def);
+            trace!("- defined at {:?}", def);
             self.defs.insert(def);
         }
     }
@@ -224,7 +224,7 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
     ///
     /// Requires `add_defs_for(local)` to have been executed.
     fn compute_use_live_points_for(&mut self, local: Local) {
-        debug!("compute_use_live_points_for(local={:?})", local);
+        trace!("compute_use_live_points_for(local={:?})", local);
 
         self.stack.extend(self.cx.local_use_map.uses(local));
         while let Some(p) = self.stack.pop() {
@@ -278,10 +278,10 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
     /// Requires `compute_use_live_points_for` and `add_defs_for` to
     /// have been executed.
     fn compute_drop_live_points_for(&mut self, local: Local) {
-        debug!("compute_drop_live_points_for(local={:?})", local);
+        trace!("compute_drop_live_points_for(local={:?})", local);
 
         let mpi = self.cx.move_data.rev_lookup.find_local(local);
-        debug!("compute_drop_live_points_for: mpi = {:?}", mpi);
+        trace!("compute_drop_live_points_for: mpi = {:?}", mpi);
 
         // Find the drops where `local` is initialized.
         for drop_point in self.cx.local_use_map.drops(local) {
@@ -296,7 +296,7 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
             }
         }
 
-        debug!("compute_drop_live_points_for: drop_locations={:?}", self.drop_locations);
+        trace!("compute_drop_live_points_for: drop_locations={:?}", self.drop_locations);
 
         // Reverse DFS. But for drops, we do it a bit differently.
         // The stack only ever stores *terminators of blocks*. Within
@@ -318,7 +318,7 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
     /// where applicable -- pushes the terminators of preceding blocks
     /// onto `self.stack`.
     fn compute_drop_live_points_for_block(&mut self, mpi: MovePathIndex, term_point: PointIndex) {
-        debug!(
+        trace!(
             "compute_drop_live_points_for_block(mpi={:?}, term_point={:?})",
             self.cx.move_data.move_paths[mpi].place,
             self.cx.elements.to_location(term_point),
@@ -336,27 +336,27 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
         let block = term_location.block;
         let entry_point = self.cx.elements.entry_point(term_location.block);
         for p in (entry_point..term_point).rev() {
-            debug!("compute_drop_live_points_for_block: p = {:?}", self.cx.elements.to_location(p));
+            trace!("compute_drop_live_points_for_block: p = {:?}", self.cx.elements.to_location(p));
 
             if self.defs.contains(p) {
-                debug!("compute_drop_live_points_for_block: def site");
+                trace!("compute_drop_live_points_for_block: def site");
                 return;
             }
 
             if self.use_live_at.contains(p) {
-                debug!("compute_drop_live_points_for_block: use-live at {:?}", p);
+                trace!("compute_drop_live_points_for_block: use-live at {:?}", p);
                 return;
             }
 
             if !self.drop_live_at.insert(p) {
-                debug!("compute_drop_live_points_for_block: already drop-live");
+                trace!("compute_drop_live_points_for_block: already drop-live");
                 return;
             }
         }
 
         let body = self.cx.body;
         for &pred_block in body.basic_blocks.predecessors()[block].iter() {
-            debug!("compute_drop_live_points_for_block: pred_block = {:?}", pred_block,);
+            trace!("compute_drop_live_points_for_block: pred_block = {:?}", pred_block,);
 
             // Check whether the variable is (at least partially)
             // initialized at the exit of this predecessor. If so, we
@@ -377,7 +377,7 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
             // a *definition* of the variable, in which case we want
             // to stop the search anyhow. (But see Note 1 below.)
             if !self.cx.initialized_at_exit(pred_block, mpi) {
-                debug!("compute_drop_live_points_for_block: not initialized");
+                trace!("compute_drop_live_points_for_block: not initialized");
                 continue;
             }
 
@@ -387,19 +387,19 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
             // If the terminator of this predecessor either *assigns*
             // our value or is a "normal use", then stop.
             if self.defs.contains(pred_term_point) {
-                debug!("compute_drop_live_points_for_block: defined at {:?}", pred_term_loc);
+                trace!("compute_drop_live_points_for_block: defined at {:?}", pred_term_loc);
                 continue;
             }
 
             if self.use_live_at.contains(pred_term_point) {
-                debug!("compute_drop_live_points_for_block: use-live at {:?}", pred_term_loc);
+                trace!("compute_drop_live_points_for_block: use-live at {:?}", pred_term_loc);
                 continue;
             }
 
             // Otherwise, we are drop-live on entry to the terminator,
             // so walk it.
             if self.drop_live_at.insert(pred_term_point) {
-                debug!("compute_drop_live_points_for_block: pushed to stack");
+                trace!("compute_drop_live_points_for_block: pushed to stack");
                 self.stack.push(pred_term_point);
             }
         }
@@ -480,7 +480,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
         value: impl TypeVisitable<TyCtxt<'tcx>>,
         live_at: &IntervalSet<PointIndex>,
     ) {
-        debug!("add_use_live_facts_for(value={:?})", value);
+        trace!("add_use_live_facts_for(value={:?})", value);
 
         Self::make_all_regions_live(self.elements, &mut self.typeck, value, live_at)
     }
@@ -497,7 +497,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
         drop_locations: &[Location],
         live_at: &IntervalSet<PointIndex>,
     ) {
-        debug!(
+        trace!(
             "add_drop_live_constraint(\
              dropped_local={:?}, \
              dropped_ty={:?}, \
@@ -545,8 +545,8 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
         value: impl TypeVisitable<TyCtxt<'tcx>>,
         live_at: &IntervalSet<PointIndex>,
     ) {
-        debug!("make_all_regions_live(value={:?})", value);
-        debug!(
+        trace!("make_all_regions_live(value={:?})", value);
+        trace!(
             "make_all_regions_live: live_at={}",
             values::location_set_str(elements, live_at.iter()),
         );
@@ -567,7 +567,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
         typeck: &mut TypeChecker<'_, 'tcx>,
         dropped_ty: Ty<'tcx>,
     ) -> DropData<'tcx> {
-        debug!("compute_drop_data(dropped_ty={:?})", dropped_ty,);
+        trace!("compute_drop_data(dropped_ty={:?})", dropped_ty,);
 
         match typeck
             .param_env

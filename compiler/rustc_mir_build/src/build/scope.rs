@@ -283,7 +283,7 @@ impl DropTree {
         cfg: &mut CFG<'tcx>,
         blocks: &mut IndexVec<DropIdx, Option<BasicBlock>>,
     ) {
-        debug!("DropTree::build_mir(drops = {:#?})", self);
+        trace!("DropTree::build_mir(drops = {:#?})", self);
         assert_eq!(blocks.len(), self.drops.len());
 
         self.assign_blocks::<T>(cfg, blocks);
@@ -353,7 +353,7 @@ impl DropTree {
             }
         }
 
-        debug!("assign_blocks: blocks = {:#?}", blocks);
+        trace!("assign_blocks: blocks = {:#?}", blocks);
         assert!(entry_points.is_empty());
     }
 
@@ -411,7 +411,7 @@ impl<'tcx> Scopes<'tcx> {
     }
 
     fn push_scope(&mut self, region_scope: (region::Scope, SourceInfo), vis_scope: SourceScope) {
-        debug!("push_scope({:?})", region_scope);
+        trace!("push_scope({:?})", region_scope);
         self.scopes.push(Scope {
             source_scope: vis_scope,
             region_scope: region_scope.0,
@@ -543,7 +543,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     where
         F: FnOnce(&mut Builder<'a, 'tcx>) -> BlockAnd<R>,
     {
-        debug!("in_opt_scope(opt_scope={:?})", opt_scope);
+        trace!("in_opt_scope(opt_scope={:?})", opt_scope);
         if let Some(region_scope) = opt_scope {
             self.push_scope(region_scope);
         }
@@ -552,7 +552,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         if let Some(region_scope) = opt_scope {
             unpack!(block = self.pop_scope(region_scope, block));
         }
-        debug!("in_scope: exiting opt_scope={:?} block={:?}", opt_scope, block);
+        trace!("in_scope: exiting opt_scope={:?} block={:?}", opt_scope, block);
         block.and(rv)
     }
 
@@ -579,7 +579,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let rv = unpack!(block = f(self));
         unpack!(block = self.pop_scope(region_scope, block));
         self.source_scope = source_scope;
-        debug!(?block);
+        trace!(?block);
         block.and(rv)
     }
 
@@ -599,7 +599,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         region_scope: (region::Scope, SourceInfo),
         mut block: BasicBlock,
     ) -> BlockAnd<()> {
-        debug!("pop_scope({:?}, {:?})", region_scope, block);
+        trace!("pop_scope({:?}, {:?})", region_scope, block);
 
         block = self.leave_top_scope(block);
 
@@ -647,7 +647,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         match (destination, value) {
             (Some(destination), Some(value)) => {
-                debug!("stmt_expr Break val block_context.push(SubExpr)");
+                trace!("stmt_expr Break val block_context.push(SubExpr)");
                 self.block_context.push(BlockFrame::SubExpr);
                 unpack!(block = self.expr_into_dest(destination, block, value));
                 self.block_context.pop();
@@ -790,7 +790,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         safety: Option<Safety>,
     ) -> SourceScope {
         let parent = self.source_scope;
-        debug!(
+        trace!(
             "new_source_scope({:?}, {:?}, {:?}) - parent({:?})={:?}",
             span,
             lint_level,
@@ -1208,7 +1208,7 @@ fn build_scope_drops<'tcx>(
     storage_dead_on_unwind: bool,
     arg_count: usize,
 ) -> BlockAnd<()> {
-    debug!("build_scope_drops({:?} -> {:?})", block, scope);
+    trace!("build_scope_drops({:?} -> {:?})", block, scope);
 
     // Build up the drops in evaluation order. The end result will
     // look like:

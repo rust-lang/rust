@@ -191,7 +191,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.lint_dot_call_from_2018(self_ty, segment, span, call_expr, self_expr, &pick, args);
 
         for import_id in &pick.import_ids {
-            debug!("used_trait_import: {:?}", import_id);
+            trace!("used_trait_import: {:?}", import_id);
             Lrc::get_mut(&mut self.typeck_results.borrow_mut().used_trait_imports)
                 .unwrap()
                 .insert(*import_id);
@@ -200,7 +200,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.tcx.check_stability(pick.item.def_id, Some(call_expr.hir_id), span, None);
 
         let result = self.confirm_method(span, self_expr, call_expr, self_ty, &pick, segment);
-        debug!("result = {:?}", result);
+        trace!("result = {:?}", result);
 
         if let Some(span) = result.illegal_sized_bound {
             let mut needs_mut = false;
@@ -361,11 +361,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         obligation: traits::PredicateObligation<'tcx>,
         substs: &'tcx ty::List<ty::subst::GenericArg<'tcx>>,
     ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
-        debug!(?obligation);
+        trace!(?obligation);
 
         // Now we want to know if this can be matched
         if !self.predicate_may_hold(&obligation) {
-            debug!("--> Cannot match obligation");
+            trace!("--> Cannot match obligation");
             // Cannot be matched, no such method resolution is possible.
             return None;
         }
@@ -396,7 +396,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             });
         }
 
-        debug!("lookup_in_trait_adjusted: method_item={:?}", method_item);
+        trace!("lookup_in_trait_adjusted: method_item={:?}", method_item);
         let mut obligations = vec![];
 
         // Instantiate late-bound regions and substitute the trait
@@ -444,9 +444,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Also add an obligation for the method type being well-formed.
         let method_ty = tcx.mk_fn_ptr(ty::Binder::dummy(fn_sig));
-        debug!(
+        trace!(
             "lookup_in_trait_adjusted: matched method method_ty={:?} obligation={:?}",
-            method_ty, obligation
+            method_ty,
+            obligation
         );
         obligations.push(traits::Obligation::new(
             tcx,
@@ -457,7 +458,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let callee = MethodCallee { def_id, substs, sig: fn_sig };
 
-        debug!("callee = {:?}", callee);
+        trace!("callee = {:?}", callee);
 
         Some(InferOk { obligations, value: callee })
     }
@@ -539,12 +540,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             &pick,
         );
 
-        debug!(?pick);
+        trace!(?pick);
         {
             let mut typeck_results = self.typeck_results.borrow_mut();
             let used_trait_imports = Lrc::get_mut(&mut typeck_results.used_trait_imports).unwrap();
             for import_id in pick.import_ids {
-                debug!(used_trait_import=?import_id);
+                trace!(used_trait_import=?import_id);
                 used_trait_imports.insert(import_id);
             }
         }

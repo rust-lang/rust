@@ -289,12 +289,12 @@ fn typeck_with_fallback<'tcx>(
 
     fcx.select_obligations_where_possible(|_| {});
 
-    debug!(pending_obligations = ?fcx.fulfillment_cx.borrow().pending_obligations());
+    trace!(pending_obligations = ?fcx.fulfillment_cx.borrow().pending_obligations());
 
     // This must be the last thing before `report_ambiguity_errors`.
     fcx.resolve_generator_interiors(def_id.to_def_id());
 
-    debug!(pending_obligations = ?fcx.fulfillment_cx.borrow().pending_obligations());
+    trace!(pending_obligations = ?fcx.fulfillment_cx.borrow().pending_obligations());
 
     if let None = fcx.infcx.tainted_by_errors() {
         fcx.report_ambiguity_errors();

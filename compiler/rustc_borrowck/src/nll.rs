@@ -64,7 +64,7 @@ pub(crate) fn replace_regions_in_mir<'tcx>(
 ) -> UniversalRegions<'tcx> {
     let def = body.source.def_id().expect_local();
 
-    debug!(?def);
+    trace!(?def);
 
     // Compute named region information. This also renumbers the inputs/outputs.
     let universal_regions = UniversalRegions::new(infcx, def, param_env);
@@ -211,7 +211,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
         //   added to the existing number of loans, as if they succeeded them in the set.
         //
         let borrow_count = borrow_set.len();
-        debug!(
+        trace!(
             "compute_regions: polonius placeholders, num_universals={}, borrow_count={}",
             universal_regions.len(),
             borrow_count
@@ -227,10 +227,11 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
         //  `known_placeholder_subset` facts.
         for (fr1, fr2) in universal_region_relations.known_outlives() {
             if fr1 != fr2 {
-                debug!(
+                trace!(
                     "compute_regions: emitting polonius `known_placeholder_subset` \
                      fr1={:?}, fr2={:?}",
-                    fr1, fr2
+                    fr1,
+                    fr2
                 );
                 all_facts.known_placeholder_subset.push((fr1, fr2));
             }
@@ -293,7 +294,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
             let algorithm =
                 env::var("POLONIUS_ALGORITHM").unwrap_or_else(|_| String::from("Hybrid"));
             let algorithm = Algorithm::from_str(&algorithm).unwrap();
-            debug!("compute_regions: using polonius algorithm {:?}", algorithm);
+            trace!("compute_regions: using polonius algorithm {:?}", algorithm);
             let _prof_timer = infcx.tcx.prof.generic_activity("polonius_analysis");
             Some(Rc::new(Output::compute(&all_facts, algorithm, false)))
         } else {

@@ -53,7 +53,7 @@ pub fn compute_drop_ranges<'a, 'tcx>(
 
         drop_ranges.propagate_to_fixpoint();
 
-        debug!("borrowed_temporaries = {borrowed_temporaries:?}");
+        trace!("borrowed_temporaries = {borrowed_temporaries:?}");
         DropRanges {
             tracked_value_map: drop_ranges.tracked_value_map,
             nodes: drop_ranges.nodes,
@@ -170,7 +170,7 @@ impl TryFrom<&PlaceWithHirId<'_>> for TrackedValue {
 
     fn try_from(place_with_id: &PlaceWithHirId<'_>) -> Result<Self, Self::Error> {
         if !place_with_id.place.projections.is_empty() {
-            debug!(
+            trace!(
                 "TrackedValue from PlaceWithHirId: {:?} has projections, which are not supported.",
                 place_with_id
             );

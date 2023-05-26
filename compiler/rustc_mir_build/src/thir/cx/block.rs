@@ -79,13 +79,13 @@ impl<'tcx> Cx<'tcx> {
                         let else_block = local.els.map(|els| self.mirror_block(els));
 
                         let mut pattern = self.pattern_from_hir(local.pat);
-                        debug!(?pattern);
+                        trace!(?pattern);
 
                         if let Some(ty) = &local.ty {
                             if let Some(&user_ty) =
                                 self.typeck_results.user_provided_types().get(ty.hir_id)
                             {
-                                debug!("mirror_stmts: user_ty={:?}", user_ty);
+                                trace!("mirror_stmts: user_ty={:?}", user_ty);
                                 let annotation = CanonicalUserTypeAnnotation {
                                     user_ty: Box::new(user_ty),
                                     span: ty.span,

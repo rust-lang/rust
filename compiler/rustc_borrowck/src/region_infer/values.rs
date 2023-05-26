@@ -35,8 +35,8 @@ impl RegionValueElements {
                 v
             })
             .collect();
-        debug!("RegionValueElements: statements_before_block={:#?}", statements_before_block);
-        debug!("RegionValueElements: num_points={:#?}", num_points);
+        trace!("RegionValueElements: statements_before_block={:#?}", statements_before_block);
+        trace!("RegionValueElements: num_points={:#?}", num_points);
 
         let mut basic_blocks = IndexVec::with_capacity(num_points);
         for (bb, bb_data) in body.basic_blocks.iter_enumerated() {
@@ -139,7 +139,7 @@ impl<N: Idx> LivenessValues<N> {
     /// Adds the given element to the value for the given region. Returns whether
     /// the element is newly added (i.e., was not already present).
     pub(crate) fn add_element(&mut self, row: N, location: Location) -> bool {
-        debug!("LivenessValues::add(r={:?}, location={:?})", row, location);
+        trace!("LivenessValues::add(r={:?}, location={:?})", row, location);
         let index = self.elements.point_from_location(location);
         self.points.insert(row, index)
     }
@@ -147,7 +147,7 @@ impl<N: Idx> LivenessValues<N> {
     /// Adds all the elements in the given bit array into the given
     /// region. Returns whether any of them are newly added.
     pub(crate) fn add_elements(&mut self, row: N, locations: &IntervalSet<PointIndex>) -> bool {
-        debug!("LivenessValues::add_elements(row={:?}, locations={:?})", row, locations);
+        trace!("LivenessValues::add_elements(row={:?}, locations={:?})", row, locations);
         self.points.union_row(row, locations)
     }
 
@@ -261,7 +261,7 @@ impl<N: Idx> RegionValues<N> {
     /// Adds the given element to the value for the given region. Returns whether
     /// the element is newly added (i.e., was not already present).
     pub(crate) fn add_element(&mut self, r: N, elem: impl ToElementIndex) -> bool {
-        debug!("add(r={:?}, elem={:?})", r, elem);
+        trace!("add(r={:?}, elem={:?})", r, elem);
         elem.add_to_row(self, r)
     }
 

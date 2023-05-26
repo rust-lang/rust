@@ -64,7 +64,7 @@ features = [
 
 [features]
 llvm = ['rustc_interface/llvm']
-max_level_info = ['rustc_log/max_level_info']
+max_level_debug = ['rustc_log/max_level_debug']
 rustc_use_parallel_compiler = [
     'rustc_data_structures/rustc_use_parallel_compiler',
     'rustc_interface/rustc_use_parallel_compiler',

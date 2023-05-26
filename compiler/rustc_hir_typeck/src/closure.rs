@@ -74,12 +74,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         trace!("decl = {:#?}", closure.fn_decl);
         let expr_def_id = closure.def_id;
-        debug!(?expr_def_id);
+        trace!(?expr_def_id);
 
         let ClosureSignatures { bound_sig, liberated_sig } =
             self.sig_of_closure(expr_def_id, closure.fn_decl, body, expected_sig);
 
-        debug!(?bound_sig, ?liberated_sig);
+        trace!(?bound_sig, ?liberated_sig);
 
         let mut fcx = FnCtxt::new(self, self.param_env.without_const(), closure.def_id);
         let generator_types = check_fn(
@@ -136,7 +136,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             )
         });
 
-        debug!(?sig, ?opt_kind);
+        trace!(?sig, ?opt_kind);
 
         let closure_kind_ty = match opt_kind {
             Some(kind) => kind.to_ty(self.tcx),
@@ -216,7 +216,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // We only care about self bounds
         .filter_only_self()
         {
-            debug!(?pred);
+            trace!(?pred);
             let bound_predicate = pred.kind();
 
             // Given a Projection predicate, we can potentially infer
@@ -299,21 +299,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let is_gen = gen_trait == Some(trait_def_id);
 
         if !is_fn && !is_gen {
-            debug!("not fn or generator");
+            trace!("not fn or generator");
             return None;
         }
 
         // Check that we deduce the signature from the `<_ as std::ops::Generator>::Return`
         // associated item and not yield.
         if is_gen && self.tcx.associated_item(projection.projection_def_id()).name != sym::Return {
-            debug!("not `Return` assoc item of `Generator`");
+            trace!("not `Return` assoc item of `Generator`");
             return None;
         }
 
         let input_tys = if is_fn {
             let arg_param_ty = projection.skip_binder().projection_ty.substs.type_at(1);
             let arg_param_ty = self.resolve_vars_if_possible(arg_param_ty);
-            debug!(?arg_param_ty);
+            trace!(?arg_param_ty);
 
             match arg_param_ty.kind() {
                 &ty::Tuple(tys) => tys,
@@ -328,7 +328,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Since this is a return parameter type it is safe to unwrap.
         let ret_param_ty = projection.skip_binder().term.ty().unwrap();
         let ret_param_ty = self.resolve_vars_if_possible(ret_param_ty);
-        debug!(?ret_param_ty);
+        trace!(?ret_param_ty);
 
         let sig = projection.rebind(self.tcx.mk_fn_sig(
             input_tys,
@@ -526,7 +526,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // meaning of these letters.)
         let supplied_sig = self.supplied_sig_of_closure(expr_def_id, decl, body);
 
-        debug!(?supplied_sig);
+        trace!(?supplied_sig);
 
         // FIXME(#45727): As discussed in [this comment][c1], naively
         // forcing equality here actually results in suboptimal error
@@ -616,7 +616,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let astconv: &dyn AstConv<'_> = self;
 
         trace!("decl = {:#?}", decl);
-        debug!(?body.generator_kind);
+        trace!(?body.generator_kind);
 
         let hir_id = self.tcx.hir().local_def_id_to_hir_id(expr_def_id);
         let bound_vars = self.tcx.late_bound_vars(hir_id);
@@ -630,7 +630,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // we expect the return type of the block to match that of the enclosing
                 // function.
                 Some(hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Fn)) => {
-                    debug!("closure is async fn body");
+                    trace!("closure is async fn body");
                     let def_id = self.tcx.hir().body_owner_def_id(body.id());
                     self.deduce_future_output_from_obligations(expr_def_id, def_id).unwrap_or_else(
                         || {
@@ -756,12 +756,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         cause_span: Span,
         predicate: ty::PolyProjectionPredicate<'tcx>,
     ) -> Option<Ty<'tcx>> {
-        debug!("deduce_future_output_from_projection(predicate={:?})", predicate);
+        trace!("deduce_future_output_from_projection(predicate={:?})", predicate);
 
         // We do not expect any bound regions in our predicate, so
         // skip past the bound vars.
         let Some(predicate) = predicate.no_bound_vars() else {
-            debug!("deduce_future_output_from_projection: has late-bound regions");
+            trace!("deduce_future_output_from_projection: has late-bound regions");
             return None;
         };
 
@@ -769,7 +769,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let trait_def_id = predicate.projection_ty.trait_def_id(self.tcx);
         let future_trait = self.tcx.require_lang_item(LangItem::Future, Some(cause_span));
         if trait_def_id != future_trait {
-            debug!("deduce_future_output_from_projection: not a future");
+            trace!("deduce_future_output_from_projection: not a future");
             return None;
         }
 
@@ -789,7 +789,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // be no bound variables in this type because the "self type"
         // does not have any regions in it.
         let output_ty = self.resolve_vars_if_possible(predicate.term);
-        debug!("deduce_future_output_from_projection: output_ty={:?}", output_ty);
+        trace!("deduce_future_output_from_projection: output_ty={:?}", output_ty);
         // This is a projection on a Fn trait so will always be a type.
         Some(output_ty.ty().unwrap())
     }
@@ -823,7 +823,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Abi::RustCall,
         ));
 
-        debug!("supplied_sig_of_closure: result={:?}", result);
+        trace!("supplied_sig_of_closure: result={:?}", result);
 
         result
     }

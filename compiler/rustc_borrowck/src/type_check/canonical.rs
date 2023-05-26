@@ -40,7 +40,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let TypeOpOutput { output, constraints, error_info } =
             op.fully_perform(self.infcx, locations.span(self.body))?;
 
-        debug!(?output, ?constraints);
+        trace!(?output, ?constraints);
 
         if let Some(data) = constraints {
             self.push_region_constraints(locations, category, data);
@@ -109,7 +109,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         locations: Locations,
     ) {
         for (predicate, span) in instantiated_predicates {
-            debug!(?predicate);
+            trace!(?predicate);
             let category = ConstraintCategory::Predicate(span);
             let predicate = self.normalize_with_category(predicate, locations, category);
             self.prove_predicate(predicate, locations, category);

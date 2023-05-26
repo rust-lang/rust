@@ -13,4 +13,4 @@ tracing-core = "0.1.28"
 rustc_span = { path = "../rustc_span" }
 
 [features]
-max_level_info = ['tracing/max_level_info']
+max_level_debug = ['tracing/max_level_debug']

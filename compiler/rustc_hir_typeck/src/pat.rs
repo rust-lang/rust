@@ -347,9 +347,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // See the examples in `ui/match-defbm*.rs`.
         let mut pat_adjustments = vec![];
         while let ty::Ref(_, inner_ty, inner_mutability) = *expected.kind() {
-            debug!("inspecting {:?}", expected);
+            trace!("inspecting {:?}", expected);
 
-            debug!("current discriminant is Ref, inserting implicit deref");
+            trace!("current discriminant is Ref, inserting implicit deref");
             // Preserve the reference type. We'll need it later during THIR lowering.
             pat_adjustments.push(expected);
 
@@ -367,7 +367,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         if !pat_adjustments.is_empty() {
-            debug!("default binding mode is now {:?}", def_bm);
+            trace!("default binding mode is now {:?}", def_bm);
             self.inh
                 .typeck_results
                 .borrow_mut()
@@ -592,7 +592,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // ...and store it in a side table:
         self.inh.typeck_results.borrow_mut().pat_binding_modes_mut().insert(pat.hir_id, bm);
 
-        debug!("check_pat_ident: pat.hir_id={:?} bm={:?}", pat.hir_id, bm);
+        trace!("check_pat_ident: pat.hir_id={:?} bm={:?}", pat.hir_id, bm);
 
         let local_ty = self.local_ty(pat.span, pat.hir_id).decl_ty;
         let eq_ty = match bm {
@@ -703,7 +703,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         && let PatKind::Binding(_, _, binding, ..) = inner.kind {
             let binding_parent_id = tcx.hir().parent_id(pat.hir_id);
             let binding_parent = tcx.hir().get(binding_parent_id);
-            debug!(?inner, ?pat, ?binding_parent);
+            trace!(?inner, ?pat, ?binding_parent);
 
             let mutability = match mutbl {
                 ast::Mutability::Mut => "mut",
@@ -1984,7 +1984,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Take region, inner-type from expected type if we can,
                 // to avoid creating needless variables. This also helps with
                 // the bad interactions of the given hack detailed in (note_1).
-                debug!("check_pat_ref: expected={:?}", expected);
+                trace!("check_pat_ref: expected={:?}", expected);
                 match *expected.kind() {
                     ty::Ref(_, r_ty, r_mutbl) if r_mutbl == mutbl => (expected, r_ty),
                     _ => {
@@ -1993,7 +1993,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             span: inner.span,
                         });
                         let ref_ty = self.new_ref_ty(pat.span, mutbl, inner_ty);
-                        debug!("check_pat_ref: demanding {:?} = {:?}", expected, ref_ty);
+                        trace!("check_pat_ref: demanding {:?} = {:?}", expected, ref_ty);
                         let err = self.demand_eqtype_pat_diag(pat.span, expected, ref_ty, ti);
 
                         // Look for a case like `fn foo(&foo: u32)` and suggest

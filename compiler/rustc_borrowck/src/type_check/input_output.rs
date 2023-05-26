@@ -69,8 +69,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let (&normalized_output_ty, normalized_input_tys) =
             normalized_inputs_and_output.split_last().unwrap();
 
-        debug!(?normalized_output_ty);
-        debug!(?normalized_input_tys);
+        trace!(?normalized_output_ty);
+        trace!(?normalized_input_tys);
 
         // Equate expected input tys with those in the MIR.
         for (argument_index, &normalized_input_ty) in normalized_input_tys.iter().enumerate() {
@@ -94,7 +94,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             );
         }
 
-        debug!(
+        trace!(
             "equate_inputs_and_outputs: body.yield_ty {:?}, universal_regions.yield_ty {:?}",
             body.yield_ty(),
             universal_regions.yield_ty

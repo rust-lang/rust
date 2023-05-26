@@ -358,7 +358,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
                     .borrow_mut()
                     .unwrap_region_constraints()
                     .opportunistic_resolve_var(self.tcx, vid);
-                debug!(
+                trace!(
                     "canonical: region var found with vid {vid:?}, \
                      opportunistically resolved to {resolved:?}",
                 );
@@ -386,11 +386,11 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
                     vid = root_vid;
                 }
 
-                debug!("canonical: type var found with vid {:?}", vid);
+                trace!("canonical: type var found with vid {:?}", vid);
                 match self.infcx.probe_ty_var(vid) {
                     // `t` could be a float / int variable; canonicalize that instead.
                     Ok(t) => {
-                        debug!("(resolved to {:?})", t);
+                        trace!("(resolved to {:?})", t);
                         self.fold_ty(t)
                     }
 
@@ -501,10 +501,10 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
                     vid = root_vid;
                 }
 
-                debug!("canonical: const var found with vid {:?}", vid);
+                trace!("canonical: const var found with vid {:?}", vid);
                 match self.infcx.probe_const_var(vid) {
                     Ok(c) => {
-                        debug!("(resolved to {:?})", c);
+                        trace!("(resolved to {:?})", c);
                         return self.fold_const(c);
                     }
 

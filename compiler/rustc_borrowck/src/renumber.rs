@@ -18,7 +18,7 @@ pub fn renumber_mir<'tcx>(
     body: &mut Body<'tcx>,
     promoted: &mut IndexSlice<Promoted, Body<'tcx>>,
 ) {
-    debug!(?body.arg_count);
+    trace!(?body.arg_count);
 
     let mut renumberer = RegionRenumberer { infcx };
 
@@ -90,14 +90,14 @@ impl<'a, 'tcx> MutVisitor<'tcx> for RegionRenumberer<'a, 'tcx> {
     fn visit_ty(&mut self, ty: &mut Ty<'tcx>, ty_context: TyContext) {
         *ty = self.renumber_regions(*ty, || RegionCtxt::TyContext(ty_context));
 
-        debug!(?ty);
+        trace!(?ty);
     }
 
     #[instrument(skip(self), level = "debug")]
     fn visit_substs(&mut self, substs: &mut SubstsRef<'tcx>, location: Location) {
         *substs = self.renumber_regions(*substs, || RegionCtxt::Location(location));
 
-        debug!(?substs);
+        trace!(?substs);
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -105,7 +105,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for RegionRenumberer<'a, 'tcx> {
         let old_region = *region;
         *region = self.renumber_regions(old_region, || RegionCtxt::Location(location));
 
-        debug!(?region);
+        trace!(?region);
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -113,13 +113,13 @@ impl<'a, 'tcx> MutVisitor<'tcx> for RegionRenumberer<'a, 'tcx> {
         let old_ct = *ct;
         *ct = self.renumber_regions(old_ct, || RegionCtxt::Location(location));
 
-        debug!(?ct);
+        trace!(?ct);
     }
 
     #[instrument(skip(self), level = "debug")]
     fn visit_constant(&mut self, constant: &mut Constant<'tcx>, location: Location) {
         let literal = constant.literal;
         constant.literal = self.renumber_regions(literal, || RegionCtxt::Location(location));
-        debug!("constant: {:#?}", constant);
+        trace!("constant: {:#?}", constant);
     }
 }

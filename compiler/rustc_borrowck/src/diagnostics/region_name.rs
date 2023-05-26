@@ -239,7 +239,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     ///
     /// and then return the name `'1` for us to use.
     pub(crate) fn give_region_a_name(&self, fr: RegionVid) -> Option<RegionName> {
-        debug!(
+        trace!(
             "give_region_a_name(fr={:?}, counter={:?})",
             fr,
             self.next_region_name.try_borrow().unwrap()
@@ -264,7 +264,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             self.region_names.try_borrow_mut().unwrap().insert(fr, value.clone());
         }
 
-        debug!("give_region_a_name: gave name {:?}", value);
+        trace!("give_region_a_name: gave name {:?}", value);
         value
     }
 
@@ -278,7 +278,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         let tcx = self.infcx.tcx;
 
-        debug!("give_region_a_name: error_region = {:?}", error_region);
+        trace!("give_region_a_name: error_region = {:?}", error_region);
         match *error_region {
             ty::ReEarlyBound(ebr) => ebr.has_name().then(|| {
                 let span = tcx.hir().span_if_local(ebr.def_id).unwrap_or(DUMMY_SP);
@@ -293,7 +293,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 ty::BoundRegionKind::BrNamed(region_def_id, name) => {
                     // Get the span to point to, even if we don't use the name.
                     let span = tcx.hir().span_if_local(region_def_id).unwrap_or(DUMMY_SP);
-                    debug!(
+                    trace!(
                         "bound region named: {:?}, is_named: {:?}",
                         name,
                         free_region.bound_region.is_named()
@@ -447,9 +447,10 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         let type_name =
             self.infcx.extract_inference_diagnostics_data(ty.into(), Some(highlight)).name;
 
-        debug!(
+        trace!(
             "highlight_if_we_cannot_match_hir_ty: type_name={:?} needle_fr={:?}",
-            type_name, needle_fr
+            type_name,
+            needle_fr
         );
         if type_name.contains(&format!("'{counter}")) {
             // Only add a label if we can confirm that a region was labelled.
@@ -665,7 +666,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         let hir = tcx.hir();
 
         let return_ty = self.regioncx.universal_regions().unnormalized_output_ty;
-        debug!("give_name_if_anonymous_region_appears_in_output: return_ty = {:?}", return_ty);
+        trace!("give_name_if_anonymous_region_appears_in_output: return_ty = {:?}", return_ty);
         if !tcx.any_free_region_meets(&return_ty, |r| r.as_var() == fr) {
             return None;
         }
@@ -799,7 +800,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         // Note: generators from `async fn` yield `()`, so we don't have to
         // worry about them here.
         let yield_ty = self.regioncx.universal_regions().yield_ty?;
-        debug!("give_name_if_anonymous_region_appears_in_yield_ty: yield_ty = {:?}", yield_ty);
+        trace!("give_name_if_anonymous_region_appears_in_yield_ty: yield_ty = {:?}", yield_ty);
 
         let tcx = self.infcx.tcx;
 
@@ -820,10 +821,11 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             _ => self.body.span,
         };
 
-        debug!(
+        trace!(
             "give_name_if_anonymous_region_appears_in_yield_ty: \
              type_name = {:?}, yield_span = {:?}",
-            yield_span, type_name,
+            yield_span,
+            type_name,
         );
 
         Some(RegionName {

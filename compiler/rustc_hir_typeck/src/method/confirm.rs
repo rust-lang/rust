@@ -51,9 +51,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pick: &probe::Pick<'tcx>,
         segment: &hir::PathSegment<'_>,
     ) -> ConfirmResult<'tcx> {
-        debug!(
+        trace!(
             "confirm(unadjusted_self_ty={:?}, pick={:?}, generic_args={:?})",
-            unadjusted_self_ty, pick, segment.args,
+            unadjusted_self_ty,
+            pick,
+            segment.args,
         );
 
         let mut confirm_cx = ConfirmContext::new(self, span, self_expr, call_expr);
@@ -84,7 +86,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         let rcvr_substs = self.fresh_receiver_substs(self_ty, &pick);
         let all_substs = self.instantiate_method_substs(&pick, segment, rcvr_substs);
 
-        debug!("rcvr_substs={rcvr_substs:?}, all_substs={all_substs:?}");
+        trace!("rcvr_substs={rcvr_substs:?}, all_substs={all_substs:?}");
 
         // Create the final signature for the method, replacing late-bound regions.
         let (method_sig, method_predicates) = self.instantiate_method_sig(&pick, all_substs);
@@ -110,9 +112,12 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // could alter our Self-type, except for normalizing the receiver from the
         // signature (which is also done during probing).
         let method_sig_rcvr = self.normalize(self.span, method_sig.inputs()[0]);
-        debug!(
+        trace!(
             "confirm: self_ty={:?} method_sig_rcvr={:?} method_sig={:?} method_predicates={:?}",
-            self_ty, method_sig_rcvr, method_sig, method_predicates
+            self_ty,
+            method_sig_rcvr,
+            method_sig,
+            method_predicates
         );
         self.unify_receivers(self_ty, method_sig_rcvr, &pick, all_substs);
 
@@ -263,9 +268,11 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                     let upcast_poly_trait_ref = this.upcast(original_poly_trait_ref, trait_def_id);
                     let upcast_trait_ref =
                         this.instantiate_binder_with_fresh_vars(upcast_poly_trait_ref);
-                    debug!(
+                    trace!(
                         "original_poly_trait_ref={:?} upcast_trait_ref={:?} target_trait={:?}",
-                        original_poly_trait_ref, upcast_trait_ref, trait_def_id
+                        original_poly_trait_ref,
+                        upcast_trait_ref,
+                        trait_def_id
                     );
                     upcast_trait_ref.substs
                 })
@@ -452,7 +459,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 ))
             });
 
-            debug!("instantiate_method_substs: user_type_annotation={:?}", user_type_annotation);
+            trace!("instantiate_method_substs: user_type_annotation={:?}", user_type_annotation);
             self.fcx.write_user_type_annotation(self.call_expr.hir_id, user_type_annotation);
         }
 
@@ -466,9 +473,12 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         pick: &probe::Pick<'tcx>,
         substs: SubstsRef<'tcx>,
     ) {
-        debug!(
+        trace!(
             "unify_receivers: self_ty={:?} method_self_ty={:?} span={:?} pick={:?}",
-            self_ty, method_self_ty, self.span, pick
+            self_ty,
+            method_self_ty,
+            self.span,
+            pick
         );
         let cause = self.cause(
             self.self_expr.span,
@@ -510,7 +520,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         pick: &probe::Pick<'tcx>,
         all_substs: SubstsRef<'tcx>,
     ) -> (ty::FnSig<'tcx>, ty::InstantiatedPredicates<'tcx>) {
-        debug!("instantiate_method_sig(pick={:?}, all_substs={:?})", pick, all_substs);
+        trace!("instantiate_method_sig(pick={:?}, all_substs={:?})", pick, all_substs);
 
         // Instantiate the bounds on the method with the
         // type/early-bound-regions substitutions performed. There can
@@ -518,13 +528,13 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         let def_id = pick.item.def_id;
         let method_predicates = self.tcx.predicates_of(def_id).instantiate(self.tcx, all_substs);
 
-        debug!("method_predicates after subst = {:?}", method_predicates);
+        trace!("method_predicates after subst = {:?}", method_predicates);
 
         let sig = self.tcx.fn_sig(def_id).subst(self.tcx, all_substs);
-        debug!("type scheme substituted, sig={:?}", sig);
+        trace!("type scheme substituted, sig={:?}", sig);
 
         let sig = self.instantiate_binder_with_fresh_vars(sig);
-        debug!("late-bound lifetimes from method instantiated, sig={:?}", sig);
+        trace!("late-bound lifetimes from method instantiated, sig={:?}", sig);
 
         (sig, method_predicates)
     }
@@ -536,9 +546,12 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         method_predicates: ty::InstantiatedPredicates<'tcx>,
         def_id: DefId,
     ) {
-        debug!(
+        trace!(
             "add_obligations: fty={:?} all_substs={:?} method_predicates={:?} def_id={:?}",
-            fty, all_substs, method_predicates, def_id
+            fty,
+            all_substs,
+            method_predicates,
+            def_id
         );
 
         // FIXME: could replace with the following, but we already calculated `method_predicates`,

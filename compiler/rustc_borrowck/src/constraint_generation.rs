@@ -167,7 +167,7 @@ impl<'cx, 'tcx> ConstraintGeneration<'cx, 'tcx> {
     where
         T: TypeVisitable<TyCtxt<'tcx>>,
     {
-        debug!("add_regular_live_constraint(live_ty={:?}, location={:?})", live_ty, location);
+        trace!("add_regular_live_constraint(live_ty={:?}, location={:?})", live_ty, location);
 
         self.infcx.tcx.for_each_free_region(&live_ty, |live_region| {
             let vid = live_region.as_var();
@@ -190,9 +190,10 @@ impl<'cx, 'tcx> ConstraintGeneration<'cx, 'tcx> {
             match place.as_ref() {
                 PlaceRef { local, projection: &[] }
                 | PlaceRef { local, projection: &[ProjectionElem::Deref] } => {
-                    debug!(
+                    trace!(
                         "Recording `killed` facts for borrows of local={:?} at location={:?}",
-                        local, location
+                        local,
+                        location
                     );
 
                     record_killed_borrows_for_local(
@@ -206,10 +207,11 @@ impl<'cx, 'tcx> ConstraintGeneration<'cx, 'tcx> {
 
                 PlaceRef { local, projection: &[.., _] } => {
                     // Kill conflicting borrows of the innermost local.
-                    debug!(
+                    trace!(
                         "Recording `killed` facts for borrows of \
                             innermost projected local={:?} at location={:?}",
-                        local, location
+                        local,
+                        location
                     );
 
                     if let Some(borrow_indices) = self.borrow_set.local_map.get(&local) {

@@ -59,7 +59,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             {
                 self.diverges.set(Diverges::WarnedAlways);
 
-                debug!("warn_if_unreachable: id={:?} span={:?} kind={}", id, span, kind);
+                trace!("warn_if_unreachable: id={:?} span={:?} kind={}", id, span, kind);
 
                 let msg = format!("unreachable {}", kind);
                 self.tcx().struct_span_lint_hir(
@@ -95,14 +95,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         // No Infer()? Nothing needs doing.
         if !ty.has_non_region_infer() {
-            debug!("no inference var, nothing needs doing");
+            trace!("no inference var, nothing needs doing");
             return ty;
         }
 
         // If `ty` is a type variable, see whether we already know what it is.
         ty = self.resolve_vars_if_possible(ty);
         if !ty.has_non_region_infer() {
-            debug!(?ty);
+            trace!(?ty);
             return ty;
         }
 
@@ -143,7 +143,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     #[inline]
     pub fn write_ty(&self, id: hir::HirId, ty: Ty<'tcx>) {
-        debug!("write_ty({:?}, {:?}) in fcx {}", id, self.resolve_vars_if_possible(ty), self.tag());
+        trace!("write_ty({:?}, {:?}) in fcx {}", id, self.resolve_vars_if_possible(ty), self.tag());
         self.typeck_results.borrow_mut().node_types_mut().insert(id, ty);
 
         if let Err(e) = ty.error_reported() {
@@ -172,7 +172,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn write_substs(&self, node_id: hir::HirId, substs: SubstsRef<'tcx>) {
         if !substs.is_empty() {
-            debug!("write_substs({:?}, {:?}) in fcx {}", node_id, substs, self.tag());
+            trace!("write_substs({:?}, {:?}) in fcx {}", node_id, substs, self.tag());
 
             self.typeck_results.borrow_mut().node_substs_mut().insert(node_id, substs);
         }
@@ -193,14 +193,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         substs: SubstsRef<'tcx>,
         user_self_ty: Option<UserSelfTy<'tcx>>,
     ) {
-        debug!("fcx {}", self.tag());
+        trace!("fcx {}", self.tag());
 
         if Self::can_contain_user_lifetime_bounds((substs, user_self_ty)) {
             let canonicalized = self.canonicalize_user_type_annotation(UserType::TypeOf(
                 def_id,
                 UserSubsts { substs, user_self_ty },
             ));
-            debug!(?canonicalized);
+            trace!(?canonicalized);
             self.write_user_type_annotation(hir_id, canonicalized);
         }
     }
@@ -211,7 +211,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         hir_id: hir::HirId,
         canonical_user_type_annotation: CanonicalUserType<'tcx>,
     ) {
-        debug!("fcx {}", self.tag());
+        trace!("fcx {}", self.tag());
 
         if !canonical_user_type_annotation.is_identity() {
             self.typeck_results
@@ -219,13 +219,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .user_provided_types_mut()
                 .insert(hir_id, canonical_user_type_annotation);
         } else {
-            debug!("skipping identity substs");
+            trace!("skipping identity substs");
         }
     }
 
     #[instrument(skip(self, expr), level = "debug")]
     pub fn apply_adjustments(&self, expr: &hir::Expr<'_>, adj: Vec<Adjustment<'tcx>>) {
-        debug!("expr = {:#?}", expr);
+        trace!("expr = {:#?}", expr);
 
         if adj.is_empty() {
             return;
@@ -235,7 +235,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let Adjust::NeverToAny = a.kind {
                 if a.target.is_ty_var() {
                     self.diverging_type_vars.borrow_mut().insert(a.target);
-                    debug!("apply_adjustments: adding `{:?}` as diverging type var", a.target);
+                    trace!("apply_adjustments: adding `{:?}` as diverging type var", a.target);
                 }
             }
         }
@@ -255,7 +255,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 entry.insert(adj);
             }
             Entry::Occupied(mut entry) => {
-                debug!(" - composing on top of {:?}", entry.get());
+                trace!(" - composing on top of {:?}", entry.get());
                 match (&entry.get()[..], &adj[..]) {
                     // Applying any adjustment on top of a NeverToAny
                     // is a valid NeverToAny adjustment, because it can't
@@ -309,7 +309,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let bounds = self.tcx.predicates_of(def_id);
         let result = bounds.instantiate(self.tcx, substs);
         let result = self.normalize(span, result);
-        debug!("instantiate_bounds(bounds={:?}, substs={:?}) = {:?}", bounds, substs, result);
+        trace!("instantiate_bounds(bounds={:?}, substs={:?}) = {:?}", bounds, substs, result);
         result
     }
 
@@ -384,11 +384,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn to_ty_saving_user_provided_ty(&self, ast_ty: &hir::Ty<'_>) -> Ty<'tcx> {
         let ty = self.to_ty(ast_ty);
-        debug!("to_ty_saving_user_provided_ty: ty={:?}", ty);
+        trace!("to_ty_saving_user_provided_ty: ty={:?}", ty);
 
         if Self::can_contain_user_lifetime_bounds(ty.raw) {
             let c_ty = self.canonicalize_response(UserType::Ty(ty.raw));
-            debug!("to_ty_saving_user_provided_ty: c_ty={:?}", c_ty);
+            trace!("to_ty_saving_user_provided_ty: c_ty={:?}", c_ty);
             self.typeck_results.borrow_mut().user_provided_types_mut().insert(ast_ty.hir_id, c_ty);
         }
 
@@ -546,10 +546,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.select_obligations_where_possible(|_| {});
 
         let generators = std::mem::take(&mut *self.deferred_generator_interiors.borrow_mut());
-        debug!(?generators);
+        trace!(?generators);
 
         for &(expr_def_id, body_id, interior, _) in generators.iter() {
-            debug!(?expr_def_id);
+            trace!(?expr_def_id);
 
             // Create the `GeneratorWitness` type that we will unify with `interior`.
             let substs = ty::InternalSubsts::identity_for_item(
@@ -571,7 +571,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .extend(self.fulfillment_cx.borrow_mut().drain_unstalled_obligations(&self.infcx));
 
             let obligations = obligations.into_iter().map(|o| (o.predicate, o.cause)).collect();
-            debug!(?obligations);
+            trace!(?obligations);
             self.typeck_results
                 .borrow_mut()
                 .generator_interior_predicates
@@ -620,14 +620,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     fn self_type_matches_expected_vid(&self, self_ty: Ty<'tcx>, expected_vid: ty::TyVid) -> bool {
         let self_ty = self.shallow_resolve(self_ty);
-        debug!(?self_ty);
+        trace!(?self_ty);
 
         match *self_ty.kind() {
             ty::Infer(ty::TyVar(found_vid)) => {
                 // FIXME: consider using `sub_root_var` here so we
                 // can see through subtyping.
                 let found_vid = self.root_var(found_vid);
-                debug!("self_type_matches_expected_vid - found_vid={:?}", found_vid);
+                trace!("self_type_matches_expected_vid - found_vid={:?}", found_vid);
                 expected_vid == found_vid
             }
             _ => false,
@@ -763,7 +763,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ok(Some(formal_args.iter().map(|&ty| self.resolve_vars_if_possible(ty)).collect()))
             })
             .unwrap_or_default();
-        debug!(?formal_args, ?formal_ret, ?expect_args, ?expected_ret);
+        trace!(?formal_args, ?formal_ret, ?expect_args, ?expected_ret);
         expect_args
     }
 
@@ -816,9 +816,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         hir_id: hir::HirId,
         span: Span,
     ) -> (Res, Option<RawTy<'tcx>>, &'tcx [hir::PathSegment<'tcx>]) {
-        debug!(
+        trace!(
             "resolve_ty_and_res_fully_qualified_call: qpath={:?} hir_id={:?} span={:?}",
-            qpath, hir_id, span
+            qpath,
+            hir_id,
+            span
         );
         let (ty, qself, item_segment) = match *qpath {
             QPath::Resolved(ref opt_qself, ref path) => {
@@ -1113,7 +1115,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let assoc_item = tcx.associated_item(def_id);
                 let container = assoc_item.container;
                 let container_id = assoc_item.container_id(tcx);
-                debug!(?def_id, ?container, ?container_id);
+                trace!(?def_id, ?container, ?container_id);
                 match container {
                     ty::TraitContainer => {
                         callee::check_legal_trait_for_method_call(tcx, span, None, span, container_id)
@@ -1416,7 +1418,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        debug!("instantiate_value_path: type of {:?} is {:?}", hir_id, ty_substituted);
+        trace!("instantiate_value_path: type of {:?} is {:?}", hir_id, ty_substituted);
         self.write_substs(hir_id, substs);
 
         (ty_substituted, res)

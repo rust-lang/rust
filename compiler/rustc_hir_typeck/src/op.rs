@@ -93,9 +93,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
 
-        debug!(
+        trace!(
             "check_binop(expr.hir_id={}, expr={:?}, op={:?}, lhs_expr={:?}, rhs_expr={:?})",
-            expr.hir_id, expr, op, lhs_expr, rhs_expr
+            expr.hir_id,
+            expr,
+            op,
+            lhs_expr,
+            rhs_expr
         );
 
         match BinOpCategory::from(op) {
@@ -205,9 +209,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         is_assign: IsAssign,
         expected: Expectation<'tcx>,
     ) -> (Ty<'tcx>, Ty<'tcx>, Ty<'tcx>) {
-        debug!(
+        trace!(
             "check_overloaded_binop(expr.hir_id={}, op={:?}, is_assign={:?})",
-            expr.hir_id, op, is_assign
+            expr.hir_id,
+            op,
+            is_assign
         );
 
         let lhs_ty = match is_assign {
@@ -727,9 +733,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return Err(vec![]);
         };
 
-        debug!(
+        trace!(
             "lookup_op_method(lhs_ty={:?}, op={:?}, opname={:?}, trait_did={:?})",
-            lhs_ty, op, opname, trait_did
+            lhs_ty,
+            op,
+            opname,
+            trait_did
         );
 
         // Catches cases like #83893, where a lang item is declared with the

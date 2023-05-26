@@ -106,7 +106,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             closure_requirements.num_external_vids,
             closure_def_id.expect_local(),
         );
-        debug!(?closure_mapping);
+        trace!(?closure_mapping);
 
         // Create the predicates.
         let backup = (self.category, self.span, self.from_closure);
@@ -132,7 +132,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         predicate: ty::OutlivesPredicate<ty::GenericArg<'tcx>, ty::Region<'tcx>>,
         constraint_category: ConstraintCategory<'tcx>,
     ) {
-        debug!("generate: constraints at: {:#?}", self.locations);
+        trace!("generate: constraints at: {:#?}", self.locations);
 
         // Extract out various useful fields we'll need below.
         let ConstraintConversion {
@@ -225,7 +225,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
     }
 
     fn add_type_test(&mut self, type_test: TypeTest<'tcx>) {
-        debug!("add_type_test(type_test={:?})", type_test);
+        trace!("add_type_test(type_test={:?})", type_test);
         self.constraints.type_tests.push(type_test);
     }
 }

@@ -143,7 +143,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             Some(ty) => {
                 let ty = self.resolve_vars_if_possible(ty);
                 if ty.references_error() || ty.is_ty_var() {
-                    debug!("resolve_type_vars_or_error: error from {:?}", ty);
+                    trace!("resolve_type_vars_or_error: error from {:?}", ty);
                     Err(())
                 } else {
                     Ok(ty)
@@ -189,7 +189,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         // that aims to account for `ref x`.
         if let Some(vec) = self.typeck_results.pat_adjustments().get(pat.hir_id) {
             if let Some(first_ty) = vec.first() {
-                debug!("pat_ty(pat={:?}) found adjusted ty `{:?}`", pat, first_ty);
+                trace!("pat_ty(pat={:?}) found adjusted ty `{:?}`", pat, first_ty);
                 return Ok(*first_ty);
             }
         }
@@ -200,7 +200,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     /// Like `pat_ty`, but ignores implicit `&` patterns.
     fn pat_ty_unadjusted(&self, pat: &hir::Pat<'_>) -> McResult<Ty<'tcx>> {
         let base_ty = self.node_ty(pat.hir_id)?;
-        debug!("pat_ty(pat={:?}) base_ty={:?}", pat, base_ty);
+        trace!("pat_ty(pat={:?}) base_ty={:?}", pat, base_ty);
 
         // This code detects whether we are looking at a `ref x`,
         // and if so, figures out what the type *being borrowed* is.
@@ -219,7 +219,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                     match base_ty.builtin_deref(false) {
                         Some(t) => t.ty,
                         None => {
-                            debug!("By-ref binding of non-derefable type {:?}", base_ty);
+                            trace!("By-ref binding of non-derefable type {:?}", base_ty);
                             return Err(());
                         }
                     }
@@ -229,7 +229,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             }
             _ => base_ty,
         };
-        debug!("pat_ty(pat={:?}) ret_ty={:?}", pat, ret_ty);
+        trace!("pat_ty(pat={:?}) ret_ty={:?}", pat, ret_ty);
 
         Ok(ret_ty)
     }
@@ -302,7 +302,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         &self,
         expr: &hir::Expr<'_>,
     ) -> McResult<PlaceWithHirId<'tcx>> {
-        debug!("cat_expr: id={} expr={:?}", expr.hir_id, expr);
+        trace!("cat_expr: id={} expr={:?}", expr.hir_id, expr);
 
         let expr_ty = self.expr_ty(expr)?;
         match expr.kind {
@@ -317,7 +317,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
 
             hir::ExprKind::Field(ref base, _) => {
                 let base = self.cat_expr(base)?;
-                debug!("cat_expr(cat_field): id={} expr={:?} base={:?}", expr.hir_id, expr, base);
+                trace!("cat_expr(cat_field): id={} expr={:?} base={:?}", expr.hir_id, expr, base);
 
                 let field_idx = self
                     .typeck_results
@@ -438,7 +438,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
 
         let ret = PlaceWithHirId::new(hir_id, var_ty, PlaceBase::Upvar(upvar_id), Vec::new());
 
-        debug!("cat_upvar ret={:?}", ret);
+        trace!("cat_upvar ret={:?}", ret);
         Ok(ret)
     }
 
@@ -448,9 +448,9 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         span: Span,
         expr_ty: Ty<'tcx>,
     ) -> PlaceWithHirId<'tcx> {
-        debug!("cat_rvalue hir_id={:?}, expr_ty={:?}, span={:?}", hir_id, expr_ty, span);
+        trace!("cat_rvalue hir_id={:?}, expr_ty={:?}, span={:?}", hir_id, expr_ty, span);
         let ret = PlaceWithHirId::new(hir_id, expr_ty, PlaceBase::Rvalue, Vec::new());
-        debug!("cat_rvalue ret={:?}", ret);
+        trace!("cat_rvalue ret={:?}", ret);
         ret
     }
 
@@ -469,7 +469,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             base_place.place.base,
             projections,
         );
-        debug!("cat_field ret {:?}", ret);
+        trace!("cat_field ret {:?}", ret);
         ret
     }
 
@@ -504,7 +504,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         let deref_ty = match base_curr_ty.builtin_deref(true) {
             Some(mt) => mt.ty,
             None => {
-                debug!("explicit deref of non-derefable type: {:?}", base_curr_ty);
+                trace!("explicit deref of non-derefable type: {:?}", base_curr_ty);
                 return Err(());
             }
         };
@@ -517,7 +517,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             base_place.place.base,
             projections,
         );
-        debug!("cat_deref ret {:?}", ret);
+        trace!("cat_deref ret {:?}", ret);
         Ok(ret)
     }
 
@@ -616,7 +616,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         // constructing a `PlaceWithHirId` that represents the path that will be taken
         // to reach the value being matched.
 
-        debug!("cat_pattern(pat={:?}, place_with_id={:?})", pat, place_with_id);
+        trace!("cat_pattern(pat={:?}, place_with_id={:?})", pat, place_with_id);
 
         // If (pattern) adjustments are active for this pattern, adjust the `PlaceWithHirId` correspondingly.
         // `PlaceWithHirId`s are constructed differently from patterns. For example, in
@@ -651,11 +651,11 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         // `deref { deref { place_foo }}` instead of `place_foo` since the pattern is now `Some(x,)`
         // and not `&&Some(x,)`, even though its assigned type is that of `&&Some(x,)`.
         for _ in 0..self.typeck_results.pat_adjustments().get(pat.hir_id).map_or(0, |v| v.len()) {
-            debug!("cat_pattern: applying adjustment to place_with_id={:?}", place_with_id);
+            trace!("cat_pattern: applying adjustment to place_with_id={:?}", place_with_id);
             place_with_id = self.cat_deref(pat, place_with_id)?;
         }
         let place_with_id = place_with_id; // lose mutability
-        debug!("cat_pattern: applied adjustment derefs to get place_with_id={:?}", place_with_id);
+        trace!("cat_pattern: applied adjustment derefs to get place_with_id={:?}", place_with_id);
 
         // Invoke the callback, but only now, after the `place_with_id` has adjusted.
         //
@@ -743,7 +743,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
 
             PatKind::Slice(before, ref slice, after) => {
                 let Some(element_ty) = place_with_id.place.ty().builtin_index() else {
-                    debug!("explicit index of non-indexable type {:?}", place_with_id);
+                    trace!("explicit index of non-indexable type {:?}", place_with_id);
                     return Err(());
                 };
                 let elt_place = self.cat_projection(

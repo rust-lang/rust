@@ -202,13 +202,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // make this code only run with -Zverbose because it is probably slow
             if let Ok(lint_str) = self.tcx.sess.source_map().span_to_snippet(expr.span) {
                 if !lint_str.contains('\n') {
-                    debug!("expr text: {lint_str}");
+                    trace!("expr text: {lint_str}");
                 } else {
                     let mut lines = lint_str.lines();
                     if let Some(line0) = lines.next() {
                         let remaining_lines = lines.count();
-                        debug!("expr text: {line0}");
-                        debug!("expr text: ...(and {remaining_lines} more lines)");
+                        trace!("expr text: {line0}");
+                        trace!("expr text: ...(and {remaining_lines} more lines)");
                     }
                 }
             }
@@ -272,8 +272,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Combine the diverging and has_error flags.
         self.diverges.set(self.diverges.get() | old_diverges);
 
-        debug!("type of {} is...", self.tcx.hir().node_to_string(expr.hir_id));
-        debug!("... {:?}, expected is {:?}", ty, expected);
+        trace!("type of {} is...", self.tcx.hir().node_to_string(expr.hir_id));
+        trace!("... {:?}, expected is {:?}", ty, expected);
 
         ty
     }
@@ -1287,9 +1287,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.param_env.constness(),
             ) {
                 Ok(cast_check) => {
-                    debug!(
+                    trace!(
                         "check_expr_cast: deferring cast from {:?} to {:?}: {:?}",
-                        t_cast, t_expr, cast_check,
+                        t_cast,
+                        t_expr,
+                        cast_check,
                     );
                     deferred_cast_checks.push(cast_check);
                     t_cast
@@ -1776,7 +1778,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             self.typeck_results.borrow_mut().fru_field_types_mut().insert(expr_id, fru_tys);
         } else if adt_kind != AdtKind::Union && !remaining_fields.is_empty() {
-            debug!(?remaining_fields);
+            trace!(?remaining_fields);
             let private_fields: Vec<&ty::FieldDef> = variant
                 .fields
                 .iter()
@@ -2207,16 +2209,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         field: Ident,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
-        debug!("check_field(expr: {:?}, base: {:?}, field: {:?})", expr, base, field);
+        trace!("check_field(expr: {:?}, base: {:?}, field: {:?})", expr, base, field);
         let base_ty = self.check_expr(base);
         let base_ty = self.structurally_resolved_type(base.span, base_ty);
         let mut private_candidate = None;
         let mut autoderef = self.autoderef(expr.span, base_ty);
         while let Some((deref_base_ty, _)) = autoderef.next() {
-            debug!("deref_base_ty: {:?}", deref_base_ty);
+            trace!("deref_base_ty: {:?}", deref_base_ty);
             match deref_base_ty.kind() {
                 ty::Adt(base_def, substs) if !base_def.is_enum() => {
-                    debug!("struct named {:?}", deref_base_ty);
+                    trace!("struct named {:?}", deref_base_ty);
                     let body_hir_id = self.tcx.hir().local_def_id_to_hir_id(self.body_id);
                     let (ident, def_scope) =
                         self.tcx.adjust_ident_and_get_scope(field, base_def.did(), body_hir_id);
@@ -2403,9 +2405,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
         base_ty: Ty<'tcx>,
     ) -> ErrorGuaranteed {
-        debug!(
+        trace!(
             "ban_nonexisting_field: field={:?}, base={:?}, expr={:?}, base_ty={:?}",
-            ident, base, expr, base_ty
+            ident,
+            base,
+            expr,
+            base_ty
         );
         let mut err = self.no_such_field_err(ident, base_ty, base.hir_id);
 
@@ -2649,7 +2654,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         id: HirId,
     ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
         let span = field.span;
-        debug!("no_such_field_err(span: {:?}, field: {:?}, expr_t: {:?})", span, field, expr_t);
+        trace!("no_such_field_err(span: {:?}, field: {:?}, expr_t: {:?})", span, field, expr_t);
 
         let mut err = type_error_struct!(
             self.tcx().sess,
@@ -2726,7 +2731,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base_ty: Ty<'tcx>,
         mod_id: DefId,
     ) -> Option<(impl Iterator<Item = &'tcx ty::FieldDef> + 'tcx, SubstsRef<'tcx>)> {
-        debug!("get_field_candidates(span: {:?}, base_t: {:?}", span, base_ty);
+        trace!("get_field_candidates(span: {:?}, base_t: {:?}", span, base_ty);
 
         for (base_t, _) in self.autoderef(span, base_ty) {
             match base_t.kind() {
@@ -2765,9 +2770,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         mut field_path: Vec<Ident>,
         mod_id: DefId,
     ) -> Option<Vec<Ident>> {
-        debug!(
+        trace!(
             "check_for_nested_field_satisfying(span: {:?}, candidate_field: {:?}, field_path: {:?}",
-            span, candidate_field, field_path
+            span,
+            candidate_field,
+            field_path
         );
 
         if field_path.len() > 3 {

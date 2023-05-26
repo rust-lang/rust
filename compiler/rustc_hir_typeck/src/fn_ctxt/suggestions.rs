@@ -534,7 +534,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match expected.kind() {
             ty::Adt(def, _) if Some(def.did()) == pin_did => {
                 if self.can_coerce(pin_box_found, expected) {
-                    debug!("can coerce {:?} to {:?}, suggesting Box::pin", pin_box_found, expected);
+                    trace!("can coerce {:?} to {:?}, suggesting Box::pin", pin_box_found, expected);
                     match found.kind() {
                         ty::Adt(def, _) if def.is_box() => {
                             err.help("use `Box::pin`");
@@ -719,7 +719,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     // Check if async function's return type was omitted.
                     // Don't emit suggestions if the found type is `impl Future<...>`.
-                    debug!(?found);
+                    trace!(?found);
                     if found.is_suggestable(self.tcx, false) {
                         if term.span.is_empty() {
                             err.subdiagnostic(AddReturnTypeSuggestion::Add { span, found: found.to_string() });
@@ -732,10 +732,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // Only point to return type if the expected type is the return type, as if they
                 // are not, the expectation must have been caused by something else.
-                debug!("return type {:?}", hir_ty);
+                trace!("return type {:?}", hir_ty);
                 let ty = self.astconv().ast_ty_to_ty(hir_ty);
-                debug!("return type {:?}", ty);
-                debug!("expected type {:?}", expected);
+                trace!("return type {:?}", ty);
+                trace!("expected type {:?}", expected);
                 let bound_vars = self.tcx.late_bound_vars(hir_ty.hir_id.owner.into());
                 let ty = Binder::bind_with_vars(ty, bound_vars);
                 let ty = self.normalize(span, ty);
@@ -774,7 +774,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Suggest:
         //  - Changing the return type to be `impl <all bounds>`
 
-        debug!("try_suggest_return_impl_trait, expected = {:?}, found = {:?}", expected, found);
+        trace!("try_suggest_return_impl_trait, expected = {:?}, found = {:?}", expected, found);
 
         let ty::Param(expected_ty_as_param) = expected.kind() else { return };
 

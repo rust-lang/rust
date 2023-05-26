@@ -27,7 +27,7 @@ impl<'tcx> CFG<'tcx> {
     }
 
     pub(crate) fn push(&mut self, block: BasicBlock, statement: Statement<'tcx>) {
-        debug!("push({:?}, {:?})", block, statement);
+        trace!("push({:?}, {:?})", block, statement);
         self.block_data_mut(block).statements.push(statement);
     }
 
@@ -107,7 +107,7 @@ impl<'tcx> CFG<'tcx> {
         source_info: SourceInfo,
         kind: TerminatorKind<'tcx>,
     ) {
-        debug!("terminating block {:?} <- {:?}", block, kind);
+        trace!("terminating block {:?} <- {:?}", block, kind);
         debug_assert!(
             self.block_data(block).terminator.is_none(),
             "terminate: block {:?}={:?} already has a terminator set",

@@ -48,7 +48,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 local_decl = local_decl.immutable();
             }
 
-            debug!("creating temp {:?} with block_context: {:?}", local_decl, this.block_context);
+            trace!("creating temp {:?} with block_context: {:?}", local_decl, this.block_context);
             let local_info = match expr.kind {
                 ExprKind::StaticRef { def_id, .. } => {
                     assert!(!this.tcx.is_thread_local_static(def_id));

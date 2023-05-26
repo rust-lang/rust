@@ -147,7 +147,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         match_span: Span,
         statement_span: Span,
     ) {
-        debug!(?match_place, ?match_span, "append_binding_error");
+        trace!(?match_place, ?match_span, "append_binding_error");
 
         let from_simple_let = match_place.is_none();
         let match_place = match_place.unwrap_or(move_from);
@@ -159,14 +159,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     if let GroupedMoveError::MovesFromPlace { span, binds_to, .. } = ge
                         && match_span == *span
                     {
-                        debug!("appending local({bind_to:?}) to list");
+                        trace!("appending local({bind_to:?}) to list");
                         if !binds_to.is_empty() {
                             binds_to.push(bind_to);
                         }
                         return;
                     }
                 }
-                debug!("found a new move error location");
+                trace!("found a new move error location");
 
                 // Don't need to point to x in let x = ... .
                 let (binds_to, span) = if from_simple_let {
@@ -197,13 +197,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     } = ge
                     {
                         if match_span == *span && mpi == *other_mpi {
-                            debug!("appending local({bind_to:?}) to list");
+                            trace!("appending local({bind_to:?}) to list");
                             binds_to.push(bind_to);
                             return;
                         }
                     }
                 }
-                debug!("found a new move error location");
+                trace!("found a new move error location");
                 grouped_errors.push(GroupedMoveError::MovesFromValue {
                     span: match_span,
                     move_from: mpi,
@@ -226,7 +226,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     (use_spans.args_or_use(), Some(use_spans), original_path, kind)
                 }
             };
-            debug!(
+            trace!(
                 "report: original_path={:?} span={:?}, kind={:?} \
                    original_path.is_upvar_field_projection={:?}",
                 original_path,
@@ -317,7 +317,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
         }
 
-        debug!("report: ty={:?}", ty);
+        trace!("report: ty={:?}", ty);
         let mut err = match ty.kind() {
             ty::Array(..) | ty::Slice(..) => {
                 self.cannot_move_out_of_interior_noncopy(span, ty, None)
@@ -350,9 +350,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         format!("{place_name}, as `{upvar_name}` is a {capture_description}")
                     };
 
-                debug!(
+                trace!(
                     "report: closure_kind_ty={:?} closure_kind={:?} place_description={:?}",
-                    closure_kind_ty, closure_kind, place_description,
+                    closure_kind_ty,
+                    closure_kind,
+                    place_description,
                 );
 
                 let mut diag = self.cannot_move_out_of(span, &place_description);

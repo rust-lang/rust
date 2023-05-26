@@ -396,10 +396,10 @@ const FR: NllRegionVariableOrigin = NllRegionVariableOrigin::FreeRegion;
 
 impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
     fn build(self) -> UniversalRegions<'tcx> {
-        debug!("build(mir_def={:?})", self.mir_def);
+        trace!("build(mir_def={:?})", self.mir_def);
 
         let param_env = self.param_env;
-        debug!("build: param_env={:?}", param_env);
+        trace!("build: param_env={:?}", param_env);
 
         assert_eq!(FIRST_GLOBAL_INDEX, self.infcx.num_region_vars());
 
@@ -412,10 +412,10 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         let first_extern_index = self.infcx.num_region_vars();
 
         let defining_ty = self.defining_ty();
-        debug!("build: defining_ty={:?}", defining_ty);
+        trace!("build: defining_ty={:?}", defining_ty);
 
         let mut indices = self.compute_indices(fr_static, defining_ty);
-        debug!("build: indices={:?}", indices);
+        trace!("build: indices={:?}", indices);
 
         let typeck_root_def_id = self.infcx.tcx.typeck_root_def_id(self.mir_def.to_def_id());
 
@@ -435,7 +435,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 self.infcx.tcx,
                 self.infcx.tcx.local_parent(self.mir_def),
                 |r| {
-                    debug!(?r);
+                    trace!(?r);
                     if !indices.indices.contains_key(&r) {
                         let region_vid = {
                             let name = r.get_name_or_anon();
@@ -444,7 +444,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                             })
                         };
 
-                        debug!(?region_vid);
+                        trace!(?region_vid);
                         indices.insert_late_bound_region(r, region_vid.as_var());
                     }
                 },
@@ -469,7 +469,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         // Converse of above, if this is a function/closure then the late-bound regions declared on its
         // signature are local.
         for_each_late_bound_region_in_item(self.infcx.tcx, self.mir_def, |r| {
-            debug!(?r);
+            trace!(?r);
             if !indices.indices.contains_key(&r) {
                 let region_vid = {
                     let name = r.get_name_or_anon();
@@ -478,7 +478,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     })
                 };
 
-                debug!(?region_vid);
+                trace!(?region_vid);
                 indices.insert_late_bound_region(r, region_vid.as_var());
             }
         });
@@ -517,9 +517,9 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
         let num_universals = self.infcx.num_region_vars();
 
-        debug!("build: global regions = {}..{}", FIRST_GLOBAL_INDEX, first_extern_index);
-        debug!("build: extern regions = {}..{}", first_extern_index, first_local_index);
-        debug!("build: local regions  = {}..{}", first_local_index, num_universals);
+        trace!("build: global regions = {}..{}", FIRST_GLOBAL_INDEX, first_extern_index);
+        trace!("build: extern regions = {}..{}", first_extern_index, first_local_index);
+        trace!("build: local regions  = {}..{}", first_local_index, num_universals);
 
         let yield_ty = match defining_ty {
             DefiningTy::Generator(_, substs, _) => Some(substs.as_generator().yield_ty()),
@@ -550,7 +550,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             BodyOwnerKind::Closure | BodyOwnerKind::Fn => {
                 let defining_ty = tcx.type_of(self.mir_def).subst_identity();
 
-                debug!("defining_ty (pre-replacement): {:?}", defining_ty);
+                trace!("defining_ty (pre-replacement): {:?}", defining_ty);
 
                 let defining_ty =
                     self.infcx.replace_free_regions_with_nll_infer_vars(FR, defining_ty);
@@ -759,7 +759,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
     {
         self.infcx.tcx.fold_regions(value, |region, _depth| {
             let name = region.get_name_or_anon();
-            debug!(?region, ?name);
+            trace!(?region, ?name);
 
             self.next_nll_region_var(origin, || RegionCtxt::Free(name))
         })
@@ -777,7 +777,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         let (value, _map) = self.tcx.replace_late_bound_regions(value, |br| {
-            debug!(?br);
+            trace!(?br);
             let liberated_region =
                 ty::Region::new_free(self.tcx, all_outlive_scope.to_def_id(), br.kind);
             let region_vid = {
@@ -790,7 +790,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
             };
 
             indices.insert_late_bound_region(liberated_region, region_vid.as_var());
-            debug!(?liberated_region, ?region_vid);
+            trace!(?liberated_region, ?region_vid);
             region_vid
         });
         value
@@ -812,7 +812,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
         indices: &mut UniversalRegionIndices<'tcx>,
     ) {
         for_each_late_bound_region_in_recursive_scope(self.tcx, mir_def_id, |r| {
-            debug!(?r);
+            trace!(?r);
             if !indices.indices.contains_key(&r) {
                 let region_vid = {
                     let name = r.get_name_or_anon();
@@ -821,7 +821,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
                     })
                 };
 
-                debug!(?region_vid);
+                trace!(?region_vid);
                 indices.insert_late_bound_region(r, region_vid.as_var());
             }
         });
@@ -834,7 +834,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
         indices: &mut UniversalRegionIndices<'tcx>,
     ) {
         for_each_late_bound_region_in_item(self.tcx, mir_def_id, |r| {
-            debug!(?r);
+            trace!(?r);
             if !indices.indices.contains_key(&r) {
                 let region_vid = {
                     let name = r.get_name_or_anon();
@@ -856,7 +856,7 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
     /// insert the `ReFree` version of those into the map as
     /// well. These are used for error reporting.
     fn insert_late_bound_region(&mut self, r: ty::Region<'tcx>, vid: ty::RegionVid) {
-        debug!("insert_late_bound_region({:?}, {:?})", r, vid);
+        trace!("insert_late_bound_region({:?}, {:?})", r, vid);
         self.indices.insert(r, vid);
     }
 

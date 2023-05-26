@@ -70,11 +70,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .all_indices()
             .map(|ci| (self.member_constraints[ci].key, ci))
             .collect();
-        debug!(?member_constraints);
+        trace!(?member_constraints);
 
         for (opaque_type_key, (concrete_type, origin)) in opaque_ty_decls {
             let substs = opaque_type_key.substs;
-            debug!(?concrete_type, ?substs);
+            trace!(?concrete_type, ?substs);
 
             let mut subst_regions = vec![self.universal_regions.fr_static];
 
@@ -108,7 +108,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     to_universal_region(vid, &mut subst_regions);
                 }
             }
-            debug!(?subst_regions);
+            trace!(?subst_regions);
 
             // Next, insert universal regions from substs, so we can translate regions that appear
             // in them but are not subject to member constraints, for instance closure substs.
@@ -120,12 +120,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 let vid = self.to_region_vid(region);
                 to_universal_region(vid, &mut subst_regions)
             });
-            debug!(?universal_substs);
-            debug!(?subst_regions);
+            trace!(?universal_substs);
+            trace!(?subst_regions);
 
             // Deduplicate the set of regions while keeping the chosen order.
             let subst_regions = subst_regions.into_iter().collect::<FxIndexSet<_>>();
-            debug!(?subst_regions);
+            trace!(?subst_regions);
 
             let universal_concrete_type =
                 infcx.tcx.fold_regions(concrete_type, |region, _| match *region {
@@ -136,7 +136,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         .unwrap_or(infcx.tcx.lifetimes.re_erased),
                     _ => region,
                 });
-            debug!(?universal_concrete_type);
+            trace!(?universal_concrete_type);
 
             let opaque_type_key =
                 OpaqueTypeKey { def_id: opaque_type_key.def_id, substs: universal_substs };

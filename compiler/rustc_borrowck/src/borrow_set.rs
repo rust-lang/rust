@@ -199,7 +199,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
     ) {
         if let &mir::Rvalue::Ref(region, kind, borrowed_place) = rvalue {
             if borrowed_place.ignore_borrow(self.tcx, self.body, &self.locals_state_at_exit) {
-                debug!("ignoring_borrow of {:?}", borrowed_place);
+                trace!("ignoring_borrow of {:?}", borrowed_place);
                 return;
             }
 
@@ -296,13 +296,15 @@ impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
         kind: mir::BorrowKind,
         borrow_index: BorrowIndex,
     ) {
-        debug!(
+        trace!(
             "Borrows::insert_as_pending_if_two_phase({:?}, {:?}, {:?})",
-            start_location, assigned_place, borrow_index,
+            start_location,
+            assigned_place,
+            borrow_index,
         );
 
         if !allow_two_phase_borrow(kind) {
-            debug!("  -> {:?}", start_location);
+            trace!("  -> {:?}", start_location);
             return;
         }
 

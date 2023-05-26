@@ -77,7 +77,7 @@ impl<'tcx> ExprUseDelegate<'tcx> {
     fn mark_consumed(&mut self, consumer: HirId, target: TrackedValue) {
         self.places.consumed.entry(consumer).or_insert_with(|| <_>::default());
 
-        debug!(?consumer, ?target, "mark_consumed");
+        trace!(?consumer, ?target, "mark_consumed");
         self.places.consumed.get_mut(&consumer).map(|places| places.insert(target));
     }
 
@@ -144,7 +144,7 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
             Some(parent) => parent,
             None => place_with_id.hir_id,
         };
-        debug!(
+        trace!(
             "consume {:?}; diag_expr_id={}, using parent {}",
             place_with_id,
             hir.node_to_string(diag_expr_id),
@@ -161,7 +161,7 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
         diag_expr_id: HirId,
         bk: rustc_middle::ty::BorrowKind,
     ) {
-        debug!(
+        trace!(
             "borrow: place_with_id = {place_with_id:#?}, diag_expr_id={diag_expr_id:#?}, \
             borrow_kind={bk:#?}"
         );
@@ -174,7 +174,7 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
         place_with_id: &expr_use_visitor::PlaceWithHirId<'tcx>,
         _diag_expr_id: HirId,
     ) {
-        debug!("copy: place_with_id = {place_with_id:?}");
+        trace!("copy: place_with_id = {place_with_id:?}");
 
         self.places
             .borrowed
@@ -189,7 +189,7 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
         assignee_place: &expr_use_visitor::PlaceWithHirId<'tcx>,
         diag_expr_id: HirId,
     ) {
-        debug!("mutate {assignee_place:?}; diag_expr_id={diag_expr_id:?}");
+        trace!("mutate {assignee_place:?}; diag_expr_id={diag_expr_id:?}");
 
         if assignee_place.place.base == PlaceBase::Rvalue
             && assignee_place.place.projections.is_empty()
@@ -219,7 +219,7 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
         binding_place: &expr_use_visitor::PlaceWithHirId<'tcx>,
         diag_expr_id: HirId,
     ) {
-        debug!("bind {binding_place:?}; diag_expr_id={diag_expr_id:?}");
+        trace!("bind {binding_place:?}; diag_expr_id={diag_expr_id:?}");
     }
 
     fn fake_read(
@@ -228,7 +228,7 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
         cause: rustc_middle::mir::FakeReadCause,
         diag_expr_id: HirId,
     ) {
-        debug!(
+        trace!(
             "fake_read place_with_id={place_with_id:?}; cause={cause:?}; diag_expr_id={diag_expr_id:?}"
         );
 

@@ -43,7 +43,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate: &mut Candidate<'pat, 'tcx>,
     ) -> bool {
         // repeatedly simplify match pairs until fixed point is reached
-        debug!("{candidate:#?}");
+        trace!("{candidate:#?}");
 
         // existing_bindings and new_bindings exists to keep the semantics in order.
         // Reversing the binding order for bindings after `@` changes the binding order in places
@@ -114,7 +114,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 candidate
                     .match_pairs
                     .sort_by_key(|pair| matches!(pair.pattern.kind, PatKind::Or { .. }));
-                debug!(simplified = ?candidate, "simplify_candidate");
+                trace!(simplified = ?candidate, "simplify_candidate");
                 return false; // if we were not able to simplify any, done.
             }
         }

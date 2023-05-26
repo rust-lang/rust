@@ -156,7 +156,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) {
         let place = place_builder.to_place(self);
         let place_ty = place.ty(&self.local_decls, self.tcx);
-        debug!(?place, ?place_ty,);
+        trace!(?place, ?place_ty,);
 
         let source_info = self.source_info(test.span);
         match test.kind {
@@ -189,7 +189,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }),
                     otherwise_block,
                 );
-                debug!("num_enum_variants: {}, variants: {:?}", num_enum_variants, variants);
+                trace!("num_enum_variants: {}, variants: {:?}", num_enum_variants, variants);
                 let discr_ty = adt_def.repr().discr_type().to_ty(tcx);
                 let discr = self.temp(discr_ty, test.span);
                 self.cfg.push_assign(

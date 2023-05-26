@@ -63,9 +63,9 @@ impl<'tcx> InferCtxt<'tcx> {
         Canonical<'tcx, QueryResponse<'tcx, T>>: ArenaAllocatable<'tcx>,
     {
         let query_response = self.make_query_response(inference_vars, answer, fulfill_cx)?;
-        debug!("query_response = {:#?}", query_response);
+        trace!("query_response = {:#?}", query_response);
         let canonical_result = self.canonicalize_response(query_response);
-        debug!("canonical_result = {:#?}", canonical_result);
+        trace!("canonical_result = {:#?}", canonical_result);
 
         Ok(self.tcx.arena.alloc(canonical_result))
     }
@@ -112,20 +112,20 @@ impl<'tcx> InferCtxt<'tcx> {
 
         // Select everything, returning errors.
         let true_errors = fulfill_cx.select_where_possible(self);
-        debug!("true_errors = {:#?}", true_errors);
+        trace!("true_errors = {:#?}", true_errors);
 
         if !true_errors.is_empty() {
             // FIXME -- we don't indicate *why* we failed to solve
-            debug!("make_query_response: true_errors={:#?}", true_errors);
+            trace!("make_query_response: true_errors={:#?}", true_errors);
             return Err(NoSolution);
         }
 
         // Anything left unselected *now* must be an ambiguity.
         let ambig_errors = fulfill_cx.select_all_or_error(self);
-        debug!("ambig_errors = {:#?}", ambig_errors);
+        trace!("ambig_errors = {:#?}", ambig_errors);
 
         let region_obligations = self.take_registered_region_obligations();
-        debug!(?region_obligations);
+        trace!(?region_obligations);
         let region_constraints = self.with_region_constraints(|region_constraints| {
             make_query_region_constraints(
                 tcx,
@@ -135,7 +135,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 region_constraints,
             )
         });
-        debug!(?region_constraints);
+        trace!(?region_constraints);
 
         let certainty =
             if ambig_errors.is_empty() { Certainty::Proven } else { Certainty::Ambiguous };
@@ -368,9 +368,10 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         R: Debug + TypeFoldable<TyCtxt<'tcx>>,
     {
-        debug!(
+        trace!(
             "query_response_substitution(original_values={:#?}, query_response={:#?})",
-            original_values, query_response,
+            original_values,
+            query_response,
         );
 
         let mut value = self.query_response_substitution_guess(
@@ -508,7 +509,7 @@ impl<'tcx> InferCtxt<'tcx> {
         for &(a, b) in &query_response.value.opaque_types {
             let a = substitute_value(self.tcx, &result_subst, a);
             let b = substitute_value(self.tcx, &result_subst, b);
-            debug!(?a, ?b, "constrain opaque type");
+            trace!(?a, ?b, "constrain opaque type");
             // We use equate here instead of, for example, just registering the
             // opaque type's hidden value directly, because we may be instantiating
             // a query response that was canonicalized in an InferCtxt that had
@@ -660,7 +661,7 @@ pub fn make_query_region_constraints<'tcx>(
 
     assert!(verifys.is_empty());
 
-    debug!(?constraints);
+    trace!(?constraints);
 
     let outlives: Vec<_> = constraints
         .iter()

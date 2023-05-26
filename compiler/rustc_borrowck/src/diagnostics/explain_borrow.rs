@@ -371,10 +371,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let tcx = self.infcx.tcx;
 
         let borrow_region_vid = borrow.region;
-        debug!(?borrow_region_vid);
+        trace!(?borrow_region_vid);
 
         let mut region_sub = self.regioncx.find_sub_region_live_at(borrow_region_vid, location);
-        debug!(?region_sub);
+        trace!(?region_sub);
 
         let mut use_location = location;
         let mut use_in_later_iteration_of_loop = false;
@@ -389,7 +389,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 region_sub = self
                     .regioncx
                     .find_sub_region_live_at(borrow_region_vid, loop_terminator_location);
-                debug!("explain_why_borrow_contains_point: region_sub in loop={:?}", region_sub);
+                trace!("explain_why_borrow_contains_point: region_sub in loop={:?}", region_sub);
                 use_location = loop_terminator_location;
                 use_in_later_iteration_of_loop = true;
             }
@@ -446,11 +446,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             extra_info,
                         }
                     } else {
-                        debug!("Could not generate a region name");
+                        trace!("Could not generate a region name");
                         BorrowExplanation::Unexplained
                     }
                 } else {
-                    debug!("Could not generate an error region vid");
+                    trace!("Could not generate an error region vid");
                     BorrowExplanation::Unexplained
                 }
             }
@@ -534,7 +534,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let location = borrow.reserve_location;
         let block = &self.body[location.block];
         let stmt = block.statements.get(location.statement_index);
-        debug!("was_captured_by_trait_object: location={:?} stmt={:?}", location, stmt);
+        trace!("was_captured_by_trait_object: location={:?} stmt={:?}", location, stmt);
 
         // We make a `queue` vector that has the locations we want to visit. As of writing, this
         // will only ever have one item at any given time, but by using a vector, we can pop from
@@ -551,15 +551,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 return false;
             };
 
-        debug!("was_captured_by_trait: target={:?} queue={:?}", target, queue);
+        trace!("was_captured_by_trait: target={:?} queue={:?}", target, queue);
         while let Some(current_location) = queue.pop() {
-            debug!("was_captured_by_trait: target={:?}", target);
+            trace!("was_captured_by_trait: target={:?}", target);
             let block = &self.body[current_location.block];
             // We need to check the current location to find out if it is a terminator.
             let is_terminator = current_location.statement_index == block.statements.len();
             if !is_terminator {
                 let stmt = &block.statements[current_location.statement_index];
-                debug!("was_captured_by_trait_object: stmt={:?}", stmt);
+                trace!("was_captured_by_trait_object: stmt={:?}", stmt);
 
                 // The only kind of statement that we care about is assignments...
                 if let StatementKind::Assign(box (place, rvalue)) = &stmt.kind {
@@ -589,7 +589,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 Operand::Copy(place) | Operand::Move(place) => {
                                     if let Some(from) = place.as_local() {
                                         if from == target {
-                                            debug!("was_captured_by_trait_object: ty={:?}", ty);
+                                            trace!("was_captured_by_trait_object: ty={:?}", ty);
                                             // Check the type for a trait object.
                                             return match ty.kind() {
                                                 // `&dyn Trait`
@@ -619,15 +619,17 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             } else {
                 // The only thing we need to do for terminators is progress to the next block.
                 let terminator = block.terminator();
-                debug!("was_captured_by_trait_object: terminator={:?}", terminator);
+                trace!("was_captured_by_trait_object: terminator={:?}", terminator);
 
                 if let TerminatorKind::Call { destination, target: Some(block), args, .. } =
                     &terminator.kind
                 {
                     if let Some(dest) = destination.as_local() {
-                        debug!(
+                        trace!(
                             "was_captured_by_trait_object: target={:?} dest={:?} args={:?}",
-                            target, dest, args
+                            target,
+                            dest,
+                            args
                         );
                         // Check if one of the arguments to this function is the target place.
                         let found_target = args.iter().any(|arg| {
@@ -651,7 +653,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
             }
 
-            debug!("was_captured_by_trait: queue={:?}", queue);
+            trace!("was_captured_by_trait: queue={:?}", queue);
         }
 
         // We didn't find anything and ran out of locations to check.

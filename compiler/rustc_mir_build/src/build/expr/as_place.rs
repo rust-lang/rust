@@ -189,7 +189,7 @@ fn to_upvars_resolved_place_builder<'tcx>(
                 projection
             )
         } else {
-            debug!(
+            trace!(
                 "No associated capture found for {:?}[{:#?}]",
                 var_hir_id, projection,
             );
@@ -408,7 +408,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mutability: Mutability,
         fake_borrow_temps: Option<&mut Vec<Local>>,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
-        debug!("expr_as_place(block={:?}, expr={:?}, mutability={:?})", block, expr, mutability);
+        trace!("expr_as_place(block={:?}, expr={:?}, mutability={:?})", block, expr, mutability);
 
         let this = self;
         let expr_span = expr.span;

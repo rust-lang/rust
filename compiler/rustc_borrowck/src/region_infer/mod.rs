@@ -261,7 +261,7 @@ fn sccs_info<'cx, 'tcx>(
     for (reg_var, origin) in var_to_origin_sorted.into_iter() {
         reg_vars_to_origins_str.push_str(&format!("{:?}: {:?}\n", reg_var, origin));
     }
-    debug!("{}", reg_vars_to_origins_str);
+    trace!("{}", reg_vars_to_origins_str);
 
     let num_components = sccs.scc_data().ranges().len();
     let mut components = vec![FxIndexSet::default(); num_components];
@@ -281,7 +281,7 @@ fn sccs_info<'cx, 'tcx>(
             regions_info,
         ))
     }
-    debug!("{}", components_str);
+    trace!("{}", components_str);
 
     // calculate the best representative for each component
     let components_representatives = components
@@ -307,7 +307,7 @@ fn sccs_info<'cx, 'tcx>(
         scc_node_to_edges.insert((scc_idx, repr), edge_representatives);
     }
 
-    debug!("SCC edges {:#?}", scc_node_to_edges);
+    trace!("SCC edges {:#?}", scc_node_to_edges);
 }
 
 impl<'tcx> RegionInferenceContext<'tcx> {
@@ -331,10 +331,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         liveness_constraints: LivenessValues<RegionVid>,
         elements: &Rc<RegionValueElements>,
     ) -> Self {
-        debug!("universal_regions: {:#?}", universal_regions);
-        debug!("outlives constraints: {:#?}", outlives_constraints);
-        debug!("placeholder_indices: {:#?}", placeholder_indices);
-        debug!("type tests: {:#?}", type_tests);
+        trace!("universal_regions: {:#?}", universal_regions);
+        trace!("outlives constraints: {:#?}", outlives_constraints);
+        trace!("placeholder_indices: {:#?}", placeholder_indices);
+        trace!("type tests: {:#?}", type_tests);
 
         // Create a RegionDefinition for each inference variable.
         let definitions: IndexVec<_, _> = var_infos
@@ -404,7 +404,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let num_sccs = constraint_sccs.num_sccs();
         let mut scc_universes = IndexVec::from_elem_n(ty::UniverseIndex::MAX, num_sccs);
 
-        debug!("compute_scc_universes()");
+        trace!("compute_scc_universes()");
 
         // For each region R in universe U, ensure that the universe for the SCC
         // that contains R is "no bigger" than U. This effectively sets the universe
@@ -415,7 +415,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             let scc_min = std::cmp::min(region_definition.universe, *scc_universe);
             if scc_min != *scc_universe {
                 *scc_universe = scc_min;
-                debug!(
+                trace!(
                     "compute_scc_universes: lowered universe of {scc:?} to {scc_min:?} \
                     because it contains {region_vid:?} in {region_universe:?}",
                     scc = scc,
@@ -463,7 +463,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 if scc_universe_a != scc_universe_min {
                     scc_universes[scc_a] = scc_universe_min;
 
-                    debug!(
+                    trace!(
                         "compute_scc_universes: lowered universe of {scc_a:?} to {scc_universe_min:?} \
                         because {scc_a:?}: {scc_b:?} and {scc_b:?} is in universe {scc_universe_b:?}",
                         scc_a = scc_a,
@@ -475,7 +475,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
         }
 
-        debug!("compute_scc_universes: scc_universe = {:#?}", scc_universes);
+        trace!("compute_scc_universes: scc_universe = {:#?}", scc_universes);
 
         scc_universes
     }
@@ -525,9 +525,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // Update the names (if any)
         // This iterator has unstable order but we collect it all into an IndexVec
         for (external_name, variable) in self.universal_regions.named_universal_regions() {
-            debug!(
+            trace!(
                 "init_universal_regions: region {:?} has external name {:?}",
-                variable, external_name
+                variable,
+                external_name
             );
             self.definitions[variable].external_name = Some(external_name);
         }
@@ -556,10 +557,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     if scc_universe.can_name(placeholder.universe) {
                         self.scc_values.add_element(scc, placeholder);
                     } else {
-                        debug!(
+                        trace!(
                             "init_free_and_bound_regions: placeholder {:?} is \
                              not compatible with universe {:?} of its SCC {:?}",
-                            placeholder, scc_universe, scc,
+                            placeholder,
+                            scc_universe,
+                            scc,
                         );
                         self.add_incompatible_universe(scc);
                     }
@@ -716,7 +719,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// feasible, but we check this later.
     #[instrument(skip(self, _body), level = "debug")]
     fn propagate_constraints(&mut self, _body: &Body<'tcx>) {
-        debug!("constraints={:#?}", {
+        trace!("constraints={:#?}", {
             let mut constraints: Vec<_> = self.outlives_constraints().collect();
             constraints.sort_by_key(|c| (c.sup, c.sub));
             constraints
@@ -749,7 +752,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // Walk each SCC `B` such that `A: B`...
         for &scc_b in constraint_sccs.successors(scc_a) {
-            debug!(?scc_b);
+            trace!(?scc_b);
 
             // ...and add elements from `B` into `A`. One complication
             // arises because of universes: If `B` contains something
@@ -770,7 +773,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             self.apply_member_constraint(scc_a, m_c_i, member_constraints.choice_regions(m_c_i));
         }
 
-        debug!(value = ?self.scc_values.region_value_str(scc_a));
+        trace!(value = ?self.scc_values.region_value_str(scc_a));
     }
 
     /// Invoked for each `R0 member of [R1..Rn]` constraint.
@@ -826,7 +829,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 .universal_regions_outlived_by(scc)
                 .all(|lb| self.universal_region_relations.outlives(o_r, lb))
         });
-        debug!(?choice_regions, "after lb");
+        trace!(?choice_regions, "after lb");
 
         // Now find all the *upper bounds* -- that is, each UB is a
         // free region that must outlive the member region `R0` (`UB:
@@ -835,10 +838,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         self.compute_reverse_scc_graph();
         let universal_region_relations = &self.universal_region_relations;
         for ub in self.rev_scc_graph.as_ref().unwrap().upper_bounds(scc) {
-            debug!(?ub);
+            trace!(?ub);
             choice_regions.retain(|&o_r| universal_region_relations.outlives(ub, o_r));
         }
-        debug!(?choice_regions, "after ub");
+        trace!(?choice_regions, "after ub");
 
         // At this point we can pick any member of `choice_regions`, but to avoid potential
         // non-determinism we will pick the *unique minimum* choice.
@@ -866,12 +869,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 (false, false) => bug!("incomparable regions in total order"),
             }
         }) else {
-            debug!("no unique minimum choice");
+            trace!("no unique minimum choice");
             return false;
         };
 
         let min_choice_scc = self.constraint_sccs.scc(min_choice);
-        debug!(?min_choice, ?min_choice_scc);
+        trace!(?min_choice, ?min_choice_scc);
         if self.scc_values.add_region(scc, min_choice_scc) {
             self.member_constraints_applied.push(AppliedMemberConstraint {
                 member_region_scc: scc,
@@ -912,7 +915,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// `'a` with `'b` and not `'static`. But it will have to do for
     /// now.
     fn add_incompatible_universe(&mut self, scc: ConstraintSccIndex) {
-        debug!("add_incompatible_universe(scc={:?})", scc);
+        trace!("add_incompatible_universe(scc={:?})", scc);
 
         let fr_static = self.universal_regions.fr_static;
         self.scc_values.add_all_points(scc);
@@ -939,7 +942,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let mut deduplicate_errors = FxIndexSet::default();
 
         for type_test in &self.type_tests {
-            debug!("check_type_test: {:?}", type_test);
+            trace!("check_type_test: {:?}", type_test);
 
             let generic_ty = type_test.generic_kind.to_ty(tcx);
             if self.eval_verify_bound(
@@ -973,11 +976,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 type_test.lower_bound,
                 type_test.span,
             )) {
-                debug!(
+                trace!(
                     "check_type_test: reporting error for erased_generic_kind={:?}, \
                      lower_bound_region={:?}, \
                      type_test.span={:?}",
-                    erased_generic_kind, type_test.lower_bound, type_test.span,
+                    erased_generic_kind,
+                    type_test.lower_bound,
+                    type_test.span,
                 );
 
                 errors_buffer.push(RegionErrorKind::TypeTestError { type_test: type_test.clone() });
@@ -1027,13 +1032,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             return false;
         };
 
-        debug!("subject = {:?}", subject);
+        trace!("subject = {:?}", subject);
 
         let r_scc = self.constraint_sccs.scc(*lower_bound);
 
-        debug!(
+        trace!(
             "lower_bound = {:?} r_scc={:?} universe={:?}",
-            lower_bound, r_scc, self.scc_universes[r_scc]
+            lower_bound,
+            r_scc,
+            self.scc_universes[r_scc]
         );
 
         // If the type test requires that `T: 'a` where `'a` is a
@@ -1043,7 +1050,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // It doesn't matter *what* universe because the promoted `T` will
         // always be in the root universe.
         if let Some(p) = self.scc_values.placeholders_contained_in(r_scc).next() {
-            debug!("encountered placeholder in higher universe: {:?}, requiring 'static", p);
+            trace!("encountered placeholder in higher universe: {:?}, requiring 'static", p);
             let static_r = self.universal_regions.fr_static;
             propagated_outlives_requirements.push(ClosureOutlivesRequirement {
                 subject,
@@ -1061,7 +1068,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // universal region (it may be the same region) and add it to
         // `ClosureOutlivesRequirement`.
         for ur in self.scc_values.universal_regions_outlived_by(r_scc) {
-            debug!("universal_region_outlived_by ur={:?}", ur);
+            trace!("universal_region_outlived_by ur={:?}", ur);
             // Check whether we can already prove that the "subject" outlives `ur`.
             // If so, we don't have to propagate this requirement to our caller.
             //
@@ -1080,7 +1087,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
 
             let non_local_ub = self.universal_region_relations.non_local_upper_bounds(ur);
-            debug!("try_promote_type_test: non_local_ub={:?}", non_local_ub);
+            trace!("try_promote_type_test: non_local_ub={:?}", non_local_ub);
 
             // This is slightly too conservative. To show T: '1, given `'2: '1`
             // and `'3: '1` we only need to prove that T: '2 *or* T: '3, but to
@@ -1096,7 +1103,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     blame_span: type_test.span,
                     category: ConstraintCategory::Boring,
                 };
-                debug!("try_promote_type_test: pushing {:#?}", requirement);
+                trace!("try_promote_type_test: pushing {:#?}", requirement);
                 propagated_outlives_requirements.push(requirement);
             }
         }
@@ -1164,7 +1171,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 .unwrap_or(tcx.lifetimes.re_erased)
         });
 
-        debug!("try_promote_type_test_subject: folded ty = {:?}", ty);
+        trace!("try_promote_type_test_subject: folded ty = {:?}", ty);
 
         // This will be true if we failed to promote some region.
         if ty.has_erased_regions() {
@@ -1190,7 +1197,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ///   a result `'y`.
     #[instrument(skip(self), level = "debug", ret)]
     pub(crate) fn universal_upper_bound(&self, r: RegionVid) -> RegionVid {
-        debug!(r = %self.region_value_str(r));
+        trace!(r = %self.region_value_str(r));
 
         // Find the smallest universal region that contains all other
         // universal regions within `region`.
@@ -1216,7 +1223,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// falling back to 'static.
     #[instrument(level = "debug", skip(self))]
     pub(crate) fn approx_universal_upper_bound(&self, r: RegionVid) -> RegionVid {
-        debug!("{}", self.region_value_str(r));
+        trace!("{}", self.region_value_str(r));
 
         // Find the smallest universal region that contains all other
         // universal regions within `region`.
@@ -1225,7 +1232,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let static_r = self.universal_regions.fr_static;
         for ur in self.scc_values.universal_regions_outlived_by(r_scc) {
             let new_lub = self.universal_region_relations.postdom_upper_bound(lub, ur);
-            debug!(?ur, ?lub, ?new_lub);
+            trace!(?ur, ?lub, ?new_lub);
             // The upper bound of two non-static regions is static: this
             // means we know nothing about the relationship between these
             // two regions. Pick a 'better' one to use when constructing
@@ -1249,7 +1256,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
         }
 
-        debug!(?r, ?lub);
+        trace!(?r, ?lub);
 
         lub
     }
@@ -1264,7 +1271,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         lower_bound: RegionVid,
         verify_bound: &VerifyBound<'tcx>,
     ) -> bool {
-        debug!("eval_verify_bound(lower_bound={:?}, verify_bound={:?})", lower_bound, verify_bound);
+        trace!("eval_verify_bound(lower_bound={:?}, verify_bound={:?})", lower_bound, verify_bound);
 
         match verify_bound {
             VerifyBound::IfEq(verify_if_eq_b) => {
@@ -1367,12 +1374,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     // Evaluate whether `sup_region: sub_region`.
     #[instrument(skip(self), level = "debug", ret)]
     fn eval_outlives(&self, sup_region: RegionVid, sub_region: RegionVid) -> bool {
-        debug!(
+        trace!(
             "sup_region's value = {:?} universal={:?}",
             self.region_value_str(sup_region),
             self.universal_regions.is_universal_region(sup_region),
         );
-        debug!(
+        trace!(
             "sub_region's value = {:?} universal={:?}",
             self.region_value_str(sub_region),
             self.universal_regions.is_universal_region(sub_region),
@@ -1385,7 +1392,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // some placeholder that `'sup` cannot name, then this is only
         // true if `'sup` outlives static.
         if !self.universe_compatible(sub_region_scc, sup_region_scc) {
-            debug!(
+            trace!(
                 "sub universe `{sub_region_scc:?}` is not nameable \
                 by super `{sup_region_scc:?}`, promoting to static",
             );
@@ -1407,7 +1414,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             });
 
         if !universal_outlives {
-            debug!("sub region contains a universal region not present in super");
+            trace!("sub region contains a universal region not present in super");
             return false;
         }
 
@@ -1416,11 +1423,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         if self.universal_regions.is_universal_region(sup_region) {
             // Micro-opt: universal regions contain all points.
-            debug!("super is universal and hence contains all points");
+            trace!("super is universal and hence contains all points");
             return true;
         }
 
-        debug!("comparison between points in sup/sub");
+        trace!("comparison between points in sup/sub");
 
         self.scc_values.contains_points(sup_region_scc, sub_region_scc)
     }
@@ -1498,7 +1505,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         errors_buffer: &mut RegionErrors<'tcx>,
         polonius_output: Rc<PoloniusOutput>,
     ) {
-        debug!(
+        trace!(
             "check_polonius_subset_errors: {} subset_errors",
             polonius_output.subset_errors.len()
         );
@@ -1533,10 +1540,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         subset_errors.dedup();
 
         for (longer_fr, shorter_fr) in subset_errors.into_iter() {
-            debug!(
+            trace!(
                 "check_polonius_subset_errors: subset_error longer_fr={:?},\
                  shorter_fr={:?}",
-                longer_fr, shorter_fr
+                longer_fr,
+                shorter_fr
             );
 
             let propagated = self.try_propagate_universal_region_error(
@@ -1683,7 +1691,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // `longer_fr`.
             if let Some(fr_minus) = self.universal_region_relations.non_local_lower_bound(longer_fr)
             {
-                debug!("try_propagate_universal_region_error: fr_minus={:?}", fr_minus);
+                trace!("try_propagate_universal_region_error: fr_minus={:?}", fr_minus);
 
                 let blame_span_category = self.find_outlives_blame_span(
                     longer_fr,
@@ -1696,7 +1704,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // so slightly larger than `shorter_fr`.
                 let shorter_fr_plus =
                     self.universal_region_relations.non_local_upper_bounds(shorter_fr);
-                debug!(
+                trace!(
                     "try_propagate_universal_region_error: shorter_fr_plus={:?}",
                     shorter_fr_plus
                 );
@@ -1722,10 +1730,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         placeholder: ty::PlaceholderRegion,
         errors_buffer: &mut RegionErrors<'tcx>,
     ) {
-        debug!("check_bound_universal_region(fr={:?}, placeholder={:?})", longer_fr, placeholder,);
+        trace!("check_bound_universal_region(fr={:?}, placeholder={:?})", longer_fr, placeholder,);
 
         let longer_fr_scc = self.constraint_sccs.scc(longer_fr);
-        debug!("check_bound_universal_region: longer_fr_scc={:?}", longer_fr_scc,);
+        trace!("check_bound_universal_region: longer_fr_scc={:?}", longer_fr_scc,);
 
         for error_element in self.scc_values.elements_contained_in(longer_fr_scc) {
             match error_element {
@@ -1749,7 +1757,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // Stop after the first error, it gets too noisy otherwise, and does not provide more information.
             break;
         }
-        debug!("check_bound_universal_region: all bounds satisfied");
+        trace!("check_bound_universal_region: all bounds satisfied");
     }
 
     #[instrument(level = "debug", skip(self, infcx, errors_buffer))]
@@ -1760,21 +1768,21 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) {
         let member_constraints = self.member_constraints.clone();
         for m_c_i in member_constraints.all_indices() {
-            debug!(?m_c_i);
+            trace!(?m_c_i);
             let m_c = &member_constraints[m_c_i];
             let member_region_vid = m_c.member_region_vid;
-            debug!(
+            trace!(
                 ?member_region_vid,
                 value = ?self.region_value_str(member_region_vid),
             );
             let choice_regions = member_constraints.choice_regions(m_c_i);
-            debug!(?choice_regions);
+            trace!(?choice_regions);
 
             // Did the member region wind up equal to any of the option regions?
             if let Some(o) =
                 choice_regions.iter().find(|&&o_r| self.eval_equal(o_r, m_c.member_region_vid))
             {
-                debug!("evaluated as equal to {:?}", o);
+                trace!("evaluated as equal to {:?}", o);
                 continue;
             }
 
@@ -1808,13 +1816,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         fr1: RegionVid,
         fr2: RegionVid,
     ) -> bool {
-        debug!("provides_universal_region(r={:?}, fr1={:?}, fr2={:?})", r, fr1, fr2);
+        trace!("provides_universal_region(r={:?}, fr1={:?}, fr2={:?})", r, fr1, fr2);
         let result = {
             r == fr2 || {
                 fr2 == self.universal_regions.fr_static && self.cannot_name_placeholder(fr1, r)
             }
         };
-        debug!("provides_universal_region: result = {:?}", result);
+        trace!("provides_universal_region: result = {:?}", result);
         result
     }
 
@@ -1822,14 +1830,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// `true` if `r1` cannot name that placeholder in its
     /// value; otherwise, returns `false`.
     pub(crate) fn cannot_name_placeholder(&self, r1: RegionVid, r2: RegionVid) -> bool {
-        debug!("cannot_name_value_of(r1={:?}, r2={:?})", r1, r2);
+        trace!("cannot_name_value_of(r1={:?}, r2={:?})", r1, r2);
 
         match self.definitions[r2].origin {
             NllRegionVariableOrigin::Placeholder(placeholder) => {
                 let universe1 = self.definitions[r1].universe;
-                debug!(
+                trace!(
                     "cannot_name_value_of: universe1={:?} placeholder={:?}",
-                    universe1, placeholder
+                    universe1,
+                    placeholder
                 );
                 universe1.cannot_name(placeholder.universe)
             }
@@ -1876,7 +1885,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         deque.push_back(from_region);
 
         while let Some(r) = deque.pop_front() {
-            debug!(
+            trace!(
                 "find_constraint_paths_between_regions: from_region={:?} r={:?} value={}",
                 from_region,
                 r,
@@ -2043,7 +2052,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // Find all paths
         let (path, target_region) =
             self.find_constraint_paths_between_regions(from_region, target_test).unwrap();
-        debug!(
+        trace!(
             "path={:#?}",
             path.iter()
                 .map(|c| format!(
@@ -2060,7 +2069,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             let outlived = constraint.sub;
             let Some(origin) = self.var_infos.get(outlived) else { continue; };
             let RegionVariableOrigin::Nll(NllRegionVariableOrigin::Placeholder(p)) = origin.origin else { continue; };
-            debug!(?constraint, ?p);
+            trace!(?constraint, ?p);
             let ConstraintCategory::Predicate(span) = constraint.category else { continue; };
             extra_info.push(ExtraConstraintInfo::PlaceholderFromPredicate(span));
             // We only want to point to one
@@ -2099,7 +2108,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 outlives_constraint: *constraint,
             })
             .collect();
-        debug!("categorized_path={:#?}", categorized_path);
+        trace!("categorized_path={:#?}", categorized_path);
 
         // To find the best span to cite, we first try to look for the
         // final constraint that is interesting and where the `sup` is
@@ -2197,7 +2206,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let best_choice =
             if blame_source { range.rev().find(find_region) } else { range.find(find_region) };
 
-        debug!(?best_choice, ?blame_source, ?extra_info);
+        trace!(?best_choice, ?blame_source, ?extra_info);
 
         if let Some(i) = best_choice {
             if let Some(next) = categorized_path.get(i + 1) {
@@ -2234,7 +2243,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // appears to be the most interesting point to report to the
         // user via an even more ad-hoc guess.
         categorized_path.sort_by_key(|p| p.category);
-        debug!("sorted_path={:#?}", categorized_path);
+        trace!("sorted_path={:#?}", categorized_path);
 
         (categorized_path.remove(0), extra_info)
     }

@@ -58,9 +58,12 @@ pub(super) fn each_borrow_involving_path<'tcx, F, I, S>(
             access,
             places_conflict::PlaceConflictBias::Overlap,
         ) {
-            debug!(
+            trace!(
                 "each_borrow_involving_path: {:?} @ {:?} vs. {:?}/{:?}",
-                i, borrowed, place, access
+                i,
+                borrowed,
+                place,
+                access
             );
             let ctrl = op(s, i, borrowed);
             if ctrl == Control::Break {
@@ -75,7 +78,7 @@ pub(super) fn is_active<'tcx>(
     borrow_data: &BorrowData<'tcx>,
     location: Location,
 ) -> bool {
-    debug!("is_active(borrow_data={:?}, location={:?})", borrow_data, location);
+    trace!("is_active(borrow_data={:?}, location={:?})", borrow_data, location);
 
     let activation_location = match borrow_data.activation_location {
         // If this is not a 2-phase borrow, it is always active.

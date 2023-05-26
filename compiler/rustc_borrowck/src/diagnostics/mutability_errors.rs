@@ -33,11 +33,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         error_access: AccessKind,
         location: Location,
     ) {
-        debug!(
+        trace!(
             "report_mutability_error(\
                 access_place={:?}, span={:?}, the_place_err={:?}, error_access={:?}, location={:?},\
             )",
-            access_place, span, the_place_err, error_access, location,
+            access_place,
+            span,
+            the_place_err,
+            error_access,
+            location,
         );
 
         let mut err;
@@ -45,7 +49,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let reason;
         let mut opt_source = None;
         let access_place_desc = self.describe_any_place(access_place.as_ref());
-        debug!("report_mutability_error: access_place_desc={:?}", access_place_desc);
+        trace!("report_mutability_error: access_place_desc={:?}", access_place_desc);
 
         match the_place_err {
             PlaceRef { local, projection: [] } => {
@@ -173,7 +177,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             } => bug!("Unexpected immutable place."),
         }
 
-        debug!("report_mutability_error: item_msg={:?}, reason={:?}", item_msg, reason);
+        trace!("report_mutability_error: item_msg={:?}, reason={:?}", item_msg, reason);
 
         // `act` and `acted_on` are strings that let us abstract over
         // the verbs used in some diagnostic messages.
@@ -248,7 +252,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
         };
 
-        debug!("report_mutability_error: act={:?}, acted_on={:?}", act, acted_on);
+        trace!("report_mutability_error: act={:?}, acted_on={:?}", act, acted_on);
 
         match the_place_err {
             // Suggest making an existing shared borrow in a struct definition a mutable borrow.
@@ -1135,7 +1139,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 }
 
 pub fn mut_borrow_of_mutable_ref(local_decl: &LocalDecl<'_>, local_name: Option<Symbol>) -> bool {
-    debug!("local_info: {:?}, ty.kind(): {:?}", local_decl.local_info, local_decl.ty.kind());
+    trace!("local_info: {:?}, ty.kind(): {:?}", local_decl.local_info, local_decl.ty.kind());
 
     match *local_decl.local_info() {
         // Check if mutably borrowing a mutable reference.

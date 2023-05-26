@@ -162,7 +162,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
         &mut constraints,
     );
 
-    debug!(?normalized_inputs_and_output);
+    trace!(?normalized_inputs_and_output);
 
     for u in ty::UniverseIndex::ROOT..=infcx.universe() {
         constraints.universe_causes.insert(u, UniverseInfo::other());
@@ -311,7 +311,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
     }
 
     fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
-        debug!(?constant, ?location, "visit_constant");
+        trace!(?constant, ?location, "visit_constant");
 
         self.super_constant(constant, location);
         let ty = self.sanitize_type(constant, constant.literal.ty());
@@ -519,7 +519,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         location: Location,
         context: PlaceContext,
     ) -> PlaceTy<'tcx> {
-        debug!("sanitize_place: {:?}", place);
+        trace!("sanitize_place: {:?}", place);
 
         let mut place_ty = PlaceTy::from_ty(self.body().local_decls[place.local].ty);
 
@@ -632,7 +632,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         location: Location,
         context: PlaceContext,
     ) -> PlaceTy<'tcx> {
-        debug!("sanitize_projection: {:?} {:?} {:?}", base, pi, place);
+        trace!("sanitize_projection: {:?} {:?} {:?}", base, pi, place);
         let tcx = self.tcx();
         let base_ty = base.ty;
         match pi {
@@ -708,7 +708,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 match self.field_ty(place, base, field, location) {
                     Ok(ty) => {
                         let ty = self.cx.normalize(ty, location);
-                        debug!(?fty, ?ty);
+                        trace!(?fty, ?ty);
 
                         if let Err(terr) = self.cx.relate_types(
                             ty,
@@ -1096,7 +1096,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     /// Equate the inferred type and the annotated type for user type annotations
     #[instrument(skip(self), level = "debug")]
     fn check_user_type_annotations(&mut self) {
-        debug!(?self.user_type_annotations);
+        trace!(?self.user_type_annotations);
         for user_annotation in self.user_type_annotations {
             let CanonicalUserTypeAnnotation { span, ref user_ty, inferred_ty } = *user_annotation;
             let annotation = self.instantiate_canonical_with_fresh_inference_vars(span, user_ty);
@@ -1111,7 +1111,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         category: ConstraintCategory<'tcx>,
         data: &QueryRegionConstraints<'tcx>,
     ) {
-        debug!("constraints generated: {:#?}", data);
+        trace!("constraints generated: {:#?}", data);
 
         constraint_conversion::ConstraintConversion::new(
             self.infcx,
@@ -1200,7 +1200,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     #[instrument(skip(self, body, location), level = "debug")]
     fn check_stmt(&mut self, body: &Body<'tcx>, stmt: &Statement<'tcx>, location: Location) {
         let tcx = self.tcx();
-        debug!("stmt kind: {:?}", stmt.kind);
+        trace!("stmt kind: {:?}", stmt.kind);
         match &stmt.kind {
             StatementKind::Assign(box (place, rv)) => {
                 // Assignments to temporaries are not "interesting";
@@ -1230,20 +1230,20 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
                     _ => ConstraintCategory::Assignment,
                 };
-                debug!(
+                trace!(
                     "assignment category: {:?} {:?}",
                     category,
                     place.as_local().map(|l| &body.local_decls[l])
                 );
 
                 let place_ty = place.ty(body, tcx).ty;
-                debug!(?place_ty);
+                trace!(?place_ty);
                 let place_ty = self.normalize(place_ty, location);
-                debug!("place_ty normalized: {:?}", place_ty);
+                trace!("place_ty normalized: {:?}", place_ty);
                 let rv_ty = rv.ty(body, tcx);
-                debug!(?rv_ty);
+                trace!(?rv_ty);
                 let rv_ty = self.normalize(rv_ty, location);
-                debug!("normalized rv_ty: {:?}", rv_ty);
+                trace!("normalized rv_ty: {:?}", rv_ty);
                 if let Err(terr) =
                     self.sub_types(rv_ty, place_ty, location.to_locations(), category)
                 {
@@ -1342,7 +1342,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         term_location: Location,
     ) {
         let tcx = self.tcx();
-        debug!("terminator kind: {:?}", term.kind);
+        trace!("terminator kind: {:?}", term.kind);
         match &term.kind {
             TerminatorKind::Goto { .. }
             | TerminatorKind::Resume
@@ -1373,7 +1373,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
 
                 let func_ty = func.ty(body, tcx);
-                debug!("func_ty.kind: {:?}", func_ty.kind());
+                trace!("func_ty.kind: {:?}", func_ty.kind());
 
                 let sig = match func_ty.kind() {
                     ty::FnDef(..) | ty::FnPtr(_) => func_ty.fn_sig(tcx),
@@ -1405,7 +1405,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         region_ctxt_fn,
                     )
                 });
-                debug!(?sig);
+                trace!(?sig);
                 // IMPORTANT: We have to prove well formed for the function signature before
                 // we normalize it, as otherwise types like `<&'a &'b () as Trait>::Assoc`
                 // get normalized away, causing us to ignore the `'b: 'a` bound used by the function.
@@ -1569,7 +1569,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         term_location: Location,
         from_hir_call: bool,
     ) {
-        debug!("check_call_inputs({:?}, {:?})", sig, args);
+        trace!("check_call_inputs({:?}, {:?})", sig, args);
         if args.len() < sig.inputs().len() || (args.len() > sig.inputs().len() && !sig.c_variadic) {
             span_mirbug!(self, term, "call to {:?} with wrong # of args", sig);
         }
@@ -1579,7 +1579,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         } else {
             None
         };
-        debug!(?func_ty);
+        trace!(?func_ty);
 
         for (n, (fn_arg, op_arg)) in iter::zip(sig.inputs(), args).enumerate() {
             let op_arg_ty = op_arg.ty(body, self.tcx());
@@ -1801,7 +1801,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     }
 
     fn check_operand(&mut self, op: &Operand<'tcx>, location: Location) {
-        debug!(?op, ?location, "check_operand");
+        trace!(?op, ?location, "check_operand");
 
         if let Operand::Constant(constant) = op {
             let maybe_uneval = match constant.literal {
@@ -2490,9 +2490,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // *p`, where the `p` has type `&'b mut Foo`, for example, we
         // need to ensure that `'b: 'a`.
 
-        debug!(
+        trace!(
             "add_reborrow_constraint({:?}, {:?}, {:?})",
-            location, borrow_region, borrowed_place
+            location,
+            borrow_region,
+            borrowed_place
         );
 
         let mut cursor = borrowed_place.projection.as_ref();
@@ -2512,13 +2514,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         while let [proj_base @ .., elem] = cursor {
             cursor = proj_base;
 
-            debug!("add_reborrow_constraint - iteration {:?}", elem);
+            trace!("add_reborrow_constraint - iteration {:?}", elem);
 
             match elem {
                 ProjectionElem::Deref => {
                     let base_ty = Place::ty_from(borrowed_place.local, proj_base, body, tcx).ty;
 
-                    debug!("add_reborrow_constraint - base_ty = {:?}", base_ty);
+                    trace!("add_reborrow_constraint - base_ty = {:?}", base_ty);
                     match base_ty.kind() {
                         ty::Ref(ref_region, _, mutbl) => {
                             constraints.outlives_constraints.push(OutlivesConstraint {
@@ -2592,9 +2594,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     ) {
         let tcx = self.tcx();
 
-        debug!(
+        trace!(
             "prove_aggregate_predicates(aggregate_kind={:?}, location={:?})",
-            aggregate_kind, location
+            aggregate_kind,
+            location
         );
 
         let (def_id, instantiated_predicates) = match *aggregate_kind {
@@ -2698,7 +2701,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     #[instrument(skip(self, body), level = "debug")]
     fn typeck_mir(&mut self, body: &Body<'tcx>) {
         self.last_span = body.span;
-        debug!(?body.span);
+        trace!(?body.span);
 
         for (local, local_decl) in body.local_decls.iter_enumerated() {
             self.check_local(&body, local, local_decl);
