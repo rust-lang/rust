@@ -401,11 +401,11 @@ pub(super) fn definition(
                 hir::VariantDef::Struct(s) => Adt::from(s)
                     .layout(db)
                     .ok()
-                    .map(|layout| format!(", offset = {}", layout.fields.offset(id).bytes())),
+                    .map(|layout| format!(", offset = {:#X}", layout.fields.offset(id).bytes())),
                 _ => None,
             };
             Some(format!(
-                "size = {}, align = {}{}",
+                "size = {:#X}, align = {:#X}{}",
                 layout.size.bytes(),
                 layout.align.abi.bytes(),
                 offset.as_deref().unwrap_or_default()
@@ -415,28 +415,38 @@ pub(super) fn definition(
         Definition::Function(it) => label_and_docs(db, it),
         Definition::Adt(it) => label_and_layout_info_and_docs(db, it, config, |&it| {
             let layout = it.layout(db).ok()?;
-            Some(format!("size = {}, align = {}", layout.size.bytes(), layout.align.abi.bytes()))
+            Some(format!(
+                "size = {:#X}, align = {:#X}",
+                layout.size.bytes(),
+                layout.align.abi.bytes()
+            ))
         }),
-        Definition::Variant(it) => label_value_and_layout_info_and_docs(db, it, config, |&it| {
-            let layout = (|| {
+        Definition::Variant(it) => label_value_and_layout_info_and_docs(
+            db,
+            it,
+            config,
+            |&it| {
+                if !it.parent_enum(db).is_data_carrying(db) {
+                    match it.eval(db) {
+                        Ok(x) => {
+                            Some(if x >= 10 { format!("{x} ({x:#X})") } else { format!("{x}") })
+                        }
+                        Err(_) => it.value(db).map(|x| format!("{x:?}")),
+                    }
+                } else {
+                    None
+                }
+            },
+            |it| {
                 let (layout, tag_size) = it.layout(db).ok()?;
                 let size = layout.size.bytes_usize() - tag_size;
                 if size == 0 {
                     // There is no value in showing layout info for fieldless variants
                     return None;
                 }
-                Some(format!("size = {}", layout.size.bytes()))
-            })();
-            let value = if !it.parent_enum(db).is_data_carrying(db) {
-                match it.eval(db) {
-                    Ok(x) => Some(if x >= 10 { format!("{x} ({x:#X})") } else { format!("{x}") }),
-                    Err(_) => it.value(db).map(|x| format!("{x:?}")),
-                }
-            } else {
-                None
-            };
-            (value, layout)
-        }),
+                Some(format!("size = {:#X}", layout.size.bytes()))
+            },
+        ),
         Definition::Const(it) => label_value_and_docs(db, it, |it| {
             let body = it.render_eval(db);
             match body {
@@ -463,7 +473,11 @@ pub(super) fn definition(
         Definition::TraitAlias(it) => label_and_docs(db, it),
         Definition::TypeAlias(it) => label_and_layout_info_and_docs(db, it, config, |&it| {
             let layout = it.ty(db).layout(db).ok()?;
-            Some(format!("size = {}, align = {}", layout.size.bytes(), layout.align.abi.bytes()))
+            Some(format!(
+                "size = {:#X}, align = {:#X}",
+                layout.size.bytes(),
+                layout.align.abi.bytes()
+            ))
         }),
         Definition::BuiltinType(it) => {
             return famous_defs
@@ -634,41 +648,42 @@ fn label_and_layout_info_and_docs<D, E, V>(
     db: &RootDatabase,
     def: D,
     config: &HoverConfig,
-    value_extractor: E,
+    layout_extractor: E,
 ) -> (String, Option<hir::Documentation>)
 where
     D: HasAttrs + HirDisplay,
     E: Fn(&D) -> Option<V>,
     V: Display,
 {
-    let label = match value_extractor(&def) {
-        Some(value) if config.memory_layout => format!("{} // {value}", def.display(db)),
+    let label = match config.memory_layout.then(|| layout_extractor(&def)).flatten() {
+        Some(layout) => format!("{} // {layout}", def.display(db)),
         _ => def.display(db).to_string(),
     };
     let docs = def.attrs(db).docs();
     (label, docs)
 }
 
-fn label_value_and_layout_info_and_docs<D, E, V, L>(
+fn label_value_and_layout_info_and_docs<D, E, E2, V, L>(
     db: &RootDatabase,
     def: D,
     config: &HoverConfig,
     value_extractor: E,
+    layout_extractor: E2,
 ) -> (String, Option<hir::Documentation>)
 where
     D: HasAttrs + HirDisplay,
-    E: Fn(&D) -> (Option<V>, Option<L>),
+    E: Fn(&D) -> Option<V>,
+    E2: Fn(&D) -> Option<L>,
     V: Display,
     L: Display,
 {
-    let (value, layout) = value_extractor(&def);
-    let label = if let Some(value) = value {
-        format!("{} = {value}", def.display(db))
-    } else {
-        def.display(db).to_string()
+    let value = value_extractor(&def);
+    let label = match value {
+        Some(value) => format!("{} = {value}", def.display(db)),
+        None => def.display(db).to_string(),
     };
-    let label = match layout {
-        Some(layout) if config.memory_layout => format!("{} // {layout}", label),
+    let label = match config.memory_layout.then(|| layout_extractor(&def)).flatten() {
+        Some(layout) => format!("{} // {layout}", label),
         _ => label,
     };
     let docs = def.attrs(db).docs();

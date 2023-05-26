@@ -38,6 +38,7 @@
 //!     option: panic
 //!     ord: eq, option
 //!     panic: fmt
+//!     phantom_data:
 //!     pin:
 //!     range:
 //!     result:
@@ -119,6 +120,11 @@ pub mod marker {
     #[lang = "tuple_trait"]
     pub trait Tuple {}
     // endregion:fn
+
+    // region:phantom_data
+    #[lang = "phantom_data"]
+    pub struct PhantomData<T: ?Sized>;
+    // endregion:phantom_data
 }
 
 // region:default
