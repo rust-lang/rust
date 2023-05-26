@@ -15,11 +15,11 @@ use triomphe::Arc;
 
 use super::{InferOk, InferResult, InferenceContext, TypeError};
 use crate::{
-    db::HirDatabase, fold_tys_and_consts, static_lifetime, to_chalk_trait_id, traits::FnTrait,
-    AliasEq, AliasTy, BoundVar, Canonical, Const, ConstValue, DebruijnIndex, GenericArg,
-    GenericArgData, Goal, Guidance, InEnvironment, InferenceVar, Interner, Lifetime, ParamKind,
-    ProjectionTy, ProjectionTyExt, Scalar, Solution, Substitution, TraitEnvironment, Ty, TyBuilder,
-    TyExt, TyKind, VariableKind,
+    consteval::unknown_const, db::HirDatabase, fold_tys_and_consts, static_lifetime,
+    to_chalk_trait_id, traits::FnTrait, AliasEq, AliasTy, BoundVar, Canonical, Const, ConstValue,
+    DebruijnIndex, GenericArg, GenericArgData, Goal, Guidance, InEnvironment, InferenceVar,
+    Interner, Lifetime, ParamKind, ProjectionTy, ProjectionTyExt, Scalar, Solution, Substitution,
+    TraitEnvironment, Ty, TyBuilder, TyExt, TyKind, VariableKind,
 };
 
 impl<'a> InferenceContext<'a> {
@@ -256,10 +256,10 @@ impl<'a> InferenceTable<'a> {
                                 {
                                     eval
                                 } else {
-                                    c
+                                    unknown_const(c.data(Interner).ty.clone())
                                 }
                             } else {
-                                c
+                                unknown_const(c.data(Interner).ty.clone())
                             }
                         }
                         _ => c,

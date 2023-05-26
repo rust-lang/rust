@@ -2,7 +2,7 @@
 
 use std::env::var;
 
-use chalk_ir::GoalData;
+use chalk_ir::{fold::TypeFoldable, DebruijnIndex, GoalData};
 use chalk_recursive::Cache;
 use chalk_solve::{logging_db::LoggingRustIrDatabase, rust_ir, Solver};
 
@@ -16,9 +16,9 @@ use stdx::panic_context;
 use triomphe::Arc;
 
 use crate::{
-    db::HirDatabase, infer::unify::InferenceTable, AliasEq, AliasTy, Canonical, DomainGoal, Goal,
-    Guidance, InEnvironment, Interner, ProjectionTy, ProjectionTyExt, Solution, TraitRefExt, Ty,
-    TyKind, WhereClause,
+    db::HirDatabase, infer::unify::InferenceTable, utils::UnevaluatedConstEvaluatorFolder, AliasEq,
+    AliasTy, Canonical, DomainGoal, Goal, Guidance, InEnvironment, Interner, ProjectionTy,
+    ProjectionTyExt, Solution, TraitRefExt, Ty, TyKind, WhereClause,
 };
 
 /// This controls how much 'time' we give the Chalk solver before giving up.
@@ -105,6 +105,12 @@ pub(crate) fn trait_solve_query(
             return Some(Solution::Ambig(Guidance::Unknown));
         }
     }
+
+    // Chalk see `UnevaluatedConst` as a unique concrete value, but we see it as an alias for another const. So
+    // we should get rid of it when talking to chalk.
+    let goal = goal
+        .try_fold_with(&mut UnevaluatedConstEvaluatorFolder { db }, DebruijnIndex::INNERMOST)
+        .unwrap();
 
     // We currently don't deal with universes (I think / hope they're not yet
     // relevant for our use cases?)
