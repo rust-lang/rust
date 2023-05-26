@@ -1,10 +1,10 @@
 // run-pass
 #![allow(dead_code)]
-#![allow(improper_ctypes)]
 
 // ignore-wasm32-bare no libc to test ffi with
 
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub struct Quad {
     a: u64,
     b: u64,

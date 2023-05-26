@@ -1,5 +1,4 @@
 // run-pass
-#![allow(improper_ctypes)]
 
 // ignore-wasm32-bare no libc for ffi testing
 
@@ -7,6 +6,7 @@
 // by value.
 
 #[derive(Copy, Clone, PartialEq, Debug)]
+#[repr(C)]
 pub struct TwoU8s {
     one: u8,
     two: u8,

@@ -1,8 +1,8 @@
 // run-pass
-#![allow(improper_ctypes)]
 
 // ignore-wasm32-bare no libc to test ffi with
 
+#[repr(C)]
 pub struct TwoU64s {
     one: u64,
     two: u64,
