@@ -23,15 +23,11 @@ pub trait AstDeref {
     fn ast_deref_mut(&mut self) -> &mut Self::Target;
 }
 
-macro_rules! impl_not_ast_deref {
-    ($($T:ty),+ $(,)?) => {
-        $(
-            impl !AstDeref for $T {}
-        )+
-    };
-}
-
-impl_not_ast_deref!(AssocItem, Expr, ForeignItem, Item, Stmt);
+impl !AstDeref for AssocItem {}
+impl !AstDeref for Expr {}
+impl !AstDeref for ForeignItem {}
+impl !AstDeref for Item {}
+impl !AstDeref for Stmt {}
 
 impl<T> AstDeref for P<T> {
     type Target = T;
