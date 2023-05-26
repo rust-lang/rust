@@ -2592,7 +2592,8 @@ fn clean_use_statement_inner<'tcx>(
     } else {
         if inline_attr.is_none()
             && let Res::Def(DefKind::Mod, did) = path.res
-            && !did.is_local() && did.is_crate_root()
+            && !did.is_local()
+            && did.is_crate_root()
         {
             // if we're `pub use`ing an extern crate root, don't inline it unless we
             // were specifically asked for it
