@@ -32,16 +32,21 @@ jobs:
           filters: |
             typescript:
               - 'editors/code/**'
+            proc_macros:
+              - 'crates/proc-macro-api/**'
+              - 'crates/proc-macro-srv/**'
+              - 'crates/proc-macro-srv-cli/**'
+              - 'crates/proc-macro-test/**'
 
   rust:
+    needs: changes
     if: github.repository == 'rust-lang/rust-analyzer'
     name: Rust
     runs-on: ${{ matrix.os }}
     env:
       CC: deny_c
-      # we want to build r-a on stable to check that it keeps building on stable,
-      # but we also want to test our proc-macro-srv which depends on nightly features
-      RUSTC_BOOTSTRAP: 1
+      RUST_CHANNEL: "${{ needs.changes.outputs.proc_macros == 'true' && 'nightly' || 'stable'}}"
+      USE_SYSROOT_ABI: "${{ needs.changes.outputs.proc_macros == 'true' && '--features sysroot-abi' || ''}}"
 
     strategy:
       fail-fast: false
@@ -57,7 +62,7 @@ jobs:
 
       - name: Install Rust toolchain
         run: |
-          rustup update --no-self-update stable
+          rustup update --no-self-update ${{ env.RUST_CHANNEL }}
           rustup component add rustfmt rust-src
 
       - name: Cache Dependencies
@@ -68,15 +73,15 @@ jobs:
         run: sed -i '/\[profile.dev]/a opt-level=1' Cargo.toml
 
       - name: Compile (tests)
-        run: cargo test --no-run --locked  --features sysroot-abi
+        run: cargo test --no-run --locked ${{ env.USE_SYSROOT_ABI }}
 
       # It's faster to `test` before `build` ¯\_(ツ)_/¯
       - name: Compile (rust-analyzer)
         if: matrix.os == 'ubuntu-latest'
-        run: cargo build --quiet --features sysroot-abi
+        run: cargo build --quiet ${{ env.USE_SYSROOT_ABI }}
 
       - name: Test
-        run: cargo test --features sysroot-abi -- --nocapture --quiet
+        run: cargo test ${{ env.USE_SYSROOT_ABI }} -- --nocapture --quiet
 
       - name: Run analysis-stats on rust-analyzer
         if: matrix.os == 'ubuntu-latest'
