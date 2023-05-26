@@ -700,7 +700,7 @@ pub trait PrettyPrinter<'tcx>:
                     if verbose { p!(write("{:?}", infer_ty)) } else { p!(write("{}", infer_ty)) }
                 }
             }
-            ty::Error(_) => p!("[type error]"),
+            ty::Error(_) => p!("{{type error}}"),
             ty::Param(ref param_ty) => p!(print(param_ty)),
             ty::Bound(debruijn, bound_ty) => match bound_ty.kind {
                 ty::BoundTyKind::Anon => debug_bound_var(&mut self, debruijn, bound_ty.var)?,
@@ -1379,8 +1379,8 @@ pub trait PrettyPrinter<'tcx>:
             },
             // FIXME(generic_const_exprs):
             // write out some legible representation of an abstract const?
-            ty::ConstKind::Expr(_) => p!("[const expr]"),
-            ty::ConstKind::Error(_) => p!("[const error]"),
+            ty::ConstKind::Expr(_) => p!("{{const expr}}"),
+            ty::ConstKind::Error(_) => p!("{{const error}}"),
         };
         Ok(self)
     }
