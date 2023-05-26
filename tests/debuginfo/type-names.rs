@@ -355,7 +355,6 @@ fn generic_function<T>(x: T) -> T {
     x
 }
 
-#[allow(improper_ctypes)]
 extern "C" {
     fn printf(_: *const u8, ...) -> isize;
 }

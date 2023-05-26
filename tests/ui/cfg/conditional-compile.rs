@@ -2,7 +2,6 @@
 #![allow(dead_code)]
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
-#![allow(improper_ctypes)]
 
 // Crate use statements
 
@@ -110,8 +109,8 @@ mod test_foreign_items {
     pub mod rustrt {
         extern "C" {
             #[cfg(bogus)]
-            pub fn write() -> String;
-            pub fn write() -> String;
+            pub fn write() -> u32;
+            pub fn write() -> u32;
         }
     }
 }
