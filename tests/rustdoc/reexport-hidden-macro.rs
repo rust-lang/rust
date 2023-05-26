@@ -15,7 +15,7 @@ macro_rules! foo {
     () => {};
 }
 
-/// not displayed
+// @has - '//*[@id="reexport.Macro"]/code' 'pub use crate::foo as Macro;'
 pub use crate::foo as Macro;
 /// Displayed
 #[doc(inline)]
