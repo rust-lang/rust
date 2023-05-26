@@ -56,6 +56,7 @@ fn main() {
 
     issue6067();
     issue10726();
+    issue10803();
 
     let _ = if let Some(_) = gen_opt() {
         1
@@ -133,4 +134,15 @@ fn issue10726() {
         Some(21) => true,
         _ => false,
     };
+}
+
+fn issue10803() {
+    let x = Some(42);
+
+    let _ = matches!(x, Some(_));
+
+    let _ = matches!(x, None);
+
+    // Don't lint
+    let _ = matches!(x, Some(16));
 }
