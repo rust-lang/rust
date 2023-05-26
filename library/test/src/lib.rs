@@ -559,68 +559,6 @@ pub fn run_test(
         return None;
     }
 
-    struct TestRunOpts {
-        pub strategy: RunStrategy,
-        pub nocapture: bool,
-        pub time: Option<time::TestTimeOptions>,
-    }
-
-    fn run_test_inner(
-        id: TestId,
-        desc: TestDesc,
-        monitor_ch: Sender<CompletedTest>,
-        runnable_test: RunnableTest,
-        opts: TestRunOpts,
-    ) -> Option<thread::JoinHandle<()>> {
-        let name = desc.name.clone();
-
-        let runtest = move || match opts.strategy {
-            RunStrategy::InProcess => run_test_in_process(
-                id,
-                desc,
-                opts.nocapture,
-                opts.time.is_some(),
-                runnable_test,
-                monitor_ch,
-                opts.time,
-            ),
-            RunStrategy::SpawnPrimary => spawn_test_subprocess(
-                id,
-                desc,
-                opts.nocapture,
-                opts.time.is_some(),
-                monitor_ch,
-                opts.time,
-            ),
-        };
-
-        // If the platform is single-threaded we're just going to run
-        // the test synchronously, regardless of the concurrency
-        // level.
-        let supports_threads = !cfg!(target_os = "emscripten") && !cfg!(target_family = "wasm");
-        if supports_threads {
-            let cfg = thread::Builder::new().name(name.as_slice().to_owned());
-            let mut runtest = Arc::new(Mutex::new(Some(runtest)));
-            let runtest2 = runtest.clone();
-            match cfg.spawn(move || runtest2.lock().unwrap().take().unwrap()()) {
-                Ok(handle) => Some(handle),
-                Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
-                    // `ErrorKind::WouldBlock` means hitting the thread limit on some
-                    // platforms, so run the test synchronously here instead.
-                    Arc::get_mut(&mut runtest).unwrap().get_mut().unwrap().take().unwrap()();
-                    None
-                }
-                Err(e) => panic!("failed to spawn thread to run test: {e}"),
-            }
-        } else {
-            runtest();
-            None
-        }
-    }
-
-    let test_run_opts =
-        TestRunOpts { strategy, nocapture: opts.nocapture, time: opts.time_options };
-
     match testfn.into_runnable() {
         Runnable::Test(runnable_test) => {
             if runnable_test.is_dynamic() {
@@ -629,7 +567,53 @@ pub fn run_test(
                     _ => panic!("Cannot run dynamic test fn out-of-process"),
                 };
             }
-            run_test_inner(id, desc, monitor_ch, runnable_test, test_run_opts)
+
+            let name = desc.name.clone();
+            let nocapture = opts.nocapture;
+            let time_options = opts.time_options;
+
+            let runtest = move || match strategy {
+                RunStrategy::InProcess => run_test_in_process(
+                    id,
+                    desc,
+                    nocapture,
+                    time_options.is_some(),
+                    runnable_test,
+                    monitor_ch,
+                    time_options,
+                ),
+                RunStrategy::SpawnPrimary => spawn_test_subprocess(
+                    id,
+                    desc,
+                    nocapture,
+                    time_options.is_some(),
+                    monitor_ch,
+                    time_options,
+                ),
+            };
+
+            // If the platform is single-threaded we're just going to run
+            // the test synchronously, regardless of the concurrency
+            // level.
+            let supports_threads = !cfg!(target_os = "emscripten") && !cfg!(target_family = "wasm");
+            if supports_threads {
+                let cfg = thread::Builder::new().name(name.as_slice().to_owned());
+                let mut runtest = Arc::new(Mutex::new(Some(runtest)));
+                let runtest2 = runtest.clone();
+                match cfg.spawn(move || runtest2.lock().unwrap().take().unwrap()()) {
+                    Ok(handle) => Some(handle),
+                    Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
+                        // `ErrorKind::WouldBlock` means hitting the thread limit on some
+                        // platforms, so run the test synchronously here instead.
+                        Arc::get_mut(&mut runtest).unwrap().get_mut().unwrap().take().unwrap()();
+                        None
+                    }
+                    Err(e) => panic!("failed to spawn thread to run test: {e}"),
+                }
+            } else {
+                runtest();
+                None
+            }
         }
         Runnable::Bench(runnable_bench) => {
             // Benchmarks aren't expected to panic, so we run them all in-process.
