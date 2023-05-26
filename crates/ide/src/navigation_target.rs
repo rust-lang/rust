@@ -45,6 +45,9 @@ pub struct NavigationTarget {
     pub container_name: Option<SmolStr>,
     pub description: Option<String>,
     pub docs: Option<Documentation>,
+    /// In addition to a `name` field, a `NavigationTarget` may also be aliased
+    /// In such cases we want a `NavigationTarget` to be accessible by its alias
+    pub alias: Option<SmolStr>,
 }
 
 impl fmt::Debug for NavigationTarget {
@@ -154,6 +157,7 @@ impl NavigationTarget {
             container_name: None,
             description: None,
             docs: None,
+            alias: None,
         }
     }
 }
@@ -165,7 +169,8 @@ impl TryToNav for FileSymbol {
 
         Some(NavigationTarget {
             file_id: full_range.file_id,
-            name: self.name.clone(),
+            name: if self.is_alias { self.def.name(db)?.to_smol_str() } else { self.name.clone() },
+            alias: if self.is_alias { Some(self.name.clone()) } else { None },
             kind: Some(hir::ModuleDefId::from(self.def).into()),
             full_range: full_range.range,
             focus_range: Some(name_range.range),
@@ -466,6 +471,7 @@ impl ToNav for LocalSource {
         NavigationTarget {
             file_id,
             name,
+            alias: None,
             kind: Some(kind),
             full_range,
             focus_range,
@@ -494,6 +500,7 @@ impl ToNav for hir::Label {
         NavigationTarget {
             file_id,
             name,
+            alias: None,
             kind: Some(SymbolKind::Label),
             full_range,
             focus_range,
@@ -534,6 +541,7 @@ impl TryToNav for hir::TypeParam {
         Some(NavigationTarget {
             file_id,
             name,
+            alias: None,
             kind: Some(SymbolKind::TypeParam),
             full_range,
             focus_range,
@@ -560,6 +568,7 @@ impl TryToNav for hir::LifetimeParam {
         Some(NavigationTarget {
             file_id,
             name,
+            alias: None,
             kind: Some(SymbolKind::LifetimeParam),
             full_range,
             focus_range: Some(full_range),
@@ -589,6 +598,7 @@ impl TryToNav for hir::ConstParam {
         Some(NavigationTarget {
             file_id,
             name,
+            alias: None,
             kind: Some(SymbolKind::ConstParam),
             full_range,
             focus_range,
@@ -643,6 +653,7 @@ fn foo() { enum FooInner { } }
                     focus_range: 34..42,
                     name: "FooInner",
                     kind: Enum,
+                    container_name: "foo",
                     description: "enum FooInner",
                 },
             ]

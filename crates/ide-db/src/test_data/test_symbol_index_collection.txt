@@ -31,6 +31,7 @@
                     },
                 },
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "CONST",
@@ -55,6 +56,7 @@
                     },
                 },
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "CONST_WITH_INNER",
@@ -79,6 +81,7 @@
                     },
                 },
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "Enum",
@@ -105,6 +108,7 @@
                     },
                 },
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "Macro",
@@ -131,6 +135,7 @@
                     },
                 },
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "STATIC",
@@ -155,6 +160,7 @@
                     },
                 },
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "Struct",
@@ -181,6 +187,7 @@
                     },
                 },
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "StructFromMacro",
@@ -207,6 +214,7 @@
                     },
                 },
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "StructInFn",
@@ -235,6 +243,7 @@
                 container_name: Some(
                     "main",
                 ),
+                is_alias: false,
             },
             FileSymbol {
                 name: "StructInNamedConst",
@@ -263,6 +272,7 @@
                 container_name: Some(
                     "CONST_WITH_INNER",
                 ),
+                is_alias: false,
             },
             FileSymbol {
                 name: "StructInUnnamedConst",
@@ -289,6 +299,7 @@
                     },
                 },
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "Trait",
@@ -313,6 +324,7 @@
                     },
                 },
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "Union",
@@ -339,6 +351,7 @@
                     },
                 },
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "a_mod",
@@ -365,6 +378,7 @@
                     },
                 },
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "b_mod",
@@ -391,6 +405,7 @@
                     },
                 },
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "define_struct",
@@ -417,6 +432,7 @@
                     },
                 },
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "impl_fn",
@@ -441,6 +457,7 @@
                     },
                 },
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "macro_rules_macro",
@@ -467,6 +484,7 @@
                     },
                 },
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "main",
@@ -491,6 +509,7 @@
                     },
                 },
                 container_name: None,
+                is_alias: false,
             },
             FileSymbol {
                 name: "trait_fn",
@@ -517,6 +536,7 @@
                 container_name: Some(
                     "Trait",
                 ),
+                is_alias: false,
             },
         ],
     ),
@@ -554,6 +574,7 @@
                     },
                 },
                 container_name: None,
+                is_alias: false,
             },
         ],
     ),
@@ -591,6 +612,7 @@
                     },
                 },
                 container_name: None,
+                is_alias: false,
             },
         ],
     ),

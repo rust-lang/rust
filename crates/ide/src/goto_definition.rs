@@ -113,6 +113,7 @@ fn try_lookup_include_path(
         file_id,
         full_range: TextRange::new(0.into(), size),
         name: path.into(),
+        alias: None,
         focus_range: None,
         kind: None,
         container_name: None,

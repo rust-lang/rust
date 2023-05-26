@@ -20,6 +20,7 @@ pub struct FileSymbol {
     pub def: ModuleDef,
     pub loc: DeclarationLocation,
     pub container_name: Option<SmolStr>,
+    pub is_alias: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -249,46 +250,69 @@ impl<'a> SymbolCollector<'a> {
         <L as Lookup>::Data: HasSource,
         <<L as Lookup>::Data as HasSource>::Value: HasName,
     {
-        self.push_file_symbol(|s| {
-            let loc = id.lookup(s.db.upcast());
-            let source = loc.source(s.db.upcast());
-            let name_node = source.value.name()?;
-            Some(FileSymbol {
-                name: name_node.text().into(),
-                def: ModuleDef::from(id.into()),
-                container_name: s.current_container_name.clone(),
-                loc: DeclarationLocation {
-                    hir_file_id: source.file_id,
-                    ptr: SyntaxNodePtr::new(source.value.syntax()),
-                    name_ptr: SyntaxNodePtr::new(name_node.syntax()),
-                },
-            })
-        })
+        let loc = id.lookup(self.db.upcast());
+        let source = loc.source(self.db.upcast());
+        let Some(name_node) = source.value.name() else { return };
+        let def = ModuleDef::from(id.into());
+        let dec_loc = DeclarationLocation {
+            hir_file_id: source.file_id,
+            ptr: SyntaxNodePtr::new(source.value.syntax()),
+            name_ptr: SyntaxNodePtr::new(name_node.syntax()),
+        };
+
+        if let Some(attrs) = def.attrs(self.db) {
+            for alias in attrs.doc_aliases() {
+                self.symbols.push(FileSymbol {
+                    name: alias,
+                    def,
+                    loc: dec_loc.clone(),
+                    container_name: self.current_container_name.clone(),
+                    is_alias: true,
+                });
+            }
+        }
+
+        self.symbols.push(FileSymbol {
+            name: name_node.text().into(),
+            def,
+            container_name: self.current_container_name.clone(),
+            loc: dec_loc,
+            is_alias: false,
+        });
     }
 
     fn push_module(&mut self, module_id: ModuleId) {
-        self.push_file_symbol(|s| {
-            let def_map = module_id.def_map(s.db.upcast());
-            let module_data = &def_map[module_id.local_id];
-            let declaration = module_data.origin.declaration()?;
-            let module = declaration.to_node(s.db.upcast());
-            let name_node = module.name()?;
-            Some(FileSymbol {
-                name: name_node.text().into(),
-                def: ModuleDef::Module(module_id.into()),
-                container_name: s.current_container_name.clone(),
-                loc: DeclarationLocation {
-                    hir_file_id: declaration.file_id,
-                    ptr: SyntaxNodePtr::new(module.syntax()),
-                    name_ptr: SyntaxNodePtr::new(name_node.syntax()),
-                },
-            })
-        })
-    }
+        let def_map = module_id.def_map(self.db.upcast());
+        let module_data = &def_map[module_id.local_id];
+        let Some(declaration) = module_data.origin.declaration() else { return };
+        let module = declaration.to_node(self.db.upcast());
+        let Some(name_node) = module.name() else { return };
+        let dec_loc = DeclarationLocation {
+            hir_file_id: declaration.file_id,
+            ptr: SyntaxNodePtr::new(module.syntax()),
+            name_ptr: SyntaxNodePtr::new(name_node.syntax()),
+        };
 
-    fn push_file_symbol(&mut self, f: impl FnOnce(&Self) -> Option<FileSymbol>) {
-        if let Some(file_symbol) = f(self) {
-            self.symbols.push(file_symbol);
+        let def = ModuleDef::Module(module_id.into());
+
+        if let Some(attrs) = def.attrs(self.db) {
+            for alias in attrs.doc_aliases() {
+                self.symbols.push(FileSymbol {
+                    name: alias,
+                    def,
+                    loc: dec_loc.clone(),
+                    container_name: self.current_container_name.clone(),
+                    is_alias: true,
+                });
+            }
         }
+
+        self.symbols.push(FileSymbol {
+            name: name_node.text().into(),
+            def: ModuleDef::Module(module_id.into()),
+            container_name: self.current_container_name.clone(),
+            loc: dec_loc,
+            is_alias: false,
+        });
     }
 }

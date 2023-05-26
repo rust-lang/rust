@@ -2242,14 +2242,14 @@ mod tests {
                             file_id: FileId(
                                 0,
                             ),
-                            full_range: 52..115,
-                            focus_range: 67..75,
-                            name: "foo_test",
+                            full_range: 121..185,
+                            focus_range: 136..145,
+                            name: "foo2_test",
                             kind: Function,
                         },
                         kind: Test {
                             test_id: Path(
-                                "tests::foo_test",
+                                "tests::foo2_test",
                             ),
                             attr: TestAttr {
                                 ignore: false,
@@ -2263,14 +2263,14 @@ mod tests {
                             file_id: FileId(
                                 0,
                             ),
-                            full_range: 121..185,
-                            focus_range: 136..145,
-                            name: "foo2_test",
+                            full_range: 52..115,
+                            focus_range: 67..75,
+                            name: "foo_test",
                             kind: Function,
                         },
                         kind: Test {
                             test_id: Path(
-                                "tests::foo2_test",
+                                "tests::foo_test",
                             ),
                             attr: TestAttr {
                                 ignore: false,

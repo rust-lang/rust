@@ -434,4 +434,31 @@ struct StructInModB;
 
         expect_file!["./test_data/test_symbol_index_collection.txt"].assert_debug_eq(&symbols);
     }
+
+    #[test]
+    fn test_doc_alias() {
+        let (db, _) = RootDatabase::with_single_file(
+            r#"
+#[doc(alias="s1")]
+#[doc(alias="s2")]
+#[doc(alias("mul1","mul2"))]
+struct Struct;
+
+#[doc(alias="s1")]
+struct Duplicate;
+        "#,
+        );
+
+        let symbols: Vec<_> = Crate::from(db.test_crate())
+            .modules(&db)
+            .into_iter()
+            .map(|module_id| {
+                let mut symbols = SymbolCollector::collect_module(&db, module_id);
+                symbols.sort_by_key(|it| it.name.clone());
+                (module_id, symbols)
+            })
+            .collect();
+
+        expect_file!["./test_data/test_doc_alias.txt"].assert_debug_eq(&symbols);
+    }
 }
