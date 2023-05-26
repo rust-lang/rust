@@ -631,11 +631,11 @@ fn codegen_stmt<'tcx>(
                     let to_ty = fx.monomorphize(to_ty);
 
                     fn is_fat_ptr<'tcx>(fx: &FunctionCx<'_, '_, 'tcx>, ty: Ty<'tcx>) -> bool {
-                        ty.builtin_deref(true)
-                            .map(|ty::TypeAndMut { ty: pointee_ty, mutbl: _ }| {
+                        ty.builtin_deref(true).is_some_and(
+                            |ty::TypeAndMut { ty: pointee_ty, mutbl: _ }| {
                                 has_ptr_meta(fx.tcx, pointee_ty)
-                            })
-                            .unwrap_or(false)
+                            },
+                        )
                     }
 
                     if is_fat_ptr(fx, from_ty) {
@@ -967,11 +967,7 @@ fn codegen_panic_inner<'tcx>(
     args: &[Value],
     span: Span,
 ) {
-    let def_id = fx
-        .tcx
-        .lang_items()
-        .require(lang_item)
-        .unwrap_or_else(|e| fx.tcx.sess.span_fatal(span, e.to_string()));
+    let def_id = fx.tcx.require_lang_item(lang_item, Some(span));
 
     let instance = Instance::mono(fx.tcx, def_id).polymorphize(fx.tcx);
     let symbol_name = fx.tcx.symbol_name(instance).name;
