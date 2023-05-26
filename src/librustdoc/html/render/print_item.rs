@@ -1542,7 +1542,6 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
 }
 
 fn item_static(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Static) {
-    
     let mut buffer = Buffer::new();
     wrap_item(&mut buffer, |buffer| {
         render_attributes_in_code(buffer, it, cx.tcx());
