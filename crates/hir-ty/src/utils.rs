@@ -4,7 +4,11 @@
 use std::iter;
 
 use base_db::CrateId;
-use chalk_ir::{cast::Cast, fold::Shift, BoundVar, DebruijnIndex, Mutability};
+use chalk_ir::{
+    cast::Cast,
+    fold::{FallibleTypeFolder, Shift},
+    BoundVar, DebruijnIndex, Mutability,
+};
 use either::Either;
 use hir_def::{
     db::DefDatabase,
@@ -26,8 +30,8 @@ use smallvec::{smallvec, SmallVec};
 use stdx::never;
 
 use crate::{
-    db::HirDatabase, ChalkTraitId, GenericArg, Interner, Substitution, TraitRef, TraitRefExt, Ty,
-    TyExt, WhereClause,
+    consteval::unknown_const, db::HirDatabase, ChalkTraitId, Const, ConstScalar, GenericArg,
+    Interner, Substitution, TraitRef, TraitRefExt, Ty, TyExt, WhereClause,
 };
 
 pub(crate) fn fn_traits(
@@ -402,4 +406,37 @@ pub(crate) fn pattern_matching_dereference_count(
         r += 1;
     }
     r
+}
+
+pub(crate) struct UnevaluatedConstEvaluatorFolder<'a> {
+    pub(crate) db: &'a dyn HirDatabase,
+}
+
+impl FallibleTypeFolder<Interner> for UnevaluatedConstEvaluatorFolder<'_> {
+    type Error = ();
+
+    fn as_dyn(&mut self) -> &mut dyn FallibleTypeFolder<Interner, Error = ()> {
+        self
+    }
+
+    fn interner(&self) -> Interner {
+        Interner
+    }
+
+    fn try_fold_const(
+        &mut self,
+        constant: Const,
+        _outer_binder: DebruijnIndex,
+    ) -> Result<Const, Self::Error> {
+        if let chalk_ir::ConstValue::Concrete(c) = &constant.data(Interner).value {
+            if let ConstScalar::UnevaluatedConst(id, subst) = &c.interned {
+                if let Ok(eval) = self.db.const_eval(*id, subst.clone()) {
+                    return Ok(eval);
+                } else {
+                    return Ok(unknown_const(constant.data(Interner).ty.clone()));
+                }
+            }
+        }
+        Ok(constant)
+    }
 }

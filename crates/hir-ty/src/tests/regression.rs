@@ -1912,3 +1912,26 @@ fn main() {
         "#,
     );
 }
+
+#[test]
+fn regression_14844_2() {
+    check_no_mismatches(
+        r#"
+//- minicore: fn
+pub const ONE: usize = 1;
+
+pub type MyInner = Inner<ONE>;
+
+pub struct Inner<const P: usize>();
+
+impl Inner<1> {
+    fn map<F>(&self, func: F) -> bool
+    where
+        F: Fn(&MyInner) -> bool,
+    {
+        func(self)
+    }
+}
+        "#,
+    );
+}
