@@ -491,8 +491,8 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
             AdtDefinedHere { adt_def_span, ty, variants }
         };
 
-        // Emit an extra note if the first uncovered witness is
-        // visibly uninhabited anywhere in the current crate.
+        // Emit an extra note if the first uncovered witness would be uninhabited
+        // if we disregard visibility.
         let witness_1_is_privately_uninhabited =
             if cx.tcx.features().exhaustive_patterns
                 && let Some(witness_1) = witnesses.get(0)
