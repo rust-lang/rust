@@ -1,4 +1,4 @@
-use hir::{Semantics, TypeParam};
+use hir::Semantics;
 use ide_db::{
     base_db::{FileId, FileRange},
     defs::Definition,
@@ -60,7 +60,9 @@ pub(crate) fn replace_named_generic_with_impl(
     }
 
     let type_param_hir_def = ctx.sema.to_def(&type_param)?;
-    if is_referenced_outside(ctx.db(), type_param_hir_def, &fn_, ctx.file_id()) {
+    let type_param_def = Definition::GenericParam(hir::GenericParam::TypeParam(type_param_hir_def));
+
+    if is_referenced_outside(&ctx.sema, type_param_def, &fn_, ctx.file_id()) {
         return None;
     }
 
@@ -100,27 +102,20 @@ pub(crate) fn replace_named_generic_with_impl(
 }
 
 fn is_referenced_outside(
-    db: &RootDatabase,
-    type_param: TypeParam,
+    sema: &Semantics<'_, RootDatabase>,
+    type_param_def: Definition,
     fn_: &ast::Fn,
     file_id: FileId,
 ) -> bool {
-    let semantics = Semantics::new(db);
-    let type_param_def = Definition::GenericParam(hir::GenericParam::TypeParam(type_param));
-
     // limit search scope to function body & return type
     let search_ranges = vec![
         fn_.body().map(|body| body.syntax().text_range()),
         fn_.ret_type().map(|ret_type| ret_type.syntax().text_range()),
     ];
 
-    search_ranges.into_iter().filter_map(|search_range| search_range).any(|search_range| {
+    search_ranges.into_iter().flatten().any(|search_range| {
         let file_range = FileRange { file_id, range: search_range };
-        !type_param_def
-            .usages(&semantics)
-            .in_scope(SearchScope::file_range(file_range))
-            .all()
-            .is_empty()
+        !type_param_def.usages(sema).in_scope(SearchScope::file_range(file_range)).all().is_empty()
     })
 }
 
