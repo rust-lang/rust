@@ -4,7 +4,7 @@
 //! That's useful because it means other passes (e.g. promotion) can rely on `const`s
 //! to be const-safe.
 
-use std::fmt::{Display, Write};
+use std::fmt::Write;
 use std::num::NonZeroUsize;
 
 use either::{Left, Right};
@@ -12,7 +12,10 @@ use either::{Left, Right};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
-use rustc_middle::mir::interpret::InterpError;
+use rustc_middle::mir::interpret::{
+    ExpectedKind, InterpError, InvalidMetaKind, PointerKind, ValidationErrorInfo,
+    ValidationErrorKind, ValidationErrorKind::*,
+};
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_span::symbol::{sym, Symbol};
@@ -30,14 +33,7 @@ use super::{
 };
 
 macro_rules! throw_validation_failure {
-    ($where:expr, { $( $what_fmt:tt )* } $( expected { $( $expected_fmt:tt )* } )?) => {{
-        let mut msg = String::new();
-        msg.push_str("encountered ");
-        write!(&mut msg, $($what_fmt)*).unwrap();
-        $(
-            msg.push_str(", but expected ");
-            write!(&mut msg, $($expected_fmt)*).unwrap();
-        )?
+    ($where:expr, $kind: expr) => {{
         let where_ = &$where;
         let path = if !where_.is_empty() {
             let mut path = String::new();
@@ -46,7 +42,8 @@ macro_rules! throw_validation_failure {
         } else {
             None
         };
-        throw_ub!(ValidationFailure { path, msg })
+
+        throw_ub!(Validation(ValidationErrorInfo { path, kind: $kind }))
     }};
 }
 
@@ -82,22 +79,22 @@ macro_rules! throw_validation_failure {
 ///
 macro_rules! try_validation {
     ($e:expr, $where:expr,
-    $( $( $p:pat_param )|+ => { $( $what_fmt:tt )* } $( expected { $( $expected_fmt:tt )* } )? ),+ $(,)?
+    $( $( $p:pat_param )|+ => $kind: expr ),+ $(,)?
     ) => {{
         match $e {
             Ok(x) => x,
             // We catch the error and turn it into a validation failure. We are okay with
             // allocation here as this can only slow down builds that fail anyway.
-            Err(e) => match e.kind() {
+            Err(e) => match e.into_parts() {
                 $(
-                    InterpError::UndefinedBehavior($($p)|+) =>
+                    (InterpError::UndefinedBehavior($($p)|+), _) =>
                        throw_validation_failure!(
                             $where,
-                            { $( $what_fmt )* } $( expected { $( $expected_fmt )* } )?
+                            $kind
                         )
                 ),+,
                 #[allow(unreachable_patterns)]
-                _ => Err::<!, _>(e)?,
+                (e, rest) => Err::<!, _>($crate::interpret::InterpErrorInfo::from_parts(e, rest))?,
             }
         }
     }};
@@ -160,6 +157,7 @@ impl<T: Copy + Eq + Hash + std::fmt::Debug, PATH: Default> RefTracking<T, PATH> 
     }
 }
 
+// FIXME make this translatable as well?
 /// Format a path
 fn write_path(out: &mut String, path: &[PathElem]) {
     use self::PathElem::*;
@@ -182,26 +180,6 @@ fn write_path(out: &mut String, path: &[PathElem]) {
             DynDowncast => write!(out, ".<dyn-downcast>"),
         }
         .unwrap()
-    }
-}
-
-// Formats such that a sentence like "expected something {}" to mean
-// "expected something <in the given range>" makes sense.
-fn wrapping_range_format(r: WrappingRange, max_hi: u128) -> String {
-    let WrappingRange { start: lo, end: hi } = r;
-    assert!(hi <= max_hi);
-    if lo > hi {
-        format!("less or equal to {}, or greater or equal to {}", hi, lo)
-    } else if lo == hi {
-        format!("equal to {}", lo)
-    } else if lo == 0 {
-        assert!(hi < max_hi, "should not be printing if the range covers everything");
-        format!("less or equal to {}", hi)
-    } else if hi == max_hi {
-        assert!(lo > 0, "should not be printing if the range covers everything");
-        format!("greater or equal to {}", lo)
-    } else {
-        format!("in the range {:?}", r)
     }
 }
 
@@ -311,19 +289,19 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
     fn read_immediate(
         &self,
         op: &OpTy<'tcx, M::Provenance>,
-        expected: impl Display,
+        expected: ExpectedKind,
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
         Ok(try_validation!(
             self.ecx.read_immediate(op),
             self.path,
-            InvalidUninitBytes(None) => { "uninitialized memory" } expected { "{expected}" }
+            InvalidUninitBytes(None) => Uninit { expected }
         ))
     }
 
     fn read_scalar(
         &self,
         op: &OpTy<'tcx, M::Provenance>,
-        expected: impl Display,
+        expected: ExpectedKind,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
         Ok(self.read_immediate(op, expected)?.to_scalar())
     }
@@ -342,8 +320,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     self.ecx.get_ptr_vtable(vtable),
                     self.path,
                     DanglingIntPointer(..) |
-                    InvalidVTablePointer(..) =>
-                        { "{vtable}" } expected { "a vtable pointer" },
+                    InvalidVTablePointer(..) => InvalidVTablePtr { value: format!("{vtable}") }
                 );
                 // FIXME: check if the type/trait match what ty::Dynamic says?
             }
@@ -366,10 +343,9 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
     fn check_safe_pointer(
         &mut self,
         value: &OpTy<'tcx, M::Provenance>,
-        kind: &str,
+        ptr_kind: PointerKind,
     ) -> InterpResult<'tcx> {
-        let place =
-            self.ecx.ref_to_mplace(&self.read_immediate(value, format_args!("a {kind}"))?)?;
+        let place = self.ecx.ref_to_mplace(&self.read_immediate(value, ptr_kind.into())?)?;
         // Handle wide pointers.
         // Check metadata early, for better diagnostics
         if place.layout.is_unsized() {
@@ -379,7 +355,10 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         let size_and_align = try_validation!(
             self.ecx.size_and_align_of_mplace(&place),
             self.path,
-            InvalidMeta(msg) => { "invalid {} metadata: {}", kind, msg },
+            InvalidMeta(msg) => match msg {
+                InvalidMetaKind::SliceTooBig => InvalidMetaSliceTooLarge { ptr_kind },
+                InvalidMetaKind::TooBig => InvalidMetaTooLarge { ptr_kind },
+            }
         );
         let (size, align) = size_and_align
             // for the purpose of validity, consider foreign types to have
@@ -395,31 +374,30 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 CheckInAllocMsg::InboundsTest, // will anyway be replaced by validity message
             ),
             self.path,
-            AlignmentCheckFailed { required, has } =>
-                {
-                    "an unaligned {kind} (required {} byte alignment but found {})",
-                    required.bytes(),
-                    has.bytes(),
-                },
-            DanglingIntPointer(0, _) =>
-                { "a null {kind}" },
-            DanglingIntPointer(i, _) =>
-                {
-                    "a dangling {kind} ({pointer} has no provenance)",
-                    pointer = Pointer::<Option<AllocId>>::from_addr_invalid(*i),
-                },
-            PointerOutOfBounds { .. } =>
-                { "a dangling {kind} (going beyond the bounds of its allocation)" },
+            AlignmentCheckFailed { required, has } => UnalignedPtr {
+                ptr_kind,
+                required_bytes: required.bytes(),
+                found_bytes: has.bytes()
+            },
+            DanglingIntPointer(0, _) => NullPtr { ptr_kind },
+            DanglingIntPointer(i, _) => DanglingPtrNoProvenance {
+                ptr_kind,
+                // FIXME this says "null pointer" when null but we need translate
+                pointer: format!("{}", Pointer::<Option<AllocId>>::from_addr_invalid(i))
+            },
+            PointerOutOfBounds { .. } => DanglingPtrOutOfBounds {
+                ptr_kind
+            },
             // This cannot happen during const-eval (because interning already detects
             // dangling pointers), but it can happen in Miri.
-            PointerUseAfterFree(..) =>
-                { "a dangling {kind} (use-after-free)" },
+            PointerUseAfterFree(..) => DanglingPtrUseAfterFree {
+                ptr_kind,
+            },
         );
         // Do not allow pointers to uninhabited types.
         if place.layout.abi.is_uninhabited() {
-            throw_validation_failure!(self.path,
-                { "a {kind} pointing to uninhabited type {}", place.layout.ty }
-            )
+            let ty = place.layout.ty;
+            throw_validation_failure!(self.path, PtrToUninhabited { ptr_kind, ty })
         }
         // Recursive checking
         if let Some(ref_tracking) = self.ref_tracking.as_deref_mut() {
@@ -441,9 +419,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                             // this check is so important.
                             // This check is reachable when the const just referenced the static,
                             // but never read it (so we never entered `before_access_global`).
-                            throw_validation_failure!(self.path,
-                                { "a {} pointing to a static variable in a constant", kind }
-                            );
+                            throw_validation_failure!(self.path, PtrToStatic { ptr_kind });
                         }
                         // We skip recursively checking other statics. These statics must be sound by
                         // themselves, and the only way to get broken statics here is by using
@@ -464,9 +440,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                             // This should be unreachable, but if someone manages to copy a pointer
                             // out of a `static`, then that pointer might point to mutable memory,
                             // and we would catch that here.
-                            throw_validation_failure!(self.path,
-                                { "a {} pointing to mutable memory in a constant", kind }
-                            );
+                            throw_validation_failure!(self.path, PtrToMut { ptr_kind });
                         }
                     }
                     // Nothing to check for these.
@@ -496,22 +470,24 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         let ty = value.layout.ty;
         match ty.kind() {
             ty::Bool => {
-                let value = self.read_scalar(value, "a boolean")?;
+                let value = self.read_scalar(value, ExpectedKind::Bool)?;
                 try_validation!(
                     value.to_bool(),
                     self.path,
-                    InvalidBool(..) =>
-                        { "{:x}", value } expected { "a boolean" },
+                    InvalidBool(..) => ValidationErrorKind::InvalidBool {
+                        value: format!("{value:x}"),
+                    }
                 );
                 Ok(true)
             }
             ty::Char => {
-                let value = self.read_scalar(value, "a unicode scalar value")?;
+                let value = self.read_scalar(value, ExpectedKind::Char)?;
                 try_validation!(
                     value.to_char(),
                     self.path,
-                    InvalidChar(..) =>
-                        { "{:x}", value } expected { "a valid unicode scalar value (in `0..=0x10FFFF` but not in `0xD800..=0xDFFF`)" },
+                    InvalidChar(..) => ValidationErrorKind::InvalidChar {
+                        value: format!("{value:x}"),
+                    }
                 );
                 Ok(true)
             }
@@ -521,16 +497,17 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 let value = self.read_scalar(
                     value,
                     if matches!(ty.kind(), ty::Float(..)) {
-                        "a floating point number"
+                        ExpectedKind::Float
                     } else {
-                        "an integer"
+                        ExpectedKind::Int
                     },
                 )?;
                 // As a special exception we *do* match on a `Scalar` here, since we truly want
                 // to know its underlying representation (and *not* cast it to an integer).
                 if matches!(value, Scalar::Ptr(..)) {
-                    throw_validation_failure!(self.path,
-                        { "{:x}", value } expected { "plain (non-pointer) bytes" }
+                    throw_validation_failure!(
+                        self.path,
+                        ExpectedNonPtr { value: format!("{value:x}") }
                     )
                 }
                 Ok(true)
@@ -540,7 +517,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 // actually enforce the strict rules for raw pointers (mostly because
                 // that lets us re-use `ref_to_mplace`).
                 let place =
-                    self.ecx.ref_to_mplace(&self.read_immediate(value, "a raw pointer")?)?;
+                    self.ecx.ref_to_mplace(&self.read_immediate(value, ExpectedKind::RawPtr)?)?;
                 if place.layout.is_unsized() {
                     self.check_wide_ptr_meta(place.meta, place.layout)?;
                 }
@@ -554,14 +531,14 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     // a ZST).
                     let layout = self.ecx.layout_of(*ty)?;
                     if !layout.is_zst() {
-                        throw_validation_failure!(self.path, { "mutable reference in a `const`" });
+                        throw_validation_failure!(self.path, MutableRefInConst);
                     }
                 }
-                self.check_safe_pointer(value, "reference")?;
+                self.check_safe_pointer(value, PointerKind::Ref)?;
                 Ok(true)
             }
             ty::FnPtr(_sig) => {
-                let value = self.read_scalar(value, "a function pointer")?;
+                let value = self.read_scalar(value, ExpectedKind::FnPtr)?;
 
                 // If we check references recursively, also check that this points to a function.
                 if let Some(_) = self.ref_tracking {
@@ -570,19 +547,20 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                         self.ecx.get_ptr_fn(ptr),
                         self.path,
                         DanglingIntPointer(..) |
-                        InvalidFunctionPointer(..) =>
-                            { "{ptr}" } expected { "a function pointer" },
+                        InvalidFunctionPointer(..) => InvalidFnPtr {
+                            value: format!("{ptr}"),
+                        },
                     );
                     // FIXME: Check if the signature matches
                 } else {
                     // Otherwise (for standalone Miri), we have to still check it to be non-null.
                     if self.ecx.scalar_may_be_null(value)? {
-                        throw_validation_failure!(self.path, { "a null function pointer" });
+                        throw_validation_failure!(self.path, NullFnPtr);
                     }
                 }
                 Ok(true)
             }
-            ty::Never => throw_validation_failure!(self.path, { "a value of the never type `!`" }),
+            ty::Never => throw_validation_failure!(self.path, NeverVal),
             ty::Foreign(..) | ty::FnDef(..) => {
                 // Nothing to check.
                 Ok(true)
@@ -629,12 +607,9 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 if start == 1 && end == max_value {
                     // Only null is the niche. So make sure the ptr is NOT null.
                     if self.ecx.scalar_may_be_null(scalar)? {
-                        throw_validation_failure!(self.path,
-                            { "a potentially null pointer" }
-                            expected {
-                                "something that cannot possibly fail to be {}",
-                                wrapping_range_format(valid_range, max_value)
-                            }
+                        throw_validation_failure!(
+                            self.path,
+                            NullablePtrOutOfRange { range: valid_range, max_value }
                         )
                     } else {
                         return Ok(());
@@ -645,12 +620,9 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 } else {
                     // Conservatively, we reject, because the pointer *could* have a bad
                     // value.
-                    throw_validation_failure!(self.path,
-                        { "a pointer" }
-                        expected {
-                            "something that cannot possibly fail to be {}",
-                            wrapping_range_format(valid_range, max_value)
-                        }
+                    throw_validation_failure!(
+                        self.path,
+                        PtrOutOfRange { range: valid_range, max_value }
                     )
                 }
             }
@@ -659,9 +631,9 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         if valid_range.contains(bits) {
             Ok(())
         } else {
-            throw_validation_failure!(self.path,
-                { "{}", bits }
-                expected { "something {}", wrapping_range_format(valid_range, max_value) }
+            throw_validation_failure!(
+                self.path,
+                OutOfRange { value: format!("{bits}"), range: valid_range, max_value }
             )
         }
     }
@@ -685,10 +657,11 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
             Ok(try_validation!(
                 this.ecx.read_discriminant(op),
                 this.path,
-                InvalidTag(val) =>
-                    { "{:x}", val } expected { "a valid enum tag" },
-                InvalidUninitBytes(None) =>
-                    { "uninitialized bytes" } expected { "a valid enum tag" },
+                InvalidTag(val) => InvalidEnumTag {
+                    value: format!("{val:x}"),
+                },
+
+                InvalidUninitBytes(None) => UninitEnumTag,
             )
             .1)
         })
@@ -730,7 +703,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         // Special check preventing `UnsafeCell` inside unions in the inner part of constants.
         if matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { inner: true, .. })) {
             if !op.layout.ty.is_freeze(*self.ecx.tcx, self.ecx.param_env) {
-                throw_validation_failure!(self.path, { "`UnsafeCell` in a `const`" });
+                throw_validation_failure!(self.path, UnsafeCell);
             }
         }
         Ok(())
@@ -738,7 +711,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
 
     #[inline]
     fn visit_box(&mut self, op: &OpTy<'tcx, M::Provenance>) -> InterpResult<'tcx> {
-        self.check_safe_pointer(op, "box")?;
+        self.check_safe_pointer(op, PointerKind::Box)?;
         Ok(())
     }
 
@@ -756,7 +729,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
             if matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { inner: true, .. }))
                 && def.is_unsafe_cell()
             {
-                throw_validation_failure!(self.path, { "`UnsafeCell` in a `const`" });
+                throw_validation_failure!(self.path, UnsafeCell);
             }
         }
 
@@ -775,14 +748,13 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         // MyNewtype and then the scalar in there).
         match op.layout.abi {
             Abi::Uninhabited => {
-                throw_validation_failure!(self.path,
-                    { "a value of uninhabited type {:?}", op.layout.ty }
-                );
+                let ty = op.layout.ty;
+                throw_validation_failure!(self.path, UninhabitedVal { ty });
             }
             Abi::Scalar(scalar_layout) => {
                 if !scalar_layout.is_uninit_valid() {
                     // There is something to check here.
-                    let scalar = self.read_scalar(op, "initialized scalar value")?;
+                    let scalar = self.read_scalar(op, ExpectedKind::InitScalar)?;
                     self.visit_scalar(scalar, scalar_layout)?;
                 }
             }
@@ -792,7 +764,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 // the other must be init.
                 if !a_layout.is_uninit_valid() && !b_layout.is_uninit_valid() {
                     let (a, b) =
-                        self.read_immediate(op, "initialized scalar value")?.to_scalar_pair();
+                        self.read_immediate(op, ExpectedKind::InitScalar)?.to_scalar_pair();
                     self.visit_scalar(a, a_layout)?;
                     self.visit_scalar(b, b_layout)?;
                 }
@@ -822,7 +794,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 try_validation!(
                     self.ecx.read_bytes_ptr_strip_provenance(mplace.ptr, Size::from_bytes(len)),
                     self.path,
-                    InvalidUninitBytes(..) => { "uninitialized data in `str`" },
+                    InvalidUninitBytes(..) => { UninitStr },
                 );
             }
             ty::Array(tys, ..) | ty::Slice(tys)
@@ -852,7 +824,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     Left(mplace) => mplace,
                     Right(imm) => match *imm {
                         Immediate::Uninit =>
-                            throw_validation_failure!(self.path, { "uninitialized bytes" }),
+                            throw_validation_failure!(self.path, UninitVal),
                         Immediate::Scalar(..) | Immediate::ScalarPair(..) =>
                             bug!("arrays/slices can never have Scalar/ScalarPair layout"),
                     }
@@ -888,7 +860,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                                 .unwrap();
                                 self.path.push(PathElem::ArrayElem(i));
 
-                                throw_validation_failure!(self.path, { "uninitialized bytes" })
+                                throw_validation_failure!(self.path, UninitVal)
                             }
 
                             // Propagate upwards (that will also check for unexpected errors).
@@ -929,12 +901,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match visitor.visit_value(&op) {
             Ok(()) => Ok(()),
             // Pass through validation failures.
-            Err(err) if matches!(err.kind(), err_ub!(ValidationFailure { .. })) => Err(err),
+            Err(err) if matches!(err.kind(), err_ub!(Validation { .. })) => Err(err),
             // Complain about any other kind of UB error -- those are bad because we'd like to
             // report them in a way that shows *where* in the value the issue lies.
             Err(err) if matches!(err.kind(), InterpError::UndefinedBehavior(_)) => {
-                err.print_backtrace();
-                bug!("Unexpected Undefined Behavior error during validation: {}", err);
+                let (err, backtrace) = err.into_parts();
+                backtrace.print_backtrace();
+                bug!("Unexpected Undefined Behavior error during validation: {err:?}");
             }
             // Pass through everything else.
             Err(err) => Err(err),

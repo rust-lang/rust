@@ -52,7 +52,8 @@ pub(crate) struct SymbolAlreadyDefined<'a> {
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_invalid_minimum_alignment)]
 pub(crate) struct InvalidMinimumAlignment {
-    pub err: String,
+    pub err_kind: &'static str,
+    pub align: u64,
 }
 
 #[derive(Diagnostic)]

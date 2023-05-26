@@ -43,6 +43,7 @@
 
 extern crate rustc_apfloat;
 extern crate rustc_ast;
+extern crate rustc_errors;
 #[macro_use]
 extern crate rustc_middle;
 extern crate rustc_const_eval;

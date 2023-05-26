@@ -130,7 +130,10 @@ fn set_global_alignment<'ll>(cx: &CodegenCx<'ll, '_>, gv: &'ll Value, mut align:
         match Align::from_bits(min) {
             Ok(min) => align = align.max(min),
             Err(err) => {
-                cx.sess().emit_err(InvalidMinimumAlignment { err });
+                cx.sess().emit_err(InvalidMinimumAlignment {
+                    err_kind: err.diag_ident(),
+                    align: err.align(),
+                });
             }
         }
     }

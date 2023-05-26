@@ -35,7 +35,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/raw-bytes.rs:44:1
    |
 LL | const BAD_UNINHABITED_VARIANT2: UninhDiscriminant = unsafe { mem::transmute(3u8) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-variant(D)>.0: encountered a value of uninhabited type Never
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-variant(D)>.0: encountered a value of uninhabited type `Never`
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 1, align: 1) {
@@ -290,11 +290,11 @@ error[E0080]: it is undefined behavior to use this value
 LL | const MYSTR_NO_INIT_ISSUE83182: &MyStr = unsafe { mem::transmute::<&[_], _>(&[&()]) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
    |
-   = help: this code performed an operation that depends on the underlying bytes representing a pointer
-   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
    = note: the raw bytes of the constant (size: 16, align: 8) {
                ╾ALLOC_ID╼ 01 00 00 00 00 00 00 00 │ ╾──────╼........
            }
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/raw-bytes.rs:152:1
@@ -529,11 +529,11 @@ error[E0080]: it is undefined behavior to use this value
 LL | pub static S5: &[u8] = unsafe { from_raw_parts((&D3) as *const _ as _, mem::size_of::<&u32>()) };
    | ^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
    |
-   = help: this code performed an operation that depends on the underlying bytes representing a pointer
-   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
    = note: the raw bytes of the constant (size: 16, align: 8) {
                ╾ALLOC_ID╼ 08 00 00 00 00 00 00 00 │ ╾──────╼........
            }
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/raw-bytes.rs:221:1
@@ -574,11 +574,11 @@ error[E0080]: it is undefined behavior to use this value
 LL | pub static R5: &[u8] = unsafe {
    | ^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
    |
-   = help: this code performed an operation that depends on the underlying bytes representing a pointer
-   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
    = note: the raw bytes of the constant (size: 16, align: 8) {
                ╾ALLOC_ID╼ 08 00 00 00 00 00 00 00 │ ╾──────╼........
            }
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/raw-bytes.rs:242:1

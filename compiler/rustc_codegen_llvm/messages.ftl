@@ -15,7 +15,11 @@ codegen_llvm_symbol_already_defined =
     symbol `{$symbol_name}` is already defined
 
 codegen_llvm_invalid_minimum_alignment =
-    invalid minimum global alignment: {$err}
+    invalid minimum global alignment: {$align} is {$err_kind ->
+        [not_power_of_two] not power of 2
+        [too_large] too large
+        *[other] {""}
+    }{$err}
 
 codegen_llvm_sanitizer_memtag_requires_mte =
     `-Zsanitizer=memtag` requires `-Ctarget-feature=+mte`
