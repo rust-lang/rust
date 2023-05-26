@@ -77,7 +77,7 @@ pub(crate) enum PrimeCachesProgress {
 
 impl fmt::Debug for Event {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let debug_verbose_not = |not: &Notification, f: &mut fmt::Formatter<'_>| {
+        let debug_non_verbose = |not: &Notification, f: &mut fmt::Formatter<'_>| {
             f.debug_struct("Notification").field("method", &not.method).finish()
         };
 
@@ -86,7 +86,7 @@ impl fmt::Debug for Event {
                 if notification_is::<lsp_types::notification::DidOpenTextDocument>(not)
                     || notification_is::<lsp_types::notification::DidChangeTextDocument>(not)
                 {
-                    return debug_verbose_not(not, f);
+                    return debug_non_verbose(not, f);
                 }
             }
             Event::Task(Task::Response(resp)) => {
@@ -112,38 +112,7 @@ impl GlobalState {
         self.update_status_or_notify();
 
         if self.config.did_save_text_document_dynamic_registration() {
-            let save_registration_options = lsp_types::TextDocumentSaveRegistrationOptions {
-                include_text: Some(false),
-                text_document_registration_options: lsp_types::TextDocumentRegistrationOptions {
-                    document_selector: Some(vec![
-                        lsp_types::DocumentFilter {
-                            language: None,
-                            scheme: None,
-                            pattern: Some("**/*.rs".into()),
-                        },
-                        lsp_types::DocumentFilter {
-                            language: None,
-                            scheme: None,
-                            pattern: Some("**/Cargo.toml".into()),
-                        },
-                        lsp_types::DocumentFilter {
-                            language: None,
-                            scheme: None,
-                            pattern: Some("**/Cargo.lock".into()),
-                        },
-                    ]),
-                },
-            };
-
-            let registration = lsp_types::Registration {
-                id: "textDocument/didSave".to_string(),
-                method: "textDocument/didSave".to_string(),
-                register_options: Some(serde_json::to_value(save_registration_options).unwrap()),
-            };
-            self.send_request::<lsp_types::request::RegisterCapability>(
-                lsp_types::RegistrationParams { registrations: vec![registration] },
-                |_, _| (),
-            );
+            self.register_did_save_capability();
         }
 
         self.fetch_workspaces_queue.request_op("startup".to_string(), ());
@@ -152,15 +121,52 @@ impl GlobalState {
         }
 
         while let Some(event) = self.next_event(&inbox) {
-            if let Event::Lsp(lsp_server::Message::Notification(not)) = &event {
-                if not.method == lsp_types::notification::Exit::METHOD {
-                    return Ok(());
-                }
+            if matches!(
+                &event,
+                Event::Lsp(lsp_server::Message::Notification(Notification { method, .. }))
+                if method == lsp_types::notification::Exit::METHOD
+            ) {
+                return Ok(());
             }
-            self.handle_event(event)?
+            self.handle_event(event)?;
         }
 
         Err("client exited without proper shutdown sequence".into())
+    }
+
+    fn register_did_save_capability(&mut self) {
+        let save_registration_options = lsp_types::TextDocumentSaveRegistrationOptions {
+            include_text: Some(false),
+            text_document_registration_options: lsp_types::TextDocumentRegistrationOptions {
+                document_selector: Some(vec![
+                    lsp_types::DocumentFilter {
+                        language: None,
+                        scheme: None,
+                        pattern: Some("**/*.rs".into()),
+                    },
+                    lsp_types::DocumentFilter {
+                        language: None,
+                        scheme: None,
+                        pattern: Some("**/Cargo.toml".into()),
+                    },
+                    lsp_types::DocumentFilter {
+                        language: None,
+                        scheme: None,
+                        pattern: Some("**/Cargo.lock".into()),
+                    },
+                ]),
+            },
+        };
+
+        let registration = lsp_types::Registration {
+            id: "textDocument/didSave".to_string(),
+            method: "textDocument/didSave".to_string(),
+            register_options: Some(serde_json::to_value(save_registration_options).unwrap()),
+        };
+        self.send_request::<lsp_types::request::RegisterCapability>(
+            lsp_types::RegistrationParams { registrations: vec![registration] },
+            |_, _| (),
+        );
     }
 
     fn next_event(&self, inbox: &Receiver<lsp_server::Message>) -> Option<Event> {
@@ -184,20 +190,20 @@ impl GlobalState {
         // NOTE: don't count blocking select! call as a loop-turn time
         let _p = profile::span("GlobalState::handle_event");
 
-        let event_dbg = format!("{event:?}");
-        tracing::debug!("{:?} handle_event({:?})", loop_start, event);
-        let task_queue_len = self.task_pool.handle.len();
-        if task_queue_len > 0 {
-            tracing::info!("task queue len: {}", task_queue_len);
+        let event_dbg_msg = format!("{event:?}");
+        tracing::debug!("{:?} handle_event({})", loop_start, event_dbg_msg);
+        if tracing::enabled!(tracing::Level::INFO) {
+            let task_queue_len = self.task_pool.handle.len();
+            if task_queue_len > 0 {
+                tracing::info!("task queue len: {}", task_queue_len);
+            }
         }
 
         let was_quiescent = self.is_quiescent();
         match event {
             Event::Lsp(msg) => match msg {
                 lsp_server::Message::Request(req) => self.on_new_request(loop_start, req),
-                lsp_server::Message::Notification(not) => {
-                    self.on_notification(not)?;
-                }
+                lsp_server::Message::Notification(not) => self.on_notification(not)?,
                 lsp_server::Message::Response(resp) => self.complete_request(resp),
             },
             Event::Task(task) => {
@@ -291,7 +297,8 @@ impl GlobalState {
                 }
             }
 
-            if !was_quiescent || state_changed {
+            let client_refresh = !was_quiescent || state_changed;
+            if client_refresh {
                 // Refresh semantic tokens if the client supports it.
                 if self.config.semantic_tokens_refresh() {
                     self.semantic_tokens_cache.lock().clear();
@@ -309,9 +316,9 @@ impl GlobalState {
                 }
             }
 
-            if (!was_quiescent || state_changed || memdocs_added_or_removed)
-                && self.config.publish_diagnostics()
-            {
+            let update_diagnostics = (!was_quiescent || state_changed || memdocs_added_or_removed)
+                && self.config.publish_diagnostics();
+            if update_diagnostics {
                 self.update_diagnostics()
             }
         }
@@ -371,36 +378,38 @@ impl GlobalState {
         }
 
         if let Some((cause, ())) = self.prime_caches_queue.should_start_op() {
-            tracing::debug!(%cause, "will prime caches");
-            let num_worker_threads = self.config.prime_caches_num_threads();
-
-            self.task_pool.handle.spawn_with_sender({
-                let analysis = self.snapshot().analysis;
-                move |sender| {
-                    sender.send(Task::PrimeCaches(PrimeCachesProgress::Begin)).unwrap();
-                    let res = analysis.parallel_prime_caches(num_worker_threads, |progress| {
-                        let report = PrimeCachesProgress::Report(progress);
-                        sender.send(Task::PrimeCaches(report)).unwrap();
-                    });
-                    sender
-                        .send(Task::PrimeCaches(PrimeCachesProgress::End {
-                            cancelled: res.is_err(),
-                        }))
-                        .unwrap();
-                }
-            });
+            self.prime_caches(cause);
         }
 
         self.update_status_or_notify();
 
         let loop_duration = loop_start.elapsed();
         if loop_duration > Duration::from_millis(100) && was_quiescent {
-            tracing::warn!("overly long loop turn took {loop_duration:?}: {event_dbg}");
+            tracing::warn!("overly long loop turn took {loop_duration:?}: {event_dbg_msg}");
             self.poke_rust_analyzer_developer(format!(
-                "overly long loop turn took {loop_duration:?}: {event_dbg}"
+                "overly long loop turn took {loop_duration:?}: {event_dbg_msg}"
             ));
         }
         Ok(())
+    }
+
+    fn prime_caches(&mut self, cause: String) {
+        tracing::debug!(%cause, "will prime caches");
+        let num_worker_threads = self.config.prime_caches_num_threads();
+
+        self.task_pool.handle.spawn_with_sender({
+            let analysis = self.snapshot().analysis;
+            move |sender| {
+                sender.send(Task::PrimeCaches(PrimeCachesProgress::Begin)).unwrap();
+                let res = analysis.parallel_prime_caches(num_worker_threads, |progress| {
+                    let report = PrimeCachesProgress::Report(progress);
+                    sender.send(Task::PrimeCaches(report)).unwrap();
+                });
+                sender
+                    .send(Task::PrimeCaches(PrimeCachesProgress::End { cancelled: res.is_err() }))
+                    .unwrap();
+            }
+        });
     }
 
     fn update_status_or_notify(&mut self) {
@@ -410,7 +419,11 @@ impl GlobalState {
 
             if self.config.server_status_notification() {
                 self.send_notification::<lsp_ext::ServerStatusNotification>(status);
-            } else if let (health, Some(message)) = (status.health, &status.message) {
+            } else if let (
+                health @ (lsp_ext::Health::Warning | lsp_ext::Health::Error),
+                Some(message),
+            ) = (status.health, &status.message)
+            {
                 let open_log_button = tracing::enabled!(tracing::Level::ERROR)
                     && (self.fetch_build_data_error().is_err()
                         || self.fetch_workspace_error().is_err());
@@ -589,21 +602,18 @@ impl GlobalState {
                         (Progress::Begin, None)
                     }
                     flycheck::Progress::DidCheckCrate(target) => (Progress::Report, Some(target)),
-                    flycheck::Progress::DidCancel => (Progress::End, None),
+                    flycheck::Progress::DidCancel => {
+                        self.last_flycheck_error = None;
+                        (Progress::End, None)
+                    }
                     flycheck::Progress::DidFailToRestart(err) => {
-                        self.show_and_log_error(
-                            "cargo check failed to start".to_string(),
-                            Some(err),
-                        );
+                        self.last_flycheck_error =
+                            Some(format!("cargo check failed to start: {err}"));
                         return;
                     }
                     flycheck::Progress::DidFinish(result) => {
-                        if let Err(err) = result {
-                            self.show_and_log_error(
-                                "cargo check failed".to_string(),
-                                Some(err.to_string()),
-                            );
-                        }
+                        self.last_flycheck_error =
+                            result.err().map(|err| format!("cargo check failed to start: {err}"));
                         (Progress::End, None)
                     }
                 };

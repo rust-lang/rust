@@ -169,13 +169,7 @@ pub(crate) fn handle_did_change_configuration(
                         // Note that json can be null according to the spec if the client can't
                         // provide a configuration. This is handled in Config::update below.
                         let mut config = Config::clone(&*this.config);
-                        if let Err(error) = config.update(json.take()) {
-                            this.show_message(
-                                lsp_types::MessageType::WARNING,
-                                error.to_string(),
-                                false,
-                            );
-                        }
+                        this.config_errors = config.update(json.take()).err();
                         this.update_configuration(config);
                     }
                 }
