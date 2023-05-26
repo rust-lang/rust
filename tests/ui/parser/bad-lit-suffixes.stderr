@@ -11,25 +11,25 @@ LL |     "C"suffix
    |     ^^^^^^^^^ invalid suffix `suffix`
 
 error: unexpected expression: `"string"suffix`
-  --> $DIR/bad-lit-suffixes.rs:30:17
+  --> $DIR/bad-lit-suffixes.rs:32:17
    |
 LL | #[rustc_dummy = "string"suffix]
    |                 ^^^^^^^^^^^^^^
 
 error: unexpected expression: `"string"suffix`
-  --> $DIR/bad-lit-suffixes.rs:34:14
+  --> $DIR/bad-lit-suffixes.rs:36:14
    |
 LL | #[must_use = "string"suffix]
    |              ^^^^^^^^^^^^^^
 
 error: suffixes on string literals are invalid
-  --> $DIR/bad-lit-suffixes.rs:38:15
+  --> $DIR/bad-lit-suffixes.rs:40:15
    |
 LL | #[link(name = "string"suffix)]
    |               ^^^^^^^^^^^^^^ invalid suffix `suffix`
 
 error: invalid suffix `suffix` for number literal
-  --> $DIR/bad-lit-suffixes.rs:42:41
+  --> $DIR/bad-lit-suffixes.rs:44:41
    |
 LL | #[rustc_layout_scalar_valid_range_start(0suffix)]
    |                                         ^^^^^^^ invalid suffix `suffix`
@@ -136,5 +136,13 @@ LL |     1.0e10suffix;
    |
    = help: valid suffixes are `f32` and `f64`
 
-error: aborting due to 20 previous errors
+error: invalid suffix `eee` for number literal
+  --> $DIR/bad-lit-suffixes.rs:29:5
+   |
+LL |     1234eee
+   |     ^^^^^^^ invalid suffix `eee`
+   |
+   = help: the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
+
+error: aborting due to 21 previous errors
 

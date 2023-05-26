@@ -177,7 +177,7 @@ pub enum LiteralKind {
     /// "12_u8", "0o100", "0b120i99", "1f32".
     Int { base: Base, empty_int: bool },
     /// "12.34f32", "1e3", but not "1f32".
-    Float { base: Base, empty_exponent: bool },
+    Float { base: Base },
     /// "'a'", "'\\'", "'''", "';"
     Char { terminated: bool },
     /// "b'a'", "b'\\'", "b'''", "b';"
@@ -578,6 +578,28 @@ impl Cursor<'_> {
     }
 
     fn number(&mut self, first_digit: char) -> LiteralKind {
+        // Scan ahead to determine if this is a valid exponent.
+        fn is_exponent(cursor: &mut Cursor<'_>) -> bool {
+            let mut iter = cursor.all();
+            let c = iter.next();
+            debug_assert!(matches!(c, Some('e' | 'E')));
+
+            // Exponent examples:     `e3`, `e+3`, `e_3`, `e-___3`,
+            // Non-exponent examples: `ea`, `e+a`, `e_a`, `e-___a`, `e_`
+            match iter.next() {
+                Some('0'..='9') => return true,
+                Some('+' | '-' | '_') => {}
+                _ => return false,
+            }
+            loop {
+                match iter.next() {
+                    Some('0'..='9') => return true,
+                    Some('_') => {}
+                    _ => return false,
+                }
+            }
+        }
+
         debug_assert!('0' <= self.prev() && self.prev() <= '9');
         let mut base = Base::Decimal;
         if first_digit == '0' {
@@ -628,23 +650,28 @@ impl Cursor<'_> {
                 // might have stuff after the ., and if it does, it needs to start
                 // with a number
                 self.bump();
-                let mut empty_exponent = false;
                 if self.first().is_digit(10) {
                     self.eat_decimal_digits();
                     match self.first() {
-                        'e' | 'E' => {
+                        // Scan ahead to decide if this is an exponent. If not,
+                        // it'll just be handled (later) as a suffix.
+                        'e' | 'E' if is_exponent(self) => {
                             self.bump();
-                            empty_exponent = !self.eat_float_exponent();
+                            let empty_exponent = !self.eat_float_exponent();
+                            debug_assert!(!empty_exponent);
                         }
                         _ => (),
                     }
                 }
-                Float { base, empty_exponent }
+                Float { base }
             }
-            'e' | 'E' => {
+            // Scan ahead to decide if this is an exponent. If not,
+            // it'll just be handled (later) as a suffix.
+            'e' | 'E' if is_exponent(self) => {
                 self.bump();
                 let empty_exponent = !self.eat_float_exponent();
-                Float { base, empty_exponent }
+                debug_assert!(!empty_exponent);
+                Float { base }
             }
             _ => Int { base, empty_int: false },
         }

@@ -642,8 +642,6 @@ parse_no_digits_literal = no valid digits found for number
 
 parse_invalid_digit_literal = invalid digit for a base {$base} literal
 
-parse_empty_exponent_float = expected at least one digit in exponent
-
 parse_float_literal_unsupported_base = {$base} float literal is not supported
 
 parse_more_than_one_char = character literal may only contain one codepoint
