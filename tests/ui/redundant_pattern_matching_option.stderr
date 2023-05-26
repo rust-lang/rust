@@ -77,49 +77,49 @@ LL |     let _ = if let Some(_) = opt { true } else { false };
    |             -------^^^^^^^------ help: try this: `if opt.is_some()`
 
 error: redundant pattern matching, consider using `is_some()`
-  --> $DIR/redundant_pattern_matching_option.rs:60:20
+  --> $DIR/redundant_pattern_matching_option.rs:61:20
    |
 LL |     let _ = if let Some(_) = gen_opt() {
    |             -------^^^^^^^------------ help: try this: `if gen_opt().is_some()`
 
 error: redundant pattern matching, consider using `is_none()`
-  --> $DIR/redundant_pattern_matching_option.rs:62:19
+  --> $DIR/redundant_pattern_matching_option.rs:63:19
    |
 LL |     } else if let None = gen_opt() {
    |            -------^^^^------------ help: try this: `if gen_opt().is_none()`
 
 error: redundant pattern matching, consider using `is_some()`
-  --> $DIR/redundant_pattern_matching_option.rs:68:12
+  --> $DIR/redundant_pattern_matching_option.rs:69:12
    |
 LL |     if let Some(..) = gen_opt() {}
    |     -------^^^^^^^^------------ help: try this: `if gen_opt().is_some()`
 
 error: redundant pattern matching, consider using `is_some()`
-  --> $DIR/redundant_pattern_matching_option.rs:83:12
+  --> $DIR/redundant_pattern_matching_option.rs:84:12
    |
 LL |     if let Some(_) = Some(42) {}
    |     -------^^^^^^^----------- help: try this: `if Some(42).is_some()`
 
 error: redundant pattern matching, consider using `is_none()`
-  --> $DIR/redundant_pattern_matching_option.rs:85:12
+  --> $DIR/redundant_pattern_matching_option.rs:86:12
    |
 LL |     if let None = None::<()> {}
    |     -------^^^^------------- help: try this: `if None::<()>.is_none()`
 
 error: redundant pattern matching, consider using `is_some()`
-  --> $DIR/redundant_pattern_matching_option.rs:87:15
+  --> $DIR/redundant_pattern_matching_option.rs:88:15
    |
 LL |     while let Some(_) = Some(42) {}
    |     ----------^^^^^^^----------- help: try this: `while Some(42).is_some()`
 
 error: redundant pattern matching, consider using `is_none()`
-  --> $DIR/redundant_pattern_matching_option.rs:89:15
+  --> $DIR/redundant_pattern_matching_option.rs:90:15
    |
 LL |     while let None = None::<()> {}
    |     ----------^^^^------------- help: try this: `while None::<()>.is_none()`
 
 error: redundant pattern matching, consider using `is_some()`
-  --> $DIR/redundant_pattern_matching_option.rs:91:5
+  --> $DIR/redundant_pattern_matching_option.rs:92:5
    |
 LL | /     match Some(42) {
 LL | |         Some(_) => true,
@@ -128,7 +128,7 @@ LL | |     };
    | |_____^ help: try this: `Some(42).is_some()`
 
 error: redundant pattern matching, consider using `is_none()`
-  --> $DIR/redundant_pattern_matching_option.rs:96:5
+  --> $DIR/redundant_pattern_matching_option.rs:97:5
    |
 LL | /     match None::<()> {
 LL | |         Some(_) => false,
@@ -137,19 +137,19 @@ LL | |     };
    | |_____^ help: try this: `None::<()>.is_none()`
 
 error: redundant pattern matching, consider using `is_none()`
-  --> $DIR/redundant_pattern_matching_option.rs:104:12
+  --> $DIR/redundant_pattern_matching_option.rs:105:12
    |
 LL |     if let None = *(&None::<()>) {}
    |     -------^^^^----------------- help: try this: `if (&None::<()>).is_none()`
 
 error: redundant pattern matching, consider using `is_none()`
-  --> $DIR/redundant_pattern_matching_option.rs:105:12
+  --> $DIR/redundant_pattern_matching_option.rs:106:12
    |
 LL |     if let None = *&None::<()> {}
    |     -------^^^^--------------- help: try this: `if (&None::<()>).is_none()`
 
 error: redundant pattern matching, consider using `is_some()`
-  --> $DIR/redundant_pattern_matching_option.rs:111:5
+  --> $DIR/redundant_pattern_matching_option.rs:112:5
    |
 LL | /     match x {
 LL | |         Some(_) => true,
@@ -158,7 +158,7 @@ LL | |     };
    | |_____^ help: try this: `x.is_some()`
 
 error: redundant pattern matching, consider using `is_none()`
-  --> $DIR/redundant_pattern_matching_option.rs:116:5
+  --> $DIR/redundant_pattern_matching_option.rs:117:5
    |
 LL | /     match x {
 LL | |         None => true,
@@ -167,7 +167,7 @@ LL | |     };
    | |_____^ help: try this: `x.is_none()`
 
 error: redundant pattern matching, consider using `is_none()`
-  --> $DIR/redundant_pattern_matching_option.rs:121:5
+  --> $DIR/redundant_pattern_matching_option.rs:122:5
    |
 LL | /     match x {
 LL | |         Some(_) => false,
@@ -176,7 +176,7 @@ LL | |     };
    | |_____^ help: try this: `x.is_none()`
 
 error: redundant pattern matching, consider using `is_some()`
-  --> $DIR/redundant_pattern_matching_option.rs:126:5
+  --> $DIR/redundant_pattern_matching_option.rs:127:5
    |
 LL | /     match x {
 LL | |         None => false,
@@ -184,5 +184,17 @@ LL | |         _ => true,
 LL | |     };
    | |_____^ help: try this: `x.is_some()`
 
-error: aborting due to 26 previous errors
+error: redundant pattern matching, consider using `is_some()`
+  --> $DIR/redundant_pattern_matching_option.rs:142:13
+   |
+LL |     let _ = matches!(x, Some(_));
+   |             ^^^^^^^^^^^^^^^^^^^^ help: try this: `x.is_some()`
+
+error: redundant pattern matching, consider using `is_none()`
+  --> $DIR/redundant_pattern_matching_option.rs:144:13
+   |
+LL |     let _ = matches!(x, None);
+   |             ^^^^^^^^^^^^^^^^^ help: try this: `x.is_none()`
+
+error: aborting due to 28 previous errors
 
