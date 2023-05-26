@@ -752,6 +752,9 @@ fn main() {
                 "enable": true
             },
             "sysroot": null,
+            "extraEnv": {
+                "RUSTC_BOOTSTRAP": "1"
+            }
         }
     }))
     .server()
