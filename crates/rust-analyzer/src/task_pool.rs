@@ -1,5 +1,7 @@
 //! A thin wrapper around `ThreadPool` to make sure that we join all things
 //! properly.
+use std::sync::{Arc, Barrier};
+
 use crossbeam_channel::Sender;
 
 pub(crate) struct TaskPool<T> {
@@ -16,6 +18,18 @@ impl<T> TaskPool<T> {
             .thread_stack_size(STACK_SIZE)
             .num_threads(threads)
             .build();
+
+        // Set QoS of all threads in threadpool.
+        let barrier = Arc::new(Barrier::new(threads + 1));
+        for _ in 0..threads {
+            let barrier = barrier.clone();
+            inner.execute(move || {
+                stdx::thread::set_current_thread_qos_class(stdx::thread::QoSClass::Utility);
+                barrier.wait();
+            });
+        }
+        barrier.wait();
+
         TaskPool { sender, inner }
     }
 
@@ -26,7 +40,16 @@ impl<T> TaskPool<T> {
     {
         self.inner.execute({
             let sender = self.sender.clone();
-            move || sender.send(task()).unwrap()
+            move || {
+                if stdx::thread::IS_QOS_AVAILABLE {
+                    debug_assert_eq!(
+                        stdx::thread::get_current_thread_qos_class(),
+                        Some(stdx::thread::QoSClass::Utility)
+                    );
+                }
+
+                sender.send(task()).unwrap()
+            }
         })
     }
 

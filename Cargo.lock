@@ -408,7 +408,6 @@ dependencies = [
  "cargo_metadata",
  "command-group",
  "crossbeam-channel",
- "jod-thread",
  "paths",
  "rustc-hash",
  "serde",
@@ -1278,6 +1277,7 @@ dependencies = [
  "paths",
  "proc-macro-api",
  "proc-macro-test",
+ "stdx",
  "tt",
 ]
 
@@ -1493,7 +1493,6 @@ dependencies = [
  "ide-db",
  "ide-ssr",
  "itertools",
- "jod-thread",
  "lsp-server",
  "lsp-types",
  "mbe",
@@ -1712,6 +1711,7 @@ version = "0.0.0"
 dependencies = [
  "always-assert",
  "backtrace",
+ "jod-thread",
  "libc",
  "miow",
  "winapi",
@@ -2123,9 +2123,9 @@ name = "vfs-notify"
 version = "0.0.0"
 dependencies = [
  "crossbeam-channel",
- "jod-thread",
  "notify",
  "paths",
+ "stdx",
  "tracing",
  "vfs",
  "walkdir",
