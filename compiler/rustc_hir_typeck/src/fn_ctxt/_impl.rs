@@ -1,4 +1,5 @@
 use crate::callee::{self, DeferredCallResolution};
+use crate::errors::CtorIsPrivate;
 use crate::method::{self, MethodCallee, SelfSource};
 use crate::rvalue_scopes;
 use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, LocalTy, RawTy};
@@ -1207,6 +1208,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match ty.normalized.ty_adt_def() {
                 Some(adt_def) if adt_def.has_ctor() => {
                     let (ctor_kind, ctor_def_id) = adt_def.non_enum_variant().ctor.unwrap();
+                    // Check the visibility of the ctor.
+                    let vis = tcx.visibility(ctor_def_id);
+                    if !vis.is_accessible_from(tcx.parent_module(hir_id).to_def_id(), tcx) {
+                        tcx.sess
+                            .emit_err(CtorIsPrivate { span, def: tcx.def_path_str(adt_def.did()) });
+                    }
                     let new_res = Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id);
                     let user_substs = Self::user_substs_for_adt(ty);
                     user_self_ty = user_substs.user_self_ty;

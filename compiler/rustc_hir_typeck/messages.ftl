@@ -90,3 +90,5 @@ hir_typeck_candidate_trait_note = `{$trait_name}` defines an item `{$item_name}`
     [implement] , perhaps you need to implement it
     *[other] , perhaps you need to restrict type parameter `{$action_or_ty}` with it
 }
+
+hir_typeck_ctor_is_private = tuple struct constructor `{$def}` is private
