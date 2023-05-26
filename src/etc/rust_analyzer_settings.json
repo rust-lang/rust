@@ -7,7 +7,14 @@
         "check",
         "--json-output"
     ],
-    "rust-analyzer.linkedProjects": ["src/bootstrap/Cargo.toml", "Cargo.toml"],
+    "rust-analyzer.linkedProjects": [
+        "Cargo.toml",
+        "src/tools/x/Cargo.toml",
+        "src/bootstrap/Cargo.toml",
+        "src/tools/rust-analyzer/Cargo.toml",
+        "compiler/rustc_codegen_cranelift/Cargo.toml",
+        "compiler/rustc_codegen_gcc/Cargo.toml"
+    ],
     "rust-analyzer.rustfmt.overrideCommand": [
         "./build/host/rustfmt/bin/rustfmt",
         "--edition=2021"
