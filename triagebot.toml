@@ -190,6 +190,7 @@ trigger_files = [
     "src/stage0.json",
     "src/tools/compiletest",
     "src/tools/tidy",
+    "src/tools/rustdoc-gui-test",
 ]
 
 [autolabel."T-infra"]
@@ -640,3 +641,4 @@ style-team = [
 "/src/tools/rustdoc-themes" =                ["rustdoc"]
 "/src/tools/tidy" =                          ["bootstrap"]
 "/src/tools/x" =                             ["bootstrap"]
+"/src/tools/rustdoc-gui-test" =              ["bootstrap", "@ozkanonur"]

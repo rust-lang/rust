@@ -40,6 +40,7 @@ members = [
   "src/tools/generate-copyright",
   "src/tools/suggest-tests",
   "src/tools/generate-windows-sys",
+  "src/tools/rustdoc-gui-test",
 ]
 
 exclude = [
