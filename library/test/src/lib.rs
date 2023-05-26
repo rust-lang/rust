@@ -92,6 +92,7 @@ use time::TestExecTime;
 const ERROR_EXIT_CODE: i32 = 101;
 
 const SECONDARY_TEST_INVOKER_VAR: &str = "__RUST_TEST_INVOKE";
+const SECONDARY_TEST_BENCH_BENCHMARKS_VAR: &str = "__RUST_TEST_BENCH_BENCHMARKS";
 
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs.
@@ -171,10 +172,18 @@ pub fn test_main_static_abort(tests: &[&TestDescAndFn]) {
     // will then exit the process.
     if let Ok(name) = env::var(SECONDARY_TEST_INVOKER_VAR) {
         env::remove_var(SECONDARY_TEST_INVOKER_VAR);
+
+        // Convert benchmarks to tests if we're not benchmarking.
+        let mut tests = tests.iter().map(make_owned_test).collect::<Vec<_>>();
+        if env::var(SECONDARY_TEST_BENCH_BENCHMARKS_VAR).is_ok() {
+            env::remove_var(SECONDARY_TEST_BENCH_BENCHMARKS_VAR);
+        } else {
+            tests = convert_benchmarks_to_tests(tests);
+        };
+
         let test = tests
-            .iter()
+            .into_iter()
             .filter(|test| test.desc.name.as_slice() == name)
-            .map(make_owned_test)
             .next()
             .unwrap_or_else(|| panic!("couldn't find a test with the provided name '{name}'"));
         let TestDescAndFn { desc, testfn } = test;
@@ -557,6 +566,7 @@ pub fn run_test(
             let name = desc.name.clone();
             let nocapture = opts.nocapture;
             let time_options = opts.time_options;
+            let bench_benchmarks = opts.bench_benchmarks;
 
             let runtest = move || match strategy {
                 RunStrategy::InProcess => run_test_in_process(
@@ -575,6 +585,7 @@ pub fn run_test(
                     time_options.is_some(),
                     monitor_ch,
                     time_options,
+                    bench_benchmarks,
                 ),
             };
 
@@ -672,6 +683,7 @@ fn spawn_test_subprocess(
     report_time: bool,
     monitor_ch: Sender<CompletedTest>,
     time_opts: Option<time::TestTimeOptions>,
+    bench_benchmarks: bool,
 ) {
     let (result, test_output, exec_time) = (|| {
         let args = env::args().collect::<Vec<_>>();
@@ -679,6 +691,9 @@ fn spawn_test_subprocess(
 
         let mut command = Command::new(current_exe);
         command.env(SECONDARY_TEST_INVOKER_VAR, desc.name.as_slice());
+        if bench_benchmarks {
+            command.env(SECONDARY_TEST_BENCH_BENCHMARKS_VAR, "1");
+        }
         if nocapture {
             command.stdout(process::Stdio::inherit());
             command.stderr(process::Stdio::inherit());
