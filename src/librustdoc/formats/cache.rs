@@ -147,7 +147,7 @@ impl Cache {
 
         // Cache where all our extern crates are located
         // FIXME: this part is specific to HTML so it'd be nice to remove it from the common code
-        for &crate_num in cx.tcx.crates(()) {
+        for &crate_num in tcx.crates(()) {
             let e = ExternalCrate { crate_num };
 
             let name = e.name(tcx);
