@@ -804,6 +804,7 @@ impl Step for Enzyme {
         let _time = util::timeit(&builder);
         t!(fs::create_dir_all(&out_dir));
 
+        builder.update_submodule(&Path::new("src").join("tools").join("enzyme"));
         let mut cfg = cmake::Config::new(builder.src.join("src/tools/enzyme/enzyme/"));
         configure_cmake(builder, target, &mut cfg, true, LdFlags::default(), &[]);
 
