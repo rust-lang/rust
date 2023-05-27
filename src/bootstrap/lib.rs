@@ -414,7 +414,6 @@ impl Build {
                 bootstrap_out.display()
             )
         }
-        config.check_build_rustc_version();
 
         if rust_info.is_from_tarball() && config.description.is_none() {
             config.description = Some("built from a source tarball".to_owned());
