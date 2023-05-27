@@ -1237,7 +1237,27 @@ pub(crate) fn plain_text_summary(md: &str, link_names: &[RenderedLink]) -> Strin
 pub(crate) struct MarkdownLink {
     pub kind: LinkType,
     pub link: String,
-    pub range: Range<usize>,
+    pub range: MarkdownLinkRange,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) enum MarkdownLinkRange {
+    /// Normally, markdown link warnings point only at the destination.
+    Destination(Range<usize>),
+    /// In some cases, it's not possible to point at the destination.
+    /// Usually, this happens because backslashes `\\` are used.
+    /// When that happens, point at the whole link, and don't provide structured suggestions.
+    WholeLink(Range<usize>),
+}
+
+impl MarkdownLinkRange {
+    /// Extracts the inner range.
+    pub fn inner_range(&self) -> &Range<usize> {
+        match self {
+            MarkdownLinkRange::Destination(range) => range,
+            MarkdownLinkRange::WholeLink(range) => range,
+        }
+    }
 }
 
 pub(crate) fn markdown_links<R>(
@@ -1257,9 +1277,9 @@ pub(crate) fn markdown_links<R>(
         if md_start <= s_start && s_end <= md_end {
             let start = s_start.offset_from(md_start) as usize;
             let end = s_end.offset_from(md_start) as usize;
-            start..end
+            MarkdownLinkRange::Destination(start..end)
         } else {
-            fallback
+            MarkdownLinkRange::WholeLink(fallback)
         }
     };
 
@@ -1267,6 +1287,7 @@ pub(crate) fn markdown_links<R>(
         // For diagnostics, we want to underline the link's definition but `span` will point at
         // where the link is used. This is a problem for reference-style links, where the definition
         // is separate from the usage.
+
         match link {
             // `Borrowed` variant means the string (the link's destination) may come directly from
             // the markdown text and we can locate the original link destination.
@@ -1275,8 +1296,80 @@ pub(crate) fn markdown_links<R>(
             CowStr::Borrowed(s) => locate(s, span),
 
             // For anything else, we can only use the provided range.
-            CowStr::Boxed(_) | CowStr::Inlined(_) => span,
+            CowStr::Boxed(_) | CowStr::Inlined(_) => MarkdownLinkRange::WholeLink(span),
         }
+    };
+
+    let span_for_offset_backward = |span: Range<usize>, open: u8, close: u8| {
+        let mut open_brace = !0;
+        let mut close_brace = !0;
+        for (i, b) in md.as_bytes()[span.clone()].iter().copied().enumerate().rev() {
+            let i = i + span.start;
+            if b == close {
+                close_brace = i;
+                break;
+            }
+        }
+        if close_brace < span.start || close_brace >= span.end {
+            return MarkdownLinkRange::WholeLink(span);
+        }
+        let mut nesting = 1;
+        for (i, b) in md.as_bytes()[span.start..close_brace].iter().copied().enumerate().rev() {
+            let i = i + span.start;
+            if b == close {
+                nesting += 1;
+            }
+            if b == open {
+                nesting -= 1;
+            }
+            if nesting == 0 {
+                open_brace = i;
+                break;
+            }
+        }
+        assert!(open_brace != close_brace);
+        if open_brace < span.start || open_brace >= span.end {
+            return MarkdownLinkRange::WholeLink(span);
+        }
+        // do not actually include braces in the span
+        let range = (open_brace + 1)..close_brace;
+        MarkdownLinkRange::Destination(range.clone())
+    };
+
+    let span_for_offset_forward = |span: Range<usize>, open: u8, close: u8| {
+        let mut open_brace = !0;
+        let mut close_brace = !0;
+        for (i, b) in md.as_bytes()[span.clone()].iter().copied().enumerate() {
+            let i = i + span.start;
+            if b == open {
+                open_brace = i;
+                break;
+            }
+        }
+        if open_brace < span.start || open_brace >= span.end {
+            return MarkdownLinkRange::WholeLink(span);
+        }
+        let mut nesting = 0;
+        for (i, b) in md.as_bytes()[open_brace..span.end].iter().copied().enumerate() {
+            let i = i + open_brace;
+            if b == close {
+                nesting -= 1;
+            }
+            if b == open {
+                nesting += 1;
+            }
+            if nesting == 0 {
+                close_brace = i;
+                break;
+            }
+        }
+        assert!(open_brace != close_brace);
+        if open_brace < span.start || open_brace >= span.end {
+            return MarkdownLinkRange::WholeLink(span);
+        }
+        // do not actually include braces in the span
+        let range = (open_brace + 1)..close_brace;
+        MarkdownLinkRange::Destination(range.clone())
     };
 
     Parser::new_with_broken_link_callback(
@@ -1287,11 +1380,20 @@ pub(crate) fn markdown_links<R>(
     .into_offset_iter()
     .filter_map(|(event, span)| match event {
         Event::Start(Tag::Link(link_type, dest, _)) if may_be_doc_link(link_type) => {
-            preprocess_link(MarkdownLink {
-                kind: link_type,
-                range: span_for_link(&dest, span),
-                link: dest.into_string(),
-            })
+            let range = match link_type {
+                // Link is pulled from the link itself.
+                LinkType::ReferenceUnknown | LinkType::ShortcutUnknown => {
+                    span_for_offset_backward(span, b'[', b']')
+                }
+                LinkType::CollapsedUnknown => span_for_offset_forward(span, b'[', b']'),
+                LinkType::Inline => span_for_offset_backward(span, b'(', b')'),
+                // Link is pulled from elsewhere in the document.
+                LinkType::Reference | LinkType::Collapsed | LinkType::Shortcut => {
+                    span_for_link(&dest, span)
+                }
+                LinkType::Autolink | LinkType::Email => unreachable!(),
+            };
+            preprocess_link(MarkdownLink { kind: link_type, range, link: dest.into_string() })
         }
         _ => None,
     })
