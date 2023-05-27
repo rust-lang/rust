@@ -2554,8 +2554,8 @@ declare_lint! {
     ///
     /// The fix to this is to wrap the unsafe code in an `unsafe` block.
     ///
-    /// This lint is "allow" by default since this will affect a large amount
-    /// of existing code, and the exact plan for increasing the severity is
+    /// This lint is "allow" by default on editions up to 2021, from 2024 it is
+    /// "warn" by default; the plan for increasing severity further is
     /// still being considered. See [RFC #2585] and [issue #71668] for more
     /// details.
     ///
@@ -2567,6 +2567,7 @@ declare_lint! {
     pub UNSAFE_OP_IN_UNSAFE_FN,
     Allow,
     "unsafe operations in unsafe functions without an explicit unsafe block are deprecated",
+    @edition Edition2024 => Warn;
 }
 
 declare_lint! {

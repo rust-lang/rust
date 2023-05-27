@@ -719,34 +719,22 @@ macro_rules! declare_lint {
     ($(#[$attr:meta])* $vis: vis $NAME: ident, $Level: ident, $desc: expr,
      $(@feature_gate = $gate:expr;)?
      $(@future_incompatible = FutureIncompatibleInfo { $($field:ident : $val:expr),* $(,)*  }; )?
+     $(@edition $lint_edition:ident => $edition_level:ident;)?
      $($v:ident),*) => (
         $(#[$attr])*
         $vis static $NAME: &$crate::Lint = &$crate::Lint {
             name: stringify!($NAME),
             default_level: $crate::$Level,
             desc: $desc,
-            edition_lint_opts: None,
             is_plugin: false,
             $($v: true,)*
-            $(feature_gate: Some($gate),)*
+            $(feature_gate: Some($gate),)?
             $(future_incompatible: Some($crate::FutureIncompatibleInfo {
                 $($field: $val,)*
                 ..$crate::FutureIncompatibleInfo::default_fields_for_macro()
-            }),)*
+            }),)?
+            $(edition_lint_opts: Some(($crate::Edition::$lint_edition, $crate::$edition_level)),)?
             ..$crate::Lint::default_fields_for_macro()
-        };
-    );
-    ($(#[$attr:meta])* $vis: vis $NAME: ident, $Level: ident, $desc: expr,
-     $lint_edition: expr => $edition_level: ident
-    ) => (
-        $(#[$attr])*
-        $vis static $NAME: &$crate::Lint = &$crate::Lint {
-            name: stringify!($NAME),
-            default_level: $crate::$Level,
-            desc: $desc,
-            edition_lint_opts: Some(($lint_edition, $crate::Level::$edition_level)),
-            report_in_external_macro: false,
-            is_plugin: false,
         };
     );
 }
