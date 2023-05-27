@@ -1,4 +1,3 @@
-#![feature(bench_black_box)]
 use autodiff::autodiff;
 
 use std::io;

@@ -1,4 +1,3 @@
-#![feature(bench_black_box)]
 use autodiff::autodiff;
 
 #[autodiff(d_array, Reverse, Active, Duplicated)]
@@ -13,4 +12,12 @@ fn main() {
     d_array(&arr, &mut d_arr, 1.0);
 
     dbg!(&d_arr);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn main() {
+        super::main()
+    }
 }

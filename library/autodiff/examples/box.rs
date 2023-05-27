@@ -1,4 +1,3 @@
-#![feature(bench_black_box)]
 use autodiff::autodiff;
 
 #[autodiff(cos_box, Reverse, Active, Duplicated)]
@@ -14,4 +13,12 @@ fn main() {
     dbg!(&df_dx);
 
     assert!(*df_dx == f32::cos(*x));
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn main() {
+        super::main()
+    }
 }

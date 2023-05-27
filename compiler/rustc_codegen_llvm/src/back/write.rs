@@ -669,7 +669,6 @@ pub(crate) unsafe fn enzyme_ad(
     let type_analysis: EnzymeTypeAnalysisRef =
         CreateTypeAnalysis(logic_ref, std::ptr::null_mut(), std::ptr::null_mut(), 0);
 
-    dbg!(&type_analysis);
     let mut res: &Value = match item.attrs.mode {
         DiffMode::Forward => enzyme_rust_forward_diff(
             logic_ref,
@@ -694,11 +693,8 @@ pub(crate) unsafe fn enzyme_ad(
         ),
         _ => unreachable!(),
     };
-    //let f_type = LLVMTypeOf(res);
-
     let f_return_type = LLVMGetReturnType(LLVMGlobalGetValueType(res));
 
-    //let f_return_type = LLVMGetReturnType(LLVMGetElementType(f_type));
     let void_type = LLVMVoidTypeInContext(llcx);
     if item.attrs.mode == DiffMode::Reverse && f_return_type != void_type {
         //dbg!("Reverse Mode sanitizer");
@@ -710,9 +706,10 @@ pub(crate) unsafe fn enzyme_ad(
             res = extract_return_type(llmod, res, u_type, rust_name2.clone()); // TODO: check if name or name2
         }
     }
+    //dbg!(&target_fnc);
+    LLVMSetValueName2(res, name2.as_ptr(), rust_name2.len());
     LLVMReplaceAllUsesWith(target_fnc, res);
     LLVMDeleteFunction(target_fnc);
-    LLVMSetValueName2(res, name2.as_ptr(), rust_name2.len());
 
     Ok(())
 }

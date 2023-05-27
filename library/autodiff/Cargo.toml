@@ -26,3 +26,4 @@ syn = { version = "1", features = ["extra-traits", "full", "visit", "visit-mut"]
 macrotest = "1"
 trybuild = "1"
 ndarray = "0.15"
+trycmd = "0.14"

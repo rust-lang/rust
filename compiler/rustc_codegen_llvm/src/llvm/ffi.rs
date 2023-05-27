@@ -2846,12 +2846,13 @@ extern "C" {
 }
 pub type CustomRuleType = ::std::option::Option<
     unsafe extern "C" fn(
-        arg1: ::std::os::raw::c_int,
-        arg2: CTypeTreeRef,
-        arg3: *mut CTypeTreeRef,
-        arg4: *mut IntList,
-        arg5: size_t,
-        arg6: &Value,
+        direction: ::std::os::raw::c_int,
+        ret: CTypeTreeRef,
+        args: *mut CTypeTreeRef,
+        known_values: *mut IntList,
+        num_args: size_t,
+        fnc: &Value,
+        ta: *const ::std::os::raw::c_void,
     ) -> u8,
 >;
 extern "C" {

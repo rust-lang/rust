@@ -1,4 +1,3 @@
-#![feature(bench_black_box)]
 use autodiff::autodiff;
 
 use ndarray::Array1;
@@ -15,4 +14,12 @@ fn main() {
     d_collect(&a, &mut d_a, 1.0);
 
     dbg!(&d_a);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn main() {
+        super::main()
+    }
 }

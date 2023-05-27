@@ -1,6 +1,4 @@
-#![feature(bench_black_box)]
 use autodiff::autodiff;
-use std::hint::black_box;
 
 fn sin(x: &Vec<f32>, y: &mut f32) {
     *y = x.into_iter().map(|x| f32::sin(*x)).sum()
@@ -19,4 +17,12 @@ fn main() {
     let tang = vec![1.0, 0.0, 0.0];
     hessian(&inp, &tang, &mut d_inp, &mut y, &1.0);
     dbg!(&d_inp);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn main() {
+        super::main()
+    }
 }

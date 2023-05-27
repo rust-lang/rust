@@ -13,5 +13,5 @@ fn d_sqrt(
     tang_y: f32,
 ) -> (f32, f32) {
     std::hint::black_box((sqrt(a, b, c, d), grad_b, tang_y));
-    unsafe { std::mem::zeroed() }
+    std::hint::black_box(unsafe { std::mem::zeroed() })
 }

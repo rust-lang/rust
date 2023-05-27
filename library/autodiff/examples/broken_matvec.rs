@@ -1,4 +1,3 @@
-#![feature(bench_black_box)]
 use autodiff::autodiff;
 
 type Matrix = Vec<Vec<f32>>;
@@ -24,4 +23,12 @@ fn main() {
     d_matvec(&mat, &mut d_mat, &inp, &mut out, &mut out_tang);
 
     dbg!(&out);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn main() {
+        super::main()
+    }
 }

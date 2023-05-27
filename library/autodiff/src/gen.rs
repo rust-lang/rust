@@ -205,7 +205,7 @@ pub(crate) fn adjoint_fnc(item: &DiffItem) -> TokenStream {
     let body = quote!({
         std::hint::black_box((#call_ident(#(#inputs,)*), #(#add_inputs,)*));
 
-        unsafe { std::mem::zeroed() }
+        std::hint::black_box(unsafe { std::mem::zeroed() })
     });
     let header = generate_header(&item);
 

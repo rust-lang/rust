@@ -1,4 +1,3 @@
-#![feature(bench_black_box)]
 use autodiff::autodiff;
 
 #[autodiff(d_rosenbrock, Reverse, Active)]
@@ -23,4 +22,12 @@ fn main() {
     // https://www.wolframalpha.com/input?i2d=true&i=x%3D3.14%3B+y%3D2.4%3B+D%5Brosenbrock+function%5C%2840%29x%5C%2844%29+y%5C%2841%29+%2Cy%5D
     assert!((df_dx[0] - 9373.54).abs() < 0.01);
     assert!((df_dx[1] - (-1491.92)).abs() < 0.01);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn main() {
+        super::main()
+    }
 }

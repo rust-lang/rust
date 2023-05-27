@@ -1,4 +1,3 @@
-#![feature(bench_black_box)]
 use autodiff::autodiff;
 
 #[autodiff(d_sum, Forward, Duplicated)]
@@ -14,4 +13,12 @@ fn main() {
     dbg!(&d_sum(&a, &b));
 
     dbg!(&b);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn main() {
+        super::main()
+    }
 }

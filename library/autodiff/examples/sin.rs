@@ -25,3 +25,11 @@ fn main() {
 //   %5 = insertvalue { float } undef, float %4, 0
 //   ret { float } %5
 // }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn main() {
+        super::main()
+    }
+}
