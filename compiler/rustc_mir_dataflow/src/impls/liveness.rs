@@ -75,9 +75,9 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeLiveLocals {
         return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
         return_places.for_each(|place| {
-            YieldResumeEffect(trans).visit_place(
+            CallReturnEffect(trans).visit_place(
                 &place,
-                PlaceContext::MutatingUse(MutatingUseContext::Yield),
+                PlaceContext::MutatingUse(MutatingUseContext::Store),
                 Location::START,
             )
         });
@@ -119,9 +119,9 @@ where
     }
 }
 
-struct YieldResumeEffect<'a, T>(&'a mut T);
+struct CallReturnEffect<'a, T>(&'a mut T);
 
-impl<'tcx, T> Visitor<'tcx> for YieldResumeEffect<'_, T>
+impl<'tcx, T> Visitor<'tcx> for CallReturnEffect<'_, T>
 where
     T: GenKill<Local>,
 {
@@ -292,9 +292,9 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
         return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
         return_places.for_each(|place| {
-            YieldResumeEffect(trans).visit_place(
+            CallReturnEffect(trans).visit_place(
                 &place,
-                PlaceContext::MutatingUse(MutatingUseContext::Yield),
+                PlaceContext::MutatingUse(MutatingUseContext::Store),
                 Location::START,
             )
         });
