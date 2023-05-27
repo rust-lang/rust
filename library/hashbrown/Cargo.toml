@@ -19,6 +19,7 @@ ahash = { version = "0.8.0", default-features = false, optional = true }
 # For external trait impls
 rayon = { version = "1.0", optional = true }
 serde = { version = "1.0.25", default-features = false, optional = true }
+rkyv = { version = "0.7.42", optional = true, default-features = false, features = ["alloc"]}
 
 # When built as part of libstd
 core = { version = "1.0.0", optional = true, package = "rustc-std-workspace-core" }
@@ -36,6 +37,7 @@ fnv = "1.0.7"
 serde_test = "1.0"
 doc-comment = "0.3.1"
 bumpalo = "3.6.0"
+rkyv = { version = "0.7.42", features = ["validation"] }
 
 [features]
 default = ["ahash", "inline-more", "allocator-api2"]
@@ -43,13 +45,7 @@ default = ["ahash", "inline-more", "allocator-api2"]
 nightly = ["allocator-api2?/nightly", "bumpalo/allocator_api"]
 
 rustc-internal-api = []
-rustc-dep-of-std = [
-    "nightly",
-    "core",
-    "compiler_builtins",
-    "alloc",
-    "rustc-internal-api",
-]
+rustc-dep-of-std = ["nightly", "core", "compiler_builtins", "alloc", "rustc-internal-api"]
 raw = []
 
 # Enables usage of `#[inline]` on far more functions than by default in this
