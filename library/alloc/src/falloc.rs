@@ -26,10 +26,10 @@ pub use crate::alloc::{AllocError, Global, GlobalAlloc, Layout, LayoutError};
 ///   [`shrink`] that returns `Ok`. If `grow` or `shrink` have returned `Err`, the passed pointer
 ///   remains valid.
 ///
-/// [`allocate`]: Allocator::allocate
-/// [`grow`]: Allocator::grow
-/// [`shrink`]: Allocator::shrink
-/// [`deallocate`]: Allocator::deallocate
+/// [`allocate`]: crate::alloc::Allocator::allocate
+/// [`grow`]: crate::alloc::Allocator::grow
+/// [`shrink`]: crate::alloc::Allocator::shrink
+/// [`deallocate`]: crate::alloc::Allocator::deallocate
 ///
 /// ### Memory fitting
 ///
