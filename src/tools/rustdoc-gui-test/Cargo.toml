@@ -1,0 +1,9 @@
+[package]
+name = "rustdoc-gui-test"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+compiletest = { path = "../compiletest" }
+getopts = "0.2"
+walkdir = "2"

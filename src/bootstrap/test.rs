@@ -944,28 +944,6 @@ fn get_browser_ui_test_version(npm: &Path) -> Option<String> {
         .or_else(|| get_browser_ui_test_version_inner(npm, true))
 }
 
-fn compare_browser_ui_test_version(installed_version: &str, src: &Path) {
-    match fs::read_to_string(
-        src.join("src/ci/docker/host-x86_64/x86_64-gnu-tools/browser-ui-test.version"),
-    ) {
-        Ok(v) => {
-            if v.trim() != installed_version {
-                eprintln!(
-                    "⚠️ Installed version of browser-ui-test (`{}`) is different than the \
-                     one used in the CI (`{}`)",
-                    installed_version, v
-                );
-                eprintln!(
-                    "You can install this version using `npm update browser-ui-test` or by using \
-                     `npm install browser-ui-test@{}`",
-                    v,
-                );
-            }
-        }
-        Err(e) => eprintln!("Couldn't find the CI browser-ui-test version: {:?}", e),
-    }
-}
-
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct RustdocGUI {
     pub target: TargetSelection,
@@ -997,79 +975,30 @@ impl Step for RustdocGUI {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let nodejs = builder.config.nodejs.as_ref().expect("nodejs isn't available");
-        let npm = builder.config.npm.as_ref().expect("npm isn't available");
-
         builder.ensure(compile::Std::new(self.compiler, self.target));
 
-        // The goal here is to check if the necessary packages are installed, and if not, we
-        // panic.
-        match get_browser_ui_test_version(&npm) {
-            Some(version) => {
-                // We also check the version currently used in CI and emit a warning if it's not the
-                // same one.
-                compare_browser_ui_test_version(&version, &builder.build.src);
-            }
-            None => {
-                eprintln!(
-                    "error: rustdoc-gui test suite cannot be run because npm `browser-ui-test` \
-                     dependency is missing",
-                );
-                eprintln!(
-                    "If you want to install the `{0}` dependency, run `npm install {0}`",
-                    "browser-ui-test",
-                );
-                panic!("Cannot run rustdoc-gui tests");
-            }
-        }
+        let mut cmd = builder.tool_cmd(Tool::RustdocGUITest);
 
         let out_dir = builder.test_out(self.target).join("rustdoc-gui");
-
-        // We remove existing folder to be sure there won't be artifacts remaining.
         builder.clear_if_dirty(&out_dir, &builder.rustdoc(self.compiler));
 
-        let src_path = builder.build.src.join("tests/rustdoc-gui/src");
-        // We generate docs for the libraries present in the rustdoc-gui's src folder.
-        for entry in src_path.read_dir().expect("read_dir call failed") {
-            if let Ok(entry) = entry {
-                let path = entry.path();
-
-                if !path.is_dir() {
-                    continue;
-                }
-
-                let mut cargo = Command::new(&builder.initial_cargo);
-                cargo
-                    .arg("doc")
-                    .arg("--target-dir")
-                    .arg(&out_dir)
-                    .env("RUSTC_BOOTSTRAP", "1")
-                    .env("RUSTDOC", builder.rustdoc(self.compiler))
-                    .env("RUSTC", builder.rustc(self.compiler))
-                    .current_dir(path);
-                // FIXME: implement a `// compile-flags` command or similar
-                //        instead of hard-coding this test
-                if entry.file_name() == "link_to_definition" {
-                    cargo.env("RUSTDOCFLAGS", "-Zunstable-options --generate-link-to-definition");
-                } else if entry.file_name() == "scrape_examples" {
-                    cargo.arg("-Zrustdoc-scrape-examples");
-                } else if entry.file_name() == "extend_css" {
-                    cargo.env("RUSTDOCFLAGS", &format!("--extend-css extra.css"));
-                }
-                builder.run(&mut cargo);
-            }
+        if let Some(src) = builder.config.src.to_str() {
+            cmd.arg("--rust-src").arg(src);
         }
 
-        // We now run GUI tests.
-        let mut command = Command::new(&nodejs);
-        command
-            .arg(builder.build.src.join("src/tools/rustdoc-gui/tester.js"))
-            .arg("--jobs")
-            .arg(&builder.jobs().to_string())
-            .arg("--doc-folder")
-            .arg(out_dir.join("doc"))
-            .arg("--tests-folder")
-            .arg(builder.build.src.join("tests/rustdoc-gui"));
+        if let Some(out_dir) = out_dir.to_str() {
+            cmd.arg("--out-dir").arg(out_dir);
+        }
+
+        if let Some(initial_cargo) = builder.config.initial_cargo.to_str() {
+            cmd.arg("--initial-cargo").arg(initial_cargo);
+        }
+
+        cmd.arg("--jobs").arg(builder.jobs().to_string());
+
+        cmd.env("RUSTDOC", builder.rustdoc(self.compiler))
+            .env("RUSTC", builder.rustc(self.compiler));
+
         for path in &builder.paths {
             if let Some(p) = util::is_valid_test_suite_arg(path, "tests/rustdoc-gui", builder) {
                 if !p.ends_with(".goml") {
@@ -1077,14 +1006,25 @@ impl Step for RustdocGUI {
                     panic!("Cannot run rustdoc-gui tests");
                 }
                 if let Some(name) = path.file_name().and_then(|f| f.to_str()) {
-                    command.arg("--file").arg(name);
+                    cmd.arg("--goml-file").arg(name);
                 }
             }
         }
+
         for test_arg in builder.config.test_args() {
-            command.arg(test_arg);
+            cmd.arg("--test-arg").arg(test_arg);
         }
-        builder.run(&mut command);
+
+        if let Some(ref nodejs) = builder.config.nodejs {
+            cmd.arg("--nodejs").arg(nodejs);
+        }
+
+        if let Some(ref npm) = builder.config.npm {
+            cmd.arg("--npm").arg(npm);
+        }
+
+        let _time = util::timeit(&builder);
+        crate::render_tests::try_run_tests(builder, &mut cmd);
     }
 }
 

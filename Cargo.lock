@@ -4380,6 +4380,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustdoc-gui-test"
+version = "0.1.0"
+dependencies = [
+ "compiletest",
+ "getopts",
+ "walkdir",
+]
+
+[[package]]
 name = "rustdoc-json-types"
 version = "0.1.0"
 dependencies = [
