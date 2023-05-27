@@ -74,13 +74,19 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeLiveLocals {
         _block: mir::BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
-        return_places.for_each(|place| {
-            CallReturnEffect(trans).visit_place(
-                &place,
-                PlaceContext::MutatingUse(MutatingUseContext::Store),
+        if let CallReturnPlaces::Yield(resume_place) = return_places {
+            YieldResumeEffect(trans).visit_place(
+                &resume_place,
+                PlaceContext::MutatingUse(MutatingUseContext::Yield),
                 Location::START,
             )
-        });
+        } else {
+            return_places.for_each(|place| {
+                if let Some(local) = place.as_local() {
+                    trans.kill(local);
+                }
+            });
+        }
     }
 }
 
@@ -91,12 +97,16 @@ where
     T: GenKill<Local>,
 {
     fn visit_place(&mut self, place: &mir::Place<'tcx>, context: PlaceContext, location: Location) {
+        if let PlaceContext::MutatingUse(MutatingUseContext::Yield) = context {
+            // The resume place is evaluated and assigned to only after generator resumes, so its
+            // effect is handled separately in `call_resume_effect`.
+            return;
+        }
+
         match DefUse::for_place(*place, context) {
             Some(DefUse::Def) => {
                 if let PlaceContext::MutatingUse(
-                    MutatingUseContext::Yield
-                    | MutatingUseContext::Call
-                    | MutatingUseContext::AsmOutput,
+                    MutatingUseContext::Call | MutatingUseContext::AsmOutput,
                 ) = context
                 {
                     // For the associated terminators, this is only a `Def` when the terminator returns
@@ -119,9 +129,9 @@ where
     }
 }
 
-struct CallReturnEffect<'a, T>(&'a mut T);
+struct YieldResumeEffect<'a, T>(&'a mut T);
 
-impl<'tcx, T> Visitor<'tcx> for CallReturnEffect<'_, T>
+impl<'tcx, T> Visitor<'tcx> for YieldResumeEffect<'_, T>
 where
     T: GenKill<Local>,
 {
@@ -291,12 +301,18 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
         _block: mir::BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
-        return_places.for_each(|place| {
-            CallReturnEffect(trans).visit_place(
-                &place,
-                PlaceContext::MutatingUse(MutatingUseContext::Store),
+        if let CallReturnPlaces::Yield(resume_place) = return_places {
+            YieldResumeEffect(trans).visit_place(
+                &resume_place,
+                PlaceContext::MutatingUse(MutatingUseContext::Yield),
                 Location::START,
             )
-        });
+        } else {
+            return_places.for_each(|place| {
+                if let Some(local) = place.as_local() {
+                    trans.remove(local);
+                }
+            });
+        }
     }
 }
