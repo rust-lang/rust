@@ -314,7 +314,6 @@ impl Options {
         matches: &getopts::Matches,
         args: Vec<String>,
     ) -> Result<(Options, RenderOptions), i32> {
-        let args = &args[1..];
         // Check for unstable options.
         nightly_options::check_nightly_options(matches, &opts());
 

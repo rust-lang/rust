@@ -280,9 +280,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             return false;
         };
 
-        let is_private =
-            !self.cx.cache.effective_visibilities.is_directly_public(self.cx.tcx, ori_res_did);
-        let is_hidden = inherits_doc_hidden(self.cx.tcx, res_did, None);
+        let is_private = !self.cx.cache.effective_visibilities.is_directly_public(tcx, ori_res_did);
+        let is_hidden = inherits_doc_hidden(tcx, res_did, None);
 
         // Only inline if requested or if the item would otherwise be stripped.
         if (!please_inline && !is_private && !is_hidden) || is_no_inline {
@@ -290,7 +289,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         }
 
         if !please_inline &&
-            let Some(item_def_id) = reexport_chain(self.cx.tcx, def_id, res_did).iter()
+            let Some(item_def_id) = reexport_chain(tcx, def_id, res_did).iter()
                 .flat_map(|reexport| reexport.id()).map(|id| id.expect_local())
                 .chain(iter::once(res_did)).nth(1) &&
             item_def_id != def_id &&
@@ -298,8 +297,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 .cx
                 .cache
                 .effective_visibilities
-                .is_directly_public(self.cx.tcx, item_def_id.to_def_id()) &&
-            !inherits_doc_hidden(self.cx.tcx, item_def_id, None)
+                .is_directly_public(tcx, item_def_id.to_def_id()) &&
+            !inherits_doc_hidden(tcx, item_def_id, None)
         {
             // The imported item is public and not `doc(hidden)` so no need to inline it.
             return false;
@@ -329,7 +328,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             Node::Item(&hir::Item { kind: hir::ItemKind::Mod(ref m), .. }) if glob => {
                 let prev = mem::replace(&mut self.inlining, true);
                 for &i in m.item_ids {
-                    let i = self.cx.tcx.hir().item(i);
+                    let i = tcx.hir().item(i);
                     self.visit_item_inner(i, None, Some(def_id));
                 }
                 self.inlining = prev;

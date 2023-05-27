@@ -723,7 +723,7 @@ fn resolve_associated_trait_item<'a>(
         .iter()
         .flat_map(|&(impl_, trait_)| {
             filter_assoc_items_by_name_and_namespace(
-                cx.tcx,
+                tcx,
                 trait_,
                 Ident::with_dummy_span(item_name),
                 ns,
@@ -1743,7 +1743,7 @@ fn resolution_failure(
                             if let Ok(v_res) = collector.resolve(start, ns, item_id, module_id) {
                                 debug!("found partial_res={:?}", v_res);
                                 if !v_res.is_empty() {
-                                    *partial_res = Some(full_res(collector.cx.tcx, v_res[0]));
+                                    *partial_res = Some(full_res(tcx, v_res[0]));
                                     *unresolved = end.into();
                                     break 'outer;
                                 }

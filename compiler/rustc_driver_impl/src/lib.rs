@@ -250,6 +250,16 @@ fn run_compiler(
         Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>,
     >,
 ) -> interface::Result<()> {
+    // Throw away the first argument, the name of the binary.
+    // In case of at_args being empty, as might be the case by
+    // passing empty argument array to execve under some platforms,
+    // just use an empty slice.
+    //
+    // This situation was possible before due to arg_expand_all being
+    // called before removing the argument, enabling a crash by calling
+    // the compiler with @empty_file as argv[0] and no more arguments.
+    let at_args = at_args.get(1..).unwrap_or_default();
+
     let args = args::arg_expand_all(at_args);
 
     let Some(matches) = handle_options(&args) else { return Ok(()) };
@@ -1074,9 +1084,6 @@ fn print_flag_list<T>(
 /// So with all that in mind, the comments below have some more detail about the
 /// contortions done here to get things to work out correctly.
 pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
-    // Throw away the first argument, the name of the binary
-    let args = &args[1..];
-
     if args.is_empty() {
         // user did not write `-v` nor `-Z unstable-options`, so do not
         // include that extra information.
