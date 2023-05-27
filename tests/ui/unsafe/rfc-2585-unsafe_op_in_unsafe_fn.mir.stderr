@@ -10,14 +10,6 @@ note: the lint level is defined here
    |
 LL | #![deny(unsafe_op_in_unsafe_fn)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
-help: consider wrapping the function body in an unsafe block
-   |
-LL ~ unsafe fn deny_level() { unsafe {
-LL |     unsf();
- ...
-LL |
-LL ~ }}
-   |
 
 error: dereference of raw pointer is unsafe and requires unsafe block (error E0133)
   --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:15:5
@@ -60,14 +52,6 @@ note: the lint level is defined here
 LL | #[deny(warnings)]
    |        ^^^^^^^^
    = note: `#[deny(unsafe_op_in_unsafe_fn)]` implied by `#[deny(warnings)]`
-help: consider wrapping the function body in an unsafe block
-   |
-LL ~ unsafe fn warning_level() { unsafe {
-LL |     unsf();
- ...
-LL |
-LL ~ }}
-   |
 
 error: dereference of raw pointer is unsafe and requires unsafe block (error E0133)
   --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:31:5

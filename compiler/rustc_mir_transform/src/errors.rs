@@ -147,7 +147,7 @@ impl<'a> DecorateLint<'a, ()> for UnsafeOpInUnsafeFn {
         diag.note(self.details.note());
 
         if let Some((start, end)) = self.suggest_unsafe_block {
-            diag.multipart_suggestion_verbose(
+            diag.tool_only_multipart_suggestion(
                 crate::fluent_generated::mir_transform_suggestion,
                 vec![(start, " unsafe {".into()), (end, "}".into())],
                 Applicability::MaybeIncorrect,
