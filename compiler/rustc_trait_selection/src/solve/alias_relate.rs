@@ -79,11 +79,21 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                     // them. This is necessary for inference during typeck.
                     //
                     // As this is incomplete, we must not do so during coherence.
-                    match (self.solver_mode(), subst_relate_response) {
-                        (SolverMode::Normal, Ok(response)) => Ok(response),
-                        (SolverMode::Normal, Err(NoSolution)) | (SolverMode::Coherence, _) => {
-                            self.flounder(&candidates)
+                    match self.solver_mode() {
+                        SolverMode::Normal => {
+                            if let Ok(subst_relate_response) = subst_relate_response {
+                                Ok(subst_relate_response)
+                            } else if let Ok(bidirectional_normalizes_to_response) = self
+                                .assemble_bidirectional_normalizes_to_candidate(
+                                    param_env, lhs, rhs, direction,
+                                )
+                            {
+                                Ok(bidirectional_normalizes_to_response)
+                            } else {
+                                self.flounder(&candidates)
+                            }
                         }
+                        SolverMode::Coherence => self.flounder(&candidates),
                     }
                 }
             }
@@ -100,27 +110,40 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         invert: Invert,
     ) -> QueryResult<'tcx> {
         self.probe(|ecx| {
-            let other = match direction {
-                // This is purely an optimization.
-                ty::AliasRelationDirection::Equate => other,
-
-                ty::AliasRelationDirection::Subtype => {
-                    let fresh = ecx.next_term_infer_of_kind(other);
-                    let (sub, sup) = match invert {
-                        Invert::No => (fresh, other),
-                        Invert::Yes => (other, fresh),
-                    };
-                    ecx.sub(param_env, sub, sup)?;
-                    fresh
-                }
-            };
-            ecx.add_goal(Goal::new(
-                ecx.tcx(),
-                param_env,
-                ty::Binder::dummy(ty::ProjectionPredicate { projection_ty: alias, term: other }),
-            ));
+            ecx.normalizes_to_inner(param_env, alias, other, direction, invert)?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
+    }
+
+    fn normalizes_to_inner(
+        &mut self,
+        param_env: ty::ParamEnv<'tcx>,
+        alias: ty::AliasTy<'tcx>,
+        other: ty::Term<'tcx>,
+        direction: ty::AliasRelationDirection,
+        invert: Invert,
+    ) -> Result<(), NoSolution> {
+        let other = match direction {
+            // This is purely an optimization.
+            ty::AliasRelationDirection::Equate => other,
+
+            ty::AliasRelationDirection::Subtype => {
+                let fresh = self.next_term_infer_of_kind(other);
+                let (sub, sup) = match invert {
+                    Invert::No => (fresh, other),
+                    Invert::Yes => (other, fresh),
+                };
+                self.sub(param_env, sub, sup)?;
+                fresh
+            }
+        };
+        self.add_goal(Goal::new(
+            self.tcx(),
+            param_env,
+            ty::Binder::dummy(ty::ProjectionPredicate { projection_ty: alias, term: other }),
+        ));
+
+        Ok(())
     }
 
     fn assemble_subst_relate_candidate(
@@ -140,6 +163,32 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 }
             }
 
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        })
+    }
+
+    fn assemble_bidirectional_normalizes_to_candidate(
+        &mut self,
+        param_env: ty::ParamEnv<'tcx>,
+        lhs: ty::Term<'tcx>,
+        rhs: ty::Term<'tcx>,
+        direction: ty::AliasRelationDirection,
+    ) -> QueryResult<'tcx> {
+        self.probe(|ecx| {
+            ecx.normalizes_to_inner(
+                param_env,
+                lhs.to_alias_ty(ecx.tcx()).unwrap(),
+                rhs,
+                direction,
+                Invert::No,
+            )?;
+            ecx.normalizes_to_inner(
+                param_env,
+                rhs.to_alias_ty(ecx.tcx()).unwrap(),
+                lhs,
+                direction,
+                Invert::Yes,
+            )?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
