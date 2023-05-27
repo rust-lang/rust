@@ -544,6 +544,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
                     place: dest_field,
                     target: unwind,
                     unwind: UnwindAction::Terminate,
+                    replace: false,
                 },
                 true,
             );
@@ -800,6 +801,7 @@ fn build_call_shim<'tcx>(
                 place: rcvr_place(),
                 target: BasicBlock::new(2),
                 unwind: UnwindAction::Continue,
+                replace: false,
             },
             false,
         );
@@ -815,6 +817,7 @@ fn build_call_shim<'tcx>(
                 place: rcvr_place(),
                 target: BasicBlock::new(4),
                 unwind: UnwindAction::Terminate,
+                replace: false,
             },
             true,
         );

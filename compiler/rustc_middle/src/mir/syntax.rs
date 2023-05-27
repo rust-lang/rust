@@ -603,7 +603,11 @@ pub enum TerminatorKind<'tcx> {
     /// > The drop glue is executed if, among all statements executed within this `Body`, an assignment to
     /// > the place or one of its "parents" occurred more recently than a move out of it. This does not
     /// > consider indirect assignments.
-    Drop { place: Place<'tcx>, target: BasicBlock, unwind: UnwindAction },
+    ///
+    /// The `replace` flag indicates whether this terminator was created as part of an assignment.
+    /// This should only be used for diagnostic purposes, and does not have any operational
+    /// meaning.
+    Drop { place: Place<'tcx>, target: BasicBlock, unwind: UnwindAction, replace: bool },
 
     /// Roughly speaking, evaluates the `func` operand and the arguments, and starts execution of
     /// the referred to function. The operand types must match the argument types of the function.
