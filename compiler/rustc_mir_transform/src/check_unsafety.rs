@@ -571,11 +571,16 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     errors::UnsafeOpInUnsafeFn {
                         details,
                         suggest_unsafe_block: suggest_unsafe_block.then(|| {
+                            let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+                            let fn_sig = tcx
+                                .hir()
+                                .fn_sig_by_hir_id(hir_id)
+                                .expect("this violation only occurs in fn");
                             let body = tcx.hir().body_owned_by(def_id);
                             let body_span = tcx.hir().body(body).value.span;
                             let start = tcx.sess.source_map().start_point(body_span).shrink_to_hi();
                             let end = tcx.sess.source_map().end_point(body_span).shrink_to_lo();
-                            (start, end)
+                            (start, end, fn_sig.span)
                         }),
                     },
                 );

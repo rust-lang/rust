@@ -131,7 +131,12 @@ impl RequiresUnsafeDetail {
 
 pub(crate) struct UnsafeOpInUnsafeFn {
     pub details: RequiresUnsafeDetail,
-    pub suggest_unsafe_block: Option<(Span, Span)>,
+
+    /// These spans point to:
+    ///  1. the start of the function body
+    ///  2. the end of the function body
+    ///  3. the function signature
+    pub suggest_unsafe_block: Option<(Span, Span, Span)>,
 }
 
 impl<'a> DecorateLint<'a, ()> for UnsafeOpInUnsafeFn {
@@ -146,7 +151,8 @@ impl<'a> DecorateLint<'a, ()> for UnsafeOpInUnsafeFn {
         diag.span_label(self.details.span, self.details.label());
         diag.note(self.details.note());
 
-        if let Some((start, end)) = self.suggest_unsafe_block {
+        if let Some((start, end, fn_sig)) = self.suggest_unsafe_block {
+            diag.span_note(fn_sig, crate::fluent_generated::mir_transform_note);
             diag.tool_only_multipart_suggestion(
                 crate::fluent_generated::mir_transform_suggestion,
                 vec![(start, " unsafe {".into()), (end, "}".into())],

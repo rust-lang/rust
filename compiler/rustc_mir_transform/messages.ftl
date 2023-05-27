@@ -56,6 +56,7 @@ mir_transform_union_access_label = access to union field
 mir_transform_union_access_note = the field may not be properly initialized: using uninitialized data will cause undefined behavior
 mir_transform_unsafe_op_in_unsafe_fn = {$details} is unsafe and requires unsafe block (error E0133)
     .suggestion = consider wrapping the function body in an unsafe block
+    .note = an unsafe function restricts its caller, but its body is safe by default
 
 mir_transform_unused_unsafe = unnecessary `unsafe` block
     .label = because it's nested under this `unsafe` block
