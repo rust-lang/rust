@@ -305,11 +305,27 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             return false;
         }
 
-        if !self.view_item_stack.insert(res_did) {
+        let is_bang_macro = matches!(
+            tcx.hir().get_by_def_id(res_did),
+            Node::Item(&hir::Item { kind: hir::ItemKind::Macro(_, MacroKind::Bang), .. })
+        );
+
+        if !self.view_item_stack.insert(res_did) && !is_bang_macro {
             return false;
         }
 
         let ret = match tcx.hir().get_by_def_id(res_did) {
+            // Bang macros are handled a bit on their because of how they are handled by the
+            // compiler. If they have `#[doc(hidden)]` and the re-export doesn't have
+            // `#[doc(inline)]`, then we don't inline it.
+            Node::Item(_)
+                if is_bang_macro
+                    && !please_inline
+                    && renamed.is_some()
+                    && self.cx.tcx.is_doc_hidden(ori_res_did) =>
+            {
+                return false;
+            }
             Node::Item(&hir::Item { kind: hir::ItemKind::Mod(ref m), .. }) if glob => {
                 let prev = mem::replace(&mut self.inlining, true);
                 for &i in m.item_ids {
