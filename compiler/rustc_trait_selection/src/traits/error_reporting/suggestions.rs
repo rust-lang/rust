@@ -3307,6 +3307,46 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         seen_requirements,
                     )
                 });
+
+                let node = self.tcx.hir().get(self.tcx.hir().local_def_id_to_hir_id(body_id));
+                if let hir::Node::Item(item) = node &&
+                    let hir::ItemKind::Fn(.., body_id) = item.kind &&
+                    let body_node = self.tcx.hir().get(body_id.hir_id) &&
+                    let hir::Node::Expr(expr) = body_node &&
+                    let hir::ExprKind::Block(block, _) = expr.kind &&
+                    let Some(ret) = block.expr &&
+                    let hir::ExprKind::MethodCall(path, expr, [fn_expr], map_sp) = ret.kind &&
+                    path.ident.name.as_str() == "map" &&
+                    let hir::ExprKind::MethodCall(path, vec_expr, _, iter_mut_sp) = expr.kind &&
+                    path.ident.name.as_str() == "iter_mut" &&
+                    let hir::ExprKind::Path(qpath) = fn_expr.kind &&
+                    let hir::QPath::Resolved(_, path) = qpath &&
+                    let hir::def::Res::Def(def_kind, def_id) = path.res &&
+                    matches!(def_kind, hir::def::DefKind::Fn)
+                {
+                    let fn_ty = self.tcx.fn_sig(def_id).skip_binder();
+                    let ret_ty = fn_ty.output().skip_binder();
+                    if ret_ty.is_unit() || ret_ty.is_never() {
+                        if let hir::ExprKind::Call(expr, _) = vec_expr.kind &&
+                            let hir::ExprKind::Path(qpath) = expr.kind &&
+                            let hir::QPath::TypeRelative(ty, _) = qpath {
+                                err.note("the method call chain might not have had the expected associated types");
+                                // todo: ty as string
+                                err.span_label(ty.span, "this expression has type ``");
+                                err.span_label(map_sp, format!("`Iterator::Item` changed to `{}` here", ret_ty));
+                                // todo: method call type for iter_mut
+                                err.span_label(iter_mut_sp, "`Iterator::Item` is `` here");
+                        } else if let hir::ExprKind::Path(qpath) = vec_expr.kind &&
+                                let hir::QPath::Resolved(_, path) = qpath &&
+                                let hir::def::Res::Local(_id) = path.res {
+                                err.note("the method call chain might not have had the expected associated types");
+                                // todo: get span of `x` and make sure `x` is vec
+                                err.span_label(map_sp, format!("`Iterator::Item` changed to `{}` here", ret_ty));
+                                // todo: method call type for iter_mut
+                                err.span_label(iter_mut_sp, "`Iterator::Item` is `` here");
+                        }
+                    }
+                }
             }
             ObligationCauseCode::DerivedObligation(ref data) => {
                 let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_pred);
