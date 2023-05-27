@@ -54,13 +54,13 @@ pub(crate) fn document_type_layout<'a, 'cx: 'a>(
                     } else if let Primitive::Int(i, _) = tag.primitive() {
                         i.size().bytes()
                     } else {
-                        span_bug!(cx.tcx().def_span(ty_def_id), "tag is neither niche nor int")
+                        span_bug!(tcx.def_span(ty_def_id), "tag is neither niche nor int")
                     };
                 variants
                     .iter_enumerated()
                     .map(|(variant_idx, variant_layout)| {
                         let Adt(adt, _) = type_layout.ty.kind() else {
-                            span_bug!(cx.tcx().def_span(ty_def_id), "not an adt")
+                            span_bug!(tcx.def_span(ty_def_id), "not an adt")
                         };
                         let name = adt.variant(variant_idx).name;
                         let is_unsized = variant_layout.abi.is_unsized();

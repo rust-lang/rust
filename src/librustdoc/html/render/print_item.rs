@@ -405,18 +405,18 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
 
             clean::ImportItem(ref import) => {
                 let stab_tags = if let Some(import_def_id) = import.source.did {
-                    let ast_attrs = cx.tcx().get_attrs_unchecked(import_def_id);
+                    let ast_attrs = tcx.get_attrs_unchecked(import_def_id);
                     let import_attrs = Box::new(clean::Attributes::from_ast(ast_attrs));
 
                     // Just need an item with the correct def_id and attrs
                     let import_item = clean::Item {
                         item_id: import_def_id.into(),
                         attrs: import_attrs,
-                        cfg: ast_attrs.cfg(cx.tcx(), &cx.cache().hidden_cfg),
+                        cfg: ast_attrs.cfg(tcx, &cx.cache().hidden_cfg),
                         ..myitem.clone()
                     };
 
-                    let stab_tags = Some(extra_info_tags(&import_item, item, cx.tcx()).to_string());
+                    let stab_tags = Some(extra_info_tags(&import_item, item, tcx).to_string());
                     stab_tags
                 } else {
                     None
@@ -454,8 +454,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
 
                 let unsafety_flag = match *myitem.kind {
                     clean::FunctionItem(_) | clean::ForeignFunctionItem(_)
-                        if myitem.fn_header(cx.tcx()).unwrap().unsafety
-                            == hir::Unsafety::Unsafe =>
+                        if myitem.fn_header(tcx).unwrap().unsafety == hir::Unsafety::Unsafe =>
                     {
                         "<sup title=\"unsafe function\">⚠</sup>"
                     }
@@ -488,7 +487,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                      {docs_before}{docs}{docs_after}",
                     name = myitem.name.unwrap(),
                     visibility_emoji = visibility_emoji,
-                    stab_tags = extra_info_tags(myitem, item, cx.tcx()),
+                    stab_tags = extra_info_tags(myitem, item, tcx),
                     class = myitem.type_(),
                     unsafety_flag = unsafety_flag,
                     href = item_path(myitem.type_(), myitem.name.unwrap().as_str()),
@@ -935,7 +934,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             write_small_section_header(w, "foreign-impls", "Implementations on Foreign Types", "");
 
             for implementor in foreign {
-                let provided_methods = implementor.inner_impl().provided_trait_methods(cx.tcx());
+                let provided_methods = implementor.inner_impl().provided_trait_methods(tcx);
                 let assoc_link =
                     AssocItemLink::GotoSource(implementor.impl_item.item_id, &provided_methods);
                 render_impl(
@@ -968,7 +967,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         }
         w.write_str("</div>");
 
-        if t.is_auto(cx.tcx()) {
+        if t.is_auto(tcx) {
             write_small_section_header(
                 w,
                 "synthetic-implementors",
@@ -997,7 +996,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             "<div id=\"implementors-list\"></div>",
         );
 
-        if t.is_auto(cx.tcx()) {
+        if t.is_auto(tcx) {
             write_small_section_header(
                 w,
                 "synthetic-implementors",
