@@ -1,0 +1,29 @@
+error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
+  --> $DIR/issue-111554.rs:5:16
+   |
+LL |         || bar(&mut self);
+   |                ^^^^^^^^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
+  --> $DIR/issue-111554.rs:10:16
+   |
+LL |         || bar(&mut self);
+   |                ^^^^^^^^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/issue-111554.rs:10:16
+   |
+LL |         || bar(&mut self);
+   |                ^^^^^^^^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
+  --> $DIR/issue-111554.rs:21:16
+   |
+LL |     pub fn quux(self) {
+   |                 ---- help: consider changing this to be mutable: `mut self`
+LL |         || bar(&mut self);
+   |                ^^^^^^^^^ cannot borrow as mutable
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0596`.
