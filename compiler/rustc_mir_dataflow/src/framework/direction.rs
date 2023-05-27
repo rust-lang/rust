@@ -1,5 +1,5 @@
 use rustc_middle::mir::{
-    self, BasicBlock, CallReturnPlaces, Location, SwitchTargets, TerminatorEdge, UnwindAction,
+    self, BasicBlock, CallReturnPlaces, Location, SwitchTargets, TerminatorEdges, UnwindAction,
 };
 use std::ops::RangeInclusive;
 
@@ -29,7 +29,7 @@ pub trait Direction {
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
         statement_effect: Option<&dyn Fn(BasicBlock, &mut A::Domain)>,
-    ) -> TerminatorEdge<'mir, 'tcx>
+    ) -> TerminatorEdges<'mir, 'tcx>
     where
         A: Analysis<'tcx>;
 
@@ -55,7 +55,7 @@ pub trait Direction {
         body: &mir::Body<'tcx>,
         exit_state: &mut A::Domain,
         block: BasicBlock,
-        edges: TerminatorEdge<'_, 'tcx>,
+        edges: TerminatorEdges<'_, 'tcx>,
         propagate: impl FnMut(BasicBlock, &A::Domain),
     ) where
         A: Analysis<'tcx>;
@@ -73,7 +73,7 @@ impl Direction for Backward {
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
         statement_effect: Option<&dyn Fn(BasicBlock, &mut A::Domain)>,
-    ) -> TerminatorEdge<'mir, 'tcx>
+    ) -> TerminatorEdges<'mir, 'tcx>
     where
         A: Analysis<'tcx>,
     {
@@ -222,7 +222,7 @@ impl Direction for Backward {
         body: &mir::Body<'tcx>,
         exit_state: &mut A::Domain,
         bb: BasicBlock,
-        _edges: TerminatorEdge<'_, 'tcx>,
+        _edges: TerminatorEdges<'_, 'tcx>,
         mut propagate: impl FnMut(BasicBlock, &A::Domain),
     ) where
         A: Analysis<'tcx>,
@@ -330,7 +330,7 @@ impl Direction for Forward {
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
         statement_effect: Option<&dyn Fn(BasicBlock, &mut A::Domain)>,
-    ) -> TerminatorEdge<'mir, 'tcx>
+    ) -> TerminatorEdges<'mir, 'tcx>
     where
         A: Analysis<'tcx>,
     {
@@ -474,19 +474,19 @@ impl Direction for Forward {
         _body: &mir::Body<'tcx>,
         exit_state: &mut A::Domain,
         bb: BasicBlock,
-        edges: TerminatorEdge<'_, 'tcx>,
+        edges: TerminatorEdges<'_, 'tcx>,
         mut propagate: impl FnMut(BasicBlock, &A::Domain),
     ) where
         A: Analysis<'tcx>,
     {
         match edges {
-            TerminatorEdge::None => {}
-            TerminatorEdge::Single(target) => propagate(target, exit_state),
-            TerminatorEdge::Double(target, unwind) => {
+            TerminatorEdges::None => {}
+            TerminatorEdges::Single(target) => propagate(target, exit_state),
+            TerminatorEdges::Double(target, unwind) => {
                 propagate(target, exit_state);
                 propagate(unwind, exit_state);
             }
-            TerminatorEdge::AssignOnReturn { return_, unwind, place } => {
+            TerminatorEdges::AssignOnReturn { return_, unwind, place } => {
                 // This must be done *first*, otherwise the unwind path will see the assignments.
                 if let UnwindAction::Cleanup(unwind) = unwind {
                     propagate(unwind, exit_state);
@@ -496,7 +496,7 @@ impl Direction for Forward {
                     propagate(return_, exit_state);
                 }
             }
-            TerminatorEdge::SwitchInt { targets, discr } => {
+            TerminatorEdges::SwitchInt { targets, discr } => {
                 let mut applier = ForwardSwitchIntEdgeEffectsApplier {
                     exit_state,
                     targets,

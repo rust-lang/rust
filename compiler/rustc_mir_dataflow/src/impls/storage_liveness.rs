@@ -71,7 +71,7 @@ impl<'tcx, 'a> crate::GenKillAnalysis<'tcx> for MaybeStorageLive<'a> {
         _trans: &mut Self::Domain,
         terminator: &'mir Terminator<'tcx>,
         _: Location,
-    ) -> TerminatorEdge<'mir, 'tcx> {
+    ) -> TerminatorEdges<'mir, 'tcx> {
         // Terminators have no effect
         terminator.edges()
     }
@@ -143,7 +143,7 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeStorageDead {
         _: &mut Self::Domain,
         terminator: &'mir Terminator<'tcx>,
         _: Location,
-    ) -> TerminatorEdge<'mir, 'tcx> {
+    ) -> TerminatorEdges<'mir, 'tcx> {
         // Terminators have no effect
         terminator.edges()
     }
@@ -310,7 +310,7 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, '_, 'tcx> {
         trans: &mut Self::Domain,
         terminator: &'t Terminator<'tcx>,
         loc: Location,
-    ) -> TerminatorEdge<'t, 'tcx> {
+    ) -> TerminatorEdges<'t, 'tcx> {
         match terminator.kind {
             // For call terminators the destination requires storage for the call
             // and after the call returns successfully, but not after a panic.

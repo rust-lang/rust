@@ -245,7 +245,7 @@ pub trait ValueAnalysis<'tcx> {
         &self,
         terminator: &'mir Terminator<'tcx>,
         state: &mut State<Self::Value>,
-    ) -> TerminatorEdge<'mir, 'tcx> {
+    ) -> TerminatorEdges<'mir, 'tcx> {
         self.super_terminator(terminator, state)
     }
 
@@ -253,7 +253,7 @@ pub trait ValueAnalysis<'tcx> {
         &self,
         terminator: &'mir Terminator<'tcx>,
         state: &mut State<Self::Value>,
-    ) -> TerminatorEdge<'mir, 'tcx> {
+    ) -> TerminatorEdges<'mir, 'tcx> {
         match &terminator.kind {
             TerminatorKind::Call { .. } | TerminatorKind::InlineAsm { .. } => {
                 // Effect is applied by `handle_call_return`.
@@ -306,7 +306,7 @@ pub trait ValueAnalysis<'tcx> {
         discr: &'mir Operand<'tcx>,
         targets: &'mir SwitchTargets,
         state: &mut State<Self::Value>,
-    ) -> TerminatorEdge<'mir, 'tcx> {
+    ) -> TerminatorEdges<'mir, 'tcx> {
         self.super_switch_int(discr, targets, state)
     }
 
@@ -315,8 +315,8 @@ pub trait ValueAnalysis<'tcx> {
         discr: &'mir Operand<'tcx>,
         targets: &'mir SwitchTargets,
         _state: &mut State<Self::Value>,
-    ) -> TerminatorEdge<'mir, 'tcx> {
-        TerminatorEdge::SwitchInt { discr, targets }
+    ) -> TerminatorEdges<'mir, 'tcx> {
+        TerminatorEdges::SwitchInt { discr, targets }
     }
 
     fn wrap(self) -> ValueAnalysisWrapper<Self>
@@ -371,11 +371,11 @@ where
         state: &mut Self::Domain,
         terminator: &'mir Terminator<'tcx>,
         _location: Location,
-    ) -> TerminatorEdge<'mir, 'tcx> {
+    ) -> TerminatorEdges<'mir, 'tcx> {
         if state.is_reachable() {
             self.0.handle_terminator(terminator, state)
         } else {
-            TerminatorEdge::None
+            TerminatorEdges::None
         }
     }
 

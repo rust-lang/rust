@@ -433,7 +433,7 @@ impl<'tcx> TerminatorKind<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum TerminatorEdge<'mir, 'tcx> {
+pub enum TerminatorEdges<'mir, 'tcx> {
     /// For terminators that have no successor, like `return`.
     None,
     /// For terminators that a single successor, like `goto`, and `assert` without cleanup block.
@@ -451,7 +451,7 @@ pub enum TerminatorEdge<'mir, 'tcx> {
 }
 
 /// List of places that are written to after a successful (non-unwind) return
-/// from a `Call` or `InlineAsm`.
+/// from a `Call`, `Yield` or `InlineAsm`.
 #[derive(Copy, Clone, Debug)]
 pub enum CallReturnPlaces<'a, 'tcx> {
     Call(Place<'tcx>),
@@ -477,34 +477,34 @@ impl<'tcx> CallReturnPlaces<'_, 'tcx> {
 }
 
 impl<'tcx> Terminator<'tcx> {
-    pub fn edges(&self) -> TerminatorEdge<'_, 'tcx> {
+    pub fn edges(&self) -> TerminatorEdges<'_, 'tcx> {
         self.kind.edges()
     }
 }
 
 impl<'tcx> TerminatorKind<'tcx> {
-    pub fn edges(&self) -> TerminatorEdge<'_, 'tcx> {
+    pub fn edges(&self) -> TerminatorEdges<'_, 'tcx> {
         use TerminatorKind::*;
         match *self {
-            Return | Resume | Terminate | GeneratorDrop | Unreachable => TerminatorEdge::None,
+            Return | Resume | Terminate | GeneratorDrop | Unreachable => TerminatorEdges::None,
 
-            Goto { target } => TerminatorEdge::Single(target),
+            Goto { target } => TerminatorEdges::Single(target),
 
             Assert { target, unwind, expected: _, msg: _, cond: _ }
             | Drop { target, unwind, place: _, replace: _ }
             | FalseUnwind { real_target: target, unwind } => match unwind {
-                UnwindAction::Cleanup(unwind) => TerminatorEdge::Double(target, unwind),
+                UnwindAction::Cleanup(unwind) => TerminatorEdges::Double(target, unwind),
                 UnwindAction::Continue | UnwindAction::Terminate | UnwindAction::Unreachable => {
-                    TerminatorEdge::Single(target)
+                    TerminatorEdges::Single(target)
                 }
             },
 
             FalseEdge { real_target, imaginary_target } => {
-                TerminatorEdge::Double(real_target, imaginary_target)
+                TerminatorEdges::Double(real_target, imaginary_target)
             }
 
             Yield { resume: target, drop, resume_arg, value: _ } => {
-                TerminatorEdge::AssignOnReturn {
+                TerminatorEdges::AssignOnReturn {
                     return_: Some(target),
                     unwind: drop.map_or(UnwindAction::Terminate, UnwindAction::Cleanup),
                     place: CallReturnPlaces::Yield(resume_arg),
@@ -512,7 +512,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             }
 
             Call { unwind, destination, target, func: _, args: _, fn_span: _, call_source: _ } => {
-                TerminatorEdge::AssignOnReturn {
+                TerminatorEdges::AssignOnReturn {
                     return_: target,
                     unwind,
                     place: CallReturnPlaces::Call(destination),
@@ -526,13 +526,13 @@ impl<'tcx> TerminatorKind<'tcx> {
                 line_spans: _,
                 destination,
                 unwind,
-            } => TerminatorEdge::AssignOnReturn {
+            } => TerminatorEdges::AssignOnReturn {
                 return_: destination,
                 unwind,
                 place: CallReturnPlaces::InlineAsm(operands),
             },
 
-            SwitchInt { ref targets, ref discr } => TerminatorEdge::SwitchInt { targets, discr },
+            SwitchInt { ref targets, ref discr } => TerminatorEdges::SwitchInt { targets, discr },
         }
     }
 }

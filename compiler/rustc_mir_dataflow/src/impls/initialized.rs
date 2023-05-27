@@ -1,6 +1,6 @@
 use rustc_index::bit_set::{BitSet, ChunkedBitSet};
 use rustc_index::Idx;
-use rustc_middle::mir::{self, Body, CallReturnPlaces, Location, TerminatorEdge};
+use rustc_middle::mir::{self, Body, CallReturnPlaces, Location, TerminatorEdges};
 use rustc_middle::ty::{self, TyCtxt};
 
 use crate::drop_flag_effects_for_function_entry;
@@ -362,14 +362,14 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         state: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
-    ) -> TerminatorEdge<'mir, 'tcx> {
+    ) -> TerminatorEdges<'mir, 'tcx> {
         let mut edges = terminator.edges();
         if self.skip_unreachable_unwind
             && let mir::TerminatorKind::Drop { target, unwind, place, replace: _ } = terminator.kind
             && matches!(unwind, mir::UnwindAction::Cleanup(_))
             && self.is_unwind_dead(place, state)
         {
-            edges = TerminatorEdge::Single(target);
+            edges = TerminatorEdges::Single(target);
         }
         drop_flag_effects_for_location(self.tcx, self.body, self.mdpe, location, |path, s| {
             Self::update_bits(state, path, s)
@@ -491,14 +491,14 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         trans: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
-    ) -> TerminatorEdge<'mir, 'tcx> {
+    ) -> TerminatorEdges<'mir, 'tcx> {
         drop_flag_effects_for_location(self.tcx, self.body, self.mdpe, location, |path, s| {
             Self::update_bits(trans, path, s)
         });
         if self.skip_unreachable_unwind.contains(location.block) {
             let mir::TerminatorKind::Drop { target, unwind, .. } = terminator.kind else { bug!() };
             assert!(matches!(unwind, mir::UnwindAction::Cleanup(_)));
-            TerminatorEdge::Single(target)
+            TerminatorEdges::Single(target)
         } else {
             terminator.edges()
         }
@@ -619,7 +619,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for DefinitelyInitializedPlaces<'_, 'tcx> {
         trans: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
-    ) -> TerminatorEdge<'mir, 'tcx> {
+    ) -> TerminatorEdges<'mir, 'tcx> {
         drop_flag_effects_for_location(self.tcx, self.body, self.mdpe, location, |path, s| {
             Self::update_bits(trans, path, s)
         });
@@ -702,7 +702,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
         trans: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
-    ) -> TerminatorEdge<'mir, 'tcx> {
+    ) -> TerminatorEdges<'mir, 'tcx> {
         let (body, move_data) = (self.body, self.move_data());
         let term = body[location.block].terminator();
         let init_loc_map = &move_data.init_loc_map;

@@ -1,7 +1,7 @@
 use rustc_index::bit_set::{BitSet, ChunkedBitSet};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{
-    self, CallReturnPlaces, Local, Location, Place, StatementKind, TerminatorEdge,
+    self, CallReturnPlaces, Local, Location, Place, StatementKind, TerminatorEdges,
 };
 
 use crate::{Analysis, AnalysisDomain, Backward, GenKill, GenKillAnalysis};
@@ -63,7 +63,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeLiveLocals {
         trans: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
-    ) -> TerminatorEdge<'mir, 'tcx> {
+    ) -> TerminatorEdges<'mir, 'tcx> {
         TransferFunction(trans).visit_terminator(terminator, location);
         terminator.edges()
     }
@@ -280,9 +280,9 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
         trans: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
-    ) -> TerminatorEdge<'mir, 'tcx> {
+    ) -> TerminatorEdges<'mir, 'tcx> {
         TransferFunction(trans).visit_terminator(terminator, location);
-        TerminatorEdge::None
+        TerminatorEdges::None
     }
 
     fn apply_call_return_effect(

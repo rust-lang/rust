@@ -54,7 +54,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeBorrowedLocals {
         trans: &mut Self::Domain,
         terminator: &'mir Terminator<'tcx>,
         location: Location,
-    ) -> TerminatorEdge<'mir, 'tcx> {
+    ) -> TerminatorEdges<'mir, 'tcx> {
         self.transfer_function(trans).visit_terminator(terminator, location);
         terminator.edges()
     }

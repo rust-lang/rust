@@ -34,7 +34,7 @@ use std::cmp::Ordering;
 
 use rustc_index::bit_set::{BitSet, ChunkedBitSet, HybridBitSet};
 use rustc_index::Idx;
-use rustc_middle::mir::{self, BasicBlock, CallReturnPlaces, Location, TerminatorEdge};
+use rustc_middle::mir::{self, BasicBlock, CallReturnPlaces, Location, TerminatorEdges};
 use rustc_middle::ty::TyCtxt;
 
 mod cursor;
@@ -168,7 +168,7 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
         state: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
-    ) -> TerminatorEdge<'mir, 'tcx>;
+    ) -> TerminatorEdges<'mir, 'tcx>;
 
     /// Updates the current dataflow state with an effect that occurs immediately *before* the
     /// given terminator.
@@ -297,7 +297,7 @@ pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
         trans: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
-    ) -> TerminatorEdge<'mir, 'tcx>;
+    ) -> TerminatorEdges<'mir, 'tcx>;
 
     /// See `Analysis::apply_before_terminator_effect`.
     fn before_terminator_effect(
@@ -356,7 +356,7 @@ where
         state: &mut A::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
-    ) -> TerminatorEdge<'mir, 'tcx> {
+    ) -> TerminatorEdges<'mir, 'tcx> {
         self.terminator_effect(state, terminator, location)
     }
 

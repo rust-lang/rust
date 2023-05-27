@@ -3,7 +3,7 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::{
-    self, BasicBlock, Body, CallReturnPlaces, Location, Place, TerminatorEdge,
+    self, BasicBlock, Body, CallReturnPlaces, Location, Place, TerminatorEdges,
 };
 use rustc_middle::ty::RegionVid;
 use rustc_middle::ty::TyCtxt;
@@ -411,7 +411,7 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
         trans: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
         _location: Location,
-    ) -> TerminatorEdge<'mir, 'tcx> {
+    ) -> TerminatorEdges<'mir, 'tcx> {
         if let mir::TerminatorKind::InlineAsm { operands, .. } = &terminator.kind {
             for op in operands {
                 if let mir::InlineAsmOperand::Out { place: Some(place), .. }

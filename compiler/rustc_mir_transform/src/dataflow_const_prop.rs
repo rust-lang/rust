@@ -252,19 +252,19 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
         discr: &'mir Operand<'tcx>,
         targets: &'mir SwitchTargets,
         state: &mut State<Self::Value>,
-    ) -> TerminatorEdge<'mir, 'tcx> {
+    ) -> TerminatorEdges<'mir, 'tcx> {
         let value = match self.handle_operand(discr, state) {
             ValueOrPlace::Value(value) => value,
             ValueOrPlace::Place(place) => state.get_idx(place, self.map()),
         };
         let FlatSet::Elem(ScalarTy(scalar, _)) = value else {
             // Do nothing if we don't know which branch will be taken.
-            return TerminatorEdge::SwitchInt { discr, targets };
+            return TerminatorEdges::SwitchInt { discr, targets };
         };
 
         let int = scalar.assert_int();
         let choice = int.assert_bits(int.size());
-        TerminatorEdge::Single(targets.target_for_value(choice))
+        TerminatorEdges::Single(targets.target_for_value(choice))
     }
 }
 
