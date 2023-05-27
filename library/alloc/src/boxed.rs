@@ -2014,6 +2014,7 @@ impl<I> FromIterator<I> for Box<[I]> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_slice_clone", since = "1.3.0")]
 impl<T: Clone, A: Allocator<Result<Self, TryReserveError> = Self> + Clone> Clone for Box<[T], A> {
     fn clone(&self) -> Self {
