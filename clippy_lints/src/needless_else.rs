@@ -1,4 +1,5 @@
-use clippy_utils::{diagnostics::span_lint_and_sugg, source::trim_span, span_extract_comment};
+use clippy_utils::source::snippet_opt;
+use clippy_utils::{diagnostics::span_lint_and_sugg, source::trim_span};
 use rustc_ast::ast::{Expr, ExprKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
@@ -35,23 +36,26 @@ declare_lint_pass!(NeedlessElse => [NEEDLESS_ELSE]);
 
 impl EarlyLintPass for NeedlessElse {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        if let ExprKind::If(_, then_block, Some(else_clause)) = &expr.kind &&
-            let ExprKind::Block(block, _) = &else_clause.kind &&
-            !expr.span.from_expansion() &&
-            !else_clause.span.from_expansion() &&
-            block.stmts.is_empty() {
-                let span = trim_span(cx.sess().source_map(), expr.span.trim_start(then_block.span).unwrap());
-                if span_extract_comment(cx.sess().source_map(), span).is_empty() {
-                    span_lint_and_sugg(
-                        cx,
-                        NEEDLESS_ELSE,
-                        span,
-                        "this else branch is empty",
-                        "you can remove it",
-                        String::new(),
-                        Applicability::MachineApplicable,
-                    );
-                }
-            }
+        if let ExprKind::If(_, then_block, Some(else_clause)) = &expr.kind
+            && let ExprKind::Block(block, _) = &else_clause.kind
+            && !expr.span.from_expansion()
+            && !else_clause.span.from_expansion()
+            && block.stmts.is_empty()
+            && let Some(trimmed) = expr.span.trim_start(then_block.span)
+            && let span = trim_span(cx.sess().source_map(), trimmed)
+            && let Some(else_snippet) = snippet_opt(cx, span)
+            // Ignore else blocks that contain comments or #[cfg]s
+            && !else_snippet.contains(['/', '#'])
+        {
+            span_lint_and_sugg(
+                cx,
+                NEEDLESS_ELSE,
+                span,
+                "this else branch is empty",
+                "you can remove it",
+                String::new(),
+                Applicability::MachineApplicable,
+            );
+        }
     }
 }

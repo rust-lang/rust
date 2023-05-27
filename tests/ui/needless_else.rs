@@ -12,6 +12,10 @@ macro_rules! mac {
     };
 }
 
+macro_rules! empty_expansion {
+    () => {};
+}
+
 fn main() {
     let b = std::hint::black_box(true);
 
@@ -38,4 +42,17 @@ fn main() {
 
     // Do not lint because inside a macro
     mac!(b);
+
+    if b {
+        println!("Foobar");
+    } else {
+        #[cfg(foo)]
+        "Do not lint cfg'd out code"
+    }
+
+    if b {
+        println!("Foobar");
+    } else {
+        empty_expansion!();
+    }
 }
