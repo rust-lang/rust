@@ -15,7 +15,7 @@ cd build
 
 Afterwards you can build rustc using:
 ```
-../x.py build --stage 1 library/std
+../x.py build --stage 1 library/std library/proc_macro library/test tools/rustdoc
 ```
 
 Afterwards rustc toolchain link will allow you to use it through cargo:
@@ -24,6 +24,15 @@ rustup toolchain link enzyme `pwd`/build/`rustup target list --installed`/stage1
 rustup toolchain install nightly # enables -Z unstable-options
 ```
 
+You can then look at examples in the `library/autodiff/examples/*` folder and run them with
+
+```bash
+# rosenbrock forward iteration
+cargo +enzyme run --example rosenbrock_fwd_iter --release
+
+# or all of them
+cargo +enzyme test --examples
+```
 
 ## Enzyme Config
 Instead of having to re-build LLVM and Enzyme every time, we can adjust the 
