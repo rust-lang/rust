@@ -11,18 +11,28 @@ impl<const N: usize> Biquad<N> {
     }
 
     pub fn process(&self, samples: &[f32], target: &[f32]) -> f32 {
+        // do some horrible inefficient biquad filtering
         let mut samples = samples.to_vec();
+        let mut samples_out = vec![0.0; samples.len()];
+
         for coeff_set in self.coeffs {
-            samples = samples
-                .windows(5)
-                .map(|x| {
-                    (coeff_set[0] * x[0] + coeff_set[1] * x[1] + coeff_set[2] * x[2])
-                        / (1.0 + coeff_set[3] * x[3] + coeff_set[4] * x[4])
-                })
-                .collect();
+            for idx in 0..samples.len() {
+                samples_out[idx] = coeff_set[0] * samples[idx];
+
+                if idx > 0 {
+                    samples_out[idx] += coeff_set[1] * samples[idx - 1] - 
+                        coeff_set[3] * samples_out[idx - 1];
+                }
+                if idx > 1 {
+                    samples_out[idx] += coeff_set[2] * samples[idx - 2] - 
+                        coeff_set[4] * samples_out[idx - 2];
+                }
+            }
+
+            (samples, samples_out) = (samples_out, samples);
         }
 
-        samples.into_iter().zip(target.into_iter()).map(|(a, b)| a - b).sum()
+        samples_out.into_iter().zip(target.into_iter()).map(|(a, b)| a - b).sum()
     }
 
     #[autodiff(Self::process, Reverse, Active)]
