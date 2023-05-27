@@ -106,7 +106,7 @@
                 }
             };
         })
-        .controller("lintList", function ($scope, $http, $location) {
+        .controller("lintList", function ($scope, $http, $location, $timeout) {
             // Level filter
             var LEVEL_FILTERS_DEFAULT = {allow: true, warn: true, deny: true, none: true};
             $scope.levels = { ...LEVEL_FILTERS_DEFAULT };
@@ -265,12 +265,6 @@
                 }
             }, true);
 
-            $scope.$watch('search', function (newVal, oldVal) {
-                if (newVal !== oldVal) {
-                    $location.path(newVal);
-                }
-            });
-
             // Watch for changes in the URL path and update the search and lint display
             $scope.$watch(function () {
                 return $location.path();
@@ -283,11 +277,32 @@
                 }
             });
 
+            let debounceTimeout;
+            $scope.$watch('search', function (newVal, oldVal) {
+                if (newVal !== oldVal) {
+                    if (debounceTimeout) {
+                        $timeout.cancel(debounceTimeout);
+                    }
+
+                    debounceTimeout = $timeout(function () {
+                        $location.path(newVal);
+                    }, 1000);
+                }
+            });
+
             $scope.$watch(function () {
                 return $location.search();
             }, function (newParameters) {
                 loadFromURLParameters();
             });
+
+            $scope.updatePath = function () {
+                if (debounceTimeout) {
+                    $timeout.cancel(debounceTimeout);
+                }
+
+                $location.path($scope.search);
+            }
 
             $scope.selectTheme = function (theme) {
                 setTheme(theme, true);
