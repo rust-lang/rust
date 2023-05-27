@@ -163,7 +163,7 @@
                 const urlParameters = $location.search();
 
                 // Define a helper function that assigns URL parameters to a provided scope variable
-                const handleParameter = (parameter, scopeVariable) => {
+                const handleParameter = (parameter, scopeVariable, defaultValues) => {
                     if (urlParameters[parameter]) {
                         const items = urlParameters[parameter].split(',');
                         for (const key in scopeVariable) {
@@ -171,11 +171,17 @@
                                 scopeVariable[key] = items.includes(key);
                             }
                         }
+                    } else if (defaultValues) {
+                        for (const key in defaultValues) {
+                            if (scopeVariable.hasOwnProperty(key)) {
+                                scopeVariable[key] = defaultValues[key];
+                            }
+                        }
                     }
                 };
 
-                handleParameter('levels', $scope.levels);
-                handleParameter('groups', $scope.groups);
+                handleParameter('levels', $scope.levels, LEVEL_FILTERS_DEFAULT);
+                handleParameter('groups', $scope.groups, GROUPS_FILTER_DEFAULT);
 
                 // Handle 'versions' parameter separately because it needs additional processing
                 if (urlParameters.versions) {
@@ -275,6 +281,12 @@
                     $scope.open[searchParameter] = true;
                     scrollToLintByURL($scope, $location);
                 }
+            });
+
+            $scope.$watch(function () {
+                return $location.search();
+            }, function (newParameters) {
+                loadFromURLParameters();
             });
 
             $scope.selectTheme = function (theme) {
