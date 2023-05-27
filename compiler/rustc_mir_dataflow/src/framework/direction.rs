@@ -33,7 +33,7 @@ pub trait Direction {
     where
         A: Analysis<'tcx>;
 
-    fn gen_kill_effects_in_block<'tcx, A>(
+    fn gen_kill_statement_effects_in_block<'tcx, A>(
         analysis: &mut A,
         trans: &mut GenKillSet<A::Idx>,
         block: BasicBlock,
@@ -93,7 +93,7 @@ impl Direction for Backward {
         edges
     }
 
-    fn gen_kill_effects_in_block<'tcx, A>(
+    fn gen_kill_statement_effects_in_block<'tcx, A>(
         analysis: &mut A,
         trans: &mut GenKillSet<A::Idx>,
         block: BasicBlock,
@@ -350,7 +350,7 @@ impl Direction for Forward {
         analysis.apply_terminator_effect(state, terminator, location)
     }
 
-    fn gen_kill_effects_in_block<'tcx, A>(
+    fn gen_kill_statement_effects_in_block<'tcx, A>(
         analysis: &mut A,
         trans: &mut GenKillSet<A::Idx>,
         block: BasicBlock,

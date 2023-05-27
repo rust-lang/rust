@@ -144,7 +144,7 @@ where
     // gen/kill problems on cyclic CFGs. This is not ideal, but it doesn't seem to degrade
     // performance in practice. I've tried a few ways to avoid this, but they have downsides. See
     // the message for the commit that added this FIXME for more information.
-    apply_trans_for_block: Option<Box<dyn Fn(BasicBlock, &mut A::Domain)>>,
+    apply_statement_trans_for_block: Option<Box<dyn Fn(BasicBlock, &mut A::Domain)>>,
 }
 
 impl<'a, 'tcx, A, D, T> Engine<'a, 'tcx, A>
@@ -170,7 +170,12 @@ where
 
         for (block, block_data) in body.basic_blocks.iter_enumerated() {
             let trans = &mut trans_for_block[block];
-            A::Direction::gen_kill_effects_in_block(&mut analysis, trans, block, block_data);
+            A::Direction::gen_kill_statement_effects_in_block(
+                &mut analysis,
+                trans,
+                block,
+                block_data,
+            );
         }
 
         let apply_trans = Box::new(move |bb: BasicBlock, state: &mut A::Domain| {
@@ -199,7 +204,7 @@ where
         tcx: TyCtxt<'tcx>,
         body: &'a mir::Body<'tcx>,
         analysis: A,
-        apply_trans_for_block: Option<Box<dyn Fn(BasicBlock, &mut A::Domain)>>,
+        apply_statement_trans_for_block: Option<Box<dyn Fn(BasicBlock, &mut A::Domain)>>,
     ) -> Self {
         let mut entry_sets =
             IndexVec::from_fn_n(|_| analysis.bottom_value(body), body.basic_blocks.len());
@@ -210,7 +215,7 @@ where
             bug!("`initialize_start_block` is not yet supported for backward dataflow analyses");
         }
 
-        Engine { analysis, tcx, body, pass_name: None, entry_sets, apply_trans_for_block }
+        Engine { analysis, tcx, body, pass_name: None, entry_sets, apply_statement_trans_for_block }
     }
 
     /// Adds an identifier to the graphviz output for this particular run of a dataflow analysis.
@@ -232,7 +237,7 @@ where
             body,
             mut entry_sets,
             tcx,
-            apply_trans_for_block,
+            apply_statement_trans_for_block,
             pass_name,
             ..
         } = self;
@@ -269,7 +274,7 @@ where
                 &mut state,
                 bb,
                 bb_data,
-                apply_trans_for_block.as_deref(),
+                apply_statement_trans_for_block.as_deref(),
             );
 
             A::Direction::join_state_into_successors_of(
