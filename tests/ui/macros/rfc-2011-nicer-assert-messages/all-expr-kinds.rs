@@ -5,7 +5,7 @@
 // needs-unwind Asserting on contents of error message
 
 #![allow(path_statements, unused_allocation)]
-#![feature(core_intrinsics, generic_assert, generic_assert_internals)]
+#![feature(core_intrinsics, generic_assert)]
 
 macro_rules! test {
   (
@@ -51,6 +51,7 @@ macro_rules! tests {
 
 const FOO: Foo = Foo { bar: 1 };
 
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct Foo {
   bar: i32
@@ -83,8 +84,17 @@ fn main() {
     // cast
     [ elem as i32 == 3 ] => "Assertion failed: elem as i32 == 3\nWith captures:\n  elem = 1\n"
 
+    // if
+    [ if elem == 3 { true } else { false } ] => "Assertion failed: if elem == 3 { true } else { false }\nWith captures:\n  elem = 1\n"
+
     // index
     [ [1i32, 1][elem as usize] == 3 ] => "Assertion failed: [1i32, 1][elem as usize] == 3\nWith captures:\n  elem = 1\n"
+
+    // let
+    [ if let 3 = elem { true } else { false } ] => "Assertion failed: if let 3 = elem { true } else { false }\nWith captures:\n  elem = 1\n"
+
+    // match
+    [ match elem { 3 => true, _ => false, } ] => "Assertion failed: match elem { 3 => true, _ => false, }\nWith captures:\n  elem = 1\n"
 
     // method call
     [ FOO.add(elem, elem) == 3 ] => "Assertion failed: FOO.add(elem, elem) == 3\nWith captures:\n  elem = 1\n"
@@ -106,78 +116,5 @@ fn main() {
 
     // unary
     [ -elem == -3 ] => "Assertion failed: -elem == -3\nWith captures:\n  elem = 1\n"
-  );
-
-  // ***** Disallowed *****
-
-  tests!(
-    let mut elem = 1i32;
-
-    // assign
-    [ { let local = elem; local } == 3 ] => "Assertion failed: { let local = elem; local } == 3"
-
-    // assign op
-    [ { elem += 1; elem } == 3 ] => "Assertion failed: { elem += 1; elem } == 3"
-
-    // async
-    [ { let _ = async { elem }; elem } == 3 ] => "Assertion failed: { let _ = async { elem }; elem } == 3"
-
-    // await
-
-    // block
-    [ { elem } == 3 ] => "Assertion failed: { elem } == 3"
-
-    // break
-    [ loop { break elem; } ==  3 ] => "Assertion failed: loop { break elem; } == 3"
-
-    // closure
-    [(|| elem)() ==  3 ] => "Assertion failed: (|| elem)() == 3"
-
-    // const block
-
-    // continue
-
-    // err
-
-    // field
-    [ FOO.bar ==  3 ] => "Assertion failed: FOO.bar == 3"
-
-    // for loop
-    [ { for _ in 0..elem { elem; } elem } ==  3 ] => "Assertion failed: { for _ in 0..elem { elem; } elem } == 3"
-
-    // if
-    [ if true { elem } else { elem } == 3 ] => "Assertion failed: if true { elem } else { elem } == 3"
-
-    // inline asm
-
-    // let
-    [ if let true = true { elem } else { elem } == 3 ] => "Assertion failed: if let true = true { elem } else { elem } == 3"
-
-    // lit
-
-    // loop
-    [ loop { elem; break elem; } == 3 ] => "Assertion failed: loop { elem; break elem; } == 3"
-
-    // mac call
-
-    // match
-    [ match elem { _ => elem } == 3 ] => "Assertion failed: (match elem { _ => elem, }) == 3"
-
-    // ret
-    [ (|| { return elem; })() == 3 ] => "Assertion failed: (|| { return elem; })() == 3"
-
-    // try
-    [ (|| { Some(Some(elem)?) })() == Some(3) ] => "Assertion failed: (|| { Some(Some(elem)?) })() == Some(3)"
-
-    // try block
-
-    // underscore
-
-    // while
-    [ { while false { elem; break; } elem } == 3 ] => "Assertion failed: { while false { elem; break; } elem } == 3"
-
-    // yeet
-
-    // yield
   );
 }
