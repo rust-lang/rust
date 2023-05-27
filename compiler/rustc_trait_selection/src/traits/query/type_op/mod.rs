@@ -2,7 +2,7 @@ use crate::infer::canonical::{
     Canonical, CanonicalQueryResponse, OriginalQueryValues, QueryRegionConstraints,
 };
 use crate::infer::{InferCtxt, InferOk};
-use crate::traits::ObligationCause;
+use crate::traits::{ObligationCause, ObligationCtxt};
 use rustc_errors::ErrorGuaranteed;
 use rustc_infer::infer::canonical::Certainty;
 use rustc_infer::traits::PredicateObligations;
@@ -22,6 +22,8 @@ pub mod prove_predicate;
 pub mod subtype;
 
 pub use rustc_middle::traits::query::type_op::*;
+
+use self::custom::scrape_region_constraints;
 
 /// "Type ops" are used in NLL to perform some particular action and
 /// extract out the resulting region constraints (or an error if it
@@ -81,6 +83,17 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
         canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Self>>,
     ) -> Result<CanonicalQueryResponse<'tcx, Self::QueryResponse>, NoSolution>;
 
+    /// In the new trait solver, we already do caching in the solver itself,
+    /// so there's no need to canonicalize and cache via the query system.
+    /// Additionally, even if we were to canonicalize, we'd still need to
+    /// make sure to feed it predefined opaque types and the defining anchor
+    /// and that would require duplicating all of the tcx queries. Instead,
+    /// just perform these ops locally.
+    fn perform_locally_in_new_solver(
+        ocx: &ObligationCtxt<'_, 'tcx>,
+        key: ParamEnvAnd<'tcx, Self>,
+    ) -> Result<Self::QueryResponse, NoSolution>;
+
     fn fully_perform_into(
         query_key: ParamEnvAnd<'tcx, Self>,
         infcx: &InferCtxt<'tcx>,
@@ -133,6 +146,16 @@ where
         infcx: &InferCtxt<'tcx>,
         span: Span,
     ) -> Result<TypeOpOutput<'tcx, Self>, ErrorGuaranteed> {
+        if infcx.tcx.trait_solver_next() {
+            return Ok(scrape_region_constraints(
+                infcx,
+                |ocx| QueryTypeOp::perform_locally_in_new_solver(ocx, self),
+                "query type op",
+                span,
+            )?
+            .0);
+        }
+
         let mut region_constraints = QueryRegionConstraints::default();
         let (output, error_info, mut obligations, _) =
             Q::fully_perform_into(self, infcx, &mut region_constraints).map_err(|_| {

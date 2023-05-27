@@ -204,6 +204,7 @@ where
 {
     type Error = TryFromSliceError;
 
+    #[inline]
     fn try_from(slice: &[T]) -> Result<[T; N], TryFromSliceError> {
         <&Self>::try_from(slice).map(|r| *r)
     }
@@ -228,6 +229,7 @@ where
 {
     type Error = TryFromSliceError;
 
+    #[inline]
     fn try_from(slice: &mut [T]) -> Result<[T; N], TryFromSliceError> {
         <Self>::try_from(&*slice)
     }
@@ -249,6 +251,7 @@ where
 impl<'a, T, const N: usize> TryFrom<&'a [T]> for &'a [T; N] {
     type Error = TryFromSliceError;
 
+    #[inline]
     fn try_from(slice: &'a [T]) -> Result<&'a [T; N], TryFromSliceError> {
         if slice.len() == N {
             let ptr = slice.as_ptr() as *const [T; N];
@@ -276,6 +279,7 @@ impl<'a, T, const N: usize> TryFrom<&'a [T]> for &'a [T; N] {
 impl<'a, T, const N: usize> TryFrom<&'a mut [T]> for &'a mut [T; N] {
     type Error = TryFromSliceError;
 
+    #[inline]
     fn try_from(slice: &'a mut [T]) -> Result<&'a mut [T; N], TryFromSliceError> {
         if slice.len() == N {
             let ptr = slice.as_mut_ptr() as *mut [T; N];
