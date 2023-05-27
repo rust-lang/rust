@@ -156,6 +156,10 @@
                 Object.entries(versionFilterKeyMap).map(([key, value]) => [value, key])
             );
 
+            // An internal URL change occurs when we are modifying the URL parameters in a way
+            // that should not reload parameters from the URL
+            let internalURLChange = false;
+
             // loadFromURLParameters retrieves filter settings from the URL parameters and assigns them
             // to corresponding $scope variables.
             function loadFromURLParameters() {
@@ -266,9 +270,7 @@
             }, true);
 
             // Watch for changes in the URL path and update the search and lint display
-            $scope.$watch(function () {
-                return $location.path();
-            }, function (newPath) {
+            $scope.$watch($location.path, function (newPath) {
                 const searchParameter = newPath.substring(1);
                 if ($scope.search !== searchParameter) {
                     $scope.search = searchParameter;
@@ -290,10 +292,11 @@
                 }
             });
 
-            $scope.$watch(function () {
-                return $location.search();
-            }, function (newParameters) {
-                loadFromURLParameters();
+            $scope.$watch($location.search, function (newParameters) {
+                if (!internalURLChange) {
+                    loadFromURLParameters();
+                }
+                internalURLChange = false;
             });
 
             $scope.updatePath = function () {
@@ -331,6 +334,8 @@
                 for (const [key, value] of Object.entries(GROUPS_FILTER_DEFAULT)) {
                     groups[key] = value;
                 }
+                internalURLChange = true;
+                $location.search('groups', null);
             };
 
             $scope.selectedValuesCount = function (obj) {
