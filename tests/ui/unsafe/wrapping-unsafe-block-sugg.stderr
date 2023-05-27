@@ -26,5 +26,51 @@ LL |     unsf();
    |
    = note: consult the function's documentation for information on how to avoid undefined behavior
 
-error: aborting due to 2 previous errors
+error: dereference of raw pointer is unsafe and requires unsafe block (error E0133)
+  --> $DIR/wrapping-unsafe-block-sugg.rs:13:13
+   |
+LL |     let y = *x;
+   |             ^^ dereference of raw pointer
+   |
+   = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+help: consider wrapping the function body in an unsafe block
+   |
+LL ~ pub unsafe fn bar(x: *const i32) -> i32 { unsafe {
+LL |     let y = *x;
+LL |     y + *x
+LL ~ }}
+   |
+
+error: dereference of raw pointer is unsafe and requires unsafe block (error E0133)
+  --> $DIR/wrapping-unsafe-block-sugg.rs:14:9
+   |
+LL |     y + *x
+   |         ^^ dereference of raw pointer
+   |
+   = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+
+error: use of mutable static is unsafe and requires unsafe block (error E0133)
+  --> $DIR/wrapping-unsafe-block-sugg.rs:19:13
+   |
+LL |     let y = BAZ;
+   |             ^^^ use of mutable static
+   |
+   = note: mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
+help: consider wrapping the function body in an unsafe block
+   |
+LL ~ pub unsafe fn baz() -> i32 { unsafe {
+LL |     let y = BAZ;
+LL |     y + BAZ
+LL ~ }}
+   |
+
+error: use of mutable static is unsafe and requires unsafe block (error E0133)
+  --> $DIR/wrapping-unsafe-block-sugg.rs:20:9
+   |
+LL |     y + BAZ
+   |         ^^^ use of mutable static
+   |
+   = note: mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
+
+error: aborting due to 6 previous errors
 
