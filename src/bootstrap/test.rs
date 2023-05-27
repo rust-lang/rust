@@ -317,6 +317,17 @@ impl Step for Cargo {
         cargo.env("CARGO_TEST_DISABLE_NIGHTLY", "1");
         cargo.env("PATH", &path_for_cargo(builder, compiler));
 
+        #[cfg(feature = "build-metrics")]
+        builder.metrics.begin_test_suite(
+            crate::metrics::TestSuiteMetadata::CargoPackage {
+                crates: vec!["cargo".into()],
+                target: self.host.triple.to_string(),
+                host: self.host.triple.to_string(),
+                stage: self.stage,
+            },
+            builder,
+        );
+
         let _time = util::timeit(&builder);
         add_flags_and_try_run_tests(builder, &mut cargo);
     }
@@ -1699,6 +1710,19 @@ note: if you're sure you want to do this, please open an issue as to why. In the
 
         builder.ci_env.force_coloring_in_ci(&mut cmd);
 
+        #[cfg(feature = "build-metrics")]
+        builder.metrics.begin_test_suite(
+            crate::metrics::TestSuiteMetadata::Compiletest {
+                suite: suite.into(),
+                mode: mode.into(),
+                compare_mode: None,
+                target: self.target.triple.to_string(),
+                host: self.compiler.host.triple.to_string(),
+                stage: self.compiler.stage,
+            },
+            builder,
+        );
+
         builder.info(&format!(
             "Check compiletest suite={} mode={} ({} -> {})",
             suite, mode, &compiler.host, target
@@ -1708,6 +1732,20 @@ note: if you're sure you want to do this, please open an issue as to why. In the
 
         if let Some(compare_mode) = compare_mode {
             cmd.arg("--compare-mode").arg(compare_mode);
+
+            #[cfg(feature = "build-metrics")]
+            builder.metrics.begin_test_suite(
+                crate::metrics::TestSuiteMetadata::Compiletest {
+                    suite: suite.into(),
+                    mode: mode.into(),
+                    compare_mode: Some(compare_mode.into()),
+                    target: self.target.triple.to_string(),
+                    host: self.compiler.host.triple.to_string(),
+                    stage: self.compiler.stage,
+                },
+                builder,
+            );
+
             builder.info(&format!(
                 "Check compiletest suite={} mode={} compare_mode={} ({} -> {})",
                 suite, mode, compare_mode, &compiler.host, target
@@ -2034,6 +2072,17 @@ fn run_cargo_test(
     let mut cargo =
         prepare_cargo_test(cargo, libtest_args, crates, primary_crate, compiler, target, builder);
     let _time = util::timeit(&builder);
+
+    #[cfg(feature = "build-metrics")]
+    builder.metrics.begin_test_suite(
+        crate::metrics::TestSuiteMetadata::CargoPackage {
+            crates: crates.iter().map(|c| c.to_string()).collect(),
+            target: target.triple.to_string(),
+            host: compiler.host.triple.to_string(),
+            stage: compiler.stage,
+        },
+        builder,
+    );
     add_flags_and_try_run_tests(builder, &mut cargo)
 }
 
