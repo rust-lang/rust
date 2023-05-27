@@ -319,3 +319,11 @@ pub struct CandidateTraitNote {
     pub item_name: Ident,
     pub action_or_ty: String,
 }
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_ctor_is_private, code = "E0603")]
+pub struct CtorIsPrivate {
+    #[primary_span]
+    pub span: Span,
+    pub def: String,
+}
