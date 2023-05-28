@@ -1446,11 +1446,11 @@ fn item_proc_macro(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, m: &c
     write!(w, "{}", document(cx, it, None, HeadingOffset::H2))
 }
 
-fn item_primitive(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
+fn item_primitive(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::Item) {
     let def_id = it.item_id.expect_def_id();
-    write!(w, "{}", document(cx, it, None, HeadingOffset::H2));
+    write!(w, "{}", document(cx, it, None, HeadingOffset::H2)).unwrap();
     if it.name.map(|n| n.as_str() != "reference").unwrap_or(false) {
-        write!(w, "{}", render_assoc_items(cx, it, def_id, AssocItemRender::All));
+        write!(w, "{}", render_assoc_items(cx, it, def_id, AssocItemRender::All)).unwrap();
     } else {
         // We handle the "reference" primitive type on its own because we only want to list
         // implementations on generic types.
