@@ -7,7 +7,9 @@ use super::build_sysroot::{BUILD_SYSROOT, ORIG_BUILD_SYSROOT, SYSROOT_RUSTC_VERS
 use super::path::{Dirs, RelPath};
 use super::rustc_info::{get_default_sysroot, get_rustc_version};
 use super::tests::LIBCORE_TESTS_SRC;
-use super::utils::{copy_dir_recursively, git_command, retry_spawn_and_wait, spawn_and_wait};
+use super::utils::{
+    copy_dir_recursively, git_command, remove_dir_if_exists, retry_spawn_and_wait, spawn_and_wait,
+};
 
 pub(crate) fn prepare(dirs: &Dirs, rustc: &Path) {
     RelPath::DOWNLOAD.ensure_exists(dirs);
@@ -35,31 +37,24 @@ fn prepare_stdlib(dirs: &Dirs, rustc: &Path) {
     copy_dir_recursively(&ORIG_BUILD_SYSROOT.to_path(dirs), &BUILD_SYSROOT.to_path(dirs));
 
     fs::create_dir_all(SYSROOT_SRC.to_path(dirs).join("library")).unwrap();
-    copy_dir_recursively(
-        &sysroot_src_orig.join("library"),
-        &SYSROOT_SRC.to_path(dirs).join("library"),
-    );
+
+    apply_patches(dirs, "stdlib", &sysroot_src_orig, &SYSROOT_SRC.to_path(dirs));
 
     let rustc_version = get_rustc_version(rustc);
     fs::write(SYSROOT_RUSTC_VERSION.to_path(dirs), &rustc_version).unwrap();
-
-    apply_patches(dirs, "stdlib", &SYSROOT_SRC.to_path(dirs));
 }
 
 fn prepare_coretests(dirs: &Dirs, rustc: &Path) {
     let sysroot_src_orig = get_default_sysroot(rustc).join("lib/rustlib/src/rust");
     assert!(sysroot_src_orig.exists());
 
-    eprintln!("[COPY] coretests src");
-
     // FIXME ensure builds error out or update the copy if any of the files copied here change
-    LIBCORE_TESTS_SRC.ensure_fresh(dirs);
-    copy_dir_recursively(
+    apply_patches(
+        dirs,
+        "coretests",
         &sysroot_src_orig.join("library/core/tests"),
         &LIBCORE_TESTS_SRC.to_path(dirs),
     );
-
-    apply_patches(dirs, "coretests", &LIBCORE_TESTS_SRC.to_path(dirs));
 }
 
 pub(crate) struct GitRepo {
@@ -159,11 +154,12 @@ impl GitRepo {
     }
 
     pub(crate) fn patch(&self, dirs: &Dirs) {
-        let download_dir = self.download_dir(dirs);
-        let source_dir = self.source_dir();
-        source_dir.ensure_fresh(dirs);
-        copy_dir_recursively(&download_dir, &source_dir.to_path(dirs));
-        apply_patches(dirs, self.patch_name, &source_dir.to_path(dirs));
+        apply_patches(
+            dirs,
+            self.patch_name,
+            &self.download_dir(dirs),
+            &self.source_dir().to_path(dirs),
+        );
     }
 }
 
@@ -267,8 +263,14 @@ fn get_patches(dirs: &Dirs, crate_name: &str) -> Vec<PathBuf> {
     patches
 }
 
-fn apply_patches(dirs: &Dirs, crate_name: &str, target_dir: &Path) {
-    init_git_repo(&target_dir);
+fn apply_patches(dirs: &Dirs, crate_name: &str, source_dir: &Path, target_dir: &Path) {
+    // FIXME avoid copy and patch if src, patches and target are unchanged
+
+    remove_dir_if_exists(target_dir);
+    fs::create_dir_all(target_dir).unwrap();
+    copy_dir_recursively(source_dir, target_dir);
+
+    init_git_repo(target_dir);
 
     if crate_name == "<none>" {
         return;
