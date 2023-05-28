@@ -8,8 +8,6 @@
       let mut _3: std::option::Option<T>;  // in scope 0 at $DIR/simplify_locals_fixedpoint.rs:+1:51: +1:68
       let mut _4: isize;                   // in scope 0 at $DIR/simplify_locals_fixedpoint.rs:+1:22: +1:26
       let mut _5: isize;                   // in scope 0 at $DIR/simplify_locals_fixedpoint.rs:+1:13: +1:20
--     let mut _7: bool;                    // in scope 0 at $DIR/simplify_locals_fixedpoint.rs:+2:12: +2:20
--     let mut _8: u8;                      // in scope 0 at $DIR/simplify_locals_fixedpoint.rs:+2:12: +2:13
       scope 1 {
           debug a => _6;                   // in scope 1 at $DIR/simplify_locals_fixedpoint.rs:+1:18: +1:19
           let _6: u8;                      // in scope 1 at $DIR/simplify_locals_fixedpoint.rs:+1:18: +1:19
@@ -34,10 +32,9 @@
       }
   
       bb2: {
+          StorageLive(_6);                 // scope 1 at $DIR/simplify_locals_fixedpoint.rs:+1:18: +1:19
           _6 = (((_1.0: std::option::Option<u8>) as Some).0: u8); // scope 1 at $DIR/simplify_locals_fixedpoint.rs:+1:18: +1:19
--         StorageLive(_7);                 // scope 1 at $DIR/simplify_locals_fixedpoint.rs:+2:12: +2:20
--         _7 = Gt(_6, const 42_u8);        // scope 1 at $DIR/simplify_locals_fixedpoint.rs:+2:12: +2:20
--         StorageDead(_7);                 // scope 1 at $DIR/simplify_locals_fixedpoint.rs:+4:9: +4:10
+          StorageDead(_6);                 // scope 0 at $DIR/simplify_locals_fixedpoint.rs:+5:5: +5:6
           goto -> bb3;                     // scope 0 at $DIR/simplify_locals_fixedpoint.rs:+1:5: +5:6
       }
   
