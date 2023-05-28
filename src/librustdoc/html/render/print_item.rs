@@ -1474,22 +1474,17 @@ fn item_constant(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, c: &cle
             typ = c.type_.print(cx),
         );
 
-        // FIXME: The code below now prints
-        //            ` = _; // 100i32`
-        //        if the expression is
-        //            `50 + 50`
-        //        which looks just wrong.
-        //        Should we print
-        //            ` = 100i32;`
-        //        instead?
-
         let value = c.value(tcx);
         let is_literal = c.is_literal(tcx);
         let expr = c.expr(tcx);
         if value.is_some() || is_literal {
-            write!(w, " = {expr};", expr = Escape(&expr));
-        } else {
-            w.write_str(";");
+            if is_literal {
+                write!(w, " = {expr};", expr = Escape(&expr));
+            } else if let Some(value) = &value {
+                write!(w, " = {value};", value = Escape(value));
+            } else {
+                w.write_str(";");
+            }
         }
 
         if !is_literal {
