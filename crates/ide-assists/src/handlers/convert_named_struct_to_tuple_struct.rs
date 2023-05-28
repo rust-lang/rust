@@ -52,6 +52,9 @@ pub(crate) fn convert_named_struct_to_tuple_struct(
     acc: &mut Assists,
     ctx: &AssistContext<'_>,
 ) -> Option<()> {
+    // XXX: We don't currently provide this assist for struct definitions inside macros, but if we
+    // are to lift this limitation, don't forget to make `edit_struct_def()` consider macro files
+    // too.
     let strukt = ctx.find_node_at_offset::<Either<ast::Struct, ast::Variant>>()?;
     let field_list = strukt.as_ref().either(|s| s.field_list(), |v| v.field_list())?;
     let record_fields = match field_list {
@@ -62,12 +65,11 @@ pub(crate) fn convert_named_struct_to_tuple_struct(
         Either::Left(s) => Either::Left(ctx.sema.to_def(s)?),
         Either::Right(v) => Either::Right(ctx.sema.to_def(v)?),
     };
-    let target = strukt.as_ref().either(|s| s.syntax(), |v| v.syntax()).text_range();
 
     acc.add(
         AssistId("convert_named_struct_to_tuple_struct", AssistKind::RefactorRewrite),
         "Convert to tuple struct",
-        target,
+        strukt.syntax().text_range(),
         |edit| {
             edit_field_references(ctx, edit, record_fields.fields());
             edit_struct_references(ctx, edit, strukt_def);
@@ -82,6 +84,8 @@ fn edit_struct_def(
     strukt: &Either<ast::Struct, ast::Variant>,
     record_fields: ast::RecordFieldList,
 ) {
+    // Note that we don't need to consider macro files in this function because this this is
+    // currently not triggered for struct definitions inside macro calls.
     let tuple_fields = record_fields
         .fields()
         .filter_map(|f| Some(ast::make::tuple_field(f.visibility(), f.ty()?)));
@@ -141,8 +145,13 @@ fn edit_struct_references(
         match_ast! {
             match node {
                 ast::RecordPat(record_struct_pat) => {
+                    let Some(fr) = ctx.sema.original_range_opt(record_struct_pat.syntax()) else {
+                        // We've found the node to replace, so we should return `Some` even if the
+                        // replacement failed to stop the ancestor node traversal.
+                        return Some(());
+                    };
                     edit.replace(
-                        record_struct_pat.syntax().text_range(),
+                        fr.range,
                         ast::make::tuple_struct_pat(
                             record_struct_pat.path()?,
                             record_struct_pat
@@ -154,6 +163,10 @@ fn edit_struct_references(
                     );
                 },
                 ast::RecordExpr(record_expr) => {
+                    let Some(fr) = ctx.sema.original_range_opt(record_expr.syntax()) else {
+                        // See the comment above.
+                        return Some(());
+                    };
                     let path = record_expr.path()?;
                     let args = record_expr
                         .record_expr_field_list()?
@@ -161,7 +174,7 @@ fn edit_struct_references(
                         .filter_map(|f| f.expr())
                         .join(", ");
 
-                    edit.replace(record_expr.syntax().text_range(), format!("{path}({args})"));
+                    edit.replace(fr.range, format!("{path}({args})"));
                 },
                 _ => return None,
             }
@@ -199,7 +212,7 @@ fn edit_field_references(
                 if let Some(name_ref) = r.name.as_name_ref() {
                     // Only edit the field reference if it's part of a `.field` access
                     if name_ref.syntax().parent().and_then(ast::FieldExpr::cast).is_some() {
-                        edit.replace(name_ref.syntax().text_range(), index.to_string());
+                        edit.replace(r.range, index.to_string());
                     }
                 }
             }
@@ -812,6 +825,78 @@ mod foo;
 use crate::{A::Variant, Inner};
 fn f() {
     let a = Variant(Inner);
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn field_access_inside_macro_call() {
+        check_assist(
+            convert_named_struct_to_tuple_struct,
+            r#"
+struct $0Struct {
+    inner: i32,
+}
+
+macro_rules! id {
+    ($e:expr) => { $e }
+}
+
+fn test(c: Struct) {
+    id!(c.inner);
+}
+"#,
+            r#"
+struct Struct(i32);
+
+macro_rules! id {
+    ($e:expr) => { $e }
+}
+
+fn test(c: Struct) {
+    id!(c.0);
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn struct_usage_inside_macro_call() {
+        check_assist(
+            convert_named_struct_to_tuple_struct,
+            r#"
+macro_rules! id {
+    ($($t:tt)*) => { $($t)* }
+}
+
+struct $0Struct {
+    inner: i32,
+}
+
+fn test() {
+    id! {
+        let s = Struct {
+            inner: 42,
+        };
+        let Struct { inner: value } = s;
+        let Struct { inner } = s;
+    }
+}
+"#,
+            r#"
+macro_rules! id {
+    ($($t:tt)*) => { $($t)* }
+}
+
+struct Struct(i32);
+
+fn test() {
+    id! {
+        let s = Struct(42);
+        let Struct(value) = s;
+        let Struct(inner) = s;
+    }
 }
 "#,
         );
