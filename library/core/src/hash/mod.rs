@@ -960,7 +960,13 @@ mod impls {
         fn hash<H: Hasher>(&self, state: &mut H) {
             let (address, metadata) = self.to_raw_parts();
             state.write_usize(address.addr());
-            metadata.hash(state);
+            if mem::size_of_val(&metadata) == mem::size_of::<usize>() {
+                // SAFETY: This is either `usize` or `DynMetadata`. In both case doing transmute
+                // is okay.
+                // We can't hash `DynMetadata` directly so transmute it to usize before hashing.
+                let metadata_as_usize = unsafe { mem::transmute_copy(&metadata) };
+                state.write_usize(metadata_as_usize);
+            }
         }
     }
 
@@ -968,9 +974,7 @@ mod impls {
     impl<T: ?Sized> Hash for *mut T {
         #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
-            let (address, metadata) = self.to_raw_parts();
-            state.write_usize(address.addr());
-            metadata.hash(state);
+            self.cast_const().hash(state);
         }
     }
 }

@@ -1,7 +1,6 @@
 #![unstable(feature = "ptr_metadata", issue = "81513")]
 
 use crate::fmt;
-use crate::hash::{Hash, Hasher};
 
 /// Provides the pointer metadata type of any pointed-to type.
 ///
@@ -57,7 +56,7 @@ pub trait Pointee {
     // NOTE: Keep trait bounds in `static_assert_expected_bounds_for_metadata`
     // in `library/core/src/ptr/metadata.rs`
     // in sync with those here:
-    type Metadata: Copy + Send + Sync + Ord + Hash + Unpin;
+    type Metadata: Copy + Send + Sync + Unpin;
 }
 
 /// Pointers to types implementing this trait alias are “thin”.
@@ -239,35 +238,5 @@ impl<Dyn: ?Sized> Clone for DynMetadata<Dyn> {
     #[inline]
     fn clone(&self) -> Self {
         *self
-    }
-}
-
-impl<Dyn: ?Sized> Eq for DynMetadata<Dyn> {}
-
-impl<Dyn: ?Sized> PartialEq for DynMetadata<Dyn> {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        crate::ptr::eq::<VTable>(self.vtable_ptr, other.vtable_ptr)
-    }
-}
-
-impl<Dyn: ?Sized> Ord for DynMetadata<Dyn> {
-    #[inline]
-    fn cmp(&self, other: &Self) -> crate::cmp::Ordering {
-        (self.vtable_ptr as *const VTable).cmp(&(other.vtable_ptr as *const VTable))
-    }
-}
-
-impl<Dyn: ?Sized> PartialOrd for DynMetadata<Dyn> {
-    #[inline]
-    fn partial_cmp(&self, other: &Self) -> Option<crate::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl<Dyn: ?Sized> Hash for DynMetadata<Dyn> {
-    #[inline]
-    fn hash<H: Hasher>(&self, hasher: &mut H) {
-        crate::ptr::hash::<VTable, _>(self.vtable_ptr, hasher)
     }
 }
