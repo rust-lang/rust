@@ -69,7 +69,8 @@ use hir_ty::{
     traits::FnTrait,
     AliasTy, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast, ClosureId,
     GenericArgData, Interner, ParamKind, QuantifiedWhereClause, Scalar, Substitution,
-    TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyDefId, TyExt, TyKind, WhereClause,
+    TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyDefId, TyExt, TyKind, ValueTyDefId,
+    WhereClause,
 };
 use itertools::Itertools;
 use nameres::diagnostics::DefDiagnosticKind;
@@ -91,10 +92,10 @@ pub use crate::{
         IncorrectCase, InvalidDeriveTarget, MacroDefError, MacroError, MacroExpansionParseError,
         MalformedDerive, MismatchedArgCount, MissingFields, MissingMatchArms, MissingUnsafe,
         MovedOutOfRef, NeedMut, NoSuchField, PrivateAssocItem, PrivateField,
-        ReplaceFilterMapNextWithFindMap, TypeMismatch, UndeclaredLabel, UnimplementedBuiltinMacro,
-        UnreachableLabel, UnresolvedExternCrate, UnresolvedField, UnresolvedImport,
-        UnresolvedMacroCall, UnresolvedMethodCall, UnresolvedModule, UnresolvedProcMacro,
-        UnusedMut,
+        ReplaceFilterMapNextWithFindMap, TypeMismatch, TypedHole, UndeclaredLabel,
+        UnimplementedBuiltinMacro, UnreachableLabel, UnresolvedExternCrate, UnresolvedField,
+        UnresolvedImport, UnresolvedMacroCall, UnresolvedMethodCall, UnresolvedModule,
+        UnresolvedProcMacro, UnusedMut,
     },
     has_source::HasSource,
     semantics::{PathResolution, Semantics, SemanticsScope, TypeInfo, VisibleTraits},
@@ -1005,6 +1006,10 @@ impl Struct {
         Type::from_def(db, self.id)
     }
 
+    pub fn constructor_ty(self, db: &dyn HirDatabase) -> Type {
+        Type::from_value_def(db, self.id)
+    }
+
     pub fn repr(self, db: &dyn HirDatabase) -> Option<ReprOptions> {
         db.struct_data(self.id).repr
     }
@@ -1040,6 +1045,10 @@ impl Union {
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         Type::from_def(db, self.id)
+    }
+
+    pub fn constructor_ty(self, db: &dyn HirDatabase) -> Type {
+        Type::from_value_def(db, self.id)
     }
 
     pub fn fields(self, db: &dyn HirDatabase) -> Vec<Field> {
@@ -1171,6 +1180,10 @@ impl Variant {
 
     pub fn parent_enum(self, _db: &dyn HirDatabase) -> Enum {
         self.parent
+    }
+
+    pub fn constructor_ty(self, db: &dyn HirDatabase) -> Type {
+        Type::from_value_def(db, EnumVariantId { parent: self.parent.id, local_id: self.id })
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
@@ -1574,6 +1587,16 @@ impl DefWithBody {
                     let expr = expr_syntax(expr);
                     acc.push(BreakOutsideOfLoop { expr, is_break, bad_value_break }.into())
                 }
+                hir_ty::InferenceDiagnostic::TypedHole { expr, expected } => {
+                    let expr = expr_syntax(*expr);
+                    acc.push(
+                        TypedHole {
+                            expr,
+                            expected: Type::new(db, DefWithBodyId::from(self), expected.clone()),
+                        }
+                        .into(),
+                    )
+                }
             }
         }
         for (pat_or_expr, mismatch) in infer.type_mismatches() {
@@ -1804,6 +1827,10 @@ impl Function {
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
         db.function_data(self.id).name.clone()
+    }
+
+    pub fn ty(self, db: &dyn HirDatabase) -> Type {
+        Type::from_value_def(db, self.id)
     }
 
     /// Get this function's return type
@@ -2085,11 +2112,7 @@ impl Const {
     }
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
-        let data = db.const_data(self.id);
-        let resolver = self.id.resolver(db.upcast());
-        let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
-        let ty = ctx.lower_ty(&data.type_ref);
-        Type::new_with_resolver_inner(db, &resolver, ty)
+        Type::from_value_def(db, self.id)
     }
 
     pub fn render_eval(self, db: &dyn HirDatabase) -> Result<String, ConstEvalError> {
@@ -2136,11 +2159,7 @@ impl Static {
     }
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
-        let data = db.static_data(self.id);
-        let resolver = self.id.resolver(db.upcast());
-        let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
-        let ty = ctx.lower_ty(&data.type_ref);
-        Type::new_with_resolver_inner(db, &resolver, ty)
+        Type::from_value_def(db, self.id)
     }
 }
 
@@ -3409,24 +3428,33 @@ impl Type {
         Type { env: environment, ty }
     }
 
-    fn from_def(db: &dyn HirDatabase, def: impl HasResolver + Into<TyDefId>) -> Type {
-        let ty_def = def.into();
-        let parent_subst = match ty_def {
-            TyDefId::TypeAliasId(id) => match id.lookup(db.upcast()).container {
-                ItemContainerId::TraitId(id) => {
-                    let subst = TyBuilder::subst_for_def(db, id, None).fill_with_unknown().build();
-                    Some(subst)
-                }
-                ItemContainerId::ImplId(id) => {
-                    let subst = TyBuilder::subst_for_def(db, id, None).fill_with_unknown().build();
-                    Some(subst)
-                }
-                _ => None,
+    fn from_def(db: &dyn HirDatabase, def: impl Into<TyDefId> + HasResolver) -> Type {
+        let ty = db.ty(def.into());
+        let substs = TyBuilder::unknown_subst(
+            db,
+            match def.into() {
+                TyDefId::AdtId(it) => GenericDefId::AdtId(it),
+                TyDefId::TypeAliasId(it) => GenericDefId::TypeAliasId(it),
+                TyDefId::BuiltinType(_) => return Type::new(db, def, ty.skip_binders().clone()),
             },
-            _ => None,
-        };
-        let ty = TyBuilder::def_ty(db, ty_def, parent_subst).fill_with_unknown().build();
-        Type::new(db, def, ty)
+        );
+        Type::new(db, def, ty.substitute(Interner, &substs))
+    }
+
+    fn from_value_def(db: &dyn HirDatabase, def: impl Into<ValueTyDefId> + HasResolver) -> Type {
+        let ty = db.value_ty(def.into());
+        let substs = TyBuilder::unknown_subst(
+            db,
+            match def.into() {
+                ValueTyDefId::ConstId(it) => GenericDefId::ConstId(it),
+                ValueTyDefId::FunctionId(it) => GenericDefId::FunctionId(it),
+                ValueTyDefId::StructId(it) => GenericDefId::AdtId(AdtId::StructId(it)),
+                ValueTyDefId::UnionId(it) => GenericDefId::AdtId(AdtId::UnionId(it)),
+                ValueTyDefId::EnumVariantId(it) => GenericDefId::EnumVariantId(it),
+                ValueTyDefId::StaticId(_) => return Type::new(db, def, ty.skip_binders().clone()),
+            },
+        );
+        Type::new(db, def, ty.substitute(Interner, &substs))
     }
 
     pub fn new_slice(ty: Type) -> Type {

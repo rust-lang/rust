@@ -215,6 +215,10 @@ pub enum InferenceDiagnostic {
         call_expr: ExprId,
         found: Ty,
     },
+    TypedHole {
+        expr: ExprId,
+        expected: Ty,
+    },
 }
 
 /// A mismatch between an expected and an inferred type.
@@ -600,29 +604,30 @@ impl<'a> InferenceContext<'a> {
             mismatch.actual = table.resolve_completely(mismatch.actual.clone());
         }
         result.diagnostics.retain_mut(|diagnostic| {
-            if let InferenceDiagnostic::ExpectedFunction { found: ty, .. }
-            | InferenceDiagnostic::UnresolvedField { receiver: ty, .. }
-            | InferenceDiagnostic::UnresolvedMethodCall { receiver: ty, .. } = diagnostic
-            {
-                *ty = table.resolve_completely(ty.clone());
-                // FIXME: Remove this when we are on par with rustc in terms of inference
-                if ty.contains_unknown() {
-                    return false;
-                }
+            use InferenceDiagnostic::*;
+            match diagnostic {
+                ExpectedFunction { found: ty, .. }
+                | UnresolvedField { receiver: ty, .. }
+                | UnresolvedMethodCall { receiver: ty, .. } => {
+                    *ty = table.resolve_completely(ty.clone());
+                    // FIXME: Remove this when we are on par with rustc in terms of inference
+                    if ty.contains_unknown() {
+                        return false;
+                    }
 
-                if let InferenceDiagnostic::UnresolvedMethodCall { field_with_same_name, .. } =
-                    diagnostic
-                {
-                    let clear = if let Some(ty) = field_with_same_name {
-                        *ty = table.resolve_completely(ty.clone());
-                        ty.contains_unknown()
-                    } else {
-                        false
-                    };
-                    if clear {
-                        *field_with_same_name = None;
+                    if let UnresolvedMethodCall { field_with_same_name, .. } = diagnostic {
+                        if let Some(ty) = field_with_same_name {
+                            *ty = table.resolve_completely(ty.clone());
+                            if ty.contains_unknown() {
+                                *field_with_same_name = None;
+                            }
+                        }
                     }
                 }
+                TypedHole { expected: ty, .. } => {
+                    *ty = table.resolve_completely(ty.clone());
+                }
+                _ => (),
             }
             true
         });

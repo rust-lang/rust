@@ -874,9 +874,15 @@ impl<'a> InferenceContext<'a> {
             },
             Expr::Underscore => {
                 // Underscore expressions may only appear in assignee expressions,
-                // which are handled by `infer_assignee_expr()`, so any underscore
-                // expression reaching this branch is an error.
-                self.err_ty()
+                // which are handled by `infer_assignee_expr()`.
+                // Any other underscore expression is an error, we render a specialized diagnostic
+                // to let the user know what type is expected though.
+                let expected = expected.to_option(&mut self.table).unwrap_or_else(|| self.err_ty());
+                self.push_diagnostic(InferenceDiagnostic::TypedHole {
+                    expr: tgt_expr,
+                    expected: expected.clone(),
+                });
+                expected
             }
         };
         // use a new type variable if we got unknown here
@@ -1001,12 +1007,13 @@ impl<'a> InferenceContext<'a> {
             }
             &Array::Repeat { initializer, repeat } => {
                 self.infer_expr_coerce(initializer, &Expectation::has_type(elem_ty.clone()));
-                self.infer_expr(
-                    repeat,
-                    &Expectation::HasType(
-                        TyKind::Scalar(Scalar::Uint(UintTy::Usize)).intern(Interner),
-                    ),
-                );
+                let usize = TyKind::Scalar(Scalar::Uint(UintTy::Usize)).intern(Interner);
+                match self.body[repeat] {
+                    Expr::Underscore => {
+                        self.write_expr_ty(repeat, usize);
+                    }
+                    _ => _ = self.infer_expr(repeat, &Expectation::HasType(usize)),
+                }
 
                 (
                     elem_ty,

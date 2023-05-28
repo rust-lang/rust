@@ -52,6 +52,7 @@ diagnostics![
     PrivateAssocItem,
     PrivateField,
     ReplaceFilterMapNextWithFindMap,
+    TypedHole,
     TypeMismatch,
     UndeclaredLabel,
     UnimplementedBuiltinMacro,
@@ -71,6 +72,12 @@ pub struct BreakOutsideOfLoop {
     pub expr: InFile<AstPtr<ast::Expr>>,
     pub is_break: bool,
     pub bad_value_break: bool,
+}
+
+#[derive(Debug)]
+pub struct TypedHole {
+    pub expr: InFile<AstPtr<ast::Expr>>,
+    pub expected: Type,
 }
 
 #[derive(Debug)]

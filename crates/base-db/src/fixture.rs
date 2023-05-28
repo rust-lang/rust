@@ -21,6 +21,7 @@ use crate::{
 pub const WORKSPACE: SourceRootId = SourceRootId(0);
 
 pub trait WithFixture: Default + SourceDatabaseExt + 'static {
+    #[track_caller]
     fn with_single_file(ra_fixture: &str) -> (Self, FileId) {
         let fixture = ChangeFixture::parse(ra_fixture);
         let mut db = Self::default();
@@ -29,6 +30,7 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
         (db, fixture.files[0])
     }
 
+    #[track_caller]
     fn with_many_files(ra_fixture: &str) -> (Self, Vec<FileId>) {
         let fixture = ChangeFixture::parse(ra_fixture);
         let mut db = Self::default();
@@ -37,6 +39,7 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
         (db, fixture.files)
     }
 
+    #[track_caller]
     fn with_files(ra_fixture: &str) -> Self {
         let fixture = ChangeFixture::parse(ra_fixture);
         let mut db = Self::default();
@@ -45,6 +48,7 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
         db
     }
 
+    #[track_caller]
     fn with_files_extra_proc_macros(
         ra_fixture: &str,
         proc_macros: Vec<(String, ProcMacro)>,
@@ -56,18 +60,21 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
         db
     }
 
+    #[track_caller]
     fn with_position(ra_fixture: &str) -> (Self, FilePosition) {
         let (db, file_id, range_or_offset) = Self::with_range_or_offset(ra_fixture);
         let offset = range_or_offset.expect_offset();
         (db, FilePosition { file_id, offset })
     }
 
+    #[track_caller]
     fn with_range(ra_fixture: &str) -> (Self, FileRange) {
         let (db, file_id, range_or_offset) = Self::with_range_or_offset(ra_fixture);
         let range = range_or_offset.expect_range();
         (db, FileRange { file_id, range })
     }
 
+    #[track_caller]
     fn with_range_or_offset(ra_fixture: &str) -> (Self, FileId, RangeOrOffset) {
         let fixture = ChangeFixture::parse(ra_fixture);
         let mut db = Self::default();
