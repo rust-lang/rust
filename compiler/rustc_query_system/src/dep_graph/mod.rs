@@ -15,7 +15,7 @@ pub use serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 use crate::ich::StableHashingContext;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::stable_hasher::Hash64;
-use rustc_data_structures::sync::{Lock, Lrc};
+use rustc_data_structures::sync::Lock;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_serialize::{opaque::FileEncoder, Encodable};
 use rustc_session::Session;
@@ -140,13 +140,12 @@ impl FingerprintStyle {
     }
 }
 
-#[derive(Clone)]
 pub enum CurrentDepNode<K> {
     Regular {
         dep_node: DepNode<K>,
         /// Disambiguation map for expansions created while executing
         /// the query with this `DepNode`.
-        expn_disambiguators: Lrc<Lock<UnhashMap<Hash64, u32>>>,
+        expn_disambiguators: Lock<UnhashMap<Hash64, u32>>,
     },
     Anonymous,
     Untracked,
@@ -154,10 +153,7 @@ pub enum CurrentDepNode<K> {
 
 impl<K> CurrentDepNode<K> {
     pub fn regular(dep_node: DepNode<K>) -> CurrentDepNode<K> {
-        CurrentDepNode::Regular {
-            dep_node,
-            expn_disambiguators: Lrc::new(Lock::new(UnhashMap::default())),
-        }
+        CurrentDepNode::Regular { dep_node, expn_disambiguators: Lock::new(UnhashMap::default()) }
     }
 }
 

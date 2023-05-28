@@ -142,7 +142,7 @@ impl QueryContext for QueryCtxt<'_> {
                 query: Some(token),
                 diagnostics,
                 query_depth: current_icx.query_depth + depth_limit as usize,
-                current_node: current_icx.current_node.clone(),
+                current_node: current_icx.current_node,
                 task_deps: current_icx.task_deps,
             };
 

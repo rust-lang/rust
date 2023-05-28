@@ -5,7 +5,7 @@
 pub mod tls;
 
 use crate::arena::Arena;
-use crate::dep_graph::{CurrentDepNode, DepGraph, DepKindStruct};
+use crate::dep_graph::{CurrentDepNode, DepGraph, DepKindStruct, DepNode};
 use crate::infer::canonical::CanonicalVarInfo;
 use crate::lint::struct_lint_level;
 use crate::metadata::ModChild;
@@ -548,7 +548,12 @@ impl<'tcx> GlobalCtxt<'tcx> {
     where
         F: FnOnce(TyCtxt<'tcx>) -> R,
     {
-        let icx = tls::ImplicitCtxt::new(self);
+        let current_node = if self.dep_graph.is_fully_enabled() {
+            CurrentDepNode::Untracked
+        } else {
+            CurrentDepNode::regular(DepNode::NULL)
+        };
+        let icx = tls::ImplicitCtxt::new(self, &current_node);
         tls::enter_context(&icx, || f(icx.tcx))
     }
 }
@@ -905,12 +910,18 @@ impl<'tcx> TyCtxt<'tcx> {
 impl<'tcx> TyCtxt<'tcx> {
     #[instrument(level = "trace", skip(self), ret)]
     pub fn create_expansion(self, expn_data: ExpnData) -> LocalExpnId {
-        let current_node = tls::with_related_context(self, |icx| icx.current_node.clone());
-        let CurrentDepNode::Regular { dep_node, expn_disambiguators } = current_node else {
-            bug!("creating an expansion outside of a query")
-        };
-        self.with_stable_hashing_context(|ctx| {
-            LocalExpnId::create_untracked_expansion(expn_data, dep_node, ctx, &expn_disambiguators)
+        tls::with_related_context(self, |icx| {
+            let CurrentDepNode::Regular { dep_node, expn_disambiguators } = icx.current_node else {
+                bug!("creating an expansion outside of a query")
+            };
+            self.with_stable_hashing_context(|ctx| {
+                LocalExpnId::create_untracked_expansion(
+                    expn_data,
+                    dep_node,
+                    ctx,
+                    &expn_disambiguators,
+                )
+            })
         })
     }
 
@@ -918,12 +929,13 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     #[instrument(level = "trace", skip(self))]
     pub fn finalize_expansion(self, expn_id: LocalExpnId, expn_data: ExpnData) {
-        let current_node = tls::with_related_context(self, |icx| icx.current_node.clone());
-        let CurrentDepNode::Regular { dep_node, expn_disambiguators } = current_node else {
-            bug!("creating an expansion outside of a query")
-        };
-        self.with_stable_hashing_context(|ctx| {
-            expn_id.set_untracked_expn_data(expn_data, dep_node, ctx, &expn_disambiguators)
+        tls::with_related_context(self, |icx| {
+            let CurrentDepNode::Regular { dep_node, expn_disambiguators } = icx.current_node else {
+                bug!("creating an expansion outside of a query")
+            };
+            self.with_stable_hashing_context(|ctx| {
+                expn_id.set_untracked_expn_data(expn_data, dep_node, ctx, &expn_disambiguators)
+            })
         });
     }
 

@@ -1,6 +1,6 @@
 use super::{GlobalCtxt, TyCtxt};
 
-use crate::dep_graph::{CurrentDepNode, DepNode, TaskDepsRef};
+use crate::dep_graph::{CurrentDepNode, TaskDepsRef};
 use crate::query::plumbing::QueryJobId;
 use rustc_data_structures::sync::{self, Lock};
 use rustc_errors::Diagnostic;
@@ -33,7 +33,7 @@ pub struct ImplicitCtxt<'a, 'tcx> {
 
     /// The DepNode of the query being executed. This is updated by the dep-graph. This is used to
     /// know which query created an expansion.
-    pub current_node: CurrentDepNode,
+    pub current_node: &'a CurrentDepNode,
 
     /// The current dep graph task. This is used to add dependencies to queries
     /// when executing them.
@@ -41,13 +41,8 @@ pub struct ImplicitCtxt<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> ImplicitCtxt<'a, 'tcx> {
-    pub fn new(gcx: &'tcx GlobalCtxt<'tcx>) -> Self {
+    pub fn new(gcx: &'tcx GlobalCtxt<'tcx>, current_node: &'a CurrentDepNode) -> Self {
         let tcx = TyCtxt { gcx };
-        let current_node = if tcx.dep_graph.is_fully_enabled() {
-            CurrentDepNode::Untracked
-        } else {
-            CurrentDepNode::regular(DepNode::NULL)
-        };
         ImplicitCtxt {
             tcx,
             query: None,
