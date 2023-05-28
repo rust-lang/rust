@@ -153,7 +153,7 @@ pub enum CurrentDepNode<K> {
 
 impl<K> CurrentDepNode<K> {
     pub fn regular(dep_node: DepNode<K>) -> CurrentDepNode<K> {
-        CurrentDepNode::Regular { dep_node, expn_disambiguators: Lock::new(UnhashMap::default()) }
+        CurrentDepNode::Regular { dep_node, expn_disambiguators: Default::default() }
     }
 }
 
