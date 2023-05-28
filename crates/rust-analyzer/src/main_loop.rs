@@ -695,6 +695,14 @@ impl GlobalState {
             .on_latency_sensitive::<lsp_types::request::SemanticTokensRangeRequest>(
                 handlers::handle_semantic_tokens_range,
             )
+            // Formatting is not caused by the user typing,
+            // but it does qualify as latency-sensitive
+            // because a delay before formatting is applied
+            // can be confusing for the user.
+            .on_latency_sensitive::<lsp_types::request::Formatting>(handlers::handle_formatting)
+            .on_latency_sensitive::<lsp_types::request::RangeFormatting>(
+                handlers::handle_range_formatting,
+            )
             // All other request handlers
             .on::<lsp_ext::FetchDependencyList>(handlers::fetch_dependency_list)
             .on::<lsp_ext::AnalyzerStatus>(handlers::handle_analyzer_status)
@@ -730,8 +738,6 @@ impl GlobalState {
             .on::<lsp_types::request::PrepareRenameRequest>(handlers::handle_prepare_rename)
             .on::<lsp_types::request::Rename>(handlers::handle_rename)
             .on::<lsp_types::request::References>(handlers::handle_references)
-            .on::<lsp_types::request::Formatting>(handlers::handle_formatting)
-            .on::<lsp_types::request::RangeFormatting>(handlers::handle_range_formatting)
             .on::<lsp_types::request::DocumentHighlightRequest>(handlers::handle_document_highlight)
             .on::<lsp_types::request::CallHierarchyPrepare>(handlers::handle_call_hierarchy_prepare)
             .on::<lsp_types::request::CallHierarchyIncomingCalls>(
