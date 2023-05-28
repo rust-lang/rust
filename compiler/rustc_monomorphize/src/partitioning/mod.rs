@@ -113,74 +113,7 @@ use rustc_span::symbol::Symbol;
 
 use crate::collector::InliningMap;
 use crate::collector::{self, MonoItemCollectionMode};
-use crate::errors::{
-    CouldntDumpMonoStats, SymbolAlreadyDefined, UnknownCguCollectionMode, UnknownPartitionStrategy,
-};
-
-enum Partitioner {
-    Default(default::DefaultPartitioning),
-    // Other partitioning strategies can go here.
-    Unknown,
-}
-
-impl<'tcx> Partition<'tcx> for Partitioner {
-    fn place_root_mono_items<I>(
-        &mut self,
-        cx: &PartitioningCx<'_, 'tcx>,
-        mono_items: &mut I,
-    ) -> PlacedRootMonoItems<'tcx>
-    where
-        I: Iterator<Item = MonoItem<'tcx>>,
-    {
-        match self {
-            Partitioner::Default(partitioner) => partitioner.place_root_mono_items(cx, mono_items),
-            Partitioner::Unknown => cx.tcx.sess.emit_fatal(UnknownPartitionStrategy),
-        }
-    }
-
-    fn merge_codegen_units(
-        &mut self,
-        cx: &PartitioningCx<'_, 'tcx>,
-        codegen_units: &mut Vec<CodegenUnit<'tcx>>,
-    ) {
-        match self {
-            Partitioner::Default(partitioner) => partitioner.merge_codegen_units(cx, codegen_units),
-            Partitioner::Unknown => cx.tcx.sess.emit_fatal(UnknownPartitionStrategy),
-        }
-    }
-
-    fn place_inlined_mono_items(
-        &mut self,
-        cx: &PartitioningCx<'_, 'tcx>,
-        codegen_units: &mut [CodegenUnit<'tcx>],
-        roots: FxHashSet<MonoItem<'tcx>>,
-    ) -> FxHashMap<MonoItem<'tcx>, MonoItemPlacement> {
-        match self {
-            Partitioner::Default(partitioner) => {
-                partitioner.place_inlined_mono_items(cx, codegen_units, roots)
-            }
-            Partitioner::Unknown => cx.tcx.sess.emit_fatal(UnknownPartitionStrategy),
-        }
-    }
-
-    fn internalize_symbols(
-        &mut self,
-        cx: &PartitioningCx<'_, 'tcx>,
-        codegen_units: &mut [CodegenUnit<'tcx>],
-        mono_item_placements: FxHashMap<MonoItem<'tcx>, MonoItemPlacement>,
-        internalization_candidates: FxHashSet<MonoItem<'tcx>>,
-    ) {
-        match self {
-            Partitioner::Default(partitioner) => partitioner.internalize_symbols(
-                cx,
-                codegen_units,
-                mono_item_placements,
-                internalization_candidates,
-            ),
-            Partitioner::Unknown => cx.tcx.sess.emit_fatal(UnknownPartitionStrategy),
-        }
-    }
-}
+use crate::errors::{CouldntDumpMonoStats, SymbolAlreadyDefined, UnknownCguCollectionMode};
 
 struct PartitioningCx<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -194,49 +127,6 @@ pub struct PlacedRootMonoItems<'tcx> {
     internalization_candidates: FxHashSet<MonoItem<'tcx>>,
 }
 
-trait Partition<'tcx> {
-    fn place_root_mono_items<I>(
-        &mut self,
-        cx: &PartitioningCx<'_, 'tcx>,
-        mono_items: &mut I,
-    ) -> PlacedRootMonoItems<'tcx>
-    where
-        I: Iterator<Item = MonoItem<'tcx>>;
-
-    fn merge_codegen_units(
-        &mut self,
-        cx: &PartitioningCx<'_, 'tcx>,
-        codegen_units: &mut Vec<CodegenUnit<'tcx>>,
-    );
-
-    fn place_inlined_mono_items(
-        &mut self,
-        cx: &PartitioningCx<'_, 'tcx>,
-        codegen_units: &mut [CodegenUnit<'tcx>],
-        roots: FxHashSet<MonoItem<'tcx>>,
-    ) -> FxHashMap<MonoItem<'tcx>, MonoItemPlacement>;
-
-    fn internalize_symbols(
-        &mut self,
-        cx: &PartitioningCx<'_, 'tcx>,
-        codegen_units: &mut [CodegenUnit<'tcx>],
-        mono_item_placements: FxHashMap<MonoItem<'tcx>, MonoItemPlacement>,
-        internalization_candidates: FxHashSet<MonoItem<'tcx>>,
-    );
-}
-
-fn get_partitioner(tcx: TyCtxt<'_>) -> Partitioner {
-    let strategy = match &tcx.sess.opts.unstable_opts.cgu_partitioning_strategy {
-        None => "default",
-        Some(s) => &s[..],
-    };
-
-    match strategy {
-        "default" => Partitioner::Default(default::DefaultPartitioning),
-        _ => Partitioner::Unknown,
-    }
-}
-
 fn partition<'tcx, I>(
     tcx: TyCtxt<'tcx>,
     mono_items: &mut I,
@@ -248,14 +138,13 @@ where
 {
     let _prof_timer = tcx.prof.generic_activity("cgu_partitioning");
 
-    let mut partitioner = get_partitioner(tcx);
     let cx = &PartitioningCx { tcx, target_cgu_count: max_cgu_count, inlining_map };
     // In the first step, we place all regular monomorphizations into their
     // respective 'home' codegen unit. Regular monomorphizations are all
     // functions and statics defined in the local crate.
     let PlacedRootMonoItems { mut codegen_units, roots, internalization_candidates } = {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_place_roots");
-        partitioner.place_root_mono_items(cx, mono_items)
+        default::place_root_mono_items(cx, mono_items)
     };
 
     for cgu in &mut codegen_units {
@@ -269,7 +158,7 @@ where
     // estimates.
     {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_merge_cgus");
-        partitioner.merge_codegen_units(cx, &mut codegen_units);
+        default::merge_codegen_units(cx, &mut codegen_units);
         debug_dump(tcx, "POST MERGING", &codegen_units);
     }
 
@@ -279,7 +168,7 @@ where
     // local functions the definition of which is marked with `#[inline]`.
     let mono_item_placements = {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_place_inline_items");
-        partitioner.place_inlined_mono_items(cx, &mut codegen_units, roots)
+        default::place_inlined_mono_items(cx, &mut codegen_units, roots)
     };
 
     for cgu in &mut codegen_units {
@@ -292,7 +181,7 @@ where
     // more freedom to optimize.
     if !tcx.sess.link_dead_code() {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_internalize_symbols");
-        partitioner.internalize_symbols(
+        default::internalize_symbols(
             cx,
             &mut codegen_units,
             mono_item_placements,
