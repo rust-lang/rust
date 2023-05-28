@@ -88,6 +88,9 @@ pub fn sanitize_attrs<'ll>(
 
         attrs.push(llvm::AttributeKind::SanitizeMemTag.create_attr(cx.llcx));
     }
+    if enabled.contains(SanitizerSet::SAFESTACK) {
+        attrs.push(llvm::AttributeKind::SanitizeSafeStack.create_attr(cx.llcx));
+    }
     attrs
 }
 
