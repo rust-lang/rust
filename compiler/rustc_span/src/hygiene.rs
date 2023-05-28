@@ -192,10 +192,9 @@ impl LocalExpnId {
     }
 
     /// This method is an implementation detail of `TyCtxt::create_expn`.
-    #[instrument(level = "trace", skip(ctx), ret)]
     pub fn create_untracked_expn(
         mut expn_data: ExpnData,
-        hash_extra: impl Hash + Copy + fmt::Debug,
+        hash_extra: impl Hash + Copy,
         ctx: impl HashStableContext,
         disambiguation_map: &Lock<UnhashMap<Hash64, u32>>,
     ) -> LocalExpnId {
@@ -215,11 +214,10 @@ impl LocalExpnId {
 
     /// Implementation detail of `TyCtxt::finalize_expn`.
     #[inline]
-    #[instrument(level = "trace", skip(ctx))]
     pub fn set_untracked_expn_data(
         self,
         mut expn_data: ExpnData,
-        hash_extra: impl Hash + Copy + fmt::Debug,
+        hash_extra: impl Hash + Copy,
         ctx: impl HashStableContext,
         disambiguation_map: &Lock<UnhashMap<Hash64, u32>>,
     ) {
@@ -1462,10 +1460,9 @@ impl<D: Decoder> Decodable<D> for SyntaxContext {
 /// `set_expn_data`). It is *not* called for foreign `ExpnId`s deserialized
 /// from another crate's metadata - since `ExpnHash` includes the stable crate id,
 /// collisions are only possible between `ExpnId`s within the same crate.
-#[instrument(level = "trace", skip(ctx), ret)]
 fn update_disambiguator(
     expn_data: &mut ExpnData,
-    hash_extra: impl Hash + Copy + fmt::Debug,
+    hash_extra: impl Hash + Copy,
     mut ctx: impl HashStableContext,
     disambiguation_map: &Lock<UnhashMap<Hash64, u32>>,
 ) -> ExpnHash {
