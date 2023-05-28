@@ -103,7 +103,14 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
         // That would require a uniform one-def no-mutation analysis
         // and RPO (or recursing when needing the value of a local).
         let mut optimization_finder = ConstPropagator::new(body, dummy_body, tcx);
-        optimization_finder.visit_body(body);
+
+        // Traverse the body in reverse post-order, to ensure that `FullConstProp` locals are
+        // assigned before being read.
+        let postorder = body.basic_blocks.postorder().to_vec();
+        for bb in postorder.into_iter().rev() {
+            let data = &mut body.basic_blocks.as_mut_preserves_cfg()[bb];
+            optimization_finder.visit_basic_block_data(bb, data);
+        }
 
         trace!("ConstProp done for {:?}", def_id);
     }
@@ -788,12 +795,6 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
 impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
-    }
-
-    fn visit_body(&mut self, body: &mut Body<'tcx>) {
-        for (bb, data) in body.basic_blocks.as_mut_preserves_cfg().iter_enumerated_mut() {
-            self.visit_basic_block_data(bb, data);
-        }
     }
 
     fn visit_operand(&mut self, operand: &mut Operand<'tcx>, location: Location) {
