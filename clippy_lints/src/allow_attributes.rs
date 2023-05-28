@@ -40,7 +40,7 @@ declare_clippy_lint! {
     ///     a.len()
     /// }
     /// ```
-    #[clippy::version = "1.69.0"]
+    #[clippy::version = "1.70.0"]
     pub ALLOW_ATTRIBUTES,
     restriction,
     "`#[allow]` will not trigger if a warning isn't found. `#[expect]` triggers if there are no warnings."
