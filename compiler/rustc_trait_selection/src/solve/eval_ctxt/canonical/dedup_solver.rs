@@ -62,9 +62,11 @@ impl<'a, 'tcx> Deduper<'a, 'tcx> {
         let constraint_vars = std::mem::take(&mut self.constraint_vars);
         let constraint_cliques =
             std::mem::take(&mut self.constraint_cliques).into_iter().map(|x| x.1).collect();
-        let unremovable_vars =
-            self.var_indexer.unremovable_vars.iter().map(|x| VarIndex::from(*x)).collect();
-        let removed = DedupSolver::dedup(constraint_vars, constraint_cliques, unremovable_vars)
+        let var_universes = std::mem::take(&mut self.var_indexer.var_universes)
+            .into_iter()
+            .map(|(var, uni)| (VarIndex::from(var), uni.index()))
+            .collect();
+        let removed = DedupSolver::dedup(constraint_vars, constraint_cliques, var_universes)
             .removed_constraints;
 
         let mut removed_outlives =

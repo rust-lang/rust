@@ -29,12 +29,9 @@ fn test_gh_issues_example() {
     let deduped = DedupSolver::dedup(
         constraint_vars(vec![vec![1], vec![2], vec![3]]),
         constraint_cliques(vec![vec![0, 1, 2]]),
-        FxIndexSet::default(),
+        FxHashMap::from_iter([(VarIndex::new(1), 1), (VarIndex::new(2), 2), (VarIndex::new(3), 3)]),
     );
-    assert!(
-        [constraint_set([0, 1]), constraint_set([0, 2]), constraint_set([1, 2])]
-            .contains(&deduped.removed_constraints)
-    );
+    assert_eq!(constraint_set([1, 2]), deduped.removed_constraints);
 }
 #[test]
 fn test_noop() {
@@ -47,7 +44,7 @@ fn test_noop() {
     let deduped = DedupSolver::dedup(
         constraint_vars(vec![vec![1], vec![1, 1], vec![2], vec![3]]),
         constraint_cliques(vec![vec![0], vec![1], vec![2], vec![3]]),
-        FxIndexSet::default(),
+        FxHashMap::from_iter([(VarIndex::new(1), 1), (VarIndex::new(2), 2), (VarIndex::new(3), 3)]),
     );
     assert!(deduped.removed_constraints.is_empty());
 }
@@ -61,18 +58,9 @@ fn test_simple() {
     let deduped = DedupSolver::dedup(
         constraint_vars(vec![vec![1], vec![2], vec![3]]),
         constraint_cliques(vec![vec![0, 1], vec![2]]),
-        FxIndexSet::default(),
+        FxHashMap::from_iter([(VarIndex::new(1), 1), (VarIndex::new(2), 2), (VarIndex::new(3), 3)]),
     );
-    assert!([constraint_set([0]), constraint_set([1])].contains(&deduped.removed_constraints));
-}
-#[test]
-fn test_simple_2() {
-    let deduped = DedupSolver::dedup(
-        constraint_vars(vec![vec![0, 1], vec![2, 1], vec![1, 0], vec![1, 2]]),
-        constraint_cliques(vec![vec![0, 1, 2, 3]]),
-        FxIndexSet::from_iter([VarIndex::new(0), VarIndex::new(1)]),
-    );
-    assert_eq!(deduped.removed_constraints, constraint_set([1, 3]));
+    assert_eq!(constraint_set([1]), deduped.removed_constraints);
 }
 #[test]
 fn test_dependencies() {
@@ -93,34 +81,18 @@ fn test_dependencies() {
             vec![4, 5],
         ]),
         constraint_cliques(vec![vec![0, 1], vec![2, 3], vec![4, 5]]),
-        FxIndexSet::default(),
+        FxHashMap::from_iter([
+            (VarIndex::new(1), 1),
+            (VarIndex::new(2), 2),
+            (VarIndex::new(4), 3),
+            (VarIndex::new(5), 4),
+            (VarIndex::new(13), 5),
+            (VarIndex::new(16), 6),
+            (VarIndex::new(23), 7),
+            (VarIndex::new(26), 8),
+        ]),
     );
-    assert!(
-        [constraint_set([0, 2, 4]), constraint_set([1, 3, 5])]
-            .contains(&deduped.removed_constraints)
-    );
-}
-#[test]
-fn test_unremovable_var() {
-    fn try_dedup(unremovable_vars: FxIndexSet<VarIndex>) -> FxIndexSet<ConstraintIndex> {
-        // Same constraints as `test_dependencies`, but just imagine that all the vars in
-        // unremovable_vars are vars the caller can name, and therefore can't be removed
-        DedupSolver::dedup(
-            constraint_vars(vec![
-                vec![1, 2, 13],
-                vec![4, 5, 16],
-                vec![1, 2, 23],
-                vec![4, 5, 26],
-                vec![1, 2],
-                vec![4, 5],
-            ]),
-            constraint_cliques(vec![vec![0, 1], vec![2, 3], vec![4, 5]]),
-            unremovable_vars,
-        )
-        .removed_constraints
-    }
-    assert_eq!(try_dedup(FxIndexSet::from_iter([VarIndex::new(13)])), constraint_set([1, 3, 5]));
-    assert_eq!(try_dedup(FxIndexSet::from_iter([VarIndex::new(16)])), constraint_set([0, 2, 4]));
+    assert_eq!(constraint_set([1, 3, 5]), deduped.removed_constraints);
 }
 #[test]
 fn test_dependencies_unresolvable() {
@@ -134,7 +106,16 @@ fn test_dependencies_unresolvable() {
             vec![4, 5],
         ]),
         constraint_cliques(vec![vec![0, 1], vec![2, 3], vec![4, 5]]),
-        FxIndexSet::default(),
+        FxHashMap::from_iter([
+            (VarIndex::new(1), 1),
+            (VarIndex::new(2), 2),
+            (VarIndex::new(4), 3),
+            (VarIndex::new(5), 4),
+            (VarIndex::new(13), 5),
+            (VarIndex::new(16), 6),
+            (VarIndex::new(23), 7),
+            (VarIndex::new(26), 8),
+        ]),
     );
     assert!(deduped.removed_constraints.is_empty());
 }

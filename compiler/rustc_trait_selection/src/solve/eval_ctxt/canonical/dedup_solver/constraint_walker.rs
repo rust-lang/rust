@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::ty;
 use rustc_middle::ty::{
@@ -14,7 +14,7 @@ pub struct DedupWalker<'me, 'tcx> {
 }
 pub struct DedupableIndexer<'tcx> {
     vars: FxIndexSet<GenericArg<'tcx>>,
-    pub unremovable_vars: FxIndexSet<usize>,
+    pub var_universes: FxIndexMap<usize, ty::UniverseIndex>,
 }
 
 impl<'me, 'tcx> DedupWalker<'me, 'tcx> {
@@ -32,13 +32,12 @@ impl<'me, 'tcx> DedupWalker<'me, 'tcx> {
 }
 impl<'tcx> DedupableIndexer<'tcx> {
     pub fn new() -> Self {
-        Self { vars: FxIndexSet::default(), unremovable_vars: FxIndexSet::default() }
+        Self { vars: FxIndexSet::default(), var_universes: FxIndexMap::default() }
     }
-    fn lookup(&mut self, var: GenericArg<'tcx>) -> usize {
-        self.vars.get_index_of(&var).unwrap_or_else(|| self.vars.insert_full(var).0)
-    }
-    fn add_unremovable_var(&mut self, var: usize) {
-        self.unremovable_vars.insert(var);
+    fn lookup(&mut self, var: GenericArg<'tcx>, universe: ty::UniverseIndex) -> usize {
+        let var_indx = self.vars.get_index_of(&var).unwrap_or_else(|| self.vars.insert_full(var).0);
+        self.var_universes.insert(var_indx, universe);
+        var_indx
     }
 }
 
@@ -59,11 +58,11 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for DedupWalker<'_, 'tcx> {
             ty::ReVar(..) | ty::RePlaceholder(..) => self.infcx.universe_of_region(region),
             _ => return region,
         };
-        let var_id = self.var_indexer.lookup(GenericArg::from(region));
-        self.vars_present.push(var_id);
         if self.max_nameable_universe.can_name(universe) {
-            self.var_indexer.add_unremovable_var(var_id);
+            return region;
         }
+        let var_id = self.var_indexer.lookup(GenericArg::from(region), universe);
+        self.vars_present.push(var_id);
         // dummy value
         self.interner().mk_re_placeholder(ty::Placeholder {
             universe: ty::UniverseIndex::from(self.max_nameable_universe.index() + 1),
@@ -77,6 +76,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for DedupWalker<'_, 'tcx> {
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         let universe = match *ty.kind() {
             ty::Placeholder(p) => p.universe,
+            /*
             ty::Infer(ty::InferTy::TyVar(vid)) => {
                 if let Err(uni) = self.infcx.probe_ty_var(vid) {
                     uni
@@ -84,13 +84,14 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for DedupWalker<'_, 'tcx> {
                     return ty;
                 }
             }
+            */
             _ => return ty,
         };
-        let var_id = self.var_indexer.lookup(GenericArg::from(ty));
-        self.vars_present.push(var_id);
         if self.max_nameable_universe.can_name(universe) {
-            self.var_indexer.add_unremovable_var(var_id);
+            return ty;
         }
+        let var_id = self.var_indexer.lookup(GenericArg::from(ty), universe);
+        self.vars_present.push(var_id);
         // dummy value
         self.interner().mk_ty_from_kind(ty::Placeholder(ty::Placeholder {
             universe: ty::UniverseIndex::from(self.max_nameable_universe.index() + 1),
@@ -101,23 +102,26 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for DedupWalker<'_, 'tcx> {
     fn fold_const(&mut self, ct: Const<'tcx>) -> Const<'tcx> {
         let new_ty = self.fold_ty(ct.ty());
         let universe = match ct.kind() {
+            /*
             ty::ConstKind::Infer(ty::InferConst::Var(vid)) => {
                 if let Err(uni) = self.infcx.probe_const_var(vid) { Some(uni) } else { None }
             }
+            */
             ty::ConstKind::Placeholder(p) => Some(p.universe),
             _ => None,
         };
         let new_const_kind = if let Some(uni) = universe {
-            let var_id = self.var_indexer.lookup(GenericArg::from(ct));
-            self.vars_present.push(var_id);
             if self.max_nameable_universe.can_name(uni) {
-                self.var_indexer.add_unremovable_var(var_id);
+                ct.kind()
+            } else {
+                let var_id = self.var_indexer.lookup(GenericArg::from(ct), uni);
+                self.vars_present.push(var_id);
+                // dummy value
+                ty::ConstKind::Placeholder(ty::Placeholder {
+                    universe: ty::UniverseIndex::from(self.max_nameable_universe.index() + 1),
+                    bound: ty::BoundVar::from_usize(0),
+                })
             }
-            // dummy value
-            ty::ConstKind::Placeholder(ty::Placeholder {
-                universe: ty::UniverseIndex::from(self.max_nameable_universe.index() + 1),
-                bound: ty::BoundVar::from_usize(0),
-            })
         } else {
             ct.kind()
         };

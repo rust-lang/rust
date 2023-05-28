@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_index::{Idx, IndexVec};
 use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
@@ -23,10 +23,9 @@ pub struct DedupSolver {
     /// The cliques that constraints are partitioned into. Constraints can only be merged if they belong to the same clique,
     /// and it's impossible for a constraint to be in more than one clique
     constraint_cliques: IndexVec<CliqueIndex, Vec<ConstraintIndex>>,
-    /// A set of variables we cannot remove, i.e. they belong to a universe that the caller can name. We keep track of these
-    /// to determine if there's a variable that we **can** remove that behaves like one of these, where in that case we just
-    /// remove the unremovable var and keep the removable ones
-    unremovable_vars: FxIndexSet<VarIndex>,
+    /// The universes each var resides in. This is used because deduping prioritizes the removal of constraints
+    /// that involve the highest universe indices
+    var_universes: FxHashMap<VarIndex, usize>,
 
     /// The below are internal variables used in the solving process:
 
@@ -58,23 +57,17 @@ struct MappingInfo {
     /// a preexisting constraint. Therefore, the two constraints depend on each other
     dependencies: FxIndexMap<ConstraintIndex, BTreeSet<MappingIndex>>,
 }
-#[derive(Debug, PartialEq, Eq)]
-enum MapEval {
-    Ok(MappingInfo),
-    Conflicts,
-    Unremovable,
-}
 
 impl DedupSolver {
     pub fn dedup(
         constraint_vars: IndexVec<ConstraintIndex, Vec<VarIndex>>,
         constraint_cliques: IndexVec<CliqueIndex, Vec<ConstraintIndex>>,
-        unremovable_vars: FxIndexSet<VarIndex>,
+        var_universes: FxHashMap<VarIndex, usize>,
     ) -> DedupResult {
         let mut deduper = Self {
             constraint_vars,
             constraint_cliques,
-            unremovable_vars,
+            var_universes,
 
             mappings: FxIndexMap::default(),
             removed_constraints: RefCell::new(FxIndexSet::default()),
@@ -122,18 +115,20 @@ impl DedupSolver {
                     // map the constraint [1] into [11], which is a constraint that doesn't exist
                     let (eval_forward, eval_reverse) =
                         (self.eval_mapping(&forward), self.eval_mapping(&reverse));
-                    if eval_forward == MapEval::Conflicts || eval_reverse == MapEval::Conflicts {
+                    let (Ok(eval_forward), Ok(eval_reverse)) = (eval_forward, eval_reverse) else {
                         continue;
-                    }
-                    if let MapEval::Ok(eval_forward) = eval_forward {
-                        if self.try_apply_mapping(&forward, &eval_forward, false) == Err(true) {
-                            self.mappings.insert(forward, eval_forward);
-                        }
-                    }
-                    if let MapEval::Ok(eval_reverse) = eval_reverse {
-                        if self.try_apply_mapping(&reverse, &eval_reverse, false) == Err(true) {
-                            self.mappings.insert(reverse, eval_reverse);
-                        }
+                    };
+
+                    let max_forward_universe = forward.max_removed_universe(&self.var_universes);
+                    let max_reverse_universe = reverse.max_removed_universe(&self.var_universes);
+                    let (chosen_mapping, chosen_eval) =
+                        if max_forward_universe >= max_reverse_universe {
+                            (forward, eval_forward)
+                        } else {
+                            (reverse, eval_reverse)
+                        };
+                    if self.try_apply_mapping(&chosen_mapping, &chosen_eval, false) == Err(true) {
+                        self.mappings.insert(chosen_mapping, chosen_eval);
                     }
                 }
             }
@@ -146,10 +141,7 @@ impl DedupSolver {
     /// MappingInfo can contain dependencies - these occur if a mapping *partially* maps
     /// a constraint onto another, so the mapping isn't immediately invalid, but we do need
     /// another mapping to complete that partial map for it to actually be valid
-    fn eval_mapping(&self, mapping: &Mapping) -> MapEval {
-        let maps_unremovable_var =
-            mapping.0.iter().any(|(from, to)| self.unremovable_vars.contains(from) && from != to);
-
+    fn eval_mapping(&self, mapping: &Mapping) -> Result<MappingInfo, ()> {
         let mut info = MappingInfo::new();
         for clique in self.constraint_cliques.iter() {
             for constraint_1 in clique {
@@ -179,14 +171,11 @@ impl DedupSolver {
                     }
                 }
                 if !found_non_conflicting {
-                    return MapEval::Conflicts;
+                    return Err(());
                 }
             }
         }
-        if maps_unremovable_var {
-            return MapEval::Unremovable;
-        }
-        MapEval::Ok(info)
+        Ok(info)
     }
     /// Currently, dependencies are in the form FxIndexMap<ConstraintIndex, Empty FxIndexSet>,
     /// where ConstraintIndex is the constraint we must *also* map in order to apply this mapping.
@@ -294,9 +283,6 @@ impl DedupSolver {
         // If we already applied a mapping, we now remove it from `from`, as its dependencies have
         // been resolved and therefore we don't need to worry about it
         from.retain(|x| !used_mappings.contains(x));
-        if from.is_empty() {
-            return Some(used_mappings);
-        }
         used_mappings.extend(from.iter());
 
         // For each unresolved dependency, we have a list of Mappings that can resolve it
@@ -313,6 +299,9 @@ impl DedupSolver {
                 )
             });
             unresolved_dependencies.extend(resolve_options);
+        }
+        if unresolved_dependencies.is_empty() {
+            return Some(used_mappings);
         }
         if unresolved_dependencies.iter().any(|x| x.is_empty()) {
             return None;
@@ -429,6 +418,9 @@ impl Mapping {
             }
         }
         false
+    }
+    fn max_removed_universe(&self, var_universes: &FxHashMap<VarIndex, usize>) -> usize {
+        self.0.keys().map(|x| *var_universes.get(x).unwrap()).max().unwrap_or(0)
     }
 }
 impl MappingInfo {

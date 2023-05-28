@@ -1,6 +1,5 @@
 // check-pass
 // compile-flags: -Ztrait-solver=next
-
 struct Foo
 where
     Foo:,
