@@ -20,6 +20,9 @@ pub const SHARDS: usize = 1 << SHARD_BITS;
 
 /// An array of cache-line aligned inner locked structures with convenience methods.
 pub struct Sharded<T> {
+    /// This mask is used to ensure that accesses are inbounds of `shards`.
+    /// When dynamic thread safety is off, this field is set to 0 causing only
+    /// a single shard to be used for greater cache efficiency.
     #[cfg(parallel_compiler)]
     mask: usize,
     shards: [CacheAligned<Lock<T>>; SHARDS],
@@ -56,6 +59,7 @@ impl<T> Sharded<T> {
 
     #[inline(always)]
     fn count(&self) -> usize {
+        // `self.mask` is always one below the used shard count
         self.mask() + 1
     }
 
