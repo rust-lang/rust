@@ -19,6 +19,7 @@ mod benchmark;
 mod token_map;
 
 use ::tt::token_id as tt;
+use stdx::impl_from;
 
 use std::fmt;
 
@@ -77,7 +78,10 @@ pub enum ExpandError {
     LimitExceeded,
     NoMatchingRule,
     UnexpectedToken,
+    CountError(CountError),
 }
+
+impl_from!(CountError for ExpandError);
 
 impl ExpandError {
     fn binding_error(e: impl Into<Box<str>>) -> ExpandError {
@@ -94,6 +98,23 @@ impl fmt::Display for ExpandError {
             ExpandError::ConversionError => f.write_str("could not convert tokens"),
             ExpandError::LimitExceeded => f.write_str("Expand exceed limit"),
             ExpandError::LeftoverTokens => f.write_str("leftover tokens"),
+            ExpandError::CountError(e) => e.fmt(f),
+        }
+    }
+}
+
+// FIXME: Showing these errors could be nicer.
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+pub enum CountError {
+    OutOfBounds,
+    Misplaced,
+}
+
+impl fmt::Display for CountError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CountError::OutOfBounds => f.write_str("${count} out of bounds"),
+            CountError::Misplaced => f.write_str("${count} misplaced"),
         }
     }
 }
