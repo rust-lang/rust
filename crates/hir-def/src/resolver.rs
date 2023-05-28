@@ -1046,6 +1046,12 @@ impl HasResolver for GenericDefId {
     }
 }
 
+impl HasResolver for EnumVariantId {
+    fn resolver(self, db: &dyn DefDatabase) -> Resolver {
+        self.parent.resolver(db)
+    }
+}
+
 impl HasResolver for VariantId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
         match self {

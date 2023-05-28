@@ -194,6 +194,19 @@ impl TyBuilder<()> {
         params.placeholder_subst(db)
     }
 
+    pub fn unknown_subst(db: &dyn HirDatabase, def: impl Into<GenericDefId>) -> Substitution {
+        let params = generics(db.upcast(), def.into());
+        Substitution::from_iter(
+            Interner,
+            params.iter_id().map(|id| match id {
+                either::Either::Left(_) => TyKind::Error.intern(Interner).cast(Interner),
+                either::Either::Right(id) => {
+                    unknown_const_as_generic(db.const_param_ty(id)).cast(Interner)
+                }
+            }),
+        )
+    }
+
     pub fn subst_for_def(
         db: &dyn HirDatabase,
         def: impl Into<GenericDefId>,
