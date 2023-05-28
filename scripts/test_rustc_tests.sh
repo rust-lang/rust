@@ -11,12 +11,12 @@ pushd rust
 command -v rg >/dev/null 2>&1 || cargo install ripgrep
 
 rm -r tests/ui/{unsized-locals/,lto/,linkage*} || true
-for test in $(rg --files-with-matches "lto|// needs-asm-support|// needs-unwind" tests/{codegen-units,ui,incremental}); do
+for test in $(rg --files-with-matches "lto|// needs-asm-support" tests/{codegen-units,ui,incremental}); do
   rm $test
 done
 
 for test in tests/run-make/**/Makefile; do
-  if rg "# needs-asm-support|# needs-unwind" $test >/dev/null; then
+  if rg "# needs-asm-support" $test >/dev/null; then
     rm -r $(dirname $test)
   fi
 done
