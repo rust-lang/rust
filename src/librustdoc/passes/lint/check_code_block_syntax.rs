@@ -47,7 +47,7 @@ fn check_rust_syntax(
     let edition = code_block.lang_string.edition.unwrap_or_else(|| cx.tcx.sess.edition());
     let expn_data =
         ExpnData::default(ExpnKind::AstPass(AstPass::TestHarness), DUMMY_SP, edition, None, None);
-    let expn_id = cx.tcx.create_expansion(expn_data);
+    let expn_id = cx.tcx.create_expn(expn_data);
     let span = DUMMY_SP.fresh_expansion(expn_id);
 
     let is_empty = rustc_driver::catch_fatal_errors(|| {

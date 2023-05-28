@@ -217,7 +217,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
     ) -> LocalExpnId {
         let parent_module =
             parent_module_id.map(|module_id| self.local_def_id(module_id).to_def_id());
-        let expn_id = self.tcx.create_expansion(ExpnData::allow_unstable(
+        let expn_id = self.tcx.create_expn(ExpnData::allow_unstable(
             ExpnKind::AstPass(pass),
             call_site,
             self.tcx.sess.edition(),
@@ -287,7 +287,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
 
         let span = invoc.span();
         let def_id = res.opt_def_id();
-        self.tcx.finalize_expansion(
+        self.tcx.finalize_expn(
             invoc_id,
             ext.expn_data(
                 parent_scope.expansion,

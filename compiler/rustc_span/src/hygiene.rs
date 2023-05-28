@@ -182,7 +182,7 @@ impl LocalExpnId {
 
     /// Create a new expansions without any information. This method must not be used outside of
     /// the resolver.
-    pub fn reserve_expansion_id() -> LocalExpnId {
+    pub fn reserve_expn_id() -> LocalExpnId {
         HygieneData::with(|data| {
             let expn_id = data.local_expn_data.push(None);
             let _eid = data.local_expn_hashes.push(ExpnHash(Fingerprint::ZERO));
@@ -191,9 +191,9 @@ impl LocalExpnId {
         })
     }
 
-    /// This method is an implementation detail of `TyCtxt::create_expansion`.
+    /// This method is an implementation detail of `TyCtxt::create_expn`.
     #[instrument(level = "trace", skip(ctx), ret)]
-    pub fn create_untracked_expansion(
+    pub fn create_untracked_expn(
         mut expn_data: ExpnData,
         hash_extra: impl Hash + Copy + fmt::Debug,
         ctx: impl HashStableContext,
@@ -213,7 +213,7 @@ impl LocalExpnId {
         })
     }
 
-    /// Implementation detail of `TyCtxt::finalize_expansion`.
+    /// Implementation detail of `TyCtxt::finalize_expn`.
     #[inline]
     #[instrument(level = "trace", skip(ctx))]
     pub fn set_untracked_expn_data(

@@ -909,18 +909,13 @@ impl<'tcx> TyCtxt<'tcx> {
 
 impl<'tcx> TyCtxt<'tcx> {
     #[instrument(level = "trace", skip(self), ret)]
-    pub fn create_expansion(self, expn_data: ExpnData) -> LocalExpnId {
+    pub fn create_expn(self, expn_data: ExpnData) -> LocalExpnId {
         tls::with_related_context(self, |icx| {
             let CurrentDepNode::Regular { dep_node, expn_disambiguators } = icx.current_node else {
                 bug!("creating an expansion outside of a query")
             };
             self.with_stable_hashing_context(|ctx| {
-                LocalExpnId::create_untracked_expansion(
-                    expn_data,
-                    dep_node,
-                    ctx,
-                    &expn_disambiguators,
-                )
+                LocalExpnId::create_untracked_expn(expn_data, dep_node, ctx, &expn_disambiguators)
             })
         })
     }
@@ -928,7 +923,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Fill an empty expansion. This method must not be used outside of the resolver.
     #[inline]
     #[instrument(level = "trace", skip(self))]
-    pub fn finalize_expansion(self, expn_id: LocalExpnId, expn_data: ExpnData) {
+    pub fn finalize_expn(self, expn_id: LocalExpnId, expn_data: ExpnData) {
         tls::with_related_context(self, |icx| {
             let CurrentDepNode::Regular { dep_node, expn_disambiguators } = icx.current_node else {
                 bug!("creating an expansion outside of a query")
@@ -951,7 +946,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let mut expn_data =
             ExpnData::default(ExpnKind::Desugaring(reason), span, edition, None, None);
         expn_data.allow_internal_unstable = allow_internal_unstable;
-        let expn_id = self.create_expansion(expn_data);
+        let expn_id = self.create_expn(expn_data);
         span.fresh_expansion(expn_id)
     }
 }
