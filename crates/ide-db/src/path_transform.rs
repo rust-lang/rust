@@ -10,7 +10,7 @@ use syntax::{
 };
 
 #[derive(Default)]
-struct Substs {
+struct AstSubsts {
     types: Vec<ast::TypeArg>,
     lifetimes: Vec<ast::LifetimeArg>,
 }
@@ -42,7 +42,7 @@ type LifetimeName = String;
 /// ```
 pub struct PathTransform<'a> {
     generic_def: Option<hir::GenericDef>,
-    substs: Substs,
+    substs: AstSubsts,
     target_scope: &'a SemanticsScope<'a>,
     source_scope: &'a SemanticsScope<'a>,
 }
@@ -80,7 +80,12 @@ impl<'a> PathTransform<'a> {
         target_scope: &'a SemanticsScope<'a>,
         source_scope: &'a SemanticsScope<'a>,
     ) -> PathTransform<'a> {
-        PathTransform { source_scope, target_scope, generic_def: None, substs: Substs::default() }
+        PathTransform {
+            source_scope,
+            target_scope,
+            generic_def: None,
+            substs: AstSubsts::default(),
+        }
     }
 
     pub fn apply(&self, syntax: &SyntaxNode) {
@@ -134,7 +139,7 @@ impl<'a> PathTransform<'a> {
             .into_iter()
             .flat_map(|it| it.lifetime_params(db))
             .zip(self.substs.lifetimes.clone())
-            .filter_map(|(k, v)| Some((k.name(db).to_string(), v.lifetime()?)))
+            .filter_map(|(k, v)| Some((k.name(db).display(db.upcast()).to_string(), v.lifetime()?)))
             .collect();
         Ctx { type_substs, lifetime_substs, target_module, source_scope: self.source_scope }
     }
@@ -279,7 +284,7 @@ impl<'a> Ctx<'a> {
 
 // FIXME: It would probably be nicer if we could get this via HIR (i.e. get the
 // trait ref, and then go from the types in the substs back to the syntax).
-fn get_syntactic_substs(impl_def: ast::Impl) -> Option<Substs> {
+fn get_syntactic_substs(impl_def: ast::Impl) -> Option<AstSubsts> {
     let target_trait = impl_def.trait_()?;
     let path_type = match target_trait {
         ast::Type::PathType(path) => path,
@@ -290,8 +295,8 @@ fn get_syntactic_substs(impl_def: ast::Impl) -> Option<Substs> {
     get_type_args_from_arg_list(generic_arg_list)
 }
 
-fn get_type_args_from_arg_list(generic_arg_list: ast::GenericArgList) -> Option<Substs> {
-    let mut result = Substs::default();
+fn get_type_args_from_arg_list(generic_arg_list: ast::GenericArgList) -> Option<AstSubsts> {
+    let mut result = AstSubsts::default();
     generic_arg_list.generic_args().for_each(|generic_arg| match generic_arg {
         ast::GenericArg::TypeArg(type_arg) => result.types.push(type_arg),
         ast::GenericArg::LifetimeArg(l_arg) => result.lifetimes.push(l_arg),
