@@ -567,7 +567,9 @@ fn match_loop_inner<'t>(
                 item.is_error = true;
                 error_items.push(item);
             }
-            OpDelimited::Op(Op::Ignore { .. } | Op::Index { .. }) => {}
+            OpDelimited::Op(Op::Ignore { .. } | Op::Index { .. } | Op::Count { .. }) => {
+                stdx::never!("metavariable expression in lhs found");
+            }
             OpDelimited::Open => {
                 if matches!(src.peek_n(0), Some(tt::TokenTree::Subtree(..))) {
                     item.dot.next();
@@ -811,7 +813,9 @@ fn collect_vars(collector_fun: &mut impl FnMut(SmolStr), pattern: &MetaTemplate)
             Op::Var { name, .. } => collector_fun(name.clone()),
             Op::Subtree { tokens, .. } => collect_vars(collector_fun, tokens),
             Op::Repeat { tokens, .. } => collect_vars(collector_fun, tokens),
-            Op::Ignore { .. } | Op::Index { .. } | Op::Literal(_) | Op::Ident(_) | Op::Punct(_) => {
+            Op::Literal(_) | Op::Ident(_) | Op::Punct(_) => {}
+            Op::Ignore { .. } | Op::Index { .. } | Op::Count { .. } => {
+                stdx::never!("metavariable expression in lhs found");
             }
         }
     }
