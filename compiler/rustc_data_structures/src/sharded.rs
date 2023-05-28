@@ -46,7 +46,7 @@ impl<T> Sharded<T> {
     fn mask(&self) -> usize {
         #[cfg(parallel_compiler)]
         {
-            self.mask
+            if SHARDS == 1 { 0 } else { self.mask }
         }
         #[cfg(not(parallel_compiler))]
         {
