@@ -21,7 +21,8 @@ use rustc_middle::metadata::Reexport;
 use rustc_middle::span_bug;
 use rustc_middle::ty;
 use rustc_session::lint::builtin::{
-    AMBIGUOUS_GLOB_REEXPORTS, PUB_USE_OF_PRIVATE_EXTERN_CRATE, UNUSED_IMPORTS,
+    AMBIGUOUS_GLOB_REEXPORTS, HIDDEN_GLOB_REEXPORTS, PUB_USE_OF_PRIVATE_EXTERN_CRATE,
+    UNUSED_IMPORTS,
 };
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -526,31 +527,71 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
-    pub(crate) fn check_reexport_ambiguities(
+    pub(crate) fn check_hidden_glob_reexports(
         &mut self,
         exported_ambiguities: FxHashSet<Interned<'a, NameBinding<'a>>>,
     ) {
         for module in self.arenas.local_modules().iter() {
-            module.for_each_child(self, |this, ident, ns, binding| {
-                if let NameBindingKind::Import { import, .. } = binding.kind
-                && let Some((amb_binding, _)) = binding.ambiguity
-                && binding.res() != Res::Err
-                && exported_ambiguities.contains(&Interned::new_unchecked(binding))
-                {
-                    this.lint_buffer.buffer_lint_with_diagnostic(
-                        AMBIGUOUS_GLOB_REEXPORTS,
-                        import.root_id,
-                        import.root_span,
-                        "ambiguous glob re-exports",
-                        BuiltinLintDiagnostics::AmbiguousGlobReexports {
-                            name: ident.to_string(),
-                            namespace: ns.descr().to_string(),
-                            first_reexport_span: import.root_span,
-                            duplicate_reexport_span: amb_binding.span,
-                        },
-                    );
+            for (key, resolution) in self.resolutions(module).borrow().iter() {
+                let resolution = resolution.borrow();
+
+                if let Some(binding) = resolution.binding {
+                    if let NameBindingKind::Import { import, .. } = binding.kind
+                        && let Some((amb_binding, _)) = binding.ambiguity
+                        && binding.res() != Res::Err
+                        && exported_ambiguities.contains(&Interned::new_unchecked(binding))
+                    {
+                        self.lint_buffer.buffer_lint_with_diagnostic(
+                            AMBIGUOUS_GLOB_REEXPORTS,
+                            import.root_id,
+                            import.root_span,
+                            "ambiguous glob re-exports",
+                            BuiltinLintDiagnostics::AmbiguousGlobReexports {
+                                name: key.ident.to_string(),
+                                namespace: key.ns.descr().to_string(),
+                                first_reexport_span: import.root_span,
+                                duplicate_reexport_span: amb_binding.span,
+                            },
+                        );
+                    }
+
+                    if let Some(glob_binding) = resolution.shadowed_glob {
+                        let binding_id = match binding.kind {
+                            NameBindingKind::Res(res) => {
+                                Some(self.def_id_to_node_id[res.def_id().expect_local()])
+                            }
+                            NameBindingKind::Module(module) => {
+                                Some(self.def_id_to_node_id[module.def_id().expect_local()])
+                            }
+                            NameBindingKind::Import { import, .. } => import.id(),
+                        };
+
+                        if binding.res() != Res::Err
+                            && glob_binding.res() != Res::Err
+                            && let NameBindingKind::Import { import: glob_import, .. } = glob_binding.kind
+                            && let Some(binding_id) = binding_id
+                            && let Some(glob_import_id) = glob_import.id()
+                            && let glob_import_def_id = self.local_def_id(glob_import_id)
+                            && self.effective_visibilities.is_exported(glob_import_def_id)
+                            && glob_binding.vis.is_public()
+                            && !binding.vis.is_public()
+                        {
+                            self.lint_buffer.buffer_lint_with_diagnostic(
+                                HIDDEN_GLOB_REEXPORTS,
+                                binding_id,
+                                binding.span,
+                                "private item shadows public glob re-export",
+                                BuiltinLintDiagnostics::HiddenGlobReexports {
+                                    name: key.ident.name.to_string(),
+                                    namespace: key.ns.descr().to_owned(),
+                                    glob_reexport_span: glob_binding.span,
+                                    private_item_span: binding.span,
+                                },
+                            );
+                        }
+                    }
                 }
-            });
+            }
         }
     }
 
