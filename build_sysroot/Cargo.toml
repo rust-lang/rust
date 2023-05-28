@@ -9,8 +9,6 @@ std = { path = "./sysroot_src/library/std", features = ["panic_unwind", "backtra
 test = { path = "./sysroot_src/library/test" }
 proc_macro = { path = "./sysroot_src/library/proc_macro" }
 
-compiler_builtins = { version = "0.1.87", default-features = false, features = ["no-asm"] }
-
 [patch.crates-io]
 rustc-std-workspace-core = { path = "./sysroot_src/library/rustc-std-workspace-core" }
 rustc-std-workspace-alloc = { path = "./sysroot_src/library/rustc-std-workspace-alloc" }
