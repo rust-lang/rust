@@ -406,32 +406,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         ecx.machine.written_only_inside_own_block_locals.remove(&local);
     }
 
-    /// Returns the value, if any, of evaluating `c`.
-    fn eval_constant(&mut self, c: &Constant<'tcx>) -> Option<OpTy<'tcx>> {
-        // FIXME we need to revisit this for #67176
-        if c.has_param() {
-            return None;
-        }
-
-        // No span, we don't want errors to be shown.
-        self.ecx.eval_mir_constant(&c.literal, None, None).ok()
-    }
-
-    /// Returns the value, if any, of evaluating `place`.
-    fn eval_place(&mut self, place: Place<'tcx>) -> Option<OpTy<'tcx>> {
-        trace!("eval_place(place={:?})", place);
-        self.ecx.eval_place_to_op(place, None).ok()
-    }
-
-    /// Returns the value, if any, of evaluating `op`. Calls upon `eval_constant`
-    /// or `eval_place`, depending on the variant of `Operand` used.
-    fn eval_operand(&mut self, op: &Operand<'tcx>) -> Option<OpTy<'tcx>> {
-        match *op {
-            Operand::Constant(ref c) => self.eval_constant(c),
-            Operand::Move(place) | Operand::Copy(place) => self.eval_place(place),
-        }
-    }
-
     fn propagate_operand(&mut self, operand: &mut Operand<'tcx>) {
         if let Some(place) = operand.place() && let Some(op) = self.replace_with_const(place) {
             *operand = op;
@@ -868,45 +842,6 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
             // This may propagate a constant where the local would be uninit or dead.
             // In both cases, this does not matter, as those reads would be UB anyway.
             _ => {}
-        }
-    }
-
-    fn visit_terminator(&mut self, terminator: &mut Terminator<'tcx>, location: Location) {
-        self.super_terminator(terminator, location);
-
-        match &mut terminator.kind {
-            TerminatorKind::Assert { expected, ref mut cond, .. } => {
-                if let Some(ref value) = self.eval_operand(&cond)
-                    && let Ok(value_const) = self.ecx.read_scalar(&value)
-                    && self.should_const_prop(value)
-                {
-                    trace!("assertion on {:?} should be {:?}", value, expected);
-                    *cond = self.operand_from_scalar(value_const, self.tcx.types.bool);
-                }
-            }
-            TerminatorKind::SwitchInt { ref mut discr, .. } => {
-                // FIXME: This is currently redundant with `visit_operand`, but sadly
-                // always visiting operands currently causes a perf regression in LLVM codegen, so
-                // `visit_operand` currently only runs for propagates places for `mir_opt_level=4`.
-                self.propagate_operand(discr)
-            }
-            // None of these have Operands to const-propagate.
-            TerminatorKind::Goto { .. }
-            | TerminatorKind::Resume
-            | TerminatorKind::Terminate
-            | TerminatorKind::Return
-            | TerminatorKind::Unreachable
-            | TerminatorKind::Drop { .. }
-            | TerminatorKind::Yield { .. }
-            | TerminatorKind::GeneratorDrop
-            | TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::FalseUnwind { .. }
-            | TerminatorKind::InlineAsm { .. } => {}
-            // Every argument in our function calls have already been propagated in `visit_operand`.
-            //
-            // NOTE: because LLVM codegen gives slight performance regressions with it, so this is
-            // gated on `mir_opt_level=3`.
-            TerminatorKind::Call { .. } => {}
         }
     }
 
