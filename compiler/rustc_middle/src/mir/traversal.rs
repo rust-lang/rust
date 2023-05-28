@@ -149,7 +149,7 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
         //      B     C
         //      |     |
         //      |     |
-        //      D     |
+        //      |     D
         //       \   /
         //        \ /
         //         E
@@ -159,26 +159,26 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
         //
         // When the first call to `traverse_successor` happens, the following happens:
         //
-        //     [(B, [D]),  // `B` taken from the successors of `A`, pushed to the
-        //                 // top of the stack along with the successors of `B`
-        //      (A, [C])]
+        //     [(C, [D]),  // `C` taken from the successors of `A`, pushed to the
+        //                 // top of the stack along with the successors of `C`
+        //      (A, [B])]
         //
-        //     [(D, [E]),  // `D` taken from successors of `B`, pushed to stack
-        //      (B, []),
-        //      (A, [C])]
+        //     [(D, [E]),  // `D` taken from successors of `C`, pushed to stack
+        //      (C, []),
+        //      (A, [B])]
         //
         //     [(E, []),   // `E` taken from successors of `D`, pushed to stack
         //      (D, []),
-        //      (B, []),
-        //      (A, [C])]
+        //      (C, []),
+        //      (A, [B])]
         //
         // Now that the top of the stack has no successors we can traverse, each item will
-        // be popped off during iteration until we get back to `A`. This yields [E, D, B].
+        // be popped off during iteration until we get back to `A`. This yields [E, D, C].
         //
-        // When we yield `B` and call `traverse_successor`, we push `C` to the stack, but
+        // When we yield `C` and call `traverse_successor`, we push `B` to the stack, but
         // since we've already visited `E`, that child isn't added to the stack. The last
-        // two iterations yield `C` and finally `A` for a final traversal of [E, D, B, C, A]
-        while let Some(&mut (_, ref mut iter)) = self.visit_stack.last_mut() && let Some(bb) = iter.next() {
+        // two iterations yield `B` and finally `A` for a final traversal of [E, D, C, B, A]
+        while let Some(&mut (_, ref mut iter)) = self.visit_stack.last_mut() && let Some(bb) = iter.next_back() {
             if self.visited.insert(bb) {
                 if let Some(term) = &self.basic_blocks[bb].terminator {
                     self.visit_stack.push((bb, term.successors()));
