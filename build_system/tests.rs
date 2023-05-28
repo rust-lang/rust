@@ -125,11 +125,11 @@ pub(crate) static PORTABLE_SIMD_REPO: GitRepo = GitRepo::github(
 );
 
 pub(crate) static PORTABLE_SIMD: CargoProject =
-    CargoProject::new(&PORTABLE_SIMD_REPO.source_dir(), "portable_simd_target");
+    CargoProject::new(&PORTABLE_SIMD_REPO.source_dir(), "portable-simd_target");
 
-static LIBCORE_TESTS_SRC: RelPath = RelPath::BUILD.join("coretests_src");
+static LIBCORE_TESTS_SRC: RelPath = RelPath::BUILD.join("coretests");
 
-static LIBCORE_TESTS: CargoProject = CargoProject::new(&LIBCORE_TESTS_SRC, "core_tests");
+static LIBCORE_TESTS: CargoProject = CargoProject::new(&LIBCORE_TESTS_SRC, "coretests_target");
 
 const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
     TestCase::custom("test.rust-random/rand", &|runner| {
