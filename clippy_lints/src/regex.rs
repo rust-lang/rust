@@ -177,7 +177,7 @@ fn check_set<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, utf8: bool) {
 }
 
 fn check_regex<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, utf8: bool) {
-    let mut parser = regex_syntax::ParserBuilder::new().unicode(true).utf8(!utf8).build();
+    let mut parser = regex_syntax::ParserBuilder::new().unicode(true).utf8(utf8).build();
 
     if let ExprKind::Lit(lit) = expr.kind {
         if let LitKind::Str(ref r, style) = lit.node {
