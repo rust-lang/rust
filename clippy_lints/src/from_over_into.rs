@@ -134,9 +134,10 @@ impl<'a, 'tcx> Visitor<'tcx> for SelfFinder<'a, 'tcx> {
                 kw::SelfUpper => self.upper.push(segment.ident.span),
                 _ => continue,
             }
+
+            self.invalid |= segment.ident.span.from_expansion();
         }
 
-        self.invalid |= path.span.from_expansion();
         if !self.invalid {
             walk_path(self, path);
         }

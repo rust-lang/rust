@@ -3,14 +3,14 @@
 struct InMacro(String);
 
 macro_rules! in_macro {
-    ($e:ident) => {
-        $e
+    () => {
+        Self::new()
     };
 }
 
 impl Into<InMacro> for String {
     fn into(self) -> InMacro {
-        InMacro(in_macro!(self))
+        InMacro(in_macro!())
     }
 }
 

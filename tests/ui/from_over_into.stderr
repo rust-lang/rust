@@ -59,7 +59,21 @@ LL ~         val.0
    |
 
 error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
-  --> $DIR/from_over_into.rs:78:5
+  --> $DIR/from_over_into.rs:65:1
+   |
+LL | impl Into<String> for PathInExpansion {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `impl From<Local> for Foreign` is allowed by the orphan rules, for more information see
+           https://doc.rust-lang.org/reference/items/implementations.html#trait-implementation-coherence
+help: replace the `Into` implementation with `From<PathInExpansion>`
+   |
+LL ~ impl From<PathInExpansion> for String {
+LL ~     fn from(val: PathInExpansion) -> Self {
+   |
+
+error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
+  --> $DIR/from_over_into.rs:87:5
    |
 LL |     impl<T> Into<FromOverInto<T>> for Vec<T> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -71,5 +85,5 @@ LL ~         fn from(val: Vec<T>) -> Self {
 LL ~             FromOverInto(val)
    |
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 
