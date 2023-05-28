@@ -6,7 +6,6 @@ use std::process::Command;
 use super::build_sysroot::{BUILD_SYSROOT, ORIG_BUILD_SYSROOT, SYSROOT_RUSTC_VERSION, SYSROOT_SRC};
 use super::path::{Dirs, RelPath};
 use super::rustc_info::{get_default_sysroot, get_rustc_version};
-use super::tests::LIBCORE_TESTS_SRC;
 use super::utils::{
     copy_dir_recursively, git_command, remove_dir_if_exists, retry_spawn_and_wait, spawn_and_wait,
 };
@@ -19,7 +18,6 @@ pub(crate) fn prepare(dirs: &Dirs, rustc: &Path) {
 
     // FIXME do this on the fly?
     prepare_stdlib(dirs, rustc);
-    prepare_coretests(dirs, rustc);
 
     super::tests::RAND_REPO.patch(dirs);
     super::tests::REGEX_REPO.patch(dirs);
@@ -42,19 +40,6 @@ fn prepare_stdlib(dirs: &Dirs, rustc: &Path) {
 
     let rustc_version = get_rustc_version(rustc);
     fs::write(SYSROOT_RUSTC_VERSION.to_path(dirs), &rustc_version).unwrap();
-}
-
-fn prepare_coretests(dirs: &Dirs, rustc: &Path) {
-    let sysroot_src_orig = get_default_sysroot(rustc).join("lib/rustlib/src/rust");
-    assert!(sysroot_src_orig.exists());
-
-    // FIXME ensure builds error out or update the copy if any of the files copied here change
-    apply_patches(
-        dirs,
-        "coretests",
-        &sysroot_src_orig.join("library/core/tests"),
-        &LIBCORE_TESTS_SRC.to_path(dirs),
-    );
 }
 
 pub(crate) struct GitRepo {
@@ -263,7 +248,7 @@ fn get_patches(dirs: &Dirs, crate_name: &str) -> Vec<PathBuf> {
     patches
 }
 
-fn apply_patches(dirs: &Dirs, crate_name: &str, source_dir: &Path, target_dir: &Path) {
+pub(crate) fn apply_patches(dirs: &Dirs, crate_name: &str, source_dir: &Path, target_dir: &Path) {
     // FIXME avoid copy and patch if src, patches and target are unchanged
 
     remove_dir_if_exists(target_dir);

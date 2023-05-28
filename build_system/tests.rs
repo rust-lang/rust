@@ -1,12 +1,14 @@
 use super::build_sysroot;
 use super::config;
 use super::path::{Dirs, RelPath};
-use super::prepare::GitRepo;
+use super::prepare::{apply_patches, GitRepo};
+use super::rustc_info::get_default_sysroot;
 use super::utils::{spawn_and_wait, spawn_and_wait_with_input, CargoProject, Compiler};
 use super::{CodegenBackend, SysrootKind};
 use std::env;
 use std::ffi::OsStr;
 use std::fs;
+use std::path::PathBuf;
 use std::process::Command;
 
 static BUILD_EXAMPLE_OUT_DIR: RelPath = RelPath::BUILD.join("example");
@@ -125,9 +127,9 @@ pub(crate) static PORTABLE_SIMD_REPO: GitRepo = GitRepo::github(
 pub(crate) static PORTABLE_SIMD: CargoProject =
     CargoProject::new(&PORTABLE_SIMD_REPO.source_dir(), "portable_simd_target");
 
-pub(crate) static LIBCORE_TESTS_SRC: RelPath = RelPath::BUILD.join("coretests_src");
+static LIBCORE_TESTS_SRC: RelPath = RelPath::BUILD.join("coretests_src");
 
-pub(crate) static LIBCORE_TESTS: CargoProject = CargoProject::new(&LIBCORE_TESTS_SRC, "core_tests");
+static LIBCORE_TESTS: CargoProject = CargoProject::new(&LIBCORE_TESTS_SRC, "core_tests");
 
 const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
     TestCase::custom("test.rust-random/rand", &|runner| {
@@ -145,6 +147,13 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
         }
     }),
     TestCase::custom("test.libcore", &|runner| {
+        apply_patches(
+            &runner.dirs,
+            "coretests",
+            &runner.stdlib_source.join("library/core/tests"),
+            &LIBCORE_TESTS_SRC.to_path(&runner.dirs),
+        );
+
         LIBCORE_TESTS.clean(&runner.dirs);
 
         if runner.is_native {
@@ -231,6 +240,10 @@ pub(crate) fn run_tests(
     rustup_toolchain_name: Option<&str>,
     target_triple: String,
 ) {
+    let stdlib_source =
+        get_default_sysroot(&bootstrap_host_compiler.rustc).join("lib/rustlib/src/rust");
+    assert!(stdlib_source.exists());
+
     if config::get_bool("testsuite.no_sysroot") {
         let target_compiler = build_sysroot::build_sysroot(
             dirs,
@@ -247,6 +260,7 @@ pub(crate) fn run_tests(
             target_compiler,
             use_unstable_features,
             bootstrap_host_compiler.triple == target_triple,
+            stdlib_source.clone(),
         );
 
         BUILD_EXAMPLE_OUT_DIR.ensure_fresh(dirs);
@@ -277,6 +291,7 @@ pub(crate) fn run_tests(
             target_compiler,
             use_unstable_features,
             bootstrap_host_compiler.triple == target_triple,
+            stdlib_source,
         );
 
         if run_base_sysroot {
@@ -299,6 +314,7 @@ struct TestRunner {
     use_unstable_features: bool,
     dirs: Dirs,
     target_compiler: Compiler,
+    stdlib_source: PathBuf,
 }
 
 impl TestRunner {
@@ -307,6 +323,7 @@ impl TestRunner {
         mut target_compiler: Compiler,
         use_unstable_features: bool,
         is_native: bool,
+        stdlib_source: PathBuf,
     ) -> Self {
         if let Ok(rustflags) = env::var("RUSTFLAGS") {
             target_compiler.rustflags.push(' ');
@@ -327,7 +344,14 @@ impl TestRunner {
             && target_compiler.triple.contains("x86_64")
             && !target_compiler.triple.contains("windows");
 
-        Self { is_native, jit_supported, use_unstable_features, dirs, target_compiler }
+        Self {
+            is_native,
+            jit_supported,
+            use_unstable_features,
+            dirs,
+            target_compiler,
+            stdlib_source,
+        }
     }
 
     fn run_testsuite(&self, tests: &[TestCase]) {
