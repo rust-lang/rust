@@ -1,6 +1,7 @@
 pub use super::*;
 
-use crate::{CallReturnPlaces, GenKill, ResultsClonedCursor};
+use crate::impls::{BorrowedLocalsResults, BorrowedLocalsResultsCursor};
+use crate::{CallReturnPlaces, GenKill};
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use std::borrow::Cow;
@@ -146,28 +147,26 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeStorageDead {
     }
 }
 
-type BorrowedLocalsResults<'res, 'mir, 'tcx> =
-    ResultsClonedCursor<'res, 'mir, 'tcx, MaybeBorrowedLocals>;
-
 /// Dataflow analysis that determines whether each local requires storage at a
 /// given location; i.e. whether its storage can go away without being observed.
-pub struct MaybeRequiresStorage<'res, 'mir, 'tcx> {
-    borrowed_locals: BorrowedLocalsResults<'res, 'mir, 'tcx>,
+pub struct MaybeRequiresStorage<'a, 'mir, 'tcx> {
+    body: &'mir Body<'tcx>,
+    borrowed_locals: RefCell<BorrowedLocalsResultsCursor<'a, 'mir, 'tcx>>,
 }
 
-impl<'res, 'mir, 'tcx> MaybeRequiresStorage<'res, 'mir, 'tcx> {
-    pub fn new(borrowed_locals: BorrowedLocalsResults<'res, 'mir, 'tcx>) -> Self {
-        MaybeRequiresStorage { borrowed_locals }
+impl<'a, 'mir, 'tcx> MaybeRequiresStorage<'a, 'mir, 'tcx> {
+    pub fn new(
+        body: &'mir Body<'tcx>,
+        borrowed_locals: &'a BorrowedLocalsResults<'mir, 'tcx>,
+    ) -> Self {
+        MaybeRequiresStorage {
+            body,
+            borrowed_locals: RefCell::new(BorrowedLocalsResultsCursor::new(body, borrowed_locals)),
+        }
     }
 }
 
-impl crate::CloneAnalysis for MaybeRequiresStorage<'_, '_, '_> {
-    fn clone_analysis(&self) -> Self {
-        Self { borrowed_locals: self.borrowed_locals.new_cursor() }
-    }
-}
-
-impl<'tcx> crate::AnalysisDomain<'tcx> for MaybeRequiresStorage<'_, '_, 'tcx> {
+impl<'a, 'mir, 'tcx> crate::AnalysisDomain<'tcx> for MaybeRequiresStorage<'a, 'mir, 'tcx> {
     type Domain = BitSet<Local>;
 
     const NAME: &'static str = "requires_storage";
@@ -186,7 +185,7 @@ impl<'tcx> crate::AnalysisDomain<'tcx> for MaybeRequiresStorage<'_, '_, 'tcx> {
     }
 }
 
-impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, '_, 'tcx> {
+impl<'a, 'mir, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'a, 'mir, 'tcx> {
     type Idx = Local;
 
     fn before_statement_effect(
@@ -196,7 +195,13 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, '_, 'tcx> {
         loc: Location,
     ) {
         // If a place is borrowed in a statement, it needs storage for that statement.
-        self.borrowed_locals.mut_analysis().statement_effect(trans, stmt, loc);
+        let borrowed_locals_at_loc = self.borrowed_locals.borrow_mut().get(loc);
+        for i in 0..self.body.local_decls().len() {
+            let local = Local::from_usize(i);
+            if borrowed_locals_at_loc.contains(local) {
+                trans.gen(local);
+            }
+        }
 
         match &stmt.kind {
             StatementKind::StorageDead(l) => trans.kill(*l),
@@ -239,8 +244,14 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, '_, 'tcx> {
         terminator: &mir::Terminator<'tcx>,
         loc: Location,
     ) {
-        // If a place is borrowed in a terminator, it needs storage for that terminator.
-        self.borrowed_locals.mut_analysis().terminator_effect(trans, terminator, loc);
+        // If a place is borrowed in a statement, it needs storage for that statement.
+        let borrowed_locals_at_loc = self.borrowed_locals.borrow_mut().get(loc);
+        for i in 0..self.body.local_decls().len() {
+            let local = Local::from_usize(i);
+            if borrowed_locals_at_loc.contains(local) {
+                trans.gen(local);
+            }
+        }
 
         match &terminator.kind {
             TerminatorKind::Call { destination, .. } => {
@@ -344,7 +355,7 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, '_, 'tcx> {
     }
 }
 
-impl<'tcx> MaybeRequiresStorage<'_, '_, 'tcx> {
+impl<'a, 'mir, 'tcx> MaybeRequiresStorage<'a, 'mir, 'tcx> {
     /// Kill locals that are fully moved and have not been borrowed.
     fn check_for_move(&mut self, trans: &mut impl GenKill<Local>, loc: Location) {
         let body = self.borrowed_locals.body();
@@ -353,19 +364,21 @@ impl<'tcx> MaybeRequiresStorage<'_, '_, 'tcx> {
     }
 }
 
-struct MoveVisitor<'a, 'res, 'mir, 'tcx, T> {
-    borrowed_locals: &'a mut BorrowedLocalsResults<'res, 'mir, 'tcx>,
+struct MoveVisitor<'a, 'b, 'mir, 'tcx, T> {
+    borrowed_locals: &'a RefCell<BorrowedLocalsResultsCursor<'b, 'mir, 'tcx>>,
     trans: &'a mut T,
 }
 
-impl<'tcx, T> Visitor<'tcx> for MoveVisitor<'_, '_, '_, 'tcx, T>
+impl<'a, 'b, 'mir, 'tcx, T> Visitor<'tcx> for MoveVisitor<'a, 'b, 'mir, 'tcx, T>
 where
     T: GenKill<Local>,
 {
+    #[instrument(skip(self), level = "debug")]
     fn visit_local(&mut self, local: Local, context: PlaceContext, loc: Location) {
         if PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) == context {
-            self.borrowed_locals.seek_before_primary_effect(loc);
-            if !self.borrowed_locals.contains(local) {
+            let borrowed_locals = self.borrowed_locals.borrow_mut().get(loc);
+            debug!(?borrowed_locals);
+            if !borrowed_locals.contains(local) {
                 self.trans.kill(local);
             }
         }
