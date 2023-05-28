@@ -69,7 +69,7 @@ LL | fn assert_send(_: impl Send) {}
    |                        ^^^^ required by this bound in `assert_send`
 
 error: future cannot be sent between threads safely
-  --> $DIR/async-fn-nonsend.rs:76:17
+  --> $DIR/async-fn-nonsend.rs:77:17
    |
 LL |     assert_send(non_sync_with_method_call_panic());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ future returned by `non_sync_with_method_call_panic` is not `Send`
@@ -93,7 +93,7 @@ LL | fn assert_send(_: impl Send) {}
    |                        ^^^^ required by this bound in `assert_send`
 
 error: future cannot be sent between threads safely
-  --> $DIR/async-fn-nonsend.rs:78:17
+  --> $DIR/async-fn-nonsend.rs:79:17
    |
 LL |     assert_send(non_sync_with_method_call_infinite_loop());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ future returned by `non_sync_with_method_call_infinite_loop` is not `Send`
