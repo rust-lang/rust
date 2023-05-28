@@ -7,7 +7,7 @@ pub fn target() -> Target {
     base.vendor = "pc".into();
     base.max_atomic_width = Some(64);
     base.stack_probes = StackProbeType::X86;
-    base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::CFI;
+    base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::CFI | SanitizerSet::THREAD;
 
     Target {
         llvm_target: "x86_64-pc-solaris".into(),
