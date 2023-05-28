@@ -568,7 +568,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
         let layout = tcx.generator_layout(def_id).unwrap();
         layout.variant_fields.iter().map(move |variant| {
             variant.iter().map(move |field| {
-                ty::EarlyBinder(layout.field_tys[*field].ty).subst(tcx, self.substs)
+                ty::EarlyBinder::new(layout.field_tys[*field].ty).subst(tcx, self.substs)
             })
         })
     }
@@ -2366,7 +2366,7 @@ impl<'tcx> Ty<'tcx> {
 
             ty::Tuple(tys) => tys.iter().all(|ty| ty.is_trivially_sized(tcx)),
 
-            ty::Adt(def, _substs) => def.sized_constraint(tcx).0.is_empty(),
+            ty::Adt(def, _substs) => def.sized_constraint(tcx).skip_binder().is_empty(),
 
             ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) => false,
 
