@@ -695,7 +695,7 @@ pub trait BuildHasher {
     ///     bh.hash_one(&OrderAmbivalentPair(2, 10))
     /// );
     /// ```
-    #[stable(feature = "build_hasher_simple_hash_one", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "build_hasher_simple_hash_one", since = "1.71.0")]
     fn hash_one<T: Hash>(&self, x: T) -> u64
     where
         Self: Sized,
