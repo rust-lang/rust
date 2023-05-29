@@ -4,6 +4,7 @@
 use either::Right;
 
 use rustc_const_eval::const_eval::CheckAlignment;
+use rustc_const_eval::ReportErrorExt;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
@@ -378,7 +379,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 op
             }
             Err(e) => {
-                trace!("get_const failed: {:?}", e.debug());
+                trace!("get_const failed: {:?}", e.into_kind().debug());
                 return None;
             }
         };
