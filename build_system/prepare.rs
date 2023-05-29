@@ -3,7 +3,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use super::build_sysroot::{ORIG_BUILD_SYSROOT, STDLIB_SRC, SYSROOT_RUSTC_VERSION};
+use super::build_sysroot::{STDLIB_SRC, SYSROOT_RUSTC_VERSION};
 use super::path::{Dirs, RelPath};
 use super::rustc_info::{get_default_sysroot, get_rustc_version};
 use super::utils::{
@@ -25,9 +25,6 @@ fn prepare_stdlib(dirs: &Dirs, rustc: &Path) {
     assert!(sysroot_src_orig.exists());
 
     apply_patches(dirs, "stdlib", &sysroot_src_orig, &STDLIB_SRC.to_path(dirs));
-
-    // FIXME ensure builds error out or update the copy if any of the files copied here change
-    copy_dir_recursively(&ORIG_BUILD_SYSROOT.to_path(dirs), &STDLIB_SRC.to_path(dirs));
 
     std::fs::write(
         STDLIB_SRC.to_path(dirs).join("Cargo.toml"),
@@ -296,5 +293,13 @@ pub(crate) fn apply_patches(dirs: &Dirs, crate_name: &str, source_dir: &Path, ta
         let mut apply_patch_cmd = git_command(target_dir, "am");
         apply_patch_cmd.arg(patch).arg("-q");
         spawn_and_wait(apply_patch_cmd);
+    }
+
+    let source_lockfile = RelPath::PATCHES.to_path(dirs).join(format!("{crate_name}-lock.toml"));
+    let target_lockfile = target_dir.join("Cargo.lock");
+    if source_lockfile.exists() {
+        fs::copy(source_lockfile, target_lockfile).unwrap();
+    } else {
+        assert!(target_lockfile.exists());
     }
 }

@@ -155,7 +155,6 @@ impl SysrootTarget {
     }
 }
 
-pub(crate) static ORIG_BUILD_SYSROOT: RelPath = RelPath::SOURCE.join("build_sysroot");
 pub(crate) static STDLIB_SRC: RelPath = RelPath::BUILD.join("stdlib");
 pub(crate) static SYSROOT_RUSTC_VERSION: RelPath = STDLIB_SRC.join("rustc_version");
 pub(crate) static STANDARD_LIBRARY: CargoProject =
@@ -277,7 +276,6 @@ fn build_clif_sysroot_for_triple(
         build_cmd.arg("--release");
     }
     build_cmd.arg("--features").arg("compiler-builtins-no-asm backtrace panic-unwind");
-    build_cmd.arg("--locked");
     build_cmd.env("__CARGO_DEFAULT_LIB_METADATA", "cg_clif");
     if compiler.triple.contains("apple") {
         build_cmd.env("CARGO_PROFILE_RELEASE_SPLIT_DEBUGINFO", "packed");

@@ -81,7 +81,8 @@ impl CargoProject {
             .arg("--manifest-path")
             .arg(self.manifest_path(dirs))
             .arg("--target-dir")
-            .arg(self.target_dir(dirs));
+            .arg(self.target_dir(dirs))
+            .arg("--locked");
 
         if dirs.frozen {
             cmd.arg("--frozen");
