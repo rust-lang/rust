@@ -1019,6 +1019,7 @@ impl Config {
         //
         //
         
+        
         config.changelog_seen = toml.changelog_seen;
 
         let build = toml.build.unwrap_or_default();
