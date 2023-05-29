@@ -3,7 +3,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use super::build_sysroot::{BUILD_SYSROOT, ORIG_BUILD_SYSROOT, SYSROOT_RUSTC_VERSION, SYSROOT_SRC};
+use super::build_sysroot::{ORIG_BUILD_SYSROOT, STDLIB_SRC, SYSROOT_RUSTC_VERSION};
 use super::path::{Dirs, RelPath};
 use super::rustc_info::{get_default_sysroot, get_rustc_version};
 use super::utils::{
@@ -28,15 +28,10 @@ fn prepare_stdlib(dirs: &Dirs, rustc: &Path) {
     let sysroot_src_orig = get_default_sysroot(rustc).join("lib/rustlib/src/rust");
     assert!(sysroot_src_orig.exists());
 
-    eprintln!("[COPY] stdlib src");
+    apply_patches(dirs, "stdlib", &sysroot_src_orig, &STDLIB_SRC.to_path(dirs));
 
     // FIXME ensure builds error out or update the copy if any of the files copied here change
-    BUILD_SYSROOT.ensure_fresh(dirs);
-    copy_dir_recursively(&ORIG_BUILD_SYSROOT.to_path(dirs), &BUILD_SYSROOT.to_path(dirs));
-
-    fs::create_dir_all(SYSROOT_SRC.to_path(dirs).join("library")).unwrap();
-
-    apply_patches(dirs, "stdlib", &sysroot_src_orig, &SYSROOT_SRC.to_path(dirs));
+    copy_dir_recursively(&ORIG_BUILD_SYSROOT.to_path(dirs), &STDLIB_SRC.to_path(dirs));
 
     let rustc_version = get_rustc_version(rustc);
     fs::write(SYSROOT_RUSTC_VERSION.to_path(dirs), &rustc_version).unwrap();
@@ -250,6 +245,8 @@ fn get_patches(dirs: &Dirs, crate_name: &str) -> Vec<PathBuf> {
 
 pub(crate) fn apply_patches(dirs: &Dirs, crate_name: &str, source_dir: &Path, target_dir: &Path) {
     // FIXME avoid copy and patch if src, patches and target are unchanged
+
+    eprintln!("[COPY] {crate_name} source");
 
     remove_dir_if_exists(target_dir);
     fs::create_dir_all(target_dir).unwrap();

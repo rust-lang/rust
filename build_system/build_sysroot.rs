@@ -156,11 +156,10 @@ impl SysrootTarget {
 }
 
 pub(crate) static ORIG_BUILD_SYSROOT: RelPath = RelPath::SOURCE.join("build_sysroot");
-pub(crate) static BUILD_SYSROOT: RelPath = RelPath::BUILD.join("sysroot");
-pub(crate) static SYSROOT_RUSTC_VERSION: RelPath = BUILD_SYSROOT.join("rustc_version");
-pub(crate) static SYSROOT_SRC: RelPath = BUILD_SYSROOT.join("sysroot_src");
+pub(crate) static STDLIB_SRC: RelPath = RelPath::BUILD.join("stdlib");
+pub(crate) static SYSROOT_RUSTC_VERSION: RelPath = STDLIB_SRC.join("rustc_version");
 pub(crate) static STANDARD_LIBRARY: CargoProject =
-    CargoProject::new(&BUILD_SYSROOT, "build_sysroot");
+    CargoProject::new(&STDLIB_SRC.join("library/sysroot"), "stdlib_target");
 pub(crate) static RTSTARTUP_SYSROOT: RelPath = RelPath::BUILD.join("rtstartup");
 
 #[must_use]
@@ -277,7 +276,7 @@ fn build_clif_sysroot_for_triple(
     if channel == "release" {
         build_cmd.arg("--release");
     }
-    build_cmd.arg("--features").arg("std/compiler-builtins-no-asm");
+    build_cmd.arg("--features").arg("compiler-builtins-no-asm backtrace panic-unwind");
     build_cmd.arg("--locked");
     build_cmd.env("__CARGO_DEFAULT_LIB_METADATA", "cg_clif");
     if compiler.triple.contains("apple") {
@@ -307,7 +306,7 @@ fn build_rtstartup(dirs: &Dirs, compiler: &Compiler) -> Option<SysrootTarget> {
 
     RTSTARTUP_SYSROOT.ensure_fresh(dirs);
 
-    let rtstartup_src = SYSROOT_SRC.to_path(dirs).join("library").join("rtstartup");
+    let rtstartup_src = STDLIB_SRC.to_path(dirs).join("library").join("rtstartup");
     let mut target_libs = SysrootTarget { triple: compiler.triple.clone(), libs: vec![] };
 
     for file in ["rsbegin", "rsend"] {
