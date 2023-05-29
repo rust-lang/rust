@@ -828,6 +828,7 @@ fn univariant(
     if optimize && fields.len() > 1 {
         let end = if let StructKind::MaybeUnsized = kind { fields.len() - 1 } else { fields.len() };
         let optimizing = &mut inverse_memory_index.raw[..end];
+        let fields_excluding_tail = &fields.raw[..end];
 
         // If `-Z randomize-layout` was enabled for the type definition we can shuffle
         // the field ordering to try and catch some code making assumptions about layouts
@@ -844,8 +845,11 @@ fn univariant(
             }
             // Otherwise we just leave things alone and actually optimize the type's fields
         } else {
-            let max_field_align = fields.iter().map(|f| f.align().abi.bytes()).max().unwrap_or(1);
-            let largest_niche_size = fields
+            // To allow unsizing `&Foo<Type>` -> `&Foo<dyn Trait>`, the layout of the struct must
+            // not depend on the layout of the tail.
+            let max_field_align =
+                fields_excluding_tail.iter().map(|f| f.align().abi.bytes()).max().unwrap_or(1);
+            let largest_niche_size = fields_excluding_tail
                 .iter()
                 .filter_map(|f| f.largest_niche())
                 .map(|n| n.available(dl))
