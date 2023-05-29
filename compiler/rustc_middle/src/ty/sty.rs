@@ -568,7 +568,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
         let layout = tcx.generator_layout(def_id).unwrap();
         layout.variant_fields.iter().map(move |variant| {
             variant.iter().map(move |field| {
-                ty::EarlyBinder::new(layout.field_tys[*field].ty).subst(tcx, self.substs)
+                ty::EarlyBinder::bind(layout.field_tys[*field].ty).subst(tcx, self.substs)
             })
         })
     }

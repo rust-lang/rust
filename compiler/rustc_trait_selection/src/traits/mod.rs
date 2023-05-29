@@ -487,7 +487,7 @@ fn is_impossible_method(tcx: TyCtxt<'_>, (impl_def_id, trait_item_def_id): (DefI
                 tcx,
                 ObligationCause::dummy_with_span(*span),
                 param_env,
-                ty::EarlyBinder::new(*pred).subst(tcx, impl_trait_ref.substs),
+                ty::EarlyBinder::bind(*pred).subst(tcx, impl_trait_ref.substs),
             )
         })
     });

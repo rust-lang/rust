@@ -476,7 +476,7 @@ impl<'tcx> Body<'tcx> {
     /// Returns the return type; it always return first element from `local_decls` array.
     #[inline]
     pub fn bound_return_ty(&self) -> ty::EarlyBinder<Ty<'tcx>> {
-        ty::EarlyBinder::new(self.local_decls[RETURN_PLACE].ty)
+        ty::EarlyBinder::bind(self.local_decls[RETURN_PLACE].ty)
     }
 
     /// Gets the location of the terminator for the given block.

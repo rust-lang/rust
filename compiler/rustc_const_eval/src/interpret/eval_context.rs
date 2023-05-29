@@ -497,7 +497,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .try_subst_mir_and_normalize_erasing_regions(
                 *self.tcx,
                 self.param_env,
-                ty::EarlyBinder::new(value),
+                ty::EarlyBinder::bind(value),
             )
             .map_err(|_| err_inval!(TooGeneric))
     }
