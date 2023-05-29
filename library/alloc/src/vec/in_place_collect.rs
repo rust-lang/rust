@@ -267,10 +267,20 @@ where
         {
             let alloc = Global;
             unsafe {
-                let new_layout = Layout::array::<T>(dst_cap).unwrap();
+                // The old allocation exists, therefore it must have a valid layout.
+                let src_align = mem::align_of::<I::Src>();
+                let src_size = mem::size_of::<I::Src>().unchecked_mul(src_cap);
+                let old_layout = Layout::from_size_align_unchecked(src_size, src_align);
+
+                // The must be equal or smaller for in-place iteration to be possible
+                // therefore the new layout must be ≤ the old one and therefore valid.
+                let dst_align = mem::align_of::<T>();
+                let dst_size = mem::size_of::<T>().unchecked_mul(dst_cap);
+                let new_layout = Layout::from_size_align_unchecked(dst_size, dst_align);
+
                 let result = alloc.shrink(
                     NonNull::new_unchecked(dst_buf as *mut u8),
-                    Layout::array::<I::Src>(src_cap).unwrap(),
+                    old_layout,
                     new_layout,
                 );
                 let Ok(reallocated) = result else { handle_alloc_error(new_layout) };
