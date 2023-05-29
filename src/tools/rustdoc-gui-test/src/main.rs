@@ -143,6 +143,16 @@ If you want to install the `browser-ui-test` dependency, run `npm install browse
     }
 
     let mut command = Command::new(&config.nodejs);
+
+    if let Ok(current_dir) = env::current_dir() {
+        let local_node_modules = current_dir.join("node_modules");
+        if local_node_modules.exists() {
+            // Link the local node_modules if exists.
+            // This is useful when we run rustdoc-gui-test from outside of the source root.
+            env::set_var("NODE_PATH", local_node_modules);
+        }
+    }
+
     command
         .arg(config.rust_src.join("src/tools/rustdoc-gui/tester.js"))
         .arg("--jobs")
