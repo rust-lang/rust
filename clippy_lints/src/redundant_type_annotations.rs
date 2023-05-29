@@ -13,6 +13,14 @@ declare_clippy_lint! {
     /// Code without type annotations is shorter and in most cases
     /// more idiomatic and easier to modify.
     ///
+    /// ### Limitations
+    /// This lint doesn't support:
+    ///
+    /// - Generics
+    /// - Refs returned from anything else than a `MethodCall`
+    /// - Complex types (tuples, arrays, etc...)
+    /// - `Path` to anything else than a primitive type.
+    ///
     /// ### Example
     /// ```rust
     /// let foo: String = String::new();
