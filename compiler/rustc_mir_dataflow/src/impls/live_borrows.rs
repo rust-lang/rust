@@ -26,22 +26,25 @@ use either::Either;
 
 #[derive(Copy, Clone, Debug)]
 enum NodeKind {
-    // An node corresponding to the place on the lhs of a statement like
-    // `_3 = Ref(_, _, _4)`
+    // An node corresponding to the place of the borrowed place (`_4` in this case) in
+    // an assignment like `_3 = Ref(_, _, _4)`.
     Borrow(Local),
 
     // Nodes corresponding to the place on the lhs of a statement like
     // `_2 = Aggregate(Adt(..), _, _, _, _), [move _3, move _6])`,
-    // where _3 and _6 are places corresponding to references or raw pointers
-    // or locals that are borrowed (`_2 = Ref(..)`).
-    LocalOrLocalWithRefs(Local),
+    // where _3 and _6 are places corresponding to references or raw pointers.
+    LocalWithRefs(Local),
+
+    // Nodes corresponding to the place on the lhs of an assignment like `_2 = Ref(..)`.
+    Local(Local),
 }
 
 impl NodeKind {
     fn get_local(&self) -> Local {
         match self {
             Self::Borrow(local) => *local,
-            Self::LocalOrLocalWithRefs(local) => *local,
+            Self::LocalWithRefs(local) => *local,
+            Self::Local(local) => *local,
         }
     }
 }
@@ -103,9 +106,8 @@ struct BorrowDependencies<'a, 'tcx> {
     // liveness analysis.
     dep_graph: Graph<NodeKind, ()>,
 
-    // Contains the `NodeIndex` corresponding to the local to which we're currently
-    // assigning.
-    current_local: Option<NodeIndex>,
+    // Contains the `Local` to which we're currently assigning.
+    current_local: Option<Local>,
 }
 
 impl<'a, 'tcx> BorrowDependencies<'a, 'tcx> {
@@ -122,6 +124,17 @@ impl<'a, 'tcx> BorrowDependencies<'a, 'tcx> {
             locals_to_node_indexes: Default::default(),
         }
     }
+
+    fn maybe_create_node(&mut self, node_kind: NodeKind) -> NodeIndex {
+        let local = node_kind.get_local();
+        if let Some(node_idx) = self.locals_to_node_indexes.get(&local) {
+            *node_idx
+        } else {
+            let node_idx = self.dep_graph.add_node(node_kind);
+            self.locals_to_node_indexes.insert(local, node_idx);
+            node_idx
+        }
+    }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for BorrowDependencies<'a, 'tcx> {
@@ -130,7 +143,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BorrowDependencies<'a, 'tcx> {
         // Add nodes for the arguments
         for i in 1..=body.arg_count {
             let local = Local::from_usize(i);
-            let node_kind = NodeKind::LocalOrLocalWithRefs(local);
+            let node_kind = NodeKind::Local(local);
             let node_idx = self.dep_graph.add_node(node_kind);
             self.locals_to_node_indexes.insert(local, node_idx);
         }
@@ -144,20 +157,8 @@ impl<'a, 'tcx> Visitor<'tcx> for BorrowDependencies<'a, 'tcx> {
             StatementKind::Assign(assign) => {
                 let assign_place = assign.0;
                 let assign_local = assign_place.local;
-
-                let node_kind = match assign_place.ty(self.local_decls, self.tcx).ty.kind() {
-                    ty::Ref(..) | ty::RawPtr(..) => NodeKind::Borrow(assign_local),
-                    _ => NodeKind::LocalOrLocalWithRefs(assign_local),
-                };
-
-                let node_idx = self.dep_graph.add_node(node_kind);
-                self.locals_to_node_indexes.insert(assign_local, node_idx);
-                self.current_local = Some(node_idx);
-
-                debug!(
-                    "set current_local to {:?} for local {:?}",
-                    self.current_local, assign_local
-                );
+                self.current_local = Some(assign_local);
+                debug!("set current_local to {:?}", self.current_local);
 
                 // Do not call `visit_place` here as this might introduce a self-edge, which our liveness analysis
                 // assumes not to exist.
@@ -178,18 +179,53 @@ impl<'a, 'tcx> Visitor<'tcx> for BorrowDependencies<'a, 'tcx> {
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         debug!("self.current_local: {:?}", self.current_local);
         match rvalue {
+            Rvalue::Use(Operand::Move(place) | Operand::Copy(place))
+                if matches!(
+                    place.ty(self.local_decls, self.tcx).ty.kind(),
+                    ty::Ref(..) | ty::RawPtr(..)
+                ) =>
+            {
+                // these are just re-assignments of already outstanding refs or pointers,
+                // hence we want to treat them as `NodeKind::Borrow`
+                // FIXME Are these always Operand::Copy or is Operand::Move also possible for refs/ptrs?
+                let Some(src_local) = self.current_local else {
+                        bug!("Expected self.current_local to be set with Rvalue::Ref|Rvalue::AddressOf");
+                    };
+
+                // These are just moves of refs/ptrs, hence `NodeKind::Borrow`.
+                let src_node_kind = NodeKind::Borrow(src_local);
+                let src_node_idx = self.maybe_create_node(src_node_kind);
+
+                let node_idx = if let Some(node_idx) = self.locals_to_node_indexes.get(&place.local)
+                {
+                    *node_idx
+                } else {
+                    bug!("should have added a node for the moved borrowed place before");
+                };
+
+                debug!(
+                    "adding edge from {:?}({:?}) -> {:?}({:?})",
+                    src_node_idx,
+                    self.dep_graph.node(src_node_idx).data,
+                    node_idx,
+                    self.dep_graph.node(node_idx).data,
+                );
+
+                self.dep_graph.add_edge(src_node_idx, node_idx, ());
+            }
             Rvalue::Ref(_, _, borrowed_place) | Rvalue::AddressOf(_, borrowed_place) => {
-                let Some(src_node_idx) = self.current_local else {
+                let Some(src_local) = self.current_local else {
                     bug!("Expected self.current_local to be set with Rvalue::Ref|Rvalue::AddressOf");
                 };
 
-                let borrowed_local = borrowed_place.local;
-                let node_idx =
-                    if let Some(node_idx) = self.locals_to_node_indexes.get(&borrowed_local) {
-                        *node_idx
-                    } else {
-                        self.dep_graph.add_node(NodeKind::Borrow(borrowed_place.local))
-                    };
+                // we're in a statement like `_4 = Ref(..)`, hence NodeKind::Borrow for `_4`
+                let src_node_kind = NodeKind::Borrow(src_local);
+                let src_node_idx = self.maybe_create_node(src_node_kind);
+
+                // If we haven't previously added a node for `borrowed_place.local` then it can be neither
+                // `NodeKind::Borrow` nor `NodeKind::LocalsWithRefs`.
+                let borrowed_node_kind = NodeKind::Local(borrowed_place.local);
+                let node_idx = self.maybe_create_node(borrowed_node_kind);
 
                 debug!(
                     "adding edge from {:?}({:?}) -> {:?}({:?})",
@@ -213,14 +249,16 @@ impl<'a, 'tcx> Visitor<'tcx> for BorrowDependencies<'a, 'tcx> {
         debug!("current local: {:?}", self.current_local);
         match place_ty.kind() {
             ty::Ref(..) | ty::RawPtr(..) => match self.current_local {
-                Some(src_node_idx) => {
-                    let borrowed_local = place.local;
-                    let node_idx =
-                        if let Some(node_idx) = self.locals_to_node_indexes.get(&borrowed_local) {
-                            *node_idx
-                        } else {
-                            self.dep_graph.add_node(NodeKind::Borrow(borrowed_local))
-                        };
+                Some(src_local) => {
+                    // If we haven't created a node for this before, then this must be a
+                    // `NodeKind::LocalWithRefs` as we would have handled the
+                    // other possible assignment case (`NodeKind::Local`) previously in
+                    // `visit_rvalue`.
+                    let src_node_kind = NodeKind::LocalWithRefs(src_local);
+                    let src_node_idx = self.maybe_create_node(src_node_kind);
+
+                    let borrowed_node_kind = NodeKind::Borrow(place.local);
+                    let node_idx = self.maybe_create_node(borrowed_node_kind);
 
                     debug!(
                         "adding edge from {:?}({:?}) -> {:?}({:?})",
@@ -268,13 +306,8 @@ impl<'a, 'tcx> Visitor<'tcx> for BorrowDependencies<'a, 'tcx> {
                         false
                     };
 
-                let node_idx =
-                    self.dep_graph.add_node(NodeKind::LocalOrLocalWithRefs(destination.local));
-                debug!("added local {:?} to graph with idx {:?}", destination.local, node_idx);
-                self.locals_to_node_indexes.insert(destination.local, node_idx);
-
                 if dest_might_include_refs_or_pointers {
-                    self.current_local = Some(node_idx);
+                    self.current_local = Some(destination.local);
                     debug!("self.current_local: {:?}", self.current_local);
                 }
 
@@ -286,10 +319,29 @@ impl<'a, 'tcx> Visitor<'tcx> for BorrowDependencies<'a, 'tcx> {
                 self.current_local = None;
             }
             TerminatorKind::Yield { resume_arg, value, .. } => {
-                let node_idx =
-                    self.dep_graph.add_node(NodeKind::LocalOrLocalWithRefs(resume_arg.local));
-                debug!("added local {:?} to graph with idx {:?}", resume_arg.local, node_idx);
-                self.locals_to_node_indexes.insert(resume_arg.local, node_idx);
+                let resume_arg_ty = resume_arg.ty(self.local_decls, self.tcx).ty;
+                debug!(?resume_arg_ty);
+
+                let mut has_refs_or_pointers_visitor = MaybeHasRefsOrPointersVisitor::new();
+                resume_arg_ty.visit_with(&mut has_refs_or_pointers_visitor);
+
+                let dest_might_include_refs_or_pointers =
+                    if has_refs_or_pointers_visitor.has_refs_or_pointers {
+                        true
+                    } else if has_refs_or_pointers_visitor.has_params {
+                        // if we pass in any references or raw pointers as arguments and the
+                        // return type includes type parameters, these type parameters could
+                        // refer to those refs/ptrs, so we have to be conservative here and possibly
+                        // include an edge.
+                        true
+                    } else {
+                        false
+                    };
+
+                if dest_might_include_refs_or_pointers {
+                    self.current_local = Some(resume_arg.local);
+                    debug!("self.current_local: {:?}", self.current_local);
+                }
 
                 self.super_operand(value, location);
             }
@@ -397,7 +449,7 @@ where
             // base node to keep alive
             vec![src_node.data.get_local()]
         } else {
-            if matches!(src_node.data, NodeKind::LocalOrLocalWithRefs(_)) {
+            if matches!(src_node.data, NodeKind::LocalWithRefs(_)) {
                 // These are locals that we need to keep alive, but that also contain
                 // successors in the graph since they contain other references/pointers.
                 locals_for_node.push(current_local);
@@ -577,7 +629,7 @@ where
                 match projection.as_slice() {
                     &[] | &[ProjectionElem::OpaqueCast(_)] => {
                         // If there aren't any projections or just an OpaqueCast we need to
-                        // kill the local if it's a ref or a pointer.
+                        // kill the local.
                         match lhs_place_ty.kind() {
                             ty::Ref(..) | ty::RawPtr(..) => {
                                 debug!("killing {:?}", lhs_place.local);
@@ -591,7 +643,7 @@ where
                         }
                     }
                     _ => {
-                        // With any other projection elements a projection of a local (of type ref/ptr)
+                        // With any other projection elements, a projection of a local (of type ref/ptr)
                         // is actually a use-site, but we handle this in the call to `visit_place`.
                         self.super_assign(&assign.0, &assign.1, location);
                     }
