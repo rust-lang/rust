@@ -137,7 +137,9 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
     #[instrument(level = "debug", skip(self), ret)]
     fn compute_external_query_constraints(&self) -> Result<ExternalConstraints<'tcx>, NoSolution> {
-        self.infcx.leak_check(ty::UniverseIndex::ROOT, None).map_err(|e| {
+        // We only check for leaks from universes which were entered inside
+        // of the query.
+        self.infcx.leak_check(self.max_input_universe, None).map_err(|e| {
             debug!(?e, "failed the leak check");
             NoSolution
         })?;
