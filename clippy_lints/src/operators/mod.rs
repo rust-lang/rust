@@ -314,7 +314,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.71.0"]
     pub IMPOSSIBLE_DOUBLE_CONST_COMPARISONS,
     correctness,
-    "default lint description"
+    "double comparisons that will never evaluate to `true`"
 }
 
 declare_clippy_lint! {
@@ -333,7 +333,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.71.0"]
     pub INEFFECTIVE_DOUBLE_CONST_COMPARISONS,
     correctness,
-    "default lint description"
+    "double comparisons where one of them can be removed"
 }
 
 declare_clippy_lint! {
