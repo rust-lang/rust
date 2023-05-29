@@ -1022,6 +1022,7 @@ impl Config {
             }
         }
         //
+        //
         
         config.changelog_seen = toml.changelog_seen;
 
