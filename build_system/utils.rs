@@ -258,3 +258,13 @@ pub(crate) fn is_ci() -> bool {
 pub(crate) fn is_ci_opt() -> bool {
     env::var("CI_OPT").is_ok()
 }
+
+pub(crate) fn maybe_incremental(cmd: &mut Command) {
+    if is_ci() || std::env::var("CARGO_BUILD_INCREMENTAL").map_or(false, |val| val == "false") {
+        // Disabling incr comp reduces cache size and incr comp doesn't save as much on CI anyway
+        cmd.env("CARGO_BUILD_INCREMENTAL", "false");
+    } else {
+        // Force incr comp even in release mode unless in CI or incremental builds are explicitly disabled
+        cmd.env("CARGO_BUILD_INCREMENTAL", "true");
+    }
+}

@@ -5,7 +5,7 @@ use std::process::{self, Command};
 use super::path::{Dirs, RelPath};
 use super::rustc_info::{get_file_name, get_rustc_version};
 use super::utils::{
-    is_ci, remove_dir_if_exists, spawn_and_wait, try_hard_link, CargoProject, Compiler,
+    maybe_incremental, remove_dir_if_exists, spawn_and_wait, try_hard_link, CargoProject, Compiler,
 };
 use super::{CodegenBackend, SysrootKind};
 
@@ -274,11 +274,7 @@ fn build_clif_sysroot_for_triple(
     }
     compiler.rustflags += &rustflags;
     let mut build_cmd = STANDARD_LIBRARY.build(&compiler, dirs);
-    build_cmd.env("CARGO_BUILD_INCREMENTAL", "true"); // Force incr comp even in release mode
-    if is_ci() {
-        // Disabling incr comp reduces cache size and incr comp doesn't save as much on CI anyway
-        build_cmd.env("CARGO_BUILD_INCREMENTAL", "false");
-    }
+    maybe_incremental(&mut build_cmd);
     if channel == "release" {
         build_cmd.arg("--release");
     }
