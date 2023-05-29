@@ -1,4 +1,4 @@
-# These defaults are meant for users and distro maintainers building from source, without intending to make multiple changes.
+# These defaults are meant for dist and distro maintainers building from source, without intending to make multiple changes.
 [build]
 # When compiling from source, you almost always want a full stage 2 build,
 # which has all the latest optimizations from nightly.

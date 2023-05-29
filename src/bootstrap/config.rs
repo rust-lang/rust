@@ -997,10 +997,31 @@ impl Config {
             include_path.push("bootstrap");
             include_path.push("defaults");
             include_path.push(format!("config.{}.toml", include));
-            let included_toml = get_toml(&include_path);
-            toml.merge(included_toml);
+        
+            // Check if an alias TOML file exists
+            let alias_path = format!("config.{}.alias.toml", include);
+            let alias_toml = get_toml(&alias_path);
+        
+            // Check if the "dist" or "user" alias TOML files exist
+            let dist_alias_path = format!("config.dist.alias.toml");
+            let dist_alias_toml = get_toml(&dist_alias_path);
+        
+            let user_alias_path = format!("config.user.alias.toml");
+            let user_alias_toml = get_toml(&user_alias_path);
+        
+            // Merge the alias TOML if it exists, or the "dist" or "user" alias TOML
+            if alias_toml.is_some() {
+                toml.merge(alias_toml.unwrap());
+            } else if dist_alias_toml.is_some() {
+                toml.merge(dist_alias_toml.unwrap());
+            } else if user_alias_toml.is_some() {
+                toml.merge(user_alias_toml.unwrap());
+            } else {
+                let included_toml = get_toml(&include_path);
+                toml.merge(included_toml);
+            }
         }
-
+        
         config.changelog_seen = toml.changelog_seen;
 
         let build = toml.build.unwrap_or_default();

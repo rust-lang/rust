@@ -20,7 +20,7 @@ pub enum Profile {
     Codegen,
     Library,
     Tools,
-    User,
+    Dist,
     None,
 }
 
