@@ -1,8 +1,8 @@
 <pre class="rust item-decl"><code>
-    {{ self.render_attributes_in_code() | safe }}
+    {{ self::item_template_render_attributes_in_code(self.borrow()) | safe }}
     {{ self.render_struct() | safe }}
 </code></pre>
-{{ self.document() | safe }}
+{{ self::item_template_document(self.borrow()) | safe }}
 {% if self.should_render_fields %}
     <h2 id="fields" class="fields small-section header">
         {% if self.s.ctor_kind.is_none() %}
@@ -22,5 +22,5 @@
         {{ self.document_field(field.item) | safe }}
     {% endfor %}
 {% endif %}
-{{ self.render_assoc_items() | safe }}
-{{ self.document_type_layout() | safe }}
+{{ self::item_template_render_assoc_items(self.borrow()) | safe }}
+{{ self::item_template_document_type_layout(self.borrow()) | safe }}

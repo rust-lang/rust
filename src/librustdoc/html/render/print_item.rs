@@ -326,6 +326,59 @@ trait ItemTemplate<'a, 'cx: 'a>: askama::Template + fmt::Display {
     fn item_and_mut_cx(&self) -> (&'a clean::Item, RefMut<'_, &'a mut Context<'cx>>);
 }
 
+fn item_template_document<'a: 'b, 'b, 'cx: 'a>(
+    templ: &'b impl ItemTemplate<'a, 'cx>,
+) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
+    display_fn(move |f| {
+        let (item, mut cx) = templ.item_and_mut_cx();
+        let v = document(*cx, item, None, HeadingOffset::H2);
+        write!(f, "{v}")
+    })
+}
+
+fn item_template_document_type_layout<'a: 'b, 'b, 'cx: 'a>(
+    templ: &'b impl ItemTemplate<'a, 'cx>,
+) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
+    display_fn(move |f| {
+        let (item, cx) = templ.item_and_mut_cx();
+        let def_id = item.item_id.expect_def_id();
+        let v = document_type_layout(*cx, def_id);
+        write!(f, "{v}")
+    })
+}
+
+fn item_template_render_attributes_in_pre<'a: 'b, 'b, 'cx: 'a>(
+    templ: &'b impl ItemTemplate<'a, 'cx>,
+) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
+    display_fn(move |f| {
+        let (item, cx) = templ.item_and_mut_cx();
+        let tcx = cx.tcx();
+        let v = render_attributes_in_pre(item, "", tcx);
+        write!(f, "{v}")
+    })
+}
+
+fn item_template_render_attributes_in_code<'a: 'b, 'b, 'cx: 'a>(
+    templ: &'b impl ItemTemplate<'a, 'cx>,
+) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
+    display_fn(move |f| {
+        let (it, cx) = templ.item_and_mut_cx();
+        let v = render_attributes_in_code(it, cx.tcx());
+        write!(f, "{v}")
+    })
+}
+
+fn item_template_render_assoc_items<'a: 'b, 'b, 'cx: 'a>(
+    templ: &'b impl ItemTemplate<'a, 'cx>,
+) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
+    display_fn(move |f| {
+        let (item, mut cx) = templ.item_and_mut_cx();
+        let def_id = item.item_id.expect_def_id();
+        let v = render_assoc_items(*cx, item, def_id, AssocItemRender::All, None);
+        write!(f, "{v}")
+    })
+}
+
 fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: &[clean::Item]) {
     write!(w, "{}", document(cx, item, None, HeadingOffset::H2));
 
@@ -1827,6 +1880,12 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
         ty: String,
     }
 
+    impl<'a, 'cx: 'a> ItemTemplate<'a, 'cx> for ItemStruct<'a, 'cx> {
+        fn item_and_mut_cx(&self) -> (&'a clean::Item, RefMut<'_, &'a mut Context<'cx>>) {
+            (self.it, self.cx.borrow_mut())
+        }
+    }
+
     impl<'a, 'cx: 'a> ItemStruct<'a, 'cx> {
         fn new(
             cx: std::cell::RefCell<&'a mut Context<'cx>>,
@@ -1836,15 +1895,6 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
             let should_render_fields = matches!(s.ctor_kind, None | Some(CtorKind::Fn))
                 && struct_field_items(s).peekable().peek().is_some();
             Self { cx, it, s, should_render_fields }
-        }
-
-        fn render_attributes_in_code<'b>(
-            &'b self,
-        ) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
-                let tcx = self.cx.borrow().tcx();
-                write!(f, "{}", render_attributes_in_code(self.it, tcx))
-            })
         }
 
         fn render_struct<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
@@ -1859,14 +1909,6 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
                     true,
                     *cx,
                 );
-                write!(f, "{v}")
-            })
-        }
-
-        fn document<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
-                let mut cx = self.cx.borrow_mut();
-                let v = document(*cx, self.it, None, HeadingOffset::H2);
                 write!(f, "{v}")
             })
         }
@@ -1891,28 +1933,6 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
             display_fn(move |f| {
                 let mut cx = self.cx.borrow_mut();
                 let v = document(*cx, field, Some(self.it), HeadingOffset::H3);
-                write!(f, "{v}")
-            })
-        }
-
-        fn render_assoc_items<'b>(
-            &'b self,
-        ) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
-                let mut cx = self.cx.borrow_mut();
-                let def_id = self.it.item_id.expect_def_id();
-                let v = render_assoc_items(*cx, self.it, def_id, AssocItemRender::All);
-                write!(f, "{v}")
-            })
-        }
-
-        fn document_type_layout<'b>(
-            &'b self,
-        ) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
-                let cx = self.cx.borrow();
-                let def_id = self.it.item_id.expect_def_id();
-                let v = document_type_layout(*cx, def_id);
                 write!(f, "{v}")
             })
         }
