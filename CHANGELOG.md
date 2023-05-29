@@ -70,7 +70,7 @@ Current beta, released 2023-06-01
   [#10309](https://github.com/rust-lang/rust-clippy/pull/10309)
 * [`items_after_statements`]: `#[allow(items_after_statements)]` now works on items
   [#10542](https://github.com/rust-lang/rust-clippy/pull/10542)
-* [`significant_drop_tightening`]: was optimized
+* [`significant_drop_tightening`]: Was optimized
   [#10533](https://github.com/rust-lang/rust-clippy/pull/10533)
 
 ### False Positive Fixes
@@ -91,7 +91,7 @@ Current beta, released 2023-06-01
   [#10527](https://github.com/rust-lang/rust-clippy/pull/10527)
 * [`needless_return`]: No longer lints match statements with incompatible branches
   [#10593](https://github.com/rust-lang/rust-clippy/pull/10593)
-* [`use_self`]: do not suggest using `Self` in const generic parameters
+* [`use_self`]: Do not suggest using `Self` in const generic parameters
   [#10375](https://github.com/rust-lang/rust-clippy/pull/10375)
 * [`mem_replace_option_with_none`]: No longer lints on field expressions
   [#10594](https://github.com/rust-lang/rust-clippy/pull/10594)
