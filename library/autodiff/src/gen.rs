@@ -107,11 +107,11 @@ pub(crate) fn adjoint_fnc(item: &DiffItem) -> TokenStream {
         res_inputs.push(input.clone());
 
         match (item.header.mode, activity, is_ref_mut(&input)) {
-            (Mode::Forward, Activity::Duplicated, Some(true)) => {
+            (Mode::Forward, Activity::Duplicated|Activity::DuplicatedNoNeed, Some(true)) => {
                 res_inputs.push(as_ref_mut(&input, "grad", true));
                 add_inputs.push(as_ref_mut(&input, "grad", true));
             }
-            (Mode::Forward, Activity::Duplicated, Some(false)) => {
+            (Mode::Forward, Activity::Duplicated|Activity::DuplicatedNoNeed, Some(false)) => {
                 res_inputs.push(as_ref_mut(&input, "dual", false));
                 add_inputs.push(as_ref_mut(&input, "dual", false));
                 out_type.clone().map(|x| outputs.push(x));

@@ -1026,7 +1026,7 @@ pub(crate) unsafe fn enzyme_rust_forward_diff(
     let mut input_activity: Vec<CDIFFE_TYPE> = vec![];
     for input in input_diffactivity {
         let act = cdiffe_from(input);
-        assert!(act == CDIFFE_TYPE::DFT_CONSTANT || act == CDIFFE_TYPE::DFT_DUP_ARG);
+        assert!(act == CDIFFE_TYPE::DFT_CONSTANT || act == CDIFFE_TYPE::DFT_DUP_ARG || act == CDIFFE_TYPE::DFT_DUP_NONEED);
         input_activity.push(act);
     }
 
@@ -1111,6 +1111,7 @@ pub(crate) unsafe fn enzyme_rust_reverse_diff(
     // Just because I didn't had time to test them, and it seems less urgent.
     let args_uncacheable = vec![0; input_tts.len()];
     let kv_tmp = IntList { data: std::ptr::null_mut(), size: 0 };
+
 
     let mut known_values = vec![kv_tmp; input_tts.len()];
 

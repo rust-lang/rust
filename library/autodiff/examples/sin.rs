@@ -1,9 +1,10 @@
 use autodiff::autodiff;
 
 #[autodiff(cos_inplace, Reverse, Const)]
-fn sin_inplace(#[dup] x: &f32, #[dup_noneed] y: &mut f32) {
+fn sin_inplace(#[dup] x: &f32, #[dup] y: &mut f32) {
     *y = x.sin();
 }
+
 
 fn main() {
     // Here we can use ==, even though we work on f32.
@@ -12,9 +13,9 @@ fn main() {
     let a = 3.1415;
     let mut da = 0.0;
     let mut y = 0.0;
-    cos_inplace(&a, &mut da, &mut y, &1.0);
+    cos_inplace(&a, &mut da, &mut y, &mut 1.0);
 
-    dbg!(&a, &da);
+    dbg!(&a, &da, &y);
     assert!(da - f32::cos(a) == 0.0);
 }
 
