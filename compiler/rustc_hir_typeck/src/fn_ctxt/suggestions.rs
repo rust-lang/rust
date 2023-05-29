@@ -856,6 +856,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             format!("impl {}", all_bounds_str),
             Applicability::MaybeIncorrect,
         );
+        err.note(format!("the type of `{}` is chosen by the caller", expected_ty_as_param.name));
     }
 
     pub(in super::super) fn suggest_missing_break_or_return_expr(
