@@ -29,6 +29,39 @@ fn prepare_stdlib(dirs: &Dirs, rustc: &Path) {
     // FIXME ensure builds error out or update the copy if any of the files copied here change
     copy_dir_recursively(&ORIG_BUILD_SYSROOT.to_path(dirs), &STDLIB_SRC.to_path(dirs));
 
+    std::fs::write(
+        STDLIB_SRC.to_path(dirs).join("Cargo.toml"),
+        r#"
+[workspace]
+members = ["./library/sysroot"]
+
+[patch.crates-io]
+rustc-std-workspace-core = { path = "./library/rustc-std-workspace-core" }
+rustc-std-workspace-alloc = { path = "./library/rustc-std-workspace-alloc" }
+rustc-std-workspace-std = { path = "./library/rustc-std-workspace-std" }
+
+[profile.dev]
+lto = "off"
+
+[profile.release]
+debug = true
+incremental = true
+lto = "off"
+
+# Mandatory for correctly compiling compiler-builtins
+[profile.dev.package.compiler_builtins]
+debug-assertions = false
+overflow-checks = false
+codegen-units = 10000
+
+[profile.release.package.compiler_builtins]
+debug-assertions = false
+overflow-checks = false
+codegen-units = 10000
+"#,
+    )
+    .unwrap();
+
     let rustc_version = get_rustc_version(rustc);
     fs::write(SYSROOT_RUSTC_VERSION.to_path(dirs), &rustc_version).unwrap();
 }
