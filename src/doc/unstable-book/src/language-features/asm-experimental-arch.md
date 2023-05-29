@@ -17,7 +17,6 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 - AVR
 - MSP430
 - M68k
-- LoongArch
 - s390x
 
 ## Register classes
@@ -47,8 +46,6 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | M68k         | `reg`          | `d[0-7]`, `a[0-7]`                 | `r`                  |
 | M68k         | `reg_data`     | `d[0-7]`                           | `d`                  |
 | M68k         | `reg_addr`     | `a[0-3]`                           | `a`                  |
-| LoongArch    | `reg`          | `$r1`, `$r[4-20]`, `$r[23,30]`     | `r`                  |
-| LoongArch    | `freg`         | `$f[0-31]`                         | `f`                  |
 | s390x        | `reg`          | `r[0-10]`, `r[12-14]`              | `r`                  |
 | s390x        | `freg`         | `f[0-15]`                          | `f`                  |
 
@@ -82,8 +79,6 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | MSP430       | `reg`                           | None           | `i8`, `i16`                             |
 | M68k         | `reg`, `reg_addr`               | None           | `i16`, `i32`                            |
 | M68k         | `reg_data`                      | None           | `i8`, `i16`, `i32`                      |
-| LoongArch64  | `reg`                           | None           | `i8`, `i16`, `i32`, `i64`, `f32`, `f64` |
-| LoongArch64  | `freg`                          | None           | `f32`, `f64`                            |
 | s390x        | `reg`                           | None           | `i8`, `i16`, `i32`, `i64`               |
 | s390x        | `freg`                          | None           | `f32`, `f64`                            |
 
@@ -107,10 +102,6 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | M68k         | `a5`          | `bp`      |
 | M68k         | `a6`          | `fp`      |
 | M68k         | `a7`          | `sp`, `usp`, `ssp`, `isp` |
-| LoongArch    | `$r0`         | `zero`    |
-| LoongArch    | `$r2`         | `tp`      |
-| LoongArch    | `$r3`         | `sp`      |
-| LoongArch    | `$r22`        | `fp`      |
 
 > **Notes**:
 > - TI does not mandate a frame pointer for MSP430, but toolchains are allowed
@@ -121,7 +112,7 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | Architecture | Unsupported register                    | Reason                                                                                                                                                                              |
 | ------------ | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | All          | `sp`, `r15` (s390x)                     | The stack pointer must be restored to its original value at the end of an asm code block.                                                                                           |
-| All          | `fr` (Hexagon), `$fp` (MIPS), `Y` (AVR), `r4` (MSP430), `a6` (M68k), `$fp` (LoongArch), `r11` (s390x) | The frame pointer cannot be used as an input or output.                                                                                                                             |
+| All          | `fr` (Hexagon), `$fp` (MIPS), `Y` (AVR), `r4` (MSP430), `a6` (M68k), `r11` (s390x) | The frame pointer cannot be used as an input or output.                                                                                                                             |
 | All          | `r19` (Hexagon)                         | This is used internally by LLVM as a "base pointer" for functions with complex stack frames.                                                                                        |
 | MIPS         | `$0` or `$zero`                         | This is a constant zero register which can't be modified.                                                                                                                           |
 | MIPS         | `$1` or `$at`                           | Reserved for assembler.                                                                                                                                                             |
@@ -132,10 +123,6 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | AVR          | `r0`, `r1`, `r1r0`                      | Due to an issue in LLVM, the `r0` and `r1` registers cannot be used as inputs or outputs.  If modified, they must be restored to their original values before the end of the block. |
 |MSP430        | `r0`, `r2`, `r3`                        | These are the program counter, status register, and constant generator respectively. Neither the status register nor constant generator can be written to.                          |
 | M68k         | `a4`, `a5`                              | Used internally by LLVM for the base pointer and global base pointer. |
-| LoongArch    | `$r0` or `$zero`                        | This is a constant zero register which can't be modified.                                                                                                                           |
-| LoongArch    | `$r2` or `$tp`                          | This is reserved for TLS.                                                                                                                                                           |
-| LoongArch    | `$r21`                                  | This is reserved by the ABI.                                                                                                                                                        |
-| LoongArch    | `$r31` or `$s8`                         | This is used internally by LLVM.                                                                                                                                                    |
 
 ## Template modifiers
 
@@ -150,8 +137,6 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | PowerPC      | `reg`          | None     | `0`            | None          |
 | PowerPC      | `reg_nonzero`  | None     | `3`            | `b`           |
 | PowerPC      | `freg`         | None     | `0`            | None          |
-| LoongArch    | `reg`          | None     | `$r2`          | None          |
-| LoongArch    | `freg`         | None     | `$f0`          | None          |
 | s390x        | `reg`          | None     | `%r0`          | None          |
 | s390x        | `freg`         | None     | `%f0`          | None          |
 
