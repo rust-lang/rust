@@ -129,6 +129,8 @@ impl DedupSolver {
                         continue;
                     };
 
+                    // Prioritize the removal of constraints referencing higher universes, because
+                    // those are newer constraints (right?)
                     let max_forward_universe = forward.max_removed_universe(&self.var_universes);
                     let max_reverse_universe = reverse.max_removed_universe(&self.var_universes);
                     let (chosen_mapping, chosen_eval) =
