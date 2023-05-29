@@ -531,8 +531,8 @@ impl CStr {
     /// # }
     /// ```
     #[inline]
-    #[stable(feature = "cstr_is_empty", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "cstr_is_empty", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "cstr_is_empty", since = "1.71.0")]
+    #[rustc_const_stable(feature = "cstr_is_empty", since = "1.71.0")]
     pub const fn is_empty(&self) -> bool {
         // SAFETY: We know there is at least one byte; for empty strings it
         // is the NUL terminator.
