@@ -131,7 +131,6 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
             PlaceContext::NonMutatingUse(
                 NonMutatingUseContext::SharedBorrow
                 | NonMutatingUseContext::ShallowBorrow
-                | NonMutatingUseContext::UniqueBorrow
                 | NonMutatingUseContext::AddressOf,
             ) => true,
             // For debuginfo, merging locals is ok.
