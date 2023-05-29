@@ -1021,6 +1021,7 @@ impl Config {
                 toml.merge(included_toml);
             }
         }
+        //
         
         config.changelog_seen = toml.changelog_seen;
 
