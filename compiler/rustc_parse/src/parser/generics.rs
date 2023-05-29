@@ -43,6 +43,15 @@ impl<'a> Parser<'a> {
     fn parse_ty_param(&mut self, preceding_attrs: AttrVec) -> PResult<'a, GenericParam> {
         let ident = self.parse_ident()?;
 
+        // We might have a typo'd `Const` that was parsed as a type parameter.
+        if self.may_recover()
+            && ident.name.as_str().to_ascii_lowercase() == kw::Const.as_str()
+            && self.check_ident()
+        // `Const` followed by IDENT
+        {
+            return Ok(self.recover_const_param_with_mistyped_const(preceding_attrs, ident)?);
+        }
+
         // Parse optional colon and param bounds.
         let mut colon_span = None;
         let bounds = if self.eat(&token::Colon) {
@@ -115,6 +124,41 @@ impl<'a> Parser<'a> {
             attrs: preceding_attrs,
             bounds: Vec::new(),
             kind: GenericParamKind::Const { ty, kw_span: const_span, default },
+            is_placeholder: false,
+            colon_span: None,
+        })
+    }
+
+    pub(crate) fn recover_const_param_with_mistyped_const(
+        &mut self,
+        preceding_attrs: AttrVec,
+        mistyped_const_ident: Ident,
+    ) -> PResult<'a, GenericParam> {
+        let ident = self.parse_ident()?;
+        self.expect(&token::Colon)?;
+        let ty = self.parse_ty()?;
+
+        // Parse optional const generics default value.
+        let default = if self.eat(&token::Eq) { Some(self.parse_const_arg()?) } else { None };
+
+        let mut err = self.struct_span_err(
+            mistyped_const_ident.span,
+            format!("`const` keyword was mistyped as `{}`", mistyped_const_ident.as_str()),
+        );
+        err.span_suggestion_verbose(
+            mistyped_const_ident.span,
+            "use the `const` keyword",
+            kw::Const.as_str(),
+            Applicability::MachineApplicable,
+        );
+        err.emit();
+
+        Ok(GenericParam {
+            ident,
+            id: ast::DUMMY_NODE_ID,
+            attrs: preceding_attrs,
+            bounds: Vec::new(),
+            kind: GenericParamKind::Const { ty, kw_span: mistyped_const_ident.span, default },
             is_placeholder: false,
             colon_span: None,
         })
