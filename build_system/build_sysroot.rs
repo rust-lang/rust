@@ -4,7 +4,9 @@ use std::process::{self, Command};
 
 use super::path::{Dirs, RelPath};
 use super::rustc_info::{get_file_name, get_rustc_version};
-use super::utils::{remove_dir_if_exists, spawn_and_wait, try_hard_link, CargoProject, Compiler};
+use super::utils::{
+    is_ci, remove_dir_if_exists, spawn_and_wait, try_hard_link, CargoProject, Compiler,
+};
 use super::{CodegenBackend, SysrootKind};
 
 static DIST_DIR: RelPath = RelPath::DIST;
@@ -272,10 +274,16 @@ fn build_clif_sysroot_for_triple(
     }
     compiler.rustflags += &rustflags;
     let mut build_cmd = STANDARD_LIBRARY.build(&compiler, dirs);
+    build_cmd.env("CARGO_BUILD_INCREMENTAL", "true"); // Force incr comp even in release mode
+    if is_ci() {
+        // Disabling incr comp reduces cache size and incr comp doesn't save as much on CI anyway
+        build_cmd.env("CARGO_BUILD_INCREMENTAL", "false");
+    }
     if channel == "release" {
         build_cmd.arg("--release");
     }
     build_cmd.arg("--features").arg("compiler-builtins-no-asm backtrace panic-unwind");
+    build_cmd.env("CARGO_PROFILE_RELEASE_DEBUG", "true");
     build_cmd.env("__CARGO_DEFAULT_LIB_METADATA", "cg_clif");
     if compiler.triple.contains("apple") {
         build_cmd.env("CARGO_PROFILE_RELEASE_SPLIT_DEBUGINFO", "packed");

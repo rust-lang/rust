@@ -37,14 +37,6 @@ rustc-std-workspace-core = { path = "./library/rustc-std-workspace-core" }
 rustc-std-workspace-alloc = { path = "./library/rustc-std-workspace-alloc" }
 rustc-std-workspace-std = { path = "./library/rustc-std-workspace-std" }
 
-[profile.dev]
-lto = "off"
-
-[profile.release]
-debug = true
-incremental = true
-lto = "off"
-
 # Mandatory for correctly compiling compiler-builtins
 [profile.dev.package.compiler_builtins]
 debug-assertions = false
