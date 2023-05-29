@@ -265,7 +265,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BorrowDependencies<'a, 'tcx> {
                         src_node_idx,
                         self.dep_graph.node(src_node_idx).data,
                         node_idx,
-                        borrowed_local
+                        place.local
                     );
 
                     self.dep_graph.add_edge(src_node_idx, node_idx, ());
@@ -359,42 +359,8 @@ impl<'mir, 'tcx> BorrowedLocalsResults<'mir, 'tcx>
 where
     'tcx: 'mir,
 {
-    fn new(
-        tcx: TyCtxt<'tcx>,
-        body: &'mir Body<'tcx>,
-        borrows_analysis_results: Results<'tcx, LiveBorrows<'mir, 'tcx>>,
-    ) -> Self {
-        let mut borrow_deps = BorrowDependencies::new(body.local_decls(), tcx);
-        borrow_deps.visit_body(body);
-
-        if cfg!(debug_assertions) {
-            let dep_graph = &borrow_deps.dep_graph;
-
-            debug!(
-                "nodes: {:#?}",
-                dep_graph
-                    .all_nodes()
-                    .clone()
-                    .into_iter()
-                    .enumerate()
-                    .map(|(i, node)| (i, node.data))
-                    .collect::<Vec<_>>()
-            );
-
-            debug!("edges:");
-            for edge in dep_graph.all_edges() {
-                let src_node_idx = edge.source();
-                let src_node = dep_graph.node(src_node_idx);
-                let target_node_idx = edge.target();
-                let target_node = dep_graph.node(target_node_idx);
-                debug!(
-                    "{:?}({:?}) -> {:?}({:?}) ({:?})",
-                    src_node_idx, src_node.data, target_node_idx, target_node.data, edge.data
-                )
-            }
-        }
-
-        let dep_graph = &borrow_deps.dep_graph;
+    fn new(borrows_analysis_results: Results<'tcx, LiveBorrows<'mir, 'tcx>>) -> Self {
+        let dep_graph = &borrows_analysis_results.analysis.borrow_deps.dep_graph;
         let borrowed_local_to_locals_to_keep_alive = Self::get_locals_to_keep_alive_map(dep_graph);
         Self { borrows_analysis_results, borrowed_local_to_locals_to_keep_alive }
     }
@@ -467,11 +433,41 @@ pub fn get_borrowed_locals_results<'mir, 'tcx>(
     tcx: TyCtxt<'tcx>,
 ) -> BorrowedLocalsResults<'mir, 'tcx> {
     debug!("body: {:#?}", body);
-    let live_borrows = LiveBorrows::new(body, tcx);
+
+    let mut borrow_deps = BorrowDependencies::new(body.local_decls(), tcx);
+    borrow_deps.visit_body(body);
+
+    if cfg!(debug_assertions) {
+        let dep_graph = &borrow_deps.dep_graph;
+
+        debug!(
+            "nodes: {:#?}",
+            dep_graph
+                .all_nodes()
+                .clone()
+                .into_iter()
+                .enumerate()
+                .map(|(i, node)| (i, node.data))
+                .collect::<Vec<_>>()
+        );
+
+        debug!("edges:");
+        for edge in dep_graph.all_edges() {
+            let src_node_idx = edge.source();
+            let src_node = dep_graph.node(src_node_idx);
+            let target_node_idx = edge.target();
+            let target_node = dep_graph.node(target_node_idx);
+            debug!(
+                "{:?}({:?}) -> {:?}({:?}) ({:?})",
+                src_node_idx, src_node.data, target_node_idx, target_node.data, edge.data
+            )
+        }
+    }
+    let live_borrows = LiveBorrows::new(body, tcx, borrow_deps);
     let results =
         live_borrows.into_engine(tcx, body).pass_name("borrowed_locals").iterate_to_fixpoint();
 
-    BorrowedLocalsResults::new(tcx, body, results)
+    BorrowedLocalsResults::new(results)
 }
 
 pub struct BorrowedLocalsResultsCursor<'a, 'mir, 'tcx> {
@@ -544,18 +540,31 @@ impl<'a, 'mir, 'tcx> BorrowedLocalsResultsCursor<'a, 'mir, 'tcx> {
 }
 
 /// Performs a liveness analysis for borrows and raw pointers.
-pub struct LiveBorrows<'a, 'tcx> {
-    body: &'a Body<'tcx>,
+pub struct LiveBorrows<'mir, 'tcx> {
+    body: &'mir Body<'tcx>,
     tcx: TyCtxt<'tcx>,
+    borrow_deps: BorrowDependencies<'mir, 'tcx>,
 }
 
-impl<'a, 'tcx> LiveBorrows<'a, 'tcx> {
-    fn new(body: &'a Body<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
-        LiveBorrows { body, tcx }
+impl<'mir, 'tcx> LiveBorrows<'mir, 'tcx> {
+    fn new(
+        body: &'mir Body<'tcx>,
+        tcx: TyCtxt<'tcx>,
+        borrow_deps: BorrowDependencies<'mir, 'tcx>,
+    ) -> Self {
+        LiveBorrows { body, tcx, borrow_deps }
     }
 
-    fn transfer_function<'b, T>(&self, trans: &'b mut T) -> TransferFunction<'a, 'b, 'tcx, T> {
-        TransferFunction { body: self.body, tcx: self.tcx, _trans: trans }
+    fn transfer_function<'b, T>(
+        &self,
+        trans: &'b mut T,
+    ) -> TransferFunction<'mir, 'b, '_, 'tcx, T> {
+        TransferFunction {
+            body: self.body,
+            tcx: self.tcx,
+            _trans: trans,
+            borrow_deps: &self.borrow_deps,
+        }
     }
 }
 
@@ -607,13 +616,14 @@ impl<'a, 'tcx> GenKillAnalysis<'tcx> for LiveBorrows<'a, 'tcx> {
 }
 
 /// A `Visitor` that defines the transfer function for `MaybeBorrowedLocals`.
-struct TransferFunction<'a, 'b, 'tcx, T> {
+struct TransferFunction<'a, 'b, 'c, 'tcx, T> {
     body: &'a Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     _trans: &'b mut T,
+    borrow_deps: &'c BorrowDependencies<'a, 'tcx>,
 }
 
-impl<'a, 'tcx, T> Visitor<'tcx> for TransferFunction<'a, '_, 'tcx, T>
+impl<'a, 'tcx, T> Visitor<'tcx> for TransferFunction<'a, '_, '_, 'tcx, T>
 where
     T: GenKill<Local>,
 {
@@ -670,9 +680,22 @@ where
         match local_ty.kind() {
             ty::Ref(..) | ty::RawPtr(..) => {
                 debug!("gen {:?}", local);
-                self._trans.gen(place.local);
+                self._trans.gen(local);
             }
-            _ => {}
+            _ => {
+                if let Some(node_idx) = self.borrow_deps.locals_to_node_indexes.get(&local) {
+                    let node = self.borrow_deps.dep_graph.node(*node_idx);
+
+                    // these are `Local`s that contain references/pointers or are raw pointers
+                    // that were assigned to raw pointers, which were cast to usize. Hence we
+                    // need to treat them as uses of the references/pointers that they
+                    // refer/correspond to.
+                    if let NodeKind::LocalWithRefs(_) = node.data {
+                        debug!("gen {:?}", local);
+                        self._trans.gen(local);
+                    }
+                }
+            }
         }
 
         self.super_place(place, context, location);
