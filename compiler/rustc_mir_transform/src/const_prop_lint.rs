@@ -232,7 +232,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 op
             }
             Err(e) => {
-                trace!("get_const failed: {e:?}");
+                trace!("get_const failed: {:?}", e.debug());
                 return None;
             }
         };
