@@ -62,6 +62,7 @@ use rustc_span::{self, BytePos, DesugaringKind, Span};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
     self, NormalizeExt, ObligationCause, ObligationCauseCode, ObligationCtxt,
 };
@@ -144,12 +145,28 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         debug!("unify(a: {:?}, b: {:?}, use_lub: {})", a, b, self.use_lub);
         self.commit_if_ok(|_| {
             let at = self.at(&self.cause, self.fcx.param_env);
-            if self.use_lub {
+
+            let res = if self.use_lub {
                 at.lub(DefineOpaqueTypes::Yes, b, a)
             } else {
                 at.sup(DefineOpaqueTypes::Yes, b, a)
                     .map(|InferOk { value: (), obligations }| InferOk { value: a, obligations })
+            };
+
+            // In the new solver, lazy norm may allow us to shallowly equate
+            // more types, but we emit possibly impossible-to-satisfy obligations.
+            // Filter these cases out to make sure our coercion is more accurate.
+            if self.tcx.trait_solver_next() {
+                if let Ok(res) = &res {
+                    for obligation in &res.obligations {
+                        if !self.predicate_may_hold(&obligation) {
+                            return Err(TypeError::Mismatch);
+                        }
+                    }
+                }
             }
+
+            res
         })
     }
 

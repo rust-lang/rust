@@ -1511,10 +1511,11 @@ impl Atom for RegionVid {
 
 rustc_index::newtype_index! {
     #[derive(HashStable)]
+    #[debug_format = "{}"]
     pub struct BoundVar {}
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub struct BoundTy {
     pub var: BoundVar,
