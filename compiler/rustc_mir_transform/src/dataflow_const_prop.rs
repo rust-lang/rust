@@ -257,14 +257,17 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
             ValueOrPlace::Value(value) => value,
             ValueOrPlace::Place(place) => state.get_idx(place, self.map()),
         };
-        let FlatSet::Elem(ScalarTy(scalar, _)) = value else {
-            // Do nothing if we don't know which branch will be taken.
-            return TerminatorEdges::SwitchInt { discr, targets };
-        };
-
-        let int = scalar.assert_int();
-        let choice = int.assert_bits(int.size());
-        TerminatorEdges::Single(targets.target_for_value(choice))
+        match value {
+            // We are branching on uninitialized data, this is UB, treat it as unreachable.
+            // This allows the set of visited edges to grow monotonically with the lattice.
+            FlatSet::Bottom => TerminatorEdges::None,
+            FlatSet::Elem(ScalarTy(scalar, _)) => {
+                let int = scalar.assert_int();
+                let choice = int.assert_bits(int.size());
+                TerminatorEdges::Single(targets.target_for_value(choice))
+            }
+            FlatSet::Top => TerminatorEdges::SwitchInt { discr, targets },
+        }
     }
 }
 
