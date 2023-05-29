@@ -472,6 +472,7 @@ impl dyn MachineStopType {
     }
 }
 
+#[derive(Debug)]
 pub enum InterpError<'tcx> {
     /// The program caused undefined behavior.
     UndefinedBehavior(UndefinedBehaviorInfo<'tcx>),
@@ -489,19 +490,6 @@ pub enum InterpError<'tcx> {
 }
 
 pub type InterpResult<'tcx, T = ()> = Result<T, InterpErrorInfo<'tcx>>;
-
-impl fmt::Debug for InterpError<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use InterpError::*;
-        match self {
-            Unsupported(msg) => msg.fmt(f),
-            InvalidProgram(msg) => msg.fmt(f),
-            UndefinedBehavior(msg) => msg.fmt(f),
-            ResourceExhaustion(msg) => msg.fmt(f),
-            MachineStop(msg) => msg.fmt(f),
-        }
-    }
-}
 
 impl InterpError<'_> {
     /// Some errors do string formatting even if the error is never printed.
