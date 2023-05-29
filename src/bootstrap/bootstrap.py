@@ -835,7 +835,7 @@ class RustBuild(object):
         """
         return os.path.join(self.build_dir, "bootstrap", "debug", "bootstrap")
 
-    def build_bootstrap(self, color, verbose_count):
+    def build_bootstrap(self, color, warnings, verbose_count):
         """Build bootstrap"""
         env = os.environ.copy()
         if "GITHUB_ACTIONS" in env:
@@ -888,7 +888,11 @@ class RustBuild(object):
         if target_linker is not None:
             env["RUSTFLAGS"] += " -C linker=" + target_linker
         env["RUSTFLAGS"] += " -Wrust_2018_idioms -Wunused_lifetimes"
-        if self.get_toml("deny-warnings", "rust") != "false":
+        if warnings == "default":
+            deny_warnings = self.get_toml("deny-warnings", "rust") != "false"
+        else:
+            deny_warnings = warnings == "deny"
+        if deny_warnings:
             env["RUSTFLAGS"] += " -Dwarnings"
 
         env["PATH"] = os.path.join(self.bin_root(), "bin") + \
@@ -977,6 +981,7 @@ def parse_args():
     parser.add_argument('--color', choices=['always', 'never', 'auto'])
     parser.add_argument('--clean', action='store_true')
     parser.add_argument('--json-output', action='store_true')
+    parser.add_argument('--warnings', choices=['deny', 'warn', 'default'], default='default')
     parser.add_argument('-v', '--verbose', action='count', default=0)
 
     return parser.parse_known_args(sys.argv)[0]
@@ -1042,7 +1047,7 @@ def bootstrap(args):
     # Fetch/build the bootstrap
     build.download_toolchain()
     sys.stdout.flush()
-    build.build_bootstrap(args.color, verbose_count)
+    build.build_bootstrap(args.color, args.warnings, verbose_count)
     sys.stdout.flush()
 
     # Run the bootstrap
