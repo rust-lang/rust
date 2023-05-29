@@ -1,5 +1,3 @@
-use std::fmt;
-
 use rustc_errors::{
     DiagnosticArgValue, DiagnosticBuilder, DiagnosticMessage, EmissionGuarantee, Handler,
     IntoDiagnostic,
@@ -427,24 +425,6 @@ pub struct UndefinedBehavior {
     pub raw_bytes: RawBytesNote,
 }
 
-pub struct DebugExt<T>(T);
-
-impl<T: ReportErrorExt> fmt::Debug for DebugExt<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = ty::tls::with(|tcx| {
-            let mut builder = tcx.sess.struct_allow("");
-            let handler = &tcx.sess.parse_sess.span_diagnostic;
-            let message = self.0.diagnostic_message();
-            self.0.add_args(handler, &mut builder);
-            let s = handler.eagerly_translate_to_string(message, builder.args());
-            builder.cancel();
-            s
-        });
-
-        f.write_str(&s)
-    }
-}
-
 pub trait ReportErrorExt {
     /// Returns the diagnostic message for this error.
     fn diagnostic_message(&self) -> DiagnosticMessage;
@@ -454,11 +434,19 @@ pub trait ReportErrorExt {
         builder: &mut DiagnosticBuilder<'_, G>,
     );
 
-    fn debug(self) -> DebugExt<Self>
+    fn debug(self) -> String
     where
         Self: Sized,
     {
-        DebugExt(self)
+        ty::tls::with(move |tcx| {
+            let mut builder = tcx.sess.struct_allow(DiagnosticMessage::Str(String::new().into()));
+            let handler = &tcx.sess.parse_sess.span_diagnostic;
+            let message = self.diagnostic_message();
+            self.add_args(handler, &mut builder);
+            let s = handler.eagerly_translate_to_string(message, builder.args());
+            builder.cancel();
+            s
+        })
     }
 }
 
@@ -481,7 +469,7 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
         use crate::fluent_generated::*;
         use UndefinedBehaviorInfo::*;
         match self {
-            Ub(msg) => (&**msg).into(),
+            Ub(msg) => msg.clone().into(),
             Unreachable => const_eval_unreachable,
             BoundsCheckFailed { .. } => const_eval_bounds_check_failed,
             DivisionByZero => const_eval_division_by_zero,
