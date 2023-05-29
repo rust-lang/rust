@@ -1154,7 +1154,7 @@ impl<'a> ExtCtxt<'a> {
         // Fixme: does this result in errors?
         self.expansions.clear();
     }
-    pub fn bug(&self, msg: &str) -> ! {
+    pub fn bug(&self, msg: &'static str) -> ! {
         self.sess.parse_sess.span_diagnostic.bug(msg);
     }
     pub fn trace_macros(&self) -> bool {
@@ -1224,7 +1224,7 @@ pub fn resolve_path(
 pub fn expr_to_spanned_string<'a>(
     cx: &'a mut ExtCtxt<'_>,
     expr: P<ast::Expr>,
-    err_msg: &str,
+    err_msg: &'static str,
 ) -> Result<(Symbol, ast::StrStyle, Span), Option<(DiagnosticBuilder<'a, ErrorGuaranteed>, bool)>> {
     // Perform eager expansion on the expression.
     // We want to be able to handle e.g., `concat!("foo", "bar")`.
@@ -1262,7 +1262,7 @@ pub fn expr_to_spanned_string<'a>(
 pub fn expr_to_string(
     cx: &mut ExtCtxt<'_>,
     expr: P<ast::Expr>,
-    err_msg: &str,
+    err_msg: &'static str,
 ) -> Option<(Symbol, ast::StrStyle)> {
     expr_to_spanned_string(cx, expr, err_msg)
         .map_err(|err| {

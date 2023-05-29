@@ -2540,7 +2540,7 @@ fn show_candidates(
                 err.note(msg);
             }
             if let Some(note) = (*note).as_deref() {
-                err.note(note);
+                err.note(note.to_string());
             }
         } else {
             let (_, descr_first, _, _) = &inaccessible_path_strings[0];

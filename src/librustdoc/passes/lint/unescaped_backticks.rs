@@ -373,7 +373,7 @@ fn suggest_insertion(
     lint: &mut DiagnosticBuilder<'_, ()>,
     insert_index: usize,
     suggestion: char,
-    message: &str,
+    message: &'static str,
 ) {
     /// Maximum bytes of context to show around the insertion.
     const CONTEXT_MAX_LEN: usize = 80;

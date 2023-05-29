@@ -42,6 +42,7 @@ use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::symbol::sym;
 use rustc_span::{ExpnKind, Span, DUMMY_SP};
+use std::borrow::Cow;
 use std::fmt;
 use std::iter;
 use std::ops::ControlFlow;
@@ -1602,7 +1603,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         }),
                     ) => Some((
                         ty.span,
-                        with_forced_trimmed_paths!(format!(
+                        with_forced_trimmed_paths!(Cow::from(format!(
                             "type mismatch resolving `{}`",
                             self.resolve_vars_if_possible(predicate)
                                 .print(FmtPrinter::new_with_limit(
@@ -1612,7 +1613,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 ))
                                 .unwrap()
                                 .into_buffer()
-                        )),
+                        ))),
                     )),
                     _ => None,
                 }

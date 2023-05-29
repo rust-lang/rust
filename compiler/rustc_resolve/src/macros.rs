@@ -827,7 +827,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 if !is_allowed(feature) && !allowed_by_implication {
                     let lint_buffer = &mut self.lint_buffer;
                     let soft_handler =
-                        |lint, span, msg: &_| lint_buffer.buffer_lint(lint, node_id, span, msg);
+                        |lint, span, msg: String| lint_buffer.buffer_lint(lint, node_id, span, msg);
                     stability::report_unstable(
                         self.tcx.sess,
                         feature,
@@ -846,7 +846,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             let (message, lint) = stability::deprecation_message_and_lint(depr, "macro", &path);
             stability::early_report_deprecation(
                 &mut self.lint_buffer,
-                &message,
+                message,
                 depr.suggestion,
                 lint,
                 span,
