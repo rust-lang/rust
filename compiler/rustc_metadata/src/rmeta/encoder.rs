@@ -1727,7 +1727,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             ty::Closure(_, substs) => {
                 let constness = self.tcx.constness(def_id.to_def_id());
                 self.tables.constness.set_some(def_id.to_def_id().index, constness);
-                record!(self.tables.fn_sig[def_id.to_def_id()] <- ty::EarlyBinder(substs.as_closure().sig()));
+                record!(self.tables.fn_sig[def_id.to_def_id()] <- ty::EarlyBinder::new(substs.as_closure().sig()));
             }
 
             _ => bug!("closure that is neither generator nor closure"),

@@ -309,7 +309,7 @@ fn rustc_terminator_to_terminator(
         Terminate => Terminator::Abort,
         Return => Terminator::Return,
         Unreachable => Terminator::Unreachable,
-        Drop { place, target, unwind } => Terminator::Drop {
+        Drop { place, target, unwind, replace: _ } => Terminator::Drop {
             place: rustc_place_to_place(place),
             target: target.as_usize(),
             unwind: rustc_unwind_to_unwind(unwind),

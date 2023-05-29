@@ -1045,7 +1045,10 @@ fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
     for (block, block_data) in body.basic_blocks.iter_enumerated() {
         let (target, unwind, source_info) = match block_data.terminator() {
-            Terminator { source_info, kind: TerminatorKind::Drop { place, target, unwind } } => {
+            Terminator {
+                source_info,
+                kind: TerminatorKind::Drop { place, target, unwind, replace: _ },
+            } => {
                 if let Some(local) = place.as_local() {
                     if local == SELF_ARG {
                         (target, unwind, source_info)
@@ -1304,6 +1307,7 @@ fn insert_clean_drop(body: &mut Body<'_>) -> BasicBlock {
         place: Place::from(SELF_ARG),
         target: return_block,
         unwind: UnwindAction::Continue,
+        replace: false,
     };
     let source_info = SourceInfo::outermost(body.span);
 

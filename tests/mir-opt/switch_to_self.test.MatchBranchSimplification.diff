@@ -1,0 +1,19 @@
+- // MIR for `test` before MatchBranchSimplification
++ // MIR for `test` after MatchBranchSimplification
+  
+  fn test(_1: bool) -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/switch_to_self.rs:+0:22: +0:22
+  
+      bb0: {
+          goto -> bb1;                     // scope 0 at $DIR/switch_to_self.rs:+3:13: +3:22
+      }
+  
+      bb1: {
+          switchInt(_1) -> [0: bb1, otherwise: bb2]; // scope 0 at $DIR/switch_to_self.rs:+6:13: +6:47
+      }
+  
+      bb2: {
+          switchInt(_1) -> [0: bb1, otherwise: bb2]; // scope 0 at $DIR/switch_to_self.rs:+9:13: +9:47
+      }
+  }
+  

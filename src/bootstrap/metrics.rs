@@ -14,6 +14,25 @@ use std::io::BufWriter;
 use std::time::{Duration, Instant, SystemTime};
 use sysinfo::{CpuExt, System, SystemExt};
 
+// Update this number whenever a breaking change is made to the build metrics.
+//
+// The output format is versioned for two reasons:
+//
+// - The metadata is intended to be consumed by external tooling, and exposing a format version
+//   helps the tools determine whether they're compatible with a metrics file.
+//
+// - If a developer enables build metrics in their local checkout, making a breaking change to the
+//   metrics format would result in a hard-to-diagnose error message when an existing metrics file
+//   is not compatible with the new changes. With a format version number, bootstrap can discard
+//   incompatible metrics files instead of appending metrics to them.
+//
+// Version changelog:
+//
+// - v0: initial version
+// - v1: replaced JsonNode::Test with JsonNode::TestSuite
+//
+const CURRENT_FORMAT_VERSION: usize = 1;
+
 pub(crate) struct BuildMetrics {
     state: RefCell<MetricsState>,
 }
@@ -57,7 +76,7 @@ impl BuildMetrics {
             duration_excluding_children_sec: Duration::ZERO,
 
             children: Vec::new(),
-            tests: Vec::new(),
+            test_suites: Vec::new(),
         });
     }
 
@@ -84,6 +103,17 @@ impl BuildMetrics {
         }
     }
 
+    pub(crate) fn begin_test_suite(&self, metadata: TestSuiteMetadata, builder: &Builder<'_>) {
+        // Do not record dry runs, as they'd be duplicates of the actual steps.
+        if builder.config.dry_run() {
+            return;
+        }
+
+        let mut state = self.state.borrow_mut();
+        let step = state.running_steps.last_mut().unwrap();
+        step.test_suites.push(TestSuite { metadata, tests: Vec::new() });
+    }
+
     pub(crate) fn record_test(&self, name: &str, outcome: TestOutcome, builder: &Builder<'_>) {
         // Do not record dry runs, as they'd be duplicates of the actual steps.
         if builder.config.dry_run() {
@@ -91,12 +121,13 @@ impl BuildMetrics {
         }
 
         let mut state = self.state.borrow_mut();
-        state
-            .running_steps
-            .last_mut()
-            .unwrap()
-            .tests
-            .push(Test { name: name.to_string(), outcome });
+        let step = state.running_steps.last_mut().unwrap();
+
+        if let Some(test_suite) = step.test_suites.last_mut() {
+            test_suite.tests.push(Test { name: name.to_string(), outcome });
+        } else {
+            panic!("metrics.record_test() called without calling metrics.begin_test_suite() first");
+        }
     }
 
     fn collect_stats(&self, state: &mut MetricsState) {
@@ -131,7 +162,20 @@ impl BuildMetrics {
         // Some of our CI builds consist of multiple independent CI invocations. Ensure all the
         // previous invocations are still present in the resulting file.
         let mut invocations = match std::fs::read(&dest) {
-            Ok(contents) => t!(serde_json::from_slice::<JsonRoot>(&contents)).invocations,
+            Ok(contents) => {
+                // We first parse just the format_version field to have the check succeed even if
+                // the rest of the contents are not valid anymore.
+                let version: OnlyFormatVersion = t!(serde_json::from_slice(&contents));
+                if version.format_version == CURRENT_FORMAT_VERSION {
+                    t!(serde_json::from_slice::<JsonRoot>(&contents)).invocations
+                } else {
+                    println!(
+                        "warning: overriding existing build/metrics.json, as it's not \
+                         compatible with build metrics format version {CURRENT_FORMAT_VERSION}."
+                    );
+                    Vec::new()
+                }
+            }
             Err(err) => {
                 if err.kind() != std::io::ErrorKind::NotFound {
                     panic!("failed to open existing metrics file at {}: {err}", dest.display());
@@ -149,7 +193,7 @@ impl BuildMetrics {
             children: steps.into_iter().map(|step| self.prepare_json_step(step)).collect(),
         });
 
-        let json = JsonRoot { system_stats, invocations };
+        let json = JsonRoot { format_version: CURRENT_FORMAT_VERSION, system_stats, invocations };
 
         t!(std::fs::create_dir_all(dest.parent().unwrap()));
         let mut file = BufWriter::new(t!(File::create(&dest)));
@@ -159,11 +203,7 @@ impl BuildMetrics {
     fn prepare_json_step(&self, step: StepMetrics) -> JsonNode {
         let mut children = Vec::new();
         children.extend(step.children.into_iter().map(|child| self.prepare_json_step(child)));
-        children.extend(
-            step.tests
-                .into_iter()
-                .map(|test| JsonNode::Test { name: test.name, outcome: test.outcome }),
-        );
+        children.extend(step.test_suites.into_iter().map(JsonNode::TestSuite));
 
         JsonNode::RustbuildStep {
             type_: step.type_,
@@ -198,17 +238,14 @@ struct StepMetrics {
     duration_excluding_children_sec: Duration,
 
     children: Vec<StepMetrics>,
-    tests: Vec<Test>,
-}
-
-struct Test {
-    name: String,
-    outcome: TestOutcome,
+    test_suites: Vec<TestSuite>,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 struct JsonRoot {
+    #[serde(default)] // For version 0 the field was not present.
+    format_version: usize,
     system_stats: JsonInvocationSystemStats,
     invocations: Vec<JsonInvocation>,
 }
@@ -237,11 +274,39 @@ enum JsonNode {
 
         children: Vec<JsonNode>,
     },
-    Test {
-        name: String,
-        #[serde(flatten)]
-        outcome: TestOutcome,
+    TestSuite(TestSuite),
+}
+
+#[derive(Serialize, Deserialize)]
+struct TestSuite {
+    metadata: TestSuiteMetadata,
+    tests: Vec<Test>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub(crate) enum TestSuiteMetadata {
+    CargoPackage {
+        crates: Vec<String>,
+        target: String,
+        host: String,
+        stage: u32,
     },
+    Compiletest {
+        suite: String,
+        mode: String,
+        compare_mode: Option<String>,
+        target: String,
+        host: String,
+        stage: u32,
+    },
+}
+
+#[derive(Serialize, Deserialize)]
+pub(crate) struct Test {
+    name: String,
+    #[serde(flatten)]
+    outcome: TestOutcome,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -265,4 +330,10 @@ struct JsonInvocationSystemStats {
 #[serde(rename_all = "snake_case")]
 struct JsonStepSystemStats {
     cpu_utilization_percent: f64,
+}
+
+#[derive(Deserialize)]
+struct OnlyFormatVersion {
+    #[serde(default)] // For version 0 the field was not present.
+    format_version: usize,
 }

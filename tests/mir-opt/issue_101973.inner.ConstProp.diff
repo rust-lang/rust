@@ -18,8 +18,8 @@
       let mut _13: bool;                   // in scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
       scope 1 (inlined imm8) {             // at $DIR/issue_101973.rs:15:5: 15:17
           debug x => _1;                   // in scope 1 at $DIR/issue_101973.rs:6:13: 6:14
-          let mut _14: u32;                // in scope 1 at $DIR/issue_101973.rs:8:12: 8:27
-          let mut _15: u32;                // in scope 1 at $DIR/issue_101973.rs:8:12: 8:20
+          let mut _14: u32;                // in scope 1 at $DIR/issue_101973.rs:8:12: 8:20
+          let mut _15: u32;                // in scope 1 at $DIR/issue_101973.rs:8:12: 8:27
           scope 2 {
               debug out => _4;             // in scope 2 at $DIR/issue_101973.rs:7:9: 7:16
           }
@@ -33,13 +33,13 @@
           StorageLive(_2);                 // scope 0 at $DIR/issue_101973.rs:+1:5: +1:65
           StorageLive(_3);                 // scope 0 at $DIR/issue_101973.rs:+1:5: +1:58
           StorageLive(_4);                 // scope 0 at $DIR/issue_101973.rs:+1:5: +1:17
-          StorageLive(_14);                // scope 2 at $DIR/issue_101973.rs:8:12: 8:27
-          StorageLive(_15);                // scope 2 at $DIR/issue_101973.rs:8:12: 8:20
-          _15 = Shr(_1, const 0_i32);      // scope 2 at $DIR/issue_101973.rs:8:12: 8:20
-          _14 = BitAnd(move _15, const 255_u32); // scope 2 at $DIR/issue_101973.rs:8:12: 8:27
-          StorageDead(_15);                // scope 2 at $DIR/issue_101973.rs:8:26: 8:27
-          _4 = BitOr(const 0_u32, move _14); // scope 2 at $DIR/issue_101973.rs:8:5: 8:27
+          StorageLive(_15);                // scope 2 at $DIR/issue_101973.rs:8:12: 8:27
+          StorageLive(_14);                // scope 2 at $DIR/issue_101973.rs:8:12: 8:20
+          _14 = Shr(_1, const 0_i32);      // scope 2 at $DIR/issue_101973.rs:8:12: 8:20
+          _15 = BitAnd(move _14, const 255_u32); // scope 2 at $DIR/issue_101973.rs:8:12: 8:27
           StorageDead(_14);                // scope 2 at $DIR/issue_101973.rs:8:26: 8:27
+          _4 = BitOr(const 0_u32, move _15); // scope 2 at $DIR/issue_101973.rs:8:5: 8:27
+          StorageDead(_15);                // scope 2 at $DIR/issue_101973.rs:8:26: 8:27
           StorageLive(_6);                 // scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
           StorageLive(_7);                 // scope 0 at $DIR/issue_101973.rs:+1:31: +1:52
           StorageLive(_8);                 // scope 0 at $DIR/issue_101973.rs:+1:32: +1:45

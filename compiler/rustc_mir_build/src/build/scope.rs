@@ -91,7 +91,7 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{Expr, LintLevel};
 
-use rustc_span::{DesugaringKind, Span, DUMMY_SP};
+use rustc_span::{Span, DUMMY_SP};
 
 #[derive(Debug)]
 pub struct Scopes<'tcx> {
@@ -371,6 +371,7 @@ impl DropTree {
                         // The caller will handle this if needed.
                         unwind: UnwindAction::Terminate,
                         place: drop_data.0.local.into(),
+                        replace: false,
                     };
                     cfg.terminate(block, drop_data.0.source_info, terminator);
                 }
@@ -1128,9 +1129,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         place: Place<'tcx>,
         value: Rvalue<'tcx>,
     ) -> BlockAnd<()> {
-        let span = self.tcx.with_stable_hashing_context(|hcx| {
-            span.mark_with_reason(None, DesugaringKind::Replace, self.tcx.sess.edition(), hcx)
-        });
         let source_info = self.source_info(span);
 
         // create the new block for the assignment
@@ -1148,6 +1146,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 place,
                 target: assign,
                 unwind: UnwindAction::Cleanup(assign_unwind),
+                replace: true,
             },
         );
         self.diverge_from(block);
@@ -1261,6 +1260,7 @@ fn build_scope_drops<'tcx>(
                         place: local.into(),
                         target: next,
                         unwind: UnwindAction::Continue,
+                        replace: false,
                     },
                 );
                 block = next;

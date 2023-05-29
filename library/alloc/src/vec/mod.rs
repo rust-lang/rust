@@ -2662,7 +2662,6 @@ impl<T: Clone, A: Allocator + Clone> Clone for Vec<T, A> {
 /// as required by the `core::borrow::Borrow` implementation.
 ///
 /// ```
-/// #![feature(build_hasher_simple_hash_one)]
 /// use std::hash::BuildHasher;
 ///
 /// let b = std::collections::hash_map::RandomState::new();

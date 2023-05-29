@@ -641,13 +641,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             let Some(hir::Node::Item(item)) = node else { return; };
             let hir::ItemKind::Fn(.., body_id) = item.kind else { return; };
             let body = self.infcx.tcx.hir().body(body_id);
-            let mut assign_span = span;
-            // Drop desugaring is done at MIR build so it's not in the HIR
-            if let Some(DesugaringKind::Replace) = span.desugaring_kind() {
-                assign_span.remove_mark();
-            }
 
-            let mut v = V { assign_span, err, ty, suggested: false };
+            let mut v = V { assign_span: span, err, ty, suggested: false };
             v.visit_body(body);
             if !v.suggested {
                 err.help(format!(

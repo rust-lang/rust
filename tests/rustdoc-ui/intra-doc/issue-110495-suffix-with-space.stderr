@@ -36,7 +36,7 @@ LL | //! [`Clone ()`].
 help: to link to the trait, prefix with `trait@`
    |
 LL - //! [`Clone ()`].
-LL + //! [`trait@Clone (`].
+LL + //! [`trait@Clone `].
    |
 
 error: incompatible link kind for `Clone`
@@ -47,8 +47,9 @@ LL | //! [`Clone !`].
    |
 help: to link to the derive macro, prefix with `derive@`
    |
-LL | //! [`derive@Clone !`].
-   |       +++++++
+LL - //! [`Clone !`].
+LL + //! [`derive@Clone `].
+   |
 
 error: aborting due to 4 previous errors
 

@@ -1,9 +1,9 @@
 use crate::infer::InferCtxt;
-use crate::traits::query::type_op::{self, TypeOp, TypeOpOutput};
 use crate::traits::{ObligationCause, ObligationCtxt};
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::ErrorGuaranteed;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
+use rustc_infer::infer::InferOk;
+use rustc_middle::infer::canonical::{OriginalQueryValues, QueryRegionConstraints};
 use rustc_middle::ty::{self, ParamEnv, Ty, TypeFolder, TypeVisitableExt};
 use rustc_span::def_id::LocalDefId;
 
@@ -68,20 +68,29 @@ impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
             return vec![];
         }
 
-        let span = self.tcx.def_span(body_id);
-        let result: Result<_, ErrorGuaranteed> = param_env
-            .and(type_op::implied_outlives_bounds::ImpliedOutlivesBounds { ty })
-            .fully_perform(self, span);
-        let result = match result {
-            Ok(r) => r,
-            Err(_) => {
-                return vec![];
-            }
+        let mut canonical_var_values = OriginalQueryValues::default();
+        let canonical_ty =
+            self.canonicalize_query_keep_static(param_env.and(ty), &mut canonical_var_values);
+        let Ok(canonical_result) = self.tcx.implied_outlives_bounds(canonical_ty) else {
+            return vec![];
         };
 
-        let TypeOpOutput { output, constraints, .. } = result;
+        let mut constraints = QueryRegionConstraints::default();
+        let Ok(InferOk { value, obligations }) = self
+            .instantiate_nll_query_response_and_region_obligations(
+                &ObligationCause::dummy(),
+                param_env,
+                &canonical_var_values,
+                canonical_result,
+                &mut constraints,
+            ) else {
+            return vec![];
+        };
+        assert_eq!(&obligations, &[]);
 
-        if let Some(constraints) = constraints {
+        if !constraints.is_empty() {
+            let span = self.tcx.def_span(body_id);
+
             debug!(?constraints);
             if !constraints.member_constraints.is_empty() {
                 span_bug!(span, "{:#?}", constraints.member_constraints);
@@ -108,7 +117,7 @@ impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
             }
         };
 
-        output
+        value
     }
 
     fn implied_bounds_tys(

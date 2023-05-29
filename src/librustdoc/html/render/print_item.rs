@@ -9,6 +9,8 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
+use std::borrow::Borrow;
+use std::cell::{RefCell, RefMut};
 use std::cmp::Ordering;
 use std::fmt;
 use std::rc::Rc;
@@ -216,6 +218,53 @@ fn toggle_close(mut w: impl fmt::Write) {
     w.write_str("</details>").unwrap();
 }
 
+trait ItemTemplate<'a, 'cx: 'a>: askama::Template + fmt::Display {
+    fn item_and_mut_cx(&self) -> (&'a clean::Item, RefMut<'_, &'a mut Context<'cx>>);
+}
+
+fn item_template_document<'a: 'b, 'b, 'cx: 'a>(
+    templ: &'b impl ItemTemplate<'a, 'cx>,
+) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
+    display_fn(move |f| {
+        let (item, mut cx) = templ.item_and_mut_cx();
+        let v = document(*cx, item, None, HeadingOffset::H2);
+        write!(f, "{v}")
+    })
+}
+
+fn item_template_document_type_layout<'a: 'b, 'b, 'cx: 'a>(
+    templ: &'b impl ItemTemplate<'a, 'cx>,
+) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
+    display_fn(move |f| {
+        let (item, cx) = templ.item_and_mut_cx();
+        let def_id = item.item_id.expect_def_id();
+        let v = document_type_layout(*cx, def_id);
+        write!(f, "{v}")
+    })
+}
+
+fn item_template_render_attributes_in_pre<'a: 'b, 'b, 'cx: 'a>(
+    templ: &'b impl ItemTemplate<'a, 'cx>,
+) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
+    display_fn(move |f| {
+        let (item, cx) = templ.item_and_mut_cx();
+        let tcx = cx.tcx();
+        let v = render_attributes_in_pre(item, "", tcx);
+        write!(f, "{v}")
+    })
+}
+
+fn item_template_render_assoc_items<'a: 'b, 'b, 'cx: 'a>(
+    templ: &'b impl ItemTemplate<'a, 'cx>,
+) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
+    display_fn(move |f| {
+        let (item, mut cx) = templ.item_and_mut_cx();
+        let def_id = item.item_id.expect_def_id();
+        let v = render_assoc_items(*cx, item, def_id, AssocItemRender::All);
+        write!(f, "{v}")
+    })
+}
+
 fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: &[clean::Item]) {
     write!(w, "{}", document(cx, item, None, HeadingOffset::H2));
 
@@ -356,18 +405,18 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
 
             clean::ImportItem(ref import) => {
                 let stab_tags = if let Some(import_def_id) = import.source.did {
-                    let ast_attrs = cx.tcx().get_attrs_unchecked(import_def_id);
+                    let ast_attrs = tcx.get_attrs_unchecked(import_def_id);
                     let import_attrs = Box::new(clean::Attributes::from_ast(ast_attrs));
 
                     // Just need an item with the correct def_id and attrs
                     let import_item = clean::Item {
                         item_id: import_def_id.into(),
                         attrs: import_attrs,
-                        cfg: ast_attrs.cfg(cx.tcx(), &cx.cache().hidden_cfg),
+                        cfg: ast_attrs.cfg(tcx, &cx.cache().hidden_cfg),
                         ..myitem.clone()
                     };
 
-                    let stab_tags = Some(extra_info_tags(&import_item, item, cx.tcx()).to_string());
+                    let stab_tags = Some(extra_info_tags(&import_item, item, tcx).to_string());
                     stab_tags
                 } else {
                     None
@@ -405,8 +454,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
 
                 let unsafety_flag = match *myitem.kind {
                     clean::FunctionItem(_) | clean::ForeignFunctionItem(_)
-                        if myitem.fn_header(cx.tcx()).unwrap().unsafety
-                            == hir::Unsafety::Unsafe =>
+                        if myitem.fn_header(tcx).unwrap().unsafety == hir::Unsafety::Unsafe =>
                     {
                         "<sup title=\"unsafe function\">⚠</sup>"
                     }
@@ -439,7 +487,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                      {docs_before}{docs}{docs_after}",
                     name = myitem.name.unwrap(),
                     visibility_emoji = visibility_emoji,
-                    stab_tags = extra_info_tags(myitem, item, cx.tcx()),
+                    stab_tags = extra_info_tags(myitem, item, tcx),
                     class = myitem.type_(),
                     unsafety_flag = unsafety_flag,
                     href = item_path(myitem.type_(), myitem.name.unwrap().as_str()),
@@ -886,7 +934,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             write_small_section_header(w, "foreign-impls", "Implementations on Foreign Types", "");
 
             for implementor in foreign {
-                let provided_methods = implementor.inner_impl().provided_trait_methods(cx.tcx());
+                let provided_methods = implementor.inner_impl().provided_trait_methods(tcx);
                 let assoc_link =
                     AssocItemLink::GotoSource(implementor.impl_item.item_id, &provided_methods);
                 render_impl(
@@ -919,7 +967,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         }
         w.write_str("</div>");
 
-        if t.is_auto(cx.tcx()) {
+        if t.is_auto(tcx) {
             write_small_section_header(
                 w,
                 "synthetic-implementors",
@@ -948,7 +996,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             "<div id=\"implementors-list\"></div>",
         );
 
-        if t.is_auto(cx.tcx()) {
+        if t.is_auto(tcx) {
             write_small_section_header(
                 w,
                 "synthetic-implementors",
@@ -1131,52 +1179,22 @@ fn item_union(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean:
     #[derive(Template)]
     #[template(path = "item_union.html")]
     struct ItemUnion<'a, 'cx> {
-        cx: std::cell::RefCell<&'a mut Context<'cx>>,
+        cx: RefCell<&'a mut Context<'cx>>,
         it: &'a clean::Item,
         s: &'a clean::Union,
     }
 
+    impl<'a, 'cx: 'a> ItemTemplate<'a, 'cx> for ItemUnion<'a, 'cx> {
+        fn item_and_mut_cx(&self) -> (&'a clean::Item, RefMut<'_, &'a mut Context<'cx>>) {
+            (self.it, self.cx.borrow_mut())
+        }
+    }
+
     impl<'a, 'cx: 'a> ItemUnion<'a, 'cx> {
-        fn render_assoc_items<'b>(
-            &'b self,
-        ) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
-                let def_id = self.it.item_id.expect_def_id();
-                let mut cx = self.cx.borrow_mut();
-                let v = render_assoc_items(*cx, self.it, def_id, AssocItemRender::All);
-                write!(f, "{v}")
-            })
-        }
-        fn document_type_layout<'b>(
-            &'b self,
-        ) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
-                let def_id = self.it.item_id.expect_def_id();
-                let cx = self.cx.borrow_mut();
-                let v = document_type_layout(*cx, def_id);
-                write!(f, "{v}")
-            })
-        }
         fn render_union<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
             display_fn(move |f| {
                 let cx = self.cx.borrow_mut();
                 let v = render_union(self.it, Some(&self.s.generics), &self.s.fields, *cx);
-                write!(f, "{v}")
-            })
-        }
-        fn render_attributes_in_pre<'b>(
-            &'b self,
-        ) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
-                let tcx = self.cx.borrow().tcx();
-                let v = render_attributes_in_pre(self.it, "", tcx);
-                write!(f, "{v}")
-            })
-        }
-        fn document<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
-                let mut cx = self.cx.borrow_mut();
-                let v = document(*cx, self.it, None, HeadingOffset::H2);
                 write!(f, "{v}")
             })
         }
@@ -1219,7 +1237,7 @@ fn item_union(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean:
         }
     }
 
-    ItemUnion { cx: std::cell::RefCell::new(cx), it, s }.render_into(w).unwrap();
+    ItemUnion { cx: RefCell::new(cx), it, s }.render_into(w).unwrap();
 }
 
 fn print_tuple_struct_fields<'a, 'cx: 'a>(
@@ -1541,11 +1559,12 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
     write!(w, "{}", document_type_layout(cx, def_id));
 }
 
-fn item_static(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Static) {
-    wrap_item(w, |w| {
-        render_attributes_in_code(w, it, cx.tcx());
+fn item_static(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Static) {
+    let mut buffer = Buffer::new();
+    wrap_item(&mut buffer, |buffer| {
+        render_attributes_in_code(buffer, it, cx.tcx());
         write!(
-            w,
+            buffer,
             "{vis}static {mutability}{name}: {typ}",
             vis = visibility_print_with_space(it.visibility(cx.tcx()), it.item_id, cx),
             mutability = s.mutability.print_with_space(),
@@ -1553,24 +1572,29 @@ fn item_static(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
             typ = s.type_.print(cx)
         );
     });
-    write!(w, "{}", document(cx, it, None, HeadingOffset::H2))
+
+    write!(w, "{}", buffer.into_inner()).unwrap();
+
+    write!(w, "{}", document(cx, it, None, HeadingOffset::H2)).unwrap();
 }
 
-fn item_foreign_type(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
-    wrap_item(w, |w| {
-        w.write_str("extern {\n");
-        render_attributes_in_code(w, it, cx.tcx());
+fn item_foreign_type(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::Item) {
+    let mut buffer = Buffer::new();
+    wrap_item(&mut buffer, |buffer| {
+        buffer.write_str("extern {\n");
+        render_attributes_in_code(buffer, it, cx.tcx());
         write!(
-            w,
+            buffer,
             "    {}type {};\n}}",
             visibility_print_with_space(it.visibility(cx.tcx()), it.item_id, cx),
             it.name.unwrap(),
         );
     });
 
-    write!(w, "{}", document(cx, it, None, HeadingOffset::H2));
+    write!(w, "{}{}", buffer.into_inner(), document(cx, it, None, HeadingOffset::H2)).unwrap();
 
     write!(w, "{}", render_assoc_items(cx, it, it.item_id.expect_def_id(), AssocItemRender::All))
+        .unwrap();
 }
 
 fn item_keyword(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {

@@ -540,6 +540,16 @@ pub enum BuiltinLintDiagnostics {
         /// Span where the same name is also re-exported.
         duplicate_reexport_span: Span,
     },
+    HiddenGlobReexports {
+        /// The name of the local binding which shadows the glob re-export.
+        name: String,
+        /// The namespace for which the shadowing occurred in.
+        namespace: String,
+        /// The glob reexport that is shadowed by the local binding.
+        glob_reexport_span: Span,
+        /// The local binding that shadows the glob reexport.
+        private_item_span: Span,
+    },
 }
 
 /// Lints that are buffered up early on in the `Session` before the

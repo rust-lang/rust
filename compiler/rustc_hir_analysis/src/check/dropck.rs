@@ -128,7 +128,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     // We don't need to normalize this param-env or anything, since we're only
     // substituting it with free params, so no additional param-env normalization
     // can occur on top of what has been done in the param_env query itself.
-    let param_env = ty::EarlyBinder(tcx.param_env(adt_def_id))
+    let param_env = ty::EarlyBinder::new(tcx.param_env(adt_def_id))
         .subst(tcx, adt_to_impl_substs)
         .with_constness(tcx.constness(drop_impl_def_id));
 

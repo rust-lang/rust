@@ -123,7 +123,7 @@ pub trait Printer<'tcx>: Sized {
                         impl_trait_ref.map(|i| i.subst(self.tcx(), substs)),
                     )
                 } else {
-                    (self_ty.0, impl_trait_ref.map(|i| i.0))
+                    (self_ty.subst_identity(), impl_trait_ref.map(|i| i.subst_identity()))
                 };
                 self.print_impl_path(def_id, substs, self_ty, impl_trait_ref)
             }

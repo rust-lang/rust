@@ -1496,8 +1496,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             let exported_ambiguities = self.tcx.sess.time("compute_effective_visibilities", || {
                 EffectiveVisibilitiesVisitor::compute_effective_visibilities(self, krate)
             });
-            self.tcx.sess.time("check_reexport_ambiguities", || {
-                self.check_reexport_ambiguities(exported_ambiguities)
+            self.tcx.sess.time("check_hidden_glob_reexports", || {
+                self.check_hidden_glob_reexports(exported_ambiguities)
             });
             self.tcx.sess.time("finalize_macro_resolutions", || self.finalize_macro_resolutions());
             self.tcx.sess.time("late_resolve_crate", || self.late_resolve_crate(krate));

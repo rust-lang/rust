@@ -75,6 +75,14 @@ struct PointerFinder<'tcx, 'a> {
 }
 
 impl<'tcx, 'a> Visitor<'tcx> for PointerFinder<'tcx, 'a> {
+    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
+        if let Rvalue::AddressOf(..) = rvalue {
+            // Ignore dereferences inside of an AddressOf
+            return;
+        }
+        self.super_rvalue(rvalue, location);
+    }
+
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _location: Location) {
         if let PlaceContext::NonUse(_) = context {
             return;

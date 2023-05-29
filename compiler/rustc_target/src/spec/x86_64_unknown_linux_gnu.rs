@@ -11,6 +11,7 @@ pub fn target() -> Target {
         | SanitizerSet::CFI
         | SanitizerSet::LEAK
         | SanitizerSet::MEMORY
+        | SanitizerSet::SAFESTACK
         | SanitizerSet::THREAD;
     base.supports_xray = true;
 

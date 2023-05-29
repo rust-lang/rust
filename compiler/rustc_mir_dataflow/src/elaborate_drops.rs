@@ -237,6 +237,7 @@ where
                         place: self.place,
                         target: self.succ,
                         unwind: self.unwind.into_action(),
+                        replace: false,
                     },
                 );
             }
@@ -719,6 +720,7 @@ where
                 place: tcx.mk_place_deref(ptr),
                 target: loop_block,
                 unwind: unwind.into_action(),
+                replace: false,
             },
         );
 
@@ -963,8 +965,12 @@ where
     }
 
     fn drop_block(&mut self, target: BasicBlock, unwind: Unwind) -> BasicBlock {
-        let block =
-            TerminatorKind::Drop { place: self.place, target, unwind: unwind.into_action() };
+        let block = TerminatorKind::Drop {
+            place: self.place,
+            target,
+            unwind: unwind.into_action(),
+            replace: false,
+        };
         self.new_block(unwind, block)
     }
 

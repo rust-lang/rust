@@ -242,7 +242,9 @@ impl LintLevelsProvider for LintLevelQueryMap<'_> {
 
 struct QueryMapExpectationsWrapper<'tcx> {
     tcx: TyCtxt<'tcx>,
+    /// HirId of the currently investigated element.
     cur: HirId,
+    /// Level map for `cur`.
     specs: ShallowLintLevelMap,
     expectations: Vec<(LintExpectationId, LintExpectation)>,
     unstable_to_stable_ids: FxHashMap<LintExpectationId, LintExpectationId>,
@@ -255,11 +257,11 @@ impl LintLevelsProvider for QueryMapExpectationsWrapper<'_> {
         self.specs.specs.get(&self.cur.local_id).unwrap_or(&self.empty)
     }
     fn insert(&mut self, id: LintId, lvl: LevelAndSource) {
-        let specs = self.specs.specs.get_mut_or_insert_default(self.cur.local_id);
-        specs.clear();
-        specs.insert(id, lvl);
+        self.specs.specs.get_mut_or_insert_default(self.cur.local_id).insert(id, lvl);
     }
     fn get_lint_level(&self, lint: &'static Lint, _: &Session) -> LevelAndSource {
+        // We cannot use `tcx.lint_level_at_node` because we want to know in which order the
+        // attributes have been inserted, in particular whether an `expect` follows a `forbid`.
         self.specs.lint_level_id_at_node(self.tcx, LintId::of(lint), self.cur)
     }
     fn push_expectation(&mut self, id: LintExpectationId, expectation: LintExpectation) {
@@ -355,7 +357,9 @@ impl<'tcx> Visitor<'tcx> for LintLevelsBuilder<'_, LintLevelQueryMap<'tcx>> {
 
 impl<'tcx> LintLevelsBuilder<'_, QueryMapExpectationsWrapper<'tcx>> {
     fn add_id(&mut self, hir_id: HirId) {
+        // Change both the `HirId` and the associated specs.
         self.provider.cur = hir_id;
+        self.provider.specs.specs.clear();
         self.add(self.provider.tcx.hir().attrs(hir_id), hir_id == hir::CRATE_HIR_ID, Some(hir_id));
     }
 }

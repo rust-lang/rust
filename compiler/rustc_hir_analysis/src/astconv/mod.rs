@@ -1159,7 +1159,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             // those that do.
             self.one_bound_for_assoc_type(
                 || traits::supertraits(tcx, trait_ref),
-                trait_ref.print_only_trait_path(),
+                trait_ref.skip_binder().print_only_trait_name(),
                 binding.item_name,
                 path_span,
                 match binding.kind {
@@ -1278,7 +1278,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             // params (and trait ref's late bound params). This logic is very similar to
             // `Predicate::subst_supertrait`, and it's no coincidence why.
             let shifted_output = tcx.shift_bound_var_indices(num_bound_vars, output);
-            let subst_output = ty::EarlyBinder(shifted_output).subst(tcx, substs);
+            let subst_output = ty::EarlyBinder::new(shifted_output).subst(tcx, substs);
 
             let bound_vars = tcx.late_bound_vars(binding.hir_id);
             ty::Binder::bind_with_vars(subst_output, bound_vars)

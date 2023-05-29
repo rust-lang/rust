@@ -53,7 +53,6 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{ExpnId, ExpnKind, Span};
 use rustc_target::abi::{Align, FieldIdx, Integer, IntegerType, VariantIdx};
 pub use rustc_target::abi::{ReprFlags, ReprOptions};
-use rustc_type_ir::WithCachedTypeInfo;
 pub use subst::*;
 pub use vtable::*;
 
@@ -145,6 +144,7 @@ mod opaque_types;
 mod parameterized;
 mod rvalue_scopes;
 mod structural_impls;
+#[cfg_attr(not(bootstrap), allow(hidden_glob_reexports))]
 mod sty;
 mod typeck_results;
 
@@ -764,7 +764,7 @@ impl<'tcx> Predicate<'tcx> {
         let shifted_pred =
             tcx.shift_bound_var_indices(trait_bound_vars.len(), bound_pred.skip_binder());
         // 2) Self: Bar1<'a, '^0.1> -> T: Bar1<'^0.0, '^0.1>
-        let new = EarlyBinder(shifted_pred).subst(tcx, trait_ref.skip_binder().substs);
+        let new = EarlyBinder::new(shifted_pred).subst(tcx, trait_ref.skip_binder().substs);
         // 3) ['x] + ['b] -> ['x, 'b]
         let bound_vars =
             tcx.mk_bound_variable_kinds_from_iter(trait_bound_vars.iter().chain(pred_bound_vars));

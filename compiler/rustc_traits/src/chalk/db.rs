@@ -294,7 +294,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         };
         Arc::new(chalk_solve::rust_ir::FnDefDatum {
             id: fn_def_id,
-            sig: sig.0.lower_into(self.interner),
+            sig: sig.skip_binder().lower_into(self.interner),
             binders: chalk_ir::Binders::new(binders, bound),
         })
     }

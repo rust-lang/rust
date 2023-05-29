@@ -1851,7 +1851,7 @@ impl String {
     }
 
     /// Consumes and leaks the `String`, returning a mutable reference to the contents,
-    /// `&'static mut str`.
+    /// `&'a mut str`.
     ///
     /// This is mainly useful for data that lives for the remainder of
     /// the program's life. Dropping the returned reference will cause a memory
@@ -1874,7 +1874,7 @@ impl String {
     /// ```
     #[unstable(feature = "string_leak", issue = "102929")]
     #[inline]
-    pub fn leak(self) -> &'static mut str {
+    pub fn leak<'a>(self) -> &'a mut str {
         let slice = self.vec.leak();
         unsafe { from_utf8_unchecked_mut(slice) }
     }

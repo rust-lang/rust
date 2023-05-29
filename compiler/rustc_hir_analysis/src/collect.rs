@@ -1124,7 +1124,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<ty::PolyFnSig<
             bug!("unexpected sort of node in fn_sig(): {:?}", x);
         }
     };
-    ty::EarlyBinder(output)
+    ty::EarlyBinder::new(output)
 }
 
 fn infer_return_ty_for_fn_sig<'tcx>(
@@ -1312,7 +1312,7 @@ fn impl_trait_ref(
                 check_impl_constness(tcx, impl_.constness, ast_trait_ref),
             )
         })
-        .map(ty::EarlyBinder)
+        .map(ty::EarlyBinder::new)
 }
 
 fn check_impl_constness(

@@ -49,8 +49,8 @@ pub struct StructExprNonExhaustive {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_method_call_on_unknown_type, code = "E0699")]
-pub struct MethodCallOnUnknownType {
+#[diag(hir_typeck_method_call_on_unknown_raw_pointee, code = "E0699")]
+pub struct MethodCallOnUnknownRawPointee {
     #[primary_span]
     pub span: Span,
 }
@@ -318,4 +318,12 @@ pub struct CandidateTraitNote {
     pub trait_name: String,
     pub item_name: Ident,
     pub action_or_ty: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_ctor_is_private, code = "E0603")]
+pub struct CtorIsPrivate {
+    #[primary_span]
+    pub span: Span,
+    pub def: String,
 }
