@@ -124,12 +124,14 @@ fn foo() {
 
     #[test]
     fn value_break_in_for_loop() {
+        // FIXME: the error is correct, but the message is terrible
         check_diagnostics(
             r#"
+//- minicore: iterator
 fn test() {
     for _ in [()] {
         break 3;
-     // ^^^^^^^ error: can't break with a value in this position
+           // ^ error: expected (), found i32
     }
 }
 "#,

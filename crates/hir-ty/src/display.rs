@@ -26,9 +26,7 @@ use stdx::never;
 
 use crate::{
     db::HirDatabase,
-    from_assoc_type_id, from_foreign_def_id, from_placeholder_idx,
-    layout::layout_of_ty,
-    lt_from_placeholder_idx,
+    from_assoc_type_id, from_foreign_def_id, from_placeholder_idx, lt_from_placeholder_idx,
     mapping::from_chalk,
     mir::pad16,
     primitive, to_assoc_type_id,
@@ -309,6 +307,8 @@ pub enum ClosureStyle {
     RANotation,
     /// `{closure#14825}`, useful for some diagnostics (like type mismatch) and internal usage.
     ClosureWithId,
+    /// `{closure#14825}<i32, ()>`, useful for internal usage.
+    ClosureWithSubst,
     /// `…`, which is the `TYPE_HINT_TRUNCATION`
     Hide,
 }
@@ -507,7 +507,7 @@ fn render_const_scalar(
             _ => f.write_str("<ref-not-supported>"),
         },
         chalk_ir::TyKind::Tuple(_, subst) => {
-            let Ok(layout) = layout_of_ty(f.db, ty, krate) else {
+            let Ok(layout) = f.db.layout_of_ty( ty.clone(), krate) else {
                 return f.write_str("<layout-error>");
             };
             f.write_str("(")?;
@@ -520,7 +520,7 @@ fn render_const_scalar(
                 }
                 let ty = ty.assert_ty_ref(Interner); // Tuple only has type argument
                 let offset = layout.fields.offset(id).bytes_usize();
-                let Ok(layout) = layout_of_ty(f.db, &ty, krate) else {
+                let Ok(layout) = f.db.layout_of_ty(ty.clone(), krate) else {
                     f.write_str("<layout-error>")?;
                     continue;
                 };
@@ -545,7 +545,7 @@ fn render_const_scalar(
                                 .offset(u32::from(id.into_raw()) as usize)
                                 .bytes_usize();
                             let ty = field_types[id].clone().substitute(Interner, subst);
-                            let Ok(layout) = layout_of_ty(f.db, &ty, krate) else {
+                            let Ok(layout) = f.db.layout_of_ty(ty.clone(), krate) else {
                                 return f.write_str("<layout-error>");
                             };
                             let size = layout.size.bytes_usize();
@@ -930,6 +930,10 @@ impl HirDisplay for Ty {
                     ClosureStyle::Hide => return write!(f, "{TYPE_HINT_TRUNCATION}"),
                     ClosureStyle::ClosureWithId => {
                         return write!(f, "{{closure#{:?}}}", id.0.as_u32())
+                    }
+                    ClosureStyle::ClosureWithSubst => {
+                        write!(f, "{{closure#{:?}}}", id.0.as_u32())?;
+                        return hir_fmt_generics(f, substs, None);
                     }
                     _ => (),
                 }

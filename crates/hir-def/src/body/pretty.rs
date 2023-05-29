@@ -7,7 +7,8 @@ use syntax::ast::HasName;
 
 use crate::{
     hir::{
-        Array, BindingAnnotation, BindingId, CaptureBy, ClosureKind, Literal, Movability, Statement,
+        Array, BindingAnnotation, BindingId, CaptureBy, ClosureKind, Literal, LiteralOrConst,
+        Movability, Statement,
     },
     pretty::{print_generic_args, print_path, print_type_ref},
     type_ref::TypeRef,
@@ -182,16 +183,6 @@ impl<'a> Printer<'a> {
                 }
                 w!(self, "while ");
                 self.print_expr(*condition);
-                self.print_expr(*body);
-            }
-            Expr::For { iterable, pat, body, label } => {
-                if let Some(lbl) = label {
-                    w!(self, "{}: ", self.body[*lbl].name.display(self.db));
-                }
-                w!(self, "for ");
-                self.print_pat(*pat);
-                w!(self, " in ");
-                self.print_expr(*iterable);
                 self.print_expr(*body);
             }
             Expr::Call { callee, args, is_assignee_expr: _ } => {
@@ -534,9 +525,13 @@ impl<'a> Printer<'a> {
                 w!(self, "}}");
             }
             Pat::Range { start, end } => {
-                self.print_expr(*start);
-                w!(self, "...");
-                self.print_expr(*end);
+                if let Some(start) = start {
+                    self.print_literal_or_const(start);
+                }
+                w!(self, "..=");
+                if let Some(end) = end {
+                    self.print_literal_or_const(end);
+                }
             }
             Pat::Slice { prefix, slice, suffix } => {
                 w!(self, "[");
@@ -624,6 +619,13 @@ impl<'a> Printer<'a> {
                 }
                 wln!(self);
             }
+        }
+    }
+
+    fn print_literal_or_const(&mut self, literal_or_const: &LiteralOrConst) {
+        match literal_or_const {
+            LiteralOrConst::Literal(l) => self.print_literal(l),
+            LiteralOrConst::Const(c) => self.print_path(c),
         }
     }
 

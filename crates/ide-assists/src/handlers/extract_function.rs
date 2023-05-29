@@ -4728,6 +4728,7 @@ const fn $0fun_name() {
         check_assist(
             extract_function,
             r#"
+//- minicore: iterator
 fn foo() {
     let mut x = 5;
     for _ in 0..10 {
@@ -4751,6 +4752,7 @@ fn $0fun_name(x: &mut i32) {
         check_assist(
             extract_function,
             r#"
+//- minicore: iterator
 fn foo() {
     for _ in 0..10 {
         let mut x = 5;
@@ -4774,6 +4776,7 @@ fn $0fun_name(mut x: i32) {
         check_assist(
             extract_function,
             r#"
+//- minicore: iterator
 fn foo() {
     loop {
         let mut x = 5;

@@ -1153,22 +1153,6 @@ impl<'a> InferenceContext<'a> {
         self.db.lang_item(krate, item)
     }
 
-    fn resolve_into_iter_item(&self) -> Option<TypeAliasId> {
-        let ItemContainerId::TraitId(trait_) = self.resolve_lang_item(LangItem::IntoIterIntoIter)?
-            .as_function()?
-            .lookup(self.db.upcast()).container
-        else { return None };
-        self.db.trait_data(trait_).associated_type_by_name(&name![IntoIter])
-    }
-
-    fn resolve_iterator_item(&self) -> Option<TypeAliasId> {
-        let ItemContainerId::TraitId(trait_) = self.resolve_lang_item(LangItem::IteratorNext)?
-            .as_function()?
-            .lookup(self.db.upcast()).container
-        else { return None };
-        self.db.trait_data(trait_).associated_type_by_name(&name![Item])
-    }
-
     fn resolve_output_on(&self, trait_: TraitId) -> Option<TypeAliasId> {
         self.db.trait_data(trait_).associated_type_by_name(&name![Output])
     }

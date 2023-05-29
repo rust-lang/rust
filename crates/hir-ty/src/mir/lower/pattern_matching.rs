@@ -1,6 +1,6 @@
 //! MIR lowering for patterns
 
-use hir_def::resolver::HasResolver;
+use hir_def::{hir::LiteralOrConst, resolver::HasResolver, AssocItemId};
 
 use crate::utils::pattern_matching_dereference_count;
 
@@ -38,7 +38,7 @@ impl MirLowerCtx<'_> {
         mut binding_mode: BindingAnnotation,
     ) -> Result<(BasicBlockId, Option<BasicBlockId>)> {
         Ok(match &self.body.pats[pattern] {
-            Pat::Missing => return Err(MirLowerError::IncompleteExpr),
+            Pat::Missing => return Err(MirLowerError::IncompletePattern),
             Pat::Wild => (current, current_else),
             Pat::Tuple { args, ellipsis } => {
                 pattern_matching_dereference(&mut cond_ty, &mut binding_mode, &mut cond_place);
@@ -106,9 +106,92 @@ impl MirLowerCtx<'_> {
                     AdtPatternShape::Record { args: &*args },
                 )?
             }
-            Pat::Range { .. } => not_supported!("range pattern"),
+            Pat::Range { start, end } => {
+                let mut add_check = |l: &LiteralOrConst, binop| -> Result<()> {
+                    let lv = self.lower_literal_or_const_to_operand(cond_ty.clone(), l)?;
+                    let else_target = *current_else.get_or_insert_with(|| self.new_basic_block());
+                    let next = self.new_basic_block();
+                    let discr: Place =
+                        self.temp(TyBuilder::bool(), current, pattern.into())?.into();
+                    self.push_assignment(
+                        current,
+                        discr.clone(),
+                        Rvalue::CheckedBinaryOp(binop, lv, Operand::Copy(cond_place.clone())),
+                        pattern.into(),
+                    );
+                    let discr = Operand::Copy(discr);
+                    self.set_terminator(
+                        current,
+                        TerminatorKind::SwitchInt {
+                            discr,
+                            targets: SwitchTargets::static_if(1, next, else_target),
+                        },
+                        pattern.into(),
+                    );
+                    current = next;
+                    Ok(())
+                };
+                if let Some(start) = start {
+                    add_check(start, BinOp::Le)?;
+                }
+                if let Some(end) = end {
+                    add_check(end, BinOp::Ge)?;
+                }
+                (current, current_else)
+            }
             Pat::Slice { prefix, slice, suffix } => {
                 pattern_matching_dereference(&mut cond_ty, &mut binding_mode, &mut cond_place);
+                if let TyKind::Slice(_) = cond_ty.kind(Interner) {
+                    let pattern_len = prefix.len() + suffix.len();
+                    let place_len: Place =
+                        self.temp(TyBuilder::usize(), current, pattern.into())?.into();
+                    self.push_assignment(
+                        current,
+                        place_len.clone(),
+                        Rvalue::Len(cond_place.clone()),
+                        pattern.into(),
+                    );
+                    let else_target = *current_else.get_or_insert_with(|| self.new_basic_block());
+                    let next = self.new_basic_block();
+                    if slice.is_none() {
+                        self.set_terminator(
+                            current,
+                            TerminatorKind::SwitchInt {
+                                discr: Operand::Copy(place_len),
+                                targets: SwitchTargets::static_if(
+                                    pattern_len as u128,
+                                    next,
+                                    else_target,
+                                ),
+                            },
+                            pattern.into(),
+                        );
+                    } else {
+                        let c = Operand::from_concrete_const(
+                            pattern_len.to_le_bytes().to_vec(),
+                            MemoryMap::default(),
+                            TyBuilder::usize(),
+                        );
+                        let discr: Place =
+                            self.temp(TyBuilder::bool(), current, pattern.into())?.into();
+                        self.push_assignment(
+                            current,
+                            discr.clone(),
+                            Rvalue::CheckedBinaryOp(BinOp::Le, c, Operand::Copy(place_len)),
+                            pattern.into(),
+                        );
+                        let discr = Operand::Copy(discr);
+                        self.set_terminator(
+                            current,
+                            TerminatorKind::SwitchInt {
+                                discr,
+                                targets: SwitchTargets::static_if(1, next, else_target),
+                            },
+                            pattern.into(),
+                        );
+                    }
+                    current = next;
+                }
                 for (i, &pat) in prefix.iter().enumerate() {
                     let next_place = cond_place.project(ProjectionElem::ConstantIndex {
                         offset: i as u64,
@@ -174,53 +257,44 @@ impl MirLowerCtx<'_> {
                     let pr = resolver
                         .resolve_path_in_value_ns(self.db.upcast(), p)
                         .ok_or_else(unresolved_name)?;
-                    match pr {
-                        ResolveValueResult::ValueNs(v) => match v {
-                            ValueNs::ConstId(c) => {
-                                let tmp: Place =
-                                    self.temp(cond_ty.clone(), current, pattern.into())?.into();
-                                let span = pattern.into();
-                                self.lower_const(
-                                    c.into(),
-                                    current,
-                                    tmp.clone(),
-                                    Substitution::empty(Interner),
-                                    span,
-                                    cond_ty.clone(),
-                                )?;
-                                let tmp2: Place =
-                                    self.temp(TyBuilder::bool(), current, pattern.into())?.into();
-                                self.push_assignment(
-                                    current,
-                                    tmp2.clone(),
-                                    Rvalue::CheckedBinaryOp(
-                                        BinOp::Eq,
-                                        Operand::Copy(tmp),
-                                        Operand::Copy(cond_place),
-                                    ),
-                                    span,
-                                );
-                                let next = self.new_basic_block();
-                                let else_target =
-                                    current_else.unwrap_or_else(|| self.new_basic_block());
-                                self.set_terminator(
-                                    current,
-                                    TerminatorKind::SwitchInt {
-                                        discr: Operand::Copy(tmp2),
-                                        targets: SwitchTargets::static_if(1, next, else_target),
-                                    },
-                                    span,
-                                );
-                                (next, Some(else_target))
+                    let (c, subst) = 'b: {
+                        if let Some(x) = self.infer.assoc_resolutions_for_pat(pattern) {
+                            if let AssocItemId::ConstId(c) = x.0 {
+                                break 'b (c, x.1);
                             }
-                            _ => not_supported!(
-                                "path in pattern position that is not const or variant"
-                            ),
-                        },
-                        ResolveValueResult::Partial(_, _) => {
-                            not_supported!("assoc const in patterns")
                         }
-                    }
+                        if let ResolveValueResult::ValueNs(v) = pr {
+                            if let ValueNs::ConstId(c) = v {
+                                break 'b (c, Substitution::empty(Interner));
+                            }
+                        }
+                        not_supported!("path in pattern position that is not const or variant")
+                    };
+                    let tmp: Place = self.temp(cond_ty.clone(), current, pattern.into())?.into();
+                    let span = pattern.into();
+                    self.lower_const(c.into(), current, tmp.clone(), subst, span, cond_ty.clone())?;
+                    let tmp2: Place = self.temp(TyBuilder::bool(), current, pattern.into())?.into();
+                    self.push_assignment(
+                        current,
+                        tmp2.clone(),
+                        Rvalue::CheckedBinaryOp(
+                            BinOp::Eq,
+                            Operand::Copy(tmp),
+                            Operand::Copy(cond_place),
+                        ),
+                        span,
+                    );
+                    let next = self.new_basic_block();
+                    let else_target = current_else.unwrap_or_else(|| self.new_basic_block());
+                    self.set_terminator(
+                        current,
+                        TerminatorKind::SwitchInt {
+                            discr: Operand::Copy(tmp2),
+                            targets: SwitchTargets::static_if(1, next, else_target),
+                        },
+                        span,
+                    );
+                    (next, Some(else_target))
                 }
             },
             Pat::Lit(l) => match &self.body.exprs[*l] {

@@ -10,6 +10,7 @@ use hir_def::{
 };
 use la_arena::RawIdx;
 use smallvec::SmallVec;
+use triomphe::Arc;
 
 use crate::{
     db::HirDatabase,
@@ -18,7 +19,7 @@ use crate::{
     Substitution,
 };
 
-use super::{layout_of_ty, LayoutCx};
+use super::LayoutCx;
 
 pub(crate) fn struct_variant_idx() -> RustcEnumVariantIdx {
     RustcEnumVariantIdx(LocalEnumVariantId::from_raw(RawIdx::from(0)))
@@ -29,14 +30,14 @@ pub fn layout_of_adt_query(
     def: AdtId,
     subst: Substitution,
     krate: CrateId,
-) -> Result<Layout, LayoutError> {
+) -> Result<Arc<Layout>, LayoutError> {
     let Some(target) = db.target_data_layout(krate) else { return Err(LayoutError::TargetLayoutNotAvailable) };
     let cx = LayoutCx { krate, target: &target };
     let dl = cx.current_data_layout();
     let handle_variant = |def: VariantId, var: &VariantData| {
         var.fields()
             .iter()
-            .map(|(fd, _)| layout_of_ty(db, &field_ty(db, def, fd, &subst), cx.krate))
+            .map(|(fd, _)| db.layout_of_ty(field_ty(db, def, fd, &subst), cx.krate))
             .collect::<Result<Vec<_>, _>>()
     };
     let (variants, repr) = match def {
@@ -67,11 +68,13 @@ pub fn layout_of_adt_query(
             (r, data.repr.unwrap_or_default())
         }
     };
-    let variants =
-        variants.iter().map(|x| x.iter().collect::<Vec<_>>()).collect::<SmallVec<[_; 1]>>();
+    let variants = variants
+        .iter()
+        .map(|x| x.iter().map(|x| &**x).collect::<Vec<_>>())
+        .collect::<SmallVec<[_; 1]>>();
     let variants = variants.iter().map(|x| x.iter().collect()).collect();
-    if matches!(def, AdtId::UnionId(..)) {
-        cx.layout_of_union(&repr, &variants).ok_or(LayoutError::Unknown)
+    let result = if matches!(def, AdtId::UnionId(..)) {
+        cx.layout_of_union(&repr, &variants).ok_or(LayoutError::Unknown)?
     } else {
         cx.layout_of_struct_or_enum(
             &repr,
@@ -103,8 +106,9 @@ pub fn layout_of_adt_query(
                     .and_then(|x| x.last().map(|x| x.is_unsized()))
                     .unwrap_or(true),
         )
-        .ok_or(LayoutError::SizeOverflow)
-    }
+        .ok_or(LayoutError::SizeOverflow)?
+    };
+    Ok(Arc::new(result))
 }
 
 fn layout_scalar_valid_range(db: &dyn HirDatabase, def: AdtId) -> (Bound<u128>, Bound<u128>) {
@@ -129,7 +133,7 @@ pub fn layout_of_adt_recover(
     _: &AdtId,
     _: &Substitution,
     _: &CrateId,
-) -> Result<Layout, LayoutError> {
+) -> Result<Arc<Layout>, LayoutError> {
     user_error!("infinite sized recursive type");
 }
 

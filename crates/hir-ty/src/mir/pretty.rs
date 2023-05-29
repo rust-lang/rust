@@ -437,6 +437,6 @@ impl<'a> MirPrettyCtx<'a> {
     }
 
     fn hir_display<T: HirDisplay>(&self, ty: &'a T) -> impl Display + 'a {
-        ty.display(self.db).with_closure_style(ClosureStyle::ClosureWithId)
+        ty.display(self.db).with_closure_style(ClosureStyle::ClosureWithSubst)
     }
 }

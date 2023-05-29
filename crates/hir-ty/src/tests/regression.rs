@@ -246,6 +246,7 @@ fn infer_std_crash_5() {
     // taken from rustc
     check_infer(
         r#"
+        //- minicore: iterator
         fn extra_compiler_flags() {
             for content in doesnt_matter {
                 let name = if doesnt_matter {
@@ -264,6 +265,15 @@ fn infer_std_crash_5() {
         "#,
         expect![[r#"
             26..322 '{     ...   } }': ()
+            32..320 'for co...     }': fn into_iter<{unknown}>({unknown}) -> <{unknown} as IntoIterator>::IntoIter
+            32..320 'for co...     }': {unknown}
+            32..320 'for co...     }': !
+            32..320 'for co...     }': {unknown}
+            32..320 'for co...     }': &mut {unknown}
+            32..320 'for co...     }': fn next<{unknown}>(&mut {unknown}) -> Option<<{unknown} as Iterator>::Item>
+            32..320 'for co...     }': Option<{unknown}>
+            32..320 'for co...     }': ()
+            32..320 'for co...     }': ()
             32..320 'for co...     }': ()
             36..43 'content': {unknown}
             47..60 'doesnt_matter': {unknown}
@@ -1215,6 +1225,7 @@ fn mamba(a: U32!(), p: u32) -> u32 {
 fn for_loop_block_expr_iterable() {
     check_infer(
         r#"
+//- minicore: iterator
 fn test() {
     for _ in { let x = 0; } {
         let y = 0;
@@ -1223,8 +1234,17 @@ fn test() {
         "#,
         expect![[r#"
             10..68 '{     ...   } }': ()
+            16..66 'for _ ...     }': fn into_iter<()>(()) -> <() as IntoIterator>::IntoIter
+            16..66 'for _ ...     }': IntoIterator::IntoIter<()>
+            16..66 'for _ ...     }': !
+            16..66 'for _ ...     }': IntoIterator::IntoIter<()>
+            16..66 'for _ ...     }': &mut IntoIterator::IntoIter<()>
+            16..66 'for _ ...     }': fn next<IntoIterator::IntoIter<()>>(&mut IntoIterator::IntoIter<()>) -> Option<<IntoIterator::IntoIter<()> as Iterator>::Item>
+            16..66 'for _ ...     }': Option<Iterator::Item<IntoIterator::IntoIter<()>>>
             16..66 'for _ ...     }': ()
-            20..21 '_': {unknown}
+            16..66 'for _ ...     }': ()
+            16..66 'for _ ...     }': ()
+            20..21 '_': Iterator::Item<IntoIterator::IntoIter<()>>
             25..39 '{ let x = 0; }': ()
             31..32 'x': i32
             35..36 '0': i32

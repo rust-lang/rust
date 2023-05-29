@@ -96,6 +96,13 @@ pub enum Literal {
     Float(FloatTypeWrapper, Option<BuiltinFloat>),
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+/// Used in range patterns.
+pub enum LiteralOrConst {
+    Literal(Literal),
+    Const(Path),
+}
+
 impl Literal {
     pub fn negate(self) -> Option<Self> {
         if let Literal::Int(i, k) = self {
@@ -186,12 +193,6 @@ pub enum Expr {
     },
     While {
         condition: ExprId,
-        body: ExprId,
-        label: Option<LabelId>,
-    },
-    For {
-        iterable: ExprId,
-        pat: PatId,
         body: ExprId,
         label: Option<LabelId>,
     },
@@ -382,10 +383,6 @@ impl Expr {
                 f(*condition);
                 f(*body);
             }
-            Expr::For { iterable, body, .. } => {
-                f(*iterable);
-                f(*body);
-            }
             Expr::Call { callee, args, .. } => {
                 f(*callee);
                 args.iter().copied().for_each(f);
@@ -526,7 +523,7 @@ pub enum Pat {
     Tuple { args: Box<[PatId]>, ellipsis: Option<usize> },
     Or(Box<[PatId]>),
     Record { path: Option<Box<Path>>, args: Box<[RecordFieldPat]>, ellipsis: bool },
-    Range { start: ExprId, end: ExprId },
+    Range { start: Option<Box<LiteralOrConst>>, end: Option<Box<LiteralOrConst>> },
     Slice { prefix: Box<[PatId]>, slice: Option<PatId>, suffix: Box<[PatId]> },
     Path(Box<Path>),
     Lit(ExprId),

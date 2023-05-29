@@ -41,6 +41,23 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::invoke(crate::mir::mir_body_for_closure_query)]
     fn mir_body_for_closure(&self, def: ClosureId) -> Result<Arc<MirBody>, MirLowerError>;
 
+    #[salsa::invoke(crate::mir::monomorphized_mir_body_query)]
+    #[salsa::cycle(crate::mir::monomorphized_mir_body_recover)]
+    fn monomorphized_mir_body(
+        &self,
+        def: DefWithBodyId,
+        subst: Substitution,
+        env: Arc<crate::TraitEnvironment>,
+    ) -> Result<Arc<MirBody>, MirLowerError>;
+
+    #[salsa::invoke(crate::mir::monomorphized_mir_body_for_closure_query)]
+    fn monomorphized_mir_body_for_closure(
+        &self,
+        def: ClosureId,
+        subst: Substitution,
+        env: Arc<crate::TraitEnvironment>,
+    ) -> Result<Arc<MirBody>, MirLowerError>;
+
     #[salsa::invoke(crate::mir::borrowck_query)]
     fn borrowck(&self, def: DefWithBodyId) -> Result<Arc<[BorrowckResult]>, MirLowerError>;
 
@@ -84,7 +101,11 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
         def: AdtId,
         subst: Substitution,
         krate: CrateId,
-    ) -> Result<Layout, LayoutError>;
+    ) -> Result<Arc<Layout>, LayoutError>;
+
+    #[salsa::invoke(crate::layout::layout_of_ty_query)]
+    #[salsa::cycle(crate::layout::layout_of_ty_recover)]
+    fn layout_of_ty(&self, ty: Ty, krate: CrateId) -> Result<Arc<Layout>, LayoutError>;
 
     #[salsa::invoke(crate::layout::target_data_layout_query)]
     fn target_data_layout(&self, krate: CrateId) -> Option<Arc<TargetDataLayout>>;

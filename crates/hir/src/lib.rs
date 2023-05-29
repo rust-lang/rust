@@ -62,7 +62,7 @@ use hir_ty::{
     consteval::{try_const_usize, unknown_const_as_generic, ConstEvalError, ConstExt},
     diagnostics::BodyValidationDiagnostic,
     display::HexifiedConst,
-    layout::{layout_of_ty, Layout, LayoutError, RustcEnumVariantIdx, TagEncoding},
+    layout::{Layout, LayoutError, RustcEnumVariantIdx, TagEncoding},
     method_resolution::{self, TyFingerprint},
     mir::{self, interpret_mir},
     primitive::UintTy,
@@ -961,8 +961,8 @@ impl Field {
         Type::new(db, var_id, ty)
     }
 
-    pub fn layout(&self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
-        layout_of_ty(db, &self.ty(db).ty, self.parent.module(db).krate().into())
+    pub fn layout(&self, db: &dyn HirDatabase) -> Result<Arc<Layout>, LayoutError> {
+        db.layout_of_ty(self.ty(db).ty.clone(), self.parent.module(db).krate().into())
     }
 
     pub fn parent_def(&self, _db: &dyn HirDatabase) -> VariantDef {
@@ -1135,7 +1135,7 @@ impl Enum {
         self.variants(db).iter().any(|v| !matches!(v.kind(db), StructKind::Unit))
     }
 
-    pub fn layout(self, db: &dyn HirDatabase) -> Result<(Layout, usize), LayoutError> {
+    pub fn layout(self, db: &dyn HirDatabase) -> Result<(Arc<Layout>, usize), LayoutError> {
         let layout = Adt::from(self).layout(db)?;
         let tag_size =
             if let layout::Variants::Multiple { tag, tag_encoding, .. } = &layout.variants {
@@ -1219,11 +1219,11 @@ impl Variant {
         let parent_enum = self.parent_enum(db);
         let (parent_layout, tag_size) = parent_enum.layout(db)?;
         Ok((
-            match parent_layout.variants {
+            match &parent_layout.variants {
                 layout::Variants::Multiple { variants, .. } => {
                     variants[RustcEnumVariantIdx(self.id)].clone()
                 }
-                _ => parent_layout,
+                _ => (*parent_layout).clone(),
             },
             tag_size,
         ))
@@ -1255,7 +1255,7 @@ impl Adt {
         })
     }
 
-    pub fn layout(self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
+    pub fn layout(self, db: &dyn HirDatabase) -> Result<Arc<Layout>, LayoutError> {
         if db.generic_params(self.into()).iter().count() != 0 {
             return Err(LayoutError::HasPlaceholder);
         }
@@ -1949,7 +1949,11 @@ impl Function {
         db: &dyn HirDatabase,
         span_formatter: impl Fn(FileId, TextRange) -> String,
     ) -> String {
-        let body = match db.mir_body(self.id.into()) {
+        let body = match db.monomorphized_mir_body(
+            self.id.into(),
+            Substitution::empty(Interner),
+            db.trait_environment(self.id.into()),
+        ) {
             Ok(body) => body,
             Err(e) => {
                 let mut r = String::new();
@@ -1957,8 +1961,7 @@ impl Function {
                 return r;
             }
         };
-        let (result, stdout, stderr) =
-            interpret_mir(db, &body, Substitution::empty(Interner), false);
+        let (result, stdout, stderr) = interpret_mir(db, &body, false);
         let mut text = match result {
             Ok(_) => "pass".to_string(),
             Err(e) => {
@@ -4240,8 +4243,8 @@ impl Type {
             .collect()
     }
 
-    pub fn layout(&self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
-        layout_of_ty(db, &self.ty, self.env.krate)
+    pub fn layout(&self, db: &dyn HirDatabase) -> Result<Arc<Layout>, LayoutError> {
+        db.layout_of_ty(self.ty.clone(), self.env.krate)
     }
 }
 

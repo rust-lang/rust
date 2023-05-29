@@ -31,8 +31,8 @@ use crate::{
     expander::Expander,
     hir::{
         dummy_expr_id, Array, Binding, BindingAnnotation, BindingId, CaptureBy, ClosureKind, Expr,
-        ExprId, Label, LabelId, Literal, MatchArm, Movability, Pat, PatId, RecordFieldPat,
-        RecordLitField, Statement,
+        ExprId, Label, LabelId, Literal, LiteralOrConst, MatchArm, Movability, Pat, PatId,
+        RecordFieldPat, RecordLitField, Statement,
     },
     item_scope::BuiltinShadowMode,
     lang_item::LangItem,
@@ -295,13 +295,7 @@ impl ExprCollector<'_> {
 
                 self.alloc_expr(Expr::While { condition, body, label }, syntax_ptr)
             }
-            ast::Expr::ForExpr(e) => {
-                let label = e.label().map(|label| self.collect_label(label));
-                let iterable = self.collect_expr_opt(e.iterable());
-                let pat = self.collect_pat_top(e.pat());
-                let body = self.collect_labelled_block_opt(label, e.loop_body());
-                self.alloc_expr(Expr::For { iterable, pat, body, label }, syntax_ptr)
-            }
+            ast::Expr::ForExpr(e) => self.collect_for_loop(syntax_ptr, e),
             ast::Expr::CallExpr(e) => {
                 let is_rustc_box = {
                     let attrs = e.attrs();
@@ -701,6 +695,91 @@ impl ExprCollector<'_> {
         *tail = Some(next_tail);
         self.current_try_block_label = old_label;
         expr_id
+    }
+
+    /// Desugar `ast::ForExpr` from: `[opt_ident]: for <pat> in <head> <body>` into:
+    /// ```ignore (pseudo-rust)
+    /// match IntoIterator::into_iter(<head>) {
+    ///     mut iter => {
+    ///         [opt_ident]: loop {
+    ///             match Iterator::next(&mut iter) {
+    ///                 None => break,
+    ///                 Some(<pat>) => <body>,
+    ///             };
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    fn collect_for_loop(&mut self, syntax_ptr: AstPtr<ast::Expr>, e: ast::ForExpr) -> ExprId {
+        let (into_iter_fn, iter_next_fn, option_some, option_none) = 'if_chain: {
+            if let Some(into_iter_fn) = LangItem::IntoIterIntoIter.path(self.db, self.krate) {
+                if let Some(iter_next_fn) = LangItem::IteratorNext.path(self.db, self.krate) {
+                    if let Some(option_some) = LangItem::OptionSome.path(self.db, self.krate) {
+                        if let Some(option_none) = LangItem::OptionNone.path(self.db, self.krate) {
+                            break 'if_chain (into_iter_fn, iter_next_fn, option_some, option_none);
+                        }
+                    }
+                }
+            }
+            // Some of the needed lang items are missing, so we can't desugar
+            return self.alloc_expr(Expr::Missing, syntax_ptr);
+        };
+        let head = self.collect_expr_opt(e.iterable());
+        let into_iter_fn_expr = self.alloc_expr(Expr::Path(into_iter_fn), syntax_ptr.clone());
+        let iterator = self.alloc_expr(
+            Expr::Call {
+                callee: into_iter_fn_expr,
+                args: Box::new([head]),
+                is_assignee_expr: false,
+            },
+            syntax_ptr.clone(),
+        );
+        let none_arm = MatchArm {
+            pat: self.alloc_pat_desugared(Pat::Path(Box::new(option_none))),
+            guard: None,
+            expr: self.alloc_expr(Expr::Break { expr: None, label: None }, syntax_ptr.clone()),
+        };
+        let some_pat = Pat::TupleStruct {
+            path: Some(Box::new(option_some)),
+            args: Box::new([self.collect_pat_top(e.pat())]),
+            ellipsis: None,
+        };
+        let some_arm = MatchArm {
+            pat: self.alloc_pat_desugared(some_pat),
+            guard: None,
+            expr: self.collect_expr_opt(e.loop_body().map(|x| x.into())),
+        };
+        let iter_name = Name::generate_new_name();
+        let iter_binding = self.alloc_binding(iter_name.clone(), BindingAnnotation::Mutable);
+        let iter_expr = self.alloc_expr(Expr::Path(Path::from(iter_name)), syntax_ptr.clone());
+        let iter_expr_mut = self.alloc_expr(
+            Expr::Ref { expr: iter_expr, rawness: Rawness::Ref, mutability: Mutability::Mut },
+            syntax_ptr.clone(),
+        );
+        let iter_next_fn_expr = self.alloc_expr(Expr::Path(iter_next_fn), syntax_ptr.clone());
+        let iter_next_expr = self.alloc_expr(
+            Expr::Call {
+                callee: iter_next_fn_expr,
+                args: Box::new([iter_expr_mut]),
+                is_assignee_expr: false,
+            },
+            syntax_ptr.clone(),
+        );
+        let loop_inner = self.alloc_expr(
+            Expr::Match { expr: iter_next_expr, arms: Box::new([none_arm, some_arm]) },
+            syntax_ptr.clone(),
+        );
+        let label = e.label().map(|label| self.collect_label(label));
+        let loop_outer =
+            self.alloc_expr(Expr::Loop { body: loop_inner, label }, syntax_ptr.clone());
+        let iter_pat = self.alloc_pat_desugared(Pat::Bind { id: iter_binding, subpat: None });
+        self.alloc_expr(
+            Expr::Match {
+                expr: iterator,
+                arms: Box::new([MatchArm { pat: iter_pat, guard: None, expr: loop_outer }]),
+            },
+            syntax_ptr.clone(),
+        )
     }
 
     /// Desugar `ast::TryExpr` from: `<expr>?` into:
@@ -1159,22 +1238,12 @@ impl ExprCollector<'_> {
             }
             #[rustfmt::skip] // https://github.com/rust-lang/rustfmt/issues/5676
             ast::Pat::LiteralPat(lit) => 'b: {
-                if let Some(ast_lit) = lit.literal() {
-                    let mut hir_lit: Literal = ast_lit.kind().into();
-                    if lit.minus_token().is_some() {
-                        let Some(h) = hir_lit.negate() else {
-                            break 'b Pat::Missing;
-                        };
-                        hir_lit = h;
-                    }
-                    let expr = Expr::Literal(hir_lit);
-                    let expr_ptr = AstPtr::new(&ast::Expr::Literal(ast_lit));
-                    let expr_id = self.alloc_expr(expr, expr_ptr);
-                    Pat::Lit(expr_id)
-                } else {
-                    Pat::Missing
-                }
-            },
+                let Some((hir_lit, ast_lit)) = pat_literal_to_hir(lit) else { break 'b Pat::Missing };
+                let expr = Expr::Literal(hir_lit);
+                let expr_ptr = AstPtr::new(&ast::Expr::Literal(ast_lit));
+                let expr_id = self.alloc_expr(expr, expr_ptr);
+                Pat::Lit(expr_id)
+            }
             ast::Pat::RestPat(_) => {
                 // `RestPat` requires special handling and should not be mapped
                 // to a Pat. Here we are using `Pat::Missing` as a fallback for
@@ -1215,8 +1284,30 @@ impl ExprCollector<'_> {
                 }
                 None => Pat::Missing,
             },
-            // FIXME: implement
-            ast::Pat::RangePat(_) => Pat::Missing,
+            // FIXME: implement in a way that also builds source map and calculates assoc resolutions in type inference.
+            ast::Pat::RangePat(p) => {
+                let mut range_part_lower = |p: Option<ast::Pat>| {
+                    p.and_then(|x| match &x {
+                        ast::Pat::LiteralPat(x) => {
+                            Some(Box::new(LiteralOrConst::Literal(pat_literal_to_hir(x)?.0)))
+                        }
+                        ast::Pat::IdentPat(p) => {
+                            let name =
+                                p.name().map(|nr| nr.as_name()).unwrap_or_else(Name::missing);
+                            Some(Box::new(LiteralOrConst::Const(name.into())))
+                        }
+                        ast::Pat::PathPat(p) => p
+                            .path()
+                            .and_then(|path| self.expander.parse_path(self.db, path))
+                            .map(LiteralOrConst::Const)
+                            .map(Box::new),
+                        _ => None,
+                    })
+                };
+                let start = range_part_lower(p.start());
+                let end = range_part_lower(p.end());
+                Pat::Range { start, end }
+            }
         };
         let ptr = AstPtr::new(&pat);
         self.alloc_pat(pattern, Either::Left(ptr))
@@ -1336,6 +1427,18 @@ impl ExprCollector<'_> {
         res
     }
     // endregion: labels
+}
+
+fn pat_literal_to_hir(lit: &ast::LiteralPat) -> Option<(Literal, ast::Literal)> {
+    let ast_lit = lit.literal()?;
+    let mut hir_lit: Literal = ast_lit.kind().into();
+    if lit.minus_token().is_some() {
+        let Some(h) = hir_lit.negate() else {
+            return None;
+        };
+        hir_lit = h;
+    }
+    Some((hir_lit, ast_lit))
 }
 
 impl ExprCollector<'_> {

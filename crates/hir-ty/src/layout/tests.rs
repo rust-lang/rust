@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use base_db::fixture::WithFixture;
 use chalk_ir::{AdtId, TyKind};
 use hir_def::db::DefDatabase;
+use triomphe::Arc;
 
 use crate::{
     db::HirDatabase,
@@ -11,15 +12,13 @@ use crate::{
     Interner, Substitution,
 };
 
-use super::layout_of_ty;
-
 mod closure;
 
 fn current_machine_data_layout() -> String {
     project_model::target_data_layout::get(None, None, &HashMap::default()).unwrap()
 }
 
-fn eval_goal(ra_fixture: &str, minicore: &str) -> Result<Layout, LayoutError> {
+fn eval_goal(ra_fixture: &str, minicore: &str) -> Result<Arc<Layout>, LayoutError> {
     let target_data_layout = current_machine_data_layout();
     let ra_fixture = format!(
         "{minicore}//- /main.rs crate:test target_data_layout:{target_data_layout}\n{ra_fixture}",
@@ -47,11 +46,11 @@ fn eval_goal(ra_fixture: &str, minicore: &str) -> Result<Layout, LayoutError> {
         })
         .unwrap();
     let goal_ty = TyKind::Adt(AdtId(adt_id), Substitution::empty(Interner)).intern(Interner);
-    layout_of_ty(&db, &goal_ty, module_id.krate())
+    db.layout_of_ty(goal_ty, module_id.krate())
 }
 
 /// A version of `eval_goal` for types that can not be expressed in ADTs, like closures and `impl Trait`
-fn eval_expr(ra_fixture: &str, minicore: &str) -> Result<Layout, LayoutError> {
+fn eval_expr(ra_fixture: &str, minicore: &str) -> Result<Arc<Layout>, LayoutError> {
     let target_data_layout = current_machine_data_layout();
     let ra_fixture = format!(
         "{minicore}//- /main.rs crate:test target_data_layout:{target_data_layout}\nfn main(){{let goal = {{{ra_fixture}}};}}",
@@ -75,7 +74,7 @@ fn eval_expr(ra_fixture: &str, minicore: &str) -> Result<Layout, LayoutError> {
     let b = hir_body.bindings.iter().find(|x| x.1.name.to_smol_str() == "goal").unwrap().0;
     let infer = db.infer(adt_id.into());
     let goal_ty = infer.type_of_binding[b].clone();
-    layout_of_ty(&db, &goal_ty, module_id.krate())
+    db.layout_of_ty(goal_ty, module_id.krate())
 }
 
 #[track_caller]
