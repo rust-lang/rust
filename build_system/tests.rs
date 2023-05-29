@@ -133,6 +133,8 @@ static LIBCORE_TESTS: CargoProject = CargoProject::new(&LIBCORE_TESTS_SRC, "core
 
 const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
     TestCase::custom("test.rust-random/rand", &|runner| {
+        RAND_REPO.patch(&runner.dirs);
+
         RAND.clean(&runner.dirs);
 
         if runner.is_native {
@@ -168,6 +170,8 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
         }
     }),
     TestCase::custom("test.regex-shootout-regex-dna", &|runner| {
+        REGEX_REPO.patch(&runner.dirs);
+
         REGEX.clean(&runner.dirs);
 
         let mut build_cmd = REGEX.build(&runner.target_compiler, &runner.dirs);
@@ -200,6 +204,8 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
         }
     }),
     TestCase::custom("test.regex", &|runner| {
+        REGEX_REPO.patch(&runner.dirs);
+
         REGEX.clean(&runner.dirs);
 
         if runner.is_native {
@@ -216,6 +222,8 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
         }
     }),
     TestCase::custom("test.portable-simd", &|runner| {
+        PORTABLE_SIMD_REPO.patch(&runner.dirs);
+
         PORTABLE_SIMD.clean(&runner.dirs);
 
         let mut build_cmd = PORTABLE_SIMD.build(&runner.target_compiler, &runner.dirs);

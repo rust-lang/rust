@@ -18,10 +18,6 @@ pub(crate) fn prepare(dirs: &Dirs, rustc: &Path) {
 
     // FIXME do this on the fly?
     prepare_stdlib(dirs, rustc);
-
-    super::tests::RAND_REPO.patch(dirs);
-    super::tests::REGEX_REPO.patch(dirs);
-    super::tests::PORTABLE_SIMD_REPO.patch(dirs);
 }
 
 fn prepare_stdlib(dirs: &Dirs, rustc: &Path) {
