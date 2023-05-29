@@ -570,17 +570,29 @@ where
         match &stmt.kind {
             StatementKind::Assign(assign) => {
                 let lhs_place = assign.0;
+                let projection = lhs_place.projection;
                 let lhs_place_ty = lhs_place.ty(self.body.local_decls(), self.tcx).ty;
                 debug!(?lhs_place, ?lhs_place_ty);
 
-                match lhs_place_ty.kind() {
-                    ty::Ref(..) | ty::RawPtr(..) => {
-                        debug!("killing {:?}", lhs_place.local);
-                        self._trans.kill(lhs_place.local);
+                match projection.as_slice() {
+                    &[] | &[ProjectionElem::OpaqueCast(_)] => {
+                        // If there aren't any projections or just an OpaqueCast we need to
+                        // kill the local if it's a ref or a pointer.
+                        match lhs_place_ty.kind() {
+                            ty::Ref(..) | ty::RawPtr(..) => {
+                                debug!("killing {:?}", lhs_place.local);
+                                self._trans.kill(lhs_place.local);
 
-                        self.visit_rvalue(&assign.1, location);
+                                self.visit_rvalue(&assign.1, location);
+                            }
+                            _ => {
+                                self.super_assign(&assign.0, &assign.1, location);
+                            }
+                        }
                     }
                     _ => {
+                        // With any other projection elements a projection of a local (of type ref/ptr)
+                        // is actually a use-site, but we handle this in the call to `visit_place`.
                         self.super_assign(&assign.0, &assign.1, location);
                     }
                 }
@@ -599,12 +611,13 @@ where
         context: PlaceContext,
         location: mir::Location,
     ) {
-        let place_ty = place.ty(self.body.local_decls(), self.tcx);
-        debug!(?place_ty);
+        let local = place.local;
+        let local_ty = self.body.local_decls()[local].ty;
+        debug!(?local_ty);
 
-        match place_ty.ty.kind() {
+        match local_ty.kind() {
             ty::Ref(..) | ty::RawPtr(..) => {
-                debug!("gen {:?}", place.local);
+                debug!("gen {:?}", local);
                 self._trans.gen(place.local);
             }
             _ => {}
