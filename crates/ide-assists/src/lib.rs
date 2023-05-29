@@ -288,6 +288,7 @@ mod handlers {
             raw_string::add_hash,
             raw_string::make_usual_string,
             raw_string::remove_hash,
+            raw_string::inline_str_literal,
             remove_mut::remove_mut,
             remove_unused_param::remove_unused_param,
             remove_parentheses::remove_parentheses,

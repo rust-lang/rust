@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 
-use syntax::{ast, ast::IsString, AstToken, TextRange, TextSize};
+use ide_db::syntax_helpers::insert_whitespace_into_node::insert_ws_into;
+use syntax::{ast, ast::IsString, AstNode, AstToken, TextRange, TextSize};
 
 use crate::{utils::required_hashes, AssistContext, AssistId, AssistKind, Assists};
 
@@ -156,11 +157,76 @@ pub(crate) fn remove_hash(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
     })
 }
 
+// Assist: inline_str_literal
+//
+// Inline const variable as static str literal.
+//
+// ```
+// const STRING: &str = "Hello, World!";
+//
+// fn something() -> &'static str {
+//     STR$0ING
+// }
+// ```
+// ->
+// ```
+// const STRING: &str = "Hello, World!";
+//
+// fn something() -> &'static str {
+//     "Hello, World!"
+// }
+// ```
+pub(crate) fn inline_str_literal(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+    let variable = ctx.find_node_at_offset::<ast::PathExpr>()?;
+
+    if let hir::PathResolution::Def(hir::ModuleDef::Const(konst)) =
+        ctx.sema.resolve_path(&variable.path()?)?
+    {
+        if !konst.ty(ctx.sema.db).as_reference()?.0.as_builtin()?.is_str() {
+            return None;
+        }
+
+        // FIXME: Make sure it's not possible to eval during diagnostic error
+        let value = match konst.value(ctx.sema.db)? {
+            ast::Expr::Literal(lit) => lit.to_string(),
+            ast::Expr::BlockExpr(_)
+            | ast::Expr::IfExpr(_)
+            | ast::Expr::MatchExpr(_)
+            | ast::Expr::CallExpr(_) => match konst.render_eval(ctx.sema.db) {
+                Ok(result) => result,
+                Err(_) => return None,
+            },
+            ast::Expr::MacroExpr(makro) => {
+                let makro_call = makro.syntax().children().find_map(ast::MacroCall::cast)?;
+                let makro_hir = ctx.sema.resolve_macro_call(&makro_call)?;
+
+                // This should not be necessary because of the `makro_call` check
+                if !makro_hir.is_fn_like(ctx.sema.db) {
+                    return None;
+                }
+
+                // FIXME: Make procedural/build-in macro tests
+                insert_ws_into(ctx.sema.expand(&makro_call)?).to_string()
+            }
+            _ => return None,
+        };
+
+        let id = AssistId("inline_str_literal", AssistKind::RefactorInline);
+        let label = "Inline as static `&str` literal";
+        let target = variable.syntax().text_range();
+
+        acc.add(id, label, target, |edit| {
+            edit.replace(variable.syntax().text_range(), value);
+        });
+    }
+
+    Some(())
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
-
     use super::*;
+    use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
 
     #[test]
     fn make_raw_string_target() {
@@ -479,6 +545,215 @@ string"###;
             r#"
             fn f() {
                 let s = $0"random string";
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn inline_expr_as_str_lit() {
+        check_assist(
+            inline_str_literal,
+            r#"
+            const STRING: &str = "Hello, World!";
+
+            fn something() -> &'static str {
+                STR$0ING
+            }
+            "#,
+            r#"
+            const STRING: &str = "Hello, World!";
+
+            fn something() -> &'static str {
+                "Hello, World!"
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn inline_eval_const_block_expr_to_str_lit() {
+        check_assist(
+            inline_str_literal,
+            r#"
+            const STRING: &str = {
+                let x = 9;
+                if x + 10 == 21 {
+                    "Hello, World!"
+                } else {
+                    "World, Hello!"
+                }
+            };
+
+            fn something() -> &'static str {
+                STR$0ING
+            }
+            "#,
+            r#"
+            const STRING: &str = {
+                let x = 9;
+                if x + 10 == 21 {
+                    "Hello, World!"
+                } else {
+                    "World, Hello!"
+                }
+            };
+
+            fn something() -> &'static str {
+                "World, Hello!"
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn inline_eval_const_block_macro_expr_to_str_lit() {
+        check_assist(
+            inline_str_literal,
+            r#"
+            macro_rules! co {() => {"World, Hello!"};}
+            const STRING: &str = { co!() };
+
+            fn something() -> &'static str {
+                STR$0ING
+            }
+            "#,
+            r#"
+            macro_rules! co {() => {"World, Hello!"};}
+            const STRING: &str = { co!() };
+
+            fn something() -> &'static str {
+                "World, Hello!"
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn inline_eval_const_match_expr_to_str_lit() {
+        check_assist(
+            inline_str_literal,
+            r#"
+            const STRING: &str = match 9 + 10 {
+                0..18 => "Hello, World!",
+                _ => "World, Hello!"
+            };
+
+            fn something() -> &'static str {
+                STR$0ING
+            }
+            "#,
+            r#"
+            const STRING: &str = match 9 + 10 {
+                0..18 => "Hello, World!",
+                _ => "World, Hello!"
+            };
+
+            fn something() -> &'static str {
+                "World, Hello!"
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn inline_eval_const_if_expr_to_str_lit() {
+        check_assist(
+            inline_str_literal,
+            r#"
+            const STRING: &str = if 1 + 2 == 4 {
+                "Hello, World!"
+            } else {
+                "World, Hello!"
+            }
+
+            fn something() -> &'static str {
+                STR$0ING
+            }
+            "#,
+            r#"
+            const STRING: &str = if 1 + 2 == 4 {
+                "Hello, World!"
+            } else {
+                "World, Hello!"
+            }
+
+            fn something() -> &'static str {
+                "World, Hello!"
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn inline_eval_const_macro_expr_to_str_lit() {
+        check_assist(
+            inline_str_literal,
+            r#"
+            macro_rules! co {() => {"World, Hello!"};}
+            const STRING: &str = co!();
+
+            fn something() -> &'static str {
+                STR$0ING
+            }
+            "#,
+            r#"
+            macro_rules! co {() => {"World, Hello!"};}
+            const STRING: &str = co!();
+
+            fn something() -> &'static str {
+                "World, Hello!"
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn inline_eval_const_call_expr_to_str_lit() {
+        check_assist(
+            inline_str_literal,
+            r#"
+            const fn const_call() -> &'static str {"World, Hello!"}
+            const STRING: &str = const_call();
+
+            fn something() -> &'static str {
+                STR$0ING
+            }
+            "#,
+            r#"
+            const fn const_call() -> &'static str {"World, Hello!"}
+            const STRING: &str = const_call();
+
+            fn something() -> &'static str {
+                "World, Hello!"
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn inline_expr_as_str_lit_not_applicable() {
+        check_assist_not_applicable(
+            inline_str_literal,
+            r#"
+            const STRING: &str = "Hello, World!";
+
+            fn something() -> &'static str {
+                STRING $0
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn inline_expr_as_str_lit_not_applicable_const() {
+        check_assist_not_applicable(
+            inline_str_literal,
+            r#"
+            const STR$0ING: &str = "Hello, World!";
+
+            fn something() -> &'static str {
+                STRING
             }
             "#,
         );

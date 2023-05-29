@@ -1568,6 +1568,27 @@ fn main() {
 }
 
 #[test]
+fn doctest_inline_str_literal() {
+    check_doc_test(
+        "inline_str_literal",
+        r#####"
+const STRING: &str = "Hello, World!";
+
+fn something() -> &'static str {
+    STR$0ING
+}
+"#####,
+        r#####"
+const STRING: &str = "Hello, World!";
+
+fn something() -> &'static str {
+    "Hello, World!"
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_inline_type_alias() {
     check_doc_test(
         "inline_type_alias",
