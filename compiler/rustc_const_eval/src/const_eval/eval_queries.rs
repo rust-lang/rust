@@ -32,7 +32,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     cid: GlobalId<'tcx>,
     body: &'mir mir::Body<'tcx>,
 ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
-    debug!("eval_body_using_ecx: {:?}, {:?}", cid, ecx.param_env);
+    trace!("eval_body_using_ecx: {:?}, {:?}", cid, ecx.param_env);
     let tcx = *ecx.tcx;
     assert!(
         cid.promoted.is_some()
@@ -81,7 +81,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     intern_const_alloc_recursive(ecx, intern_kind, &ret)?;
     // we leave alignment checks off, since this `ecx` will not be used for further evaluation anyway
 
-    debug!("eval_body_using_ecx done: {:?}", *ret);
+    trace!("eval_body_using_ecx done: {:?}", *ret);
     Ok(ret)
 }
 
@@ -98,7 +98,7 @@ pub(super) fn mk_eval_cx<'mir, 'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     can_access_statics: bool,
 ) -> CompileTimeEvalContext<'mir, 'tcx> {
-    debug!("mk_eval_cx: {:?}", param_env);
+    trace!("mk_eval_cx: {:?}", param_env);
     InterpCx::new(
         tcx,
         root_span,
@@ -109,7 +109,7 @@ pub(super) fn mk_eval_cx<'mir, 'tcx>(
 
 /// This function converts an interpreter value into a constant that is meant for use in the
 /// type system.
-#[instrument(skip(ecx), level = "debug")]
+#[instrument(skip(ecx), level = "trace")]
 pub(super) fn op_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, 'tcx>,
     op: &OpTy<'tcx>,
@@ -144,11 +144,11 @@ pub(super) fn op_to_const<'tcx>(
         op.as_mplace_or_imm()
     };
 
-    debug!(?immediate);
+    trace!(?immediate);
 
     // We know `offset` is relative to the allocation, so we can use `into_parts`.
     let to_const_value = |mplace: &MPlaceTy<'_>| {
-        debug!("to_const_value(mplace: {:?})", mplace);
+        trace!("to_const_value(mplace: {:?})", mplace);
         match mplace.ptr.into_parts() {
             (Some(alloc_id), offset) => {
                 let alloc = ecx.tcx.global_alloc(alloc_id).unwrap_memory();
@@ -173,7 +173,7 @@ pub(super) fn op_to_const<'tcx>(
             _ if imm.layout.is_zst() => ConstValue::ZeroSized,
             Immediate::Scalar(x) => ConstValue::Scalar(x),
             Immediate::ScalarPair(a, b) => {
-                debug!("ScalarPair(a: {:?}, b: {:?})", a, b);
+                trace!("ScalarPair(a: {:?}, b: {:?})", a, b);
                 // We know `offset` is relative to the allocation, so we can use `into_parts`.
                 let (data, start) = match a.to_pointer(ecx).unwrap().into_parts() {
                     (Some(alloc_id), offset) => {
@@ -196,7 +196,7 @@ pub(super) fn op_to_const<'tcx>(
     }
 }
 
-#[instrument(skip(tcx), level = "debug", ret)]
+#[instrument(skip(tcx), level = "trace", ret)]
 pub(crate) fn turn_into_const_value<'tcx>(
     tcx: TyCtxt<'tcx>,
     constant: ConstAlloc<'tcx>,
@@ -226,7 +226,7 @@ pub(crate) fn turn_into_const_value<'tcx>(
     op_to_const(&ecx, &mplace.into())
 }
 
-#[instrument(skip(tcx), level = "debug")]
+#[instrument(skip(tcx), level = "trace")]
 pub fn eval_to_const_value_raw_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
@@ -261,7 +261,7 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
     tcx.eval_to_allocation_raw(key).map(|val| turn_into_const_value(tcx, val, key))
 }
 
-#[instrument(skip(tcx), level = "debug")]
+#[instrument(skip(tcx), level = "trace")]
 pub fn eval_to_allocation_raw_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,

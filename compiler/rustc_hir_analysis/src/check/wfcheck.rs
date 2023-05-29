@@ -149,11 +149,11 @@ fn check_well_formed(tcx: TyCtxt<'_>, def_id: hir::OwnerId) {
 /// We do this check as a pre-pass before checking fn bodies because if these constraints are
 /// not included it frequently leads to confusing errors in fn bodies. So it's better to check
 /// the types first.
-#[instrument(skip(tcx), level = "debug")]
+#[instrument(skip(tcx), level = "trace")]
 fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
     let def_id = item.owner_id.def_id;
 
-    debug!(
+    trace!(
         ?item.owner_id,
         item.name = ? tcx.def_path_str(def_id)
     );
@@ -249,7 +249,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
 fn check_foreign_item(tcx: TyCtxt<'_>, item: &hir::ForeignItem<'_>) {
     let def_id = item.owner_id.def_id;
 
-    debug!(
+    trace!(
         ?item.owner_id,
         item.name = ? tcx.def_path_str(def_id)
     );
@@ -405,7 +405,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
 
     for (gat_def_id, required_bounds) in required_bounds_by_item {
         let gat_item_hir = tcx.hir().expect_trait_item(gat_def_id.def_id);
-        debug!(?required_bounds);
+        trace!(?required_bounds);
         let param_env = tcx.param_env(gat_def_id);
 
         let mut unsatisfied_bounds: Vec<_> = required_bounds
@@ -546,8 +546,8 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
         for (ty, ty_idx) in &types {
             // In our example, requires that `Self: 'a`
             if ty_known_to_outlive(tcx, item_def_id.def_id, param_env, &wf_tys, *ty, *region_a) {
-                debug!(?ty_idx, ?region_a_idx);
-                debug!("required clause: {ty} must outlive {region_a}");
+                trace!(?ty_idx, ?region_a_idx);
+                trace!("required clause: {ty} must outlive {region_a}");
                 // Translate into the generic parameters of the GAT. In
                 // our example, the type was `Self`, which will also be
                 // `Self` in the GAT.
@@ -592,8 +592,8 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
                 *region_a,
                 *region_b,
             ) {
-                debug!(?region_a_idx, ?region_b_idx);
-                debug!("required clause: {region_a} must outlive {region_b}");
+                trace!(?region_a_idx, ?region_b_idx);
+                trace!("required clause: {region_a} must outlive {region_b}");
                 // Translate into the generic parameters of the GAT.
                 let region_a_param = gat_generics.param_at(*region_a_idx, tcx);
                 let region_a_param = ty::Region::new_early_bound(
@@ -690,7 +690,7 @@ fn resolve_regions_with_wf_tys<'tcx>(
     add_constraints(&infcx, region_bound_pairs);
 
     let errors = infcx.resolve_regions(&outlives_environment);
-    debug!(?errors, "errors");
+    trace!(?errors, "errors");
 
     // If we were able to prove that the type outlives the region without
     // an error, it must be because of the implied or explicit bounds...
@@ -950,7 +950,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
     }
 }
 
-#[instrument(level = "debug", skip(tcx, span, sig_if_method))]
+#[instrument(level = "trace", skip(tcx, span, sig_if_method))]
 fn check_associated_item(
     tcx: TyCtxt<'_>,
     item_id: LocalDefId,
@@ -1100,7 +1100,7 @@ fn check_type_defn<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'tcx>, all_sized: b
 
 #[instrument(skip(tcx, item))]
 fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
-    debug!(?item.owner_id);
+    trace!(?item.owner_id);
 
     let def_id = item.owner_id.def_id;
     let trait_def = tcx.trait_def(def_id);
@@ -1135,7 +1135,7 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
 fn check_associated_type_bounds(wfcx: &WfCheckingCtxt<'_, '_>, item: ty::AssocItem, span: Span) {
     let bounds = wfcx.tcx().explicit_item_bounds(item.def_id);
 
-    debug!("check_associated_type_bounds: bounds={:?}", bounds);
+    trace!("check_associated_type_bounds: bounds={:?}", bounds);
     let wf_obligations = bounds.subst_identity_iter_copied().flat_map(|(bound, bound_span)| {
         let normalized_bound = wfcx.normalize(span, None, bound);
         traits::wf::predicate_obligations(
@@ -1164,7 +1164,7 @@ fn check_item_fn(
 }
 
 fn check_item_type(tcx: TyCtxt<'_>, item_id: LocalDefId, ty_span: Span, allow_foreign_ty: bool) {
-    debug!("check_item_type: {:?}", item_id);
+    trace!("check_item_type: {:?}", item_id);
 
     enter_wf_checking_ctxt(tcx, ty_span, item_id, |wfcx| {
         let ty = tcx.type_of(item_id).subst_identity();
@@ -1205,7 +1205,7 @@ fn check_item_type(tcx: TyCtxt<'_>, item_id: LocalDefId, ty_span: Span, allow_fo
     });
 }
 
-#[instrument(level = "debug", skip(tcx, ast_self_ty, ast_trait_ref))]
+#[instrument(level = "trace", skip(tcx, ast_self_ty, ast_trait_ref))]
 fn check_impl<'tcx>(
     tcx: TyCtxt<'tcx>,
     item: &'tcx hir::Item<'tcx>,
@@ -1248,7 +1248,7 @@ fn check_impl<'tcx>(
                         obligation.cause.span = ast_self_ty.span;
                     }
                 }
-                debug!(?obligations);
+                trace!(?obligations);
                 wfcx.register_obligations(obligations);
             }
             None => {
@@ -1271,7 +1271,7 @@ fn check_impl<'tcx>(
 }
 
 /// Checks where-clauses and inline bounds that are declared on `def_id`.
-#[instrument(level = "debug", skip(wfcx))]
+#[instrument(level = "trace", skip(wfcx))]
 fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id: LocalDefId) {
     let infcx = wfcx.infcx;
     let tcx = wfcx.tcx();
@@ -1443,7 +1443,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
 
     let predicates = wfcx.normalize(span, None, predicates);
 
-    debug!(?predicates.predicates);
+    trace!(?predicates.predicates);
     assert_eq!(predicates.predicates.len(), predicates.spans.len());
     let wf_obligations = predicates.into_iter().flat_map(|(p, sp)| {
         traits::wf::predicate_obligations(
@@ -1458,7 +1458,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
     wfcx.register_obligations(obligations);
 }
 
-#[instrument(level = "debug", skip(wfcx, span, hir_decl))]
+#[instrument(level = "trace", skip(wfcx, span, hir_decl))]
 fn check_fn_or_method<'tcx>(
     wfcx: &WfCheckingCtxt<'_, 'tcx>,
     span: Span,
@@ -1621,7 +1621,7 @@ const HELP_FOR_SELF_TYPE: &str = "consider changing to `self`, `&self`, `&mut se
      `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one \
      of the previous types except `Self`)";
 
-#[instrument(level = "debug", skip(wfcx))]
+#[instrument(level = "trace", skip(wfcx))]
 fn check_method_receiver<'tcx>(
     wfcx: &WfCheckingCtxt<'_, 'tcx>,
     fn_sig: &hir::FnSig<'_>,
@@ -1640,7 +1640,7 @@ fn check_method_receiver<'tcx>(
     let sig = tcx.liberate_late_bound_regions(method.def_id, sig);
     let sig = wfcx.normalize(span, None, sig);
 
-    debug!("check_method_receiver: sig={:?}", sig);
+    trace!("check_method_receiver: sig={:?}", sig);
 
     let self_ty = wfcx.normalize(span, None, self_ty);
 
@@ -1733,9 +1733,10 @@ fn receiver_is_valid<'tcx>(
     // Keep dereferencing `receiver_ty` until we get to `self_ty`.
     loop {
         if let Some((potential_self_ty, _)) = autoderef.next() {
-            debug!(
+            trace!(
                 "receiver_is_valid: potential self type `{:?}` to match `{:?}`",
-                potential_self_ty, self_ty
+                potential_self_ty,
+                self_ty
             );
 
             if can_eq_self(potential_self_ty) {
@@ -1764,7 +1765,7 @@ fn receiver_is_valid<'tcx>(
                 }
             }
         } else {
-            debug!("receiver_is_valid: type `{:?}` does not deref to `{:?}`", receiver_ty, self_ty);
+            trace!("receiver_is_valid: type `{:?}` does not deref to `{:?}`", receiver_ty, self_ty);
             // If the receiver already has errors reported due to it, consider it valid to avoid
             // unnecessary errors (#58712).
             return receiver_ty.references_error();
@@ -1795,7 +1796,7 @@ fn receiver_is_implemented<'tcx>(
     if wfcx.infcx.predicate_must_hold_modulo_regions(&obligation) {
         true
     } else {
-        debug!(
+        trace!(
             "receiver_is_implemented: type `{:?}` does not implement `Receiver` trait",
             receiver_ty
         );
@@ -1897,7 +1898,7 @@ fn report_bivariance(
 impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
     /// Feature gates RFC 2056 -- trivial bounds, checking for global bounds that
     /// aren't true.
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn check_false_global_bounds(&mut self) {
         let tcx = self.ocx.infcx.tcx;
         let mut span = self.span;

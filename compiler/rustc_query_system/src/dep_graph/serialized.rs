@@ -92,20 +92,20 @@ impl<K: DepKind> SerializedDepGraph<K> {
 impl<'a, K: DepKind + Decodable<MemDecoder<'a>>> Decodable<MemDecoder<'a>>
     for SerializedDepGraph<K>
 {
-    #[instrument(level = "debug", skip(d))]
+    #[instrument(level = "trace", skip(d))]
     fn decode(d: &mut MemDecoder<'a>) -> SerializedDepGraph<K> {
         // The last 16 bytes are the node count and edge count.
-        debug!("position: {:?}", d.position());
+        trace!("position: {:?}", d.position());
         let (node_count, edge_count) =
             d.with_position(d.len() - 2 * IntEncodedWithFixedSize::ENCODED_SIZE, |d| {
-                debug!("position: {:?}", d.position());
+                trace!("position: {:?}", d.position());
                 let node_count = IntEncodedWithFixedSize::decode(d).0 as usize;
                 let edge_count = IntEncodedWithFixedSize::decode(d).0 as usize;
                 (node_count, edge_count)
             });
-        debug!("position: {:?}", d.position());
+        trace!("position: {:?}", d.position());
 
-        debug!(?node_count, ?edge_count);
+        trace!(?node_count, ?edge_count);
 
         let mut nodes = IndexVec::with_capacity(node_count);
         let mut fingerprints = IndexVec::with_capacity(node_count);
@@ -207,11 +207,11 @@ impl<K: DepKind> EncoderState<K> {
         let node_count = total_node_count.try_into().unwrap();
         let edge_count = total_edge_count.try_into().unwrap();
 
-        debug!(?node_count, ?edge_count);
-        debug!("position: {:?}", encoder.position());
+        trace!(?node_count, ?edge_count);
+        trace!("position: {:?}", encoder.position());
         IntEncodedWithFixedSize(node_count).encode(&mut encoder);
         IntEncodedWithFixedSize(edge_count).encode(&mut encoder);
-        debug!("position: {:?}", encoder.position());
+        trace!("position: {:?}", encoder.position());
         // Drop the encoder so that nothing is written after the counts.
         let result = encoder.finish();
         if let Ok(position) = result {
