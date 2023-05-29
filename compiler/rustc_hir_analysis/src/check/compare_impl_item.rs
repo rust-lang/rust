@@ -472,7 +472,8 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RemapLateBound<'_, 'tcx> {
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         if let ty::ReFree(fr) = *r {
-            self.tcx.mk_re_free(
+            ty::Region::new_free(
+                self.tcx,
                 fr.scope,
                 self.mapping.get(&fr.bound_region).copied().unwrap_or(fr.bound_region),
             )
@@ -786,9 +787,9 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                     }
                     let Some(ty::ReEarlyBound(e)) = map.get(&region.into()).map(|r| r.expect_region().kind())
                     else {
-                        return tcx.mk_re_error_with_message(return_span, "expected ReFree to map to ReEarlyBound")
+                        return ty::Region::new_error_with_message(tcx, return_span, "expected ReFree to map to ReEarlyBound")
                     };
-                    tcx.mk_re_early_bound(ty::EarlyBoundRegion {
+                    ty::Region::new_early_bound(tcx, ty::EarlyBoundRegion {
                         def_id: e.def_id,
                         name: e.name,
                         index: (e.index as usize - num_trait_substs + num_impl_substs) as u32,
@@ -1933,7 +1934,8 @@ pub(super) fn check_type_bounds<'tcx>(
                 let kind = ty::BoundRegionKind::BrNamed(param.def_id, param.name);
                 let bound_var = ty::BoundVariableKind::Region(kind);
                 bound_vars.push(bound_var);
-                tcx.mk_re_late_bound(
+                ty::Region::new_late_bound(
+                    tcx,
                     ty::INNERMOST,
                     ty::BoundRegion { var: ty::BoundVar::from_usize(bound_vars.len() - 1), kind },
                 )

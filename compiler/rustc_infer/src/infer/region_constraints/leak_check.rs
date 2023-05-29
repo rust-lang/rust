@@ -280,7 +280,7 @@ impl<'me, 'tcx> LeakCheck<'me, 'tcx> {
         placeholder1: ty::PlaceholderRegion,
         placeholder2: ty::PlaceholderRegion,
     ) -> TypeError<'tcx> {
-        self.error(placeholder1, self.tcx.mk_re_placeholder(placeholder2))
+        self.error(placeholder1, ty::Region::new_placeholder(self.tcx, placeholder2))
     }
 
     fn error(
@@ -413,13 +413,13 @@ impl<'tcx> MiniGraph<'tcx> {
         for undo_entry in undo_log {
             match undo_entry {
                 &AddConstraint(Constraint::VarSubVar(a, b)) => {
-                    each_edge(tcx.mk_re_var(a), tcx.mk_re_var(b));
+                    each_edge(ty::Region::new_var(tcx, a), ty::Region::new_var(tcx, b));
                 }
                 &AddConstraint(Constraint::RegSubVar(a, b)) => {
-                    each_edge(a, tcx.mk_re_var(b));
+                    each_edge(a, ty::Region::new_var(tcx, b));
                 }
                 &AddConstraint(Constraint::VarSubReg(a, b)) => {
-                    each_edge(tcx.mk_re_var(a), b);
+                    each_edge(ty::Region::new_var(tcx, a), b);
                 }
                 &AddConstraint(Constraint::RegSubReg(a, b)) => {
                     each_edge(a, b);
