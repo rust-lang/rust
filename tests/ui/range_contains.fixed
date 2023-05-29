@@ -5,6 +5,8 @@
 #![allow(clippy::no_effect)]
 #![allow(clippy::short_circuit_statement)]
 #![allow(clippy::unnecessary_operation)]
+#![allow(clippy::impossible_double_const_comparisons)]
+#![allow(clippy::ineffective_double_const_comparisons)]
 
 fn main() {
     let x = 9_i32;

@@ -3,6 +3,7 @@ mod assign_op_pattern;
 mod bit_mask;
 mod cmp_owned;
 mod double_comparison;
+mod double_const_comparison;
 mod duration_subsec;
 mod eq_op;
 mod erasing_op;
@@ -296,6 +297,43 @@ declare_clippy_lint! {
     pub DOUBLE_COMPARISONS,
     complexity,
     "unnecessary double comparisons that can be simplified"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for double comparisons that can never succeed
+    ///
+    /// ### Why is this bad?
+    /// The whole expression can be replaced by `false`,
+    /// which is probably not the programmer's intention
+    ///
+    /// ### Example
+    /// ```rust
+    /// status_code <= 400 && status_code > 500;
+    /// ```
+    #[clippy::version = "1.71.0"]
+    pub IMPOSSIBLE_DOUBLE_CONST_COMPARISONS,
+    correctness,
+    "default lint description"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for ineffective double comparisons against constants
+    ///
+    /// ### Why is this bad?
+    /// Only one of the comparisons has any effect on the result
+    /// The programmer probably intended to flip one of the comparison operators,
+    /// or compare a different value entirely
+    ///
+    /// ### Example
+    /// ```rust
+    /// status_code <= 400 && status_code < 500;
+    /// ```
+    #[clippy::version = "1.71.0"]
+    pub INEFFECTIVE_DOUBLE_CONST_COMPARISONS,
+    correctness,
+    "default lint description"
 }
 
 declare_clippy_lint! {
@@ -742,6 +780,8 @@ impl_lint_pass!(Operators => [
     INEFFECTIVE_BIT_MASK,
     VERBOSE_BIT_MASK,
     DOUBLE_COMPARISONS,
+    IMPOSSIBLE_DOUBLE_CONST_COMPARISONS,
+    INEFFECTIVE_DOUBLE_CONST_COMPARISONS,
     DURATION_SUBSEC,
     EQ_OP,
     OP_REF,
@@ -786,6 +826,7 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
                 bit_mask::check(cx, e, op.node, lhs, rhs);
                 verbose_bit_mask::check(cx, e, op.node, lhs, rhs, self.verbose_bit_mask_threshold);
                 double_comparison::check(cx, op.node, lhs, rhs, e.span);
+                double_const_comparison::check(cx, op, lhs, rhs, e.span);
                 duration_subsec::check(cx, e, op.node, lhs, rhs);
                 float_equality_without_abs::check(cx, e, op.node, lhs, rhs);
                 integer_division::check(cx, e, op.node, lhs, rhs);
