@@ -991,7 +991,12 @@ impl Config {
             TomlConfig::default()
         };
 
-        
+        if let Some(include) = &toml.profile {
+            let mut include_path = config.src.clone();
+            include_path.push("src");
+            include_path.push("bootstrap");
+            include_path.push("defaults");
+            include_path.push(format!("config.{}.toml", include));
         
             // Check if an alias TOML file exists
             let alias_path = format!("config.{}.alias.toml", include);
