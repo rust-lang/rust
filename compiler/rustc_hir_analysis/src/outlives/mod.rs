@@ -98,24 +98,27 @@ fn inferred_outlives_crate(tcx: TyCtxt<'_>, (): ()) -> CratePredicatesMap<'_> {
     let predicates = global_inferred_outlives
         .iter()
         .map(|(&def_id, set)| {
-            let predicates = &*tcx.arena.alloc_from_iter(set.0.iter().filter_map(
-                |(ty::OutlivesPredicate(kind1, region2), &span)| {
-                    match kind1.unpack() {
-                        GenericArgKind::Type(ty1) => Some((
-                            ty::Clause::TypeOutlives(ty::OutlivesPredicate(ty1, *region2)),
-                            span,
-                        )),
-                        GenericArgKind::Lifetime(region1) => Some((
-                            ty::Clause::RegionOutlives(ty::OutlivesPredicate(region1, *region2)),
-                            span,
-                        )),
-                        GenericArgKind::Const(_) => {
-                            // Generic consts don't impose any constraints.
-                            None
+            let predicates =
+                &*tcx.arena.alloc_from_iter(set.as_ref().skip_binder().iter().filter_map(
+                    |(ty::OutlivesPredicate(kind1, region2), &span)| {
+                        match kind1.unpack() {
+                            GenericArgKind::Type(ty1) => Some((
+                                ty::Clause::TypeOutlives(ty::OutlivesPredicate(ty1, *region2)),
+                                span,
+                            )),
+                            GenericArgKind::Lifetime(region1) => Some((
+                                ty::Clause::RegionOutlives(ty::OutlivesPredicate(
+                                    region1, *region2,
+                                )),
+                                span,
+                            )),
+                            GenericArgKind::Const(_) => {
+                                // Generic consts don't impose any constraints.
+                                None
+                            }
                         }
-                    }
-                },
-            ));
+                    },
+                ));
             (def_id, predicates)
         })
         .collect();

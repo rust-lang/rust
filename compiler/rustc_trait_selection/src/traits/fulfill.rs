@@ -116,6 +116,7 @@ impl<'a, 'tcx> FulfillmentContext<'tcx> {
 }
 
 impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
+    #[inline]
     fn register_predicate_obligation(
         &mut self,
         infcx: &InferCtxt<'tcx>,

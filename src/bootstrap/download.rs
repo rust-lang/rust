@@ -123,7 +123,7 @@ impl Config {
     /// This is only required on NixOS and uses the PatchELF utility to
     /// change the interpreter/RPATH of ELF executables.
     ///
-    /// Please see https://nixos.org/patchelf.html for more information
+    /// Please see <https://nixos.org/patchelf.html> for more information
     fn fix_bin_or_dylib(&self, fname: &Path) {
         assert_eq!(SHOULD_FIX_BINS_AND_DYLIBS.get(), Some(&true));
         println!("attempting to patch {}", fname.display());

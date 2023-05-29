@@ -1188,6 +1188,9 @@ fn add_sanitizer_libraries(sess: &Session, crate_type: CrateType, linker: &mut d
     if sanitizer.contains(SanitizerSet::HWADDRESS) {
         link_sanitizer_runtime(sess, linker, "hwasan");
     }
+    if sanitizer.contains(SanitizerSet::SAFESTACK) {
+        link_sanitizer_runtime(sess, linker, "safestack");
+    }
 }
 
 fn link_sanitizer_runtime(sess: &Session, linker: &mut dyn Linker, name: &str) {

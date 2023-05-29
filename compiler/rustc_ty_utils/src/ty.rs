@@ -44,9 +44,7 @@ fn sized_constraint_for_ty<'tcx>(
             let adt_tys = adt.sized_constraint(tcx);
             debug!("sized_constraint_for_ty({:?}) intermediate = {:?}", ty, adt_tys);
             adt_tys
-                .0
-                .iter()
-                .map(|ty| adt_tys.rebind(*ty).subst(tcx, substs))
+                .subst_iter_copied(tcx, substs)
                 .flat_map(|ty| sized_constraint_for_ty(tcx, adtdef, ty))
                 .collect()
         }
@@ -508,7 +506,7 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<EarlyBinder<Ty<'
 
     if self_ty_matches {
         debug!("issue33140_self_ty - MATCHES!");
-        Some(EarlyBinder(self_ty))
+        Some(EarlyBinder::new(self_ty))
     } else {
         debug!("issue33140_self_ty - non-matching self type");
         None

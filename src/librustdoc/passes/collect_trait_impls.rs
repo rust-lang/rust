@@ -19,9 +19,10 @@ pub(crate) const COLLECT_TRAIT_IMPLS: Pass = Pass {
 };
 
 pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate {
+    let tcx = cx.tcx;
     // We need to check if there are errors before running this pass because it would crash when
     // we try to get auto and blanket implementations.
-    if cx.tcx.sess.diagnostic().has_errors_or_lint_errors().is_some() {
+    if tcx.sess.diagnostic().has_errors_or_lint_errors().is_some() {
         return krate;
     }
 
@@ -32,8 +33,7 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
     });
 
     let local_crate = ExternalCrate { crate_num: LOCAL_CRATE };
-    let prims: FxHashSet<PrimitiveType> =
-        local_crate.primitives(cx.tcx).iter().map(|p| p.1).collect();
+    let prims: FxHashSet<PrimitiveType> = local_crate.primitives(tcx).iter().map(|p| p.1).collect();
 
     let crate_items = {
         let mut coll = ItemCollector::new();
@@ -46,9 +46,9 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
 
     // External trait impls.
     {
-        let _prof_timer = cx.tcx.sess.prof.generic_activity("build_extern_trait_impls");
-        for &cnum in cx.tcx.crates(()) {
-            for &impl_def_id in cx.tcx.trait_impls_in_crate(cnum) {
+        let _prof_timer = tcx.sess.prof.generic_activity("build_extern_trait_impls");
+        for &cnum in tcx.crates(()) {
+            for &impl_def_id in tcx.trait_impls_in_crate(cnum) {
                 inline::build_impl(cx, impl_def_id, None, &mut new_items_external);
             }
         }
@@ -56,14 +56,13 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
 
     // Local trait impls.
     {
-        let _prof_timer = cx.tcx.sess.prof.generic_activity("build_local_trait_impls");
+        let _prof_timer = tcx.sess.prof.generic_activity("build_local_trait_impls");
         let mut attr_buf = Vec::new();
-        for &impl_def_id in cx.tcx.trait_impls_in_crate(LOCAL_CRATE) {
-            let mut parent = Some(cx.tcx.parent(impl_def_id));
+        for &impl_def_id in tcx.trait_impls_in_crate(LOCAL_CRATE) {
+            let mut parent = Some(tcx.parent(impl_def_id));
             while let Some(did) = parent {
                 attr_buf.extend(
-                    cx.tcx
-                        .get_attrs(did, sym::doc)
+                    tcx.get_attrs(did, sym::doc)
                         .filter(|attr| {
                             if let Some([attr]) = attr.meta_item_list().as_deref() {
                                 attr.has_name(sym::cfg)
@@ -73,25 +72,24 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
                         })
                         .cloned(),
                 );
-                parent = cx.tcx.opt_parent(did);
+                parent = tcx.opt_parent(did);
             }
             inline::build_impl(cx, impl_def_id, Some((&attr_buf, None)), &mut new_items_local);
             attr_buf.clear();
         }
     }
 
-    cx.tcx.sess.prof.generic_activity("build_primitive_trait_impls").run(|| {
-        for def_id in PrimitiveType::all_impls(cx.tcx) {
+    tcx.sess.prof.generic_activity("build_primitive_trait_impls").run(|| {
+        for def_id in PrimitiveType::all_impls(tcx) {
             // Try to inline primitive impls from other crates.
             if !def_id.is_local() {
                 inline::build_impl(cx, def_id, None, &mut new_items_external);
             }
         }
-        for (prim, did) in PrimitiveType::primitive_locations(cx.tcx) {
+        for (prim, did) in PrimitiveType::primitive_locations(tcx) {
             // Do not calculate blanket impl list for docs that are not going to be rendered.
             // While the `impl` blocks themselves are only in `libcore`, the module with `doc`
             // attached is directly included in `libstd` as well.
-            let tcx = cx.tcx;
             if did.is_local() {
                 for def_id in prim.impls(tcx).filter(|def_id| {
                     // Avoid including impl blocks with filled-in generics.
@@ -157,7 +155,7 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
     // scan through included items ahead of time to splice in Deref targets to the "valid" sets
     for it in new_items_external.iter().chain(new_items_local.iter()) {
         if let ImplItem(box Impl { ref for_, ref trait_, ref items, .. }) = *it.kind &&
-            trait_.as_ref().map(|t| t.def_id()) == cx.tcx.lang_items().deref_trait() &&
+            trait_.as_ref().map(|t| t.def_id()) == tcx.lang_items().deref_trait() &&
             cleaner.keep_impl(for_, true)
         {
             let target = items
@@ -199,7 +197,7 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
         if let ImplItem(box Impl { ref for_, ref trait_, ref kind, .. }) = *it.kind {
             cleaner.keep_impl(
                 for_,
-                trait_.as_ref().map(|t| t.def_id()) == cx.tcx.lang_items().deref_trait(),
+                trait_.as_ref().map(|t| t.def_id()) == tcx.lang_items().deref_trait(),
             ) || trait_.as_ref().map_or(false, |t| cleaner.keep_impl_with_def_id(t.def_id().into()))
                 || kind.is_blanket()
         } else {

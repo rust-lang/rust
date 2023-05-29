@@ -14,10 +14,12 @@ mod object_safety;
 pub mod outlives_bounds;
 mod project;
 pub mod query;
+#[cfg_attr(not(bootstrap), allow(hidden_glob_reexports))]
 mod select;
 mod specialize;
 mod structural_match;
 mod structural_normalize;
+#[cfg_attr(not(bootstrap), allow(hidden_glob_reexports))]
 mod util;
 mod vtable;
 pub mod wf;
@@ -485,7 +487,7 @@ fn is_impossible_method(tcx: TyCtxt<'_>, (impl_def_id, trait_item_def_id): (DefI
                 tcx,
                 ObligationCause::dummy_with_span(*span),
                 param_env,
-                ty::EarlyBinder(*pred).subst(tcx, impl_trait_ref.substs),
+                ty::EarlyBinder::new(*pred).subst(tcx, impl_trait_ref.substs),
             )
         })
     });

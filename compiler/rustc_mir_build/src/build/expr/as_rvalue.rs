@@ -725,6 +725,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         place: to_drop,
                         target: success,
                         unwind: UnwindAction::Continue,
+                        replace: false,
                     },
                 );
                 this.diverge_from(block);

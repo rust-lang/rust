@@ -5,8 +5,8 @@ fn unwrap_unchecked(_1: Option<T>) -> T {
     let mut _0: T;                       // return place in scope 0 at $DIR/unwrap_unchecked.rs:+0:54: +0:55
     scope 1 (inlined #[track_caller] Option::<T>::unwrap_unchecked) { // at $DIR/unwrap_unchecked.rs:10:9: 10:27
         debug self => _1;                // in scope 1 at $SRC_DIR/core/src/option.rs:LL:COL
-        let mut _2: &std::option::Option<T>; // in scope 1 at $SRC_DIR/core/src/option.rs:LL:COL
-        let mut _3: isize;               // in scope 1 at $SRC_DIR/core/src/option.rs:LL:COL
+        let mut _2: isize;               // in scope 1 at $SRC_DIR/core/src/option.rs:LL:COL
+        let mut _3: &std::option::Option<T>; // in scope 1 at $SRC_DIR/core/src/option.rs:LL:COL
         scope 2 {
             debug val => _0;             // in scope 2 at $SRC_DIR/core/src/option.rs:LL:COL
         }
@@ -19,23 +19,23 @@ fn unwrap_unchecked(_1: Option<T>) -> T {
             }
         }
         scope 4 (inlined Option::<T>::is_some) { // at $SRC_DIR/core/src/option.rs:LL:COL
-            debug self => _2;            // in scope 4 at $SRC_DIR/core/src/option.rs:LL:COL
+            debug self => _3;            // in scope 4 at $SRC_DIR/core/src/option.rs:LL:COL
         }
     }
 
     bb0: {
-        StorageLive(_2);                 // scope 0 at $DIR/unwrap_unchecked.rs:+1:9: +1:27
-        _3 = discriminant(_1);           // scope 1 at $SRC_DIR/core/src/option.rs:LL:COL
-        switchInt(move _3) -> [1: bb2, otherwise: bb1]; // scope 1 at $SRC_DIR/core/src/option.rs:LL:COL
+        StorageLive(_3);                 // scope 0 at $DIR/unwrap_unchecked.rs:+1:9: +1:27
+        _2 = discriminant(_1);           // scope 1 at $SRC_DIR/core/src/option.rs:LL:COL
+        switchInt(move _2) -> [1: bb1, otherwise: bb2]; // scope 1 at $SRC_DIR/core/src/option.rs:LL:COL
     }
 
     bb1: {
-        unreachable;                     // scope 6 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+        _0 = move ((_1 as Some).0: T);   // scope 1 at $SRC_DIR/core/src/option.rs:LL:COL
+        StorageDead(_3);                 // scope 0 at $DIR/unwrap_unchecked.rs:+1:9: +1:27
+        return;                          // scope 0 at $DIR/unwrap_unchecked.rs:+2:2: +2:2
     }
 
     bb2: {
-        _0 = move ((_1 as Some).0: T);   // scope 1 at $SRC_DIR/core/src/option.rs:LL:COL
-        StorageDead(_2);                 // scope 0 at $DIR/unwrap_unchecked.rs:+1:9: +1:27
-        return;                          // scope 0 at $DIR/unwrap_unchecked.rs:+2:2: +2:2
+        unreachable;                     // scope 6 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
     }
 }

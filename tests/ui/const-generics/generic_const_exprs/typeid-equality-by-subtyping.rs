@@ -1,7 +1,7 @@
-// check-pass
+// known-bug: #110395
 // known-bug: #97156
 
-#![feature(const_type_id, generic_const_exprs)]
+#![feature(const_type_id, const_trait_impl, generic_const_exprs)]
 #![allow(incomplete_features)]
 
 use std::any::TypeId;
@@ -26,7 +26,10 @@ impl<T: 'static> AssocCt for T {
 trait WithAssoc<U> {
     type Assoc;
 }
-impl<T: 'static> WithAssoc<()> for T where [(); <T as AssocCt>::ASSOC]: {
+impl<T: 'static> WithAssoc<()> for T
+where
+    [(); <T as AssocCt>::ASSOC]:,
+{
     type Assoc = [u8; <T as AssocCt>::ASSOC];
 }
 
@@ -37,7 +40,6 @@ where
 {
     x
 }
-
 
 fn unsound<T>(x: <One as WithAssoc<T>>::Assoc) -> <Two as WithAssoc<T>>::Assoc
 where

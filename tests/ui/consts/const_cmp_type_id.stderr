@@ -20,7 +20,6 @@ LL |     assert!(TypeId::of::<u8>() == TypeId::of::<u8>());
 note: impl defined here, but it is not `const`
   --> $SRC_DIR/core/src/any.rs:LL:COL
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-   = note: this error originates in the derive macro `PartialEq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't compare `TypeId` with `TypeId` in const contexts
   --> $DIR/const_cmp_type_id.rs:9:13
@@ -44,7 +43,6 @@ LL |     assert!(TypeId::of::<()>() != TypeId::of::<u8>());
 note: impl defined here, but it is not `const`
   --> $SRC_DIR/core/src/any.rs:LL:COL
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-   = note: this error originates in the derive macro `PartialEq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't compare `TypeId` with `TypeId` in const contexts
   --> $DIR/const_cmp_type_id.rs:10:22
