@@ -1,3 +1,122 @@
+//! This module defines a more fine-grained analysis for `Local`s that are live due
+//! to outstanding references or raw pointers than `MaybeBorrowedLocals`.
+//!
+//! The analysis consists of three steps:
+//!     1. build a dependency graph that relates `Local`s based on their borrowing relationship.
+//!        As an example if we have something like this (in a simplified MIR representation):
+//!
+//!        ```ignore(rust)
+//!         _4 = Bar {}
+//!         _5 = Ref(_4)
+//!        ```
+//!
+//!         Then we add an edge from `_5` to `_4`.
+//!     2. perform a liveness analysis for borrowed `Local`s.
+//!        Continuing our example from step 1, if we later have a use of `_5`, `_5` is
+//!        live at least from its definition to that use of it.
+//!     3. Combine the two analyses from step 1 and 2. For any `Local` that corresponds
+//!        to a borrow (`_5` in our example), we want to keep the `Local` (`_4`), which is actually
+//!        borrowed through it, live over the range at which the borrow is live. Hence for any point
+//!        in that range we traverse our dependency graph and look for leaf nodes. In our example
+//!        we would find an edge from `_5` to `_4`, which is a leaf node and hence we keep `_4` live
+//!        over that range.
+//!
+//! There are some corner cases we need to look out for to make this analysis sound. Let's look
+//! at each of the three steps in more detail and elaborate how these steps deal with these corner
+//! cases.
+//!
+//! 1. Dependency Graph
+//!
+//! The `Node`s in the dependency graph include data values of type `NodeKind`. `NodeKind` has
+//! three variants: `Local`, `Borrow` and `LocalWithRefs`.
+//!     * `NodeKind::Local` is used for `Local`s that are borrowed somewhere (`_4` in our example)
+//!     * `NodeKind::Borrow` is used for `Local`s that correspond to borrows (`_5` in our example) and
+//!        also `Local`s that result from re-borrows.
+//!     * `NodeKind::LocalWithRefs` is used for `Local`s that aren't themselves borrows, but contain
+//!        borrowed `Local`s. We want to keep these `Local`s live and also any of the references/pointers
+//!        they might contain. Let's look at an example:
+//!
+//!        ```ignore(rust)
+//!         _4 = Bar {}
+//!         _5 = Ref(_4)
+//!         _6 = Aggregate(..)(move _5)
+//!         ...
+//!         _7 = (_6.0)
+//!         ```
+//!
+//!         In this example `_6` would be given `NodeKind::LocalWithRefs` and our graph would look
+//!         as follows:
+//!
+//!         `_7 (NodeKind::Borrow) -> `_6` (NodeKind::LocalWithRefs) -> `_5` (NodeKind::Borrow) -> `_4` (NodeKind::Local)
+//!     
+//!         In addition to keeping `_6` alive over the range of `_7` we also keep `_4` alive (leaf node).
+//!
+//!         Additionally `NodeKind::LocalWithRefs` is also used for raw pointers that are cast to
+//!         `usize`:
+//!
+//!         ```ignore(rust)
+//!         _4 = Bar {}
+//!         _5 = AddressOf(_4)
+//!         _6 = _5 as usize
+//!         _7 = Aggregate(..) (move _6)
+//!         _8 = (_7.0)
+//!         ```
+//!
+//!         In this example our graph would have the following edges:
+//!             * `_5` (Borrow) -> `_4` (Local)
+//!             * `_6` (LocalWithRefs) -> `_5` (Borrow)
+//!             * `_7` (LocalWithRefs) -> `_6` (LocalWithRefs)
+//!             * `_8` (LocalWithRefs) -> `_7` (LocalWithRefs) (FIXME this one is currently not being done)
+//!
+//!         We also have to be careful when dealing with `Terminator`s. Whenever we pass references,
+//!         pointers or `Local`s with `NodeKind::LocalWithRefs` (FIXME currently not done) to
+//!         a `TerminatorKind::Call` or `TerminatorKind::Yield` and the destination `Place` or resume place, resp.,
+//!         contains references/pointers or generic parameters we have to be careful and treat the
+//!         `Local`s corresponding to the `Place`s as `NodeKind::LocalWithRef`s.
+//!
+//! 2. Liveness analysis for borrows
+//!
+//! We perform a standard liveness analysis on any outstanding references, pointers or `Local`s
+//! with `NodeKind::LocalWithRefs`. So we `gen` at any use site, which are either direct uses
+//! of these `Local`s or projections that contain these `Local`s. So e.g.:
+//!
+//! ```ignore(rust)
+//! 1. _3 = Foo {}
+//! 2. _4 = Bar {}
+//! 3. _5 = Ref(_3)
+//! 4. _6 = Ref(_4)
+//! 5. _7 = Aggregate(..)(move _5)
+//! 6. _8 = Call(..)(move _6) (assume _8 contains no refs/ptrs or generic params)
+//! 7. _9 = (_8.0)
+//! 8. (_7.0) = _9
+//! ```
+//!
+//! * `_5` is live from stmt 3 to stmt 5
+//! * `_6` is live from stmt 4 to stmt 6
+//! * `_7` is a `Local` of kind `LocalWithRef` so needs to be taken into account in the
+//!   analyis. It's live from stmt 5 to stmt 8
+//!
+//! 3. Determining which `Local`s are borrowed
+//!
+//! Let's use our last example again. The dependency graph for that example looks as follows:
+//!
+//! `_5` (Borrow) -> `_3` (Local)
+//! `_6` (Borrow) -> `_4` (Local)
+//! `_7` (LocalWithRef) -> `_5` (Borrow)
+//! `_7` (LocalWithRef) -> `_9` (Local)
+//!
+//! So at each of those statements we have the following `Local`s that are live due to borrows:
+//!
+//! 1. {}
+//! 2. {}
+//! 3. {_3}
+//! 4. {_3, _4}
+//! 5. {_3, _4, _7}
+//! 6. {_3, _4, _7}
+//! 7. {_3, _7}
+//! 8. {_3, _7}
+//!
+
 use super::*;
 
 use crate::framework::{Analysis, Results, ResultsCursor};
@@ -13,16 +132,6 @@ use rustc_middle::ty::{self, Ty, TypeSuperVisitable, TypeVisitable};
 
 use core::ops::ControlFlow;
 use either::Either;
-
-/// This module defines a more fine-grained analysis for `Local`s that are live due
-/// to outstanding references or raw pointers.
-/// The idea behind the analysis is that we first build a dependency graph between
-/// `Local`s corresponding to references or pointers and the `Local`s that are borrowed.
-/// This is done by the `BorrowDependencies` struct.
-/// As a second step we perform a liveness analysis for references and pointers, which is
-/// done by `LiveBorrows`.
-/// Finally we combine the results of the liveness analysis and the dependency graph to
-/// infer which borrowed locals need to be live at a given `Location`.
 
 #[derive(Copy, Clone, Debug)]
 enum NodeKind {
@@ -237,7 +346,10 @@ impl<'a, 'tcx> Visitor<'tcx> for BorrowDependencies<'a, 'tcx> {
 
                 self.dep_graph.add_edge(src_node_idx, node_idx, ());
             }
-            _ => self.super_rvalue(rvalue, location),
+            _ => {
+                // FIXME Need to also create edges for `Local`s that correspond to `NodeKind::LocalWithRefs` here
+                self.super_rvalue(rvalue, location)
+            }
         }
     }
 
@@ -272,7 +384,9 @@ impl<'a, 'tcx> Visitor<'tcx> for BorrowDependencies<'a, 'tcx> {
                 }
                 None => {}
             },
-            _ => {}
+            _ => {
+                // FIXME Need to also create edges for `Local`s that correspond to `NodeKind::LocalWithRefs` here
+            }
         }
 
         self.super_place(place, context, location)
@@ -382,6 +496,7 @@ where
         borrows_to_locals
     }
 
+    // FIXME Account for cycles in the graph!
     fn dfs_for_node(
         node_idx: NodeIndex,
         borrows_to_locals: &mut FxHashMap<Local, Vec<Local>>,
