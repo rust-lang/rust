@@ -17,7 +17,7 @@ use rustc_lint::{unerased_lint_store, BufferedEarlyLint, EarlyCheckNode, LintSto
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
-use rustc_middle::ty::query::{ExternProviders, Providers};
+use rustc_middle::query::{ExternProviders, Providers};
 use rustc_middle::ty::{self, GlobalCtxt, RegisteredTools, TyCtxt};
 use rustc_mir_build as mir_build;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str, validate_attr};
@@ -89,6 +89,7 @@ pub fn register_plugins<'a>(
         crate_name,
         sess.crate_types().contains(&CrateType::Executable),
         sess.opts.cg.metadata.clone(),
+        sess.cfg_version,
     );
     sess.stable_crate_id.set(stable_crate_id).expect("not yet initialized");
     rustc_incremental::prepare_session_directory(sess, crate_name, stable_crate_id)?;
@@ -486,6 +487,11 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
             files.push(normalize_path(profile_sample.as_path().to_path_buf()));
         }
 
+        // Debugger visualizer files
+        for debugger_visualizer in tcx.debugger_visualizers(LOCAL_CRATE) {
+            files.push(normalize_path(debugger_visualizer.path.clone().unwrap()));
+        }
+
         if sess.binary_dep_depinfo() {
             if let Some(ref backend) = sess.opts.unstable_opts.codegen_backend {
                 if backend.contains('.') {
@@ -691,6 +697,8 @@ pub fn create_global_ctxt<'tcx>(
         callback(sess, &mut local_providers, &mut extern_providers);
     }
 
+    let incremental = dep_graph.is_fully_enabled();
+
     sess.time("setup_global_ctxt", || {
         gcx_cell.get_or_init(move || {
             TyCtxt::create_global_ctxt(
@@ -700,9 +708,13 @@ pub fn create_global_ctxt<'tcx>(
                 hir_arena,
                 untracked,
                 dep_graph,
-                query_result_on_disk_cache,
                 rustc_query_impl::query_callbacks(arena),
-                rustc_query_impl::query_system_fns(local_providers, extern_providers),
+                rustc_query_impl::query_system(
+                    local_providers,
+                    extern_providers,
+                    query_result_on_disk_cache,
+                    incremental,
+                ),
             )
         })
     })

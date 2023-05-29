@@ -19,16 +19,17 @@ use rustc_hir::definitions::DefPathData;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::hir::nested_filter;
+use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::{
     metadata_symbol_name, ExportedSymbol, SymbolExportInfo,
 };
 use rustc_middle::mir::interpret;
 use rustc_middle::query::LocalCrate;
+use rustc_middle::query::Providers;
 use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, SimplifiedType, TreatParams};
-use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, SymbolName, Ty, TyCtxt};
 use rustc_middle::util::common::to_readable_str;
 use rustc_serialize::{opaque, Decodable, Decoder, Encodable, Encoder};
@@ -36,9 +37,7 @@ use rustc_session::config::{CrateType, OptLevel};
 use rustc_session::cstore::{ForeignModule, LinkagePreference, NativeLib};
 use rustc_span::hygiene::{ExpnIndex, HygieneEncodeContext, MacroKind};
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{
-    self, DebuggerVisualizerFile, ExternalSource, FileName, SourceFile, Span, SyntaxContext,
-};
+use rustc_span::{self, ExternalSource, FileName, SourceFile, Span, SyntaxContext};
 use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
 use std::hash::Hash;
@@ -663,10 +662,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let root = stat!("final", || {
             let attrs = tcx.hir().krate_attrs();
             self.lazy(CrateRoot {
-                name: tcx.crate_name(LOCAL_CRATE),
+                header: CrateHeader {
+                    name: tcx.crate_name(LOCAL_CRATE),
+                    triple: tcx.sess.opts.target_triple.clone(),
+                    hash: tcx.crate_hash(LOCAL_CRATE),
+                    is_proc_macro_crate: proc_macro_data.is_some(),
+                },
                 extra_filename: tcx.sess.opts.cg.extra_filename.clone(),
-                triple: tcx.sess.opts.target_triple.clone(),
-                hash: tcx.crate_hash(LOCAL_CRATE),
                 stable_crate_id: tcx.def_path_hash(LOCAL_CRATE.as_def_id()).stable_crate_id(),
                 required_panic_strategy: tcx.required_panic_strategy(LOCAL_CRATE),
                 panic_in_drop_strategy: tcx.sess.opts.unstable_opts.panic_in_drop,
@@ -1516,8 +1518,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if encode_opt {
                 record!(self.tables.optimized_mir[def_id.to_def_id()] <- tcx.optimized_mir(def_id));
 
-                if tcx.sess.opts.unstable_opts.drop_tracking_mir && let DefKind::Generator = self.tcx.def_kind(def_id) {
-                    record!(self.tables.mir_generator_witnesses[def_id.to_def_id()] <- tcx.mir_generator_witnesses(def_id));
+                if tcx.sess.opts.unstable_opts.drop_tracking_mir
+                    && let DefKind::Generator = self.tcx.def_kind(def_id)
+                    && let Some(witnesses) = tcx.mir_generator_witnesses(def_id)
+                {
+                    record!(self.tables.mir_generator_witnesses[def_id.to_def_id()] <- witnesses);
                 }
             }
             if encode_const {
@@ -1725,7 +1730,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             ty::Closure(_, substs) => {
                 let constness = self.tcx.constness(def_id.to_def_id());
                 self.tables.constness.set_some(def_id.to_def_id().index, constness);
-                record!(self.tables.fn_sig[def_id.to_def_id()] <- ty::EarlyBinder(substs.as_closure().sig()));
+                record!(self.tables.fn_sig[def_id.to_def_id()] <- ty::EarlyBinder::new(substs.as_closure().sig()));
             }
 
             _ => bug!("closure that is neither generator nor closure"),
@@ -1852,7 +1857,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     fn encode_debugger_visualizers(&mut self) -> LazyArray<DebuggerVisualizerFile> {
         empty_proc_macro!(self);
-        self.lazy_array(self.tcx.debugger_visualizers(LOCAL_CRATE).iter())
+        self.lazy_array(
+            self.tcx
+                .debugger_visualizers(LOCAL_CRATE)
+                .iter()
+                // Erase the path since it may contain privacy sensitive data
+                // that we don't want to end up in crate metadata.
+                // The path is only needed for the local crate because of
+                // `--emit dep-info`.
+                .map(DebuggerVisualizerFile::path_erased),
+        )
     }
 
     fn encode_crate_deps(&mut self) -> LazyArray<CrateDep> {
@@ -1927,7 +1941,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     fn encode_traits(&mut self) -> LazyArray<DefIndex> {
         empty_proc_macro!(self);
-        self.lazy_array(self.tcx.traits_in_crate(LOCAL_CRATE).iter().map(|def_id| def_id.index))
+        self.lazy_array(self.tcx.traits(LOCAL_CRATE).iter().map(|def_id| def_id.index))
     }
 
     /// Encodes an index, mapping each trait to its (local) implementations.
@@ -2273,7 +2287,7 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>, path: &Path) {
     };
 
     // Encode the rustc version string in a predictable location.
-    rustc_version().encode(&mut ecx);
+    rustc_version(tcx.sess.cfg_version).encode(&mut ecx);
 
     // Encode all the entries and extra information in the crate,
     // culminating in the `CrateRoot` which points to all of it.
@@ -2318,7 +2332,7 @@ pub fn provide(providers: &mut Providers) {
                 .get(&def_id)
                 .expect("no traits in scope for a doc link")
         },
-        traits_in_crate: |tcx, LocalCrate| {
+        traits: |tcx, LocalCrate| {
             let mut traits = Vec::new();
             for id in tcx.hir().items() {
                 if matches!(tcx.def_kind(id.owner_id), DefKind::Trait | DefKind::TraitAlias) {

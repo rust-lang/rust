@@ -563,7 +563,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let (op, op_len) = this.operand_to_simd(op)?;
                 let bitmask_len = op_len.max(8);
 
-                assert!(dest.layout.ty.is_integral());
+                // Returns either an unsigned integer or array of `u8`.
+                assert!(
+                    dest.layout.ty.is_integral()
+                        || matches!(dest.layout.ty.kind(), ty::Array(elemty, _) if elemty == &this.tcx.types.u8)
+                );
                 assert!(bitmask_len <= 64);
                 assert_eq!(bitmask_len, dest.layout.size.bits());
                 let op_len = u32::try_from(op_len).unwrap();
@@ -577,7 +581,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             .unwrap();
                     }
                 }
-                this.write_int(res, dest)?;
+                // We have to force the place type to be an int so that we can write `res` into it.
+                let mut dest = this.force_allocation(dest)?;
+                dest.layout = this.machine.layouts.uint(dest.layout.size).unwrap();
+                this.write_int(res, &dest.into())?;
             }
 
             name => throw_unsup_format!("unimplemented intrinsic: `simd_{name}`"),
@@ -605,7 +612,7 @@ fn simd_bitmask_index(idx: u32, vec_len: u32, endianness: Endian) -> u32 {
     assert!(idx < vec_len);
     match endianness {
         Endian::Little => idx,
-        #[allow(clippy::integer_arithmetic)] // idx < vec_len
+        #[allow(clippy::arithmetic_side_effects)] // idx < vec_len
         Endian::Big => vec_len - 1 - idx, // reverse order of bits
     }
 }

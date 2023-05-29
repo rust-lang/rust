@@ -603,7 +603,11 @@ pub enum TerminatorKind<'tcx> {
     /// > The drop glue is executed if, among all statements executed within this `Body`, an assignment to
     /// > the place or one of its "parents" occurred more recently than a move out of it. This does not
     /// > consider indirect assignments.
-    Drop { place: Place<'tcx>, target: BasicBlock, unwind: UnwindAction },
+    ///
+    /// The `replace` flag indicates whether this terminator was created as part of an assignment.
+    /// This should only be used for diagnostic purposes, and does not have any operational
+    /// meaning.
+    Drop { place: Place<'tcx>, target: BasicBlock, unwind: UnwindAction, replace: bool },
 
     /// Roughly speaking, evaluates the `func` operand and the arguments, and starts execution of
     /// the referred to function. The operand types must match the argument types of the function.
@@ -747,6 +751,29 @@ pub enum TerminatorKind<'tcx> {
         /// if and only if InlineAsmOptions::MAY_UNWIND is set.
         unwind: UnwindAction,
     },
+}
+
+impl TerminatorKind<'_> {
+    /// Returns a simple string representation of a `TerminatorKind` variant, independent of any
+    /// values it might hold (e.g. `TerminatorKind::Call` always returns `"Call"`).
+    pub const fn name(&self) -> &'static str {
+        match self {
+            TerminatorKind::Goto { .. } => "Goto",
+            TerminatorKind::SwitchInt { .. } => "SwitchInt",
+            TerminatorKind::Resume => "Resume",
+            TerminatorKind::Terminate => "Terminate",
+            TerminatorKind::Return => "Return",
+            TerminatorKind::Unreachable => "Unreachable",
+            TerminatorKind::Drop { .. } => "Drop",
+            TerminatorKind::Call { .. } => "Call",
+            TerminatorKind::Assert { .. } => "Assert",
+            TerminatorKind::Yield { .. } => "Yield",
+            TerminatorKind::GeneratorDrop => "GeneratorDrop",
+            TerminatorKind::FalseEdge { .. } => "FalseEdge",
+            TerminatorKind::FalseUnwind { .. } => "FalseUnwind",
+            TerminatorKind::InlineAsm { .. } => "InlineAsm",
+        }
+    }
 }
 
 /// Action to be taken when a stack unwind happens.

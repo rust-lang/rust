@@ -101,7 +101,7 @@ impl<'tcx> HasLocalDecls<'tcx> for Body<'tcx> {
 /// pass will be named after the type, and it will consist of a main
 /// loop that goes over each available MIR and applies `run_pass`.
 pub trait MirPass<'tcx> {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         let name = std::any::type_name::<Self>();
         if let Some((_, tail)) = name.rsplit_once(':') { tail } else { name }
     }
@@ -476,7 +476,7 @@ impl<'tcx> Body<'tcx> {
     /// Returns the return type; it always return first element from `local_decls` array.
     #[inline]
     pub fn bound_return_ty(&self) -> ty::EarlyBinder<Ty<'tcx>> {
-        ty::EarlyBinder(self.local_decls[RETURN_PLACE].ty)
+        ty::EarlyBinder::new(self.local_decls[RETURN_PLACE].ty)
     }
 
     /// Gets the location of the terminator for the given block.
@@ -1111,6 +1111,10 @@ pub struct VarDebugInfo<'tcx> {
     /// originated from (starting from 1). Note, if MIR inlining is enabled, then this is the
     /// argument number in the original function before it was inlined.
     pub argument_index: Option<u16>,
+
+    /// The data represents `name` dereferenced `references` times,
+    /// and not the direct value.
+    pub references: u8,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1550,8 +1554,11 @@ impl<V, T> ProjectionElem<V, T> {
     /// Returns `true` if this is accepted inside `VarDebugInfoContents::Place`.
     pub fn can_use_in_debuginfo(&self) -> bool {
         match self {
-            Self::Deref | Self::Downcast(_, _) | Self::Field(_, _) => true,
-            Self::ConstantIndex { .. }
+            Self::ConstantIndex { from_end: false, .. }
+            | Self::Deref
+            | Self::Downcast(_, _)
+            | Self::Field(_, _) => true,
+            Self::ConstantIndex { from_end: true, .. }
             | Self::Index(_)
             | Self::OpaqueCast(_)
             | Self::Subslice { .. } => false,
@@ -1639,18 +1646,7 @@ impl<'tcx> Place<'tcx> {
             return self;
         }
 
-        let mut v: Vec<PlaceElem<'tcx>>;
-
-        let new_projections = if self.projection.is_empty() {
-            more_projections
-        } else {
-            v = Vec::with_capacity(self.projection.len() + more_projections.len());
-            v.extend(self.projection);
-            v.extend(more_projections);
-            &v
-        };
-
-        Place { local: self.local, projection: tcx.mk_place_elems(new_projections) }
+        self.as_ref().project_deeper(more_projections, tcx)
     }
 }
 
@@ -1720,6 +1716,27 @@ impl<'tcx> PlaceRef<'tcx> {
             let base = PlaceRef { local: self.local, projection: &self.projection[..i] };
             (base, *proj)
         })
+    }
+
+    /// Generates a new place by appending `more_projections` to the existing ones
+    /// and interning the result.
+    pub fn project_deeper(
+        self,
+        more_projections: &[PlaceElem<'tcx>],
+        tcx: TyCtxt<'tcx>,
+    ) -> Place<'tcx> {
+        let mut v: Vec<PlaceElem<'tcx>>;
+
+        let new_projections = if self.projection.is_empty() {
+            more_projections
+        } else {
+            v = Vec::with_capacity(self.projection.len() + more_projections.len());
+            v.extend(self.projection);
+            v.extend(more_projections);
+            &v
+        };
+
+        Place { local: self.local, projection: tcx.mk_place_elems(new_projections) }
     }
 }
 
@@ -2313,7 +2330,7 @@ impl<'tcx> ConstantKind<'tcx> {
                 if let Some(val) = c.kind().try_eval_for_mir(tcx, param_env) {
                     match val {
                         Ok(val) => Self::Val(val, c.ty()),
-                        Err(_) => Self::Ty(tcx.const_error(self.ty())),
+                        Err(guar) => Self::Ty(tcx.const_error(self.ty(), guar)),
                     }
                 } else {
                     self
@@ -2325,9 +2342,7 @@ impl<'tcx> ConstantKind<'tcx> {
                 match tcx.const_eval_resolve(param_env, uneval, None) {
                     Ok(val) => Self::Val(val, ty),
                     Err(ErrorHandled::TooGeneric) => self,
-                    Err(ErrorHandled::Reported(guar)) => {
-                        Self::Ty(tcx.const_error_with_guaranteed(ty, guar))
-                    }
+                    Err(ErrorHandled::Reported(guar)) => Self::Ty(tcx.const_error(ty, guar.into())),
                 }
             }
         }

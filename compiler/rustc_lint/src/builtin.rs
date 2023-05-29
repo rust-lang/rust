@@ -611,7 +611,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
 
 declare_lint! {
     /// The `missing_copy_implementations` lint detects potentially-forgotten
-    /// implementations of [`Copy`].
+    /// implementations of [`Copy`] for public types.
     ///
     /// [`Copy`]: https://doc.rust-lang.org/std/marker/trait.Copy.html
     ///
@@ -647,7 +647,9 @@ declare_lint_pass!(MissingCopyImplementations => [MISSING_COPY_IMPLEMENTATIONS])
 
 impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        if !cx.effective_visibilities.is_reachable(item.owner_id.def_id) {
+        if !(cx.effective_visibilities.is_reachable(item.owner_id.def_id)
+            && cx.tcx.local_visibility(item.owner_id.def_id).is_public())
+        {
             return;
         }
         let (def, ty) = match item.kind {
@@ -727,7 +729,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
 
 declare_lint! {
     /// The `missing_debug_implementations` lint detects missing
-    /// implementations of [`fmt::Debug`].
+    /// implementations of [`fmt::Debug`] for public types.
     ///
     /// [`fmt::Debug`]: https://doc.rust-lang.org/std/fmt/trait.Debug.html
     ///
@@ -766,7 +768,9 @@ impl_lint_pass!(MissingDebugImplementations => [MISSING_DEBUG_IMPLEMENTATIONS]);
 
 impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        if !cx.effective_visibilities.is_reachable(item.owner_id.def_id) {
+        if !(cx.effective_visibilities.is_reachable(item.owner_id.def_id)
+            && cx.tcx.local_visibility(item.owner_id.def_id).is_public())
+        {
             return;
         }
 
@@ -957,7 +961,7 @@ fn warn_if_doc(cx: &EarlyContext<'_>, node_span: Span, node_kind: &str, attrs: &
                 Some(sugared_span.map_or(attr.span, |span| span.with_hi(attr.span.hi())));
         }
 
-        if attrs.peek().map_or(false, |next_attr| next_attr.is_doc_comment()) {
+        if attrs.peek().is_some_and(|next_attr| next_attr.is_doc_comment()) {
             continue;
         }
 

@@ -196,6 +196,7 @@ pub enum AttributeKind {
     AllocSize = 37,
     AllocatedPointer = 38,
     AllocAlign = 39,
+    SanitizeSafeStack = 40,
 }
 
 /// LLVMIntPredicate
@@ -2484,12 +2485,6 @@ extern "C" {
         len: usize,
         out_len: &mut usize,
     ) -> *const u8;
-    pub fn LLVMRustThinLTOGetDICompileUnit(
-        M: &Module,
-        CU1: &mut *mut c_void,
-        CU2: &mut *mut c_void,
-    );
-    pub fn LLVMRustThinLTOPatchDICompileUnit(M: &Module, CU: *mut c_void);
 
     pub fn LLVMRustLinkerNew(M: &Module) -> &mut Linker<'_>;
     pub fn LLVMRustLinkerAdd(

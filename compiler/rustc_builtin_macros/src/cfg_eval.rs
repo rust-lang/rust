@@ -119,7 +119,7 @@ impl<'ast> visit::Visitor<'ast> for CfgFinder {
         self.has_cfg_or_cfg_attr = self.has_cfg_or_cfg_attr
             || attr
                 .ident()
-                .map_or(false, |ident| ident.name == sym::cfg || ident.name == sym::cfg_attr);
+                .is_some_and(|ident| ident.name == sym::cfg || ident.name == sym::cfg_attr);
     }
 }
 
@@ -166,7 +166,9 @@ impl CfgEval<'_, '_> {
                     ))
                 },
                 Annotatable::Stmt(_) => |parser| {
-                    Ok(Annotatable::Stmt(P(parser.parse_stmt(ForceCollect::Yes)?.unwrap())))
+                    Ok(Annotatable::Stmt(P(parser
+                        .parse_stmt_without_recovery(false, ForceCollect::Yes)?
+                        .unwrap())))
                 },
                 Annotatable::Expr(_) => {
                     |parser| Ok(Annotatable::Expr(parser.parse_expr_force_collect()?))

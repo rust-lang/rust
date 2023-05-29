@@ -8,6 +8,8 @@ LL | fn main() { missing_ident; }
 stack backtrace:
 (end_short_backtrace)
 (begin_short_backtrace)
+(end_short_backtrace)
+(begin_short_backtrace)
 
 error: the compiler unexpectedly panicked. this is a bug.
 

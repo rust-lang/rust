@@ -3,12 +3,13 @@ use crate::util;
 use rustc_ast::token;
 use rustc_ast::{self as ast, LitKind, MetaItemKind};
 use rustc_codegen_ssa::traits::CodegenBackend;
+use rustc_data_structures::defer;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
-use rustc_data_structures::OnDrop;
 use rustc_errors::registry::Registry;
 use rustc_errors::{ErrorGuaranteed, Handler};
 use rustc_lint::LintStore;
+use rustc_middle::query::{ExternProviders, Providers};
 use rustc_middle::{bug, ty};
 use rustc_parse::maybe_new_parser_from_source_str;
 use rustc_query_impl::QueryCtxt;
@@ -37,8 +38,7 @@ pub struct Compiler {
     pub(crate) sess: Lrc<Session>,
     codegen_backend: Lrc<Box<dyn CodegenBackend>>,
     pub(crate) register_lints: Option<Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>>,
-    pub(crate) override_queries:
-        Option<fn(&Session, &mut ty::query::Providers, &mut ty::query::ExternProviders)>,
+    pub(crate) override_queries: Option<fn(&Session, &mut Providers, &mut ExternProviders)>,
 }
 
 impl Compiler {
@@ -80,7 +80,7 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String
                     ($reason: expr) => {
                         early_error(
                             ErrorOutputType::default(),
-                            &format!(concat!("invalid `--cfg` argument: `{}` (", $reason, ")"), s),
+                            format!(concat!("invalid `--cfg` argument: `{}` (", $reason, ")"), s),
                         );
                     };
                 }
@@ -139,10 +139,7 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
                 ($reason: expr) => {
                     early_error(
                         ErrorOutputType::default(),
-                        &format!(
-                            concat!("invalid `--check-cfg` argument: `{}` (", $reason, ")"),
-                            s
-                        ),
+                        format!(concat!("invalid `--check-cfg` argument: `{}` (", $reason, ")"), s),
                     )
                 };
             }
@@ -275,8 +272,7 @@ pub struct Config {
     /// the list of queries.
     ///
     /// The second parameter is local providers and the third parameter is external providers.
-    pub override_queries:
-        Option<fn(&Session, &mut ty::query::Providers, &mut ty::query::ExternProviders)>,
+    pub override_queries: Option<fn(&Session, &mut Providers, &mut ExternProviders)>,
 
     /// This is a callback from the driver that is called to create a codegen backend.
     pub make_codegen_backend:
@@ -329,7 +325,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
 
             rustc_span::set_source_map(compiler.sess.parse_sess.clone_source_map(), move || {
                 let r = {
-                    let _sess_abort_error = OnDrop(|| {
+                    let _sess_abort_error = defer(|| {
                         compiler.sess.finish_diagnostics(registry);
                     });
 
@@ -352,7 +348,7 @@ pub fn try_print_query_stack(handler: &Handler, num_frames: Option<usize>) {
     // state if it was responsible for triggering the panic.
     let i = ty::tls::with_context_opt(|icx| {
         if let Some(icx) = icx {
-            print_query_stack(QueryCtxt { tcx: icx.tcx }, icx.query, handler, num_frames)
+            print_query_stack(QueryCtxt::new(icx.tcx), icx.query, handler, num_frames)
         } else {
             0
         }

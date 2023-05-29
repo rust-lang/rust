@@ -741,7 +741,7 @@ impl<T: LintContext> DiagnosticExt<T> for rustc_errors::Diagnostic {
         if let Some(indent) = indentation(cx, item) {
             let span = item.with_hi(item.lo());
 
-            self.span_suggestion(span, msg, format!("{attr}\n{indent}"), applicability);
+            self.span_suggestion(span, msg.to_string(), format!("{attr}\n{indent}"), applicability);
         }
     }
 
@@ -762,7 +762,7 @@ impl<T: LintContext> DiagnosticExt<T> for rustc_errors::Diagnostic {
                 })
                 .collect::<String>();
 
-            self.span_suggestion(span, msg, format!("{new_item}\n{indent}"), applicability);
+            self.span_suggestion(span, msg.to_string(), format!("{new_item}\n{indent}"), applicability);
         }
     }
 
@@ -779,7 +779,7 @@ impl<T: LintContext> DiagnosticExt<T> for rustc_errors::Diagnostic {
             }
         }
 
-        self.span_suggestion(remove_span, msg, "", applicability);
+        self.span_suggestion(remove_span, msg.to_string(), "", applicability);
     }
 }
 

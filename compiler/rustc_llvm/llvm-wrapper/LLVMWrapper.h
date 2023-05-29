@@ -96,6 +96,7 @@ enum LLVMRustAttribute {
   AllocatedPointer = 38,
   AllocAlign = 39,
 #endif
+  SanitizeSafeStack = 40,
 };
 
 typedef struct OpaqueRustString *RustStringRef;

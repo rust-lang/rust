@@ -3,7 +3,7 @@
 // check-pass
 // compile-flags: -Z unpretty=expanded
 
-#![feature(core_intrinsics, generic_assert, generic_assert_internals)]
+#![feature(core_intrinsics, generic_assert)]
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
 #[macro_use]
@@ -26,7 +26,7 @@ fn arbitrary_consuming_method_for_demonstration_purposes() {
 
                 {
                     ::std::rt::panic_fmt(format_args!("Assertion failed: elem as usize\nWith captures:\n  elem = {0:?}\n",
-                            __capture0))
+                            __capture0));
                 }
             }
     };
@@ -42,7 +42,7 @@ fn addr_of() {
                 (&::core::asserting::Wrapper(__local_bind0)).try_capture(&mut __capture0);
                 {
                     ::std::rt::panic_fmt(format_args!("Assertion failed: &elem\nWith captures:\n  elem = {0:?}\n",
-                            __capture0))
+                            __capture0));
                 }
             }
     };
@@ -58,7 +58,7 @@ fn binary() {
                 (&::core::asserting::Wrapper(__local_bind0)).try_capture(&mut __capture0);
                 {
                     ::std::rt::panic_fmt(format_args!("Assertion failed: elem == 1\nWith captures:\n  elem = {0:?}\n",
-                            __capture0))
+                            __capture0));
                 }
             }
     };
@@ -71,7 +71,7 @@ fn binary() {
                 (&::core::asserting::Wrapper(__local_bind0)).try_capture(&mut __capture0);
                 {
                     ::std::rt::panic_fmt(format_args!("Assertion failed: elem >= 1\nWith captures:\n  elem = {0:?}\n",
-                            __capture0))
+                            __capture0));
                 }
             }
     };
@@ -84,7 +84,7 @@ fn binary() {
                 (&::core::asserting::Wrapper(__local_bind0)).try_capture(&mut __capture0);
                 {
                     ::std::rt::panic_fmt(format_args!("Assertion failed: elem > 0\nWith captures:\n  elem = {0:?}\n",
-                            __capture0))
+                            __capture0));
                 }
             }
     };
@@ -97,7 +97,7 @@ fn binary() {
                 (&::core::asserting::Wrapper(__local_bind0)).try_capture(&mut __capture0);
                 {
                     ::std::rt::panic_fmt(format_args!("Assertion failed: elem < 3\nWith captures:\n  elem = {0:?}\n",
-                            __capture0))
+                            __capture0));
                 }
             }
     };
@@ -110,7 +110,7 @@ fn binary() {
                 (&::core::asserting::Wrapper(__local_bind0)).try_capture(&mut __capture0);
                 {
                     ::std::rt::panic_fmt(format_args!("Assertion failed: elem <= 3\nWith captures:\n  elem = {0:?}\n",
-                            __capture0))
+                            __capture0));
                 }
             }
     };
@@ -123,7 +123,7 @@ fn binary() {
                 (&::core::asserting::Wrapper(__local_bind0)).try_capture(&mut __capture0);
                 {
                     ::std::rt::panic_fmt(format_args!("Assertion failed: elem != 3\nWith captures:\n  elem = {0:?}\n",
-                            __capture0))
+                            __capture0));
                 }
             }
     };
@@ -139,7 +139,7 @@ fn unary() {
                 (&::core::asserting::Wrapper(__local_bind0)).try_capture(&mut __capture0);
                 {
                     ::std::rt::panic_fmt(format_args!("Assertion failed: *elem\nWith captures:\n  elem = {0:?}\n",
-                            __capture0))
+                            __capture0));
                 }
             }
     };

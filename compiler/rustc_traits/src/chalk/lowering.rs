@@ -679,7 +679,7 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_ir::QuantifiedWhereClause<RustInterner<'
             | ty::PredicateKind::ConstEquate(..)
             | ty::PredicateKind::Ambiguous
             | ty::PredicateKind::TypeWellFormedFromEnv(..) => {
-                bug!("unexpected predicate {}", &self)
+                bug!("unexpected predicate {self}")
             }
         };
         value.map(|value| chalk_ir::Binders::new(binders, value))

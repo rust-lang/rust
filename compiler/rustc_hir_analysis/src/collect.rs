@@ -28,7 +28,7 @@ use rustc_hir::{GenericParamKind, Node};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{self, AdtKind, Const, IsSuggestable, ToPredicate, Ty, TyCtxt};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -73,7 +73,6 @@ pub fn provide(providers: &mut Providers) {
         fn_sig,
         impl_trait_ref,
         impl_polarity,
-        is_foreign_item,
         generator_kind,
         collect_mod_item_types,
         is_type_alias_impl_trait,
@@ -820,7 +819,7 @@ fn convert_variant(
         recovered,
         adt_kind == AdtKind::Struct && tcx.has_attr(parent_did, sym::non_exhaustive)
             || variant_did
-                .map_or(false, |variant_did| tcx.has_attr(variant_did, sym::non_exhaustive)),
+                .is_some_and(|variant_did| tcx.has_attr(variant_did, sym::non_exhaustive)),
     )
 }
 
@@ -1026,7 +1025,7 @@ fn is_suggestable_infer_ty(ty: &hir::Ty<'_>) -> bool {
             is_suggestable_infer_ty(ty) || are_suggestable_generic_args(segment.args().args)
         }
         Path(hir::QPath::Resolved(ty_opt, hir::Path { segments, .. })) => {
-            ty_opt.map_or(false, is_suggestable_infer_ty)
+            ty_opt.is_some_and(is_suggestable_infer_ty)
                 || segments.iter().any(|segment| are_suggestable_generic_args(segment.args().args))
         }
         _ => false,
@@ -1125,7 +1124,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<ty::PolyFnSig<
             bug!("unexpected sort of node in fn_sig(): {:?}", x);
         }
     };
-    ty::EarlyBinder(output)
+    ty::EarlyBinder::new(output)
 }
 
 fn infer_return_ty_for_fn_sig<'tcx>(
@@ -1313,7 +1312,7 @@ fn impl_trait_ref(
                 check_impl_constness(tcx, impl_.constness, ast_trait_ref),
             )
         })
-        .map(ty::EarlyBinder)
+        .map(ty::EarlyBinder::new)
 }
 
 fn check_impl_constness(
@@ -1464,10 +1463,6 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
     }
 
     fty
-}
-
-fn is_foreign_item(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-    matches!(tcx.hir().get_by_def_id(def_id), Node::ForeignItem(..))
 }
 
 fn generator_kind(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<hir::GeneratorKind> {

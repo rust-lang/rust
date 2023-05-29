@@ -1,0 +1,13 @@
+error: macro-expanded `extern crate` items cannot shadow names passed with `--extern`
+  --> $DIR/issue-109148.rs:6:9
+   |
+LL |         extern crate core as std;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | m!();
+   | ---- in this macro invocation
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+

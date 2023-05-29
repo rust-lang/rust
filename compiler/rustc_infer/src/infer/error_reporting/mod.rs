@@ -76,6 +76,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::{sym, symbol::kw, BytePos, DesugaringKind, Pos, Span};
 use rustc_target::spec::abi;
+use std::borrow::Cow;
 use std::ops::{ControlFlow, Deref};
 use std::path::PathBuf;
 use std::{cmp, fmt, iter};
@@ -1470,7 +1471,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         diag: &mut Diagnostic,
         cause: &ObligationCause<'tcx>,
-        secondary_span: Option<(Span, String)>,
+        secondary_span: Option<(Span, Cow<'static, str>)>,
         mut values: Option<ValuePairs<'tcx>>,
         terr: TypeError<'tcx>,
         swap_secondary_and_primary: bool,
@@ -1629,7 +1630,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         };
 
-        let mut label_or_note = |span: Span, msg: &str| {
+        let mut label_or_note = |span: Span, msg: Cow<'static, str>| {
             if (prefer_label && is_simple_error) || &[span] == diag.span.primary_spans() {
                 diag.span_label(span, msg);
             } else {
@@ -1643,15 +1644,15 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     ..
                 })) = values
                 {
-                    format!("expected this to be `{}`", expected)
+                    Cow::from(format!("expected this to be `{}`", expected))
                 } else {
-                    terr.to_string(self.tcx).to_string()
+                    terr.to_string(self.tcx)
                 };
-                label_or_note(sp, &terr);
-                label_or_note(span, &msg);
+                label_or_note(sp, terr);
+                label_or_note(span, msg);
             } else {
-                label_or_note(span, &terr.to_string(self.tcx));
-                label_or_note(sp, &msg);
+                label_or_note(span, terr.to_string(self.tcx));
+                label_or_note(sp, msg);
             }
         } else {
             if let Some(values) = values
@@ -1663,12 +1664,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let expected = with_forced_trimmed_paths!(e.sort_string(self.tcx));
                 let found = with_forced_trimmed_paths!(f.sort_string(self.tcx));
                 if expected == found {
-                    label_or_note(span, &terr.to_string(self.tcx));
+                    label_or_note(span, terr.to_string(self.tcx));
                 } else {
-                    label_or_note(span, &format!("expected {expected}, found {found}"));
+                    label_or_note(span, Cow::from(format!("expected {expected}, found {found}")));
                 }
             } else {
-                label_or_note(span, &terr.to_string(self.tcx));
+                label_or_note(span, terr.to_string(self.tcx));
             }
         }
 
@@ -1825,7 +1826,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         s
                     };
                     if !(values.expected.is_simple_text() && values.found.is_simple_text())
-                        || (exp_found.map_or(false, |ef| {
+                        || (exp_found.is_some_and(|ef| {
                             // This happens when the type error is a subset of the expectation,
                             // like when you have two references but one is `usize` and the other
                             // is `f32`. In those cases we still want to show the `note`. If the
@@ -1877,7 +1878,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let exp_found = match terr {
             // `terr` has more accurate type information than `exp_found` in match expressions.
             ty::error::TypeError::Sorts(terr)
-                if exp_found.map_or(false, |ef| terr.found == ef.found) =>
+                if exp_found.is_some_and(|ef| terr.found == ef.found) =>
             {
                 Some(terr)
             }
@@ -1961,7 +1962,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     if let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span)
                         && let Some(code) = code.strip_prefix('\'').and_then(|s| s.strip_suffix('\''))
                         && !code.starts_with("\\u") // forbid all Unicode escapes
-                        && code.chars().next().map_or(false, |c| c.is_ascii()) // forbids literal Unicode characters beyond ASCII
+                        && code.chars().next().is_some_and(|c| c.is_ascii()) // forbids literal Unicode characters beyond ASCII
                     {
                         suggestions.push(TypeErrorAdditionalDiags::MeantByteLiteral { span, code: escape_literal(code) })
                     }
@@ -2329,7 +2330,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         .source_map()
                         .span_to_prev_source(p.span.shrink_to_hi())
                         .ok()
-                        .map_or(false, |s| *s.as_bytes().last().unwrap() == b'&')
+                        .is_some_and(|s| *s.as_bytes().last().unwrap() == b'&')
                     {
                         add_lt_suggs
                             .push(Some(
@@ -2723,7 +2724,7 @@ impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
             | (ty::Infer(ty::InferTy::TyVar(_)), _)
             | (_, ty::Infer(ty::InferTy::TyVar(_))) => Ok(a),
             (ty::Infer(_), _) | (_, ty::Infer(_)) => Err(TypeError::Mismatch),
-            _ => relate::super_relate_tys(self, a, b),
+            _ => relate::structurally_relate_tys(self, a, b),
         }
     }
 

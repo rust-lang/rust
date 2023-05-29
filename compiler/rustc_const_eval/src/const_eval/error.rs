@@ -3,7 +3,8 @@ use std::fmt;
 
 use rustc_errors::Diagnostic;
 use rustc_middle::mir::AssertKind;
-use rustc_middle::ty::{layout::LayoutError, query::TyCtxtAt, ConstInt};
+use rustc_middle::query::TyCtxtAt;
+use rustc_middle::ty::{layout::LayoutError, ConstInt};
 use rustc_span::{Span, Symbol};
 
 use super::InterpCx;
@@ -169,14 +170,14 @@ impl<'tcx> ConstEvalErr<'tcx> {
                 // See <https://github.com/rust-lang/rust/pull/63152>.
                 let mut err = struct_error(tcx, &self.error.to_string());
                 self.decorate(&mut err, decorate);
-                ErrorHandled::Reported(err.emit())
+                ErrorHandled::Reported(err.emit().into())
             }
             _ => {
                 // Report as hard error.
                 let mut err = struct_error(tcx, message);
                 err.span_label(self.span, self.error.to_string());
                 self.decorate(&mut err, decorate);
-                ErrorHandled::Reported(err.emit())
+                ErrorHandled::Reported(err.emit().into())
             }
         }
     }

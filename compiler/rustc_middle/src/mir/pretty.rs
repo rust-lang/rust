@@ -551,8 +551,13 @@ fn write_scope_tree(
         }
 
         let indented_debug_info = format!(
-            "{0:1$}debug {2} => {3:?};",
-            INDENT, indent, var_debug_info.name, var_debug_info.value,
+            "{0:1$}debug {2} => {3:&<4$}{5:?};",
+            INDENT,
+            indent,
+            var_debug_info.name,
+            "",
+            var_debug_info.references as usize,
+            var_debug_info.value,
         );
 
         writeln!(

@@ -14,15 +14,16 @@ use crate::middle::resolve_bound_vars;
 use crate::middle::stability;
 use crate::mir::interpret::{self, Allocation, ConstAllocation};
 use crate::mir::{Body, Local, Place, PlaceElem, ProjectionKind, Promoted};
-use crate::query::on_disk_cache::OnDiskCache;
+use crate::query::plumbing::QuerySystem;
 use crate::query::LocalCrate;
+use crate::query::Providers;
+use crate::query::{IntoQueryParam, TyCtxtAt};
 use crate::thir::Thir;
 use crate::traits;
 use crate::traits::solve;
-use crate::traits::solve::{ExternalConstraints, ExternalConstraintsData};
-use crate::ty::query::QuerySystem;
-use crate::ty::query::QuerySystemFns;
-use crate::ty::query::{self, TyCtxtAt};
+use crate::traits::solve::{
+    ExternalConstraints, ExternalConstraintsData, PredefinedOpaques, PredefinedOpaquesData,
+};
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Const, ConstData, FloatTy, FloatVar, FloatVid,
     GenericParamDefKind, ImplPolarity, InferTy, IntTy, IntVar, IntVid, List, ParamConst, ParamTy,
@@ -80,8 +81,6 @@ use std::hash::{Hash, Hasher};
 use std::iter;
 use std::mem;
 use std::ops::{Bound, Deref};
-
-use super::query::IntoQueryParam;
 
 const TINY_CONST_EVAL_LIMIT: Limit = Limit(20);
 
@@ -143,6 +142,7 @@ pub struct CtxtInterners<'tcx> {
     layout: InternedSet<'tcx, LayoutS>,
     adt_def: InternedSet<'tcx, AdtDefData>,
     external_constraints: InternedSet<'tcx, ExternalConstraintsData<'tcx>>,
+    predefined_opaques_in_body: InternedSet<'tcx, PredefinedOpaquesData<'tcx>>,
     fields: InternedSet<'tcx, List<FieldIdx>>,
 }
 
@@ -167,6 +167,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             layout: Default::default(),
             adt_def: Default::default(),
             external_constraints: Default::default(),
+            predefined_opaques_in_body: Default::default(),
             fields: Default::default(),
         }
     }
@@ -513,7 +514,7 @@ pub struct GlobalCtxt<'tcx> {
 
     untracked: Untracked,
 
-    pub query_system: query::QuerySystem<'tcx>,
+    pub query_system: QuerySystem<'tcx>,
     pub(crate) query_kinds: &'tcx [DepKindStruct<'tcx>],
 
     // Internal caches for metadata decoding. No need to track deps on this.
@@ -653,9 +654,8 @@ impl<'tcx> TyCtxt<'tcx> {
         hir_arena: &'tcx WorkerLocal<hir::Arena<'tcx>>,
         untracked: Untracked,
         dep_graph: DepGraph,
-        on_disk_cache: Option<OnDiskCache<'tcx>>,
         query_kinds: &'tcx [DepKindStruct<'tcx>],
-        query_system_fns: QuerySystemFns<'tcx>,
+        query_system: QuerySystem<'tcx>,
     ) -> GlobalCtxt<'tcx> {
         let data_layout = s.target.parse_data_layout().unwrap_or_else(|err| {
             s.emit_fatal(err);
@@ -677,7 +677,7 @@ impl<'tcx> TyCtxt<'tcx> {
             lifetimes: common_lifetimes,
             consts: common_consts,
             untracked,
-            query_system: QuerySystem::new(query_system_fns, on_disk_cache),
+            query_system,
             query_kinds,
             ty_rcache: Default::default(),
             pred_rcache: Default::default(),
@@ -704,7 +704,11 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` with the given `msg` to
     /// ensure it gets used.
     #[track_caller]
-    pub fn ty_error_with_message<S: Into<MultiSpan>>(self, span: S, msg: &str) -> Ty<'tcx> {
+    pub fn ty_error_with_message<S: Into<MultiSpan>>(
+        self,
+        span: S,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> Ty<'tcx> {
         let reported = self.sess.delay_span_bug(span, msg);
         self.mk_ty_from_kind(Error(reported))
     }
@@ -728,24 +732,24 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Constructs a `RegionKind::ReError` lifetime and registers a `delay_span_bug` with the given
     /// `msg` to ensure it gets used.
     #[track_caller]
-    pub fn mk_re_error_with_message<S: Into<MultiSpan>>(self, span: S, msg: &str) -> Region<'tcx> {
+    pub fn mk_re_error_with_message<S: Into<MultiSpan>>(
+        self,
+        span: S,
+        msg: &'static str,
+    ) -> Region<'tcx> {
         let reported = self.sess.delay_span_bug(span, msg);
         self.mk_re_error(reported)
     }
 
     /// Like [TyCtxt::ty_error] but for constants, with current `ErrorGuaranteed`
     #[track_caller]
-    pub fn const_error_with_guaranteed(
-        self,
-        ty: Ty<'tcx>,
-        reported: ErrorGuaranteed,
-    ) -> Const<'tcx> {
+    pub fn const_error(self, ty: Ty<'tcx>, reported: ErrorGuaranteed) -> Const<'tcx> {
         self.mk_const(ty::ConstKind::Error(reported), ty)
     }
 
     /// Like [TyCtxt::ty_error] but for constants.
     #[track_caller]
-    pub fn const_error(self, ty: Ty<'tcx>) -> Const<'tcx> {
+    pub fn const_error_misc(self, ty: Ty<'tcx>) -> Const<'tcx> {
         self.const_error_with_message(
             ty,
             DUMMY_SP,
@@ -759,7 +763,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         ty: Ty<'tcx>,
         span: S,
-        msg: &str,
+        msg: &'static str,
     ) -> Const<'tcx> {
         let reported = self.sess.delay_span_bug(span, msg);
         self.mk_const(ty::ConstKind::Error(reported), ty)
@@ -1203,7 +1207,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn all_traits(self) -> impl Iterator<Item = DefId> + 'tcx {
         iter::once(LOCAL_CRATE)
             .chain(self.crates(()).iter().copied())
-            .flat_map(move |cnum| self.traits_in_crate(cnum).iter().copied())
+            .flat_map(move |cnum| self.traits(cnum).iter().copied())
     }
 
     #[inline]
@@ -1524,6 +1528,8 @@ direct_interners! {
     adt_def: pub mk_adt_def_from_data(AdtDefData): AdtDef -> AdtDef<'tcx>,
     external_constraints: pub mk_external_constraints(ExternalConstraintsData<'tcx>):
         ExternalConstraints -> ExternalConstraints<'tcx>,
+    predefined_opaques_in_body: pub mk_predefined_opaques_in_body(PredefinedOpaquesData<'tcx>):
+        PredefinedOpaques -> PredefinedOpaques<'tcx>,
 }
 
 macro_rules! slice_interners {
@@ -2345,7 +2351,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn is_late_bound(self, id: HirId) -> bool {
-        self.is_late_bound_map(id.owner).map_or(false, |set| set.contains(&id.local_id))
+        self.is_late_bound_map(id.owner).is_some_and(|set| set.contains(&id.local_id))
     }
 
     pub fn late_bound_vars(self, id: HirId) -> &'tcx List<ty::BoundVariableKind> {
@@ -2441,7 +2447,7 @@ impl<'tcx> TyCtxtAt<'tcx> {
     /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` with the given `msg` to
     /// ensure it gets used.
     #[track_caller]
-    pub fn ty_error_with_message(self, msg: &str) -> Ty<'tcx> {
+    pub fn ty_error_with_message(self, msg: impl Into<DiagnosticMessage>) -> Ty<'tcx> {
         self.tcx.ty_error_with_message(self.span, msg)
     }
 }
@@ -2461,7 +2467,7 @@ pub struct DeducedParamAttrs {
     pub read_only: bool,
 }
 
-pub fn provide(providers: &mut ty::query::Providers) {
+pub fn provide(providers: &mut Providers) {
     providers.maybe_unused_trait_imports =
         |tcx, ()| &tcx.resolutions(()).maybe_unused_trait_imports;
     providers.names_imported_by_glob_use = |tcx, id| {
@@ -2478,7 +2484,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
         |tcx, LocalCrate| attr::contains_name(tcx.hir().krate_attrs(), sym::compiler_builtins);
     providers.has_panic_handler = |tcx, LocalCrate| {
         // We want to check if the panic handler was defined in this crate
-        tcx.lang_items().panic_impl().map_or(false, |did| did.is_local())
+        tcx.lang_items().panic_impl().is_some_and(|did| did.is_local())
     };
     providers.source_span = |tcx, def_id| tcx.untracked.source_span.get(def_id).unwrap_or(DUMMY_SP);
 }

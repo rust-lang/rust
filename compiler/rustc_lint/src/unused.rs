@@ -103,8 +103,10 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             && let ty = cx.typeck_results().expr_ty(&await_expr)
             && let ty::Alias(ty::Opaque, ty::AliasTy { def_id: future_def_id, .. }) = ty.kind()
             && cx.tcx.ty_is_opaque_future(ty)
-            // FIXME: This also includes non-async fns that return `impl Future`.
             && let async_fn_def_id = cx.tcx.parent(*future_def_id)
+            && matches!(cx.tcx.def_kind(async_fn_def_id), DefKind::Fn | DefKind::AssocFn)
+            // Check that this `impl Future` actually comes from an `async fn`
+            && cx.tcx.asyncness(async_fn_def_id).is_async()
             && check_must_use_def(
                 cx,
                 async_fn_def_id,
@@ -662,8 +664,8 @@ trait UnusedDelimLint {
             _ => return,
         };
         let keep_space = (
-            left_pos.map_or(false, |s| s >= value.span.lo()),
-            right_pos.map_or(false, |s| s <= value.span.hi()),
+            left_pos.is_some_and(|s| s >= value.span.lo()),
+            right_pos.is_some_and(|s| s <= value.span.hi()),
         );
         self.emit_unused_delims(cx, value.span, spans, ctx.into(), keep_space);
     }

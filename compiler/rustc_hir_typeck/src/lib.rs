@@ -68,11 +68,10 @@ use rustc_hir::{HirIdMap, Node};
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_hir_analysis::check::check_abi;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_middle::query::Providers;
 use rustc_middle::traits;
-use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::config;
-use rustc_session::Session;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{sym, Span};
 
@@ -213,7 +212,7 @@ fn typeck_with_fallback<'tcx>(
         let fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
         let fn_sig = fcx.normalize(body.value.span, fn_sig);
 
-        check_fn(&mut fcx, fn_sig, decl, def_id, body, None);
+        check_fn(&mut fcx, fn_sig, decl, def_id, body, None, tcx.features().unsized_fn_params);
     } else {
         let expected_type = if let Some(&hir::Ty { kind: hir::TyKind::Infer, span, .. }) = body_ty {
             Some(fcx.next_ty_var(TypeVariableOrigin {
@@ -438,8 +437,8 @@ enum TupleArgumentsFlag {
     TupleArguments,
 }
 
-fn fatally_break_rust(sess: &Session) {
-    let handler = sess.diagnostic();
+fn fatally_break_rust(tcx: TyCtxt<'_>) {
+    let handler = tcx.sess.diagnostic();
     handler.span_bug_no_panic(
         MultiSpan::new(),
         "It looks like you're trying to break rust; would you like some ICE?",
@@ -451,7 +450,7 @@ fn fatally_break_rust(sess: &Session) {
     );
     handler.note_without_error(format!(
         "rustc {} running on {}",
-        option_env!("CFG_VERSION").unwrap_or("unknown_version"),
+        tcx.sess.cfg_version,
         config::host_triple(),
     ));
 }

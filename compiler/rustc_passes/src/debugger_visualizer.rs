@@ -1,60 +1,69 @@
 //! Detecting usage of the `#[debugger_visualizer]` attribute.
 
-use hir::CRATE_HIR_ID;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_ast::Attribute;
 use rustc_data_structures::sync::Lrc;
 use rustc_expand::base::resolve_path;
-use rustc_hir as hir;
-use rustc_hir::HirId;
-use rustc_middle::ty::TyCtxt;
-use rustc_middle::{query::LocalCrate, ty::query::Providers};
-use rustc_span::{sym, DebuggerVisualizerFile, DebuggerVisualizerType};
+use rustc_middle::{
+    middle::debugger_visualizer::{DebuggerVisualizerFile, DebuggerVisualizerType},
+    query::{LocalCrate, Providers},
+    ty::TyCtxt,
+};
+use rustc_session::Session;
+use rustc_span::sym;
 
-use crate::errors::DebugVisualizerUnreadable;
+use crate::errors::{DebugVisualizerInvalid, DebugVisualizerUnreadable};
 
-fn check_for_debugger_visualizer(
-    tcx: TyCtxt<'_>,
-    hir_id: HirId,
-    debugger_visualizers: &mut FxHashSet<DebuggerVisualizerFile>,
-) {
-    let attrs = tcx.hir().attrs(hir_id);
-    for attr in attrs {
+impl DebuggerVisualizerCollector<'_> {
+    fn check_for_debugger_visualizer(&mut self, attr: &Attribute) {
         if attr.has_name(sym::debugger_visualizer) {
-            let Some(list) = attr.meta_item_list() else {
-                continue
+            let Some(hints) = attr.meta_item_list() else {
+                self.sess.emit_err(DebugVisualizerInvalid { span: attr.span });
+                return;
             };
 
-            let meta_item = match list.len() {
-                1 => match list[0].meta_item() {
-                    Some(meta_item) => meta_item,
-                    _ => continue,
-                },
-                _ => continue,
+            let hint = if hints.len() == 1 {
+                &hints[0]
+            } else {
+                self.sess.emit_err(DebugVisualizerInvalid { span: attr.span });
+                return;
             };
 
-            let visualizer_type = match meta_item.name_or_empty() {
-                sym::natvis_file => DebuggerVisualizerType::Natvis,
-                sym::gdb_script_file => DebuggerVisualizerType::GdbPrettyPrinter,
-                _ => continue,
+            let Some(meta_item) = hint.meta_item() else {
+                self.sess.emit_err(DebugVisualizerInvalid { span: attr.span });
+                return;
             };
 
-            let file = match meta_item.value_str() {
-                Some(value) => {
-                    match resolve_path(&tcx.sess.parse_sess, value.as_str(), attr.span) {
-                        Ok(file) => file,
-                        _ => continue,
+            let (visualizer_type, visualizer_path) =
+                match (meta_item.name_or_empty(), meta_item.value_str()) {
+                    (sym::natvis_file, Some(value)) => (DebuggerVisualizerType::Natvis, value),
+                    (sym::gdb_script_file, Some(value)) => {
+                        (DebuggerVisualizerType::GdbPrettyPrinter, value)
                     }
-                }
-                None => continue,
-            };
+                    (_, _) => {
+                        self.sess.emit_err(DebugVisualizerInvalid { span: meta_item.span });
+                        return;
+                    }
+                };
+
+            let file =
+                match resolve_path(&self.sess.parse_sess, visualizer_path.as_str(), attr.span) {
+                    Ok(file) => file,
+                    Err(mut err) => {
+                        err.emit();
+                        return;
+                    }
+                };
 
             match std::fs::read(&file) {
                 Ok(contents) => {
-                    debugger_visualizers
-                        .insert(DebuggerVisualizerFile::new(Lrc::from(contents), visualizer_type));
+                    self.visualizers.push(DebuggerVisualizerFile::new(
+                        Lrc::from(contents),
+                        visualizer_type,
+                        file,
+                    ));
                 }
                 Err(error) => {
-                    tcx.sess.emit_err(DebugVisualizerUnreadable {
+                    self.sess.emit_err(DebugVisualizerUnreadable {
                         span: meta_item.span,
                         file: &file,
                         error,
@@ -65,29 +74,30 @@ fn check_for_debugger_visualizer(
     }
 }
 
+struct DebuggerVisualizerCollector<'a> {
+    sess: &'a Session,
+    visualizers: Vec<DebuggerVisualizerFile>,
+}
+
+impl<'ast> rustc_ast::visit::Visitor<'ast> for DebuggerVisualizerCollector<'_> {
+    fn visit_attribute(&mut self, attr: &'ast Attribute) {
+        self.check_for_debugger_visualizer(attr);
+        rustc_ast::visit::walk_attribute(self, attr);
+    }
+}
+
 /// Traverses and collects the debugger visualizers for a specific crate.
 fn debugger_visualizers(tcx: TyCtxt<'_>, _: LocalCrate) -> Vec<DebuggerVisualizerFile> {
-    // Initialize the collector.
-    let mut debugger_visualizers = FxHashSet::default();
+    let resolver_and_krate = tcx.resolver_for_lowering(()).borrow();
+    let krate = &*resolver_and_krate.1;
 
-    // Collect debugger visualizers in this crate.
-    tcx.hir().for_each_module(|id| {
-        check_for_debugger_visualizer(
-            tcx,
-            tcx.hir().local_def_id_to_hir_id(id),
-            &mut debugger_visualizers,
-        )
-    });
+    let mut visitor = DebuggerVisualizerCollector { sess: tcx.sess, visualizers: Vec::new() };
+    rustc_ast::visit::Visitor::visit_crate(&mut visitor, krate);
 
-    // Collect debugger visualizers on the crate attributes.
-    check_for_debugger_visualizer(tcx, CRATE_HIR_ID, &mut debugger_visualizers);
-
-    // Extract out the found debugger_visualizer items.
-    let mut visualizers = debugger_visualizers.into_iter().collect::<Vec<_>>();
-
-    // Sort the visualizers so we always get a deterministic query result.
-    visualizers.sort();
-    visualizers
+    // We are collecting visualizers in AST-order, which is deterministic,
+    // so we don't need to do any explicit sorting in order to get a
+    // deterministic query result
+    visitor.visualizers
 }
 
 pub fn provide(providers: &mut Providers) {

@@ -12,7 +12,7 @@ use rustc_infer::infer::outlives::env::{OutlivesEnvironment, RegionBoundPairs};
 use rustc_infer::infer::outlives::obligations::TypeOutlives;
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
 use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
     self, AdtKind, GenericParamDefKind, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
@@ -179,7 +179,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
         hir::ItemKind::Impl(impl_) => {
             let is_auto = tcx
                 .impl_trait_ref(def_id)
-                .map_or(false, |trait_ref| tcx.trait_is_auto(trait_ref.skip_binder().def_id));
+                .is_some_and(|trait_ref| tcx.trait_is_auto(trait_ref.skip_binder().def_id));
             if let (hir::Defaultness::Default { .. }, true) = (impl_.defaultness, is_auto) {
                 let sp = impl_.of_trait.as_ref().map_or(item.span, |t| t.path.span);
                 let mut err =
@@ -1398,7 +1398,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
             }
             let mut param_count = CountParams::default();
             let has_region = pred.visit_with(&mut param_count).is_break();
-            let substituted_pred = ty::EarlyBinder(pred).subst(tcx, substs);
+            let substituted_pred = ty::EarlyBinder::new(pred).subst(tcx, substs);
             // Don't check non-defaulted params, dependent defaults (including lifetimes)
             // or preds with multiple params.
             if substituted_pred.has_non_region_param() || param_count.params.len() > 1 || has_region

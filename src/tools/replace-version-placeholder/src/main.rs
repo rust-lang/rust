@@ -8,15 +8,13 @@ fn main() {
     let version_path = root_path.join("src").join("version");
     let version_str = t!(std::fs::read_to_string(&version_path), version_path);
     let version_str = version_str.trim();
-    walk::walk(
-        &root_path,
+    walk::walk_many(
+        &[&root_path.join("compiler"), &root_path.join("library")],
         |path, _is_dir| {
             walk::filter_dirs(path)
                 // We exempt these as they require the placeholder
                 // for their operation
                 || path.ends_with("compiler/rustc_attr/src/builtin.rs")
-                || path.ends_with("src/tools/tidy/src/features/version.rs")
-                || path.ends_with("src/tools/replace-version-placeholder")
         },
         &mut |entry, contents| {
             if !contents.contains(VERSION_PLACEHOLDER) {

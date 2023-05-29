@@ -2,9 +2,10 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::OpaqueTyOrigin;
+use rustc_infer::infer::InferCtxt;
 use rustc_infer::infer::TyCtxtInferExt as _;
-use rustc_infer::infer::{DefiningAnchor, InferCtxt};
 use rustc_infer::traits::{Obligation, ObligationCause};
+use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable};
@@ -152,8 +153,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     let guar = ty.error_reported().err().unwrap_or_else(|| {
                         prev.report_mismatch(
                             &OpaqueHiddenType { ty, span: concrete_type.span },
+                            opaque_type_key.def_id,
                             infcx.tcx,
                         )
+                        .emit()
                     });
                     prev.ty = infcx.tcx.ty_error(guar);
                 }

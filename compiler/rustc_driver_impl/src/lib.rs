@@ -250,6 +250,16 @@ fn run_compiler(
         Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>,
     >,
 ) -> interface::Result<()> {
+    // Throw away the first argument, the name of the binary.
+    // In case of at_args being empty, as might be the case by
+    // passing empty argument array to execve under some platforms,
+    // just use an empty slice.
+    //
+    // This situation was possible before due to arg_expand_all being
+    // called before removing the argument, enabling a crash by calling
+    // the compiler with @empty_file as argv[0] and no more arguments.
+    let at_args = at_args.get(1..).unwrap_or_default();
+
     let args = args::arg_expand_all(at_args);
 
     let Some(matches) = handle_options(&args) else { return Ok(()) };
@@ -322,7 +332,7 @@ fn run_compiler(
             1 => panic!("make_input should have provided valid inputs"),
             _ => early_error(
                 config.opts.error_format,
-                &format!(
+                format!(
                     "multiple input filenames provided (first two filenames are `{}` and `{}`)",
                     matches.free[0], matches.free[1],
                 ),
@@ -527,7 +537,7 @@ fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
             }
         }
         Err(InvalidErrorCode) => {
-            early_error(output, &format!("{code} is not a valid error code"));
+            early_error(output, format!("{code} is not a valid error code"));
         }
     }
 }
@@ -572,7 +582,7 @@ pub fn try_process_rlink(sess: &Session, compiler: &interface::Compiler) -> Comp
             let rlink_data = fs::read(file).unwrap_or_else(|err| {
                 sess.emit_fatal(RlinkUnableToRead { err });
             });
-            let codegen_results = match CodegenResults::deserialize_rlink(rlink_data) {
+            let codegen_results = match CodegenResults::deserialize_rlink(sess, rlink_data) {
                 Ok(codegen) => codegen,
                 Err(err) => {
                     match err {
@@ -586,10 +596,10 @@ pub fn try_process_rlink(sess: &Session, compiler: &interface::Compiler) -> Comp
                                 rlink_version,
                             })
                         }
-                        CodegenErrors::RustcVersionMismatch { rustc_version, current_version } => {
+                        CodegenErrors::RustcVersionMismatch { rustc_version } => {
                             sess.emit_fatal(RLinkRustcVersionMismatch {
                                 rustc_version,
-                                current_version,
+                                current_version: sess.cfg_version,
                             })
                         }
                     };
@@ -1074,9 +1084,6 @@ fn print_flag_list<T>(
 /// So with all that in mind, the comments below have some more detail about the
 /// contortions done here to get things to work out correctly.
 pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
-    // Throw away the first argument, the name of the binary
-    let args = &args[1..];
-
     if args.is_empty() {
         // user did not write `-v` nor `-Z unstable-options`, so do not
         // include that extra information.
@@ -1102,7 +1109,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
                 .map(|(flag, _)| format!("{e}. Did you mean `-{flag} {opt}`?")),
             _ => None,
         };
-        early_error(ErrorOutputType::default(), &msg.unwrap_or_else(|| e.to_string()));
+        early_error(ErrorOutputType::default(), msg.unwrap_or_else(|| e.to_string()));
     });
 
     // For all options we just parsed, we check a few aspects:
@@ -1250,7 +1257,8 @@ pub fn install_ice_hook(bug_report_url: &'static str, extra_info: fn(&Handler)) 
         #[cfg(windows)]
         if let Some(msg) = info.payload().downcast_ref::<String>() {
             if msg.starts_with("failed printing to stdout: ") && msg.ends_with("(os error 232)") {
-                early_error_no_abort(ErrorOutputType::default(), &msg);
+                // the error code is already going to be reported when the panic unwinds up the stack
+                let _ = early_error_no_abort(ErrorOutputType::default(), msg.clone());
                 return;
             }
         };
@@ -1314,7 +1322,7 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str, extra_info:
     }
 
     // If backtraces are enabled, also print the query stack
-    let backtrace = env::var_os("RUST_BACKTRACE").map_or(false, |x| &x != "0");
+    let backtrace = env::var_os("RUST_BACKTRACE").is_some_and(|x| &x != "0");
 
     let num_frames = if backtrace { None } else { Some(2) };
 
@@ -1342,7 +1350,7 @@ pub fn init_rustc_env_logger() {
 /// other than `RUSTC_LOG`.
 pub fn init_env_logger(env: &str) {
     if let Err(error) = rustc_log::init_env_logger(env) {
-        early_error(ErrorOutputType::default(), &error.to_string());
+        early_error(ErrorOutputType::default(), error.to_string());
     }
 }
 
@@ -1409,7 +1417,7 @@ pub fn main() -> ! {
                 arg.into_string().unwrap_or_else(|arg| {
                     early_error(
                         ErrorOutputType::default(),
-                        &format!("argument {i} is not valid Unicode: {arg:?}"),
+                        format!("argument {i} is not valid Unicode: {arg:?}"),
                     )
                 })
             })

@@ -479,7 +479,7 @@ impl Direction for Forward {
             Goto { target } => propagate(target, exit_state),
 
             Assert { target, unwind, expected: _, msg: _, cond: _ }
-            | Drop { target, unwind, place: _ }
+            | Drop { target, unwind, place: _, replace: _ }
             | FalseUnwind { real_target: target, unwind } => {
                 if let UnwindAction::Cleanup(unwind) = unwind {
                     propagate(unwind, exit_state);

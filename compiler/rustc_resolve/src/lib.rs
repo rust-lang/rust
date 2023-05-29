@@ -47,6 +47,7 @@ use rustc_index::IndexVec;
 use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::privacy::EffectiveVisibilities;
+use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, MainDefinition, RegisteredTools, TyCtxt};
 use rustc_middle::ty::{ResolverGlobalCtxt, ResolverOutputs};
@@ -84,6 +85,7 @@ pub mod rustdoc;
 
 fluent_messages! { "../messages.ftl" }
 
+#[derive(Debug)]
 enum Weak {
     Yes,
     No,
@@ -104,7 +106,7 @@ impl Determinacy {
 /// A specific scope in which a name can be looked up.
 /// This enum is currently used only for early resolution (imports and macros),
 /// but not for late resolution yet.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 enum Scope<'a> {
     DeriveHelpers(LocalExpnId),
     DeriveHelpersCompat,
@@ -466,6 +468,13 @@ struct BindingKey {
     /// 0 if ident is not `_`, otherwise a value that's unique to the specific
     /// `_` in the expanded AST that introduced this binding.
     disambiguator: u32,
+}
+
+impl BindingKey {
+    fn new(ident: Ident, ns: Namespace) -> Self {
+        let ident = ident.normalize_to_macros_2_0();
+        BindingKey { ident, ns, disambiguator: 0 }
+    }
 }
 
 type Resolutions<'a> = RefCell<FxIndexMap<BindingKey, &'a RefCell<NameResolution<'a>>>>;
@@ -942,6 +951,7 @@ pub struct Resolver<'a, 'tcx> {
     empty_module: Module<'a>,
     module_map: FxHashMap<DefId, Module<'a>>,
     binding_parent_modules: FxHashMap<Interned<'a, NameBinding<'a>>, Module<'a>>,
+
     underscore_disambiguator: u32,
 
     /// Maps glob imports to the names of items actually imported.
@@ -1467,7 +1477,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     fn is_builtin_macro(&mut self, res: Res) -> bool {
-        self.get_macro(res).map_or(false, |macro_data| macro_data.ext.builtin_name.is_some())
+        self.get_macro(res).is_some_and(|macro_data| macro_data.ext.builtin_name.is_some())
     }
 
     fn macro_def(&self, mut ctxt: SyntaxContext) -> DefId {
@@ -1486,8 +1496,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             let exported_ambiguities = self.tcx.sess.time("compute_effective_visibilities", || {
                 EffectiveVisibilitiesVisitor::compute_effective_visibilities(self, krate)
             });
-            self.tcx.sess.time("check_reexport_ambiguities", || {
-                self.check_reexport_ambiguities(exported_ambiguities)
+            self.tcx.sess.time("check_hidden_glob_reexports", || {
+                self.check_hidden_glob_reexports(exported_ambiguities)
             });
             self.tcx.sess.time("finalize_macro_resolutions", || self.finalize_macro_resolutions());
             self.tcx.sess.time("late_resolve_crate", || self.late_resolve_crate(krate));
@@ -1594,7 +1604,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         import_ids
     }
 
-    fn new_key(&mut self, ident: Ident, ns: Namespace) -> BindingKey {
+    fn new_disambiguated_key(&mut self, ident: Ident, ns: Namespace) -> BindingKey {
         let ident = ident.normalize_to_macros_2_0();
         let disambiguator = if ident.name == kw::Underscore {
             self.underscore_disambiguator += 1;
@@ -2026,6 +2036,6 @@ impl Finalize {
     }
 }
 
-pub fn provide(providers: &mut ty::query::Providers) {
+pub fn provide(providers: &mut Providers) {
     providers.registered_tools = macros::registered_tools;
 }

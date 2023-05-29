@@ -6,7 +6,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Destination, Movability, Node};
 use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::hygiene::DesugaringKind;

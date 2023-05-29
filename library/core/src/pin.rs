@@ -393,6 +393,8 @@ use crate::ops::{CoerceUnsized, Deref, DerefMut, DispatchFromDyn, Receiver};
 /// value in place, preventing the value referenced by that pointer from being moved
 /// unless it implements [`Unpin`].
 ///
+/// `Pin<P>` is guaranteed to have the same memory layout and ABI as `P`.
+///
 /// *See the [`pin` module] documentation for an explanation of pinning.*
 ///
 /// [`pin` module]: self

@@ -493,6 +493,43 @@ macro_rules! nonzero_unsigned_operations {
                 pub const fn ilog10(self) -> u32 {
                     super::int_log10::$Int(self.0)
                 }
+
+                /// Calculates the middle point of `self` and `rhs`.
+                ///
+                /// `midpoint(a, b)` is `(a + b) >> 1` as if it were performed in a
+                /// sufficiently-large signed integral type. This implies that the result is
+                /// always rounded towards negative infinity and that no overflow will ever occur.
+                ///
+                /// # Examples
+                ///
+                /// ```
+                /// #![feature(num_midpoint)]
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                ///
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
+                #[doc = concat!("let one = ", stringify!($Ty), "::new(1)?;")]
+                #[doc = concat!("let two = ", stringify!($Ty), "::new(2)?;")]
+                #[doc = concat!("let four = ", stringify!($Ty), "::new(4)?;")]
+                ///
+                /// assert_eq!(one.midpoint(four), two);
+                /// assert_eq!(four.midpoint(one), two);
+                /// # Some(())
+                /// # }
+                /// ```
+                #[unstable(feature = "num_midpoint", issue = "110840")]
+                #[rustc_const_unstable(feature = "const_num_midpoint", issue = "110840")]
+                #[rustc_allow_const_fn_unstable(const_num_midpoint)]
+                #[must_use = "this returns the result of the operation, \
+                              without modifying the original"]
+                #[inline]
+                pub const fn midpoint(self, rhs: Self) -> Self {
+                    // SAFETY: The only way to get `0` with midpoint is to have two opposite or
+                    // near opposite numbers: (-5, 5), (0, 1), (0, 0) which is impossible because
+                    // of the unsignedness of this number and also because $Ty is guaranteed to
+                    // never being 0.
+                    unsafe { $Ty::new_unchecked(self.get().midpoint(rhs.get())) }
+                }
             }
         )+
     }
@@ -719,8 +756,6 @@ macro_rules! nonzero_signed_operations {
                 /// # Example
                 ///
                 /// ```
-                /// #![feature(nonzero_negation_ops)]
-                ///
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
@@ -734,7 +769,8 @@ macro_rules! nonzero_signed_operations {
                 /// ```
                 #[must_use]
                 #[inline]
-                #[unstable(feature = "nonzero_negation_ops", issue = "102443")]
+                #[stable(feature = "nonzero_negation_ops", since = "CURRENT_RUSTC_VERSION")]
+                #[rustc_const_stable(feature = "nonzero_negation_ops", since = "CURRENT_RUSTC_VERSION")]
                 pub const fn is_positive(self) -> bool {
                     self.get().is_positive()
                 }
@@ -745,8 +781,6 @@ macro_rules! nonzero_signed_operations {
                 /// # Example
                 ///
                 /// ```
-                /// #![feature(nonzero_negation_ops)]
-                ///
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
@@ -760,7 +794,8 @@ macro_rules! nonzero_signed_operations {
                 /// ```
                 #[must_use]
                 #[inline]
-                #[unstable(feature = "nonzero_negation_ops", issue = "102443")]
+                #[stable(feature = "nonzero_negation_ops", since = "CURRENT_RUSTC_VERSION")]
+                #[rustc_const_stable(feature = "nonzero_negation_ops", since = "CURRENT_RUSTC_VERSION")]
                 pub const fn is_negative(self) -> bool {
                     self.get().is_negative()
                 }
@@ -770,8 +805,6 @@ macro_rules! nonzero_signed_operations {
                 /// # Example
                 ///
                 /// ```
-                /// #![feature(nonzero_negation_ops)]
-                ///
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
@@ -786,7 +819,8 @@ macro_rules! nonzero_signed_operations {
                 /// # }
                 /// ```
                 #[inline]
-                #[unstable(feature = "nonzero_negation_ops", issue = "102443")]
+                #[stable(feature = "nonzero_negation_ops", since = "CURRENT_RUSTC_VERSION")]
+                #[rustc_const_stable(feature = "nonzero_negation_ops", since = "CURRENT_RUSTC_VERSION")]
                 pub const fn checked_neg(self) -> Option<$Ty> {
                     if let Some(result) = self.get().checked_neg() {
                         // SAFETY: negation of nonzero cannot yield zero values.
@@ -803,8 +837,6 @@ macro_rules! nonzero_signed_operations {
                 /// # Example
                 ///
                 /// ```
-                /// #![feature(nonzero_negation_ops)]
-                ///
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
@@ -819,7 +851,8 @@ macro_rules! nonzero_signed_operations {
                 /// # }
                 /// ```
                 #[inline]
-                #[unstable(feature = "nonzero_negation_ops", issue = "102443")]
+                #[stable(feature = "nonzero_negation_ops", since = "CURRENT_RUSTC_VERSION")]
+                #[rustc_const_stable(feature = "nonzero_negation_ops", since = "CURRENT_RUSTC_VERSION")]
                 pub const fn overflowing_neg(self) -> ($Ty, bool) {
                     let (result, overflow) = self.get().overflowing_neg();
                     // SAFETY: negation of nonzero cannot yield zero values.
@@ -832,8 +865,6 @@ macro_rules! nonzero_signed_operations {
                 /// # Example
                 ///
                 /// ```
-                /// #![feature(nonzero_negation_ops)]
-                ///
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
@@ -853,7 +884,8 @@ macro_rules! nonzero_signed_operations {
                 /// # }
                 /// ```
                 #[inline]
-                #[unstable(feature = "nonzero_negation_ops", issue = "102443")]
+                #[stable(feature = "nonzero_negation_ops", since = "CURRENT_RUSTC_VERSION")]
+                #[rustc_const_stable(feature = "nonzero_negation_ops", since = "CURRENT_RUSTC_VERSION")]
                 pub const fn saturating_neg(self) -> $Ty {
                     if let Some(result) = self.checked_neg() {
                         return result;
@@ -870,8 +902,6 @@ macro_rules! nonzero_signed_operations {
                 /// # Example
                 ///
                 /// ```
-                /// #![feature(nonzero_negation_ops)]
-                ///
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
@@ -886,7 +916,8 @@ macro_rules! nonzero_signed_operations {
                 /// # }
                 /// ```
                 #[inline]
-                #[unstable(feature = "nonzero_negation_ops", issue = "102443")]
+                #[stable(feature = "nonzero_negation_ops", since = "CURRENT_RUSTC_VERSION")]
+                #[rustc_const_stable(feature = "nonzero_negation_ops", since = "CURRENT_RUSTC_VERSION")]
                 pub const fn wrapping_neg(self) -> $Ty {
                     let result = self.get().wrapping_neg();
                     // SAFETY: negation of nonzero cannot yield zero values.

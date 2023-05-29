@@ -1,13 +1,11 @@
-use super::{Config, Flags, TomlConfig};
+use super::{Config, Flags};
 use clap::CommandFactory;
 use std::{env, path::Path};
 
-fn toml(config: &str) -> impl '_ + Fn(&Path) -> TomlConfig {
-    |&_| toml::from_str(config).unwrap()
-}
-
 fn parse(config: &str) -> Config {
-    Config::parse_inner(&["check".to_owned(), "--config=/does/not/exist".to_owned()], toml(config))
+    Config::parse_inner(&["check".to_owned(), "--config=/does/not/exist".to_owned()], |&_| {
+        toml::from_str(config).unwrap()
+    })
 }
 
 #[test]
@@ -93,4 +91,71 @@ fn detect_src_and_out() {
 #[test]
 fn clap_verify() {
     Flags::command().debug_assert();
+}
+
+#[test]
+fn override_toml() {
+    let config = Config::parse_inner(
+        &[
+            "check".to_owned(),
+            "--config=/does/not/exist".to_owned(),
+            "--set=changelog-seen=1".to_owned(),
+            "--set=rust.lto=fat".to_owned(),
+            "--set=rust.deny-warnings=false".to_owned(),
+            "--set=build.gdb=\"bar\"".to_owned(),
+            "--set=build.tools=[\"cargo\"]".to_owned(),
+            "--set=llvm.build-config={\"foo\" = \"bar\"}".to_owned(),
+        ],
+        |&_| {
+            toml::from_str(
+                r#"
+changelog-seen = 0
+[rust]
+lto = "off"
+deny-warnings = true
+
+[build]
+gdb = "foo"
+tools = []
+
+[llvm]
+download-ci-llvm = false
+build-config = {}
+                "#,
+            )
+            .unwrap()
+        },
+    );
+    assert_eq!(config.changelog_seen, Some(1), "setting top-level value");
+    assert_eq!(
+        config.rust_lto,
+        crate::config::RustcLto::Fat,
+        "setting string value without quotes"
+    );
+    assert_eq!(config.gdb, Some("bar".into()), "setting string value with quotes");
+    assert_eq!(config.deny_warnings, false, "setting boolean value");
+    assert_eq!(
+        config.tools,
+        Some(["cargo".to_string()].into_iter().collect()),
+        "setting list value"
+    );
+    assert_eq!(
+        config.llvm_build_config,
+        [("foo".to_string(), "bar".to_string())].into_iter().collect(),
+        "setting dictionary value"
+    );
+}
+
+#[test]
+#[should_panic]
+fn override_toml_duplicate() {
+    Config::parse_inner(
+        &[
+            "check".to_owned(),
+            "--config=/does/not/exist".to_owned(),
+            "--set=changelog-seen=1".to_owned(),
+            "--set=changelog-seen=2".to_owned(),
+        ],
+        |&_| toml::from_str("changelog-seen = 0").unwrap(),
+    );
 }

@@ -25,6 +25,7 @@ use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
     self, ObligationCause, ObligationCauseCode, ObligationCtxt, Reveal,
 };
+use std::borrow::Cow;
 use std::iter;
 
 /// Checks that a method from an impl conforms to the signature of
@@ -684,7 +685,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                 &cause,
                 hir.get_if_local(impl_m.def_id)
                     .and_then(|node| node.fn_decl())
-                    .map(|decl| (decl.output.span(), "return type in trait".to_owned())),
+                    .map(|decl| (decl.output.span(), Cow::from("return type in trait"))),
                 Some(infer::ValuePairs::Terms(ExpectedFound {
                     expected: trait_return_ty.into(),
                     found: impl_return_ty.into(),
@@ -794,14 +795,14 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                     })
                 });
                 debug!(%ty);
-                collected_tys.insert(def_id, ty::EarlyBinder(ty));
+                collected_tys.insert(def_id, ty::EarlyBinder::new(ty));
             }
             Err(err) => {
                 let reported = tcx.sess.delay_span_bug(
                     return_span,
                     format!("could not fully resolve: {ty} => {err:?}"),
                 );
-                collected_tys.insert(def_id, ty::EarlyBinder(tcx.ty_error(reported)));
+                collected_tys.insert(def_id, ty::EarlyBinder::new(tcx.ty_error(reported)));
             }
         }
     }
@@ -963,7 +964,7 @@ fn report_trait_method_mismatch<'tcx>(
     infcx.err_ctxt().note_type_err(
         &mut diag,
         &cause,
-        trait_err_span.map(|sp| (sp, "type in trait".to_owned())),
+        trait_err_span.map(|sp| (sp, Cow::from("type in trait"))),
         Some(infer::ValuePairs::Sigs(ExpectedFound { expected: trait_sig, found: impl_sig })),
         terr,
         false,
@@ -1731,7 +1732,7 @@ pub(super) fn compare_impl_const_raw(
         infcx.err_ctxt().note_type_err(
             &mut diag,
             &cause,
-            trait_c_span.map(|span| (span, "type in trait".to_owned())),
+            trait_c_span.map(|span| (span, Cow::from("type in trait"))),
             Some(infer::ValuePairs::Terms(ExpectedFound {
                 expected: trait_ty.into(),
                 found: impl_ty.into(),

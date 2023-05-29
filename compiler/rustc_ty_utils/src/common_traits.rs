@@ -2,6 +2,7 @@
 
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_trait_selection::traits;
 
@@ -32,12 +33,6 @@ fn is_item_raw<'tcx>(
     traits::type_known_to_meet_bound_modulo_regions(&infcx, param_env, ty, trait_def_id)
 }
 
-pub(crate) fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers {
-        is_copy_raw,
-        is_sized_raw,
-        is_freeze_raw,
-        is_unpin_raw,
-        ..*providers
-    };
+pub(crate) fn provide(providers: &mut Providers) {
+    *providers = Providers { is_copy_raw, is_sized_raw, is_freeze_raw, is_unpin_raw, ..*providers };
 }

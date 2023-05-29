@@ -18,8 +18,8 @@ use crate::fmt;
 /// target platform. It is instantiated with the [`thread_local!`] macro and the
 /// primary method is the [`with`] method.
 ///
-/// The [`with`] method yields a reference to the contained value which cannot be
-/// sent across threads or escape the given closure.
+/// The [`with`] method yields a reference to the contained value which cannot
+/// outlive the current thread or escape the given closure.
 ///
 /// [`thread_local!`]: crate::thread_local
 ///

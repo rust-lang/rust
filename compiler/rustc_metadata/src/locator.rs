@@ -220,7 +220,6 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::owned_slice::slice_owned;
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::MetadataRef;
 use rustc_errors::{DiagnosticArgValue, FatalError, IntoDiagnosticArg};
 use rustc_fs_util::try_canonicalize;
 use rustc_session::config::{self, CrateType};
@@ -246,6 +245,7 @@ pub(crate) struct CrateLocator<'a> {
     only_needs_metadata: bool,
     sysroot: &'a Path,
     metadata_loader: &'a dyn MetadataLoader,
+    cfg_version: &'static str,
 
     // Immutable per-search configuration.
     crate_name: Symbol,
@@ -323,6 +323,7 @@ impl<'a> CrateLocator<'a> {
             only_needs_metadata,
             sysroot: &sess.sysroot,
             metadata_loader,
+            cfg_version: sess.cfg_version,
             crate_name,
             exact_paths: if hash.is_none() {
                 sess.opts
@@ -566,7 +567,7 @@ impl<'a> CrateLocator<'a> {
         let mut err_data: Option<Vec<PathBuf>> = None;
         for (lib, kind) in m {
             info!("{} reading metadata from: {}", flavor, lib.display());
-            if flavor == CrateFlavor::Rmeta && lib.metadata().map_or(false, |m| m.len() == 0) {
+            if flavor == CrateFlavor::Rmeta && lib.metadata().is_ok_and(|m| m.len() == 0) {
                 // Empty files will cause get_metadata_section to fail. Rmeta
                 // files can be empty, for example with binaries (which can
                 // often appear with `cargo check` when checking a library as
@@ -601,7 +602,7 @@ impl<'a> CrateLocator<'a> {
                     }
                 };
             // If we see multiple hashes, emit an error about duplicate candidates.
-            if slot.as_ref().map_or(false, |s| s.0 != hash) {
+            if slot.as_ref().is_some_and(|s| s.0 != hash) {
                 if let Some(candidates) = err_data {
                     return Err(CrateError::MultipleCandidates(
                         self.crate_name,
@@ -655,7 +656,7 @@ impl<'a> CrateLocator<'a> {
     }
 
     fn crate_matches(&mut self, metadata: &MetadataBlob, libpath: &Path) -> Option<Svh> {
-        let rustc_version = rustc_version();
+        let rustc_version = rustc_version(self.cfg_version);
         let found_version = metadata.get_rustc_version();
         if found_version != rustc_version {
             info!("Rejecting via version: expected {} got {}", rustc_version, found_version);
@@ -665,31 +666,30 @@ impl<'a> CrateLocator<'a> {
             return None;
         }
 
-        let root = metadata.get_root();
-        if root.is_proc_macro_crate() != self.is_proc_macro {
+        let header = metadata.get_header();
+        if header.is_proc_macro_crate != self.is_proc_macro {
             info!(
                 "Rejecting via proc macro: expected {} got {}",
-                self.is_proc_macro,
-                root.is_proc_macro_crate(),
+                self.is_proc_macro, header.is_proc_macro_crate,
             );
             return None;
         }
 
-        if self.exact_paths.is_empty() && self.crate_name != root.name() {
+        if self.exact_paths.is_empty() && self.crate_name != header.name {
             info!("Rejecting via crate name");
             return None;
         }
 
-        if root.triple() != &self.triple {
-            info!("Rejecting via crate triple: expected {} got {}", self.triple, root.triple());
+        if header.triple != self.triple {
+            info!("Rejecting via crate triple: expected {} got {}", self.triple, header.triple);
             self.crate_rejections.via_triple.push(CrateMismatch {
                 path: libpath.to_path_buf(),
-                got: root.triple().to_string(),
+                got: header.triple.to_string(),
             });
             return None;
         }
 
-        let hash = root.hash();
+        let hash = header.hash;
         if let Some(expected_hash) = self.hash {
             if hash != expected_hash {
                 info!("Rejecting via hash: expected {} got {}", expected_hash, hash);
@@ -782,7 +782,7 @@ fn get_metadata_section<'p>(
     if !filename.exists() {
         return Err(MetadataError::NotPresent(filename));
     }
-    let raw_bytes: MetadataRef = match flavor {
+    let raw_bytes = match flavor {
         CrateFlavor::Rlib => {
             loader.get_rlib_metadata(target, filename).map_err(MetadataError::LoadFailure)?
         }
@@ -843,7 +843,7 @@ fn get_metadata_section<'p>(
             slice_owned(mmap, Deref::deref)
         }
     };
-    let blob = MetadataBlob::new(raw_bytes);
+    let blob = MetadataBlob(raw_bytes);
     if blob.is_compatible() {
         Ok(blob)
     } else {
@@ -960,6 +960,7 @@ pub(crate) enum CrateError {
     DlSym(String),
     LocatorCombined(Box<CombinedLocatorError>),
     NonDylibPlugin(Symbol),
+    NotFound(Symbol),
 }
 
 enum MetadataError<'a> {
@@ -1097,7 +1098,7 @@ impl CrateError {
                         crate_name,
                         add_info,
                         found_crates,
-                        rustc_version: rustc_version(),
+                        rustc_version: rustc_version(sess.cfg_version),
                     });
                 } else if !locator.crate_rejections.via_invalid.is_empty() {
                     let mut crate_rejections = Vec::new();
@@ -1129,6 +1130,18 @@ impl CrateError {
             }
             CrateError::NonDylibPlugin(crate_name) => {
                 sess.emit_err(errors::NoDylibPlugin { span, crate_name });
+            }
+            CrateError::NotFound(crate_name) => {
+                sess.emit_err(errors::CannotFindCrate {
+                    span,
+                    crate_name,
+                    add_info: String::new(),
+                    missing_core,
+                    current_crate: sess.opts.crate_name.clone().unwrap_or("<unknown>".to_string()),
+                    is_nightly_build: sess.is_nightly_build(),
+                    profiler_runtime: Symbol::intern(&sess.opts.unstable_opts.profiler_runtime),
+                    locator_triple: sess.opts.target_triple.clone(),
+                });
             }
         }
     }

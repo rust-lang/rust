@@ -3,6 +3,7 @@
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::num::TryFromIntError;
+use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
 use std::task::Poll;
 use std::time::{Duration, SystemTime};
 
@@ -132,10 +133,15 @@ pub struct Thread<'mir, 'tcx> {
     /// The join status.
     join_status: ThreadJoinStatus,
 
-    /// The temporary used for storing the argument of
-    /// the call to `miri_start_panic` (the panic payload) when unwinding.
+    /// Stack of active panic payloads for the current thread. Used for storing
+    /// the argument of the call to `miri_start_panic` (the panic payload) when unwinding.
     /// This is pointer-sized, and matches the `Payload` type in `src/libpanic_unwind/miri.rs`.
-    pub(crate) panic_payload: Option<Scalar<Provenance>>,
+    ///
+    /// In real unwinding, the payload gets passed as an argument to the landing pad,
+    /// which then forwards it to 'Resume'. However this argument is implicit in MIR,
+    /// so we have to store it out-of-band. When there are multiple active unwinds,
+    /// the innermost one is always caught first, so we can store them as a stack.
+    pub(crate) panic_payloads: Vec<Scalar<Provenance>>,
 
     /// Last OS error location in memory. It is a 32-bit integer.
     pub(crate) last_error: Option<MPlaceTy<'tcx, Provenance>>,
@@ -205,7 +211,7 @@ impl<'mir, 'tcx> Thread<'mir, 'tcx> {
             stack: Vec::new(),
             top_user_relevant_frame: None,
             join_status: ThreadJoinStatus::Joinable,
-            panic_payload: None,
+            panic_payloads: Vec::new(),
             last_error: None,
             on_stack_empty,
         }
@@ -215,7 +221,7 @@ impl<'mir, 'tcx> Thread<'mir, 'tcx> {
 impl VisitTags for Thread<'_, '_> {
     fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
         let Thread {
-            panic_payload,
+            panic_payloads: panic_payload,
             last_error,
             stack,
             top_user_relevant_frame: _,
@@ -225,7 +231,9 @@ impl VisitTags for Thread<'_, '_> {
             on_stack_empty: _, // we assume the closure captures no GC-relevant state
         } = self;
 
-        panic_payload.visit_tags(visit);
+        for payload in panic_payload {
+            payload.visit_tags(visit);
+        }
         last_error.visit_tags(visit);
         for frame in stack {
             frame.visit_tags(visit)
@@ -1012,8 +1020,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Run the core interpreter loop. Returns only when an interrupt occurs (an error or program
     /// termination).
     fn run_threads(&mut self) -> InterpResult<'tcx, !> {
+        static SIGNALED: AtomicBool = AtomicBool::new(false);
+        ctrlc::set_handler(move || {
+            // Indicate that we have ben signaled to stop. If we were already signaled, exit
+            // immediately. In our interpreter loop we try to consult this value often, but if for
+            // whatever reason we don't get to that check or the cleanup we do upon finding that
+            // this bool has become true takes a long time, the exit here will promptly exit the
+            // process on the second Ctrl-C.
+            if SIGNALED.swap(true, Relaxed) {
+                std::process::exit(1);
+            }
+        })
+        .unwrap();
         let this = self.eval_context_mut();
         loop {
+            if SIGNALED.load(Relaxed) {
+                this.machine.handle_abnormal_termination();
+                std::process::exit(1);
+            }
             match this.machine.threads.schedule(&this.machine.clock)? {
                 SchedulingAction::ExecuteStep => {
                     if !this.step()? {

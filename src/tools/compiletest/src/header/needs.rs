@@ -71,6 +71,11 @@ pub(super) fn handle_needs(
             ignore_reason: "ignored on targets without shadow call stacks",
         },
         Need {
+            name: "needs-sanitizer-safestack",
+            condition: cache.sanitizer_safestack,
+            ignore_reason: "ignored on targets without SafeStack support",
+        },
+        Need {
             name: "needs-run-enabled",
             condition: config.run_enabled(),
             ignore_reason: "ignored when running the resulting test binaries is disabled",
@@ -184,6 +189,7 @@ pub(super) struct CachedNeedsConditions {
     sanitizer_hwaddress: bool,
     sanitizer_memtag: bool,
     sanitizer_shadow_call_stack: bool,
+    sanitizer_safestack: bool,
     xray: bool,
     rust_lld: bool,
     i686_dlltool: bool,
@@ -220,6 +226,7 @@ impl CachedNeedsConditions {
             sanitizer_hwaddress: util::HWASAN_SUPPORTED_TARGETS.contains(target),
             sanitizer_memtag: util::MEMTAG_SUPPORTED_TARGETS.contains(target),
             sanitizer_shadow_call_stack: util::SHADOWCALLSTACK_SUPPORTED_TARGETS.contains(target),
+            sanitizer_safestack: util::SAFESTACK_SUPPORTED_TARGETS.contains(target),
             xray: util::XRAY_SUPPORTED_TARGETS.contains(target),
 
             // For tests using the `needs-rust-lld` directive (e.g. for `-Zgcc-ld=lld`), we need to find

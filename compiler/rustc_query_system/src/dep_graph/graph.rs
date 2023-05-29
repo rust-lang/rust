@@ -656,7 +656,7 @@ impl<K: DepKind> DepGraphData<K> {
     /// current compilation session. Used in various assertions
     #[inline]
     pub fn is_index_green(&self, prev_index: SerializedDepNodeIndex) -> bool {
-        self.colors.get(prev_index).map_or(false, |c| c.is_green())
+        self.colors.get(prev_index).is_some_and(|c| c.is_green())
     }
 
     #[inline]
@@ -677,7 +677,7 @@ impl<K: DepKind> DepGraphData<K> {
 impl<K: DepKind> DepGraph<K> {
     #[inline]
     pub fn dep_node_exists(&self, dep_node: &DepNode<K>) -> bool {
-        self.data.as_ref().map_or(false, |data| data.dep_node_exists(dep_node))
+        self.data.as_ref().is_some_and(|data| data.dep_node_exists(dep_node))
     }
 
     /// Checks whether a previous work product exists for `v` and, if
@@ -955,7 +955,7 @@ impl<K: DepKind> DepGraph<K> {
     /// Returns true if the given node has been marked as green during the
     /// current compilation session. Used in various assertions
     pub fn is_green(&self, dep_node: &DepNode<K>) -> bool {
-        self.node_color(dep_node).map_or(false, |c| c.is_green())
+        self.node_color(dep_node).is_some_and(|c| c.is_green())
     }
 
     /// This method loads all on-disk cacheable query results into memory, so

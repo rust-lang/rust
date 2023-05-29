@@ -21,6 +21,7 @@ use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
 use crate::metadata::ModChild;
 use crate::middle::privacy::EffectiveVisibilities;
 use crate::mir::{Body, GeneratorLayout};
+use crate::query::Providers;
 use crate::traits::{self, Reveal};
 use crate::ty;
 use crate::ty::fast_reject::SimplifiedType;
@@ -36,7 +37,7 @@ use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
-use rustc_errors::ErrorGuaranteed;
+use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
@@ -52,7 +53,6 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{ExpnId, ExpnKind, Span};
 use rustc_target::abi::{Align, FieldIdx, Integer, IntegerType, VariantIdx};
 pub use rustc_target::abi::{ReprFlags, ReprOptions};
-use rustc_type_ir::WithCachedTypeInfo;
 pub use subst::*;
 pub use vtable::*;
 
@@ -121,7 +121,6 @@ pub mod inhabitedness;
 pub mod layout;
 pub mod normalize_erasing_regions;
 pub mod print;
-pub mod query;
 pub mod relate;
 pub mod subst;
 pub mod trait_def;
@@ -145,6 +144,7 @@ mod opaque_types;
 mod parameterized;
 mod rvalue_scopes;
 mod structural_impls;
+#[cfg_attr(not(bootstrap), allow(hidden_glob_reexports))]
 mod sty;
 mod typeck_results;
 
@@ -764,7 +764,7 @@ impl<'tcx> Predicate<'tcx> {
         let shifted_pred =
             tcx.shift_bound_var_indices(trait_bound_vars.len(), bound_pred.skip_binder());
         // 2) Self: Bar1<'a, '^0.1> -> T: Bar1<'^0.0, '^0.1>
-        let new = EarlyBinder(shifted_pred).subst(tcx, trait_ref.skip_binder().substs);
+        let new = EarlyBinder::new(shifted_pred).subst(tcx, trait_ref.skip_binder().substs);
         // 3) ['x] + ['b] -> ['x, 'b]
         let bound_vars =
             tcx.mk_bound_variable_kinds_from_iter(trait_bound_vars.iter().chain(pred_bound_vars));
@@ -996,17 +996,11 @@ impl<'tcx> Term<'tcx> {
         }
     }
 
-    /// This function returns the inner `AliasTy` if this term is a projection.
-    ///
-    /// FIXME: rename `AliasTy` to `AliasTerm` and make sure we correctly
-    /// deal with constants.
-    pub fn to_projection_term(&self, tcx: TyCtxt<'tcx>) -> Option<AliasTy<'tcx>> {
+    /// This function returns the inner `AliasTy` for a `ty::Alias` or `ConstKind::Unevaluated`.
+    pub fn to_alias_ty(&self, tcx: TyCtxt<'tcx>) -> Option<AliasTy<'tcx>> {
         match self.unpack() {
-            TermKind::Ty(ty) => match ty.kind() {
-                ty::Alias(kind, alias_ty) => match kind {
-                    AliasKind::Projection | AliasKind::Inherent => Some(*alias_ty),
-                    AliasKind::Opaque => None,
-                },
+            TermKind::Ty(ty) => match *ty.kind() {
+                ty::Alias(_kind, alias_ty) => Some(alias_ty),
                 _ => None,
             },
             TermKind::Const(ct) => match ct.kind() {
@@ -1067,6 +1061,24 @@ impl ParamTerm {
             ParamTerm::Ty(ty) => ty.index as usize,
             ParamTerm::Const(ct) => ct.index as usize,
         }
+    }
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum TermVid<'tcx> {
+    Ty(ty::TyVid),
+    Const(ty::ConstVid<'tcx>),
+}
+
+impl From<ty::TyVid> for TermVid<'_> {
+    fn from(value: ty::TyVid) -> Self {
+        TermVid::Ty(value)
+    }
+}
+
+impl<'tcx> From<ty::ConstVid<'tcx>> for TermVid<'tcx> {
+    fn from(value: ty::ConstVid<'tcx>) -> Self {
+        TermVid::Const(value)
     }
 }
 
@@ -1421,14 +1433,26 @@ pub struct OpaqueHiddenType<'tcx> {
 }
 
 impl<'tcx> OpaqueHiddenType<'tcx> {
-    pub fn report_mismatch(&self, other: &Self, tcx: TyCtxt<'tcx>) -> ErrorGuaranteed {
+    pub fn report_mismatch(
+        &self,
+        other: &Self,
+        opaque_def_id: LocalDefId,
+        tcx: TyCtxt<'tcx>,
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+        if let Some(diag) = tcx
+            .sess
+            .diagnostic()
+            .steal_diagnostic(tcx.def_span(opaque_def_id), StashKey::OpaqueHiddenTypeMismatch)
+        {
+            diag.cancel();
+        }
         // Found different concrete types for the opaque type.
         let sub_diag = if self.span == other.span {
             TypeMismatchReason::ConflictType { span: self.span }
         } else {
             TypeMismatchReason::PreviousUse { span: self.span }
         };
-        tcx.sess.emit_err(OpaqueHiddenTypeMismatch {
+        tcx.sess.create_err(OpaqueHiddenTypeMismatch {
             self_ty: self.ty,
             other_ty: other.ty,
             other_span: other.span,
@@ -1864,7 +1888,20 @@ impl PartialEq for VariantDef {
 
         let Self { def_id: lhs_def_id, ctor: _, name: _, discr: _, fields: _, flags: _ } = &self;
         let Self { def_id: rhs_def_id, ctor: _, name: _, discr: _, fields: _, flags: _ } = other;
-        lhs_def_id == rhs_def_id
+
+        let res = lhs_def_id == rhs_def_id;
+
+        // Double check that implicit assumption detailed above.
+        if cfg!(debug_assertions) && res {
+            let deep = self.ctor == other.ctor
+                && self.name == other.name
+                && self.discr == other.discr
+                && self.fields == other.fields
+                && self.flags == other.flags;
+            assert!(deep, "VariantDef for the same def-id has differing data");
+        }
+
+        res
     }
 }
 
@@ -1919,7 +1956,15 @@ impl PartialEq for FieldDef {
 
         let Self { did: rhs_did, name: _, vis: _ } = other;
 
-        lhs_did == rhs_did
+        let res = lhs_did == rhs_did;
+
+        // Double check that implicit assumption detailed above.
+        if cfg!(debug_assertions) && res {
+            let deep = self.name == other.name && self.vis == other.vis;
+            assert!(deep, "FieldDef for the same def-id has differing data");
+        }
+
+        res
     }
 }
 
@@ -2169,8 +2214,8 @@ impl<'tcx> TyCtxt<'tcx> {
         let impl_trait_ref2 = self.impl_trait_ref(def_id2);
         // If either trait impl references an error, they're allowed to overlap,
         // as one of them essentially doesn't exist.
-        if impl_trait_ref1.map_or(false, |tr| tr.subst_identity().references_error())
-            || impl_trait_ref2.map_or(false, |tr| tr.subst_identity().references_error())
+        if impl_trait_ref1.is_some_and(|tr| tr.subst_identity().references_error())
+            || impl_trait_ref2.is_some_and(|tr| tr.subst_identity().references_error())
         {
             return Some(ImplOverlapKind::Permitted { marker: false });
         }
@@ -2191,7 +2236,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         let is_marker_overlap = {
             let is_marker_impl = |trait_ref: Option<EarlyBinder<TraitRef<'_>>>| -> bool {
-                trait_ref.map_or(false, |tr| self.trait_def(tr.skip_binder().def_id).is_marker)
+                trait_ref.is_some_and(|tr| self.trait_def(tr.skip_binder().def_id).is_marker)
             };
             is_marker_impl(impl_trait_ref1) && is_marker_impl(impl_trait_ref2)
         };
@@ -2443,9 +2488,7 @@ impl<'tcx> TyCtxt<'tcx> {
             && if self.features().collapse_debuginfo {
                 span.in_macro_expansion_with_collapse_debuginfo()
             } else {
-                // Inlined spans should not be collapsed as that leads to all of the
-                // inlined code being attributed to the inline callsite.
-                span.from_expansion() && !span.is_inlined()
+                span.from_expansion()
             }
     }
 
@@ -2590,7 +2633,7 @@ pub fn ast_uint_ty(uty: UintTy) -> ast::UintTy {
     }
 }
 
-pub fn provide(providers: &mut ty::query::Providers) {
+pub fn provide(providers: &mut Providers) {
     closure::provide(providers);
     context::provide(providers);
     erase_regions::provide(providers);
@@ -2599,7 +2642,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
     print::provide(providers);
     super::util::bug::provide(providers);
     super::middle::provide(providers);
-    *providers = ty::query::Providers {
+    *providers = Providers {
         trait_impls_of: trait_def::trait_impls_of_provider,
         incoherent_impls: trait_def::incoherent_impls_provider,
         const_param_default: consts::const_param_default,

@@ -7,14 +7,13 @@ use either::{Either, Left, Right};
 use rustc_hir::{self as hir, def_id::DefId, definitions::DefPathData};
 use rustc_index::IndexVec;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{ErrorHandled, InterpError};
+use rustc_middle::mir::interpret::{ErrorHandled, InterpError, ReportedErrorInfo};
+use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{
     self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOf, LayoutOfHelpers,
     TyAndLayout,
 };
-use rustc_middle::ty::{
-    self, query::TyCtxtAt, subst::SubstsRef, ParamEnv, Ty, TyCtxt, TypeFoldable,
-};
+use rustc_middle::ty::{self, subst::SubstsRef, ParamEnv, Ty, TyCtxt, TypeFoldable};
 use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_session::Limit;
 use rustc_span::Span;
@@ -470,7 +469,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
         // do not continue if typeck errors occurred (can only occur in local crate)
         if let Some(err) = body.tainted_by_errors {
-            throw_inval!(AlreadyReported(err));
+            throw_inval!(AlreadyReported(ReportedErrorInfo::tainted_by_errors(err)));
         }
         Ok(body)
     }
@@ -498,7 +497,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .try_subst_mir_and_normalize_erasing_regions(
                 *self.tcx,
                 self.param_env,
-                ty::EarlyBinder(value),
+                ty::EarlyBinder::new(value),
             )
             .map_err(|_| err_inval!(TooGeneric))
     }
@@ -517,7 +516,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Ok(None) => throw_inval!(TooGeneric),
 
             // FIXME(eddyb) this could be a bit more specific than `AlreadyReported`.
-            Err(error_reported) => throw_inval!(AlreadyReported(error_reported)),
+            Err(error_reported) => throw_inval!(AlreadyReported(error_reported.into())),
         }
     }
 
@@ -905,7 +904,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         query(self.tcx.at(span.unwrap_or_else(|| self.cur_span()))).map_err(|err| {
             match err {
                 ErrorHandled::Reported(err) => {
-                    if let Some(span) = span {
+                    if !err.is_tainted_by_errors() && let Some(span) = span {
                         // To make it easier to figure out where this error comes from, also add a note at the current location.
                         self.tcx.sess.span_note_without_error(span, "erroneous constant used");
                     }
@@ -950,7 +949,20 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // This deliberately does *not* honor `requires_caller_location` since it is used for much
         // more than just panics.
         for frame in stack.iter().rev() {
-            let span = frame.current_span();
+            let span = match frame.loc {
+                Left(loc) => {
+                    // If the stacktrace passes through MIR-inlined source scopes, add them.
+                    let mir::SourceInfo { mut span, scope } = *frame.body.source_info(loc);
+                    let mut scope_data = &frame.body.source_scopes[scope];
+                    while let Some((instance, call_span)) = scope_data.inlined {
+                        frames.push(FrameInfo { span, instance });
+                        span = call_span;
+                        scope_data = &frame.body.source_scopes[scope_data.parent_scope.unwrap()];
+                    }
+                    span
+                }
+                Right(span) => span,
+            };
             frames.push(FrameInfo { span, instance: frame.instance });
         }
         trace!("generate stacktrace: {:#?}", frames);

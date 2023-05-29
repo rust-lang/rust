@@ -14,8 +14,8 @@ use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::middle::stability::DeprecationEntry;
 use rustc_middle::query::LocalCrate;
+use rustc_middle::query::{ExternProviders, Providers};
 use rustc_middle::ty::fast_reject::SimplifiedType;
-use rustc_middle::ty::query::{ExternProviders, Providers};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::cstore::CrateStore;
 use rustc_session::{Session, StableCrateId};
@@ -114,8 +114,8 @@ macro_rules! provide_one {
     ($tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => $compute:block) => {
         fn $name<'tcx>(
             $tcx: TyCtxt<'tcx>,
-            def_id_arg: ty::query::query_keys::$name<'tcx>,
-        ) -> ty::query::query_provided::$name<'tcx> {
+            def_id_arg: rustc_middle::query::queries::$name::Key<'tcx>,
+        ) -> rustc_middle::query::queries::$name::ProvidedValue<'tcx> {
             let _prof_timer =
                 $tcx.prof.generic_activity(concat!("metadata_decode_entry_", stringify!($name)));
 
@@ -280,7 +280,6 @@ provide! { tcx, def_id, other, cdata,
     }
     associated_item => { cdata.get_associated_item(def_id.index, tcx.sess) }
     inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, def_id.index) }
-    is_foreign_item => { cdata.is_foreign_item(def_id.index) }
     item_attrs => { tcx.arena.alloc_from_iter(cdata.get_item_attrs(def_id.index, tcx.sess)) }
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
     is_ctfe_mir_available => { cdata.is_ctfe_mir_available(def_id.index) }
@@ -318,13 +317,13 @@ provide! { tcx, def_id, other, cdata,
     }
     native_libraries => { cdata.get_native_libraries(tcx.sess).collect() }
     foreign_modules => { cdata.get_foreign_modules(tcx.sess).map(|m| (m.def_id, m)).collect() }
-    crate_hash => { cdata.root.hash }
+    crate_hash => { cdata.root.header.hash }
     crate_host_hash => { cdata.host_hash }
-    crate_name => { cdata.root.name }
+    crate_name => { cdata.root.header.name }
 
     extra_filename => { cdata.root.extra_filename.clone() }
 
-    traits_in_crate => { tcx.arena.alloc_from_iter(cdata.get_traits()) }
+    traits => { tcx.arena.alloc_from_iter(cdata.get_traits()) }
     trait_impls_in_crate => { tcx.arena.alloc_from_iter(cdata.get_trait_impls()) }
     implementations_of_trait => { cdata.get_implementations_of_trait(tcx, other) }
     crate_incoherent_impls => { cdata.get_incoherent_impls(tcx, other) }
@@ -582,7 +581,7 @@ impl CrateStore for CStore {
     }
 
     fn crate_name(&self, cnum: CrateNum) -> Symbol {
-        self.get_crate_data(cnum).root.name
+        self.get_crate_data(cnum).root.header.name
     }
 
     fn stable_crate_id(&self, cnum: CrateNum) -> StableCrateId {

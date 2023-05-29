@@ -164,7 +164,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 if let Some(root) = post_contract_node.get(&bb) {
                     break *root;
                 }
-                let parent = doms.immediate_dominator(bb);
+                let parent = doms.immediate_dominator(bb).unwrap();
                 dom_path.push(bb);
                 if !self.body.basic_blocks[parent].is_cleanup {
                     break bb;
@@ -448,7 +448,15 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         };
         match debuginfo.value {
             VarDebugInfoContents::Const(_) => {}
-            VarDebugInfoContents::Place(place) => check_place(place),
+            VarDebugInfoContents::Place(place) => {
+                check_place(place);
+                if debuginfo.references != 0 && place.projection.last() == Some(&PlaceElem::Deref) {
+                    self.fail(
+                        START_BLOCK.start_location(),
+                        format!("debuginfo {:?}, has both ref and deref", debuginfo),
+                    );
+                }
+            }
             VarDebugInfoContents::Composite { ty, ref fragments } => {
                 for f in fragments {
                     check_place(f.contents);

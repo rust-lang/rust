@@ -233,9 +233,18 @@ impl<'cx, 'a> Context<'cx, 'a> {
             ExprKind::Cast(local_expr, _) => {
                 self.manage_cond_expr(local_expr);
             }
+            ExprKind::If(local_expr, _, _) => {
+                self.manage_cond_expr(local_expr);
+            }
             ExprKind::Index(prefix, suffix) => {
                 self.manage_cond_expr(prefix);
                 self.manage_cond_expr(suffix);
+            }
+            ExprKind::Let(_, local_expr, _) => {
+                self.manage_cond_expr(local_expr);
+            }
+            ExprKind::Match(local_expr, _) => {
+                self.manage_cond_expr(local_expr);
             }
             ExprKind::MethodCall(call) => {
                 for arg in &mut call.args {
@@ -295,17 +304,14 @@ impl<'cx, 'a> Context<'cx, 'a> {
             | ExprKind::Continue(_)
             | ExprKind::Err
             | ExprKind::Field(_, _)
-            | ExprKind::FormatArgs(_)
             | ExprKind::ForLoop(_, _, _, _)
-            | ExprKind::If(_, _, _)
+            | ExprKind::FormatArgs(_)
             | ExprKind::IncludedBytes(..)
             | ExprKind::InlineAsm(_)
-            | ExprKind::OffsetOf(_, _)
-            | ExprKind::Let(_, _, _)
             | ExprKind::Lit(_)
             | ExprKind::Loop(_, _, _)
             | ExprKind::MacCall(_)
-            | ExprKind::Match(_, _)
+            | ExprKind::OffsetOf(_, _)
             | ExprKind::Path(_, _)
             | ExprKind::Ret(_)
             | ExprKind::Try(_)

@@ -2,6 +2,8 @@
 //! found or is otherwise invalid.
 
 use crate::errors;
+use crate::errors::CandidateTraitNote;
+use crate::errors::NoAssociatedItem;
 use crate::Expectation;
 use crate::FnCtxt;
 use rustc_ast::ast::Mutability;
@@ -38,6 +40,7 @@ use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _
 use rustc_trait_selection::traits::{
     FulfillmentError, Obligation, ObligationCause, ObligationCauseCode,
 };
+use std::borrow::Cow;
 
 use super::probe::{AutorefOrPtrAdjustment, IsSuggestion, Mode, ProbeScope};
 use super::{CandidateSource, MethodError, NoMatchData};
@@ -112,6 +115,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         error: MethodError<'tcx>,
         args: Option<(&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>])>,
         expected: Expectation<'tcx>,
+        trait_missing_method: bool,
     ) -> Option<DiagnosticBuilder<'_, ErrorGuaranteed>> {
         // Avoid suggestions when we don't know what's going on.
         if rcvr_ty.references_error() {
@@ -136,6 +140,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     sugg_span,
                     &mut no_match_data,
                     expected,
+                    trait_missing_method,
                 );
             }
 
@@ -278,12 +283,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         sugg_span: Span,
         no_match_data: &mut NoMatchData<'tcx>,
         expected: Expectation<'tcx>,
+        trait_missing_method: bool,
     ) -> Option<DiagnosticBuilder<'_, ErrorGuaranteed>> {
         let mode = no_match_data.mode;
         let tcx = self.tcx;
         let rcvr_ty = self.resolve_vars_if_possible(rcvr_ty);
-        let (ty_str, ty_file) = tcx.short_ty_string(rcvr_ty);
-        let short_ty_str = with_forced_trimmed_paths!(rcvr_ty.to_string());
+        let ((mut ty_str, ty_file), short_ty_str) = if trait_missing_method
+            && let ty::Dynamic(predicates, _, _) = rcvr_ty.kind() {
+                ((predicates.to_string(), None), with_forced_trimmed_paths!(predicates.to_string()))
+            } else {
+                (tcx.short_ty_string(rcvr_ty), with_forced_trimmed_paths!(rcvr_ty.to_string()))
+            };
         let is_method = mode == Mode::MethodCall;
         let unsatisfied_predicates = &no_match_data.unsatisfied_predicates;
         let similar_candidate = no_match_data.similar_candidate;
@@ -346,7 +356,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        let is_write = sugg_span.ctxt().outer_expn_data().macro_def_id.map_or(false, |def_id| {
+        let is_write = sugg_span.ctxt().outer_expn_data().macro_def_id.is_some_and(|def_id| {
             tcx.is_diagnostic_item(sym::write_macro, def_id)
                 || tcx.is_diagnostic_item(sym::writeln_macro, def_id)
         }) && item_name.name == Symbol::intern("write_fmt");
@@ -355,25 +365,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             self.suggest_missing_writer(rcvr_ty, args)
         } else {
-            struct_span_err!(
-                tcx.sess,
+            tcx.sess.create_err(NoAssociatedItem {
                 span,
-                E0599,
-                "no {} named `{}` found for {} `{}` in the current scope",
                 item_kind,
                 item_name,
-                rcvr_ty.prefix_string(self.tcx),
-                ty_str_reported,
-            )
+                ty_prefix: if trait_missing_method {
+                    // FIXME(mu001999) E0599 maybe not suitable here because it is for types
+                    Cow::from("trait")
+                } else {
+                    rcvr_ty.prefix_string(self.tcx)
+                },
+                ty_str: ty_str_reported,
+                trait_missing_method,
+            })
         };
         if tcx.sess.source_map().is_multiline(sugg_span) {
             err.span_label(sugg_span.with_hi(span.lo()), "");
         }
-        let ty_str = if short_ty_str.len() < ty_str.len() && ty_str.len() > 10 {
-            short_ty_str
-        } else {
-            ty_str
-        };
+
+        if short_ty_str.len() < ty_str.len() && ty_str.len() > 10 {
+            ty_str = short_ty_str;
+        }
+
         if let Some(file) = ty_file {
             err.note(format!("the full type name has been written to '{}'", file.display(),));
         }
@@ -1067,6 +1080,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &static_candidates,
                 unsatisfied_bounds,
                 expected.only_has_type(self),
+                trait_missing_method,
             );
         }
 
@@ -1508,7 +1522,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     let span_included = match parent_expr.kind {
                         hir::ExprKind::Struct(_, eps, _) => {
-                            eps.len() > 0 && eps.last().map_or(false, |ep| ep.span.contains(span))
+                            eps.len() > 0 && eps.last().is_some_and(|ep| ep.span.contains(span))
                         }
                         // `..=` desugars into `::std::ops::RangeInclusive::new(...)`.
                         hir::ExprKind::Call(ref func, ..) => func.span.contains(span),
@@ -1767,7 +1781,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 ProbeScope::TraitsInScope,
                                 return_type,
                             )
-                            .map_or(false, |pick| {
+                            .is_ok_and(|pick| {
                                 !never_mention_traits
                                     .iter()
                                     .flatten()
@@ -2375,6 +2389,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         static_candidates: &[CandidateSource],
         unsatisfied_bounds: bool,
         return_type: Option<Ty<'tcx>>,
+        trait_missing_method: bool,
     ) {
         let mut alt_rcvr_sugg = false;
         if let (SelfSource::MethodCall(rcvr), false) = (source, unsatisfied_bounds) {
@@ -2453,7 +2468,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // implement the `AsRef` trait.
                         let skip = skippable.contains(&did)
                             || (("Pin::new" == *pre) && (sym::as_ref == item_name.name))
-                            || inputs_len.map_or(false, |inputs_len| pick.item.kind == ty::AssocKind::Fn && self.tcx.fn_sig(pick.item.def_id).skip_binder().skip_binder().inputs().len() != inputs_len);
+                            || inputs_len.is_some_and(|inputs_len| pick.item.kind == ty::AssocKind::Fn && self.tcx.fn_sig(pick.item.def_id).skip_binder().skip_binder().inputs().len() != inputs_len);
                         // Make sure the method is defined for the *actual* receiver: we don't
                         // want to treat `Box<Self>` as a receiver if it only works because of
                         // an autoderef to `&self`
@@ -2598,11 +2613,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 },
                 _ => None,
             };
-            err.help(if param_type.is_some() {
-                "items from traits can only be used if the type parameter is bounded by the trait"
-            } else {
-                "items from traits can only be used if the trait is implemented and in scope"
-            });
+            if !trait_missing_method {
+                err.help(if param_type.is_some() {
+                    "items from traits can only be used if the type parameter is bounded by the trait"
+                } else {
+                    "items from traits can only be used if the trait is implemented and in scope"
+                });
+            }
+
             let candidates_len = candidates.len();
             let message = |action| {
                 format!(
@@ -2633,47 +2651,62 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 Nothing,
                             }
                             let ast_generics = hir.get_generics(id.owner.def_id).unwrap();
-                            let (sp, mut introducer) = if let Some(span) =
-                                ast_generics.bounds_span_for_suggestions(def_id)
-                            {
-                                (span, Introducer::Plus)
-                            } else if let Some(colon_span) = param.colon_span {
-                                (colon_span.shrink_to_hi(), Introducer::Nothing)
-                            } else {
-                                (param.span.shrink_to_hi(), Introducer::Colon)
-                            };
-                            if matches!(
-                                param.kind,
-                                hir::GenericParamKind::Type { synthetic: true, .. },
-                            ) {
-                                introducer = Introducer::Plus
-                            }
                             let trait_def_ids: FxHashSet<DefId> = ast_generics
                                 .bounds_for_param(def_id)
                                 .flat_map(|bp| bp.bounds.iter())
                                 .filter_map(|bound| bound.trait_ref()?.trait_def_id())
                                 .collect();
-                            if !candidates.iter().any(|t| trait_def_ids.contains(&t.def_id)) {
-                                err.span_suggestions(
-                                    sp,
-                                    message(format!(
-                                        "restrict type parameter `{}` with",
-                                        param.name.ident(),
-                                    )),
+                            if candidates.iter().any(|t| trait_def_ids.contains(&t.def_id)) {
+                                return;
+                            }
+                            let msg = message(format!(
+                                "restrict type parameter `{}` with",
+                                param.name.ident(),
+                            ));
+                            let bounds_span = ast_generics.bounds_span_for_suggestions(def_id);
+                            if rcvr_ty.is_ref() && param.is_impl_trait() && bounds_span.is_some() {
+                                err.multipart_suggestions(
+                                    msg,
                                     candidates.iter().map(|t| {
-                                        format!(
-                                            "{} {}",
-                                            match introducer {
-                                                Introducer::Plus => " +",
-                                                Introducer::Colon => ":",
-                                                Introducer::Nothing => "",
-                                            },
-                                            self.tcx.def_path_str(t.def_id),
-                                        )
+                                        vec![
+                                            (param.span.shrink_to_lo(), "(".to_string()),
+                                            (
+                                                bounds_span.unwrap(),
+                                                format!(" + {})", self.tcx.def_path_str(t.def_id)),
+                                            ),
+                                        ]
                                     }),
                                     Applicability::MaybeIncorrect,
                                 );
+                                return;
                             }
+
+                            let (sp, introducer) = if let Some(span) = bounds_span {
+                                (span, Introducer::Plus)
+                            } else if let Some(colon_span) = param.colon_span {
+                                (colon_span.shrink_to_hi(), Introducer::Nothing)
+                            } else if param.is_impl_trait() {
+                                (param.span.shrink_to_hi(), Introducer::Plus)
+                            } else {
+                                (param.span.shrink_to_hi(), Introducer::Colon)
+                            };
+
+                            err.span_suggestions(
+                                sp,
+                                msg,
+                                candidates.iter().map(|t| {
+                                    format!(
+                                        "{} {}",
+                                        match introducer {
+                                            Introducer::Plus => " +",
+                                            Introducer::Colon => ":",
+                                            Introducer::Nothing => "",
+                                        },
+                                        self.tcx.def_path_str(t.def_id)
+                                    )
+                                }),
+                                Applicability::MaybeIncorrect,
+                            );
                             return;
                         }
                         Node::Item(hir::Item {
@@ -2722,7 +2755,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let imp = self.tcx.impl_trait_ref(imp_did).unwrap().subst_identity();
                             let imp_simp =
                                 simplify_type(self.tcx, imp.self_ty(), TreatParams::ForLookup);
-                            imp_simp.map_or(false, |s| s == simp_rcvr_ty)
+                            imp_simp.is_some_and(|s| s == simp_rcvr_ty)
                         })
                     {
                         explicitly_negative.push(candidate);
@@ -2736,27 +2769,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (candidates, Vec::new())
             };
 
-            let action = if let Some(param) = param_type {
-                format!("restrict type parameter `{}` with", param)
-            } else {
-                // FIXME: it might only need to be imported into scope, not implemented.
-                "implement".to_string()
-            };
             match &potential_candidates[..] {
                 [] => {}
                 [trait_info] if trait_info.def_id.is_local() => {
-                    err.span_note(
-                        self.tcx.def_span(trait_info.def_id),
-                        format!(
-                            "`{}` defines an item `{}`, perhaps you need to {} it",
-                            self.tcx.def_path_str(trait_info.def_id),
-                            item_name,
-                            action
-                        ),
-                    );
+                    err.subdiagnostic(CandidateTraitNote {
+                        span: self.tcx.def_span(trait_info.def_id),
+                        trait_name: self.tcx.def_path_str(trait_info.def_id),
+                        item_name,
+                        action_or_ty: if trait_missing_method {
+                            "NONE".to_string()
+                        } else {
+                            param_type.map_or_else(
+                                || "implement".to_string(), // FIXME: it might only need to be imported into scope, not implemented.
+                                ToString::to_string,
+                            )
+                        },
+                    });
                 }
                 trait_infos => {
-                    let mut msg = message(action);
+                    let mut msg = message(param_type.map_or_else(
+                        || "implement".to_string(), // FIXME: it might only need to be imported into scope, not implemented.
+                        |param| format!("restrict type parameter `{}` with", param),
+                    ));
                     for (i, trait_info) in trait_infos.iter().enumerate() {
                         msg.push_str(&format!(
                             "\ncandidate #{}: `{}`",
@@ -2859,7 +2893,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match ty.kind() {
                 ty::Adt(def, _) => def.did().is_local(),
                 ty::Foreign(did) => did.is_local(),
-                ty::Dynamic(tr, ..) => tr.principal().map_or(false, |d| d.def_id().is_local()),
+                ty::Dynamic(tr, ..) => tr.principal().is_some_and(|d| d.def_id().is_local()),
                 ty::Param(_) => true,
 
                 // Everything else (primitive types, etc.) is effectively

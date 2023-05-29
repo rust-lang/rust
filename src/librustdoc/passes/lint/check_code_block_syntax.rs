@@ -17,7 +17,7 @@ use crate::html::markdown::{self, RustCodeBlock};
 use crate::passes::source_span_for_markdown_range;
 
 pub(crate) fn visit_item(cx: &DocContext<'_>, item: &clean::Item) {
-    if let Some(dox) = &item.attrs.collapsed_doc_value() {
+    if let Some(dox) = &item.opt_doc_value() {
         let sp = item.attr_span(cx.tcx);
         let extra = crate::html::markdown::ExtraInfo::new(cx.tcx, item.item_id.expect_def_id(), sp);
         for code_block in markdown::rust_code_blocks(dox, &extra) {

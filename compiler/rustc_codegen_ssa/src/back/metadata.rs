@@ -14,8 +14,7 @@ use snap::write::FrameEncoder;
 
 use object::elf::NT_GNU_PROPERTY_TYPE_0;
 use rustc_data_structures::memmap::Mmap;
-use rustc_data_structures::owned_slice::try_slice_owned;
-use rustc_data_structures::sync::MetadataRef;
+use rustc_data_structures::owned_slice::{try_slice_owned, OwnedSlice};
 use rustc_metadata::fs::METADATA_FILENAME;
 use rustc_metadata::EncodedMetadata;
 use rustc_session::cstore::MetadataLoader;
@@ -39,7 +38,7 @@ pub struct DefaultMetadataLoader;
 fn load_metadata_with(
     path: &Path,
     f: impl for<'a> FnOnce(&'a [u8]) -> Result<&'a [u8], String>,
-) -> Result<MetadataRef, String> {
+) -> Result<OwnedSlice, String> {
     let file =
         File::open(path).map_err(|e| format!("failed to open file '{}': {}", path.display(), e))?;
 
@@ -49,7 +48,7 @@ fn load_metadata_with(
 }
 
 impl MetadataLoader for DefaultMetadataLoader {
-    fn get_rlib_metadata(&self, _target: &Target, path: &Path) -> Result<MetadataRef, String> {
+    fn get_rlib_metadata(&self, _target: &Target, path: &Path) -> Result<OwnedSlice, String> {
         load_metadata_with(path, |data| {
             let archive = object::read::archive::ArchiveFile::parse(&*data)
                 .map_err(|e| format!("failed to parse rlib '{}': {}", path.display(), e))?;
@@ -69,7 +68,7 @@ impl MetadataLoader for DefaultMetadataLoader {
         })
     }
 
-    fn get_dylib_metadata(&self, _target: &Target, path: &Path) -> Result<MetadataRef, String> {
+    fn get_dylib_metadata(&self, _target: &Target, path: &Path) -> Result<OwnedSlice, String> {
         load_metadata_with(path, |data| search_for_section(path, data, ".rustc"))
     }
 }
@@ -189,6 +188,11 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
     };
 
     let mut file = write::Object::new(binary_format, architecture, endianness);
+    if sess.target.is_like_osx {
+        if let Some(build_version) = macho_object_build_version_for_target(&sess.target) {
+            file.set_macho_build_version(build_version)
+        }
+    }
     let e_flags = match architecture {
         Architecture::Mips => {
             let arch = match sess.target.options.cpu.as_ref() {
@@ -257,6 +261,33 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
     add_gnu_property_note(&mut file, architecture, binary_format, endianness);
     file.flags = FileFlags::Elf { os_abi, abi_version, e_flags };
     Some(file)
+}
+
+/// Apple's LD, when linking for Mac Catalyst, requires object files to
+/// contain information about what they were built for (LC_BUILD_VERSION):
+/// the platform (macOS/watchOS etc), minimum OS version, and SDK version.
+/// This returns a `MachOBuildVersion` if necessary for the target.
+fn macho_object_build_version_for_target(
+    target: &Target,
+) -> Option<object::write::MachOBuildVersion> {
+    if !target.llvm_target.ends_with("-macabi") {
+        return None;
+    }
+    /// The `object` crate demands "X.Y.Z encoded in nibbles as xxxx.yy.zz"
+    /// e.g. minOS 14.0 = 0x000E0000, or SDK 16.2 = 0x00100200
+    fn pack_version((major, minor): (u32, u32)) -> u32 {
+        (major << 16) | (minor << 8)
+    }
+
+    let platform = object::macho::PLATFORM_MACCATALYST;
+    let min_os = (14, 0);
+    let sdk = (16, 2);
+
+    let mut build_version = object::write::MachOBuildVersion::default();
+    build_version.platform = platform;
+    build_version.minos = pack_version(min_os);
+    build_version.sdk = pack_version(sdk);
+    Some(build_version)
 }
 
 pub enum MetadataPosition {

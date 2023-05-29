@@ -83,7 +83,7 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
 
             (&ty::Error(guar), _) | (_, &ty::Error(guar)) => Ok(self.tcx().ty_error(guar)),
 
-            _ => relate::super_relate_tys(self, a, b),
+            _ => relate::structurally_relate_tys(self, a, b),
         }
     }
 
@@ -109,7 +109,7 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
             _ => {}
         }
 
-        relate::super_relate_consts(self, a, b)
+        relate::structurally_relate_consts(self, a, b)
     }
 
     fn binders<T>(

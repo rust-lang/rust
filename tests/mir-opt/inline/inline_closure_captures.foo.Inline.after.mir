@@ -17,10 +17,10 @@ fn foo(_1: T, _2: i32) -> (i32, T) {
             debug _q => _9;              // in scope 2 at $DIR/inline_closure_captures.rs:+1:14: +1:16
             debug q => (*((*_6).0: &i32)); // in scope 2 at $DIR/inline_closure_captures.rs:+0:23: +0:24
             debug t => (*((*_6).1: &T)); // in scope 2 at $DIR/inline_closure_captures.rs:+0:17: +0:18
-            let mut _10: i32;            // in scope 2 at $DIR/inline_closure_captures.rs:+1:19: +1:20
-            let mut _11: T;              // in scope 2 at $DIR/inline_closure_captures.rs:+1:22: +1:23
-            let mut _12: &i32;           // in scope 2 at $DIR/inline_closure_captures.rs:+1:13: +1:24
-            let mut _13: &T;             // in scope 2 at $DIR/inline_closure_captures.rs:+1:13: +1:24
+            let mut _10: &i32;           // in scope 2 at $DIR/inline_closure_captures.rs:+1:13: +1:24
+            let mut _11: i32;            // in scope 2 at $DIR/inline_closure_captures.rs:+1:19: +1:20
+            let mut _12: &T;             // in scope 2 at $DIR/inline_closure_captures.rs:+1:13: +1:24
+            let mut _13: T;              // in scope 2 at $DIR/inline_closure_captures.rs:+1:22: +1:23
         }
     }
 
@@ -49,15 +49,15 @@ fn foo(_1: T, _2: i32) -> (i32, T) {
         _7 = (move _8,);                 // scope 1 at $DIR/inline_closure_captures.rs:+2:5: +2:9
         StorageLive(_9);                 // scope 1 at $DIR/inline_closure_captures.rs:+2:5: +2:9
         _9 = move (_7.0: i32);           // scope 1 at $DIR/inline_closure_captures.rs:+2:5: +2:9
-        StorageLive(_10);                // scope 2 at $DIR/inline_closure_captures.rs:+1:19: +1:20
-        _12 = deref_copy ((*_6).0: &i32); // scope 2 at $DIR/inline_closure_captures.rs:+1:19: +1:20
-        _10 = (*_12);                    // scope 2 at $DIR/inline_closure_captures.rs:+1:19: +1:20
-        StorageLive(_11);                // scope 2 at $DIR/inline_closure_captures.rs:+1:22: +1:23
-        _13 = deref_copy ((*_6).1: &T);  // scope 2 at $DIR/inline_closure_captures.rs:+1:22: +1:23
-        _11 = (*_13);                    // scope 2 at $DIR/inline_closure_captures.rs:+1:22: +1:23
-        _0 = (move _10, move _11);       // scope 2 at $DIR/inline_closure_captures.rs:+1:18: +1:24
+        StorageLive(_11);                // scope 2 at $DIR/inline_closure_captures.rs:+1:19: +1:20
+        _10 = deref_copy ((*_6).0: &i32); // scope 2 at $DIR/inline_closure_captures.rs:+1:19: +1:20
+        _11 = (*_10);                    // scope 2 at $DIR/inline_closure_captures.rs:+1:19: +1:20
+        StorageLive(_13);                // scope 2 at $DIR/inline_closure_captures.rs:+1:22: +1:23
+        _12 = deref_copy ((*_6).1: &T);  // scope 2 at $DIR/inline_closure_captures.rs:+1:22: +1:23
+        _13 = (*_12);                    // scope 2 at $DIR/inline_closure_captures.rs:+1:22: +1:23
+        _0 = (move _11, move _13);       // scope 2 at $DIR/inline_closure_captures.rs:+1:18: +1:24
+        StorageDead(_13);                // scope 2 at $DIR/inline_closure_captures.rs:+1:23: +1:24
         StorageDead(_11);                // scope 2 at $DIR/inline_closure_captures.rs:+1:23: +1:24
-        StorageDead(_10);                // scope 2 at $DIR/inline_closure_captures.rs:+1:23: +1:24
         StorageDead(_9);                 // scope 1 at $DIR/inline_closure_captures.rs:+2:5: +2:9
         StorageDead(_8);                 // scope 1 at $DIR/inline_closure_captures.rs:+2:8: +2:9
         StorageDead(_7);                 // scope 1 at $DIR/inline_closure_captures.rs:+2:8: +2:9

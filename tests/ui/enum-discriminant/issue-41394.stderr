@@ -6,12 +6,6 @@ LL |     A = "" + 1
    |         |
    |         &str
 
-note: erroneous constant used
-  --> $DIR/issue-41394.rs:7:9
-   |
-LL |     A = Foo::A as isize
-   |         ^^^^^^^^^^^^^^^
-
 error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0369`.

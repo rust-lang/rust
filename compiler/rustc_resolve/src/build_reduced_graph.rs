@@ -9,12 +9,9 @@ use crate::def_collector::collect_definitions;
 use crate::imports::{Import, ImportKind};
 use crate::macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
 use crate::Namespace::{self, MacroNS, TypeNS, ValueNS};
-use crate::{
-    errors, Determinacy, ExternPreludeEntry, Finalize, Module, ModuleKind, ModuleOrUniformRoot,
-};
-use crate::{
-    MacroData, NameBinding, NameBindingKind, ParentScope, PathResult, PerNS, ResolutionError,
-};
+use crate::{errors, BindingKey, MacroData};
+use crate::{Determinacy, ExternPreludeEntry, Finalize, Module, ModuleKind, ModuleOrUniformRoot};
+use crate::{NameBinding, NameBindingKind, ParentScope, PathResult, PerNS, ResolutionError};
 use crate::{Resolver, ResolverArenas, Segment, ToNameBinding, VisResolutionError};
 
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
@@ -72,7 +69,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         T: ToNameBinding<'a>,
     {
         let binding = def.to_name_binding(self.arenas);
-        let key = self.new_key(ident, ns);
+        let key = self.new_disambiguated_key(ident, ns);
         if let Err(old_binding) = self.try_define(parent, key, binding) {
             self.report_conflict(parent, ident, ns, old_binding, &binding);
         }
@@ -132,7 +129,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     expn_id,
                     self.def_span(def_id),
                     // FIXME: Account for `#[no_implicit_prelude]` attributes.
-                    parent.map_or(false, |module| module.no_implicit_prelude),
+                    parent.is_some_and(|module| module.no_implicit_prelude),
                 ));
             }
         }
@@ -379,7 +376,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             ImportKind::Single { target, type_ns_only, .. } => {
                 self.r.per_ns(|this, ns| {
                     if !type_ns_only || ns == TypeNS {
-                        let key = this.new_key(target, ns);
+                        let key = BindingKey::new(target, ns);
                         let mut resolution = this.resolution(current_module, key).borrow_mut();
                         resolution.add_single_import(import);
                     }
@@ -876,6 +873,11 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     let msg = "macro-expanded `extern crate` items cannot \
                                        shadow names passed with `--extern`";
                     self.r.tcx.sess.span_err(item.span, msg);
+                    // `return` is intended to discard this binding because it's an
+                    // unregistered ambiguity error which would result in a panic
+                    // caused by inconsistency `path_res`
+                    // more details: https://github.com/rust-lang/rust/pull/111761
+                    return;
                 }
             }
             let entry = self.r.extern_prelude.entry(ident.normalize_to_macros_2_0()).or_insert(

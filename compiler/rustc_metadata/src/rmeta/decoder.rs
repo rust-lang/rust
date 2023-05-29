@@ -7,6 +7,7 @@ use crate::rmeta::*;
 use rustc_ast as ast;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::owned_slice::OwnedSlice;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{AppendOnlyVec, Lock, Lrc, OnceCell};
 use rustc_data_structures::unhash::UnhashMap;
@@ -18,6 +19,7 @@ use rustc_hir::definitions::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc_hir::diagnostic_items::DiagnosticItems;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::metadata::ModChild;
+use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::ty::codec::TyDecoder;
@@ -50,7 +52,7 @@ mod cstore_impl;
 /// A `MetadataBlob` internally is just a reference counted pointer to
 /// the actual data, so cloning it is cheap.
 #[derive(Clone)]
-pub(crate) struct MetadataBlob(Lrc<MetadataRef>);
+pub(crate) struct MetadataBlob(pub(crate) OwnedSlice);
 
 impl std::ops::Deref for MetadataBlob {
     type Target = [u8];
@@ -72,6 +74,7 @@ pub(crate) struct CrateMetadata {
     blob: MetadataBlob,
 
     // --- Some data pre-decoded from the metadata blob, usually for performance ---
+    /// Data about the top-level items in a crate, as well as various crate-level metadata.
     root: CrateRoot,
     /// Trait impl data.
     /// FIXME: Used only from queries and can use query cache,
@@ -447,7 +450,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for SyntaxContext {
                 You need to explicitly pass `(crate_metadata_ref, tcx)` to `decode` instead of just `crate_metadata_ref`.");
         };
 
-        let cname = cdata.root.name;
+        let cname = cdata.root.name();
         rustc_span::hygiene::decode_syntax_context(decoder, &cdata.hygiene_context, |_, id| {
             debug!("SpecializedDecoder<SyntaxContext>: decoding {}", id);
             cdata
@@ -562,7 +565,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
                 let cnum = u32::decode(decoder);
                 panic!(
                     "Decoding of crate {:?} tried to access proc-macro dep {:?}",
-                    decoder.cdata().root.name,
+                    decoder.cdata().root.header.name,
                     cnum
                 );
             }
@@ -660,10 +663,6 @@ impl<'a, 'tcx, I: Idx, T> Decodable<DecodeContext<'a, 'tcx>> for LazyTable<I, T>
 implement_ty_decoder!(DecodeContext<'a, 'tcx>);
 
 impl MetadataBlob {
-    pub(crate) fn new(metadata_ref: MetadataRef) -> MetadataBlob {
-        MetadataBlob(Lrc::new(metadata_ref))
-    }
-
     pub(crate) fn is_compatible(&self) -> bool {
         self.blob().starts_with(METADATA_HEADER)
     }
@@ -671,6 +670,16 @@ impl MetadataBlob {
     pub(crate) fn get_rustc_version(&self) -> String {
         LazyValue::<String>::from_position(NonZeroUsize::new(METADATA_HEADER.len() + 4).unwrap())
             .decode(self)
+    }
+
+    pub(crate) fn get_header(&self) -> CrateHeader {
+        let slice = &self.blob()[..];
+        let offset = METADATA_HEADER.len();
+
+        let pos_bytes = slice[offset..][..4].try_into().unwrap();
+        let pos = u32::from_be_bytes(pos_bytes) as usize;
+
+        LazyValue::<CrateHeader>::from_position(NonZeroUsize::new(pos).unwrap()).decode(self)
     }
 
     pub(crate) fn get_root(&self) -> CrateRoot {
@@ -686,8 +695,8 @@ impl MetadataBlob {
     pub(crate) fn list_crate_metadata(&self, out: &mut dyn io::Write) -> io::Result<()> {
         let root = self.get_root();
         writeln!(out, "Crate info:")?;
-        writeln!(out, "name {}{}", root.name, root.extra_filename)?;
-        writeln!(out, "hash {} stable_crate_id {:?}", root.hash, root.stable_crate_id)?;
+        writeln!(out, "name {}{}", root.name(), root.extra_filename)?;
+        writeln!(out, "hash {} stable_crate_id {:?}", root.hash(), root.stable_crate_id)?;
         writeln!(out, "proc_macro {:?}", root.proc_macro_data.is_some())?;
         writeln!(out, "=External Dependencies=")?;
 
@@ -711,19 +720,15 @@ impl CrateRoot {
     }
 
     pub(crate) fn name(&self) -> Symbol {
-        self.name
+        self.header.name
     }
 
     pub(crate) fn hash(&self) -> Svh {
-        self.hash
+        self.header.hash
     }
 
     pub(crate) fn stable_crate_id(&self) -> StableCrateId {
         self.stable_crate_id
-    }
-
-    pub(crate) fn triple(&self) -> &TargetTriple {
-        &self.triple
     }
 
     pub(crate) fn decode_crate_deps<'a>(
@@ -796,7 +801,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             bug!(
                 "CrateMetadata::def_kind({:?}): id not found, in crate {:?} with number {}",
                 item_id,
-                self.root.name,
+                self.root.name(),
                 self.cnum,
             )
         })
@@ -853,7 +858,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         } else {
             tcx.arena.alloc_from_iter(lazy.decode((self, tcx)))
         };
-        ty::EarlyBinder(&*output)
+        ty::EarlyBinder::new(&*output)
     }
 
     fn get_variant(
@@ -961,7 +966,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .decode((self, sess))
     }
 
-    fn get_debugger_visualizers(self) -> Vec<rustc_span::DebuggerVisualizerFile> {
+    fn get_debugger_visualizers(self) -> Vec<DebuggerVisualizerFile> {
         self.root.debugger_visualizers.decode(self).collect::<Vec<_>>()
     }
 
@@ -1062,7 +1067,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .expect("argument names not encoded for a function")
             .decode((self, sess))
             .nth(0)
-            .map_or(false, |ident| ident.name == kw::SelfLower)
+            .is_some_and(|ident| ident.name == kw::SelfLower)
     }
 
     fn get_associated_item_or_field_def_ids(
@@ -1251,14 +1256,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 ast::MacroDef { macro_rules, body: ast::ptr::P(body) }
             }
             _ => bug!(),
-        }
-    }
-
-    fn is_foreign_item(self, id: DefIndex) -> bool {
-        if let Some(parent) = self.def_key(id).parent {
-            matches!(self.def_kind(parent), DefKind::ForeignMod)
-        } else {
-            false
         }
     }
 
@@ -1712,11 +1709,11 @@ impl CrateMetadata {
     }
 
     pub(crate) fn name(&self) -> Symbol {
-        self.root.name
+        self.root.header.name
     }
 
     pub(crate) fn hash(&self) -> Svh {
-        self.root.hash
+        self.root.header.hash
     }
 
     fn num_def_ids(&self) -> usize {

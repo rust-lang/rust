@@ -1,9 +1,10 @@
 use super::{ErrorHandled, EvalToConstValueResult, EvalToValTreeResult, GlobalId};
 
 use crate::mir;
+use crate::query::{TyCtxtAt, TyCtxtEnsure};
 use crate::ty::subst::InternalSubsts;
 use crate::ty::visit::TypeVisitableExt;
-use crate::ty::{self, query::TyCtxtAt, query::TyCtxtEnsure, TyCtxt};
+use crate::ty::{self, TyCtxt};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_session::lint;
@@ -61,7 +62,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 self.const_eval_global_id(param_env, cid, span)
             }
             Ok(None) => Err(ErrorHandled::TooGeneric),
-            Err(error_reported) => Err(ErrorHandled::Reported(error_reported)),
+            Err(err) => Err(ErrorHandled::Reported(err.into())),
         }
     }
 
@@ -110,7 +111,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 })
             }
             Ok(None) => Err(ErrorHandled::TooGeneric),
-            Err(error_reported) => Err(ErrorHandled::Reported(error_reported)),
+            Err(err) => Err(ErrorHandled::Reported(err.into())),
         }
     }
 

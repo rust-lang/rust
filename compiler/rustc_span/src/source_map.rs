@@ -639,7 +639,7 @@ impl SourceMap {
         self.span_to_source(sp, |src, start_index, end_index| {
             Ok(src.get(start_index..end_index).is_some())
         })
-        .map_or(false, |is_accessible| is_accessible)
+        .is_ok_and(|is_accessible| is_accessible)
     }
 
     /// Returns the source snippet as `String` corresponding to the given `Span`.
@@ -835,7 +835,7 @@ impl SourceMap {
             }
             return Ok(true);
         })
-        .map_or(false, |is_accessible| is_accessible)
+        .is_ok_and(|is_accessible| is_accessible)
     }
 
     /// Given a `Span`, tries to get a shorter span ending just after the first occurrence of `char`
@@ -967,7 +967,7 @@ impl SourceMap {
         for _ in 0..limit.unwrap_or(100_usize) {
             sp = self.next_point(sp);
             if let Ok(ref snippet) = self.span_to_snippet(sp) {
-                if expect.map_or(false, |es| snippet == es) {
+                if expect.is_some_and(|es| snippet == es) {
                     break;
                 }
                 if expect.is_none() && snippet.chars().any(|c| !c.is_whitespace()) {
@@ -1019,36 +1019,19 @@ impl SourceMap {
 
         let src = local_begin.sf.external_src.borrow();
 
-        // We need to extend the snippet to the end of the src rather than to end_index so when
-        // searching forwards for boundaries we've got somewhere to search.
-        let snippet = if let Some(ref src) = local_begin.sf.src {
-            &src[start_index..]
+        let snippet = if let Some(src) = &local_begin.sf.src {
+            src
         } else if let Some(src) = src.get_source() {
-            &src[start_index..]
+            src
         } else {
             return 1;
         };
-        debug!("snippet=`{:?}`", snippet);
 
-        let mut target = if forwards { end_index + 1 } else { end_index - 1 };
-        debug!("initial target=`{:?}`", target);
-
-        while !snippet.is_char_boundary(target - start_index) && target < source_len {
-            target = if forwards {
-                target + 1
-            } else {
-                match target.checked_sub(1) {
-                    Some(target) => target,
-                    None => {
-                        break;
-                    }
-                }
-            };
-            debug!("target=`{:?}`", target);
+        if forwards {
+            (snippet.ceil_char_boundary(end_index + 1) - end_index) as u32
+        } else {
+            (end_index - snippet.floor_char_boundary(end_index - 1)) as u32
         }
-        debug!("final target=`{:?}`", target);
-
-        if forwards { (target - end_index) as u32 } else { (end_index - target) as u32 }
     }
 
     pub fn get_source_file(&self, filename: &FileName) -> Option<Lrc<SourceFile>> {

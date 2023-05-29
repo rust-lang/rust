@@ -31,11 +31,11 @@ pub struct SsaLocals {
 /// We often encounter MIR bodies with 1 or 2 basic blocks. In those cases, it's unnecessary to
 /// actually compute dominators, we can just compare block indices because bb0 is always the first
 /// block, and in any body all other blocks are always dominated by bb0.
-struct SmallDominators {
-    inner: Option<Dominators<BasicBlock>>,
+struct SmallDominators<'a> {
+    inner: Option<&'a Dominators<BasicBlock>>,
 }
 
-impl SmallDominators {
+impl SmallDominators<'_> {
     fn dominates(&self, first: Location, second: Location) -> bool {
         if first.block == second.block {
             first.statement_index <= second.statement_index
@@ -101,14 +101,15 @@ impl SsaLocals {
             .retain(|&local| matches!(visitor.assignments[local], Set1::One(_)));
         debug!(?visitor.assignment_order);
 
-        let copy_classes = compute_copy_classes(&mut visitor, body);
-
-        SsaLocals {
+        let mut ssa = SsaLocals {
             assignments: visitor.assignments,
             assignment_order: visitor.assignment_order,
             direct_uses: visitor.direct_uses,
-            copy_classes,
-        }
+            // This is filled by `compute_copy_classes`.
+            copy_classes: IndexVec::default(),
+        };
+        compute_copy_classes(&mut ssa, body);
+        ssa
     }
 
     pub fn num_locals(&self) -> usize {
@@ -197,14 +198,14 @@ enum LocationExtended {
     Arg,
 }
 
-struct SsaVisitor {
-    dominators: SmallDominators,
+struct SsaVisitor<'a> {
+    dominators: SmallDominators<'a>,
     assignments: IndexVec<Local, Set1<LocationExtended>>,
     assignment_order: Vec<Local>,
     direct_uses: IndexVec<Local, u32>,
 }
 
-impl<'tcx> Visitor<'tcx> for SsaVisitor {
+impl<'tcx> Visitor<'tcx> for SsaVisitor<'_> {
     fn visit_local(&mut self, local: Local, ctxt: PlaceContext, loc: Location) {
         match ctxt {
             PlaceContext::MutatingUse(MutatingUseContext::Projection)
@@ -261,49 +262,54 @@ impl<'tcx> Visitor<'tcx> for SsaVisitor {
 }
 
 #[instrument(level = "trace", skip(ssa, body))]
-fn compute_copy_classes(ssa: &mut SsaVisitor, body: &Body<'_>) -> IndexVec<Local, Local> {
+fn compute_copy_classes(ssa: &mut SsaLocals, body: &Body<'_>) {
+    let mut direct_uses = std::mem::take(&mut ssa.direct_uses);
     let mut copies = IndexVec::from_fn_n(|l| l, body.local_decls.len());
 
-    for &local in &ssa.assignment_order {
-        debug!(?local);
-
-        if local == RETURN_PLACE {
-            // `_0` is special, we cannot rename it.
-            continue;
-        }
-
-        // This is not SSA: mark that we don't know the value.
-        debug!(assignments = ?ssa.assignments[local]);
-        let Set1::One(LocationExtended::Plain(loc)) = ssa.assignments[local] else { continue };
-
-        // `loc` must point to a direct assignment to `local`.
-        let Either::Left(stmt) = body.stmt_at(loc) else { bug!() };
-        let Some((_target, rvalue)) = stmt.kind.as_assign() else { bug!() };
-        assert_eq!(_target.as_local(), Some(local));
-
+    for (local, rvalue, _) in ssa.assignments(body) {
         let (Rvalue::Use(Operand::Copy(place) | Operand::Move(place)) | Rvalue::CopyForDeref(place))
             = rvalue
         else { continue };
 
         let Some(rhs) = place.as_local() else { continue };
-        let Set1::One(_) = ssa.assignments[rhs] else { continue };
+        if !ssa.is_ssa(rhs) {
+            continue;
+        }
 
         // We visit in `assignment_order`, ie. reverse post-order, so `rhs` has been
         // visited before `local`, and we just have to copy the representing local.
-        copies[local] = copies[rhs];
-        ssa.direct_uses[rhs] -= 1;
+        let head = copies[rhs];
+
+        if local == RETURN_PLACE {
+            // `_0` is special, we cannot rename it. Instead, rename the class of `rhs` to
+            // `RETURN_PLACE`. This is only possible if the class head is a temporary, not an
+            // argument.
+            if body.local_kind(head) != LocalKind::Temp {
+                continue;
+            }
+            for h in copies.iter_mut() {
+                if *h == head {
+                    *h = RETURN_PLACE;
+                }
+            }
+        } else {
+            copies[local] = head;
+        }
+        direct_uses[rhs] -= 1;
     }
 
     debug!(?copies);
-    debug!(?ssa.direct_uses);
+    debug!(?direct_uses);
 
     // Invariant: `copies` must point to the head of an equivalence class.
     #[cfg(debug_assertions)]
     for &head in copies.iter() {
         assert_eq!(copies[head], head);
     }
+    debug_assert_eq!(copies[RETURN_PLACE], RETURN_PLACE);
 
-    copies
+    ssa.direct_uses = direct_uses;
+    ssa.copy_classes = copies;
 }
 
 #[derive(Debug)]

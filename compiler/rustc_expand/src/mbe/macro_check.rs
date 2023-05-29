@@ -110,7 +110,7 @@ use crate::mbe::{KleeneToken, TokenTree};
 use rustc_ast::token::{Delimiter, Token, TokenKind};
 use rustc_ast::{NodeId, DUMMY_NODE_ID};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::MultiSpan;
+use rustc_errors::{DiagnosticMessage, MultiSpan};
 use rustc_session::lint::builtin::{META_VARIABLE_MISUSE, MISSING_FRAGMENT_SPECIFIER};
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::kw;
@@ -593,7 +593,7 @@ fn check_ops_is_prefix(
             return;
         }
     }
-    buffer_lint(sess, span.into(), node_id, &format!("unknown macro variable `{}`", name));
+    buffer_lint(sess, span.into(), node_id, format!("unknown macro variable `{}`", name));
 }
 
 /// Returns whether `binder_ops` is a prefix of `occurrence_ops`.
@@ -626,7 +626,7 @@ fn ops_is_prefix(
         if i >= occurrence_ops.len() {
             let mut span = MultiSpan::from_span(span);
             span.push_span_label(binder.span, "expected repetition");
-            let message = &format!("variable '{}' is still repeating at this depth", name);
+            let message = format!("variable '{}' is still repeating at this depth", name);
             buffer_lint(sess, span, node_id, message);
             return;
         }
@@ -642,7 +642,12 @@ fn ops_is_prefix(
     }
 }
 
-fn buffer_lint(sess: &ParseSess, span: MultiSpan, node_id: NodeId, message: &str) {
+fn buffer_lint(
+    sess: &ParseSess,
+    span: MultiSpan,
+    node_id: NodeId,
+    message: impl Into<DiagnosticMessage>,
+) {
     // Macros loaded from other crates have dummy node ids.
     if node_id != DUMMY_NODE_ID {
         sess.buffer_lint(&META_VARIABLE_MISUSE, span, node_id, message);

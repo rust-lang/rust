@@ -15,7 +15,7 @@ use crate::infer::canonical::{
 use crate::infer::nll_relate::{TypeRelating, TypeRelatingDelegate};
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::{DefineOpaqueTypes, InferCtxt, InferOk, InferResult, NllRegionVariableOrigin};
-use crate::traits::query::{Fallible, NoSolution};
+use crate::traits::query::NoSolution;
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
 use crate::traits::{PredicateObligations, TraitEngine, TraitEngineExt};
 use rustc_data_structures::captures::Captures;
@@ -57,7 +57,7 @@ impl<'tcx> InferCtxt<'tcx> {
         inference_vars: CanonicalVarValues<'tcx>,
         answer: T,
         fulfill_cx: &mut dyn TraitEngine<'tcx>,
-    ) -> Fallible<CanonicalQueryResponse<'tcx, T>>
+    ) -> Result<CanonicalQueryResponse<'tcx, T>, NoSolution>
     where
         T: Debug + TypeFoldable<TyCtxt<'tcx>>,
         Canonical<'tcx, QueryResponse<'tcx, T>>: ArenaAllocatable<'tcx>,
@@ -153,20 +153,22 @@ impl<'tcx> InferCtxt<'tcx> {
 
     /// Used by the new solver as that one takes the opaque types at the end of a probe
     /// to deal with multiple candidates without having to recompute them.
-    pub fn clone_opaque_types_for_query_response(&self) -> Vec<(Ty<'tcx>, Ty<'tcx>)> {
+    pub fn clone_opaque_types_for_query_response(
+        &self,
+    ) -> Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)> {
         self.inner
             .borrow()
             .opaque_type_storage
             .opaque_types
             .iter()
-            .map(|(k, v)| (self.tcx.mk_opaque(k.def_id.to_def_id(), k.substs), v.hidden_type.ty))
+            .map(|(k, v)| (*k, v.hidden_type.ty))
             .collect()
     }
 
-    fn take_opaque_types_for_query_response(&self) -> Vec<(Ty<'tcx>, Ty<'tcx>)> {
+    fn take_opaque_types_for_query_response(&self) -> Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)> {
         std::mem::take(&mut self.inner.borrow_mut().opaque_type_storage.opaque_types)
             .into_iter()
-            .map(|(k, v)| (self.tcx.mk_opaque(k.def_id.to_def_id(), k.substs), v.hidden_type.ty))
+            .map(|(k, v)| (k, v.hidden_type.ty))
             .collect()
     }
 
@@ -507,8 +509,22 @@ impl<'tcx> InferCtxt<'tcx> {
             let a = substitute_value(self.tcx, &result_subst, a);
             let b = substitute_value(self.tcx, &result_subst, b);
             debug!(?a, ?b, "constrain opaque type");
-            obligations
-                .extend(self.at(cause, param_env).eq(DefineOpaqueTypes::Yes, a, b)?.obligations);
+            // We use equate here instead of, for example, just registering the
+            // opaque type's hidden value directly, because we may be instantiating
+            // a query response that was canonicalized in an InferCtxt that had
+            // a different defining anchor. In that case, we may have inferred
+            // `NonLocalOpaque := LocalOpaque` but can only instantiate it in
+            // the other direction as `LocalOpaque := NonLocalOpaque`. Using eq
+            // here allows us to try both directions (in `InferCtxt::handle_opaque_type`).
+            obligations.extend(
+                self.at(cause, param_env)
+                    .eq(
+                        DefineOpaqueTypes::Yes,
+                        self.tcx.mk_opaque(a.def_id.to_def_id(), a.substs),
+                        b,
+                    )?
+                    .obligations,
+            );
         }
 
         Ok(InferOk { value: result_subst, obligations })

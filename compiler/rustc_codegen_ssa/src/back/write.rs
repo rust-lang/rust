@@ -1800,7 +1800,7 @@ impl SharedEmitterMain {
                     handler.emit_diagnostic(&mut d);
                 }
                 Ok(SharedEmitterMessage::InlineAsmError(cookie, msg, level, source)) => {
-                    let msg = msg.strip_prefix("error: ").unwrap_or(&msg);
+                    let msg = msg.strip_prefix("error: ").unwrap_or(&msg).to_string();
 
                     let mut err = match level {
                         Level::Error { lint: false } => sess.struct_err(msg).forget_guarantee(),

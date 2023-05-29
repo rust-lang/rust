@@ -29,6 +29,7 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 
+use std::borrow::Cow;
 use std::iter;
 use std::ops::Deref;
 
@@ -197,8 +198,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             .sess
                             .source_map()
                             .span_to_snippet(span)
-                            .map(|snippet| snippet.ends_with(')'))
-                            .unwrap_or(false)
+                            .is_ok_and(|snippet| snippet.ends_with(')'))
                     }
                     Res::Def(
                         DefKind::Ctor(..) | DefKind::AssocFn | DefKind::Const | DefKind::AssocConst,
@@ -722,7 +722,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         if let TypoCandidate::Shadowed(res, Some(sugg_span)) = typo_sugg
             && res
                 .opt_def_id()
-                .map_or(false, |id| id.is_local() || is_in_same_file(span, sugg_span))
+                .is_some_and(|id| id.is_local() || is_in_same_file(span, sugg_span))
         {
             err.span_label(
                 sugg_span,
@@ -856,7 +856,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             // The current function has a `self` parameter, but we were unable to resolve
             // a reference to `self`. This can only happen if the `self` identifier we
             // are resolving came from a different hygiene context.
-            if fn_kind.decl().inputs.get(0).map_or(false, |p| p.is_self()) {
+            if fn_kind.decl().inputs.get(0).is_some_and(|p| p.is_self()) {
                 err.span_label(*span, "this function has a `self` parameter, but a macro invocation can only access identifiers it receives from parameters");
             } else {
                 let doesnt = if is_assoc_fn {
@@ -1249,7 +1249,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     }),
                 ) if followed_by_brace => {
                     if let Some(sp) = closing_brace {
-                        err.span_label(span, fallback_label);
+                        err.span_label(span, fallback_label.to_string());
                         err.multipart_suggestion(
                             "surround the struct literal with parentheses",
                             vec![
@@ -1321,7 +1321,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     );
                 }
                 _ => {
-                    err.span_label(span, fallback_label);
+                    err.span_label(span, fallback_label.to_string());
                 }
             }
         };
@@ -1334,7 +1334,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 }))
                 | PathSource::Struct,
             ) => {
-                err.span_label(span, fallback_label);
+                err.span_label(span, fallback_label.to_string());
                 err.span_suggestion_verbose(
                     span.shrink_to_hi(),
                     "use `!` to invoke the macro",
@@ -1346,7 +1346,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 }
             }
             (Res::Def(DefKind::Macro(MacroKind::Bang), _), _) => {
-                err.span_label(span, fallback_label);
+                err.span_label(span, fallback_label.to_string());
             }
             (Res::Def(DefKind::TyAlias, def_id), PathSource::Trait(_)) => {
                 err.span_label(span, "type aliases cannot be used as traits");
@@ -1514,7 +1514,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 );
             }
             (Res::SelfTyParam { .. } | Res::SelfTyAlias { .. }, _) if ns == ValueNS => {
-                err.span_label(span, fallback_label);
+                err.span_label(span, fallback_label.to_string());
                 err.note("can't use `Self` as a constructor, you must use the implemented struct");
             }
             (Res::Def(DefKind::TyAlias | DefKind::AssocTy, _), _) if ns == ValueNS => {
@@ -1632,7 +1632,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             .tcx
                             .fn_arg_names(def_id)
                             .first()
-                            .map_or(false, |ident| ident.name == kw::SelfLower),
+                            .is_some_and(|ident| ident.name == kw::SelfLower),
                     };
                     if has_self {
                         return Some(AssocSuggestion::MethodWithSelf { called });
@@ -1931,10 +1931,9 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 let def_id = self.r.tcx.parent(ctor_def_id);
                 match kind {
                     CtorKind::Const => false,
-                    CtorKind::Fn => !self
-                        .r
-                        .field_def_ids(def_id)
-                        .map_or(false, |field_ids| field_ids.is_empty()),
+                    CtorKind::Fn => {
+                        !self.r.field_def_ids(def_id).is_some_and(|field_ids| field_ids.is_empty())
+                    }
                 }
             };
 
@@ -2245,7 +2244,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         &self,
         err: &mut Diagnostic,
         name: Option<&str>,
-        suggest: impl Fn(&mut Diagnostic, bool, Span, &str, String) -> bool,
+        suggest: impl Fn(&mut Diagnostic, bool, Span, Cow<'static, str>, String) -> bool,
     ) {
         let mut suggest_note = true;
         for rib in self.lifetime_ribs.iter().rev() {
@@ -2290,22 +2289,23 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         (span, sugg)
                     };
                     if higher_ranked {
-                        let message = format!(
+                        let message = Cow::from(format!(
                             "consider making the {} lifetime-generic with a new `{}` lifetime",
                             kind.descr(),
                             name.unwrap_or("'a"),
-                        );
-                        should_continue = suggest(err, true, span, &message, sugg);
+                        ));
+                        should_continue = suggest(err, true, span, message, sugg);
                         err.note_once(
                             "for more information on higher-ranked polymorphism, visit \
                              https://doc.rust-lang.org/nomicon/hrtb.html",
                         );
                     } else if let Some(name) = name {
-                        let message = format!("consider introducing lifetime `{}` here", name);
-                        should_continue = suggest(err, false, span, &message, sugg);
+                        let message =
+                            Cow::from(format!("consider introducing lifetime `{}` here", name));
+                        should_continue = suggest(err, false, span, message, sugg);
                     } else {
-                        let message = "consider introducing a named lifetime parameter";
-                        should_continue = suggest(err, false, span, &message, sugg);
+                        let message = Cow::from("consider introducing a named lifetime parameter");
+                        should_continue = suggest(err, false, span, message, sugg);
                     }
                 }
                 LifetimeRibKind::Item => break,

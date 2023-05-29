@@ -377,7 +377,7 @@ impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for EnvNotDefined {
                 rustc::untranslatable_diagnostic,
                 reason = "cannot translate user-provided messages"
             )]
-            handler.struct_diagnostic(msg.as_str())
+            handler.struct_diagnostic(msg.to_string())
         } else {
             handler.struct_diagnostic(crate::fluent_generated::builtin_macros_env_not_defined)
         };

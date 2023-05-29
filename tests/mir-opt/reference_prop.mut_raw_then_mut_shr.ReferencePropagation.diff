@@ -13,13 +13,16 @@
           debug x => _1;                   // in scope 1 at $DIR/reference_prop.rs:+1:9: +1:14
           let _2: &mut i32;                // in scope 1 at $DIR/reference_prop.rs:+2:9: +2:13
           scope 2 {
-              debug xref => _2;            // in scope 2 at $DIR/reference_prop.rs:+2:9: +2:13
+-             debug xref => _2;            // in scope 2 at $DIR/reference_prop.rs:+2:9: +2:13
++             debug xref => &_1;           // in scope 2 at $DIR/reference_prop.rs:+2:9: +2:13
               let _3: *mut i32;            // in scope 2 at $DIR/reference_prop.rs:+3:9: +3:13
               scope 3 {
-                  debug xraw => _3;        // in scope 3 at $DIR/reference_prop.rs:+3:9: +3:13
+-                 debug xraw => _3;        // in scope 3 at $DIR/reference_prop.rs:+3:9: +3:13
++                 debug xraw => &_1;       // in scope 3 at $DIR/reference_prop.rs:+3:9: +3:13
                   let _6: &i32;            // in scope 3 at $DIR/reference_prop.rs:+4:9: +4:13
                   scope 4 {
-                      debug xshr => _6;    // in scope 4 at $DIR/reference_prop.rs:+4:9: +4:13
+-                     debug xshr => _6;    // in scope 4 at $DIR/reference_prop.rs:+4:9: +4:13
++                     debug xshr => &_1;   // in scope 4 at $DIR/reference_prop.rs:+4:9: +4:13
                       let _7: i32;         // in scope 4 at $DIR/reference_prop.rs:+6:9: +6:10
                       scope 5 {
                           debug a => _7;   // in scope 5 at $DIR/reference_prop.rs:+6:9: +6:10
@@ -35,19 +38,17 @@
           StorageLive(_1);                 // scope 0 at $DIR/reference_prop.rs:+1:9: +1:14
           _1 = const 2_i32;                // scope 0 at $DIR/reference_prop.rs:+1:17: +1:18
 -         StorageLive(_2);                 // scope 1 at $DIR/reference_prop.rs:+2:9: +2:13
-          _2 = &mut _1;                    // scope 1 at $DIR/reference_prop.rs:+2:16: +2:22
-          StorageLive(_3);                 // scope 2 at $DIR/reference_prop.rs:+3:9: +3:13
+-         _2 = &mut _1;                    // scope 1 at $DIR/reference_prop.rs:+2:16: +2:22
+-         StorageLive(_3);                 // scope 2 at $DIR/reference_prop.rs:+3:9: +3:13
 -         StorageLive(_4);                 // scope 2 at $DIR/reference_prop.rs:+3:16: +3:36
 -         StorageLive(_5);                 // scope 2 at $DIR/reference_prop.rs:+3:16: +3:26
 -         _5 = &mut (*_2);                 // scope 2 at $DIR/reference_prop.rs:+3:16: +3:26
 -         _4 = &raw mut (*_5);             // scope 2 at $DIR/reference_prop.rs:+3:16: +3:26
-+         _4 = &raw mut _1;                // scope 2 at $DIR/reference_prop.rs:+3:16: +3:26
-          _3 = _4;                         // scope 2 at $DIR/reference_prop.rs:+3:16: +3:36
+-         _3 = _4;                         // scope 2 at $DIR/reference_prop.rs:+3:16: +3:36
 -         StorageDead(_5);                 // scope 2 at $DIR/reference_prop.rs:+3:36: +3:37
 -         StorageDead(_4);                 // scope 2 at $DIR/reference_prop.rs:+3:36: +3:37
-          StorageLive(_6);                 // scope 3 at $DIR/reference_prop.rs:+4:9: +4:13
+-         StorageLive(_6);                 // scope 3 at $DIR/reference_prop.rs:+4:9: +4:13
 -         _6 = &(*_2);                     // scope 3 at $DIR/reference_prop.rs:+4:16: +4:22
-+         _6 = &_1;                        // scope 3 at $DIR/reference_prop.rs:+4:16: +4:22
           StorageLive(_7);                 // scope 4 at $DIR/reference_prop.rs:+6:9: +6:10
 -         _7 = (*_6);                      // scope 4 at $DIR/reference_prop.rs:+6:13: +6:18
 -         StorageLive(_8);                 // scope 5 at $DIR/reference_prop.rs:+7:5: +7:26
@@ -64,8 +65,8 @@
           StorageDead(_10);                // scope 5 at $DIR/reference_prop.rs:+8:10: +8:11
           StorageDead(_9);                 // scope 5 at $DIR/reference_prop.rs:+8:10: +8:11
           StorageDead(_7);                 // scope 4 at $DIR/reference_prop.rs:+9:1: +9:2
-          StorageDead(_6);                 // scope 3 at $DIR/reference_prop.rs:+9:1: +9:2
-          StorageDead(_3);                 // scope 2 at $DIR/reference_prop.rs:+9:1: +9:2
+-         StorageDead(_6);                 // scope 3 at $DIR/reference_prop.rs:+9:1: +9:2
+-         StorageDead(_3);                 // scope 2 at $DIR/reference_prop.rs:+9:1: +9:2
 -         StorageDead(_2);                 // scope 1 at $DIR/reference_prop.rs:+9:1: +9:2
           StorageDead(_1);                 // scope 0 at $DIR/reference_prop.rs:+9:1: +9:2
           return;                          // scope 0 at $DIR/reference_prop.rs:+9:2: +9:2

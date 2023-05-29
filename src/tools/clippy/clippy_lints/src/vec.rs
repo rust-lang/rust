@@ -84,7 +84,7 @@ impl UselessVec {
         let mut applicability = Applicability::MachineApplicable;
         let snippet = match *vec_args {
             higher::VecArgs::Repeat(elem, len) => {
-                if let Some((Constant::Int(len_constant), _)) = constant(cx, cx.typeck_results(), len) {
+                if let Some(Constant::Int(len_constant)) = constant(cx, cx.typeck_results(), len) {
                     #[expect(clippy::cast_possible_truncation)]
                     if len_constant as u64 * size_of(cx, elem) > self.too_large_for_stack {
                         return;

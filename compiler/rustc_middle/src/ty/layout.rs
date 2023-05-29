@@ -1,5 +1,6 @@
 use crate::fluent_generated as fluent;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use crate::query::TyCtxtAt;
 use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::{self, ReprOptions, Ty, TyCtxt, TypeVisitableExt};
 use rustc_errors::{DiagnosticBuilder, Handler, IntoDiagnostic};
@@ -268,7 +269,7 @@ pub struct LayoutCx<'tcx, C> {
 impl<'tcx> LayoutCalculator for LayoutCx<'tcx, TyCtxt<'tcx>> {
     type TargetDataLayoutRef = &'tcx TargetDataLayout;
 
-    fn delay_bug(&self, txt: &str) {
+    fn delay_bug(&self, txt: String) {
         self.tcx.sess.delay_span_bug(DUMMY_SP, txt);
     }
 
@@ -543,20 +544,20 @@ impl<'tcx> HasTyCtxt<'tcx> for TyCtxt<'tcx> {
     }
 }
 
-impl<'tcx> HasDataLayout for ty::query::TyCtxtAt<'tcx> {
+impl<'tcx> HasDataLayout for TyCtxtAt<'tcx> {
     #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
         &self.data_layout
     }
 }
 
-impl<'tcx> HasTargetSpec for ty::query::TyCtxtAt<'tcx> {
+impl<'tcx> HasTargetSpec for TyCtxtAt<'tcx> {
     fn target_spec(&self) -> &Target {
         &self.sess.target
     }
 }
 
-impl<'tcx> HasTyCtxt<'tcx> for ty::query::TyCtxtAt<'tcx> {
+impl<'tcx> HasTyCtxt<'tcx> for TyCtxtAt<'tcx> {
     #[inline]
     fn tcx(&self) -> TyCtxt<'tcx> {
         **self
@@ -683,7 +684,7 @@ impl<'tcx> LayoutOfHelpers<'tcx> for LayoutCx<'tcx, TyCtxt<'tcx>> {
     }
 }
 
-impl<'tcx> LayoutOfHelpers<'tcx> for LayoutCx<'tcx, ty::query::TyCtxtAt<'tcx>> {
+impl<'tcx> LayoutOfHelpers<'tcx> for LayoutCx<'tcx, TyCtxtAt<'tcx>> {
     type LayoutOfResult = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
 
     #[inline]

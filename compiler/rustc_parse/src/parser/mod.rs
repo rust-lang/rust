@@ -536,7 +536,9 @@ impl<'a> Parser<'a> {
         } else if inedible.contains(&self.token.kind) {
             // leave it in the input
             Ok(false)
-        } else if self.last_unexpected_token_span == Some(self.token.span) {
+        } else if self.token.kind != token::Eof
+            && self.last_unexpected_token_span == Some(self.token.span)
+        {
             FatalError.raise();
         } else {
             self.expected_one_of_not_found(edible, inedible)

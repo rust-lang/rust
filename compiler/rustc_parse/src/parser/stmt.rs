@@ -23,6 +23,7 @@ use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
 use rustc_span::source_map::{BytePos, Span};
 use rustc_span::symbol::{kw, sym, Ident};
 
+use std::borrow::Cow;
 use std::mem;
 use thin_vec::{thin_vec, ThinVec};
 
@@ -40,7 +41,8 @@ impl<'a> Parser<'a> {
 
     /// If `force_collect` is [`ForceCollect::Yes`], forces collection of tokens regardless of whether
     /// or not we have attributes
-    pub(crate) fn parse_stmt_without_recovery(
+    // Public for `cfg_eval` macro expansion.
+    pub fn parse_stmt_without_recovery(
         &mut self,
         capture_semi: bool,
         force_collect: ForceCollect,
@@ -363,7 +365,7 @@ impl<'a> Parser<'a> {
                         // `let...else if`. Emit the same error that `parse_block()` would,
                         // but explicitly point out that this pattern is not allowed.
                         let msg = "conditional `else if` is not supported for `let...else`";
-                        return Err(self.error_block_no_opening_brace_msg(msg));
+                        return Err(self.error_block_no_opening_brace_msg(Cow::from(msg)));
                     }
                     let els = self.parse_block()?;
                     self.check_let_else_init_bool_expr(&init);
@@ -437,7 +439,7 @@ impl<'a> Parser<'a> {
 
     fn error_block_no_opening_brace_msg(
         &mut self,
-        msg: &str,
+        msg: Cow<'static, str>,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         let sp = self.token.span;
         let mut e = self.struct_span_err(sp, msg);
@@ -501,7 +503,7 @@ impl<'a> Parser<'a> {
     fn error_block_no_opening_brace<T>(&mut self) -> PResult<'a, T> {
         let tok = super::token_descr(&self.token);
         let msg = format!("expected `{{`, found {}", tok);
-        Err(self.error_block_no_opening_brace_msg(&msg))
+        Err(self.error_block_no_opening_brace_msg(Cow::from(msg)))
     }
 
     /// Parses a block. Inner attributes are allowed.

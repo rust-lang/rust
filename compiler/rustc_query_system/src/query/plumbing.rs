@@ -312,7 +312,7 @@ where
 }
 
 #[inline(never)]
-fn try_execute_query<Q, Qcx>(
+fn try_execute_query<Q, Qcx, const INCR: bool>(
     query: Q,
     qcx: Qcx,
     span: Span,
@@ -355,7 +355,7 @@ where
             // Drop the lock before we start executing the query
             drop(state_lock);
 
-            execute_job(query, qcx, state, key, id, dep_node)
+            execute_job::<_, _, INCR>(query, qcx, state, key, id, dep_node)
         }
         Entry::Occupied(mut entry) => {
             match entry.get_mut() {
@@ -383,7 +383,7 @@ where
 }
 
 #[inline(always)]
-fn execute_job<Q, Qcx>(
+fn execute_job<Q, Qcx, const INCR: bool>(
     query: Q,
     qcx: Qcx,
     state: &QueryState<Q::Key, Qcx::DepKind>,
@@ -398,9 +398,19 @@ where
     // Use `JobOwner` so the query will be poisoned if executing it panics.
     let job_owner = JobOwner { state, key };
 
-    let (result, dep_node_index) = match qcx.dep_context().dep_graph().data() {
-        None => execute_job_non_incr(query, qcx, key, id),
-        Some(data) => execute_job_incr(query, qcx, data, key, dep_node, id),
+    debug_assert_eq!(qcx.dep_context().dep_graph().is_fully_enabled(), INCR);
+
+    let (result, dep_node_index) = if INCR {
+        execute_job_incr(
+            query,
+            qcx,
+            qcx.dep_context().dep_graph().data().unwrap(),
+            key,
+            dep_node,
+            id,
+        )
+    } else {
+        execute_job_non_incr(query, qcx, key, id)
     };
 
     let cache = query.query_cache(qcx);
@@ -423,16 +433,22 @@ where
                 (hasher(&mut hcx, &cached_result), hasher(&mut hcx, &result))
             });
             let formatter = query.format_value();
-            debug_assert_eq!(
-                old_hash,
-                new_hash,
-                "Computed query value for {:?}({:?}) is inconsistent with fed value,\n\
-                computed={:#?}\nfed={:#?}",
-                query.dep_kind(),
-                key,
-                formatter(&result),
-                formatter(&cached_result),
-            );
+            if old_hash != new_hash {
+                // We have an inconsistency. This can happen if one of the two
+                // results is tainted by errors. In this case, delay a bug to
+                // ensure compilation is doomed.
+                qcx.dep_context().sess().delay_span_bug(
+                    DUMMY_SP,
+                    format!(
+                        "Computed query value for {:?}({:?}) is inconsistent with fed value,\n\
+                        computed={:#?}\nfed={:#?}",
+                        query.dep_kind(),
+                        key,
+                        formatter(&result),
+                        formatter(&cached_result),
+                    ),
+                );
+            }
         }
     }
     job_owner.complete(cache, result, dep_node_index);
@@ -564,58 +580,43 @@ where
 
     // First we try to load the result from the on-disk cache.
     // Some things are never cached on disk.
-    if let Some(try_load_from_disk) = query.try_load_from_disk(qcx, &key) {
-        let prof_timer = qcx.dep_context().profiler().incr_cache_loading();
-
-        // The call to `with_query_deserialization` enforces that no new `DepNodes`
-        // are created during deserialization. See the docs of that method for more
-        // details.
-        let result = qcx
-            .dep_context()
-            .dep_graph()
-            .with_query_deserialization(|| try_load_from_disk(qcx, prev_dep_node_index));
-
-        prof_timer.finish_with_query_invocation_id(dep_node_index.into());
-
-        if let Some(result) = result {
-            if std::intrinsics::unlikely(
-                qcx.dep_context().sess().opts.unstable_opts.query_dep_graph,
-            ) {
-                dep_graph_data.mark_debug_loaded_from_disk(*dep_node)
-            }
-
-            let prev_fingerprint = dep_graph_data.prev_fingerprint_of(prev_dep_node_index);
-            // If `-Zincremental-verify-ich` is specified, re-hash results from
-            // the cache and make sure that they have the expected fingerprint.
-            //
-            // If not, we still seek to verify a subset of fingerprints loaded
-            // from disk. Re-hashing results is fairly expensive, so we can't
-            // currently afford to verify every hash. This subset should still
-            // give us some coverage of potential bugs though.
-            let try_verify = prev_fingerprint.split().1.as_u64() % 32 == 0;
-            if std::intrinsics::unlikely(
-                try_verify || qcx.dep_context().sess().opts.unstable_opts.incremental_verify_ich,
-            ) {
-                incremental_verify_ich(
-                    *qcx.dep_context(),
-                    dep_graph_data,
-                    &result,
-                    prev_dep_node_index,
-                    query.hash_result(),
-                    query.format_value(),
-                );
-            }
-
-            return Some((result, dep_node_index));
+    if let Some(result) = query.try_load_from_disk(qcx, key, prev_dep_node_index, dep_node_index) {
+        if std::intrinsics::unlikely(qcx.dep_context().sess().opts.unstable_opts.query_dep_graph) {
+            dep_graph_data.mark_debug_loaded_from_disk(*dep_node)
         }
 
-        // We always expect to find a cached result for things that
-        // can be forced from `DepNode`.
-        debug_assert!(
-            !qcx.dep_context().fingerprint_style(dep_node.kind).reconstructible(),
-            "missing on-disk cache entry for reconstructible {dep_node:?}"
-        );
+        let prev_fingerprint = dep_graph_data.prev_fingerprint_of(prev_dep_node_index);
+        // If `-Zincremental-verify-ich` is specified, re-hash results from
+        // the cache and make sure that they have the expected fingerprint.
+        //
+        // If not, we still seek to verify a subset of fingerprints loaded
+        // from disk. Re-hashing results is fairly expensive, so we can't
+        // currently afford to verify every hash. This subset should still
+        // give us some coverage of potential bugs though.
+        let try_verify = prev_fingerprint.split().1.as_u64() % 32 == 0;
+        if std::intrinsics::unlikely(
+            try_verify || qcx.dep_context().sess().opts.unstable_opts.incremental_verify_ich,
+        ) {
+            incremental_verify_ich(
+                *qcx.dep_context(),
+                dep_graph_data,
+                &result,
+                prev_dep_node_index,
+                query.hash_result(),
+                query.format_value(),
+            );
+        }
+
+        return Some((result, dep_node_index));
     }
+
+    // We always expect to find a cached result for things that
+    // can be forced from `DepNode`.
+    debug_assert!(
+        !query.cache_on_disk(*qcx.dep_context(), key)
+            || !qcx.dep_context().fingerprint_style(dep_node.kind).reconstructible(),
+        "missing on-disk cache entry for {dep_node:?}"
+    );
 
     // Sanity check for the logic in `ensure`: if the node is green and the result loadable,
     // we should actually be able to load it.
@@ -799,7 +800,18 @@ pub enum QueryMode {
 }
 
 #[inline(always)]
-pub fn get_query<Q, Qcx>(
+pub fn get_query_non_incr<Q, Qcx>(query: Q, qcx: Qcx, span: Span, key: Q::Key) -> Q::Value
+where
+    Q: QueryConfig<Qcx>,
+    Qcx: QueryContext,
+{
+    debug_assert!(!qcx.dep_context().dep_graph().is_fully_enabled());
+
+    ensure_sufficient_stack(|| try_execute_query::<Q, Qcx, false>(query, qcx, span, key, None).0)
+}
+
+#[inline(always)]
+pub fn get_query_incr<Q, Qcx>(
     query: Q,
     qcx: Qcx,
     span: Span,
@@ -810,6 +822,8 @@ where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
 {
+    debug_assert!(qcx.dep_context().dep_graph().is_fully_enabled());
+
     let dep_node = if let QueryMode::Ensure { check_cache } = mode {
         let (must_run, dep_node) = ensure_must_run(query, qcx, &key, check_cache);
         if !must_run {
@@ -820,8 +834,9 @@ where
         None
     };
 
-    let (result, dep_node_index) =
-        ensure_sufficient_stack(|| try_execute_query(query, qcx, span, key, dep_node));
+    let (result, dep_node_index) = ensure_sufficient_stack(|| {
+        try_execute_query::<_, _, true>(query, qcx, span, key, dep_node)
+    });
     if let Some(dep_node_index) = dep_node_index {
         qcx.dep_context().dep_graph().read_index(dep_node_index)
     }
@@ -846,5 +861,7 @@ pub fn force_query<Q, Qcx>(
 
     debug_assert!(!query.anon());
 
-    ensure_sufficient_stack(|| try_execute_query(query, qcx, DUMMY_SP, key, Some(dep_node)));
+    ensure_sufficient_stack(|| {
+        try_execute_query::<_, _, true>(query, qcx, DUMMY_SP, key, Some(dep_node))
+    });
 }

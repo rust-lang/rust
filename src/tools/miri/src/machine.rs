@@ -651,6 +651,10 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
 
     /// Sets up the "extern statics" for this machine.
     fn init_extern_statics(this: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
+        // "__rust_no_alloc_shim_is_unstable"
+        let val = ImmTy::from_int(0, this.machine.layouts.u8);
+        Self::alloc_extern_static(this, "__rust_no_alloc_shim_is_unstable", val)?;
+
         match this.tcx.sess.target.os.as_ref() {
             "linux" => {
                 // "environ"
@@ -712,6 +716,15 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
     pub(crate) fn is_local(&self, frame: &FrameInfo<'_>) -> bool {
         let def_id = frame.instance.def_id();
         def_id.is_local() || self.local_crates.contains(&def_id.krate)
+    }
+
+    /// Called when the interpreter is going to shut down abnormally, such as due to a Ctrl-C.
+    pub(crate) fn handle_abnormal_termination(&mut self) {
+        // All strings in the profile data are stored in a single string table which is not
+        // written to disk until the profiler is dropped. If the interpreter exits without dropping
+        // the profiler, it is not possible to interpret the profile data and all measureme tools
+        // will panic when given the file.
+        drop(self.profiler.take());
     }
 }
 

@@ -42,6 +42,7 @@ use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::symbol::sym;
 use rustc_span::{ExpnKind, Span, DUMMY_SP};
+use std::borrow::Cow;
 use std::fmt;
 use std::iter;
 use std::ops::ControlFlow;
@@ -437,7 +438,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     // 1) strictly implied by another error.
                     // 2) implied by an error with a smaller index.
                     for error2 in error_set {
-                        if error2.index.map_or(false, |index2| is_suppressed[index2]) {
+                        if error2.index.is_some_and(|index2| is_suppressed[index2]) {
                             // Avoid errors being suppressed by already-suppressed
                             // errors, to prevent all errors from being suppressed
                             // at once.
@@ -885,7 +886,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             return;
                         }
 
-                        if self.suggest_impl_trait(&mut err, span, &obligation, trait_predicate) {
+                        if self.suggest_impl_trait(&mut err, &obligation, trait_predicate) {
                             err.emit();
                             return;
                         }
@@ -1602,7 +1603,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         }),
                     ) => Some((
                         ty.span,
-                        with_forced_trimmed_paths!(format!(
+                        with_forced_trimmed_paths!(Cow::from(format!(
                             "type mismatch resolving `{}`",
                             self.resolve_vars_if_possible(predicate)
                                 .print(FmtPrinter::new_with_limit(
@@ -1612,7 +1613,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 ))
                                 .unwrap()
                                 .into_buffer()
-                        )),
+                        ))),
                     )),
                     _ => None,
                 }

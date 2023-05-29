@@ -8,7 +8,7 @@
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
-use rustc_middle::mir::{Body, Local, Location, Operand, Terminator, TerminatorKind, RETURN_PLACE};
+use rustc_middle::mir::{Body, Location, Operand, Place, Terminator, TerminatorKind, RETURN_PLACE};
 use rustc_middle::ty::{self, DeducedParamAttrs, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 
@@ -29,31 +29,31 @@ impl DeduceReadOnly {
 }
 
 impl<'tcx> Visitor<'tcx> for DeduceReadOnly {
-    fn visit_local(&mut self, local: Local, mut context: PlaceContext, _: Location) {
+    fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _location: Location) {
         // We're only interested in arguments.
-        if local == RETURN_PLACE || local.index() > self.mutable_args.domain_size() {
+        if place.local == RETURN_PLACE || place.local.index() > self.mutable_args.domain_size() {
             return;
         }
 
-        // Replace place contexts that are moves with copies. This is safe in all cases except
-        // function argument position, which we already handled in `visit_terminator()` by using the
-        // ArgumentChecker. See the comment in that method for more details.
-        //
-        // In the future, we might want to move this out into a separate pass, but for now let's
-        // just do it on the fly because that's faster.
-        if matches!(context, PlaceContext::NonMutatingUse(NonMutatingUseContext::Move)) {
-            context = PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy);
-        }
-
-        match context {
-            PlaceContext::MutatingUse(..)
-            | PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) => {
+        let mark_as_mutable = match context {
+            PlaceContext::MutatingUse(..) => {
                 // This is a mutation, so mark it as such.
-                self.mutable_args.insert(local.index() - 1);
+                true
+            }
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::AddressOf) => {
+                // Whether mutating though a `&raw const` is allowed is still undecided, so we
+                // disable any sketchy `readonly` optimizations for now.
+                // But we only need to do this if the pointer would point into the argument.
+                !place.is_indirect()
             }
             PlaceContext::NonMutatingUse(..) | PlaceContext::NonUse(..) => {
                 // Not mutating, so it's fine.
+                false
             }
+        };
+
+        if mark_as_mutable {
+            self.mutable_args.insert(place.local.index() - 1);
         }
     }
 

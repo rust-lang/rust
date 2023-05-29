@@ -1,4 +1,5 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
+use clippy_utils::is_ty_alias;
 use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{is_copy, is_type_diagnostic_item, same_type_and_consts};
@@ -138,6 +139,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                 if_chain! {
                     if let ExprKind::Path(ref qpath) = path.kind;
                     if let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id();
+                    if !is_ty_alias(qpath);
                     then {
                         let a = cx.typeck_results().expr_ty(e);
                         let b = cx.typeck_results().expr_ty(arg);

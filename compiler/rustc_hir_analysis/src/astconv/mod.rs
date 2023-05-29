@@ -19,7 +19,7 @@ use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{
     struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, FatalError,
-    MultiSpan,
+    MultiSpan, StashKey,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
@@ -38,7 +38,6 @@ use rustc_middle::ty::{self, Const, IsSuggestable, Ty, TyCtxt, TypeVisitableExt}
 use rustc_middle::ty::{DynKind, ToPredicate};
 use rustc_session::lint::builtin::{AMBIGUOUS_ASSOCIATED_ITEMS, BARE_TRAIT_OBJECTS};
 use rustc_span::edit_distance::find_best_match_for_name;
-use rustc_span::edition::Edition;
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::{sym, Span, DUMMY_SP};
 use rustc_target::spec::abi;
@@ -464,7 +463,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             self.astconv.ct_infer(ty, Some(param), inf.span).into()
                         } else {
                             self.inferred_params.push(inf.span);
-                            tcx.const_error(ty).into()
+                            tcx.const_error_misc(ty).into()
                         }
                     }
                     _ => unreachable!(),
@@ -518,7 +517,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             .no_bound_vars()
                             .expect("const parameter types cannot be generic");
                         if let Err(guar) = ty.error_reported() {
-                            return tcx.const_error_with_guaranteed(ty, guar).into();
+                            return tcx.const_error(ty, guar).into();
                         }
                         if !infer_args && has_default {
                             tcx.const_param_default(param.def_id).subst(tcx, substs.unwrap()).into()
@@ -527,7 +526,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 self.astconv.ct_infer(ty, Some(param), self.span).into()
                             } else {
                                 // We've already errored above about the mismatch.
-                                tcx.const_error(ty).into()
+                                tcx.const_error_misc(ty).into()
                             }
                         }
                     }
@@ -1160,7 +1159,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             // those that do.
             self.one_bound_for_assoc_type(
                 || traits::supertraits(tcx, trait_ref),
-                trait_ref.print_only_trait_path(),
+                trait_ref.skip_binder().print_only_trait_name(),
                 binding.item_name,
                 path_span,
                 match binding.kind {
@@ -1279,7 +1278,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             // params (and trait ref's late bound params). This logic is very similar to
             // `Predicate::subst_supertrait`, and it's no coincidence why.
             let shifted_output = tcx.shift_bound_var_indices(num_bound_vars, output);
-            let subst_output = ty::EarlyBinder(shifted_output).subst(tcx, substs);
+            let subst_output = ty::EarlyBinder::new(shifted_output).subst(tcx, substs);
 
             let bound_vars = tcx.late_bound_vars(binding.hir_id);
             ty::Binder::bind_with_vars(subst_output, bound_vars)
@@ -1387,7 +1386,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         term = match def_kind {
                             hir::def::DefKind::AssocTy => tcx.ty_error(reported).into(),
                             hir::def::DefKind::AssocConst => tcx
-                                .const_error_with_guaranteed(
+                                .const_error(
                                     tcx.type_of(assoc_item_def_id)
                                         .subst(tcx, projection_ty.skip_binder().substs),
                                     reported,
@@ -2626,7 +2625,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     && tcx.all_impls(*trait_def_id)
                         .any(|impl_def_id| {
                             let trait_ref = tcx.impl_trait_ref(impl_def_id);
-                            trait_ref.map_or(false, |trait_ref| {
+                            trait_ref.is_some_and(|trait_ref| {
                                 let impl_ = trait_ref.subst(
                                     tcx,
                                     infcx.fresh_substs_for_item(DUMMY_SP, impl_def_id),
@@ -3655,7 +3654,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             ..
         }) = tcx.hir().get_by_def_id(parent_id) && self_ty.hir_id == impl_self_ty.hir_id
         {
-            if !of_trait_ref.trait_def_id().map_or(false, |def_id| def_id.is_local()) {
+            if !of_trait_ref.trait_def_id().is_some_and(|def_id| def_id.is_local()) {
                 return;
             }
             let of_trait_span = of_trait_ref.path.span;
@@ -3694,7 +3693,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     .source_map()
                     .span_to_prev_source(self_ty.span)
                     .ok()
-                    .map_or(false, |s| s.trim_end().ends_with('<'));
+                    .is_some_and(|s| s.trim_end().ends_with('<'));
 
             let is_global = poly_trait_ref.trait_ref.path.is_global();
 
@@ -3718,7 +3717,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 ));
             }
 
-            if self_ty.span.edition() >= Edition::Edition2021 {
+            if self_ty.span.edition().rust_2021() {
                 let msg = "trait objects must include the `dyn` keyword";
                 let label = "add `dyn` keyword before this trait";
                 let mut diag =
@@ -3732,7 +3731,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
                 // check if the impl trait that we are considering is a impl of a local trait
                 self.maybe_lint_blanket_trait_impl(&self_ty, &mut diag);
-                diag.emit();
+                diag.stash(self_ty.span, StashKey::TraitMissingMethod);
             } else {
                 let msg = "trait objects without an explicit `dyn` are deprecated";
                 tcx.struct_span_lint_hir(

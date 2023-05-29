@@ -355,9 +355,9 @@ pub(crate) fn build_impl(
         return;
     }
 
-    let _prof_timer = cx.tcx.sess.prof.generic_activity("build_impl");
-
     let tcx = cx.tcx;
+    let _prof_timer = tcx.sess.prof.generic_activity("build_impl");
+
     let associated_trait = tcx.impl_trait_ref(did).map(ty::EarlyBinder::skip_binder);
 
     // Only inline impl if the implemented trait is

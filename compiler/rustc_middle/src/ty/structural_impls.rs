@@ -192,6 +192,44 @@ impl<'tcx> fmt::Debug for AliasTy<'tcx> {
     }
 }
 
+impl<'tcx> fmt::Debug for ty::InferConst<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            InferConst::Var(var) => write!(f, "{var:?}"),
+            InferConst::Fresh(var) => write!(f, "Fresh({var:?})"),
+        }
+    }
+}
+
+impl<'tcx> fmt::Debug for ty::Const<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // This reflects what `Const` looked liked before `Interned` was
+        // introduced. We print it like this to avoid having to update expected
+        // output in a lot of tests.
+        write!(f, "Const {{ ty: {:?}, kind: {:?} }}", self.ty(), self.kind())
+    }
+}
+
+impl<'tcx> fmt::Debug for ty::ConstKind<'tcx> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use ty::ConstKind::*;
+        match self {
+            Param(param) => write!(f, "{param:?}"),
+            Infer(var) => write!(f, "{var:?}"),
+            Bound(debruijn, var) => ty::print::debug_bound_var(f, *debruijn, *var),
+            Placeholder(placeholder) => {
+                ty::print::debug_placeholder_var(f, placeholder.universe, placeholder.bound)
+            }
+            Unevaluated(uv) => {
+                f.debug_tuple("Unevaluated").field(&uv.substs).field(&uv.def).finish()
+            }
+            Value(valtree) => write!(f, "{valtree:?}"),
+            Error(_) => write!(f, "[const error]"),
+            Expr(expr) => write!(f, "{expr:?}"),
+        }
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // Atomic structs
 //
@@ -204,6 +242,7 @@ CloneLiftImpls! {
     (),
     bool,
     usize,
+    u8,
     u16,
     u32,
     u64,

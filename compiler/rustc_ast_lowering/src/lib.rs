@@ -58,7 +58,7 @@ use rustc_errors::{
 use rustc_fluent_macro::fluent_messages;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
-use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
+use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::{ConstArg, GenericArg, ItemLocalId, ParamName, TraitCandidate};
 use rustc_index::{Idx, IndexSlice, IndexVec};
@@ -435,6 +435,7 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
     // Queries that borrow `resolver_for_lowering`.
     tcx.ensure_with_value().output_filenames(());
     tcx.ensure_with_value().early_lint_checks(());
+    tcx.ensure_with_value().debugger_visualizers(LOCAL_CRATE);
     let (mut resolver, krate) = tcx.resolver_for_lowering(()).steal();
 
     let ast_index = index_crate(&resolver.node_id_to_def_id, &krate);
@@ -1424,7 +1425,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             DefPathData::ImplTrait,
                             span,
                         );
-                        let ident = Ident::from_str_and_span(&pprust::ty_to_string(t), span);
+
+                        // HACK: pprust breaks strings with newlines when the type
+                        // gets too long. We don't want these to show up in compiler
+                        // output or built artifacts, so replace them here...
+                        // Perhaps we should instead format APITs more robustly.
+                        let ident = Ident::from_str_and_span(
+                            &pprust::ty_to_string(t).replace('\n', " "),
+                            span,
+                        );
+
                         let (param, bounds, path) = self.lower_universal_param_and_bounds(
                             *def_node_id,
                             span,

@@ -22,19 +22,25 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         &mut self,
         goal: Goal<'tcx, ProjectionPredicate<'tcx>>,
     ) -> QueryResult<'tcx> {
-        // To only compute normalization once for each projection we only
-        // normalize if the expected term is an unconstrained inference variable.
-        //
-        // E.g. for `<T as Trait>::Assoc == u32` we recursively compute the goal
-        // `exists<U> <T as Trait>::Assoc == U` and then take the resulting type for
-        // `U` and equate it with `u32`. This means that we don't need a separate
-        // projection cache in the solver.
-        if self.term_is_fully_unconstrained(goal) {
-            let candidates = self.assemble_and_evaluate_candidates(goal);
-            self.merge_candidates(candidates)
-        } else {
-            self.set_normalizes_to_hack_goal(goal);
-            self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        match goal.predicate.projection_ty.kind(self.tcx()) {
+            ty::AliasKind::Projection => {
+                // To only compute normalization once for each projection we only
+                // normalize if the expected term is an unconstrained inference variable.
+                //
+                // E.g. for `<T as Trait>::Assoc == u32` we recursively compute the goal
+                // `exists<U> <T as Trait>::Assoc == U` and then take the resulting type for
+                // `U` and equate it with `u32`. This means that we don't need a separate
+                // projection cache in the solver.
+                if self.term_is_fully_unconstrained(goal) {
+                    let candidates = self.assemble_and_evaluate_candidates(goal);
+                    self.merge_candidates(candidates)
+                } else {
+                    self.set_normalizes_to_hack_goal(goal);
+                    self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                }
+            }
+            ty::AliasKind::Opaque => self.normalize_opaque_type(goal),
+            ty::AliasKind::Inherent => bug!("IATs not supported here yet"),
         }
     }
 }
@@ -124,10 +130,24 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             };
 
             if !assoc_def.item.defaultness(tcx).has_value() {
-                tcx.sess.delay_span_bug(
+                let guar = tcx.sess.delay_span_bug(
                     tcx.def_span(assoc_def.item.def_id),
                     "missing value for assoc item in impl",
                 );
+                let error_term = match assoc_def.item.kind {
+                    ty::AssocKind::Const => tcx
+                        .const_error(
+                            tcx.type_of(goal.predicate.def_id())
+                                .subst(tcx, goal.predicate.projection_ty.substs),
+                            guar,
+                        )
+                        .into(),
+                    ty::AssocKind::Type => tcx.ty_error(guar).into(),
+                    ty::AssocKind::Fn => unreachable!(),
+                };
+                ecx.eq(goal.param_env, goal.predicate.term, error_term)
+                    .expect("expected goal term to be fully unconstrained");
+                return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
             }
 
             // Getting the right substitutions here is complex, e.g. given:

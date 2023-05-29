@@ -1,4 +1,5 @@
 pub mod codegen_fn_attrs;
+pub mod debugger_visualizer;
 pub mod dependency_format;
 pub mod exported_symbols;
 pub mod lang_items;
@@ -32,6 +33,6 @@ pub mod region;
 pub mod resolve_bound_vars;
 pub mod stability;
 
-pub fn provide(providers: &mut crate::ty::query::Providers) {
+pub fn provide(providers: &mut crate::query::Providers) {
     limits::provide(providers);
 }

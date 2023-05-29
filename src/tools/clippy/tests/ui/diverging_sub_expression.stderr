@@ -31,18 +31,10 @@ LL |             3 => true || diverge(),
    |                          ^^^^^^^^^
 
 error: sub-expression diverges
-  --> $DIR/diverging_sub_expression.rs:36:30
-   |
-LL |                 _ => true || panic!("boo"),
-   |                              ^^^^^^^^^^^^^
-   |
-   = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: sub-expression diverges
   --> $DIR/diverging_sub_expression.rs:38:26
    |
 LL |             _ => true || break,
    |                          ^^^^^
 
-error: aborting due to 7 previous errors
+error: aborting due to 6 previous errors
 

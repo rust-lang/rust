@@ -24,7 +24,7 @@ use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
 use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult};
 use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::traits::select;
+use rustc_middle::traits::{select, DefiningAnchor};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::BoundVarReplacerDelegate;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
@@ -58,6 +58,7 @@ pub mod error_reporting;
 pub mod free_regions;
 mod freshen;
 mod fudge;
+mod generalize;
 mod glb;
 mod higher_ranked;
 pub mod lattice;
@@ -228,17 +229,6 @@ impl<'tcx> InferCtxtInner<'tcx> {
             .expect("region constraints already solved")
             .with_log(&mut self.undo_log)
     }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum DefiningAnchor {
-    /// `DefId` of the item.
-    Bind(LocalDefId),
-    /// When opaque types are not resolved, we `Bubble` up, meaning
-    /// return the opaque/hidden type pair from query, for caller of query to handle it.
-    Bubble,
-    /// Used to catch type mismatch errors when handling opaque types.
-    Error,
 }
 
 pub struct InferCtxt<'tcx> {
@@ -1533,7 +1523,7 @@ impl<'tcx> InferCtxt<'tcx> {
             if let Some(ct) = tcx.thir_abstract_const(unevaluated.def)? {
                 let ct = tcx.expand_abstract_consts(ct.subst(tcx, substs));
                 if let Err(e) = ct.error_reported() {
-                    return Err(ErrorHandled::Reported(e));
+                    return Err(ErrorHandled::Reported(e.into()));
                 } else if ct.has_non_region_infer() || ct.has_non_region_param() {
                     return Err(ErrorHandled::TooGeneric);
                 } else {

@@ -192,11 +192,11 @@ fn init_logging() {
         Ok("auto") | Err(VarError::NotPresent) => io::stdout().is_terminal(),
         Ok(value) => early_error(
             ErrorOutputType::default(),
-            &format!("invalid log color value '{}': expected one of always, never, or auto", value),
+            format!("invalid log color value '{}': expected one of always, never, or auto", value),
         ),
         Err(VarError::NotUnicode(value)) => early_error(
             ErrorOutputType::default(),
-            &format!(
+            format!(
                 "invalid log color value '{}': expected one of always, never, or auto",
                 value.to_string_lossy()
             ),
@@ -228,7 +228,7 @@ fn get_args() -> Option<Vec<String>> {
                 .map_err(|arg| {
                     early_warn(
                         ErrorOutputType::default(),
-                        &format!("Argument {} is not valid Unicode: {:?}", i, arg),
+                        format!("Argument {} is not valid Unicode: {:?}", i, arg),
                     );
                 })
                 .ok()
@@ -712,16 +712,26 @@ fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
 }
 
 fn main_args(at_args: &[String]) -> MainResult {
+    // Throw away the first argument, the name of the binary.
+    // In case of at_args being empty, as might be the case by
+    // passing empty argument array to execve under some platforms,
+    // just use an empty slice.
+    //
+    // This situation was possible before due to arg_expand_all being
+    // called before removing the argument, enabling a crash by calling
+    // the compiler with @empty_file as argv[0] and no more arguments.
+    let at_args = at_args.get(1..).unwrap_or_default();
+
     let args = rustc_driver::args::arg_expand_all(at_args);
 
     let mut options = getopts::Options::new();
     for option in opts() {
         (option.apply)(&mut options);
     }
-    let matches = match options.parse(&args[1..]) {
+    let matches = match options.parse(&args) {
         Ok(m) => m,
         Err(err) => {
-            early_error(ErrorOutputType::default(), &err.to_string());
+            early_error(ErrorOutputType::default(), err.to_string());
         }
     };
 

@@ -839,6 +839,8 @@ macro_rules! tool_doc {
                 )+
 
                 cargo.rustdocflag("--document-private-items");
+                // Since we always pass --document-private-items, there's no need to warn about linking to private items.
+                cargo.rustdocflag("-Arustdoc::private-intra-doc-links");
                 cargo.rustdocflag("--enable-index-page");
                 cargo.rustdocflag("--show-type-layout");
                 cargo.rustdocflag("--generate-link-to-definition");
@@ -882,7 +884,8 @@ tool_doc!(
         // "cargo-credential-wincred",
     ]
 );
-tool_doc!(Tidy, "tidy", "src/tools/tidy", ["tidy"]);
+tool_doc!(Tidy, "tidy", "src/tools/tidy", rustc_tool = false, ["tidy"]);
+tool_doc!(Bootstrap, "bootstrap", "src/bootstrap", rustc_tool = false, ["bootstrap"]);
 
 #[derive(Ord, PartialOrd, Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct ErrorIndex {

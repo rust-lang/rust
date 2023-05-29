@@ -11,6 +11,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_macros::HashStable_Generic;
 use rustc_span::symbol::{kw, sym};
+#[cfg_attr(not(bootstrap), allow(hidden_glob_reexports))]
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{self, edition::Edition, Span, DUMMY_SP};
 use std::borrow::Cow;
@@ -607,7 +608,7 @@ impl Token {
     /// Returns `true` if the token is an identifier whose name is the given
     /// string slice.
     pub fn is_ident_named(&self, name: Symbol) -> bool {
-        self.ident().map_or(false, |(ident, _)| ident.name == name)
+        self.ident().is_some_and(|(ident, _)| ident.name == name)
     }
 
     /// Returns `true` if the token is an interpolated path.

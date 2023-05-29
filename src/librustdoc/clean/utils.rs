@@ -193,7 +193,7 @@ pub(crate) fn build_deref_target_impls(
         };
 
         if let Some(prim) = target.primitive_type() {
-            let _prof_timer = cx.tcx.sess.prof.generic_activity("build_primitive_inherent_impls");
+            let _prof_timer = tcx.sess.prof.generic_activity("build_primitive_inherent_impls");
             for did in prim.impls(tcx).filter(|did| !did.is_local()) {
                 inline::build_impl(cx, did, None, ret);
             }
@@ -594,9 +594,8 @@ pub(super) fn display_macro_source(
     def_id: DefId,
     vis: ty::Visibility<DefId>,
 ) -> String {
-    let tts: Vec<_> = def.body.tokens.clone().into_trees().collect();
     // Extract the spans of all matchers. They represent the "interface" of the macro.
-    let matchers = tts.chunks(4).map(|arm| &arm[0]);
+    let matchers = def.body.tokens.chunks(4).map(|arm| &arm[0]);
 
     if def.macro_rules {
         format!("macro_rules! {} {{\n{}}}", name, render_macro_arms(cx.tcx, matchers, ";"))

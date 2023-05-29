@@ -537,14 +537,22 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
         self.evaluation_probe(|this| {
-            if this.tcx().trait_solver_next() {
-                this.evaluate_predicates_recursively_in_new_solver([obligation.clone()])
+            let goal =
+                this.infcx.resolve_vars_if_possible((obligation.predicate, obligation.param_env));
+            let mut result = if this.tcx().trait_solver_next() {
+                this.evaluate_predicates_recursively_in_new_solver([obligation.clone()])?
             } else {
                 this.evaluate_predicate_recursively(
                     TraitObligationStackList::empty(&ProvisionalEvaluationCache::default()),
                     obligation.clone(),
-                )
+                )?
+            };
+            // If the predicate has done any inference, then downgrade the
+            // result to ambiguous.
+            if this.infcx.shallow_resolve(goal) != goal {
+                result = result.max(EvaluatedToAmbig);
             }
+            Ok(result)
         })
     }
 
@@ -1645,7 +1653,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let tcx = self.infcx.tcx;
         let (def_id, substs) = match *placeholder_trait_predicate.trait_ref.self_ty().kind() {
-            ty::Alias(_, ty::AliasTy { def_id, substs, .. }) => (def_id, substs),
+            ty::Alias(ty::Projection | ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
+                (def_id, substs)
+            }
             _ => {
                 span_bug!(
                     obligation.cause.span,
@@ -1783,12 +1793,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .infcx
             .at(&obligation.cause, obligation.param_env)
             .sup(DefineOpaqueTypes::No, obligation.predicate, infer_projection)
-            .map_or(false, |InferOk { obligations, value: () }| {
+            .is_ok_and(|InferOk { obligations, value: () }| {
                 self.evaluate_predicates_recursively(
                     TraitObligationStackList::empty(&ProvisionalEvaluationCache::default()),
                     nested_obligations.into_iter().chain(obligations),
                 )
-                .map_or(false, |res| res.may_apply())
+                .is_ok_and(|res| res.may_apply())
             });
 
         if is_match {
@@ -2139,13 +2149,11 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             ty::Adt(def, substs) => {
                 let sized_crit = def.sized_constraint(self.tcx());
                 // (*) binder moved here
-                Where(obligation.predicate.rebind({
-                    sized_crit
-                        .0
-                        .iter()
-                        .map(|ty| sized_crit.rebind(*ty).subst(self.tcx(), substs))
-                        .collect()
-                }))
+                Where(
+                    obligation
+                        .predicate
+                        .rebind(sized_crit.subst_iter_copied(self.tcx(), substs).collect()),
+                )
             }
 
             ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) => None,

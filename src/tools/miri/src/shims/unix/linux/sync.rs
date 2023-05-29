@@ -247,7 +247,7 @@ pub fn futex<'tcx>(
             // before doing the syscall.
             this.atomic_fence(AtomicFenceOrd::SeqCst)?;
             let mut n = 0;
-            #[allow(clippy::integer_arithmetic)]
+            #[allow(clippy::arithmetic_side_effects)]
             for _ in 0..val {
                 if let Some(thread) = this.futex_wake(addr_usize, bitset) {
                     this.unblock_thread(thread);

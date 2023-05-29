@@ -1,4 +1,3 @@
-use super::debug::term_type;
 use super::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph, START_BCB};
 
 use itertools::Itertools;
@@ -40,7 +39,7 @@ impl CoverageStatement {
                     "{}: @{}.{}: {:?}",
                     source_range_no_file(tcx, span),
                     bb.index(),
-                    term_type(&term.kind),
+                    term.kind.name(),
                     term.kind
                 )
             }
@@ -345,7 +344,7 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
                         // before the dominated equal spans). When later comparing two spans in
                         // order, the first will either dominate the second, or they will have no
                         // dominator relationship.
-                        self.basic_coverage_blocks.dominators().rank_partial_cmp(a.bcb, b.bcb)
+                        self.basic_coverage_blocks.rank_partial_cmp(a.bcb, b.bcb)
                     }
                 } else {
                     // Sort hi() in reverse order so shorter spans are attempted after longer spans.

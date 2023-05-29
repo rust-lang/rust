@@ -123,7 +123,7 @@ pub fn feature_err_issue(
 /// Construct a future incompatibility diagnostic for a feature gate.
 ///
 /// This diagnostic is only a warning and *does not cause compilation to fail*.
-pub fn feature_warn(sess: &ParseSess, feature: Symbol, span: Span, explain: &str) {
+pub fn feature_warn(sess: &ParseSess, feature: Symbol, span: Span, explain: &'static str) {
     feature_warn_issue(sess, feature, span, GateIssue::Language, explain);
 }
 
@@ -140,7 +140,7 @@ pub fn feature_warn_issue(
     feature: Symbol,
     span: Span,
     issue: GateIssue,
-    explain: &str,
+    explain: &'static str,
 ) {
     let mut err = sess.span_diagnostic.struct_span_warn(span, explain);
     add_feature_diagnostics_for_issue(&mut err, sess, feature, issue);
@@ -289,7 +289,7 @@ impl ParseSess {
         lint: &'static Lint,
         span: impl Into<MultiSpan>,
         node_id: NodeId,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
     ) {
         self.buffered_lints.with_lock(|buffered_lints| {
             buffered_lints.push(BufferedEarlyLint {
@@ -307,7 +307,7 @@ impl ParseSess {
         lint: &'static Lint,
         span: impl Into<MultiSpan>,
         node_id: NodeId,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
         diagnostic: BuiltinLintDiagnostics,
     ) {
         self.buffered_lints.with_lock(|buffered_lints| {

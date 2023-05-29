@@ -232,7 +232,7 @@ impl fmt::Debug for Context<'_> {
 ///
 /// [`Future::poll()`]: core::future::Future::poll
 /// [`Poll::Pending`]: core::task::Poll::Pending
-#[repr(transparent)]
+#[cfg_attr(not(doc), repr(transparent))] // work around https://github.com/rust-lang/rust/issues/66401
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub struct Waker {
     waker: RawWaker,

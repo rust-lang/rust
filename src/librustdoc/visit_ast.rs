@@ -5,7 +5,7 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, LocalDefIdSet};
-use rustc_hir::intravisit::{walk_item, Visitor};
+use rustc_hir::intravisit::{walk_body, walk_item, Visitor};
 use rustc_hir::{Node, CRATE_HIR_ID};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
@@ -106,6 +106,7 @@ pub(crate) struct RustdocVisitor<'a, 'tcx> {
     exact_paths: DefIdMap<Vec<Symbol>>,
     modules: Vec<Module<'tcx>>,
     is_importable_from_parent: bool,
+    inside_body: bool,
 }
 
 impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
@@ -129,6 +130,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             exact_paths: Default::default(),
             modules: vec![om],
             is_importable_from_parent: true,
+            inside_body: false,
         }
     }
 
@@ -278,9 +280,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             return false;
         };
 
-        let is_private =
-            !self.cx.cache.effective_visibilities.is_directly_public(self.cx.tcx, ori_res_did);
-        let is_hidden = inherits_doc_hidden(self.cx.tcx, res_did, None);
+        let is_private = !self.cx.cache.effective_visibilities.is_directly_public(tcx, ori_res_did);
+        let is_hidden = inherits_doc_hidden(tcx, res_did, None);
 
         // Only inline if requested or if the item would otherwise be stripped.
         if (!please_inline && !is_private && !is_hidden) || is_no_inline {
@@ -288,7 +289,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         }
 
         if !please_inline &&
-            let Some(item_def_id) = reexport_chain(self.cx.tcx, def_id, res_did).iter()
+            let Some(item_def_id) = reexport_chain(tcx, def_id, res_did).iter()
                 .flat_map(|reexport| reexport.id()).map(|id| id.expect_local())
                 .chain(iter::once(res_did)).nth(1) &&
             item_def_id != def_id &&
@@ -296,22 +297,38 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 .cx
                 .cache
                 .effective_visibilities
-                .is_directly_public(self.cx.tcx, item_def_id.to_def_id()) &&
-            !inherits_doc_hidden(self.cx.tcx, item_def_id, None)
+                .is_directly_public(tcx, item_def_id.to_def_id()) &&
+            !inherits_doc_hidden(tcx, item_def_id, None)
         {
             // The imported item is public and not `doc(hidden)` so no need to inline it.
             return false;
         }
 
-        if !self.view_item_stack.insert(res_did) {
+        let is_bang_macro = matches!(
+            tcx.hir().get_by_def_id(res_did),
+            Node::Item(&hir::Item { kind: hir::ItemKind::Macro(_, MacroKind::Bang), .. })
+        );
+
+        if !self.view_item_stack.insert(res_did) && !is_bang_macro {
             return false;
         }
 
         let ret = match tcx.hir().get_by_def_id(res_did) {
+            // Bang macros are handled a bit on their because of how they are handled by the
+            // compiler. If they have `#[doc(hidden)]` and the re-export doesn't have
+            // `#[doc(inline)]`, then we don't inline it.
+            Node::Item(_)
+                if is_bang_macro
+                    && !please_inline
+                    && renamed.is_some()
+                    && self.cx.tcx.is_doc_hidden(ori_res_did) =>
+            {
+                return false;
+            }
             Node::Item(&hir::Item { kind: hir::ItemKind::Mod(ref m), .. }) if glob => {
                 let prev = mem::replace(&mut self.inlining, true);
                 for &i in m.item_ids {
-                    let i = self.cx.tcx.hir().item(i);
+                    let i = tcx.hir().item(i);
                     self.visit_item_inner(i, None, Some(def_id));
                 }
                 self.inlining = prev;
@@ -368,6 +385,26 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         import_id: Option<LocalDefId>,
     ) {
         debug!("visiting item {:?}", item);
+        if self.inside_body {
+            // Only impls can be "seen" outside a body. For example:
+            //
+            // ```
+            // struct Bar;
+            //
+            // fn foo() {
+            //     impl Bar { fn bar() {} }
+            // }
+            // Bar::bar();
+            // ```
+            if let hir::ItemKind::Impl(impl_) = item.kind &&
+                // Don't duplicate impls when inlining or if it's implementing a trait, we'll pick
+                // them up regardless of where they're located.
+                impl_.of_trait.is_none()
+            {
+                self.add_to_current_mod(item, None, None);
+            }
+            return;
+        }
         let name = renamed.unwrap_or(item.ident.name);
         let tcx = self.cx.tcx;
 
@@ -563,5 +600,11 @@ impl<'a, 'tcx> Visitor<'tcx> for RustdocVisitor<'a, 'tcx> {
 
     fn visit_lifetime(&mut self, _: &hir::Lifetime) {
         // Unneeded.
+    }
+
+    fn visit_body(&mut self, b: &'tcx hir::Body<'tcx>) {
+        let prev = mem::replace(&mut self.inside_body, true);
+        walk_body(self, b);
+        self.inside_body = prev;
     }
 }

@@ -952,6 +952,10 @@ pub trait LintContext: Sized {
                     db.span_label(first_reexport_span, format!("the name `{}` in the {} namespace is first re-exported here", name, namespace));
                     db.span_label(duplicate_reexport_span, format!("but the name `{}` in the {} namespace is also re-exported here", name, namespace));
                 }
+                BuiltinLintDiagnostics::HiddenGlobReexports { name, namespace, glob_reexport_span, private_item_span } => {
+                    db.span_label(glob_reexport_span, format!("the name `{}` in the {} namespace is supposed to be publicly re-exported here", name, namespace));
+                    db.span_label(private_item_span, "but the private item here shadows it");
+                }
             }
             // Rewrap `db`, and pass control to the user.
             decorate(db)

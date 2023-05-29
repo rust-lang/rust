@@ -968,7 +968,7 @@ pub const fn replace<T>(dest: &mut T, src: T) -> T {
 /// Integers and other types implementing [`Copy`] are unaffected by `drop`.
 ///
 /// ```
-/// # #![cfg_attr(not(bootstrap), allow(drop_copy))]
+/// # #![cfg_attr(not(bootstrap), allow(dropping_copy_types))]
 /// #[derive(Copy, Clone)]
 /// struct Foo(u8);
 ///

@@ -4,13 +4,98 @@
 //! ["Queries: demand-driven compilation"](https://rustc-dev-guide.rust-lang.org/query.html).
 //! This chapter includes instructions for adding new queries.
 
-use crate::ty::{self, print::describe_as_module, TyCtxt};
+#![allow(unused_parens)]
+
+use crate::dep_graph;
+use crate::dep_graph::DepKind;
+use crate::infer::canonical::{self, Canonical};
+use crate::lint::LintExpectation;
+use crate::metadata::ModChild;
+use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
+use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
+use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
+use crate::middle::lib_features::LibFeatures;
+use crate::middle::privacy::EffectiveVisibilities;
+use crate::middle::resolve_bound_vars::{ObjectLifetimeDefault, ResolveBoundVars, ResolvedArg};
+use crate::middle::stability::{self, DeprecationEntry};
+use crate::mir;
+use crate::mir::interpret::GlobalId;
+use crate::mir::interpret::{
+    ConstValue, EvalToAllocationRawResult, EvalToConstValueResult, EvalToValTreeResult,
+};
+use crate::mir::interpret::{LitToConstError, LitToConstInput};
+use crate::mir::mono::CodegenUnit;
+use crate::query::erase::{erase, restore, Erase};
+use crate::query::plumbing::{query_ensure, query_get_at, DynamicQuery};
+use crate::thir;
+use crate::traits::query::{
+    CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
+    CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
+    CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal, NoSolution,
+};
+use crate::traits::query::{
+    DropckConstraint, DropckOutlivesResult, MethodAutoderefStepsResult, NormalizationResult,
+    OutlivesBound,
+};
+use crate::traits::specialization_graph;
+use crate::traits::{
+    CanonicalChalkEnvironmentAndGoal, CodegenObligationError, EvaluationResult, ImplSource,
+    ObjectSafetyViolation, ObligationCause, OverflowError, WellFormedLoc,
+};
+use crate::ty::fast_reject::SimplifiedType;
+use crate::ty::layout::ValidityRequirement;
+use crate::ty::subst::{GenericArg, SubstsRef};
+use crate::ty::util::AlwaysRequiresDrop;
+use crate::ty::GeneratorDiagnosticData;
+use crate::ty::TyCtxtFeed;
+use crate::ty::{
+    self, print::describe_as_module, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt,
+    UnusedGenericParams,
+};
+use rustc_arena::TypedArena;
+use rustc_ast as ast;
+use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_attr as attr;
+use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
+use rustc_data_structures::steal::Steal;
+use rustc_data_structures::svh::Svh;
+use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::WorkerLocal;
+use rustc_data_structures::unord::UnordSet;
+use rustc_errors::ErrorGuaranteed;
+use rustc_hir as hir;
+use rustc_hir::def::{DefKind, DocLinkResMap};
+use rustc_hir::def_id::{
+    CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId, LocalDefIdMap, LocalDefIdSet,
+};
+use rustc_hir::lang_items::{LangItem, LanguageItems};
+use rustc_hir::{Crate, ItemLocalId, TraitCandidate};
+use rustc_index::IndexVec;
+use rustc_query_system::ich::StableHashingContext;
+use rustc_query_system::query::{try_get_cached, CacheSelector, QueryCache, QueryMode, QueryState};
+use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
+use rustc_session::cstore::{CrateDepKind, CrateSource};
+use rustc_session::cstore::{ExternCrate, ForeignModule, LinkagePreference, NativeLib};
+use rustc_session::lint::LintExpectationId;
+use rustc_session::Limits;
 use rustc_span::def_id::LOCAL_CRATE;
+use rustc_span::symbol::Symbol;
+use rustc_span::{Span, DUMMY_SP};
+use rustc_target::abi;
+use rustc_target::spec::PanicStrategy;
+use std::mem;
+use std::ops::Deref;
+use std::path::PathBuf;
+use std::sync::Arc;
 
 pub mod erase;
 mod keys;
-pub mod on_disk_cache;
 pub use keys::{AsLocalKey, Key, LocalCrate};
+pub mod on_disk_cache;
+#[macro_use]
+pub mod plumbing;
+pub use plumbing::{IntoQueryParam, TyCtxtAt, TyCtxtEnsure, TyCtxtEnsureWithValue};
 
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
@@ -446,7 +531,7 @@ rustc_queries! {
         }
     }
 
-    query mir_generator_witnesses(key: DefId) -> &'tcx mir::GeneratorLayout<'tcx> {
+    query mir_generator_witnesses(key: DefId) -> &'tcx Option<mir::GeneratorLayout<'tcx>> {
         arena_cache
         desc { |tcx| "generator witness types for `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
@@ -643,12 +728,6 @@ rustc_queries! {
     /// constructor function).
     query is_promotable_const_fn(key: DefId) -> bool {
         desc { |tcx| "checking if item is promotable: `{}`", tcx.def_path_str(key) }
-    }
-
-    /// Returns `true` if this is a foreign item (i.e., linked via `extern { ... }`).
-    query is_foreign_item(key: DefId) -> bool {
-        desc { |tcx| "checking if `{}` is a foreign item", tcx.def_path_str(key) }
-        separate_provide_extern
     }
 
     /// Returns `Some(generator_kind)` if the node pointed to by `def_id` is a generator.
@@ -1197,7 +1276,7 @@ rustc_queries! {
 
     query codegen_select_candidate(
         key: (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>)
-    ) -> Result<&'tcx ImplSource<'tcx, ()>, traits::CodegenObligationError> {
+    ) -> Result<&'tcx ImplSource<'tcx, ()>, CodegenObligationError> {
         cache_on_disk_if { true }
         desc { |tcx| "computing candidate for `{}`", key.1 }
     }
@@ -1218,7 +1297,7 @@ rustc_queries! {
         desc { |tcx| "building specialization graph of trait `{}`", tcx.def_path_str(trait_id) }
         cache_on_disk_if { true }
     }
-    query object_safety_violations(trait_id: DefId) -> &'tcx [traits::ObjectSafetyViolation] {
+    query object_safety_violations(trait_id: DefId) -> &'tcx [ObjectSafetyViolation] {
         desc { |tcx| "determining object safety of trait `{}`", tcx.def_path_str(trait_id) }
     }
     query check_is_object_safe(trait_id: DefId) -> bool {
@@ -1709,12 +1788,18 @@ rustc_queries! {
         desc { "looking at the source for a crate" }
         separate_provide_extern
     }
+
     /// Returns the debugger visualizers defined for this crate.
-    query debugger_visualizers(_: CrateNum) -> &'tcx Vec<rustc_span::DebuggerVisualizerFile> {
+    /// NOTE: This query has to be marked `eval_always` because it reads data
+    ///       directly from disk that is not tracked anywhere else. I.e. it
+    ///       represents a genuine input to the query system.
+    query debugger_visualizers(_: CrateNum) -> &'tcx Vec<DebuggerVisualizerFile> {
         arena_cache
         desc { "looking up the debugger visualizers for this crate" }
         separate_provide_extern
+        eval_always
     }
+
     query postorder_cnums(_: ()) -> &'tcx [CrateNum] {
         eval_always
         desc { "generating a postorder list of CrateNums" }
@@ -1756,8 +1841,7 @@ rustc_queries! {
     }
 
     /// A list of all traits in a crate, used by rustdoc and error reporting.
-    /// NOTE: Not named just `traits` due to a naming conflict.
-    query traits_in_crate(_: CrateNum) -> &'tcx [DefId] {
+    query traits(_: CrateNum) -> &'tcx [DefId] {
         desc { "fetching all traits in a crate" }
         separate_provide_extern
     }
@@ -1871,12 +1955,12 @@ rustc_queries! {
     /// `infcx.predicate_must_hold()` instead.
     query evaluate_obligation(
         goal: CanonicalPredicateGoal<'tcx>
-    ) -> Result<traits::EvaluationResult, traits::OverflowError> {
+    ) -> Result<EvaluationResult, OverflowError> {
         desc { "evaluating trait selection obligation `{}`", goal.value.value }
     }
 
     query evaluate_goal(
-        goal: traits::CanonicalChalkEnvironmentAndGoal<'tcx>
+        goal: CanonicalChalkEnvironmentAndGoal<'tcx>
     ) -> Result<
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>,
         NoSolution
@@ -2046,8 +2130,8 @@ rustc_queries! {
     /// all of the cases that the normal `ty::Ty`-based wfcheck does. This is fine,
     /// because the `ty::Ty`-based wfcheck is always run.
     query diagnostic_hir_wf_check(
-        key: (ty::Predicate<'tcx>, traits::WellFormedLoc)
-    ) -> &'tcx Option<traits::ObligationCause<'tcx>> {
+        key: (ty::Predicate<'tcx>, WellFormedLoc)
+    ) -> &'tcx Option<ObligationCause<'tcx>> {
         arena_cache
         eval_always
         no_hash
@@ -2102,3 +2186,6 @@ rustc_queries! {
         desc { "check whether two const param are definitely not equal to eachother"}
     }
 }
+
+rustc_query_append! { define_callbacks! }
+rustc_feedable_queries! { define_feedable! }

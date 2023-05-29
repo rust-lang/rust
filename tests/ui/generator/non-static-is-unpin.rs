@@ -3,7 +3,7 @@
 // run-pass
 
 #![feature(generators, generator_trait)]
-#![allow(drop_copy)]
+#![allow(dropping_copy_types)]
 
 use std::marker::{PhantomPinned, Unpin};
 

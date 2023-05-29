@@ -1,5 +1,8 @@
 // compile-flags: -Ztrait-solver=next
 
+// check-pass
+// (should not pass, should be turned into a coherence-only test)
+
 // check that when computing `alias-eq(<() as Foo<u16, T>>::Assoc, <() as Foo<?0, T>>::Assoc)`
 // we do not infer `?0 = u8` via the `for<STOP> (): Foo<u8, STOP>` impl or `?0 = u16` by
 // relating substs as either could be a valid solution.
@@ -36,7 +39,6 @@ where
 {
     // `<() as Foo<u16, STOP>>::Assoc == <() as Foo<_, STOP>>::Assoc`
     let _: <() as Foo<u16, T>>::Assoc = output::<_, T>();
-    //~^ error: type annotations needed
 
     // let _: <() as Foo<u16, T>>::Assoc = output::<u8, T>(); // OK
     // let _: <() as Foo<u16, T>>::Assoc = output::<u16, T>(); // OK

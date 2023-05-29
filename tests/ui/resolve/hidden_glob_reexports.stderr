@@ -1,0 +1,31 @@
+warning: private item shadows public glob re-export
+  --> $DIR/hidden_glob_reexports.rs:11:5
+   |
+LL |     pub use self::inner::*;
+   |             -------------- the name `Foo` in the type namespace is supposed to be publicly re-exported here
+LL |
+LL |     struct Foo;
+   |     ^^^^^^^^^^^ but the private item here shadows it
+   |
+   = note: `#[warn(hidden_glob_reexports)]` on by default
+
+warning: private item shadows public glob re-export
+  --> $DIR/hidden_glob_reexports.rs:27:9
+   |
+LL |     pub use self::inner::*;
+   |             -------------- the name `Foo` in the type namespace is supposed to be publicly re-exported here
+LL |
+LL |     use self::other::Foo;
+   |         ^^^^^^^^^^^^^^^^ but the private item here shadows it
+
+warning: private item shadows public glob re-export
+  --> $DIR/hidden_glob_reexports.rs:40:9
+   |
+LL |     pub use self::no_def_id::*;
+   |             ------------------ the name `u8` in the type namespace is supposed to be publicly re-exported here
+LL |
+LL |     use std::primitive::u8;
+   |         ^^^^^^^^^^^^^^^^^^ but the private item here shadows it
+
+warning: 3 warnings emitted
+

@@ -251,7 +251,7 @@ pub fn explain_lint_level_source(
         }
         LintLevelSource::Node { name: lint_attr_name, span, reason, .. } => {
             if let Some(rationale) = reason {
-                err.note(rationale.as_str());
+                err.note(rationale.to_string());
             }
             err.span_note_once(span, "the lint level is defined here");
             if lint_attr_name.as_str() != name {
@@ -468,8 +468,7 @@ pub fn struct_lint_level(
 pub fn in_external_macro(sess: &Session, span: Span) -> bool {
     let expn_data = span.ctxt().outer_expn_data();
     match expn_data.kind {
-        ExpnKind::Inlined
-        | ExpnKind::Root
+        ExpnKind::Root
         | ExpnKind::Desugaring(
             DesugaringKind::ForLoop | DesugaringKind::WhileLoop | DesugaringKind::OpaqueTy,
         ) => false,

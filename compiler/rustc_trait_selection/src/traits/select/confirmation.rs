@@ -132,6 +132,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
         };
 
+        // The obligations returned by confirmation are recursively evaluated
+        // so we need to make sure they have the correct depth.
+        for subobligation in impl_src.borrow_nested_obligations_mut() {
+            subobligation.set_depth_from_parent(obligation.recursion_depth);
+        }
+
         if !obligation.predicate.is_const_if_const() {
             // normalize nested predicates according to parent predicate's constness.
             impl_src = impl_src.map(|mut o| {
@@ -156,7 +162,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let placeholder_self_ty = placeholder_trait_predicate.self_ty();
         let placeholder_trait_predicate = ty::Binder::dummy(placeholder_trait_predicate);
         let (def_id, substs) = match *placeholder_self_ty.kind() {
-            ty::Alias(_, ty::AliasTy { def_id, substs, .. }) => (def_id, substs),
+            // Excluding IATs here as they don't have meaningful item bounds.
+            ty::Alias(ty::Projection | ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
+                (def_id, substs)
+            }
             _ => bug!("projection candidate for unexpected type: {:?}", placeholder_self_ty),
         };
 
@@ -518,9 +527,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         substs.extend(trait_predicate.trait_ref.substs.iter());
                         let mut bound_vars: smallvec::SmallVec<[ty::BoundVariableKind; 8]> =
                             smallvec::SmallVec::with_capacity(
-                                bound.0.kind().bound_vars().len() + defs.count(),
+                                bound.skip_binder().kind().bound_vars().len() + defs.count(),
                             );
-                        bound_vars.extend(bound.0.kind().bound_vars().into_iter());
+                        bound_vars.extend(bound.skip_binder().kind().bound_vars().into_iter());
                         InternalSubsts::fill_single(&mut substs, defs, &mut |param, _| match param
                             .kind
                         {

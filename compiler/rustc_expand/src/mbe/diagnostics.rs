@@ -48,7 +48,7 @@ pub(super) fn failed_to_match_macro<'cx>(
 
     let span = token.span.substitute_dummy(sp);
 
-    let mut err = cx.struct_span_err(span, &parse_failure_msg(&token));
+    let mut err = cx.struct_span_err(span, parse_failure_msg(&token));
     err.span_label(span, label);
     if !def_span.is_dummy() && !cx.source_map().is_imported(def_span) {
         err.span_label(cx.source_map().guess_head_span(def_span), "when calling this macro");
@@ -170,7 +170,7 @@ impl<'a, 'cx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'a, 'cx, 
             }
             Error(err_sp, msg) => {
                 let span = err_sp.substitute_dummy(self.root_span);
-                self.cx.struct_span_err(span, msg).emit();
+                self.cx.struct_span_err(span, msg.clone()).emit();
                 self.result = Some(DummyResult::any(span));
             }
             ErrorReported(_) => self.result = Some(DummyResult::any(self.root_span)),
@@ -222,7 +222,7 @@ pub(super) fn emit_frag_parse_err(
     {
         let msg = &e.message[0];
         e.message[0] = (
-            DiagnosticMessage::Str(format!(
+            DiagnosticMessage::from(format!(
                 "macro expansion ends with an incomplete expression: {}",
                 message.replace(", found `<eof>`", ""),
             )),
@@ -313,9 +313,9 @@ pub(super) fn annotate_doc_comment(err: &mut Diagnostic, sm: &SourceMap, span: S
 
 /// Generates an appropriate parsing failure message. For EOF, this is "unexpected end...". For
 /// other tokens, this is "unexpected token...".
-pub(super) fn parse_failure_msg(tok: &Token) -> String {
+pub(super) fn parse_failure_msg(tok: &Token) -> Cow<'static, str> {
     match tok.kind {
-        token::Eof => "unexpected end of macro invocation".to_string(),
-        _ => format!("no rules expected the token `{}`", pprust::token_to_string(tok),),
+        token::Eof => Cow::from("unexpected end of macro invocation"),
+        _ => Cow::from(format!("no rules expected the token `{}`", pprust::token_to_string(tok))),
     }
 }

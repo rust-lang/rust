@@ -330,12 +330,11 @@ impl CodeSuggestion {
                     });
                     buf.push_str(&part.snippet);
                     let cur_hi = sm.lookup_char_pos(part.span.hi());
-                    if cur_hi.line == cur_lo.line && !part.snippet.is_empty() {
-                        // Account for the difference between the width of the current code and the
-                        // snippet being suggested, so that the *later* suggestions are correctly
-                        // aligned on the screen.
-                        acc += len - (cur_hi.col.0 - cur_lo.col.0) as isize;
-                    }
+                    // Account for the difference between the width of the current code and the
+                    // snippet being suggested, so that the *later* suggestions are correctly
+                    // aligned on the screen. Note that cur_hi and cur_lo can be on different
+                    // lines, so cur_hi.col can be smaller than cur_lo.col
+                    acc += len - (cur_hi.col.0 as isize - cur_lo.col.0 as isize);
                     prev_hi = cur_hi;
                     prev_line = sf.get_line(prev_hi.line - 1);
                     for line in part.snippet.split('\n').skip(1) {
@@ -478,6 +477,8 @@ pub enum StashKey {
     /// FRU syntax
     MaybeFruTypo,
     CallAssocMethod,
+    TraitMissingMethod,
+    OpaqueHiddenTypeMismatch,
 }
 
 fn default_track_diagnostic(d: &mut Diagnostic, f: &mut dyn FnMut(&mut Diagnostic)) {
@@ -627,7 +628,7 @@ impl Handler {
         message: DiagnosticMessage,
         args: impl Iterator<Item = DiagnosticArg<'a, 'static>>,
     ) -> SubdiagnosticMessage {
-        SubdiagnosticMessage::Eager(self.eagerly_translate_to_string(message, args))
+        SubdiagnosticMessage::Eager(Cow::from(self.eagerly_translate_to_string(message, args)))
     }
 
     /// Translate `message` eagerly with `args` to `String`.
@@ -1436,7 +1437,7 @@ impl HandlerInner {
     }
 
     fn treat_err_as_bug(&self) -> bool {
-        self.flags.treat_err_as_bug.map_or(false, |c| {
+        self.flags.treat_err_as_bug.is_some_and(|c| {
             self.err_count() + self.lint_err_count + self.delayed_bug_count() >= c.get()
         })
     }
@@ -1449,14 +1450,14 @@ impl HandlerInner {
         self.emit_stashed_diagnostics();
 
         let warnings = match self.deduplicated_warn_count {
-            0 => String::new(),
-            1 => "1 warning emitted".to_string(),
-            count => format!("{count} warnings emitted"),
+            0 => Cow::from(""),
+            1 => Cow::from("1 warning emitted"),
+            count => Cow::from(format!("{count} warnings emitted")),
         };
         let errors = match self.deduplicated_err_count {
-            0 => String::new(),
-            1 => "aborting due to previous error".to_string(),
-            count => format!("aborting due to {count} previous errors"),
+            0 => Cow::from(""),
+            1 => Cow::from("aborting due to previous error"),
+            count => Cow::from(format!("aborting due to {count} previous errors")),
         };
         if self.treat_err_as_bug() {
             return;
@@ -1602,7 +1603,7 @@ impl HandlerInner {
         // This is technically `self.treat_err_as_bug()` but `delay_span_bug` is called before
         // incrementing `err_count` by one, so we need to +1 the comparing.
         // FIXME: Would be nice to increment err_count in a more coherent way.
-        if self.flags.treat_err_as_bug.map_or(false, |c| {
+        if self.flags.treat_err_as_bug.is_some_and(|c| {
             self.err_count() + self.lint_err_count + self.delayed_bug_count() + 1 >= c.get()
         }) {
             // FIXME: don't abort here if report_delayed_bugs is off
@@ -1739,7 +1740,7 @@ impl DelayedDiagnostic {
     }
 
     fn decorate(mut self) -> Diagnostic {
-        self.inner.note(format!("delayed at {}", self.note));
+        self.inner.note(format!("delayed at {}\n{}", self.inner.emitted_at, self.note));
         self.inner
     }
 }

@@ -31,18 +31,18 @@ fn while_loop(_1: bool) -> () {
     }
 
     bb4: {
-        switchInt(move _3) -> [0: bb6, otherwise: bb5]; // scope 0 at $DIR/while_storage.rs:+2:12: +2:23
+        switchInt(move _3) -> [0: bb5, otherwise: bb6]; // scope 0 at $DIR/while_storage.rs:+2:12: +2:23
     }
 
     bb5: {
         StorageDead(_3);                 // scope 0 at $DIR/while_storage.rs:+4:9: +4:10
-        goto -> bb7;                     // scope 0 at no-location
+        StorageDead(_2);                 // scope 0 at $DIR/while_storage.rs:+5:5: +5:6
+        goto -> bb1;                     // scope 0 at $DIR/while_storage.rs:+1:5: +5:6
     }
 
     bb6: {
         StorageDead(_3);                 // scope 0 at $DIR/while_storage.rs:+4:9: +4:10
-        StorageDead(_2);                 // scope 0 at $DIR/while_storage.rs:+5:5: +5:6
-        goto -> bb1;                     // scope 0 at $DIR/while_storage.rs:+1:5: +5:6
+        goto -> bb7;                     // scope 0 at no-location
     }
 
     bb7: {

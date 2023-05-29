@@ -10,7 +10,6 @@
 use core::fmt::Display;
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::DiagnosticMessage;
 use rustc_hir as hir;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{
@@ -272,12 +271,11 @@ fn encode_region<'tcx>(
             s.push('E');
             compress(dict, DictKey::Region(region), &mut s);
         }
-        RegionKind::ReErased => {
+        RegionKind::ReEarlyBound(..) | RegionKind::ReErased => {
             s.push_str("u6region");
             compress(dict, DictKey::Region(region), &mut s);
         }
-        RegionKind::ReEarlyBound(..)
-        | RegionKind::ReFree(..)
+        RegionKind::ReFree(..)
         | RegionKind::ReStatic
         | RegionKind::ReError(_)
         | RegionKind::ReVar(..)
@@ -535,10 +533,7 @@ fn encode_ty<'tcx>(
                         tcx.sess
                             .struct_span_err(
                                 cfi_encoding.span,
-                                DiagnosticMessage::Str(format!(
-                                    "invalid `cfi_encoding` for `{:?}`",
-                                    ty.kind()
-                                )),
+                                format!("invalid `cfi_encoding` for `{:?}`", ty.kind()),
                             )
                             .emit();
                     }
@@ -590,10 +585,7 @@ fn encode_ty<'tcx>(
                         tcx.sess
                             .struct_span_err(
                                 cfi_encoding.span,
-                                DiagnosticMessage::Str(format!(
-                                    "invalid `cfi_encoding` for `{:?}`",
-                                    ty.kind()
-                                )),
+                                format!("invalid `cfi_encoding` for `{:?}`", ty.kind()),
                             )
                             .emit();
                     }
@@ -673,6 +665,14 @@ fn encode_ty<'tcx>(
             typeid.push_str(&s);
         }
 
+        // Type parameters
+        ty::Param(..) => {
+            // u5param as vendor extended type
+            let mut s = String::from("u5param");
+            compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
+            typeid.push_str(&s);
+        }
+
         // Unexpected types
         ty::Bound(..)
         | ty::Error(..)
@@ -680,13 +680,48 @@ fn encode_ty<'tcx>(
         | ty::GeneratorWitnessMIR(..)
         | ty::Infer(..)
         | ty::Alias(..)
-        | ty::Param(..)
         | ty::Placeholder(..) => {
             bug!("encode_ty: unexpected `{:?}`", ty.kind());
         }
     };
 
     typeid
+}
+
+/// Transforms predicates for being encoded and used in the substitution dictionary.
+fn transform_predicates<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    predicates: &List<ty::PolyExistentialPredicate<'tcx>>,
+    _options: EncodeTyOptions,
+) -> &'tcx List<ty::PolyExistentialPredicate<'tcx>> {
+    let predicates: Vec<ty::PolyExistentialPredicate<'tcx>> = predicates
+        .iter()
+        .filter_map(|predicate| match predicate.skip_binder() {
+            ty::ExistentialPredicate::Trait(trait_ref) => {
+                let trait_ref = ty::TraitRef::identity(tcx, trait_ref.def_id);
+                Some(ty::Binder::dummy(ty::ExistentialPredicate::Trait(
+                    ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref),
+                )))
+            }
+            ty::ExistentialPredicate::Projection(..) => None,
+            ty::ExistentialPredicate::AutoTrait(..) => Some(predicate),
+        })
+        .collect();
+    tcx.mk_poly_existential_predicates(&predicates)
+}
+
+/// Transforms substs for being encoded and used in the substitution dictionary.
+fn transform_substs<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    substs: SubstsRef<'tcx>,
+    options: TransformTyOptions,
+) -> SubstsRef<'tcx> {
+    let substs = substs.iter().map(|subst| match subst.unpack() {
+        GenericArgKind::Type(ty) if ty.is_c_void(tcx) => tcx.mk_unit().into(),
+        GenericArgKind::Type(ty) => transform_ty(tcx, ty, options).into(),
+        _ => subst,
+    });
+    tcx.mk_substs_from_iter(substs)
 }
 
 // Transforms a ty:Ty for being encoded and used in the substitution dictionary. It transforms all
@@ -697,7 +732,7 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
     let mut ty = ty;
 
     match ty.kind() {
-        ty::Float(..) | ty::Char | ty::Str | ty::Never | ty::Foreign(..) | ty::Dynamic(..) => {}
+        ty::Float(..) | ty::Char | ty::Str | ty::Never | ty::Foreign(..) => {}
 
         ty::Bool => {
             if options.contains(EncodeTyOptions::NORMALIZE_INTEGERS) {
@@ -776,7 +811,7 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                 let field = variant.fields.iter().find(|field| {
                     let ty = tcx.type_of(field.did).subst_identity();
                     let is_zst =
-                        tcx.layout_of(param_env.and(ty)).map_or(false, |layout| layout.is_zst());
+                        tcx.layout_of(param_env.and(ty)).is_ok_and(|layout| layout.is_zst());
                     !is_zst
                 });
                 if let Some(field) = field {
@@ -870,6 +905,14 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
             }
         }
 
+        ty::Dynamic(predicates, _region, kind) => {
+            ty = tcx.mk_dynamic(
+                transform_predicates(tcx, predicates, options),
+                tcx.lifetimes.re_erased,
+                *kind,
+            );
+        }
+
         ty::Bound(..)
         | ty::Error(..)
         | ty::GeneratorWitness(..)
@@ -883,20 +926,6 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
     }
 
     ty
-}
-
-/// Transforms substs for being encoded and used in the substitution dictionary.
-fn transform_substs<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    substs: SubstsRef<'tcx>,
-    options: TransformTyOptions,
-) -> SubstsRef<'tcx> {
-    let substs = substs.iter().map(|subst| match subst.unpack() {
-        GenericArgKind::Type(ty) if ty.is_c_void(tcx) => tcx.mk_unit().into(),
-        GenericArgKind::Type(ty) => transform_ty(tcx, ty, options).into(),
-        _ => subst,
-    });
-    tcx.mk_substs_from_iter(substs)
 }
 
 /// Returns a type metadata identifier for the specified FnAbi using the Itanium C++ ABI with vendor

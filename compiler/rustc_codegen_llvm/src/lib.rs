@@ -10,6 +10,7 @@
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
 #![feature(never_type)]
+#![feature(impl_trait_in_assoc_type)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 #![deny(rustc::untranslatable_diagnostic)]
@@ -37,7 +38,7 @@ use rustc_errors::{DiagnosticMessage, ErrorGuaranteed, FatalError, Handler, Subd
 use rustc_fluent_macro::fluent_messages;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{OptLevel, OutputFilenames, PrintRequest};
 use rustc_session::Session;

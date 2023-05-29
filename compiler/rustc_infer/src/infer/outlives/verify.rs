@@ -293,7 +293,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     ) -> impl Iterator<Item = ty::Region<'tcx>> {
         let tcx = self.tcx;
         let bounds = tcx.item_bounds(alias_ty.def_id);
-        trace!("{:#?}", bounds.0);
+        trace!("{:#?}", bounds.skip_binder());
         bounds
             .subst_iter(tcx, alias_ty.substs)
             .filter_map(|p| p.to_opt_type_outlives())

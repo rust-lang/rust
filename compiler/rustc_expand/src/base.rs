@@ -15,7 +15,8 @@ use rustc_attr::{self as attr, Deprecation, Stability};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{
-    Applicability, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic, MultiSpan, PResult,
+    Applicability, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed, IntoDiagnostic,
+    MultiSpan, PResult,
 };
 use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
 use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics, RegisteredTools};
@@ -779,7 +780,7 @@ impl SyntaxExtension {
         let allow_internal_unsafe = attr::contains_name(attrs, sym::allow_internal_unsafe);
         let local_inner_macros = attr::find_by_name(attrs, sym::macro_export)
             .and_then(|macro_export| macro_export.meta_item_list())
-            .map_or(false, |l| attr::list_contains_name(&l, sym::local_inner_macros));
+            .is_some_and(|l| attr::list_contains_name(&l, sym::local_inner_macros));
         let collapse_debuginfo = attr::contains_name(attrs, sym::collapse_debuginfo);
         tracing::debug!(?local_inner_macros, ?collapse_debuginfo, ?allow_internal_unsafe);
 
@@ -1110,7 +1111,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn struct_span_err<S: Into<MultiSpan>>(
         &self,
         sp: S,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         self.sess.parse_sess.span_diagnostic.struct_span_err(sp, msg)
     }
@@ -1132,14 +1133,14 @@ impl<'a> ExtCtxt<'a> {
     /// Compilation will be stopped in the near future (at the end of
     /// the macro expansion phase).
     #[rustc_lint_diagnostics]
-    pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
+    pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) {
         self.sess.parse_sess.span_diagnostic.span_err(sp, msg);
     }
     #[rustc_lint_diagnostics]
-    pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
+    pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) {
         self.sess.parse_sess.span_diagnostic.span_warn(sp, msg);
     }
-    pub fn span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
+    pub fn span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) -> ! {
         self.sess.parse_sess.span_diagnostic.span_bug(sp, msg);
     }
     pub fn trace_macros_diag(&mut self) {
@@ -1153,7 +1154,7 @@ impl<'a> ExtCtxt<'a> {
         // Fixme: does this result in errors?
         self.expansions.clear();
     }
-    pub fn bug(&self, msg: &str) -> ! {
+    pub fn bug(&self, msg: &'static str) -> ! {
         self.sess.parse_sess.span_diagnostic.bug(msg);
     }
     pub fn trace_macros(&self) -> bool {
@@ -1223,7 +1224,7 @@ pub fn resolve_path(
 pub fn expr_to_spanned_string<'a>(
     cx: &'a mut ExtCtxt<'_>,
     expr: P<ast::Expr>,
-    err_msg: &str,
+    err_msg: &'static str,
 ) -> Result<(Symbol, ast::StrStyle, Span), Option<(DiagnosticBuilder<'a, ErrorGuaranteed>, bool)>> {
     // Perform eager expansion on the expression.
     // We want to be able to handle e.g., `concat!("foo", "bar")`.
@@ -1261,7 +1262,7 @@ pub fn expr_to_spanned_string<'a>(
 pub fn expr_to_string(
     cx: &mut ExtCtxt<'_>,
     expr: P<ast::Expr>,
-    err_msg: &str,
+    err_msg: &'static str,
 ) -> Option<(Symbol, ast::StrStyle)> {
     expr_to_spanned_string(cx, expr, err_msg)
         .map_err(|err| {
@@ -1448,7 +1449,7 @@ fn pretty_printing_compatibility_hack(item: &Item, sess: &ParseSess) -> bool {
                                     && version
                                         .next()
                                         .and_then(|c| c.parse::<u32>().ok())
-                                        .map_or(false, |v| v < 6)
+                                        .is_some_and(|v| v < 6)
                             };
 
                             if crate_matches {

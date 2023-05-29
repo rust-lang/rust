@@ -104,7 +104,7 @@ use rustc_hir as hir;
 use rustc_hir::Node;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::middle;
-use rustc_middle::ty::query::Providers;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::util;
 use rustc_session::{config::EntryFnType, parse::feature_err};

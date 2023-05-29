@@ -2,6 +2,7 @@
 
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir;
+use crate::query::Providers;
 use crate::ty::layout::IntegerExt;
 use crate::ty::{
     self, FallibleTypeFolder, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
@@ -517,6 +518,42 @@ impl<'tcx> TyCtxt<'tcx> {
         Ok(())
     }
 
+    /// Checks whether each generic argument is simply a unique generic placeholder.
+    ///
+    /// This is used in the new solver, which canonicalizes params to placeholders
+    /// for better caching.
+    pub fn uses_unique_placeholders_ignoring_regions(
+        self,
+        substs: SubstsRef<'tcx>,
+    ) -> Result<(), NotUniqueParam<'tcx>> {
+        let mut seen = GrowableBitSet::default();
+        for arg in substs {
+            match arg.unpack() {
+                // Ignore regions, since we can't resolve those in a canonicalized
+                // query in the trait solver.
+                GenericArgKind::Lifetime(_) => {}
+                GenericArgKind::Type(t) => match t.kind() {
+                    ty::Placeholder(p) => {
+                        if !seen.insert(p.bound.var) {
+                            return Err(NotUniqueParam::DuplicateParam(t.into()));
+                        }
+                    }
+                    _ => return Err(NotUniqueParam::NotParam(t.into())),
+                },
+                GenericArgKind::Const(c) => match c.kind() {
+                    ty::ConstKind::Placeholder(p) => {
+                        if !seen.insert(p.bound) {
+                            return Err(NotUniqueParam::DuplicateParam(c.into()));
+                        }
+                    }
+                    _ => return Err(NotUniqueParam::NotParam(c.into())),
+                },
+            }
+        }
+
+        Ok(())
+    }
+
     /// Returns `true` if `def_id` refers to a closure (e.g., `|x| x * 2`). Note
     /// that closures have a `DefId`, but the closure *expression* also
     /// has a `HirId` that is located within the context where the
@@ -667,12 +704,12 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         def_id: DefId,
     ) -> impl Iterator<Item = ty::EarlyBinder<Ty<'tcx>>> {
-        let generator_layout = &self.mir_generator_witnesses(def_id);
+        let generator_layout = self.mir_generator_witnesses(def_id);
         generator_layout
-            .field_tys
-            .iter()
+            .as_ref()
+            .map_or_else(|| [].iter(), |l| l.field_tys.iter())
             .filter(|decl| !decl.ignore_for_traits)
-            .map(|decl| ty::EarlyBinder(decl.ty))
+            .map(|decl| ty::EarlyBinder::new(decl.ty))
     }
 
     /// Normalizes all opaque types in the given value, replacing them
@@ -1484,8 +1521,8 @@ pub fn is_intrinsic(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     matches!(tcx.fn_sig(def_id).skip_binder().abi(), Abi::RustIntrinsic | Abi::PlatformIntrinsic)
 }
 
-pub fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers {
+pub fn provide(providers: &mut Providers) {
+    *providers = Providers {
         reveal_opaque_types_in_bounds,
         is_doc_hidden,
         is_doc_notable_trait,

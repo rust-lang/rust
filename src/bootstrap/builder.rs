@@ -264,7 +264,7 @@ impl PathSet {
 
     /// A convenience wrapper for Steps which know they have no aliases and all their sets contain only a single path.
     ///
-    /// This can be used with [`ShouldRun::krate`], [`ShouldRun::path`], or [`ShouldRun::alias`].
+    /// This can be used with [`ShouldRun::crate_or_deps`], [`ShouldRun::path`], or [`ShouldRun::alias`].
     #[track_caller]
     pub fn assert_single_path(&self) -> &TaskPath {
         match self {
@@ -689,7 +689,8 @@ impl<'a> Builder<'a> {
                 tool::Miri,
                 tool::CargoMiri,
                 llvm::Lld,
-                llvm::CrtBeginEnd
+                llvm::CrtBeginEnd,
+                tool::RustdocGUITest,
             ),
             Kind::Check | Kind::Clippy | Kind::Fix => describe!(
                 check::Std,
@@ -787,6 +788,7 @@ impl<'a> Builder<'a> {
                 doc::EditionGuide,
                 doc::StyleGuide,
                 doc::Tidy,
+                doc::Bootstrap,
             ),
             Kind::Dist => describe!(
                 dist::Docs,
@@ -942,7 +944,6 @@ impl<'a> Builder<'a> {
         self.run_step_descriptions(&Builder::get_step_descriptions(Kind::Doc), paths);
     }
 
-    /// NOTE: keep this in sync with `rustdoc::clean::utils::doc_rust_lang_org_channel`, or tests will fail on beta/stable.
     pub fn doc_rust_lang_org_channel(&self) -> String {
         let channel = match &*self.config.channel {
             "stable" => &self.version,
@@ -1916,10 +1917,10 @@ impl<'a> Builder<'a> {
         }
 
         // For `cargo doc` invocations, make rustdoc print the Rust version into the docs
-        // This replaces spaces with newlines because RUSTDOCFLAGS does not
+        // This replaces spaces with tabs because RUSTDOCFLAGS does not
         // support arguments with regular spaces. Hopefully someday Cargo will
         // have space support.
-        let rust_version = self.rust_version().replace(' ', "\n");
+        let rust_version = self.rust_version().replace(' ', "\t");
         rustdocflags.arg("--crate-version").arg(&rust_version);
 
         // Environment variables *required* throughout the build

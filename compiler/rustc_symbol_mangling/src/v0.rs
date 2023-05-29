@@ -274,7 +274,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
 
         let mut param_env = self.tcx.param_env_reveal_all_normalized(impl_def_id);
         if !substs.is_empty() {
-            param_env = EarlyBinder(param_env).subst(self.tcx, substs);
+            param_env = EarlyBinder::new(param_env).subst(self.tcx, substs);
         }
 
         match &mut impl_trait_ref {
@@ -433,7 +433,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
             // Mangle all nominal types as paths.
             ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), substs)
             | ty::FnDef(def_id, substs)
-            | ty::Alias(_, ty::AliasTy { def_id, substs, .. })
+            | ty::Alias(ty::Projection | ty::Opaque, ty::AliasTy { def_id, substs, .. })
             | ty::Closure(def_id, substs)
             | ty::Generator(def_id, substs, _) => {
                 self = self.print_def_path(def_id, substs)?;
@@ -482,6 +482,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                 self = r.print(self)?;
             }
 
+            ty::Alias(ty::Inherent, _) => bug!("symbol_names: unexpected inherent projection"),
             ty::GeneratorWitness(_) => bug!("symbol_names: unexpected `GeneratorWitness`"),
             ty::GeneratorWitnessMIR(..) => bug!("symbol_names: unexpected `GeneratorWitnessMIR`"),
         }
