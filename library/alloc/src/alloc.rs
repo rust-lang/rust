@@ -38,7 +38,6 @@ extern "Rust" {
     #[rustc_nounwind]
     fn __rust_alloc_zeroed(size: usize, align: usize) -> *mut u8;
 
-    #[cfg(not(bootstrap))]
     static __rust_no_alloc_shim_is_unstable: u8;
 }
 
@@ -96,7 +95,6 @@ pub unsafe fn alloc(layout: Layout) -> *mut u8 {
     unsafe {
         // Make sure we don't accidentally allow omitting the allocator shim in
         // stable code until it is actually stabilized.
-        #[cfg(not(bootstrap))]
         core::ptr::read_volatile(&__rust_no_alloc_shim_is_unstable);
 
         __rust_alloc(layout.size(), layout.align())
