@@ -55,7 +55,8 @@ pub(crate) fn convert_named_struct_to_tuple_struct(
     // XXX: We don't currently provide this assist for struct definitions inside macros, but if we
     // are to lift this limitation, don't forget to make `edit_struct_def()` consider macro files
     // too.
-    let strukt = ctx.find_node_at_offset::<Either<ast::Struct, ast::Variant>>()?;
+    let name = ctx.find_node_at_offset::<ast::Name>()?;
+    let strukt = name.syntax().parent().and_then(<Either<ast::Struct, ast::Variant>>::cast)?;
     let field_list = strukt.as_ref().either(|s| s.field_list(), |v| v.field_list())?;
     let record_fields = match field_list {
         ast::FieldList::RecordFieldList(it) => it,

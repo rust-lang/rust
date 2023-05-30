@@ -84,7 +84,10 @@ pub use crate::{
     file_structure::{StructureNode, StructureNodeKind},
     folding_ranges::{Fold, FoldKind},
     highlight_related::{HighlightRelatedConfig, HighlightedRange},
-    hover::{HoverAction, HoverConfig, HoverDocFormat, HoverGotoTypeData, HoverResult},
+    hover::{
+        HoverAction, HoverConfig, HoverDocFormat, HoverGotoTypeData, HoverResult,
+        MemoryLayoutHoverConfig, MemoryLayoutHoverRenderKind,
+    },
     inlay_hints::{
         AdjustmentHints, AdjustmentHintsMode, ClosureReturnTypeHints, DiscriminantHints, InlayHint,
         InlayHintLabel, InlayHintLabelPart, InlayHintPosition, InlayHintsConfig, InlayKind,

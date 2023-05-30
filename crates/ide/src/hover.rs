@@ -27,10 +27,25 @@ use crate::{
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HoverConfig {
     pub links_in_hover: bool,
-    pub memory_layout: bool,
+    pub memory_layout: Option<MemoryLayoutHoverConfig>,
     pub documentation: bool,
     pub keywords: bool,
     pub format: HoverDocFormat,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct MemoryLayoutHoverConfig {
+    pub size: Option<MemoryLayoutHoverRenderKind>,
+    pub offset: Option<MemoryLayoutHoverRenderKind>,
+    pub alignment: Option<MemoryLayoutHoverRenderKind>,
+    pub niches: bool,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum MemoryLayoutHoverRenderKind {
+    Decimal,
+    Hexadecimal,
+    Both,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

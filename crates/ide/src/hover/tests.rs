@@ -2,11 +2,18 @@ use expect_test::{expect, Expect};
 use ide_db::base_db::{FileLoader, FileRange};
 use syntax::TextRange;
 
-use crate::{fixture, HoverConfig, HoverDocFormat};
+use crate::{
+    fixture, HoverConfig, HoverDocFormat, MemoryLayoutHoverConfig, MemoryLayoutHoverRenderKind,
+};
 
 const HOVER_BASE_CONFIG: HoverConfig = HoverConfig {
     links_in_hover: false,
-    memory_layout: true,
+    memory_layout: Some(MemoryLayoutHoverConfig {
+        size: Some(MemoryLayoutHoverRenderKind::Both),
+        offset: Some(MemoryLayoutHoverRenderKind::Both),
+        alignment: Some(MemoryLayoutHoverRenderKind::Both),
+        niches: true,
+    }),
     documentation: true,
     format: HoverDocFormat::Markdown,
     keywords: true,
@@ -62,7 +69,7 @@ fn check_hover_no_memory_layout(ra_fixture: &str, expect: Expect) {
     let (analysis, position) = fixture::position(ra_fixture);
     let hover = analysis
         .hover(
-            &HoverConfig { memory_layout: false, ..HOVER_BASE_CONFIG },
+            &HoverConfig { memory_layout: None, ..HOVER_BASE_CONFIG },
             FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
         )
         .unwrap()
@@ -237,7 +244,7 @@ fn main() {
         expect![[r#"
             *|*
             ```rust
-            {closure#0} // size = 8, align = 8
+            {closure#0} // size = 8, align = 8, niches = 1
             impl Fn(i32) -> i32
             ```
 
@@ -292,7 +299,7 @@ fn main() {
         expect![[r#"
             *|*
             ```rust
-            {closure#0} // size = 16, align = 8
+            {closure#0} // size = 16 (0x10), align = 8, niches = 1
             impl FnOnce()
             ```
 
@@ -320,7 +327,7 @@ fn main() {
         expect![[r#"
             *|*
             ```rust
-            {closure#0} // size = 8, align = 8
+            {closure#0} // size = 8, align = 8, niches = 1
             impl FnMut()
             ```
 
@@ -344,7 +351,7 @@ fn main() {
 "#,
         expect![[r#"
             ```rust
-            {closure#0} // size = 8, align = 8
+            {closure#0} // size = 8, align = 8, niches = 1
             impl FnOnce() -> S2
             ```
             Coerced to: &impl FnOnce() -> S2
@@ -667,7 +674,7 @@ struct Foo { fiel$0d_a: u8, field_b: i32, field_c: i16 }
             ```
 
             ```rust
-            field_a: u8 // size = 0x1, align = 0x1, offset = 0x4
+            field_a: u8 // size = 1, align = 1, offset = 4
             ```
         "#]],
     );
@@ -692,7 +699,7 @@ fn main() {
             ```
 
             ```rust
-            field_a: u32 // size = 0x4, align = 0x4, offset = 0x0
+            field_a: u32 // size = 4, align = 4, offset = 0
             ```
         "#]],
     );
@@ -714,7 +721,7 @@ fn main() {
             ```
 
             ```rust
-            field_a: u32 // size = 0x4, align = 0x4, offset = 0x0
+            field_a: u32 // size = 4, align = 4, offset = 0
             ```
         "#]],
     );
@@ -1528,7 +1535,7 @@ fn test_hover_function_pointer_show_identifiers() {
             ```
 
             ```rust
-            type foo = fn(a: i32, b: i32) -> i32 // size = 0x8, align = 0x8, niches = 1
+            type foo = fn(a: i32, b: i32) -> i32 // size = 8, align = 8, niches = 1
             ```
         "#]],
     );
@@ -1546,7 +1553,7 @@ fn test_hover_function_pointer_no_identifier() {
             ```
 
             ```rust
-            type foo = fn(i32, i32) -> i32 // size = 0x8, align = 0x8, niches = 1
+            type foo = fn(i32, i32) -> i32 // size = 8, align = 8, niches = 1
             ```
         "#]],
     );
@@ -1674,7 +1681,7 @@ fn foo() { let bar = Ba$0r; }
             ```
 
             ```rust
-            struct Bar // size = 0x0, align = 0x1
+            struct Bar // size = 0, align = 1
             ```
 
             ---
@@ -1710,7 +1717,7 @@ fn foo() { let bar = Ba$0r; }
             ```
 
             ```rust
-            struct Bar // size = 0x0, align = 0x1
+            struct Bar // size = 0, align = 1
             ```
 
             ---
@@ -1739,7 +1746,7 @@ fn foo() { let bar = Ba$0r; }
             ```
 
             ```rust
-            struct Bar // size = 0x0, align = 0x1
+            struct Bar // size = 0, align = 1
             ```
 
             ---
@@ -1767,7 +1774,7 @@ pub struct B$0ar
             ```
 
             ```rust
-            pub struct Bar // size = 0x0, align = 0x1
+            pub struct Bar // size = 0, align = 1
             ```
 
             ---
@@ -1794,7 +1801,7 @@ pub struct B$0ar
             ```
 
             ```rust
-            pub struct Bar // size = 0x0, align = 0x1
+            pub struct Bar // size = 0, align = 1
             ```
 
             ---
@@ -1883,7 +1890,7 @@ fn test_hover_layout_of_variant() {
             ```
 
             ```rust
-            Variant1(u8, u16) // size = 0x4
+            Variant1(u8, u16) // size = 4, align = 2
             ```
         "#]],
     );
@@ -1904,7 +1911,7 @@ fn test_hover_layout_of_enum() {
             ```
 
             ```rust
-            enum Foo // size = 0x10, align = 0x8, niches = 254
+            enum Foo // size = 16 (0x10), align = 8, niches = 254
             ```
         "#]],
     );
@@ -3204,7 +3211,7 @@ fn main() {
             *f*
 
             ```rust
-            f: &i32 // size = 8, align = 8
+            f: &i32 // size = 8, align = 8, niches = 1
             ```
             ---
 
@@ -3213,7 +3220,7 @@ fn main() {
             ```
 
             ```rust
-            f: i32 // size = 0x4, align = 0x4, offset = 0x0
+            f: i32 // size = 4, align = 4, offset = 0
             ```
         "#]],
     );
@@ -3353,7 +3360,7 @@ impl Foo {
             *self*
 
             ```rust
-            self: &Foo // size = 8, align = 8
+            self: &Foo // size = 8, align = 8, niches = 1
             ```
         "#]],
     );
@@ -3758,7 +3765,7 @@ type Fo$0o2 = Foo<2>;
             ```
 
             ```rust
-            type Foo2 = Foo<2> // size = 0x0, align = 0x1
+            type Foo2 = Foo<2> // size = 0, align = 1
             ```
         "#]],
     );
@@ -3800,7 +3807,7 @@ enum E {
             ```
 
             ```rust
-            A = 8
+            A = 8 // size = 1, align = 1
             ```
 
             ---
@@ -3825,7 +3832,7 @@ enum E {
             ```
 
             ```rust
-            A = 12 (0xC)
+            A = 12 (0xC) // size = 1, align = 1
             ```
 
             ---
@@ -3851,7 +3858,7 @@ enum E {
             ```
 
             ```rust
-            B = 2
+            B = 2 // size = 1, align = 1
             ```
 
             ---
@@ -3877,7 +3884,7 @@ enum E {
             ```
 
             ```rust
-            B = 5
+            B = 5 // size = 1, align = 1
             ```
 
             ---
@@ -4411,7 +4418,7 @@ fn foo(e: E) {
             ```
 
             ```rust
-            A = 3
+            A = 3 // size = 0, align = 1
             ```
 
             ---
@@ -4433,7 +4440,7 @@ fn main() {
             *tile4*
 
             ```rust
-            let tile4: [u32; 8] // size = 32, align = 4
+            let tile4: [u32; 8] // size = 32 (0x20), align = 4
             ```
         "#]],
     );
@@ -4669,7 +4676,7 @@ pub fn gimme() -> theitem::TheItem {
             ```
 
             ```rust
-            pub struct TheItem // size = 0x0, align = 0x1
+            pub struct TheItem // size = 0, align = 1
             ```
 
             ---
@@ -4817,7 +4824,7 @@ mod string {
             ```
 
             ```rust
-            struct String // size = 0x0, align = 0x1
+            struct String // size = 0, align = 1
             ```
 
             ---
@@ -5486,7 +5493,7 @@ foo_macro!(
             ```
 
             ```rust
-            pub struct Foo // size = 0x0, align = 0x1
+            pub struct Foo // size = 0, align = 1
             ```
 
             ---
@@ -5511,7 +5518,7 @@ pub struct Foo(i32);
             ```
 
             ```rust
-            pub struct Foo // size = 0x4, align = 0x4
+            pub struct Foo // size = 4, align = 4
             ```
 
             ---
@@ -5610,7 +5617,7 @@ enum Enum {
             ```
 
             ```rust
-            RecordV { field: u32 } // size = 0x4
+            RecordV { field: u32 } // size = 4, align = 4
             ```
         "#]],
     );
@@ -5632,7 +5639,7 @@ enum Enum {
             ```
 
             ```rust
-            field: u32 // size = 0x4, align = 0x4
+            field: u32 // size = 4, align = 4
             ```
         "#]],
     );
@@ -6134,7 +6141,7 @@ fn test() {
             ```
 
             ```rust
-            f: u32 // size = 0x4, align = 0x4, offset = 0x0
+            f: u32 // size = 4, align = 4, offset = 0
             ```
         "#]],
     );

@@ -3,8 +3,8 @@ use std::fmt::Display;
 
 use either::Either;
 use hir::{
-    Adt, AsAssocItem, AttributeTemplate, CaptureKind, HasAttrs, HasCrate, HasSource, HirDisplay,
-    Layout, Semantics, TypeInfo,
+    Adt, AsAssocItem, AttributeTemplate, CaptureKind, HasAttrs, HasSource, HirDisplay, Layout,
+    LayoutError, Semantics, TypeInfo,
 };
 use ide_db::{
     base_db::SourceDatabase,
@@ -27,7 +27,8 @@ use syntax::{
 use crate::{
     doc_links::{remove_links, rewrite_links},
     hover::walk_and_push_ty,
-    HoverAction, HoverConfig, HoverResult, Markup,
+    HoverAction, HoverConfig, HoverResult, Markup, MemoryLayoutHoverConfig,
+    MemoryLayoutHoverRenderKind,
 };
 
 pub(super) fn type_info_of(
@@ -393,32 +394,27 @@ pub(super) fn definition(
     let mod_path = definition_mod_path(db, &def);
     let (label, docs) = match def {
         Definition::Macro(it) => label_and_docs(db, it),
-        Definition::Field(it) => label_and_layout_info_and_docs(db, it, config, |&it| {
-            let var_def = it.parent_def(db);
-            let id = it.index();
-            let layout = it.layout(db).ok()?;
-            let offset = match var_def {
-                hir::VariantDef::Struct(s) => Adt::from(s)
-                    .layout(db)
-                    .ok()
-                    .and_then(|layout| Some(format!(", offset = {:#X}", layout.field_offset(id)?))),
-                _ => None,
-            };
-            let niches = niches(db, it, &layout).unwrap_or_default();
-            Some(format!(
-                "size = {:#X}, align = {:#X}{}{niches}",
-                layout.size(),
-                layout.align(),
-                offset.as_deref().unwrap_or_default()
-            ))
-        }),
+        Definition::Field(it) => label_and_layout_info_and_docs(
+            db,
+            it,
+            config,
+            |&it| it.layout(db),
+            |_| {
+                let var_def = it.parent_def(db);
+                let id = it.index();
+                match var_def {
+                    hir::VariantDef::Struct(s) => {
+                        Adt::from(s).layout(db).ok().and_then(|layout| layout.field_offset(id))
+                    }
+                    _ => None,
+                }
+            },
+        ),
         Definition::Module(it) => label_and_docs(db, it),
         Definition::Function(it) => label_and_docs(db, it),
-        Definition::Adt(it) => label_and_layout_info_and_docs(db, it, config, |&it| {
-            let layout = it.layout(db).ok()?;
-            let niches = niches(db, it, &layout).unwrap_or_default();
-            Some(format!("size = {:#X}, align = {:#X}{niches}", layout.size(), layout.align()))
-        }),
+        Definition::Adt(it) => {
+            label_and_layout_info_and_docs(db, it, config, |&it| it.layout(db), |_| None)
+        }
         Definition::Variant(it) => label_value_and_layout_info_and_docs(
             db,
             it,
@@ -435,16 +431,8 @@ pub(super) fn definition(
                     None
                 }
             },
-            |&it| {
-                let (layout, tag_size) = it.layout(db).ok()?;
-                let size = layout.size() as usize - tag_size;
-                if size == 0 {
-                    // There is no value in showing layout info for fieldless variants
-                    return None;
-                }
-                let niches = niches(db, it, &layout).unwrap_or_default();
-                Some(format!("size = {:#X}{niches}", layout.size()))
-            },
+            |it| it.layout(db),
+            |layout| layout.enum_tag_size(),
         ),
         Definition::Const(it) => label_value_and_docs(db, it, |it| {
             let body = it.render_eval(db);
@@ -470,11 +458,9 @@ pub(super) fn definition(
         }),
         Definition::Trait(it) => label_and_docs(db, it),
         Definition::TraitAlias(it) => label_and_docs(db, it),
-        Definition::TypeAlias(it) => label_and_layout_info_and_docs(db, it, config, |&it| {
-            let layout = it.ty(db).layout(db).ok()?;
-            let niches = niches(db, it, &layout).unwrap_or_default();
-            Some(format!("size = {:#X}, align = {:#X}{niches}", layout.size(), layout.align(),))
-        }),
+        Definition::TypeAlias(it) => {
+            label_and_layout_info_and_docs(db, it, config, |&it| it.ty(db).layout(db), |_| None)
+        }
         Definition::BuiltinType(it) => {
             return famous_defs
                 .and_then(|fd| builtin(fd, it))
@@ -507,10 +493,6 @@ pub(super) fn definition(
         })
         .map(Into::into);
     markup(docs, label, mod_path)
-}
-
-fn niches(db: &RootDatabase, it: impl HasCrate, layout: &Layout) -> Option<String> {
-    Some(format!(", niches = {}", layout.niches(db, it.krate(db).into())?))
 }
 
 fn type_info(
@@ -557,14 +539,6 @@ fn closure_ty(
     TypeInfo { original, adjusted }: &TypeInfo,
 ) -> Option<HoverResult> {
     let c = original.as_closure()?;
-    let layout = if config.memory_layout {
-        original
-            .layout(sema.db)
-            .map(|x| format!(" // size = {}, align = {}", x.size(), x.align()))
-            .unwrap_or_default()
-    } else {
-        String::default()
-    };
     let mut captures_rendered = c.captured_items(sema.db)
         .into_iter()
         .map(|it| {
@@ -600,17 +574,23 @@ fn closure_ty(
     } else {
         String::new()
     };
+    let mut markup = format!("```rust\n{}", c.display_with_id(sema.db),);
+
+    if let Some(layout) =
+        render_memory_layout(config.memory_layout, || original.layout(sema.db), |_| None, |_| None)
+    {
+        format_to!(markup, "{layout}");
+    }
+    format_to!(
+        markup,
+        "\n{}\n```{adjusted}\n\n## Captures\n{}",
+        c.display_with_impl(sema.db),
+        captures_rendered,
+    );
 
     let mut res = HoverResult::default();
     res.actions.push(HoverAction::goto_type_from_targets(sema.db, targets));
-    res.markup = format!(
-        "```rust\n{}{}\n{}\n```{adjusted}\n\n## Captures\n{}",
-        c.display_with_id(sema.db),
-        layout,
-        c.display_with_impl(sema.db),
-        captures_rendered,
-    )
-    .into();
+    res.markup = markup.into();
     Some(res)
 }
 
@@ -644,48 +624,59 @@ where
     (label, docs)
 }
 
-fn label_and_layout_info_and_docs<D, E, V>(
+fn label_and_layout_info_and_docs<D, E, E2>(
     db: &RootDatabase,
     def: D,
     config: &HoverConfig,
     layout_extractor: E,
+    layout_offset_extractor: E2,
 ) -> (String, Option<hir::Documentation>)
 where
     D: HasAttrs + HirDisplay,
-    E: Fn(&D) -> Option<V>,
-    V: Display,
+    E: Fn(&D) -> Result<Layout, LayoutError>,
+    E2: Fn(&Layout) -> Option<u64>,
 {
-    let label = match config.memory_layout.then(|| layout_extractor(&def)).flatten() {
-        Some(layout) => format!("{} // {layout}", def.display(db)),
-        _ => def.display(db).to_string(),
-    };
+    let mut label = def.display(db).to_string();
+    if let Some(layout) = render_memory_layout(
+        config.memory_layout,
+        || layout_extractor(&def),
+        layout_offset_extractor,
+        |_| None,
+    ) {
+        format_to!(label, "{layout}");
+    }
     let docs = def.attrs(db).docs();
     (label, docs)
 }
 
-fn label_value_and_layout_info_and_docs<D, E, E2, V, L>(
+fn label_value_and_layout_info_and_docs<D, E, E2, E3, V>(
     db: &RootDatabase,
     def: D,
     config: &HoverConfig,
     value_extractor: E,
     layout_extractor: E2,
+    layout_tag_extractor: E3,
 ) -> (String, Option<hir::Documentation>)
 where
     D: HasAttrs + HirDisplay,
     E: Fn(&D) -> Option<V>,
-    E2: Fn(&D) -> Option<L>,
+    E2: Fn(&D) -> Result<Layout, LayoutError>,
+    E3: Fn(&Layout) -> Option<usize>,
     V: Display,
-    L: Display,
 {
     let value = value_extractor(&def);
-    let label = match value {
+    let mut label = match value {
         Some(value) => format!("{} = {value}", def.display(db)),
         None => def.display(db).to_string(),
     };
-    let label = match config.memory_layout.then(|| layout_extractor(&def)).flatten() {
-        Some(layout) => format!("{} // {layout}", label),
-        _ => label,
-    };
+    if let Some(layout) = render_memory_layout(
+        config.memory_layout,
+        || layout_extractor(&def),
+        |_| None,
+        layout_tag_extractor,
+    ) {
+        format_to!(label, "{layout}");
+    }
     let docs = def.attrs(db).docs();
     (label, docs)
 }
@@ -769,12 +760,85 @@ fn local(db: &RootDatabase, it: hir::Local, config: &HoverConfig) -> Option<Mark
         }
         None => format!("{is_mut}self: {ty}"),
     };
-    if config.memory_layout {
-        if let Ok(layout) = it.ty(db).layout(db) {
-            format_to!(desc, " // size = {}, align = {}", layout.size(), layout.align());
-        }
+    if let Some(layout) =
+        render_memory_layout(config.memory_layout, || it.ty(db).layout(db), |_| None, |_| None)
+    {
+        format_to!(desc, "{layout}");
     }
     markup(None, desc, None)
+}
+
+fn render_memory_layout(
+    config: Option<MemoryLayoutHoverConfig>,
+    layout: impl FnOnce() -> Result<Layout, LayoutError>,
+    offset: impl FnOnce(&Layout) -> Option<u64>,
+    tag: impl FnOnce(&Layout) -> Option<usize>,
+) -> Option<String> {
+    // field
+
+    let config = config?;
+    let layout = layout().ok()?;
+
+    let mut label = String::from(" // ");
+
+    if let Some(render) = config.size {
+        let size = match tag(&layout) {
+            Some(tag) => layout.size() as usize - tag,
+            None => layout.size() as usize,
+        };
+        format_to!(label, "size = ");
+        match render {
+            MemoryLayoutHoverRenderKind::Decimal => format_to!(label, "{size}"),
+            MemoryLayoutHoverRenderKind::Hexadecimal => format_to!(label, "{size:#X}"),
+            MemoryLayoutHoverRenderKind::Both if size >= 10 => {
+                format_to!(label, "{size} ({size:#X})")
+            }
+            MemoryLayoutHoverRenderKind::Both => format_to!(label, "{size}"),
+        }
+        format_to!(label, ", ");
+    }
+
+    if let Some(render) = config.alignment {
+        let align = layout.align();
+        format_to!(label, "align = ");
+        match render {
+            MemoryLayoutHoverRenderKind::Decimal => format_to!(label, "{align}",),
+            MemoryLayoutHoverRenderKind::Hexadecimal => format_to!(label, "{align:#X}",),
+            MemoryLayoutHoverRenderKind::Both if align >= 10 => {
+                format_to!(label, "{align} ({align:#X})")
+            }
+            MemoryLayoutHoverRenderKind::Both => {
+                format_to!(label, "{align}")
+            }
+        }
+        format_to!(label, ", ");
+    }
+
+    if let Some(render) = config.offset {
+        if let Some(offset) = offset(&layout) {
+            format_to!(label, "offset = ");
+            match render {
+                MemoryLayoutHoverRenderKind::Decimal => format_to!(label, "{offset}"),
+                MemoryLayoutHoverRenderKind::Hexadecimal => format_to!(label, "{offset:#X}"),
+                MemoryLayoutHoverRenderKind::Both if offset >= 10 => {
+                    format_to!(label, "{offset} ({offset:#X})")
+                }
+                MemoryLayoutHoverRenderKind::Both => {
+                    format_to!(label, "{offset}")
+                }
+            }
+            format_to!(label, ", ");
+        }
+    }
+
+    if config.niches {
+        if let Some(niches) = layout.niches() {
+            format_to!(label, "niches = {niches}, ");
+        }
+    }
+    label.pop(); // ' '
+    label.pop(); // ','
+    Some(label)
 }
 
 struct KeywordHint {
