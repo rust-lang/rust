@@ -53,7 +53,7 @@ LL |     "don't suggest this, because the generic param is used in the bound."
    |
    = note: expected type parameter `T`
                    found reference `&'static str`
-   = note: the type of `T` is chosen by the caller
+   = note: the type of `T` is chosen by the caller and may be a type that is different than `T`
 
 error: aborting due to 4 previous errors
 

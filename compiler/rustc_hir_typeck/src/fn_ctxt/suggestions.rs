@@ -856,7 +856,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             format!("impl {}", all_bounds_str),
             Applicability::MaybeIncorrect,
         );
-        err.note(format!("the type of `{}` is chosen by the caller", expected_ty_as_param.name));
+
+        let ty::Param(found_ty_as_param) = found.kind() else { return };
+        err.note(format!("the type of `{}` is chosen by the caller and may be a type that is different than `{}`", expected_ty_as_param.name, found_ty_as_param.name));
     }
 
     pub(in super::super) fn suggest_missing_break_or_return_expr(
