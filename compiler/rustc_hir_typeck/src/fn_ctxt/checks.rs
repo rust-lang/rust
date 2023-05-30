@@ -1404,7 +1404,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // type of the place it is referencing, and not some
             // supertype thereof.
             let init_ty = self.check_expr_with_needs(init, Needs::maybe_mut_place(m));
-            self.demand_eqtype(init.span, local_ty, init_ty);
+            if let Some(mut diag) = self.demand_eqtype_diag(init.span, local_ty, init_ty) {
+                self.emit_type_mismatch_suggestions(
+                    &mut diag,
+                    init.peel_drop_temps(),
+                    init_ty,
+                    local_ty,
+                    None,
+                    None,
+                );
+                diag.emit();
+            }
             init_ty
         } else {
             self.check_expr_coercible_to_type(init, local_ty, None)
