@@ -8,7 +8,7 @@ See [wasix.org](https://wasix.org) for more details.
 
 ## Usage
 
-To compile Rust code to `wasxi`, you should usually use the
+To compile Rust code to `wasix`, you should usually use the
 [cargo-wasix](https://github.com/wasix-org/cargo-wasix) cargo wrapper.
 
 It will automatically download pre-built versions of the wasix Rust toolchain,
