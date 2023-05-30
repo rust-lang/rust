@@ -103,11 +103,14 @@ impl RunConfig<'_> {
     }
 
     /// Return a list of crate names selected by `run.paths`.
+    #[track_caller]
     pub fn cargo_crates_in_set(&self) -> Interned<Vec<String>> {
         let mut crates = Vec::new();
         for krate in &self.paths {
             let path = krate.assert_single_path();
-            let crate_name = self.builder.crate_paths[&path.path];
+            let Some(crate_name) = self.builder.crate_paths.get(&path.path) else {
+                panic!("missing crate for path {}", path.path.display())
+            };
             crates.push(crate_name.to_string());
         }
         INTERNER.intern_list(crates)
@@ -430,25 +433,6 @@ impl<'a> ShouldRun<'a> {
     /// Indicates it should run if the command-line selects the given crate or
     /// any of its (local) dependencies.
     ///
-    /// Compared to `krate`, this treats the dependencies as aliases for the
-    /// same job. Generally it is preferred to use `krate`, and treat each
-    /// individual path separately. For example `./x.py test src/liballoc`
-    /// (which uses `krate`) will test just `liballoc`. However, `./x.py check
-    /// src/liballoc` (which uses `all_krates`) will check all of `libtest`.
-    /// `all_krates` should probably be removed at some point.
-    pub fn all_krates(mut self, name: &str) -> Self {
-        let mut set = BTreeSet::new();
-        for krate in self.builder.in_tree_crates(name, None) {
-            let path = krate.local_path(self.builder);
-            set.insert(TaskPath { path, kind: Some(self.kind) });
-        }
-        self.paths.insert(PathSet::Set(set));
-        self
-    }
-
-    /// Indicates it should run if the command-line selects the given crate or
-    /// any of its (local) dependencies.
-    ///
     /// `make_run` will be called a single time with all matching command-line paths.
     pub fn crate_or_deps(self, name: &str) -> Self {
         let crates = self.builder.in_tree_crates(name, None);
@@ -458,6 +442,8 @@ impl<'a> ShouldRun<'a> {
     /// Indicates it should run if the command-line selects any of the given crates.
     ///
     /// `make_run` will be called a single time with all matching command-line paths.
+    ///
+    /// Prefer [`ShouldRun::crate_or_deps`] to this function where possible.
     pub(crate) fn crates(mut self, crates: Vec<&Crate>) -> Self {
         for krate in crates {
             let path = krate.local_path(self.builder);
@@ -487,7 +473,15 @@ impl<'a> ShouldRun<'a> {
         self.paths(&[path])
     }
 
-    // multiple aliases for the same job
+    /// Multiple aliases for the same job.
+    ///
+    /// This differs from [`path`] in that multiple calls to path will end up calling `make_run`
+    /// multiple times, whereas a single call to `paths` will only ever generate a single call to
+    /// `paths`.
+    ///
+    /// This is analogous to `all_krates`, although `all_krates` is gone now. Prefer [`path`] where possible.
+    ///
+    /// [`path`]: ShouldRun::path
     pub fn paths(mut self, paths: &[&str]) -> Self {
         static SUBMODULES_PATHS: OnceCell<Vec<String>> = OnceCell::new();
 
@@ -641,12 +635,16 @@ impl Kind {
         }
     }
 
-    pub fn test_description(&self) -> &'static str {
+    pub fn description(&self) -> String {
         match self {
             Kind::Test => "Testing",
             Kind::Bench => "Benchmarking",
-            _ => panic!("not a test command: {}!", self.as_str()),
+            Kind::Doc => "Documenting",
+            Kind::Run => "Running",
+            Kind::Suggest => "Suggesting",
+            _ => return format!("{self:?}"),
         }
+        .to_owned()
     }
 }
 
