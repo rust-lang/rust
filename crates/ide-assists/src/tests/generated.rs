@@ -1480,6 +1480,27 @@ fn foo(name: Option<&str>) {
 }
 
 #[test]
+fn doctest_inline_const_as_literal() {
+    check_doc_test(
+        "inline_const_as_literal",
+        r#####"
+const STRING: &str = "Hello, World!";
+
+fn something() -> &'static str {
+    STRING$0
+}
+"#####,
+        r#####"
+const STRING: &str = "Hello, World!";
+
+fn something() -> &'static str {
+    "Hello, World!"
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_inline_into_callers() {
     check_doc_test(
         "inline_into_callers",
@@ -1562,27 +1583,6 @@ macro_rules! num {
 fn main() {
     let number = 1+num!(+ + - + +);
     println!("{number}");
-}
-"#####,
-    )
-}
-
-#[test]
-fn doctest_inline_str_literal() {
-    check_doc_test(
-        "inline_str_literal",
-        r#####"
-const STRING: &str = "Hello, World!";
-
-fn something() -> &'static str {
-    STR$0ING
-}
-"#####,
-        r#####"
-const STRING: &str = "Hello, World!";
-
-fn something() -> &'static str {
-    "Hello, World!"
 }
 "#####,
     )

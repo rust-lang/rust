@@ -3494,6 +3494,14 @@ impl Type {
         }
     }
 
+    pub fn is_scalar(&self) -> bool {
+        matches!(self.ty.kind(Interner), TyKind::Scalar(_))
+    }
+
+    pub fn is_tuple(&self) -> bool {
+        matches!(self.ty.kind(Interner), TyKind::Tuple(..))
+    }
+
     pub fn remove_ref(&self) -> Option<Type> {
         match &self.ty.kind(Interner) {
             TyKind::Ref(.., ty) => Some(self.derived(ty.clone())),
