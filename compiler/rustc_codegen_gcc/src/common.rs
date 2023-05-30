@@ -1,17 +1,15 @@
 use gccjit::LValue;
 use gccjit::{RValue, Type, ToRValue};
-use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::{
     BaseTypeMethods,
     ConstMethods,
-    DerivedTypeMethods,
     MiscMethods,
     StaticMethods,
 };
 use rustc_middle::mir::Mutability;
-use rustc_middle::ty::layout::{TyAndLayout, LayoutOf};
+use rustc_middle::ty::layout::{LayoutOf};
 use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
-use rustc_target::abi::{self, HasDataLayout, Pointer, Size};
+use rustc_target::abi::{self, HasDataLayout, Pointer};
 
 use crate::consts::const_alloc_to_gcc;
 use crate::context::CodegenCx;
@@ -240,27 +238,25 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         const_alloc_to_gcc(self, alloc)
     }
 
-    fn from_const_alloc(&self, layout: TyAndLayout<'tcx>, alloc: ConstAllocation<'tcx>, offset: Size) -> PlaceRef<'tcx, RValue<'gcc>> {
-        assert_eq!(alloc.inner().align, layout.align.abi);
-        let ty = self.type_ptr_to(layout.gcc_type(self));
-        let value =
-            if layout.size == Size::ZERO {
-                let value = self.const_usize(alloc.inner().align.bytes());
-                self.const_bitcast(value, ty)
-            }
-            else {
-                let init = const_alloc_to_gcc(self, alloc);
-                let base_addr = self.static_addr_of(init, alloc.inner().align, None);
-
-                let array = self.const_bitcast(base_addr, self.type_i8p());
-                let value = self.context.new_array_access(None, array, self.const_usize(offset.bytes())).get_address(None);
-                self.const_bitcast(value, ty)
-            };
-        PlaceRef::new_sized(value, layout)
-    }
-
     fn const_ptrcast(&self, val: RValue<'gcc>, ty: Type<'gcc>) -> RValue<'gcc> {
         self.context.new_cast(None, val, ty)
+    }
+
+    fn const_bitcast(&self, value: RValue<'gcc>, typ: Type<'gcc>) -> RValue<'gcc> {
+        if value.get_type() == self.bool_type.make_pointer() {
+            if let Some(pointee) = typ.get_pointee() {
+                if pointee.dyncast_vector().is_some() {
+                    panic!()
+                }
+            }
+        }
+        // NOTE: since bitcast makes a value non-constant, don't bitcast if not necessary as some
+        // SIMD builtins require a constant value.
+        self.bitcast_if_needed(value, typ)
+    }
+    
+    fn const_ptr_byte_offset(&self, base_addr: Self::Value, offset: abi::Size) -> Self::Value {
+        self.context.new_array_access(None, base_addr, self.const_usize(offset.bytes())).get_address(None)
     }
 }
 
