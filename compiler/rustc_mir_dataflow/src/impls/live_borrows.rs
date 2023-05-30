@@ -128,9 +128,8 @@ use rustc_data_structures::graph::implementation::{Graph, NodeIndex};
 use rustc_middle::mir::visit::PlaceContext;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, Ty, TypeSuperVisitable, TypeVisitable};
+use rustc_middle::ty;
 
-use core::ops::ControlFlow;
 use either::Either;
 
 #[derive(Copy, Clone, Debug)]
@@ -155,43 +154,6 @@ impl NodeKind {
             Self::LocalWithRefs(local) => *local,
             Self::Local(local) => *local,
         }
-    }
-}
-
-/// TypeVisitor that looks for `ty::Ref`, `ty::RawPtr`. Additionally looks for `ty::Param`,
-/// which could themselves refer to references or raw pointers.
-struct MaybeHasRefsOrPointersVisitor {
-    has_refs_or_pointers: bool,
-    has_params: bool,
-}
-
-impl MaybeHasRefsOrPointersVisitor {
-    fn new() -> Self {
-        MaybeHasRefsOrPointersVisitor { has_refs_or_pointers: false, has_params: false }
-    }
-}
-
-impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for MaybeHasRefsOrPointersVisitor {
-    type BreakTy = ();
-
-    #[instrument(skip(self), level = "debug")]
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-        match ty.kind() {
-            ty::Ref(..) => {
-                self.has_refs_or_pointers = true;
-                return ControlFlow::Break(());
-            }
-            ty::RawPtr(..) => {
-                self.has_refs_or_pointers = true;
-                return ControlFlow::Break(());
-            }
-            ty::Param(_) => {
-                self.has_params = true;
-            }
-            _ => {}
-        }
-
-        ty.super_visit_with(self)
     }
 }
 
@@ -265,6 +227,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BorrowDependencies<'a, 'tcx> {
         match &statement.kind {
             StatementKind::Assign(assign) => {
                 let assign_place = assign.0;
+                debug!("assign_place_ty: {:?}", assign_place.ty(self.local_decls, self.tcx).ty);
                 let assign_local = assign_place.local;
                 self.current_local = Some(assign_local);
                 debug!("set current_local to {:?}", self.current_local);
@@ -305,12 +268,8 @@ impl<'a, 'tcx> Visitor<'tcx> for BorrowDependencies<'a, 'tcx> {
                 let src_node_kind = NodeKind::Borrow(src_local);
                 let src_node_idx = self.maybe_create_node(src_node_kind);
 
-                let node_idx = if let Some(node_idx) = self.locals_to_node_indexes.get(&place.local)
-                {
-                    *node_idx
-                } else {
-                    bug!("should have added a node for the moved borrowed place before");
-                };
+                let node_kind = NodeKind::Borrow(place.local);
+                let node_idx = self.maybe_create_node(node_kind);
 
                 debug!(
                     "adding edge from {:?}({:?}) -> {:?}({:?})",
@@ -346,10 +305,12 @@ impl<'a, 'tcx> Visitor<'tcx> for BorrowDependencies<'a, 'tcx> {
 
                 self.dep_graph.add_edge(src_node_idx, node_idx, ());
             }
-            _ => {
-                // FIXME Need to also create edges for `Local`s that correspond to `NodeKind::LocalWithRefs` here
+            Rvalue::Cast(..) => {
+                // FIXME we probably should handle pointer casts here directly
+
                 self.super_rvalue(rvalue, location)
             }
+            _ => self.super_rvalue(rvalue, location),
         }
     }
 
@@ -385,7 +346,8 @@ impl<'a, 'tcx> Visitor<'tcx> for BorrowDependencies<'a, 'tcx> {
                 None => {}
             },
             _ => {
-                // FIXME Need to also create edges for `Local`s that correspond to `NodeKind::LocalWithRefs` here
+                // FIXME I think we probably need to introduce edges here if `place.local`
+                // corresponds to a `NodeKind::LocalWithRefs`
             }
         }
 
@@ -404,26 +366,12 @@ impl<'a, 'tcx> Visitor<'tcx> for BorrowDependencies<'a, 'tcx> {
                 let dest_ty = destination.ty(self.local_decls, self.tcx).ty;
                 debug!(?dest_ty);
 
-                let mut has_refs_or_pointers_visitor = MaybeHasRefsOrPointersVisitor::new();
-                dest_ty.visit_with(&mut has_refs_or_pointers_visitor);
-
-                let dest_might_include_refs_or_pointers =
-                    if has_refs_or_pointers_visitor.has_refs_or_pointers {
-                        true
-                    } else if has_refs_or_pointers_visitor.has_params {
-                        // if we pass in any references or raw pointers as arguments and the
-                        // return type includes type parameters, these type parameters could
-                        // refer to those refs/ptrs, so we have to be conservative here and possibly
-                        // include an edge.
-                        true
-                    } else {
-                        false
-                    };
-
-                if dest_might_include_refs_or_pointers {
-                    self.current_local = Some(destination.local);
-                    debug!("self.current_local: {:?}", self.current_local);
-                }
+                // To ensure safety we need to add `destination` to the graph as a `Node` with `NodeKind::LocalWithRefs`
+                // if we pass in any refs/ptrs or `Local`s corresponding to `NodeKind::LocalWithRefs`. The reason for this
+                // is that the function could include those refs/ptrs in its return value. It's not sufficient
+                // to look for the existence of `ty::Ref` or `ty::RawPtr` in the type of the return type, since the
+                // function could also cast pointers to integers e.g. .
+                self.current_local = Some(destination.local);
 
                 self.visit_operand(func, location);
                 for arg in args {
@@ -436,26 +384,9 @@ impl<'a, 'tcx> Visitor<'tcx> for BorrowDependencies<'a, 'tcx> {
                 let resume_arg_ty = resume_arg.ty(self.local_decls, self.tcx).ty;
                 debug!(?resume_arg_ty);
 
-                let mut has_refs_or_pointers_visitor = MaybeHasRefsOrPointersVisitor::new();
-                resume_arg_ty.visit_with(&mut has_refs_or_pointers_visitor);
-
-                let dest_might_include_refs_or_pointers =
-                    if has_refs_or_pointers_visitor.has_refs_or_pointers {
-                        true
-                    } else if has_refs_or_pointers_visitor.has_params {
-                        // if we pass in any references or raw pointers as arguments and the
-                        // return type includes type parameters, these type parameters could
-                        // refer to those refs/ptrs, so we have to be conservative here and possibly
-                        // include an edge.
-                        true
-                    } else {
-                        false
-                    };
-
-                if dest_might_include_refs_or_pointers {
-                    self.current_local = Some(resume_arg.local);
-                    debug!("self.current_local: {:?}", self.current_local);
-                }
+                // We may need to add edges from `destination`, see the comment for this statement
+                // in `TerminatorKind::Call` for the rationale behind this.
+                self.current_local = Some(resume_arg.local);
 
                 self.super_operand(value, location);
             }
@@ -578,6 +509,7 @@ pub fn get_borrowed_locals_results<'mir, 'tcx>(
             )
         }
     }
+
     let live_borrows = LiveBorrows::new(body, tcx, borrow_deps);
     let results =
         live_borrows.into_engine(tcx, body).pass_name("borrowed_locals").iterate_to_fixpoint();
@@ -763,6 +695,15 @@ where
                                 self.visit_rvalue(&assign.1, location);
                             }
                             _ => {
+                                if let Some(node_idx) =
+                                    self.borrow_deps.locals_to_node_indexes.get(&lhs_place.local)
+                                {
+                                    let node = self.borrow_deps.dep_graph.node(*node_idx);
+                                    if let NodeKind::LocalWithRefs(_) = node.data {
+                                        debug!("killing {:?}", lhs_place.local);
+                                        self._trans.kill(lhs_place.local);
+                                    }
+                                }
                                 self.super_assign(&assign.0, &assign.1, location);
                             }
                         }
@@ -828,18 +769,32 @@ where
 
     #[instrument(skip(self), level = "debug")]
     fn visit_terminator(&mut self, terminator: &mir::Terminator<'tcx>, location: Location) {
-        match terminator.kind {
-            TerminatorKind::Call { destination, .. } => {
-                debug!("killing {:?}", destination.local);
-                self._trans.kill(destination.local);
-            }
-            TerminatorKind::Yield { resume_arg, .. } => {
-                debug!("killing {:?}", resume_arg.local);
-                self._trans.kill(resume_arg.local);
-            }
-            _ => {}
-        }
+        match &terminator.kind {
+            TerminatorKind::Call { destination, args, .. } => {
+                match destination.projection.as_slice() {
+                    &[] | &[ProjectionElem::OpaqueCast(_)] => {
+                        debug!("killing {:?}", destination.local);
+                        self._trans.kill(destination.local);
 
-        self.super_terminator(terminator, location);
+                        for arg in args {
+                            self.visit_operand(arg, location)
+                        }
+                    }
+                    _ => self.super_terminator(terminator, location),
+                }
+            }
+            TerminatorKind::Yield { resume_arg, value, .. } => {
+                match resume_arg.projection.as_slice() {
+                    &[] | &[ProjectionElem::OpaqueCast(_)] => {
+                        debug!("killing {:?}", resume_arg.local);
+                        self._trans.kill(resume_arg.local);
+
+                        self.visit_operand(value, location)
+                    }
+                    _ => self.super_terminator(terminator, location),
+                }
+            }
+            _ => self.super_terminator(terminator, location),
+        }
     }
 }

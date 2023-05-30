@@ -199,6 +199,7 @@ impl<'a, 'mir, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'a, '
         for i in 0..self.body.local_decls().len() {
             let local = Local::from_usize(i);
             if borrowed_locals_at_loc.contains(local) {
+                debug!("{:?} is borrowed", local);
                 trans.gen(local);
             }
         }
