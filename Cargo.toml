@@ -1,4 +1,5 @@
 [workspace]
+resolver = "1"
 members = [
   "compiler/rustc",
   "library/std",
