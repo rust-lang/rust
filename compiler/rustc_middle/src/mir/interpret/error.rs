@@ -473,6 +473,8 @@ pub enum ResourceExhaustionInfo {
     MemoryExhausted,
     /// The address space (of the target) is full.
     AddressSpaceFull,
+    /// The compiler got an interrupt signal (a user ran out of patience).
+    Interrupted,
 }
 
 impl fmt::Display for ResourceExhaustionInfo {
@@ -491,6 +493,7 @@ impl fmt::Display for ResourceExhaustionInfo {
             AddressSpaceFull => {
                 write!(f, "there are no more free addresses in the address space")
             }
+            Interrupted => write!(f, "compilation was interrupted"),
         }
     }
 }
