@@ -1,0 +1,14 @@
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/recursive-impl-trait-type-direct-with-earlybound-lifetime-4.rs:8:12
+   |
+LL |     let _: *mut &'b () = foo::<'a, 'b>();
+   |            ^^^^^^^^^^^ expected `*mut &'a ()`, got `*mut &'b ()`
+   |
+note: previous use here
+  --> $DIR/recursive-impl-trait-type-direct-with-earlybound-lifetime-4.rs:7:12
+   |
+LL |     let _: *mut &'a () = foo::<'a, 'b>();
+   |            ^^^^^^^^^^^
+
+error: aborting due to previous error
+

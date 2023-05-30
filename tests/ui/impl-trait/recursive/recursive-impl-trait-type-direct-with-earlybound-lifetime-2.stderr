@@ -1,0 +1,18 @@
+error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
+  --> $DIR/recursive-impl-trait-type-direct-with-earlybound-lifetime-2.rs:4:12
+   |
+LL | fn foo<'a: 'a>() -> impl Sized {
+   |        --           ---------- opaque type defined here
+   |        |
+   |        hidden type `*mut &'a ()` captures the lifetime `'a` as defined here
+LL |     let _: *mut &'a () = foo::<'a>();
+   |            ^^^^^^^^^^^
+   |
+help: to declare that `impl Sized` captures `'a`, you can add an explicit `'a` lifetime bound
+   |
+LL | fn foo<'a: 'a>() -> impl Sized + 'a {
+   |                                ++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0700`.
