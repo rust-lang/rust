@@ -858,7 +858,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         let ty::Param(found_ty_as_param) = found.kind() else { return };
-        err.note(format!("the type of `{}` is chosen by the caller and may be a type that is different than `{}`", expected_ty_as_param.name, found_ty_as_param.name));
+        err.note(format!("the type of `{}` is chosen by the caller and may be a type that is different from `{}`", expected_ty_as_param.name, found_ty_as_param.name));
     }
 
     pub(in super::super) fn suggest_missing_break_or_return_expr(
