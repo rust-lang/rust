@@ -10,7 +10,6 @@ fn main() {
     let e: bool = unimplemented!();
     let _ = !true;
     let _ = !false;
-    // vvv Should not lint
     let _ = !!a;
     let _ = false || a;
     // don't lint on cfgs
@@ -55,6 +54,7 @@ fn issue4548() {
 
 fn check_expect() {
     let a: bool = unimplemented!();
+    #[expect(clippy::nonminimal_bool)]
     let _ = !!a;
 }
 
