@@ -26,9 +26,7 @@ unicode-normalization = "0.1"
 unicode-script = { version = "0.5", default-features = false }
 semver = "1.0"
 rustc-semver = "1.1"
-# NOTE: cargo requires serde feat in its url dep
-# see <https://github.com/rust-lang/rust/pull/63587#issuecomment-522343864>
-url = { version = "2.2", features = ["serde"] }
+url = "2.2"
 
 [features]
 deny-warnings = ["clippy_utils/deny-warnings"]
