@@ -72,7 +72,7 @@ impl<'tcx> fmt::Display for BorrowData<'tcx> {
         let kind = match self.kind {
             mir::BorrowKind::Shared => "",
             mir::BorrowKind::Shallow => "shallow ",
-            mir::BorrowKind::Unique => "uniq ",
+            mir::BorrowKind::Mut { kind: mir::MutBorrowKind::ClosureCapture } => "uniq ",
             mir::BorrowKind::Mut { .. } => "mut ",
         };
         write!(w, "&{:?} {}{:?}", self.region, kind, self.borrowed_place)

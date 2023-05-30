@@ -2035,22 +2035,24 @@ impl<'tcx> Rvalue<'tcx> {
 impl BorrowKind {
     pub fn mutability(&self) -> Mutability {
         match *self {
-            BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::Unique => Mutability::Not,
+            BorrowKind::Shared | BorrowKind::Shallow => Mutability::Not,
             BorrowKind::Mut { .. } => Mutability::Mut,
         }
     }
 
     pub fn allows_two_phase_borrow(&self) -> bool {
         match *self {
-            BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::Unique => false,
-            BorrowKind::Mut { allow_two_phase_borrow } => allow_two_phase_borrow,
+            BorrowKind::Shared | BorrowKind::Shallow => false,
+            BorrowKind::Mut { kind } => kind == MutBorrowKind::TwoPhaseBorrow,
         }
     }
 
     // FIXME: won't be used after diagnostic migration
     pub fn describe_mutability(&self) -> &str {
         match *self {
-            BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::Unique => "immutable",
+            BorrowKind::Shared
+            | BorrowKind::Shallow
+            | BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture } => "immutable",
             BorrowKind::Mut { .. } => "mutable",
         }
     }
@@ -2090,7 +2092,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 let kind_str = match borrow_kind {
                     BorrowKind::Shared => "",
                     BorrowKind::Shallow => "shallow ",
-                    BorrowKind::Mut { .. } | BorrowKind::Unique => "mut ",
+                    BorrowKind::Mut { .. } => "mut ",
                 };
 
                 // When printing regions, add trailing space if necessary.

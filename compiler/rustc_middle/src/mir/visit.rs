@@ -650,9 +650,6 @@ macro_rules! make_mir_visitor {
                             BorrowKind::Shallow => PlaceContext::NonMutatingUse(
                                 NonMutatingUseContext::ShallowBorrow
                             ),
-                            BorrowKind::Unique => PlaceContext::MutatingUse(
-                                MutatingUseContext::Borrow
-                            ),
                             BorrowKind::Mut { .. } =>
                                 PlaceContext::MutatingUse(MutatingUseContext::Borrow),
                         };

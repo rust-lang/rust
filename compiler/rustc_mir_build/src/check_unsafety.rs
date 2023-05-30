@@ -3,7 +3,7 @@ use crate::errors::*;
 use rustc_middle::thir::visit::{self, Visitor};
 
 use rustc_hir as hir;
-use rustc_middle::mir::BorrowKind;
+use rustc_middle::mir::{BorrowKind, MutBorrowKind};
 use rustc_middle::thir::*;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
@@ -254,7 +254,9 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                         );
                     };
                     match borrow_kind {
-                        BorrowKind::Shallow | BorrowKind::Shared | BorrowKind::Unique => {
+                        BorrowKind::Shallow
+                        | BorrowKind::Shared
+                        | BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture } => {
                             if !ty.is_freeze(self.tcx, self.param_env) {
                                 self.requires_unsafe(pat.span, BorrowOfLayoutConstrainedField);
                             }
@@ -440,15 +442,19 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 visit::walk_expr(&mut visitor, expr);
                 if visitor.found {
                     match borrow_kind {
-                        BorrowKind::Shallow | BorrowKind::Shared | BorrowKind::Unique
+                        BorrowKind::Shallow
+                        | BorrowKind::Shared
+                        | BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture }
                             if !self.thir[arg].ty.is_freeze(self.tcx, self.param_env) =>
                         {
                             self.requires_unsafe(expr.span, BorrowOfLayoutConstrainedField)
                         }
-                        BorrowKind::Mut { .. } => {
-                            self.requires_unsafe(expr.span, MutationOfLayoutConstrainedField)
-                        }
-                        BorrowKind::Shallow | BorrowKind::Shared | BorrowKind::Unique => {}
+                        BorrowKind::Mut {
+                            kind: MutBorrowKind::Default | MutBorrowKind::TwoPhaseBorrow,
+                        } => self.requires_unsafe(expr.span, MutationOfLayoutConstrainedField),
+                        BorrowKind::Shallow
+                        | BorrowKind::Shared
+                        | BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture } => {}
                     }
                 }
             }

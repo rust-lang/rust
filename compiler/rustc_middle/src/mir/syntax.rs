@@ -182,6 +182,16 @@ pub enum BorrowKind {
     /// We can also report errors with this kind of borrow differently.
     Shallow,
 
+    /// Data is mutable and not aliasable.
+    Mut { kind: MutBorrowKind },
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, TyEncodable, TyDecodable)]
+#[derive(Hash, HashStable)]
+pub enum MutBorrowKind {
+    Default,
+    /// this borrow arose from method-call auto-ref. (i.e., `adjustment::Adjust::Borrow`)
+    TwoPhaseBorrow,
     /// Data must be immutable but not aliasable. This kind of borrow
     /// cannot currently be expressed by the user and is used only in
     /// implicit closure bindings. It is needed when the closure is
@@ -220,19 +230,7 @@ pub enum BorrowKind {
     /// immutable, but not aliasable. This solves the problem. For
     /// simplicity, we don't give users the way to express this
     /// borrow, it's just used when translating closures.
-    ///
-    // FIXME(#112072): This is wrong. Unique borrows are mutable borrows except
-    // that they do not require their pointee to be marked as a mutable.
-    // They should still be treated as mutable borrows in every other way,
-    // e.g. for variance or overlap checking.
-    Unique,
-
-    /// Data is mutable and not aliasable.
-    Mut {
-        /// `true` if this borrow arose from method-call auto-ref
-        /// (i.e., `adjustment::Adjust::Borrow`).
-        allow_two_phase_borrow: bool,
-    },
+    ClosureCapture,
 }
 
 ///////////////////////////////////////////////////////////////////////////

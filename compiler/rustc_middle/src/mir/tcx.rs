@@ -269,11 +269,6 @@ impl BorrowKind {
             BorrowKind::Mut { .. } => hir::Mutability::Mut,
             BorrowKind::Shared => hir::Mutability::Not,
 
-            // We have no type corresponding to a unique imm borrow, so
-            // use `&mut`. It gives all the capabilities of a `&uniq`
-            // and hence is a safe "over approximation".
-            BorrowKind::Unique => hir::Mutability::Mut,
-
             // We have no type corresponding to a shallow borrow, so use
             // `&` as an approximation.
             BorrowKind::Shallow => hir::Mutability::Not,
