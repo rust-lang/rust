@@ -327,3 +327,18 @@ pub struct CtorIsPrivate {
     pub span: Span,
     pub def: String,
 }
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    hir_typeck_convert_using_method,
+    code = "{sugg}",
+    applicability = "machine-applicable",
+    style = "verbose"
+)]
+pub struct SuggestConvertViaMethod<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub sugg: &'static str,
+    pub expected: Ty<'tcx>,
+    pub found: Ty<'tcx>,
+}

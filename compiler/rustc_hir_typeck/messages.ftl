@@ -25,6 +25,8 @@ hir_typeck_const_select_must_be_fn = this argument must be a function item
 
 hir_typeck_convert_to_str = try converting the passed type into a `&str`
 
+hir_typeck_convert_using_method = try using `{$sugg}` to convert `{$found}` to `{$expected}`
+
 hir_typeck_ctor_is_private = tuple struct constructor `{$def}` is private
 
 hir_typeck_expected_default_return_type = expected `()` because of default return type
