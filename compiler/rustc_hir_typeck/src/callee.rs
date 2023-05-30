@@ -420,20 +420,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .steal_diagnostic(segment.ident.span, StashKey::CallIntoMethod)
                 {
                     // Try suggesting `foo(a)` -> `a.foo()` if possible.
-                    if let Some(ty) =
-                        self.suggest_call_as_method(
-                            &mut diag,
-                            segment,
-                            arg_exprs,
-                            call_expr,
-                            expected
-                        )
-                    {
-                        diag.emit();
-                        return ty;
-                    } else {
-                        diag.emit();
-                    }
+                    self.suggest_call_as_method(
+                        &mut diag,
+                        segment,
+                        arg_exprs,
+                        call_expr,
+                        expected
+                    );
+                    diag.emit();
                 }
 
                 let err = self.report_invalid_callee(call_expr, callee_expr, callee_ty, arg_exprs);
@@ -496,9 +490,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         arg_exprs: &'tcx [hir::Expr<'tcx>],
         call_expr: &'tcx hir::Expr<'tcx>,
         expected: Expectation<'tcx>,
-    ) -> Option<Ty<'tcx>> {
+    ) {
         if let [callee_expr, rest @ ..] = arg_exprs {
-            let callee_ty = self.typeck_results.borrow().expr_ty_adjusted_opt(callee_expr)?;
+            let Some(callee_ty) = self.typeck_results.borrow().expr_ty_adjusted_opt(callee_expr) else {
+                return;
+            };
 
             // First, do a probe with `IsSuggestion(true)` to avoid emitting
             // any strange errors. If it's successful, then we'll do a true
@@ -513,7 +509,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ProbeScope::AllTraits,
                 expected.only_has_type(self),
             ) else {
-                return None;
+                return;
             };
 
             let pick = self.confirm_method(
@@ -525,7 +521,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 segment,
             );
             if pick.illegal_sized_bound.is_some() {
-                return None;
+                return;
             }
 
             let up_to_rcvr_span = segment.ident.span.until(callee_expr.span);
@@ -567,22 +563,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     sugg,
                     Applicability::MaybeIncorrect,
                 );
-
-                // Let's check the method fully now
-                let return_ty = self.check_method_argument_types(
-                    segment.ident.span,
-                    call_expr,
-                    Ok(pick.callee),
-                    rest,
-                    TupleArgumentsFlag::DontTupleArguments,
-                    expected,
-                );
-
-                return Some(return_ty);
             }
         }
-
-        None
     }
 
     fn report_invalid_callee(
