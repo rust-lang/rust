@@ -1158,7 +1158,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 .universal_regions_outlived_by(r_scc)
                 .filter(|&u_r| !self.universal_regions.is_local_free_region(u_r))
                 .find(|&u_r| self.eval_equal(u_r, r_vid))
-                .map(|u_r| tcx.mk_re_var(u_r))
+                .map(|u_r| ty::Region::new_var(tcx, u_r))
                 // In the case of a failure, use `ReErased`. We will eventually
                 // return `None` in this case.
                 .unwrap_or(tcx.lifetimes.re_erased)
@@ -1355,7 +1355,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             let vid = self.to_region_vid(r);
             let scc = self.constraint_sccs.scc(vid);
             let repr = self.scc_representatives[scc];
-            tcx.mk_re_var(repr)
+            ty::Region::new_var(tcx, repr)
         })
     }
 
@@ -1779,7 +1779,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
 
             // If not, report an error.
-            let member_region = infcx.tcx.mk_re_var(member_region_vid);
+            let member_region = ty::Region::new_var(infcx.tcx, member_region_vid);
             errors_buffer.push(RegionErrorKind::UnexpectedHiddenRegion {
                 span: m_c.definition_span,
                 hidden_ty: m_c.hidden_ty,

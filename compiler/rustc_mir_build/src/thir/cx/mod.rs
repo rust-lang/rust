@@ -142,7 +142,7 @@ impl<'tcx> Cx<'tcx> {
                     var: ty::BoundVar::from_usize(bound_vars.len() - 1),
                     kind: ty::BrEnv,
                 };
-                let env_region = self.tcx.mk_re_late_bound(ty::INNERMOST, br);
+                let env_region = ty::Region::new_late_bound(self.tcx, ty::INNERMOST, br);
                 let closure_env_ty =
                     self.tcx.closure_env_ty(closure_def_id, closure_substs, env_region).unwrap();
                 let liberated_closure_env_ty = self.tcx.erase_late_bound_regions(

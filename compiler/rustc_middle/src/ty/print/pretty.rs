@@ -184,7 +184,7 @@ impl<'tcx> RegionHighlightMode<'tcx> {
 
     /// Convenience wrapper for `highlighting_region`.
     pub fn highlighting_region_vid(&mut self, vid: ty::RegionVid, number: usize) {
-        self.highlighting_region(self.tcx.mk_re_var(vid), number)
+        self.highlighting_region(ty::Region::new_var(self.tcx, vid), number)
     }
 
     /// Returns `Some(n)` with the number to use for the given region, if any.
@@ -2303,7 +2303,7 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
         };
         if let ty::ReLateBound(debruijn1, br) = *region {
             assert_eq!(debruijn1, ty::INNERMOST);
-            self.tcx.mk_re_late_bound(self.current_index, br)
+            ty::Region::new_late_bound(self.tcx, self.current_index, br)
         } else {
             region
         }
@@ -2415,7 +2415,8 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                         if let Some(lt_idx) = lifetime_idx {
                             if lt_idx > binder_level_idx {
                                 let kind = ty::BrNamed(CRATE_DEF_ID.to_def_id(), name);
-                                return tcx.mk_re_late_bound(
+                                return ty::Region::new_late_bound(
+                                    tcx,
                                     ty::INNERMOST,
                                     ty::BoundRegion { var: br.var, kind },
                                 );
@@ -2430,7 +2431,8 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                         if let Some(lt_idx) = lifetime_idx {
                             if lt_idx > binder_level_idx {
                                 let kind = ty::BrNamed(def_id, name);
-                                return tcx.mk_re_late_bound(
+                                return ty::Region::new_late_bound(
+                                    tcx,
                                     ty::INNERMOST,
                                     ty::BoundRegion { var: br.var, kind },
                                 );
@@ -2443,7 +2445,8 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                         if let Some(lt_idx) = lifetime_idx {
                             if lt_idx > binder_level_idx {
                                 let kind = br.kind;
-                                return tcx.mk_re_late_bound(
+                                return ty::Region::new_late_bound(
+                                    tcx,
                                     ty::INNERMOST,
                                     ty::BoundRegion { var: br.var, kind },
                                 );
@@ -2458,7 +2461,11 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                     start_or_continue(&mut self, "for<", ", ");
                     do_continue(&mut self, name);
                 }
-                tcx.mk_re_late_bound(ty::INNERMOST, ty::BoundRegion { var: br.var, kind })
+                ty::Region::new_late_bound(
+                    tcx,
+                    ty::INNERMOST,
+                    ty::BoundRegion { var: br.var, kind },
+                )
             };
             let mut folder = RegionFolder {
                 tcx,

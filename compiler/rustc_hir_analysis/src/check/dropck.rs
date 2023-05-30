@@ -183,7 +183,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
                 }
                 RegionResolutionError::SubSupConflict(_, _, _, a, _, b, _) => format!("{b}: {a}"),
                 RegionResolutionError::UpperBoundUniverseConflict(a, _, _, _, b) => {
-                    format!("{b}: {a}", a = tcx.mk_re_var(a))
+                    format!("{b}: {a}", a = ty::Region::new_var(tcx, a))
                 }
             };
             guar = Some(

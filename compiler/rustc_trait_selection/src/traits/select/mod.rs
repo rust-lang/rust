@@ -3027,7 +3027,7 @@ fn bind_generator_hidden_types_above<'tcx>(
                             kind: ty::BrAnon(None),
                         };
                         counter += 1;
-                        tcx.mk_re_late_bound(current_depth, br)
+                        ty::Region::new_late_bound(tcx, current_depth, br)
                     }
                     r => bug!("unexpected region: {r:?}"),
                 })

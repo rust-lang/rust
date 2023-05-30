@@ -255,7 +255,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
             }),
         );
         let br = ty::BoundRegion { var, kind: BrAnon(None) };
-        self.interner().mk_re_late_bound(self.binder_index, br)
+        ty::Region::new_late_bound(self.interner(), self.binder_index, br)
     }
 
     fn fold_ty(&mut self, mut t: Ty<'tcx>) -> Ty<'tcx> {

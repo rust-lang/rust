@@ -1065,7 +1065,7 @@ impl<'tcx> InferCtxt<'tcx> {
     ) -> ty::Region<'tcx> {
         let region_var =
             self.inner.borrow_mut().unwrap_region_constraints().new_region_var(universe, origin);
-        self.tcx.mk_re_var(region_var)
+        ty::Region::new_var(self.tcx, region_var)
     }
 
     /// Return the universe that the region `r` was created in. For

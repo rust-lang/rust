@@ -92,7 +92,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     }
                     None => {
                         subst_regions.push(vid);
-                        infcx.tcx.mk_re_error_with_message(
+                        ty::Region::new_error_with_message(
+                            infcx.tcx,
                             concrete_type.span,
                             "opaque type with non-universal region substs",
                         )
