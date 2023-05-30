@@ -1528,7 +1528,7 @@ fn test_hover_function_pointer_show_identifiers() {
             ```
 
             ```rust
-            type foo = fn(a: i32, b: i32) -> i32 // size = 0x8, align = 0x8
+            type foo = fn(a: i32, b: i32) -> i32 // size = 0x8, align = 0x8, niches = 1
             ```
         "#]],
     );
@@ -1546,7 +1546,7 @@ fn test_hover_function_pointer_no_identifier() {
             ```
 
             ```rust
-            type foo = fn(i32, i32) -> i32 // size = 0x8, align = 0x8
+            type foo = fn(i32, i32) -> i32 // size = 0x8, align = 0x8, niches = 1
             ```
         "#]],
     );
@@ -1904,7 +1904,7 @@ fn test_hover_layout_of_enum() {
             ```
 
             ```rust
-            enum Foo // size = 0x10, align = 0x8
+            enum Foo // size = 0x10, align = 0x8, niches = 254
             ```
         "#]],
     );

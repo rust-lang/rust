@@ -3,8 +3,8 @@ use std::fmt::Display;
 
 use either::Either;
 use hir::{
-    Adt, AsAssocItem, AttributeTemplate, CaptureKind, HasAttrs, HasSource, HirDisplay, Semantics,
-    TypeInfo,
+    Adt, AsAssocItem, AttributeTemplate, CaptureKind, HasAttrs, HasCrate, HasSource, HirDisplay,
+    Layout, Semantics, TypeInfo,
 };
 use ide_db::{
     base_db::SourceDatabase,
@@ -401,13 +401,14 @@ pub(super) fn definition(
                 hir::VariantDef::Struct(s) => Adt::from(s)
                     .layout(db)
                     .ok()
-                    .map(|layout| format!(", offset = {:#X}", layout.fields.offset(id).bytes())),
+                    .and_then(|layout| Some(format!(", offset = {:#X}", layout.field_offset(id)?))),
                 _ => None,
             };
+            let niches = niches(db, it, &layout).unwrap_or_default();
             Some(format!(
-                "size = {:#X}, align = {:#X}{}",
-                layout.size.bytes(),
-                layout.align.abi.bytes(),
+                "size = {:#X}, align = {:#X}{}{niches}",
+                layout.size(),
+                layout.align(),
                 offset.as_deref().unwrap_or_default()
             ))
         }),
@@ -415,11 +416,8 @@ pub(super) fn definition(
         Definition::Function(it) => label_and_docs(db, it),
         Definition::Adt(it) => label_and_layout_info_and_docs(db, it, config, |&it| {
             let layout = it.layout(db).ok()?;
-            Some(format!(
-                "size = {:#X}, align = {:#X}",
-                layout.size.bytes(),
-                layout.align.abi.bytes()
-            ))
+            let niches = niches(db, it, &layout).unwrap_or_default();
+            Some(format!("size = {:#X}, align = {:#X}{niches}", layout.size(), layout.align()))
         }),
         Definition::Variant(it) => label_value_and_layout_info_and_docs(
             db,
@@ -437,14 +435,15 @@ pub(super) fn definition(
                     None
                 }
             },
-            |it| {
+            |&it| {
                 let (layout, tag_size) = it.layout(db).ok()?;
-                let size = layout.size.bytes_usize() - tag_size;
+                let size = layout.size() as usize - tag_size;
                 if size == 0 {
                     // There is no value in showing layout info for fieldless variants
                     return None;
                 }
-                Some(format!("size = {:#X}", layout.size.bytes()))
+                let niches = niches(db, it, &layout).unwrap_or_default();
+                Some(format!("size = {:#X}{niches}", layout.size()))
             },
         ),
         Definition::Const(it) => label_value_and_docs(db, it, |it| {
@@ -473,11 +472,8 @@ pub(super) fn definition(
         Definition::TraitAlias(it) => label_and_docs(db, it),
         Definition::TypeAlias(it) => label_and_layout_info_and_docs(db, it, config, |&it| {
             let layout = it.ty(db).layout(db).ok()?;
-            Some(format!(
-                "size = {:#X}, align = {:#X}",
-                layout.size.bytes(),
-                layout.align.abi.bytes()
-            ))
+            let niches = niches(db, it, &layout).unwrap_or_default();
+            Some(format!("size = {:#X}, align = {:#X}{niches}", layout.size(), layout.align(),))
         }),
         Definition::BuiltinType(it) => {
             return famous_defs
@@ -511,6 +507,10 @@ pub(super) fn definition(
         })
         .map(Into::into);
     markup(docs, label, mod_path)
+}
+
+fn niches(db: &RootDatabase, it: impl HasCrate, layout: &Layout) -> Option<String> {
+    Some(format!(", niches = {}", layout.niches(db, it.krate(db).into())?))
 }
 
 fn type_info(
@@ -560,7 +560,7 @@ fn closure_ty(
     let layout = if config.memory_layout {
         original
             .layout(sema.db)
-            .map(|x| format!(" // size = {}, align = {}", x.size.bytes(), x.align.abi.bytes()))
+            .map(|x| format!(" // size = {}, align = {}", x.size(), x.align()))
             .unwrap_or_default()
     } else {
         String::default()
@@ -771,12 +771,7 @@ fn local(db: &RootDatabase, it: hir::Local, config: &HoverConfig) -> Option<Mark
     };
     if config.memory_layout {
         if let Ok(layout) = it.ty(db).layout(db) {
-            format_to!(
-                desc,
-                " // size = {}, align = {}",
-                layout.size.bytes(),
-                layout.align.abi.bytes()
-            );
+            format_to!(desc, " // size = {}, align = {}", layout.size(), layout.align());
         }
     }
     markup(None, desc, None)
