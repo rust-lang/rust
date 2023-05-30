@@ -329,15 +329,16 @@ pub struct CtorIsPrivate {
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion(
+#[multipart_suggestion(
     hir_typeck_convert_using_method,
-    code = "{sugg}",
     applicability = "machine-applicable",
     style = "verbose"
 )]
 pub struct SuggestConvertViaMethod<'tcx> {
-    #[primary_span]
+    #[suggestion_part(code = "{sugg}")]
     pub span: Span,
+    #[suggestion_part(code = "")]
+    pub borrow_removal_span: Option<Span>,
     pub sugg: &'static str,
     pub expected: Ty<'tcx>,
     pub found: Ty<'tcx>,

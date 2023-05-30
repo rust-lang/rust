@@ -413,7 +413,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.deconstruct_option_or_result(found, expected)
             && let ty::Ref(_, peeled, hir::Mutability::Not) = *expected_ty_inner.kind()
         {
-            // Check that given `Result<_, E>`, our expected ty is `Result<_, &E>`
+            // Suggest removing any stray borrows (unless there's macro shenanigans involved).
+            let inner_expr = expr.peel_borrows();
+            if !inner_expr.span.eq_ctxt(expr.span) {
+                return false;
+            }
+            let borrow_removal_span = if inner_expr.hir_id == expr.hir_id {
+                None
+            } else {
+                Some(expr.span.shrink_to_lo().until(inner_expr.span))
+            };
+            // Given `Result<_, E>`, check our expected ty is `Result<_, &E>` for
+            // `as_ref` and `as_deref` compatibility.
             let error_tys_equate_as_ref = error_tys.map_or(true, |(found, expected)| {
                 self.can_eq(self.param_env, self.tcx.mk_imm_ref(self.tcx.lifetimes.re_erased, found), expected)
             });
@@ -425,6 +436,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     sugg: ".as_ref()",
                     expected,
                     found,
+                    borrow_removal_span,
                 });
                 return true;
             } else if let Some((deref_ty, _)) =
@@ -437,11 +449,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     sugg: ".as_deref()",
                     expected,
                     found,
+                    borrow_removal_span,
                 });
                 return true;
             } else if let ty::Adt(adt, _) = found_ty_inner.peel_refs().kind()
                 && Some(adt.did()) == self.tcx.lang_items().string()
                 && peeled.is_str()
+                // `Result::map`, conversely, does not take ref of the error type.
                 && error_tys.map_or(true, |(found, expected)| {
                     self.can_eq(self.param_env, found, expected)
                 })

@@ -36,8 +36,9 @@ LL | fn takes_option(_arg: Option<&String>) {}
    |    ^^^^^^^^^^^^ ---------------------
 help: try using `.as_ref()` to convert `&Option<String>` to `Option<&String>`
    |
-LL |     takes_option(&res.as_ref());
-   |                      +++++++++
+LL -     takes_option(&res);
+LL +     takes_option(res.as_ref());
+   |
 
 error: aborting due to 2 previous errors
 
