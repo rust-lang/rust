@@ -1280,7 +1280,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             // params (and trait ref's late bound params). This logic is very similar to
             // `Predicate::subst_supertrait`, and it's no coincidence why.
             let shifted_output = tcx.shift_bound_var_indices(num_bound_vars, output);
-            let subst_output = ty::EarlyBinder::new(shifted_output).subst(tcx, substs);
+            let subst_output = ty::EarlyBinder::bind(shifted_output).subst(tcx, substs);
 
             let bound_vars = tcx.late_bound_vars(binding.hir_id);
             ty::Binder::bind_with_vars(subst_output, bound_vars)

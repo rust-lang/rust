@@ -69,7 +69,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
             // of this function. Is this intentional?
             if let Some(ty::Generator(gen_def_id, substs, _)) = ty.map(Ty::kind) {
                 let body = tcx.optimized_mir(*gen_def_id).generator_drop().unwrap();
-                let body = EarlyBinder::new(body.clone()).subst(tcx, substs);
+                let body = EarlyBinder::bind(body.clone()).subst(tcx, substs);
                 debug!("make_shim({:?}) = {:?}", instance, body);
                 return body;
             }

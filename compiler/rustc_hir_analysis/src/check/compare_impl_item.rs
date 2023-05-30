@@ -796,14 +796,14 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                     })
                 });
                 debug!(%ty);
-                collected_tys.insert(def_id, ty::EarlyBinder::new(ty));
+                collected_tys.insert(def_id, ty::EarlyBinder::bind(ty));
             }
             Err(err) => {
                 let reported = tcx.sess.delay_span_bug(
                     return_span,
                     format!("could not fully resolve: {ty} => {err:?}"),
                 );
-                collected_tys.insert(def_id, ty::EarlyBinder::new(tcx.ty_error(reported)));
+                collected_tys.insert(def_id, ty::EarlyBinder::bind(tcx.ty_error(reported)));
             }
         }
     }

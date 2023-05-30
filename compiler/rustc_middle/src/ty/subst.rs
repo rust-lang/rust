@@ -545,7 +545,7 @@ impl<'tcx, T> !TypeFoldable<TyCtxt<'tcx>> for ty::EarlyBinder<T> {}
 impl<'tcx, T> !TypeVisitable<TyCtxt<'tcx>> for ty::EarlyBinder<T> {}
 
 impl<T> EarlyBinder<T> {
-    pub fn new(inner: T) -> EarlyBinder<T> {
+    pub fn bind(inner: T) -> EarlyBinder<T> {
         EarlyBinder(inner)
     }
 

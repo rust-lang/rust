@@ -323,7 +323,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
                 return map[&assoc_item.trait_item_def_id.unwrap()];
             }
             Err(_) => {
-                return ty::EarlyBinder::new(tcx.ty_error_with_message(
+                return ty::EarlyBinder::bind(tcx.ty_error_with_message(
                     DUMMY_SP,
                     "Could not collect return position impl trait in trait tys",
                 ));
@@ -497,7 +497,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
             bug!("unexpected sort of node in type_of(): {:?}", x);
         }
     };
-    ty::EarlyBinder::new(output)
+    ty::EarlyBinder::bind(output)
 }
 
 fn infer_placeholder_type<'a>(
