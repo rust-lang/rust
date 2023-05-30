@@ -123,7 +123,6 @@ mod eta_reduction;
 mod excessive_bools;
 mod exhaustive_items;
 mod exit;
-mod explicit_into_iter_fn_arg;
 mod explicit_write;
 mod extra_unused_type_parameters;
 mod fallible_impl_from;
@@ -995,7 +994,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| Box::new(ref_patterns::RefPatterns));
     store.register_late_pass(|_| Box::new(default_constructed_unit_structs::DefaultConstructedUnitStructs));
     store.register_early_pass(|| Box::new(needless_else::NeedlessElse));
-    store.register_late_pass(|_| Box::new(explicit_into_iter_fn_arg::ExplicitIntoIterFnArg));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
