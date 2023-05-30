@@ -1025,7 +1025,7 @@ impl DefCollector<'_> {
 
     fn update_recursive(
         &mut self,
-        // The module for which `resolutions` have been resolve
+        // The module for which `resolutions` have been resolved.
         module_id: LocalModuleId,
         resolutions: &[(Option<Name>, PerNs)],
         // All resolutions are imported with this visibility; the visibilities in
@@ -1043,10 +1043,9 @@ impl DefCollector<'_> {
         for (name, res) in resolutions {
             match name {
                 Some(name) => {
-                    let scope = &mut self.def_map.modules[module_id].scope;
-                    changed |= scope.push_res_with_import(
-                        &mut self.from_glob_import,
-                        (module_id, name.clone()),
+                    changed |= self.push_res_and_update_glob_vis(
+                        module_id,
+                        name,
                         res.with_visibility(vis),
                         import,
                     );
@@ -1110,6 +1109,84 @@ impl DefCollector<'_> {
                 depth + 1,
             );
         }
+    }
+
+    fn push_res_and_update_glob_vis(
+        &mut self,
+        module_id: LocalModuleId,
+        name: &Name,
+        mut defs: PerNs,
+        def_import_type: Option<ImportType>,
+    ) -> bool {
+        let mut changed = false;
+
+        if let Some(ImportType::Glob(_)) = def_import_type {
+            let prev_defs = self.def_map[module_id].scope.get(name);
+
+            // Multiple globs may import the same item and they may override visibility from
+            // previously resolved globs. Handle overrides here and leave the rest to
+            // `ItemScope::push_res_with_import()`.
+            if let Some((def, def_vis, _)) = defs.types {
+                if let Some((prev_def, prev_vis, _)) = prev_defs.types {
+                    if def == prev_def
+                        && self.from_glob_import.contains_type(module_id, name.clone())
+                        && def_vis != prev_vis
+                        && def_vis.max(prev_vis, &self.def_map) == Some(def_vis)
+                    {
+                        changed = true;
+                        // This import is being handled here, don't pass it down to
+                        // `ItemScope::push_res_with_import()`.
+                        defs.types = None;
+                        self.def_map.modules[module_id]
+                            .scope
+                            .update_visibility_types(name, def_vis);
+                    }
+                }
+            }
+
+            if let Some((def, def_vis, _)) = defs.values {
+                if let Some((prev_def, prev_vis, _)) = prev_defs.values {
+                    if def == prev_def
+                        && self.from_glob_import.contains_value(module_id, name.clone())
+                        && def_vis != prev_vis
+                        && def_vis.max(prev_vis, &self.def_map) == Some(def_vis)
+                    {
+                        changed = true;
+                        // See comment above.
+                        defs.values = None;
+                        self.def_map.modules[module_id]
+                            .scope
+                            .update_visibility_values(name, def_vis);
+                    }
+                }
+            }
+
+            if let Some((def, def_vis, _)) = defs.macros {
+                if let Some((prev_def, prev_vis, _)) = prev_defs.macros {
+                    if def == prev_def
+                        && self.from_glob_import.contains_macro(module_id, name.clone())
+                        && def_vis != prev_vis
+                        && def_vis.max(prev_vis, &self.def_map) == Some(def_vis)
+                    {
+                        changed = true;
+                        // See comment above.
+                        defs.macros = None;
+                        self.def_map.modules[module_id]
+                            .scope
+                            .update_visibility_macros(name, def_vis);
+                    }
+                }
+            }
+        }
+
+        changed |= self.def_map.modules[module_id].scope.push_res_with_import(
+            &mut self.from_glob_import,
+            (module_id, name.clone()),
+            defs,
+            def_import_type,
+        );
+
+        changed
     }
 
     fn resolve_macros(&mut self) -> ReachedFixedPoint {
