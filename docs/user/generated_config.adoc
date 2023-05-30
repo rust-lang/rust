@@ -428,10 +428,30 @@ Whether to show keyword hover popups. Only applies when
 --
 Use markdown syntax for links on hover.
 --
+[[rust-analyzer.hover.memoryLayout.alignment]]rust-analyzer.hover.memoryLayout.alignment (default: `"hexadecimal"`)::
++
+--
+How to render the align information in a memory layout hover.
+--
 [[rust-analyzer.hover.memoryLayout.enable]]rust-analyzer.hover.memoryLayout.enable (default: `true`)::
 +
 --
 Whether to show memory layout data on hover.
+--
+[[rust-analyzer.hover.memoryLayout.niches]]rust-analyzer.hover.memoryLayout.niches (default: `false`)::
++
+--
+How to render the niche information in a memory layout hover.
+--
+[[rust-analyzer.hover.memoryLayout.offset]]rust-analyzer.hover.memoryLayout.offset (default: `"hexadecimal"`)::
++
+--
+How to render the offset information in a memory layout hover.
+--
+[[rust-analyzer.hover.memoryLayout.size]]rust-analyzer.hover.memoryLayout.size (default: `"both"`)::
++
+--
+How to render the size information in a memory layout hover.
 --
 [[rust-analyzer.imports.granularity.enforce]]rust-analyzer.imports.granularity.enforce (default: `false`)::
 +
