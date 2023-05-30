@@ -473,6 +473,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut custom_span_label = false;
 
         let static_candidates = &mut no_match_data.static_candidates;
+
+        // `static_candidates` may have same candidates appended by
+        // inherent and extension, which may result in incorrect
+        // diagnostic.
+        static_candidates.dedup();
+
         if !static_candidates.is_empty() {
             err.note(
                 "found the following associated functions; to be used as methods, \

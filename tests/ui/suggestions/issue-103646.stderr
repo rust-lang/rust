@@ -1,0 +1,21 @@
+error[E0599]: no method named `nya` found for type parameter `T` in the current scope
+  --> $DIR/issue-103646.rs:6:7
+   |
+LL | fn uwu<T: Cat>(c: T) {
+   |        - method `nya` not found for this type parameter
+LL |     c.nya();
+   |     --^^^--
+   |     | |
+   |     | this is an associated function, not a method
+   |     help: use associated function syntax instead: `T::nya()`
+   |
+   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
+note: the candidate is defined in the trait `Cat`
+  --> $DIR/issue-103646.rs:2:5
+   |
+LL |     fn nya() {}
+   |     ^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.
