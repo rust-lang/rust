@@ -587,8 +587,7 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &cle
         + name.as_str().len()
         + generics_len;
 
-    let notable_traits =
-        f.decl.output.as_return().and_then(|output| notable_traits_button(output, cx));
+    let notable_traits = notable_traits_button(&f.decl.output, cx);
 
     wrap_item(w, |w| {
         w.reserve(header_len);
