@@ -1,3 +1,4 @@
+use build_helper::util::try_run;
 use compiletest::header::TestProps;
 use config::Config;
 use std::path::{Path, PathBuf};
@@ -58,23 +59,6 @@ fn find_librs<P: AsRef<Path>>(path: P) -> Option<PathBuf> {
         }
     }
     None
-}
-
-// FIXME: move `bootstrap::util::try_run` into `build_helper` crate
-// and use that one instead of creating this function.
-fn try_run(cmd: &mut Command, print_cmd_on_fail: bool) -> bool {
-    let status = match cmd.status() {
-        Ok(status) => status,
-        Err(e) => panic!("failed to execute command: {:?}\nerror: {}", cmd, e),
-    };
-    if !status.success() && print_cmd_on_fail {
-        println!(
-            "\n\ncommand did not execute successfully: {:?}\n\
-             expected success, got: {}\n\n",
-            cmd, status
-        );
-    }
-    status.success()
 }
 
 fn main() {
