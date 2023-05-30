@@ -29,12 +29,13 @@
 //!
 //! The `Node`s in the dependency graph include data values of type `NodeKind`. `NodeKind` has
 //! three variants: `Local`, `Borrow` and `LocalWithRefs`.
-//!     * `NodeKind::Local` is used for `Local`s that are borrowed somewhere (`_4` in our example)
+//!     * `NodeKind::Local` is used for `Local`s that are borrowed somewhere (`_4` in our example), but aren't
+//!        themselves references or pointers.
 //!     * `NodeKind::Borrow` is used for `Local`s that correspond to borrows (`_5` in our example) and
 //!        also `Local`s that result from re-borrows.
 //!     * `NodeKind::LocalWithRefs` is used for `Local`s that aren't themselves borrows, but contain
-//!        borrowed `Local`s. We want to keep these `Local`s live and also any of the references/pointers
-//!        they might contain. Let's look at an example:
+//!        `Local`s that correspond to references, pointers or other `Local`s with `Node`s of kind
+//!        `NodeKind::LocalWithRef`s. Let's look at an example:
 //!
 //!        ```ignore(rust)
 //!         _4 = Bar {}
@@ -47,9 +48,15 @@
 //!         In this example `_6` would be given `NodeKind::LocalWithRefs` and our graph would look
 //!         as follows:
 //!
-//!         `_7 (NodeKind::Borrow) -> `_6` (NodeKind::LocalWithRefs) -> `_5` (NodeKind::Borrow) -> `_4` (NodeKind::Local)
-//!     
-//!         In addition to keeping `_6` alive over the range of `_7` we also keep `_4` alive (leaf node).
+//!         `_7` (NodeKind::Borrow) -> `_6` (NodeKind::LocalWithRefs) -> `_5` (NodeKind::Borrow) -> `_4` (NodeKind::Local)
+//!
+//!         On the one hand we need to treat `Local`s with `Node`s of kind `NodeKind::LocalWithRefs` similarly
+//!         to how we treat `Local`s with `Node`s of kind `NodeKind::Local`, in the sense that if they are
+//!         borrowed we want to keep them live over the live range of the borrow. But on the other hand we
+//!         want to also treat them like `Local`s with `Node`s of kind `NodeKind::Borrow` as they ultimately
+//!         could also contain references or pointers that refer to other `Local`s. So we want a
+//!         path in the graph from a `NodeKind::LocalWithRef`s node to the `NodeKind::Local` nodes, whose borrows
+//!         they might contain.
 //!
 //!         Additionally `NodeKind::LocalWithRefs` is also used for raw pointers that are cast to
 //!         `usize`:
@@ -66,13 +73,13 @@
 //!             * `_5` (Borrow) -> `_4` (Local)
 //!             * `_6` (LocalWithRefs) -> `_5` (Borrow)
 //!             * `_7` (LocalWithRefs) -> `_6` (LocalWithRefs)
-//!             * `_8` (LocalWithRefs) -> `_7` (LocalWithRefs) (FIXME this one is currently not being done)
+//!             * `_8` (LocalWithRefs) -> `_7` (LocalWithRefs) (FIXME this one is currently not being done, but unsafe)
 //!
 //!         We also have to be careful when dealing with `Terminator`s. Whenever we pass references,
-//!         pointers or `Local`s with `NodeKind::LocalWithRefs` (FIXME currently not done) to
-//!         a `TerminatorKind::Call` or `TerminatorKind::Yield` and the destination `Place` or resume place, resp.,
-//!         contains references/pointers or generic parameters we have to be careful and treat the
-//!         `Local`s corresponding to the `Place`s as `NodeKind::LocalWithRef`s.
+//!         pointers or `Local`s with `NodeKind::LocalWithRefs` to a `TerminatorKind::Call` or
+//!         `TerminatorKind::Yield`, the destination `Place` or resume place, resp., might contain
+//!         these references, pointers or `NodeKind::LocalWithRefs` `Local`s, hence we have to be conservative
+//!         and keep the `destination` `Local` and `resume_arg` `Local` live.
 //!
 //! 2. Liveness analysis for borrows
 //!
@@ -86,15 +93,19 @@
 //! 3. _5 = Ref(_3)
 //! 4. _6 = Ref(_4)
 //! 5. _7 = Aggregate(..)(move _5)
-//! 6. _8 = Call(..)(move _6) (assume _8 contains no refs/ptrs or generic params)
+//! 6. _8 = Call(..)(move _6)
 //! 7. _9 = (_8.0)
-//! 8. (_7.0) = _9
+//! 8. _10 = const 5
+//! 9. (_7.0) = move _10
 //! ```
 //!
 //! * `_5` is live from stmt 3 to stmt 5
 //! * `_6` is live from stmt 4 to stmt 6
-//! * `_7` is a `Local` of kind `LocalWithRef` so needs to be taken into account in the
-//!   analyis. It's live from stmt 5 to stmt 8
+//! * `_7` is a `Local` of kind `LocalWithRefs` so needs to be taken into account in the
+//!   analyis. It's live from stmt 5 to stmt 9
+//! * `_8` is a `Local` of kind `LocalWithRefs`. It's live from 6. to 7.
+//! * `_9` is a `Local` of kind `LocalWithRefs` (FIXME this is currently not done, see FIXME above),
+//!   it's live at 7.
 //!
 //! 3. Determining which `Local`s are borrowed
 //!
@@ -103,7 +114,9 @@
 //! `_5` (Borrow) -> `_3` (Local)
 //! `_6` (Borrow) -> `_4` (Local)
 //! `_7` (LocalWithRef) -> `_5` (Borrow)
-//! `_7` (LocalWithRef) -> `_9` (Local)
+//! `_8` (LocalWithRef) -> `_6` (Borrow)
+//! `_9` (LocalWithRef) -> `_8` (LocalWithRef) (FIXME currently not done)
+//! `_7` (LocalWithRef) -> `_10` (Local)
 //!
 //! So at each of those statements we have the following `Local`s that are live due to borrows:
 //!
@@ -112,9 +125,10 @@
 //! 3. {_3}
 //! 4. {_3, _4}
 //! 5. {_3, _4, _7}
-//! 6. {_3, _4, _7}
-//! 7. {_3, _7}
+//! 6. {_3, _4, _7, _8}
+//! 7. {_3, _4, _7, _8}
 //! 8. {_3, _7}
+//! 9. {_3, _7}
 //!
 
 use super::*;
@@ -134,8 +148,7 @@ use either::Either;
 
 #[derive(Copy, Clone, Debug)]
 enum NodeKind {
-    // An node corresponding to the place of the borrowed place (`_4` in this case) in
-    // an assignment like `_3 = Ref(_, _, _4)`.
+    // An node corresponding to the place on the lhs of an assignment like `_3 = Ref(_, _, _4)`.
     Borrow(Local),
 
     // Nodes corresponding to the place on the lhs of a statement like
@@ -143,7 +156,8 @@ enum NodeKind {
     // where _3 and _6 are places corresponding to references or raw pointers.
     LocalWithRefs(Local),
 
-    // Nodes corresponding to the place on the lhs of an assignment like `_2 = Ref(..)`.
+    // Nodes corresponding to the borrowed place of an assignment like `_2 = Ref(_, _, borrowed_place)`,
+    // if `borrowed_place` is a non-ref or non-ptr value.
     Local(Local),
 }
 
@@ -159,11 +173,25 @@ impl NodeKind {
 
 /// Used to build a dependency graph between borrows/pointers and the `Local`s that
 /// they reference.
-/// We add edges to the graph in two kinds of situations:
-///     * direct assignment of reference or raw pointer (e.g. `_4 = Ref(..)` or `_4 = AddressOf`)
+/// We add edges to the graph in following situations:
+///     * direct assignment of reference or raw pointer (e.g. `_4 = Ref(_, _ , borrowed_place)` or
+///       `_4 = AddressOf(_, borrowed_place)`). For this case we create a `Node` of kind
+///       `NodeKind::Borrow` for the `Local` being assigned to and an edge to either an existing
+///       `Node` or if none exists yet to a new `Node` of type `NodeKind::Local` corresponding to
+///       a non-ref/ptr `Local`.
 ///     * assignments to non-reference or non-pointer `Local`s, which themselves might contain
 ///       references or pointers (e.g. `_2 = Aggregate(Adt(..), _, _, _, _), [move _3, move _6])`,
-///       where `_3` and `_6` are places corresponding to references or raw pointers).
+///       where `_3` and `_6` are places corresponding to references or raw pointers). In this case
+///       we create a `Node` of kind `NodeKind::LocalWithRefs` for `_2`. Since `_3` and `_6` are
+///       `Local`s that correspond to references, pointers or composite types that might contain
+///       references or pointers (`NodeKind::LocalWithRefs`), there already exist `Node`s for these
+///       `Local`s. We then add edges from the `Node` for `_2` to both the `Node` for `_3` and the
+///       `Node` for `_6`.
+///     * `destination` places for `TerminatorKind::Call` and the `resume_arg` places for
+///        `TerminatorKind::Yield` if we pass in any references, pointers or composite values that
+///        might correspond to references, pointers or exposed pointers (`NodeKind::LocalWithRef`s).
+///        The rationale for this is that the return values of both of these terminators might themselves
+///        contain any of the references or pointers passed as arguments.
 struct BorrowDependencies<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     local_decls: &'a LocalDecls<'tcx>,
@@ -396,7 +424,13 @@ impl<'a, 'tcx> Visitor<'tcx> for BorrowDependencies<'a, 'tcx> {
 }
 
 pub struct BorrowedLocalsResults<'mir, 'tcx> {
+    // the results of the liveness analysis of `LiveBorrows`
     borrows_analysis_results: Results<'tcx, LiveBorrows<'mir, 'tcx>>,
+
+    // Maps each `Local` that corresponds to a reference, pointer or a node of kind
+    // `NodeKind::LocalWithRefs` (i.e. `Local`s which either correspond to refs, pointers or
+    // exposed pointers or a composite value that might include refs, pointers or exposed pointers)
+    // to the set of `Local`s that are borrowed through those references, pointers or composite values.
     borrowed_local_to_locals_to_keep_alive: FxHashMap<Local, Vec<Local>>,
 }
 
@@ -473,6 +507,8 @@ where
     }
 }
 
+/// The function gets the results of the borrowed locals analysis in this module. See the module
+/// doc-comment for information on what exactly this analysis does.
 #[instrument(skip(tcx), level = "debug")]
 pub fn get_borrowed_locals_results<'mir, 'tcx>(
     body: &'mir Body<'tcx>,
@@ -517,9 +553,19 @@ pub fn get_borrowed_locals_results<'mir, 'tcx>(
     BorrowedLocalsResults::new(results)
 }
 
+/// The `ResultsCursor` equivalent for the borrowed locals analysis. Since this analysis doesn't
+/// require convergence, we expose the set of borrowed `Local`s for a `Location` directly via
+/// the `get` method without the need for any prior 'seek' calls.
 pub struct BorrowedLocalsResultsCursor<'a, 'mir, 'tcx> {
     body: &'mir Body<'tcx>,
+
+    // The cursor for the liveness analysis performed by `LiveBorrows`
     borrows_analysis_cursor: ResultsRefCursor<'a, 'mir, 'tcx, LiveBorrows<'mir, 'tcx>>,
+
+    // Maps each `Local` corresponding to a reference or pointer to the set of `Local`s
+    // that are borrowed through the ref/ptr. Additionally contains entries for `Local`s
+    // corresponding to `NodeKind::LocalWithRefs` since they might contain refs, ptrs or
+    // exposed pointers and need to be treated equivalently to refs/ptrs
     borrowed_local_to_locals_to_keep_alive: &'a FxHashMap<Local, Vec<Local>>,
 }
 
@@ -586,7 +632,9 @@ impl<'a, 'mir, 'tcx> BorrowedLocalsResultsCursor<'a, 'mir, 'tcx> {
     }
 }
 
-/// Performs a liveness analysis for borrows and raw pointers.
+/// Performs a liveness analysis for borrows and raw pointers. This analysis also tracks `Local`s
+/// corresponding to `Node`s of kind `NodeKind::LocalWithRefs`, as these could potentially refer to
+/// or include references, pointers or exposed pointers.
 pub struct LiveBorrows<'mir, 'tcx> {
     body: &'mir Body<'tcx>,
     tcx: TyCtxt<'tcx>,
@@ -662,7 +710,7 @@ impl<'a, 'tcx> GenKillAnalysis<'tcx> for LiveBorrows<'a, 'tcx> {
     }
 }
 
-/// A `Visitor` that defines the transfer function for `MaybeBorrowedLocals`.
+/// A `Visitor` that defines the transfer function for `LiveBorrows`.
 struct TransferFunction<'a, 'b, 'c, 'tcx, T> {
     body: &'a Body<'tcx>,
     tcx: TyCtxt<'tcx>,
