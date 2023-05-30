@@ -1,8 +1,10 @@
 use crate::const_eval::CheckAlignment;
 use std::borrow::Cow;
+use std::sync::atomic::Ordering::Relaxed;
 
 use either::{Left, Right};
 
+use rustc_data_structures::CTRL_C_RECEIVED;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
@@ -66,7 +68,11 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     )?;
 
     // The main interpreter loop.
-    while ecx.step()? {}
+    while ecx.step()? {
+        if CTRL_C_RECEIVED.load(Relaxed) {
+            throw_exhaust!(Interrupted);
+        }
+    }
 
     // Intern the result
     let intern_kind = if cid.promoted.is_some() {
