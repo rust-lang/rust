@@ -65,8 +65,9 @@ declare_clippy_lint! {
     /// This can lead to confusing error messages at best and to unexpected behavior at worst.
     ///
     /// ### Exceptions
-    /// Wildcard imports are allowed from modules named `prelude`. Many crates (including the standard library)
-    /// provide modules named "prelude" specifically designed for wildcard import.
+    /// Wildcard imports are allowed from modules that their name contains `prelude`. Many crates
+    /// (including the standard library) provide modules named "prelude" specifically designed
+    /// for wildcard import.
     ///
     /// `use super::*` is allowed in test modules. This is defined as any module with "test" in the name.
     ///
@@ -212,7 +213,9 @@ impl WildcardImports {
 // Allow "...prelude::..::*" imports.
 // Many crates have a prelude, and it is imported as a glob by design.
 fn is_prelude_import(segments: &[PathSegment<'_>]) -> bool {
-    segments.iter().any(|ps| ps.ident.name == sym::prelude)
+    segments
+        .iter()
+        .any(|ps| ps.ident.name.as_str().contains(sym::prelude.as_str()))
 }
 
 // Allow "super::*" imports in tests.
