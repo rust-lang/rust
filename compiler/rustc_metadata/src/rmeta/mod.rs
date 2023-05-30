@@ -56,7 +56,7 @@ pub(crate) fn rustc_version(cfg_version: &'static str) -> String {
 /// Metadata encoding version.
 /// N.B., increment this if you change the format of metadata such that
 /// the rustc version can't be found to compare with `rustc_version()`.
-const METADATA_VERSION: u8 = 7;
+const METADATA_VERSION: u8 = 8;
 
 /// Metadata header which includes `METADATA_VERSION`.
 ///
@@ -199,7 +199,27 @@ pub(crate) struct ProcMacroData {
     macros: LazyArray<DefIndex>,
 }
 
-/// Serialized metadata for a crate.
+/// Serialized crate metadata.
+///
+/// This contains just enough information to determine if we should load the `CrateRoot` or not.
+/// Prefer [`CrateRoot`] whenever possible to avoid ICEs when using `omit-git-hash` locally.
+/// See #76720 for more details.
+///
+/// If you do modify this struct, also bump the [`METADATA_VERSION`] constant.
+#[derive(MetadataEncodable, MetadataDecodable)]
+pub(crate) struct CrateHeader {
+    pub(crate) triple: TargetTriple,
+    pub(crate) hash: Svh,
+    pub(crate) name: Symbol,
+    /// Whether this is the header for a proc-macro crate.
+    ///
+    /// This is separate from [`ProcMacroData`] to avoid having to update [`METADATA_VERSION`] every
+    /// time ProcMacroData changes.
+    pub(crate) is_proc_macro_crate: bool,
+}
+
+/// Serialized `.rmeta` data for a crate.
+///
 /// When compiling a proc-macro crate, we encode many of
 /// the `LazyArray<T>` fields as `Lazy::empty()`. This serves two purposes:
 ///
@@ -217,10 +237,10 @@ pub(crate) struct ProcMacroData {
 /// to being unused.
 #[derive(MetadataEncodable, MetadataDecodable)]
 pub(crate) struct CrateRoot {
-    name: Symbol,
-    triple: TargetTriple,
+    /// A header used to detect if this is the right crate to load.
+    header: CrateHeader,
+
     extra_filename: String,
-    hash: Svh,
     stable_crate_id: StableCrateId,
     required_panic_strategy: Option<PanicStrategy>,
     panic_in_drop_strategy: PanicStrategy,
@@ -465,6 +485,7 @@ trivially_parameterized_over_tcx! {
     RawDefId,
     TraitImpls,
     IncoherentImpls,
+    CrateHeader,
     CrateRoot,
     CrateDep,
     AttrFlags,

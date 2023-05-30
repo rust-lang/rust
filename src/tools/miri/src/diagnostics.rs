@@ -306,7 +306,7 @@ pub fn report_error<'tcx, 'mir>(
     msg.insert(0, e.to_string());
     report_msg(
         DiagLevel::Error,
-        &if let Some(title) = title { format!("{title}: {}", msg[0]) } else { msg[0].clone() },
+        if let Some(title) = title { format!("{title}: {}", msg[0]) } else { msg[0].clone() },
         msg,
         vec![],
         helps,
@@ -359,7 +359,7 @@ pub fn report_leaks<'mir, 'tcx>(
         any_pruned |= pruned;
         report_msg(
             DiagLevel::Error,
-            &format!(
+            format!(
                 "memory leaked: {id:?} ({}, size: {:?}, align: {:?}), allocated here:",
                 kind,
                 alloc.size().bytes(),
@@ -386,7 +386,7 @@ pub fn report_leaks<'mir, 'tcx>(
 /// additional `span_label` or `note` call.
 pub fn report_msg<'tcx>(
     diag_level: DiagLevel,
-    title: &str,
+    title: String,
     span_msg: Vec<String>,
     notes: Vec<(Option<SpanData>, String)>,
     helps: Vec<(Option<SpanData>, String)>,
@@ -463,15 +463,16 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
         let (stacktrace, _was_pruned) = prune_stacktrace(stacktrace, self);
 
         let (title, diag_level) = match &e {
-            RejectedIsolatedOp(_) => ("operation rejected by isolation", DiagLevel::Warning),
-            Int2Ptr { .. } => ("integer-to-pointer cast", DiagLevel::Warning),
+            RejectedIsolatedOp(_) =>
+                ("operation rejected by isolation".to_string(), DiagLevel::Warning),
+            Int2Ptr { .. } => ("integer-to-pointer cast".to_string(), DiagLevel::Warning),
             CreatedPointerTag(..)
             | PoppedPointerTag(..)
             | CreatedCallId(..)
             | CreatedAlloc(..)
             | FreedAlloc(..)
             | ProgressReport { .. }
-            | WeakMemoryOutdatedLoad => ("tracking was triggered", DiagLevel::Note),
+            | WeakMemoryOutdatedLoad => ("tracking was triggered".to_string(), DiagLevel::Note),
         };
 
         let msg = match &e {
@@ -571,7 +572,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let stacktrace = this.generate_stacktrace();
         report_msg(
             DiagLevel::Note,
-            "the place in the program where the ICE was triggered",
+            "the place in the program where the ICE was triggered".to_string(),
             vec![],
             vec![],
             vec![],

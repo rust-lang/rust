@@ -10,7 +10,6 @@
 use core::fmt::Display;
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::DiagnosticMessage;
 use rustc_hir as hir;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{
@@ -534,10 +533,7 @@ fn encode_ty<'tcx>(
                         tcx.sess
                             .struct_span_err(
                                 cfi_encoding.span,
-                                DiagnosticMessage::Str(format!(
-                                    "invalid `cfi_encoding` for `{:?}`",
-                                    ty.kind()
-                                )),
+                                format!("invalid `cfi_encoding` for `{:?}`", ty.kind()),
                             )
                             .emit();
                     }
@@ -589,10 +585,7 @@ fn encode_ty<'tcx>(
                         tcx.sess
                             .struct_span_err(
                                 cfi_encoding.span,
-                                DiagnosticMessage::Str(format!(
-                                    "invalid `cfi_encoding` for `{:?}`",
-                                    ty.kind()
-                                )),
+                                format!("invalid `cfi_encoding` for `{:?}`", ty.kind()),
                             )
                             .emit();
                     }

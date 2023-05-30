@@ -251,7 +251,7 @@ pub fn explain_lint_level_source(
         }
         LintLevelSource::Node { name: lint_attr_name, span, reason, .. } => {
             if let Some(rationale) = reason {
-                err.note(rationale.as_str());
+                err.note(rationale.to_string());
             }
             err.span_note_once(span, "the lint level is defined here");
             if lint_attr_name.as_str() != name {

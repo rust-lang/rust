@@ -38,6 +38,7 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{BytePos, DesugaringKind, ExpnKind, MacroKind, Span, DUMMY_SP};
 use rustc_target::spec::abi;
+use std::borrow::Cow;
 use std::iter;
 use std::ops::Deref;
 
@@ -186,7 +187,12 @@ pub trait TypeErrCtxtExt<'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool;
 
-    fn get_closure_name(&self, def_id: DefId, err: &mut Diagnostic, msg: &str) -> Option<Symbol>;
+    fn get_closure_name(
+        &self,
+        def_id: DefId,
+        err: &mut Diagnostic,
+        msg: Cow<'static, str>,
+    ) -> Option<Symbol>;
 
     fn suggest_fn_call(
         &self,
@@ -857,7 +863,12 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     /// Given a closure's `DefId`, return the given name of the closure.
     ///
     /// This doesn't account for reassignments, but it's only used for suggestions.
-    fn get_closure_name(&self, def_id: DefId, err: &mut Diagnostic, msg: &str) -> Option<Symbol> {
+    fn get_closure_name(
+        &self,
+        def_id: DefId,
+        err: &mut Diagnostic,
+        msg: Cow<'static, str>,
+    ) -> Option<Symbol> {
         let get_name = |err: &mut Diagnostic, kind: &hir::PatKind<'_>| -> Option<Symbol> {
             // Get the local name of this closure. This can be inaccurate because
             // of the possibility of reassignment, but this should be good enough.
@@ -934,17 +945,17 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let msg = match def_id_or_name {
             DefIdOrName::DefId(def_id) => match self.tcx.def_kind(def_id) {
                 DefKind::Ctor(CtorOf::Struct, _) => {
-                    "use parentheses to construct this tuple struct".to_string()
+                    Cow::from("use parentheses to construct this tuple struct")
                 }
                 DefKind::Ctor(CtorOf::Variant, _) => {
-                    "use parentheses to construct this tuple variant".to_string()
+                    Cow::from("use parentheses to construct this tuple variant")
                 }
-                kind => format!(
+                kind => Cow::from(format!(
                     "use parentheses to call this {}",
                     self.tcx.def_kind_descr(kind, def_id)
-                ),
+                )),
             },
-            DefIdOrName::Name(name) => format!("use parentheses to call this {name}"),
+            DefIdOrName::Name(name) => Cow::from(format!("use parentheses to call this {name}")),
         };
 
         let args = inputs
@@ -979,7 +990,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     ..
                 })) => {
                     err.span_label(*fn_decl_span, "consider calling this closure");
-                    let Some(name) = self.get_closure_name(def_id, err, &msg) else {
+                    let Some(name) = self.get_closure_name(def_id, err, msg.clone()) else {
                         return false;
                     };
                     name.to_string()
@@ -1341,7 +1352,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         err.note(msg);
                     } else {
                         err.message =
-                            vec![(rustc_errors::DiagnosticMessage::Str(msg), Style::NoStyle)];
+                            vec![(rustc_errors::DiagnosticMessage::from(msg), Style::NoStyle)];
                     }
                     err.span_label(
                         span,
@@ -2958,7 +2969,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 for ty in bound_tys.skip_binder() {
                                     with_forced_trimmed_paths!(write!(msg, "`{}`, ", ty).unwrap());
                                 }
-                                err.note(msg.trim_end_matches(", "))
+                                err.note(msg.trim_end_matches(", ").to_string())
                             }
                             ty::GeneratorWitnessMIR(def_id, substs) => {
                                 use std::fmt::Write;
@@ -2972,7 +2983,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                     let ty = bty.subst(tcx, substs);
                                     write!(msg, "`{}`, ", ty).unwrap();
                                 }
-                                err.note(msg.trim_end_matches(", "))
+                                err.note(msg.trim_end_matches(", ").to_string())
                             }
                             ty::Generator(def_id, _, _) => {
                                 let sp = self.tcx.def_span(def_id);

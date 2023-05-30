@@ -15,7 +15,6 @@ pub fn expand_deriving_ord(
     push: &mut dyn FnMut(Annotatable),
     is_const: bool,
 ) {
-    let attrs = thin_vec![cx.attr_word(sym::inline, span)];
     let trait_def = TraitDef {
         span,
         path: path_std!(cmp::Ord),
@@ -29,7 +28,7 @@ pub fn expand_deriving_ord(
             explicit_self: true,
             nonself_args: vec![(self_ref(), sym::other)],
             ret_ty: Path(path_std!(cmp::Ordering)),
-            attributes: attrs,
+            attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
             combine_substructure: combine_substructure(Box::new(|a, b, c| cs_cmp(a, b, c))),
         }],

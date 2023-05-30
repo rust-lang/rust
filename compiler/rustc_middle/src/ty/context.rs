@@ -732,7 +732,11 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Constructs a `RegionKind::ReError` lifetime and registers a `delay_span_bug` with the given
     /// `msg` to ensure it gets used.
     #[track_caller]
-    pub fn mk_re_error_with_message<S: Into<MultiSpan>>(self, span: S, msg: &str) -> Region<'tcx> {
+    pub fn mk_re_error_with_message<S: Into<MultiSpan>>(
+        self,
+        span: S,
+        msg: &'static str,
+    ) -> Region<'tcx> {
         let reported = self.sess.delay_span_bug(span, msg);
         self.mk_re_error(reported)
     }
@@ -759,7 +763,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         ty: Ty<'tcx>,
         span: S,
-        msg: &str,
+        msg: &'static str,
     ) -> Const<'tcx> {
         let reported = self.sess.delay_span_bug(span, msg);
         self.mk_const(ty::ConstKind::Error(reported), ty)
