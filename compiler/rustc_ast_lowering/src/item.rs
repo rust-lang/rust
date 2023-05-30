@@ -56,6 +56,11 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
         owner: NodeId,
         f: impl FnOnce(&mut LoweringContext<'_, 'hir>) -> hir::OwnerNode<'hir>,
     ) {
+        let allow_gen_future = Some(if self.tcx.features().async_fn_track_caller {
+            [sym::gen_future, sym::closure_track_caller][..].into()
+        } else {
+            [sym::gen_future][..].into()
+        });
         let mut lctx = LoweringContext {
             // Pseudo-globals.
             tcx: self.tcx,
@@ -83,7 +88,7 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
             impl_trait_defs: Vec::new(),
             impl_trait_bounds: Vec::new(),
             allow_try_trait: Some([sym::try_trait_v2, sym::yeet_desugar_details][..].into()),
-            allow_gen_future: Some([sym::gen_future, sym::closure_track_caller][..].into()),
+            allow_gen_future,
             generics_def_id_map: Default::default(),
         };
         lctx.with_hir_id_owner(owner, |lctx| f(lctx));

@@ -1,9 +1,12 @@
 // run-pass
 // edition:2021
-// revisions: feat nofeat
+// revisions: afn cls nofeat
 // needs-unwind
+// gate-test-async_fn_track_caller
 #![feature(async_closure, stmt_expr_attributes)]
-#![cfg_attr(feat, feature(closure_track_caller))]
+#![cfg_attr(afn, feature(async_fn_track_caller))]
+#![cfg_attr(cls, feature(closure_track_caller))]
+#![allow(unused)]
 
 use std::future::Future;
 use std::panic;
@@ -47,7 +50,9 @@ async fn foo() {
     bar().await
 }
 
-#[track_caller] //[nofeat]~ WARN `#[track_caller]` on async functions is a no-op
+#[track_caller]
+//[cls]~^ WARN `#[track_caller]` on async functions is a no-op
+//[nofeat]~^^ WARN `#[track_caller]` on async functions is a no-op
 async fn bar_track_caller() {
     panic!()
 }
@@ -59,7 +64,9 @@ async fn foo_track_caller() {
 struct Foo;
 
 impl Foo {
-    #[track_caller] //[nofeat]~ WARN `#[track_caller]` on async functions is a no-op
+    #[track_caller]
+    //[cls]~^ WARN `#[track_caller]` on async functions is a no-op
+    //[nofeat]~^^ WARN `#[track_caller]` on async functions is a no-op
     async fn bar_assoc() {
         panic!();
     }
@@ -71,7 +78,7 @@ async fn foo_assoc() {
 
 // Since compilation is expected to fail for this fn when using
 // `nofeat`, we test that separately in `async-closure-gate.rs`
-#[cfg(feat)]
+#[cfg(cls)]
 async fn foo_closure() {
     let c = #[track_caller] async || {
         panic!();
@@ -81,7 +88,7 @@ async fn foo_closure() {
 
 // Since compilation is expected to fail for this fn when using
 // `nofeat`, we test that separately in `async-block.rs`
-#[cfg(feat)]
+#[cfg(cls)]
 async fn foo_block() {
     let a = #[track_caller] async {
         panic!();
@@ -106,21 +113,22 @@ fn panicked_at(f: impl FnOnce() + panic::UnwindSafe) -> u32 {
 }
 
 fn main() {
-    assert_eq!(panicked_at(|| block_on(foo())), 43);
+    assert_eq!(panicked_at(|| block_on(foo())), 46
+);
 
-    #[cfg(feat)]
-    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 56);
-    #[cfg(nofeat)]
-    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 52);
+    #[cfg(afn)]
+    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 61);
+    #[cfg(any(cls, nofeat))]
+    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 57);
 
-    #[cfg(feat)]
-    assert_eq!(panicked_at(|| block_on(foo_assoc())), 69);
-    #[cfg(nofeat)]
-    assert_eq!(panicked_at(|| block_on(foo_assoc())), 64);
+    #[cfg(afn)]
+    assert_eq!(panicked_at(|| block_on(foo_assoc())), 76);
+    #[cfg(any(cls, nofeat))]
+    assert_eq!(panicked_at(|| block_on(foo_assoc())), 71);
 
-    #[cfg(feat)]
-    assert_eq!(panicked_at(|| block_on(foo_closure())), 79);
+    #[cfg(cls)]
+    assert_eq!(panicked_at(|| block_on(foo_closure())), 84);
 
-    #[cfg(feat)]
-    assert_eq!(panicked_at(|| block_on(foo_block())), 89);
+    #[cfg(cls)]
+    assert_eq!(panicked_at(|| block_on(foo_block())), 96);
 }
