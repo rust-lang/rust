@@ -768,20 +768,25 @@ pub(crate) fn handle_runnables(
     let config = snap.config.runnables();
     match cargo_spec {
         Some(spec) => {
+            let all_targets = !snap.analysis.is_crate_no_std(spec.crate_id)?;
             for cmd in ["check", "test"] {
+                let mut cargo_args =
+                    vec![cmd.to_owned(), "--package".to_owned(), spec.package.clone()];
+                if all_targets {
+                    cargo_args.push("--all-targets".to_owned());
+                }
                 res.push(lsp_ext::Runnable {
-                    label: format!("cargo {cmd} -p {} --all-targets", spec.package),
+                    label: format!(
+                        "cargo {cmd} -p {}{all_targets}",
+                        spec.package,
+                        all_targets = if all_targets { " --all-targets" } else { "" }
+                    ),
                     location: None,
                     kind: lsp_ext::RunnableKind::Cargo,
                     args: lsp_ext::CargoRunnable {
                         workspace_root: Some(spec.workspace_root.clone().into()),
                         override_cargo: config.override_cargo.clone(),
-                        cargo_args: vec![
-                            cmd.to_string(),
-                            "--package".to_string(),
-                            spec.package.clone(),
-                            "--all-targets".to_string(),
-                        ],
+                        cargo_args,
                         cargo_extra_args: config.cargo_extra_args.clone(),
                         executable_args: Vec::new(),
                         expect_test: None,

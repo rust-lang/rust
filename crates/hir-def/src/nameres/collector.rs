@@ -291,8 +291,6 @@ impl DefCollector<'_> {
 
         let attrs = item_tree.top_level_attrs(self.db, self.def_map.krate);
 
-        self.inject_prelude(&attrs);
-
         // Process other crate-level attributes.
         for attr in &*attrs {
             if let Some(cfg) = attr.cfg() {
@@ -318,6 +316,16 @@ impl DefCollector<'_> {
                 if let Some("proc-macro") = attr.string_value().map(SmolStr::as_str) {
                     self.is_proc_macro = true;
                 }
+                continue;
+            }
+
+            if *attr_name == hir_expand::name![no_core] {
+                self.def_map.no_core = true;
+                continue;
+            }
+
+            if *attr_name == hir_expand::name![no_std] {
+                self.def_map.no_std = true;
                 continue;
             }
 
@@ -358,6 +366,8 @@ impl DefCollector<'_> {
                 cov_mark::hit!(register_tool);
             }
         }
+
+        self.inject_prelude();
 
         ModCollector {
             def_collector: self,
@@ -517,15 +527,15 @@ impl DefCollector<'_> {
         }
     }
 
-    fn inject_prelude(&mut self, crate_attrs: &Attrs) {
+    fn inject_prelude(&mut self) {
         // See compiler/rustc_builtin_macros/src/standard_library_imports.rs
 
-        if crate_attrs.by_key("no_core").exists() {
+        if self.def_map.no_core {
             // libcore does not get a prelude.
             return;
         }
 
-        let krate = if crate_attrs.by_key("no_std").exists() {
+        let krate = if self.def_map.no_std {
             name![core]
         } else {
             let std = name![std];

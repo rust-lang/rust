@@ -3,7 +3,7 @@
 use std::mem;
 
 use cfg::{CfgAtom, CfgExpr};
-use ide::{Cancellable, FileId, RunnableKind, TestId};
+use ide::{Cancellable, CrateId, FileId, RunnableKind, TestId};
 use project_model::{self, CargoFeatures, ManifestPath, TargetKind};
 use rustc_hash::FxHashSet;
 use vfs::AbsPathBuf;
@@ -21,6 +21,7 @@ pub(crate) struct CargoTargetSpec {
     pub(crate) package: String,
     pub(crate) target: String,
     pub(crate) target_kind: TargetKind,
+    pub(crate) crate_id: CrateId,
     pub(crate) required_features: Vec<String>,
     pub(crate) features: FxHashSet<String>,
 }
@@ -142,6 +143,7 @@ impl CargoTargetSpec {
             target_kind: target_data.kind,
             required_features: target_data.required_features.clone(),
             features: package_data.features.keys().cloned().collect(),
+            crate_id,
         };
 
         Ok(Some(res))

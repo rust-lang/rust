@@ -531,6 +531,11 @@ impl Analysis {
         self.with_db(|db| db.crate_graph()[crate_id].edition)
     }
 
+    /// Returns true if this crate has `no_std` or `no_core` specified.
+    pub fn is_crate_no_std(&self, crate_id: CrateId) -> Cancellable<bool> {
+        self.with_db(|db| hir::db::DefDatabase::crate_def_map(db, crate_id).is_no_std())
+    }
+
     /// Returns the root file of the given crate.
     pub fn crate_root(&self, crate_id: CrateId) -> Cancellable<FileId> {
         self.with_db(|db| db.crate_graph()[crate_id].root_file_id)
