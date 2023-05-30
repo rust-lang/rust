@@ -74,6 +74,7 @@ pub(crate) struct CrateMetadata {
     blob: MetadataBlob,
 
     // --- Some data pre-decoded from the metadata blob, usually for performance ---
+    /// Data about the top-level items in a crate, as well as various crate-level metadata.
     root: CrateRoot,
     /// Trait impl data.
     /// FIXME: Used only from queries and can use query cache,
@@ -449,7 +450,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for SyntaxContext {
                 You need to explicitly pass `(crate_metadata_ref, tcx)` to `decode` instead of just `crate_metadata_ref`.");
         };
 
-        let cname = cdata.root.name;
+        let cname = cdata.root.name();
         rustc_span::hygiene::decode_syntax_context(decoder, &cdata.hygiene_context, |_, id| {
             debug!("SpecializedDecoder<SyntaxContext>: decoding {}", id);
             cdata
@@ -564,7 +565,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
                 let cnum = u32::decode(decoder);
                 panic!(
                     "Decoding of crate {:?} tried to access proc-macro dep {:?}",
-                    decoder.cdata().root.name,
+                    decoder.cdata().root.header.name,
                     cnum
                 );
             }
@@ -671,6 +672,16 @@ impl MetadataBlob {
             .decode(self)
     }
 
+    pub(crate) fn get_header(&self) -> CrateHeader {
+        let slice = &self.blob()[..];
+        let offset = METADATA_HEADER.len();
+
+        let pos_bytes = slice[offset..][..4].try_into().unwrap();
+        let pos = u32::from_be_bytes(pos_bytes) as usize;
+
+        LazyValue::<CrateHeader>::from_position(NonZeroUsize::new(pos).unwrap()).decode(self)
+    }
+
     pub(crate) fn get_root(&self) -> CrateRoot {
         let slice = &self.blob()[..];
         let offset = METADATA_HEADER.len();
@@ -684,8 +695,8 @@ impl MetadataBlob {
     pub(crate) fn list_crate_metadata(&self, out: &mut dyn io::Write) -> io::Result<()> {
         let root = self.get_root();
         writeln!(out, "Crate info:")?;
-        writeln!(out, "name {}{}", root.name, root.extra_filename)?;
-        writeln!(out, "hash {} stable_crate_id {:?}", root.hash, root.stable_crate_id)?;
+        writeln!(out, "name {}{}", root.name(), root.extra_filename)?;
+        writeln!(out, "hash {} stable_crate_id {:?}", root.hash(), root.stable_crate_id)?;
         writeln!(out, "proc_macro {:?}", root.proc_macro_data.is_some())?;
         writeln!(out, "=External Dependencies=")?;
 
@@ -709,19 +720,15 @@ impl CrateRoot {
     }
 
     pub(crate) fn name(&self) -> Symbol {
-        self.name
+        self.header.name
     }
 
     pub(crate) fn hash(&self) -> Svh {
-        self.hash
+        self.header.hash
     }
 
     pub(crate) fn stable_crate_id(&self) -> StableCrateId {
         self.stable_crate_id
-    }
-
-    pub(crate) fn triple(&self) -> &TargetTriple {
-        &self.triple
     }
 
     pub(crate) fn decode_crate_deps<'a>(
@@ -794,7 +801,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             bug!(
                 "CrateMetadata::def_kind({:?}): id not found, in crate {:?} with number {}",
                 item_id,
-                self.root.name,
+                self.root.name(),
                 self.cnum,
             )
         })
@@ -1702,11 +1709,11 @@ impl CrateMetadata {
     }
 
     pub(crate) fn name(&self) -> Symbol {
-        self.root.name
+        self.root.header.name
     }
 
     pub(crate) fn hash(&self) -> Svh {
-        self.root.hash
+        self.root.header.hash
     }
 
     fn num_def_ids(&self) -> usize {

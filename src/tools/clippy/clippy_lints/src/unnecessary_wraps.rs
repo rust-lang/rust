@@ -163,7 +163,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
             span_lint_and_then(cx, UNNECESSARY_WRAPS, span, lint_msg.as_str(), |diag| {
                 diag.span_suggestion(
                     fn_decl.output.span(),
-                    return_type_sugg_msg.as_str(),
+                    return_type_sugg_msg,
                     return_type_sugg,
                     Applicability::MaybeIncorrect,
                 );

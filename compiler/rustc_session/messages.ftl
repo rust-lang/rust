@@ -27,6 +27,10 @@ session_feature_gate_error = {$explain}
 session_file_is_not_writeable = output file {$file} is not writeable -- check its permissions
 
 session_hexadecimal_float_literal_not_supported = hexadecimal float literal is not supported
+
+session_incompatible_linker_flavor = linker flavor `{$flavor}` is incompatible with the current target
+    .note = compatible flavors are: {$compatible_list}
+
 session_incorrect_cgu_reuse_type =
     CGU-reuse for `{$cgu_user_name}` is `{$actual_reuse}` but should be {$at_least ->
     [one] {"at least "}

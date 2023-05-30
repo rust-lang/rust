@@ -44,6 +44,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     | asm::InlineAsmArch::AArch64
                     | asm::InlineAsmArch::RiscV32
                     | asm::InlineAsmArch::RiscV64
+                    | asm::InlineAsmArch::LoongArch64
             );
             if !is_stable && !self.tcx.features().asm_experimental_arch {
                 feature_err(

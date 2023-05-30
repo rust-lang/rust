@@ -234,13 +234,13 @@ impl<T> Trait<T> for X {
                         );
                     }
                     (_, ty::Alias(ty::Projection | ty::Inherent, proj_ty)) if !tcx.is_impl_trait_in_trait(proj_ty.def_id) => {
-                        let msg = format!(
+                        let msg = || format!(
                             "consider constraining the associated type `{}` to `{}`",
                             values.found, values.expected,
                         );
                         if !(self.suggest_constraining_opaque_associated_type(
                             diag,
-                            &msg,
+                            msg,
                             proj_ty,
                             values.expected,
                         ) || self.suggest_constraint(
@@ -250,7 +250,7 @@ impl<T> Trait<T> for X {
                             proj_ty,
                             values.expected,
                         )) {
-                            diag.help(msg);
+                            diag.help(msg());
                             diag.note(
                                 "for more information, visit \
                                 https://doc.rust-lang.org/book/ch19-03-advanced-traits.html",
@@ -308,7 +308,7 @@ impl<T> Trait<T> for X {
     fn suggest_constraint(
         &self,
         diag: &mut Diagnostic,
-        msg: &str,
+        msg: impl Fn() -> String,
         body_owner_def_id: DefId,
         proj_ty: &ty::AliasTy<'tcx>,
         ty: Ty<'tcx>,
@@ -340,7 +340,7 @@ impl<T> Trait<T> for X {
                         assoc,
                         assoc_substs,
                         ty,
-                        msg,
+                        &msg,
                         false,
                     ) {
                         return true;
@@ -374,10 +374,12 @@ impl<T> Trait<T> for X {
     ) {
         let tcx = self.tcx;
 
-        let msg = format!(
-            "consider constraining the associated type `{}` to `{}`",
-            values.expected, values.found
-        );
+        let msg = || {
+            format!(
+                "consider constraining the associated type `{}` to `{}`",
+                values.expected, values.found
+            )
+        };
         let body_owner = tcx.hir().get_if_local(body_owner_def_id);
         let current_method_ident = body_owner.and_then(|n| n.ident()).map(|i| i.name);
 
@@ -428,10 +430,11 @@ impl<T> Trait<T> for X {
             if callable_scope {
                 diag.help(format!(
                     "{} or calling a method that returns `{}`",
-                    msg, values.expected
+                    msg(),
+                    values.expected
                 ));
             } else {
-                diag.help(msg);
+                diag.help(msg());
             }
             diag.note(
                 "for more information, visit \
@@ -463,7 +466,7 @@ fn foo(&self) -> Self::T { String::new() }
     fn suggest_constraining_opaque_associated_type(
         &self,
         diag: &mut Diagnostic,
-        msg: &str,
+        msg: impl Fn() -> String,
         proj_ty: &ty::AliasTy<'tcx>,
         ty: Ty<'tcx>,
     ) -> bool {
@@ -635,7 +638,7 @@ fn foo(&self) -> Self::T { String::new() }
         assoc: ty::AssocItem,
         assoc_substs: &[ty::GenericArg<'tcx>],
         ty: Ty<'tcx>,
-        msg: &str,
+        msg: impl Fn() -> String,
         is_bound_surely_present: bool,
     ) -> bool {
         // FIXME: we would want to call `resolve_vars_if_possible` on `ty` before suggesting.
@@ -678,7 +681,7 @@ fn foo(&self) -> Self::T { String::new() }
         assoc: ty::AssocItem,
         assoc_substs: &[ty::GenericArg<'tcx>],
         ty: Ty<'tcx>,
-        msg: &str,
+        msg: impl Fn() -> String,
     ) -> bool {
         let tcx = self.tcx;
 
@@ -693,7 +696,7 @@ fn foo(&self) -> Self::T { String::new() }
                 let item_args = self.format_generic_args(assoc_substs);
                 (span.shrink_to_hi(), format!("<{}{} = {}>", assoc.ident(tcx), item_args, ty))
             };
-            diag.span_suggestion_verbose(span, msg, sugg, MaybeIncorrect);
+            diag.span_suggestion_verbose(span, msg(), sugg, MaybeIncorrect);
             return true;
         }
         false

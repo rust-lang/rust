@@ -842,7 +842,7 @@ impl PreprocessingError {
         match self {
             PreprocessingError::MultipleAnchors => report_multiple_anchors(cx, diag_info),
             PreprocessingError::Disambiguator(range, msg) => {
-                disambiguator_error(cx, diag_info, range.clone(), msg.as_str())
+                disambiguator_error(cx, diag_info, range.clone(), msg.clone())
             }
             PreprocessingError::MalformedGenerics(err, path_str) => {
                 report_malformed_generics(cx, diag_info, *err, path_str)

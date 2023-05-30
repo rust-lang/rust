@@ -122,7 +122,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
 
                     self.fcx
                         .need_type_info_err_in_generator(self.kind, span, unresolved_term)
-                        .span_note(yield_data.span, &*note)
+                        .span_note(yield_data.span, note)
                         .emit();
                 }
             } else {
@@ -686,7 +686,7 @@ fn check_must_not_suspend_def(
                 // Add optional reason note
                 if let Some(note) = attr.value_str() {
                     // FIXME(guswynn): consider formatting this better
-                    lint.span_note(data.source_span, note.as_str());
+                    lint.span_note(data.source_span, note.to_string());
                 }
 
                 // Add some quick suggestions on what to do

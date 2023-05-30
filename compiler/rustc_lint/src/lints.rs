@@ -1527,7 +1527,7 @@ impl<'a> DecorateLint<'a, ()> for UnusedDef<'_, '_> {
         diag.set_arg("def", self.cx.tcx.def_path_str(self.def_id));
         // check for #[must_use = "..."]
         if let Some(note) = self.note {
-            diag.note(note.as_str());
+            diag.note(note.to_string());
         }
         if let Some(sugg) = self.suggestion {
             diag.subdiagnostic(sugg);
