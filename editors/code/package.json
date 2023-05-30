@@ -553,6 +553,11 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.cargo.cfgs": {
+                    "markdownDescription": "List of cfg options to enable with the given values.",
+                    "default": {},
+                    "type": "object"
+                },
                 "rust-analyzer.cargo.extraArgs": {
                     "markdownDescription": "Extra arguments that are passed to every cargo invocation.",
                     "default": [],
@@ -617,7 +622,7 @@
                     ]
                 },
                 "rust-analyzer.cargo.unsetTest": {
-                    "markdownDescription": "Unsets `#[cfg(test)]` for the specified crates.",
+                    "markdownDescription": "Unsets the implicit `#[cfg(test)]` for the specified crates.",
                     "default": [
                         "core"
                     ],

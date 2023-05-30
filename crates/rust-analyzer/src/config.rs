@@ -9,6 +9,7 @@
 
 use std::{fmt, iter, ops::Not, path::PathBuf};
 
+use cfg::{CfgAtom, CfgDiff};
 use flycheck::FlycheckConfig;
 use ide::{
     AssistConfig, CallableSnippets, CompletionConfig, DiagnosticsConfig, ExprFillDefaultMode,
@@ -23,7 +24,6 @@ use itertools::Itertools;
 use lsp_types::{ClientCapabilities, MarkupKind};
 use project_model::{
     CargoConfig, CargoFeatures, ProjectJson, ProjectJsonData, ProjectManifest, RustLibSource,
-    UnsetTestCrates,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::{de::DeserializeOwned, Deserialize};
@@ -101,6 +101,8 @@ config_data! {
         /// Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to
         /// avoid checking unnecessary things.
         cargo_buildScripts_useRustcWrapper: bool = "true",
+        /// List of cfg options to enable with the given values.
+        cargo_cfgs: FxHashMap<String, String> = "{}",
         /// Extra arguments that are passed to every cargo invocation.
         cargo_extraArgs: Vec<String> = "[]",
         /// Extra environment variables that will be set when running cargo, rustc
@@ -128,7 +130,7 @@ config_data! {
         // FIXME(@poliorcetics): move to multiple targets here too, but this will need more work
         // than `checkOnSave_target`
         cargo_target: Option<String>     = "null",
-        /// Unsets `#[cfg(test)]` for the specified crates.
+        /// Unsets the implicit `#[cfg(test)]` for the specified crates.
         cargo_unsetTest: Vec<String>     = "[\"core\"]",
 
         /// Run the check command for diagnostics on save.
@@ -1189,7 +1191,34 @@ impl Config {
             sysroot,
             sysroot_src,
             rustc_source,
-            unset_test_crates: UnsetTestCrates::Only(self.data.cargo_unsetTest.clone()),
+            cfg_overrides: project_model::CfgOverrides {
+                global: CfgDiff::new(
+                    self.data
+                        .cargo_cfgs
+                        .iter()
+                        .map(|(key, val)| {
+                            if val.is_empty() {
+                                CfgAtom::Flag(key.into())
+                            } else {
+                                CfgAtom::KeyValue { key: key.into(), value: val.into() }
+                            }
+                        })
+                        .collect(),
+                    vec![],
+                )
+                .unwrap(),
+                selective: self
+                    .data
+                    .cargo_unsetTest
+                    .iter()
+                    .map(|it| {
+                        (
+                            it.clone(),
+                            CfgDiff::new(vec![], vec![CfgAtom::Flag("test".into())]).unwrap(),
+                        )
+                    })
+                    .collect(),
+            },
             wrap_rustc_in_build_scripts: self.data.cargo_buildScripts_useRustcWrapper,
             invocation_strategy: match self.data.cargo_buildScripts_invocationStrategy {
                 InvocationStrategy::Once => project_model::InvocationStrategy::Once,

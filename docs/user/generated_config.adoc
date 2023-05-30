@@ -71,6 +71,11 @@ cargo check --quiet --workspace --message-format=json --all-targets
 Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to
 avoid checking unnecessary things.
 --
+[[rust-analyzer.cargo.cfgs]]rust-analyzer.cargo.cfgs (default: `{}`)::
++
+--
+List of cfg options to enable with the given values.
+--
 [[rust-analyzer.cargo.extraArgs]]rust-analyzer.cargo.extraArgs (default: `[]`)::
 +
 --
@@ -120,7 +125,7 @@ Compilation target override (target triple).
 [[rust-analyzer.cargo.unsetTest]]rust-analyzer.cargo.unsetTest (default: `["core"]`)::
 +
 --
-Unsets `#[cfg(test)]` for the specified crates.
+Unsets the implicit `#[cfg(test)]` for the specified crates.
 --
 [[rust-analyzer.checkOnSave]]rust-analyzer.checkOnSave (default: `true`)::
 +
