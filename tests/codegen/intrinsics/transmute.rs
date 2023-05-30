@@ -14,10 +14,10 @@ use std::intrinsics::{transmute, transmute_unchecked};
 // Some of these need custom MIR to not get removed by MIR optimizations.
 use std::intrinsics::mir::*;
 
-enum Never {}
+pub enum ZstNever {}
 
 #[repr(align(2))]
-pub struct BigNever(Never, u16, Never);
+pub struct BigNever(ZstNever, u16, ZstNever);
 
 #[repr(align(8))]
 pub struct Scalar64(i64);
@@ -56,14 +56,47 @@ pub unsafe fn check_bigger_array(x: [u32; 3]) -> [u32; 7] {
     transmute_unchecked(x)
 }
 
-// CHECK-LABEL: @check_to_uninhabited(
+// CHECK-LABEL: @check_to_empty_array(
 #[no_mangle]
 #[custom_mir(dialect = "runtime", phase = "optimized")]
-pub unsafe fn check_to_uninhabited(x: u16) -> BigNever {
+pub unsafe fn check_to_empty_array(x: [u32; 5]) -> [u32; 0] {
+    // CHECK-NOT: trap
     // CHECK: call void @llvm.trap
+    // CHECK-NOT: trap
     mir!{
         {
             RET = CastTransmute(x);
+            Return()
+        }
+    }
+}
+
+// CHECK-LABEL: @check_from_empty_array(
+#[no_mangle]
+#[custom_mir(dialect = "runtime", phase = "optimized")]
+pub unsafe fn check_from_empty_array(x: [u32; 0]) -> [u32; 5] {
+    // CHECK-NOT: trap
+    // CHECK: call void @llvm.trap
+    // CHECK-NOT: trap
+    mir!{
+        {
+            RET = CastTransmute(x);
+            Return()
+        }
+    }
+}
+
+// CHECK-LABEL: @check_to_uninhabited(
+#[no_mangle]
+#[custom_mir(dialect = "runtime", phase = "optimized")]
+pub unsafe fn check_to_uninhabited(x: u16) {
+    // CHECK-NOT: trap
+    // CHECK: call void @llvm.trap
+    // CHECK-NOT: trap
+    mir!{
+        let temp: BigNever;
+        {
+            temp = CastTransmute(x);
             Return()
         }
     }
@@ -354,6 +387,40 @@ pub unsafe fn check_pair_to_dst_ref<'a>(x: (usize, usize)) -> &'a [u8] {
 #[no_mangle]
 #[custom_mir(dialect = "runtime", phase = "optimized")]
 pub unsafe fn check_issue_109992(x: ()) -> [(); 1] {
+    // This uses custom MIR to avoid MIR optimizations having removed ZST ops.
+
+    // CHECK: start
+    // CHECK-NEXT: ret void
+    mir!{
+        {
+            RET = CastTransmute(x);
+            Return()
+        }
+    }
+}
+
+// CHECK-LABEL: @check_unit_to_never(
+#[no_mangle]
+#[custom_mir(dialect = "runtime", phase = "optimized")]
+pub unsafe fn check_unit_to_never(x: ()) {
+    // This uses custom MIR to avoid MIR optimizations having removed ZST ops.
+
+    // CHECK-NOT: trap
+    // CHECK: call void @llvm.trap
+    // CHECK-NOT: trap
+    mir!{
+        let temp: ZstNever;
+        {
+            temp = CastTransmute(x);
+            Return()
+        }
+    }
+}
+
+// CHECK-LABEL: @check_unit_from_never(
+#[no_mangle]
+#[custom_mir(dialect = "runtime", phase = "optimized")]
+pub unsafe fn check_unit_from_never(x: ZstNever) -> () {
     // This uses custom MIR to avoid MIR optimizations having removed ZST ops.
 
     // CHECK: start
