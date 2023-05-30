@@ -808,6 +808,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         G: FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>>,
     {
         self.commit_if_ok(|snapshot| {
+            let outer_universe = self.infcx.universe();
+
             let result = if let ty::FnPtr(fn_ty_b) = b.kind()
                 && let (hir::Unsafety::Normal, hir::Unsafety::Unsafe) =
                     (fn_ty_a.unsafety(), fn_ty_b.unsafety())
@@ -824,7 +826,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             // want the coerced type to be the actual supertype of these two,
             // but for now, we want to just error to ensure we don't lock
             // ourselves into a specific behavior with NLL.
-            self.leak_check(false, snapshot)?;
+            self.leak_check(outer_universe, Some(snapshot))?;
 
             result
         })

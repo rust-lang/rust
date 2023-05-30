@@ -533,17 +533,29 @@ impl<'tcx> InferCtxt<'tcx> {
         // these are the same span, but not in cases like `-> (impl
         // Foo, impl Bar)`.
         let span = cause.span;
-        let prev = self.inner.borrow_mut().opaque_types().register(
-            opaque_type_key,
-            OpaqueHiddenType { ty: hidden_ty, span },
-            origin,
-        );
-        let mut obligations = if let Some(prev) = prev {
-            self.at(&cause, param_env)
-                .eq_exp(DefineOpaqueTypes::Yes, a_is_expected, prev, hidden_ty)?
-                .obligations
+        let mut obligations = if self.intercrate {
+            // During intercrate we do not define opaque types but instead always
+            // force ambiguity unless the hidden type is known to not implement
+            // our trait.
+            vec![traits::Obligation::new(
+                self.tcx,
+                cause.clone(),
+                param_env,
+                ty::PredicateKind::Ambiguous,
+            )]
         } else {
-            Vec::new()
+            let prev = self.inner.borrow_mut().opaque_types().register(
+                opaque_type_key,
+                OpaqueHiddenType { ty: hidden_ty, span },
+                origin,
+            );
+            if let Some(prev) = prev {
+                self.at(&cause, param_env)
+                    .eq_exp(DefineOpaqueTypes::Yes, a_is_expected, prev, hidden_ty)?
+                    .obligations
+            } else {
+                Vec::new()
+            }
         };
 
         self.add_item_bounds_for_hidden_type(

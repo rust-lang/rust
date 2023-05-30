@@ -400,7 +400,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         data
     }
 
-    pub(super) fn data(&self) -> &RegionConstraintData<'tcx> {
+    pub fn data(&self) -> &RegionConstraintData<'tcx> {
         &self.data
     }
 
@@ -683,15 +683,10 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     }
 
     /// See `InferCtxt::region_constraints_added_in_snapshot`.
-    pub fn region_constraints_added_in_snapshot(&self, mark: &Snapshot<'tcx>) -> Option<bool> {
+    pub fn region_constraints_added_in_snapshot(&self, mark: &Snapshot<'tcx>) -> bool {
         self.undo_log
             .region_constraints_in_snapshot(mark)
-            .map(|&elt| match elt {
-                AddConstraint(constraint) => Some(constraint.involves_placeholders()),
-                _ => None,
-            })
-            .max()
-            .unwrap_or(None)
+            .any(|&elt| matches!(elt, AddConstraint(_)))
     }
 
     #[inline]

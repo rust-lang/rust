@@ -561,9 +561,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         op: impl FnOnce(&mut Self) -> Result<EvaluationResult, OverflowError>,
     ) -> Result<EvaluationResult, OverflowError> {
         self.infcx.probe(|snapshot| -> Result<EvaluationResult, OverflowError> {
+            let outer_universe = self.infcx.universe();
             let result = op(self)?;
 
-            match self.infcx.leak_check(true, snapshot) {
+            match self.infcx.leak_check(outer_universe, Some(snapshot)) {
                 Ok(()) => {}
                 Err(_) => return Ok(EvaluatedToErr),
             }
@@ -572,9 +573,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 return Ok(result.max(EvaluatedToOkModuloOpaqueTypes));
             }
 
-            match self.infcx.region_constraints_added_in_snapshot(snapshot) {
-                None => Ok(result),
-                Some(_) => Ok(result.max(EvaluatedToOkModuloRegions)),
+            if self.infcx.region_constraints_added_in_snapshot(snapshot) {
+                Ok(result.max(EvaluatedToOkModuloRegions))
+            } else {
+                Ok(result)
             }
         })
     }

@@ -90,7 +90,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                     Ok(EvaluationResult::EvaluatedToAmbig)
                 } else if self.opaque_types_added_in_snapshot(snapshot) {
                     Ok(EvaluationResult::EvaluatedToOkModuloOpaqueTypes)
-                } else if self.region_constraints_added_in_snapshot(snapshot).is_some() {
+                } else if self.region_constraints_added_in_snapshot(snapshot) {
                     Ok(EvaluationResult::EvaluatedToOkModuloRegions)
                 } else {
                     Ok(EvaluationResult::EvaluatedToOk)
