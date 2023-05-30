@@ -11,13 +11,12 @@ use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
-    ///
     /// Checks for blocks which are nested beyond a certain threshold.
     ///
-    /// ### Why is this bad?
+    /// Note: Even though this lint is warn-by-default, it will only trigger if a maximum nesting level is defined in the clippy.toml file.
     ///
-    /// It can severely hinder readability. The default is very generous; if you
-    /// exceed this, it's a sign you should refactor.
+    /// ### Why is this bad?
+    /// It can severely hinder readability.
     ///
     /// ### Example
     /// An example clippy.toml configuration:
@@ -59,7 +58,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.70.0"]
     pub EXCESSIVE_NESTING,
-    restriction,
+    complexity,
     "checks for blocks nested beyond a certain threshold"
 }
 impl_lint_pass!(ExcessiveNesting => [EXCESSIVE_NESTING]);
@@ -115,7 +114,9 @@ struct NestingVisitor<'conf, 'cx> {
 
 impl NestingVisitor<'_, '_> {
     fn check_indent(&mut self, span: Span, id: NodeId) -> bool {
-        if self.nest_level > self.conf.excessive_nesting_threshold && !in_external_macro(self.cx.sess(), span) {
+        let threshold = self.conf.excessive_nesting_threshold;
+
+        if threshold != 0 && self.nest_level > threshold && !in_external_macro(self.cx.sess(), span) {
             self.conf.nodes.insert(id);
 
             return true;

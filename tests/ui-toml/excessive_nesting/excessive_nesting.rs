@@ -1,6 +1,6 @@
 //@aux-build:macro_rules.rs
-//@revisions: below default
-//@[below] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/excessive_nesting/below
+//@revisions: set default
+//@[set] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/excessive_nesting/set
 //@[default] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/excessive_nesting/default
 #![rustfmt::skip]
 #![feature(custom_inner_attributes)]

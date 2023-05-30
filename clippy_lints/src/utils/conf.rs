@@ -308,7 +308,7 @@ define_Conf! {
     /// Lint: EXCESSIVE_NESTING.
     ///
     /// The maximum amount of nesting a block can reside in
-    (excessive_nesting_threshold: u64 = 10),
+    (excessive_nesting_threshold: u64 = 0),
     /// DEPRECATED LINT: CYCLOMATIC_COMPLEXITY.
     ///
     /// Use the Cognitive Complexity lint instead.

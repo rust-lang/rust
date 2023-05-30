@@ -161,7 +161,7 @@ The maximum cognitive complexity a function can have
 ## `excessive-nesting-threshold`
 The maximum amount of nesting a block can reside in
 
-**Default Value:** `10` (`u64`)
+**Default Value:** `0` (`u64`)
 
 ---
 **Affected lints:**
