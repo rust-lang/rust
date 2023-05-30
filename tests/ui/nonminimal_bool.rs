@@ -10,6 +10,7 @@ fn main() {
     let e: bool = unimplemented!();
     let _ = !true;
     let _ = !false;
+    // vvv Should not lint
     let _ = !!a;
     let _ = false || a;
     // don't lint on cfgs
@@ -54,7 +55,6 @@ fn issue4548() {
 
 fn check_expect() {
     let a: bool = unimplemented!();
-    #[expect(clippy::nonminimal_bool)]
     let _ = !!a;
 }
 
@@ -109,4 +109,18 @@ fn issue_10435() {
     if !(x == [0]) {
         println!("{}", line!());
     }
+}
+
+fn issue10836() {
+    struct Foo(bool);
+    impl std::ops::Not for Foo {
+        type Output = bool;
+
+        fn not(self) -> Self::Output {
+            !self.0
+        }
+    }
+
+    // Should not lint
+    let _: bool = !!Foo(true);
 }

@@ -8,10 +8,12 @@ use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
 use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, UnOp};
 use rustc_lint::{LateContext, LateLintPass, Level};
+use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Span;
 use rustc_span::sym;
+use rustc_span::symbol::Ident;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -87,6 +89,27 @@ impl<'tcx> LateLintPass<'tcx> for NonminimalBool {
     ) {
         NonminimalBoolVisitor { cx }.visit_body(body);
     }
+}
+
+fn is_impl_not_trait_with_bool_out<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    cx.tcx
+        .lang_items()
+        .not_trait()
+        .filter(|trait_id| implements_trait(cx, ty, *trait_id, &[]))
+        .and_then(|trait_id| {
+            cx.tcx.associated_items(trait_id).find_by_name_and_kind(
+                cx.tcx,
+                Ident::from_str("Output"),
+                ty::AssocKind::Type,
+                trait_id,
+            )
+        })
+        .map_or(false, |assoc_item| {
+            let proj = cx.tcx.mk_projection(assoc_item.def_id, cx.tcx.mk_substs_trait(ty, []));
+            let nty = cx.tcx.normalize_erasing_regions(cx.param_env, proj);
+
+            nty.is_bool()
+        })
 }
 
 struct NonminimalBoolVisitor<'a, 'tcx> {
@@ -473,6 +496,12 @@ impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
                     self.bool_expr(e);
                 },
                 ExprKind::Unary(UnOp::Not, inner) => {
+                    if let ExprKind::Unary(UnOp::Not, ex) = inner.kind {
+                        let ty = self.cx.typeck_results().expr_ty(ex);
+                        if is_impl_not_trait_with_bool_out(self.cx, ty) {
+                            return;
+                        }
+                    }
                     if self.cx.typeck_results().node_types()[inner.hir_id].is_bool() {
                         self.bool_expr(e);
                     }
