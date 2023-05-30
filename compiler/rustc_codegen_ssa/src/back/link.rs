@@ -23,7 +23,7 @@ use rustc_session::utils::NativeLibKind;
 use rustc_session::{filesearch, Session};
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::crt_objects::{CrtObjects, LinkSelfContainedDefault};
-use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, LinkerFlavorCli, Lld, PanicStrategy};
+use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, Lld, PanicStrategy};
 use rustc_target::spec::{RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo};
 
 use super::archive::{ArchiveBuilder, ArchiveBuilderBuilder};
@@ -1302,44 +1302,7 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                 let stem = linker.file_stem().and_then(|stem| stem.to_str()).unwrap_or_else(|| {
                     sess.emit_fatal(errors::LinkerFileStem);
                 });
-
-                // Remove any version postfix.
-                let stem = stem
-                    .rsplit_once('-')
-                    .and_then(|(lhs, rhs)| rhs.chars().all(char::is_numeric).then_some(lhs))
-                    .unwrap_or(stem);
-
-                // GCC/Clang can have an optional target prefix.
-                let flavor = if stem == "emcc" {
-                    LinkerFlavor::EmCc
-                } else if stem == "gcc"
-                    || stem.ends_with("-gcc")
-                    || stem == "g++"
-                    || stem.ends_with("-g++")
-                    || stem == "clang"
-                    || stem.ends_with("-clang")
-                    || stem == "clang++"
-                    || stem.ends_with("-clang++")
-                {
-                    LinkerFlavor::from_cli(LinkerFlavorCli::Gcc, &sess.target)
-                } else if stem == "wasm-ld" || stem.ends_with("-wasm-ld") {
-                    LinkerFlavor::WasmLld(Cc::No)
-                } else if stem == "ld" || stem.ends_with("-ld") {
-                    LinkerFlavor::from_cli(LinkerFlavorCli::Ld, &sess.target)
-                } else if stem == "ld.lld" {
-                    LinkerFlavor::Gnu(Cc::No, Lld::Yes)
-                } else if stem == "link" {
-                    LinkerFlavor::Msvc(Lld::No)
-                } else if stem == "lld-link" {
-                    LinkerFlavor::Msvc(Lld::Yes)
-                } else if stem == "lld" || stem == "rust-lld" {
-                    let lld_flavor = sess.target.linker_flavor.lld_flavor();
-                    LinkerFlavor::from_cli(LinkerFlavorCli::Lld(lld_flavor), &sess.target)
-                } else {
-                    // fall back to the value in the target spec
-                    sess.target.linker_flavor
-                };
-
+                let flavor = sess.target.linker_flavor.with_linker_hints(stem);
                 Some((linker, flavor))
             }
             (None, None) => None,
@@ -1349,7 +1312,7 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
     // linker and linker flavor specified via command line have precedence over what the target
     // specification specifies
     let linker_flavor =
-        sess.opts.cg.linker_flavor.map(|flavor| LinkerFlavor::from_cli(flavor, &sess.target));
+        sess.opts.cg.linker_flavor.map(|flavor| sess.target.linker_flavor.with_cli_hints(flavor));
     if let Some(ret) = infer_from(sess, sess.opts.cg.linker.clone(), linker_flavor) {
         return ret;
     }
