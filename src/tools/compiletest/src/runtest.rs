@@ -1939,6 +1939,17 @@ impl<'test> TestCx<'test> {
         // Use a single thread for efficiency and a deterministic error message order
         rustc.arg("-Zthreads=1");
 
+        // Hide libstd sources from ui tests to make sure we generate the stderr
+        // output that users will see.
+        // Without this, we may be producing good diagnostics in-tree but users
+        // will not see half the information.
+        //
+        // This also has the benefit of more effectively normalizing output between different
+        // compilers, so that we don't have to know the `/rustc/$sha` output to normalize after the
+        // fact.
+        rustc.arg("-Zsimulate-remapped-rust-src-base=/rustc/FAKE_PREFIX");
+        rustc.arg("-Ztranslate-remapped-path-to-local-path=no");
+
         // Optionally prevent default --sysroot if specified in test compile-flags.
         if !self.props.compile_flags.iter().any(|flag| flag.starts_with("--sysroot")) {
             // In stage 0, make sure we use `stage0-sysroot` instead of the bootstrap sysroot.
@@ -2014,13 +2025,6 @@ impl<'test> TestCx<'test> {
                 rustc.arg("-Ccodegen-units=1");
                 // Hide line numbers to reduce churn
                 rustc.arg("-Zui-testing");
-                // Hide libstd sources from ui tests to make sure we generate the stderr
-                // output that users will see.
-                // Without this, we may be producing good diagnostics in-tree but users
-                // will not see half the information.
-                rustc.arg("-Zsimulate-remapped-rust-src-base=/rustc/FAKE_PREFIX");
-                rustc.arg("-Ztranslate-remapped-path-to-local-path=no");
-
                 rustc.arg("-Zdeduplicate-diagnostics=no");
                 // FIXME: use this for other modes too, for perf?
                 rustc.arg("-Cstrip=debuginfo");
@@ -3732,28 +3736,13 @@ impl<'test> TestCx<'test> {
             normalize_path(&remapped_parent_dir, "$DIR");
         }
 
-        let source_bases = &[
-            // Source base on the current filesystem (calculated as parent of `tests/$suite`):
-            Some(self.config.src_base.parent().unwrap().parent().unwrap().into()),
-            // Source base on the sysroot (from the src components downloaded by `download-rustc`):
-            Some(self.config.sysroot_base.join("lib").join("rustlib").join("src").join("rust")),
-            // Virtual `/rustc/$sha` remapped paths (if `remap-debuginfo` is enabled):
-            option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR").map(PathBuf::from),
-            // Virtual `/rustc/$sha` coming from download-rustc:
-            std::env::var_os("FAKE_DOWNLOAD_RUSTC_PREFIX").map(PathBuf::from),
-            // Tests using -Zsimulate-remapped-rust-src-base should use this fake path
-            Some("/rustc/FAKE_PREFIX".into()),
-        ];
-        for base_dir in source_bases {
-            if let Some(base_dir) = base_dir {
-                // Paths into the libstd/libcore
-                normalize_path(&base_dir.join("library"), "$SRC_DIR");
-                // `ui-fulldeps` tests can show paths to the compiler source when testing macros from
-                // `rustc_macros`
-                // eg. /home/user/rust/compiler
-                normalize_path(&base_dir.join("compiler"), "$COMPILER_DIR");
-            }
-        }
+        let base_dir = Path::new("/rustc/FAKE_PREFIX");
+        // Paths into the libstd/libcore
+        normalize_path(&base_dir.join("library"), "$SRC_DIR");
+        // `ui-fulldeps` tests can show paths to the compiler source when testing macros from
+        // `rustc_macros`
+        // eg. /home/user/rust/compiler
+        normalize_path(&base_dir.join("compiler"), "$COMPILER_DIR");
 
         // Paths into the build directory
         let test_build_dir = &self.config.build_base;
