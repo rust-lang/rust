@@ -4289,6 +4289,7 @@ dependencies = [
 name = "rustdoc-gui-test"
 version = "0.1.0"
 dependencies = [
+ "build_helper",
  "compiletest",
  "getopts",
  "walkdir",

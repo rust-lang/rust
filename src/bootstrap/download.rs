@@ -7,6 +7,7 @@ use std::{
     process::{Command, Stdio},
 };
 
+use build_helper::util::try_run;
 use once_cell::sync::OnceCell;
 use xz2::bufread::XzDecoder;
 
@@ -14,7 +15,7 @@ use crate::{
     config::RustfmtMetadata,
     llvm::detect_llvm_sha,
     t,
-    util::{check_run, exe, program_out_of_date, try_run},
+    util::{check_run, exe, program_out_of_date},
     Config,
 };
 
@@ -245,7 +246,7 @@ impl Config {
             if !help_on_error.is_empty() {
                 eprintln!("{}", help_on_error);
             }
-            crate::detail_exit(1);
+            crate::detail_exit_macro!(1);
         }
     }
 
