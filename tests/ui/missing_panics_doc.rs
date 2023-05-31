@@ -1,5 +1,5 @@
 #![warn(clippy::missing_panics_doc)]
-#![allow(clippy::option_map_unit_fn)]
+#![allow(clippy::option_map_unit_fn, clippy::unnecessary_literal_unwrap)]
 fn main() {}
 
 /// This needs to be documented

@@ -5,6 +5,7 @@
 #![allow(clippy::bind_instead_of_map)]
 #![allow(clippy::map_identity)]
 #![allow(clippy::needless_borrow)]
+#![allow(clippy::unnecessary_literal_unwrap)]
 
 use std::ops::Deref;
 

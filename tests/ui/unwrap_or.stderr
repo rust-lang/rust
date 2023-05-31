@@ -1,5 +1,5 @@
 error: use of `unwrap_or` followed by a function call
-  --> $DIR/unwrap_or.rs:4:47
+  --> $DIR/unwrap_or.rs:5:47
    |
 LL |     let s = Some(String::from("test string")).unwrap_or("Fail".to_string()).len();
    |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| "Fail".to_string())`
@@ -7,7 +7,7 @@ LL |     let s = Some(String::from("test string")).unwrap_or("Fail".to_string())
    = note: `-D clippy::or-fun-call` implied by `-D warnings`
 
 error: use of `unwrap_or` followed by a function call
-  --> $DIR/unwrap_or.rs:8:47
+  --> $DIR/unwrap_or.rs:9:47
    |
 LL |     let s = Some(String::from("test string")).unwrap_or("Fail".to_string()).len();
    |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| "Fail".to_string())`

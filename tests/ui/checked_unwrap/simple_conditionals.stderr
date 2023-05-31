@@ -1,5 +1,5 @@
 error: called `unwrap` on `x` after checking its variant with `is_some`
-  --> $DIR/simple_conditionals.rs:40:9
+  --> $DIR/simple_conditionals.rs:44:9
    |
 LL |     if x.is_some() {
    |     -------------- help: try: `if let Some(..) = x`
@@ -13,7 +13,7 @@ LL | #![deny(clippy::panicking_unwrap, clippy::unnecessary_unwrap)]
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `expect` on `x` after checking its variant with `is_some`
-  --> $DIR/simple_conditionals.rs:41:9
+  --> $DIR/simple_conditionals.rs:45:9
    |
 LL |     if x.is_some() {
    |     -------------- help: try: `if let Some(..) = x`
@@ -22,7 +22,7 @@ LL |         x.expect("an error message"); // unnecessary
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this call to `unwrap()` will always panic
-  --> $DIR/simple_conditionals.rs:43:9
+  --> $DIR/simple_conditionals.rs:47:9
    |
 LL |     if x.is_some() {
    |        ----------- because of this check
@@ -37,7 +37,7 @@ LL | #![deny(clippy::panicking_unwrap, clippy::unnecessary_unwrap)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this call to `expect()` will always panic
-  --> $DIR/simple_conditionals.rs:44:9
+  --> $DIR/simple_conditionals.rs:48:9
    |
 LL |     if x.is_some() {
    |        ----------- because of this check
@@ -46,7 +46,7 @@ LL |         x.expect("an error message"); // will panic
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this call to `unwrap()` will always panic
-  --> $DIR/simple_conditionals.rs:47:9
+  --> $DIR/simple_conditionals.rs:51:9
    |
 LL |     if x.is_none() {
    |        ----------- because of this check
@@ -54,7 +54,7 @@ LL |         x.unwrap(); // will panic
    |         ^^^^^^^^^^
 
 error: called `unwrap` on `x` after checking its variant with `is_none`
-  --> $DIR/simple_conditionals.rs:49:9
+  --> $DIR/simple_conditionals.rs:53:9
    |
 LL |     if x.is_none() {
    |     -------------- help: try: `if let Some(..) = x`
@@ -63,7 +63,7 @@ LL |         x.unwrap(); // unnecessary
    |         ^^^^^^^^^^
 
 error: called `unwrap` on `x` after checking its variant with `is_some`
-  --> $DIR/simple_conditionals.rs:8:13
+  --> $DIR/simple_conditionals.rs:12:13
    |
 LL |         if $a.is_some() {
    |         --------------- help: try: `if let Some(..) = x`
@@ -76,7 +76,7 @@ LL |     m!(x);
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: called `unwrap` on `x` after checking its variant with `is_ok`
-  --> $DIR/simple_conditionals.rs:57:9
+  --> $DIR/simple_conditionals.rs:61:9
    |
 LL |     if x.is_ok() {
    |     ------------ help: try: `if let Ok(..) = x`
@@ -84,7 +84,7 @@ LL |         x.unwrap(); // unnecessary
    |         ^^^^^^^^^^
 
 error: called `expect` on `x` after checking its variant with `is_ok`
-  --> $DIR/simple_conditionals.rs:58:9
+  --> $DIR/simple_conditionals.rs:62:9
    |
 LL |     if x.is_ok() {
    |     ------------ help: try: `if let Ok(..) = x`
@@ -93,7 +93,7 @@ LL |         x.expect("an error message"); // unnecessary
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this call to `unwrap_err()` will always panic
-  --> $DIR/simple_conditionals.rs:59:9
+  --> $DIR/simple_conditionals.rs:63:9
    |
 LL |     if x.is_ok() {
    |        --------- because of this check
@@ -102,7 +102,7 @@ LL |         x.unwrap_err(); // will panic
    |         ^^^^^^^^^^^^^^
 
 error: this call to `unwrap()` will always panic
-  --> $DIR/simple_conditionals.rs:61:9
+  --> $DIR/simple_conditionals.rs:65:9
    |
 LL |     if x.is_ok() {
    |        --------- because of this check
@@ -111,7 +111,7 @@ LL |         x.unwrap(); // will panic
    |         ^^^^^^^^^^
 
 error: this call to `expect()` will always panic
-  --> $DIR/simple_conditionals.rs:62:9
+  --> $DIR/simple_conditionals.rs:66:9
    |
 LL |     if x.is_ok() {
    |        --------- because of this check
@@ -120,7 +120,7 @@ LL |         x.expect("an error message"); // will panic
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `unwrap_err` on `x` after checking its variant with `is_ok`
-  --> $DIR/simple_conditionals.rs:63:9
+  --> $DIR/simple_conditionals.rs:67:9
    |
 LL |     if x.is_ok() {
    |     ------------ help: try: `if let Err(..) = x`
@@ -129,7 +129,7 @@ LL |         x.unwrap_err(); // unnecessary
    |         ^^^^^^^^^^^^^^
 
 error: this call to `unwrap()` will always panic
-  --> $DIR/simple_conditionals.rs:66:9
+  --> $DIR/simple_conditionals.rs:70:9
    |
 LL |     if x.is_err() {
    |        ---------- because of this check
@@ -137,7 +137,7 @@ LL |         x.unwrap(); // will panic
    |         ^^^^^^^^^^
 
 error: called `unwrap_err` on `x` after checking its variant with `is_err`
-  --> $DIR/simple_conditionals.rs:67:9
+  --> $DIR/simple_conditionals.rs:71:9
    |
 LL |     if x.is_err() {
    |     ------------- help: try: `if let Err(..) = x`
@@ -146,7 +146,7 @@ LL |         x.unwrap_err(); // unnecessary
    |         ^^^^^^^^^^^^^^
 
 error: called `unwrap` on `x` after checking its variant with `is_err`
-  --> $DIR/simple_conditionals.rs:69:9
+  --> $DIR/simple_conditionals.rs:73:9
    |
 LL |     if x.is_err() {
    |     ------------- help: try: `if let Ok(..) = x`
@@ -155,7 +155,7 @@ LL |         x.unwrap(); // unnecessary
    |         ^^^^^^^^^^
 
 error: this call to `unwrap_err()` will always panic
-  --> $DIR/simple_conditionals.rs:70:9
+  --> $DIR/simple_conditionals.rs:74:9
    |
 LL |     if x.is_err() {
    |        ---------- because of this check

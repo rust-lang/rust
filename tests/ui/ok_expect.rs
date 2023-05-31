@@ -1,3 +1,5 @@
+#![allow(clippy::unnecessary_literal_unwrap)]
+
 use std::io;
 
 struct MyError(()); // doesn't implement Debug
