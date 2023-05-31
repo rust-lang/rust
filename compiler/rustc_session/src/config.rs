@@ -610,6 +610,8 @@ pub enum TraitSolver {
     Chalk,
     /// Experimental trait solver in `rustc_trait_selection::solve`
     Next,
+    /// Use the new trait solver during coherence
+    NextCoherence,
 }
 
 pub enum Input {

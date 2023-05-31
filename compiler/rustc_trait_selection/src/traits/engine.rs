@@ -35,6 +35,7 @@ impl<'tcx> TraitEngineExt<'tcx> for dyn TraitEngine<'tcx> {
     fn new(tcx: TyCtxt<'tcx>) -> Box<Self> {
         match tcx.sess.opts.unstable_opts.trait_solver {
             TraitSolver::Classic => Box::new(FulfillmentContext::new()),
+            TraitSolver::NextCoherence => Box::new(FulfillmentContext::new()),
             TraitSolver::Chalk => Box::new(ChalkFulfillmentContext::new()),
             TraitSolver::Next => Box::new(NextFulfillmentCtxt::new()),
         }
@@ -43,6 +44,7 @@ impl<'tcx> TraitEngineExt<'tcx> for dyn TraitEngine<'tcx> {
     fn new_in_snapshot(tcx: TyCtxt<'tcx>) -> Box<Self> {
         match tcx.sess.opts.unstable_opts.trait_solver {
             TraitSolver::Classic => Box::new(FulfillmentContext::new_in_snapshot()),
+            TraitSolver::NextCoherence => Box::new(FulfillmentContext::new_in_snapshot()),
             TraitSolver::Chalk => Box::new(ChalkFulfillmentContext::new_in_snapshot()),
             TraitSolver::Next => Box::new(NextFulfillmentCtxt::new()),
         }

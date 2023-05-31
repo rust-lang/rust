@@ -182,6 +182,7 @@ fn overlap<'tcx>(
         .with_opaque_type_inference(DefiningAnchor::Bubble)
         .skip_leak_check(skip_leak_check.is_yes())
         .intercrate(true)
+        .with_next_trait_solver(tcx.next_trait_solver_in_coherence())
         .build();
     let selcx = &mut SelectionContext::new(&infcx);
     if track_ambiguity_causes.is_yes() {
