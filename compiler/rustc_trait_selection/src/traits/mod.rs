@@ -32,7 +32,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
-use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeSuperVisitable};
+use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFolder, TypeSuperVisitable};
 use rustc_middle::ty::{InternalSubsts, SubstsRef};
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
@@ -272,8 +272,62 @@ pub fn normalize_param_env_or_error<'tcx>(
     // parameter environments once for every fn as it goes,
     // and errors will get reported then; so outside of type inference we
     // can be sure that no errors should occur.
-    let mut predicates: Vec<_> =
-        util::elaborate(tcx, unnormalized_env.caller_bounds().into_iter()).collect();
+    let mut predicates: Vec<_> = util::elaborate(
+        tcx,
+        unnormalized_env.caller_bounds().into_iter().map(|predicate| {
+            if tcx.features().generic_const_exprs {
+                return predicate;
+            }
+
+            struct ConstNormalizer<'tcx>(TyCtxt<'tcx>);
+
+            impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ConstNormalizer<'tcx> {
+                fn interner(&self) -> TyCtxt<'tcx> {
+                    self.0
+                }
+
+                fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
+                    // While it is pretty sus to be evaluating things with an empty param env, it
+                    // should actually be okay since without `feature(generic_const_exprs)` the only
+                    // const arguments that have a non-empty param env are array repeat counts. These
+                    // do not appear in the type system though.
+                    c.eval(self.0, ty::ParamEnv::empty())
+                }
+            }
+
+            // This whole normalization step is a hack to work around the fact that
+            // `normalize_param_env_or_error` is fundamentally broken from using an
+            // unnormalized param env with a trait solver that expects the param env
+            // to be normalized.
+            //
+            // When normalizing the param env we can end up evaluating obligations
+            // that have been normalized but can only be proven via a where clause
+            // which is still in its unnormalized form. example:
+            //
+            // Attempting to prove `T: Trait<<u8 as Identity>::Assoc>` in a param env
+            // with a `T: Trait<<u8 as Identity>::Assoc>` where clause will fail because
+            // we first normalize obligations before proving them so we end up proving
+            // `T: Trait<u8>`. Since lazy normalization is not implemented equating `u8`
+            // with `<u8 as Identity>::Assoc` fails outright so we incorrectly believe that
+            // we cannot prove `T: Trait<u8>`.
+            //
+            // The same thing is true for const generics- attempting to prove
+            // `T: Trait<ConstKind::Unevaluated(...)>` with the same thing as a where clauses
+            // will fail. After normalization we may be attempting to prove `T: Trait<4>` with
+            // the unnormalized where clause `T: Trait<ConstKind::Unevaluated(...)>`. In order
+            // for the obligation to hold `4` must be equal to `ConstKind::Unevaluated(...)`
+            // but as we do not have lazy norm implemented, equating the two consts fails outright.
+            //
+            // Ideally we would not normalize consts here at all but it is required for backwards
+            // compatibility. Eventually when lazy norm is implemented this can just be removed.
+            // We do not normalize types here as there is no backwards compatibility requirement
+            // for us to do so.
+            //
+            // FIXME(-Ztrait-solver=next): remove this hack since we have deferred projection equality
+            predicate.fold_with(&mut ConstNormalizer(tcx))
+        }),
+    )
+    .collect();
 
     debug!("normalize_param_env_or_error: elaborated-predicates={:?}", predicates);
 
