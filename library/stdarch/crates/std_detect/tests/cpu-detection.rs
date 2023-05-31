@@ -20,16 +20,25 @@ fn all() {
 }
 
 #[test]
-#[cfg(all(
-    target_arch = "arm",
-    any(target_os = "linux", target_os = "android", target_os = "freebsd"),
-))]
-fn arm_linux_or_freebsd() {
+#[cfg(all(target_arch = "arm", any(target_os = "freebsd"),))]
+fn arm_freebsd() {
     println!("neon: {}", is_arm_feature_detected!("neon"));
     println!("pmull: {}", is_arm_feature_detected!("pmull"));
     println!("crc: {}", is_arm_feature_detected!("crc"));
     println!("aes: {}", is_arm_feature_detected!("aes"));
     println!("sha2: {}", is_arm_feature_detected!("sha2"));
+}
+
+#[test]
+#[cfg(all(target_arch = "arm", any(target_os = "linux", target_os = "android"),))]
+fn arm_linux() {
+    println!("neon: {}", is_arm_feature_detected!("neon"));
+    println!("pmull: {}", is_arm_feature_detected!("pmull"));
+    println!("crc: {}", is_arm_feature_detected!("crc"));
+    println!("aes: {}", is_arm_feature_detected!("aes"));
+    println!("sha2: {}", is_arm_feature_detected!("sha2"));
+    println!("dotprod: {}", is_arm_feature_detected!("dotprod"));
+    println!("i8mm: {}", is_arm_feature_detected!("i8mm"));
 }
 
 #[test]

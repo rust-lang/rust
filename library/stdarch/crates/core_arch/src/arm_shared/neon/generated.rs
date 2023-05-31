@@ -18837,6 +18837,142 @@ pub unsafe fn vsubl_u32(a: uint32x2_t, b: uint32x2_t) -> uint64x2_t {
     simd_sub(c, d)
 }
 
+/// Dot product arithmetic (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdot_s32)
+#[inline]
+#[target_feature(enable = "neon,dotprod")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsdot))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sdot))]
+pub unsafe fn vdot_s32(a: int32x2_t, b: int8x8_t, c: int8x8_t) -> int32x2_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.sdot.v2i32.v8i8")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sdot.v2i32.v8i8")]
+        fn vdot_s32_(a: int32x2_t, b: int8x8_t, c: int8x8_t) -> int32x2_t;
+    }
+vdot_s32_(a, b, c)
+}
+
+/// Dot product arithmetic (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdotq_s32)
+#[inline]
+#[target_feature(enable = "neon,dotprod")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsdot))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sdot))]
+pub unsafe fn vdotq_s32(a: int32x4_t, b: int8x16_t, c: int8x16_t) -> int32x4_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.sdot.v4i32.v16i8")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sdot.v4i32.v16i8")]
+        fn vdotq_s32_(a: int32x4_t, b: int8x16_t, c: int8x16_t) -> int32x4_t;
+    }
+vdotq_s32_(a, b, c)
+}
+
+/// Dot product arithmetic (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdot_u32)
+#[inline]
+#[target_feature(enable = "neon,dotprod")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vudot))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(udot))]
+pub unsafe fn vdot_u32(a: uint32x2_t, b: uint8x8_t, c: uint8x8_t) -> uint32x2_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.udot.v2i32.v8i8")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.udot.v2i32.v8i8")]
+        fn vdot_u32_(a: uint32x2_t, b: uint8x8_t, c: uint8x8_t) -> uint32x2_t;
+    }
+vdot_u32_(a, b, c)
+}
+
+/// Dot product arithmetic (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdotq_u32)
+#[inline]
+#[target_feature(enable = "neon,dotprod")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vudot))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(udot))]
+pub unsafe fn vdotq_u32(a: uint32x4_t, b: uint8x16_t, c: uint8x16_t) -> uint32x4_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.udot.v4i32.v16i8")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.udot.v4i32.v16i8")]
+        fn vdotq_u32_(a: uint32x4_t, b: uint8x16_t, c: uint8x16_t) -> uint32x4_t;
+    }
+vdotq_u32_(a, b, c)
+}
+
+/// Dot product arithmetic (indexed)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdot_lane_s32)
+#[inline]
+#[target_feature(enable = "neon,dotprod")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsdot, LANE = 0))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sdot, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vdot_lane_s32<const LANE: i32>(a: int32x2_t, b: int8x8_t, c: int8x8_t) -> int32x2_t {
+    static_assert_uimm_bits!(LANE, 1);
+    let c: int32x2_t = transmute(c);
+    let c: int32x2_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32]);
+    vdot_s32(a, b, transmute(c))
+}
+
+/// Dot product arithmetic (indexed)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdotq_lane_s32)
+#[inline]
+#[target_feature(enable = "neon,dotprod")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsdot, LANE = 0))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sdot, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vdotq_lane_s32<const LANE: i32>(a: int32x4_t, b: int8x16_t, c: int8x8_t) -> int32x4_t {
+    static_assert_uimm_bits!(LANE, 1);
+    let c: int32x2_t = transmute(c);
+    let c: int32x4_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
+    vdotq_s32(a, b, transmute(c))
+}
+
+/// Dot product arithmetic (indexed)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdot_lane_u32)
+#[inline]
+#[target_feature(enable = "neon,dotprod")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vudot, LANE = 0))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(udot, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vdot_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint8x8_t, c: uint8x8_t) -> uint32x2_t {
+    static_assert_uimm_bits!(LANE, 1);
+    let c: uint32x2_t = transmute(c);
+    let c: uint32x2_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32]);
+    vdot_u32(a, b, transmute(c))
+}
+
+/// Dot product arithmetic (indexed)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdotq_lane_u32)
+#[inline]
+#[target_feature(enable = "neon,dotprod")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vudot, LANE = 0))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(udot, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vdotq_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint8x16_t, c: uint8x8_t) -> uint32x4_t {
+    static_assert_uimm_bits!(LANE, 1);
+    let c: uint32x2_t = transmute(c);
+    let c: uint32x4_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
+    vdotq_u32(a, b, transmute(c))
+}
+
 /// Maximum (vector)
 ///
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmax_s8)
@@ -39236,6 +39372,86 @@ mod test {
         let b: u32x2 = u32x2::new(0xFF_FF_FF_FF, 0);
         let e: u64x2 = u64x2::new(0, 0);
         let r: u64x2 = transmute(vsubl_u32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon,dotprod")]
+    unsafe fn test_vdot_s32() {
+        let a: i32x2 = i32x2::new(1, 2);
+        let b: i8x8 = i8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let c: i8x8 = i8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let e: i32x2 = i32x2::new(31, 176);
+        let r: i32x2 = transmute(vdot_s32(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon,dotprod")]
+    unsafe fn test_vdotq_s32() {
+        let a: i32x4 = i32x4::new(1, 2, 1, 2);
+        let b: i8x16 = i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8);
+        let c: i8x16 = i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8);
+        let e: i32x4 = i32x4::new(31, 176, 31, 176);
+        let r: i32x4 = transmute(vdotq_s32(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon,dotprod")]
+    unsafe fn test_vdot_u32() {
+        let a: u32x2 = u32x2::new(1, 2);
+        let b: u8x8 = u8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let c: u8x8 = u8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let e: u32x2 = u32x2::new(31, 176);
+        let r: u32x2 = transmute(vdot_u32(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon,dotprod")]
+    unsafe fn test_vdotq_u32() {
+        let a: u32x4 = u32x4::new(1, 2, 1, 2);
+        let b: u8x16 = u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8);
+        let c: u8x16 = u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8);
+        let e: u32x4 = u32x4::new(31, 176, 31, 176);
+        let r: u32x4 = transmute(vdotq_u32(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon,dotprod")]
+    unsafe fn test_vdot_lane_s32() {
+        let a: i32x2 = i32x2::new(1, 2);
+        let b: i8x8 = i8x8::new(-1, 2, 3, 4, 5, 6, 7, 8);
+        let c: i8x8 = i8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let e: i32x2 = i32x2::new(29, 72);
+        let r: i32x2 = transmute(vdot_lane_s32::<0>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon,dotprod")]
+    unsafe fn test_vdotq_lane_s32() {
+        let a: i32x4 = i32x4::new(1, 2, 1, 2);
+        let b: i8x16 = i8x16::new(-1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8);
+        let c: i8x8 = i8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let e: i32x4 = i32x4::new(29, 72, 31, 72);
+        let r: i32x4 = transmute(vdotq_lane_s32::<0>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon,dotprod")]
+    unsafe fn test_vdot_lane_u32() {
+        let a: u32x2 = u32x2::new(1, 2);
+        let b: u8x8 = u8x8::new(255, 2, 3, 4, 5, 6, 7, 8);
+        let c: u8x8 = u8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let e: u32x2 = u32x2::new(285, 72);
+        let r: u32x2 = transmute(vdot_lane_u32::<0>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon,dotprod")]
+    unsafe fn test_vdotq_lane_u32() {
+        let a: u32x4 = u32x4::new(1, 2, 1, 2);
+        let b: u8x16 = u8x16::new(255, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8);
+        let c: u8x8 = u8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let e: u32x4 = u32x4::new(285, 72, 31, 72);
+        let r: u32x4 = transmute(vdotq_lane_u32::<0>(transmute(a), transmute(b), transmute(c)));
         assert_eq!(r, e);
     }
 

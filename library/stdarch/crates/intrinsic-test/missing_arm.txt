@@ -160,14 +160,6 @@ vcvtpq_s32_f32
 vcvtpq_u32_f32
 vcvtp_s32_f32
 vcvtp_u32_f32
-vdot_lane_s32
-vdot_lane_u32
-vdotq_lane_s32
-vdotq_lane_u32
-vdotq_s32
-vdotq_u32
-vdot_s32
-vdot_u32
 vqdmulh_lane_s16
 vqdmulh_lane_s32
 vqdmulhq_lane_s16

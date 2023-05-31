@@ -17,6 +17,8 @@ pub(crate) fn detect_features() -> cache::Initializer {
     //
     // [hwcap]: https://github.com/torvalds/linux/blob/master/arch/arm/include/uapi/asm/hwcap.h
     if let Ok(auxv) = auxvec::auxv() {
+        enable_feature(&mut value, Feature::i8mm, bit::test(auxv.hwcap, 27));
+        enable_feature(&mut value, Feature::dotprod, bit::test(auxv.hwcap, 24));
         enable_feature(&mut value, Feature::neon, bit::test(auxv.hwcap, 12));
         enable_feature(&mut value, Feature::pmull, bit::test(auxv.hwcap2, 1));
         enable_feature(&mut value, Feature::crc, bit::test(auxv.hwcap2, 4));
@@ -36,6 +38,12 @@ pub(crate) fn detect_features() -> cache::Initializer {
             &mut value,
             Feature::neon,
             c.field("Features").has("neon") && !has_broken_neon(&c),
+        );
+        enable_feature(&mut value, Feature::i8mm, c.field("Features").has("i8mm"));
+        enable_feature(
+            &mut value,
+            Feature::dotprod,
+            c.field("Features").has("asimddp"),
         );
         enable_feature(&mut value, Feature::pmull, c.field("Features").has("pmull"));
         enable_feature(&mut value, Feature::crc, c.field("Features").has("crc32"));

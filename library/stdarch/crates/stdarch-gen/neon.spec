@@ -4723,7 +4723,7 @@ aarch64 = fcmla
 generate float32x2_t, float32x2_t:float32x2_t:float32x4_t:float32x2_t
 generate float32x4_t:float32x4_t:float32x2_t:float32x4_t, float32x4_t
 
-/// Dot product arithmetic
+/// Dot product arithmetic (vector)
 name = vdot
 out-suffix
 a = 1, 2, 1, 2
@@ -4732,35 +4732,65 @@ c = 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8
 validate 31, 176, 31, 176
 target = dotprod
 
+arm = vsdot
 aarch64 = sdot
+link-arm = sdot._EXT_._EXT3_
 link-aarch64 = sdot._EXT_._EXT3_
 generate int32x2_t:int8x8_t:int8x8_t:int32x2_t, int32x4_t:int8x16_t:int8x16_t:int32x4_t
 
+arm = vudot
 aarch64 = udot
+link-arm = udot._EXT_._EXT3_
 link-aarch64 = udot._EXT_._EXT3_
 generate uint32x2_t:uint8x8_t:uint8x8_t:uint32x2_t, uint32x4_t:uint8x16_t:uint8x16_t:uint32x4_t
 
-/// Dot product arithmetic
+/// Dot product arithmetic (indexed)
 name = vdot
 out-lane-suffixes
 constn = LANE
 multi_fn = static_assert_imm-in2_dot-LANE
-multi_fn = simd_shuffle!, c:in_t, c, c, {base-4-LANE}
-multi_fn = vdot-out-noext, a, b, c
+multi_fn = transmute, c:merge4_t2, c
+multi_fn = simd_shuffle!, c:out_t, c, c, {dup-out_len-LANE as u32}
+multi_fn = vdot-out-noext, a, b, {transmute, c}
 a = 1, 2, 1, 2
-b = 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8
+b = -1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8
 c = 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8
 n = 0
-validate 31, 72, 31, 72
+validate 29, 72, 31, 72
 target = dotprod
 
+// Only AArch64 has the laneq forms.
 aarch64 = sdot
-generate int32x2_t:int8x8_t:int8x8_t:int32x2_t, int32x2_t:int8x8_t:int8x16_t:int32x2_t
-generate int32x4_t:int8x16_t:int8x8_t:int32x4_t, int32x4_t:int8x16_t:int8x16_t:int32x4_t
+generate int32x2_t:int8x8_t:int8x16_t:int32x2_t
+generate int32x4_t:int8x16_t:int8x16_t:int32x4_t
 
+arm = vsdot
+generate int32x2_t:int8x8_t:int8x8_t:int32x2_t
+generate int32x4_t:int8x16_t:int8x8_t:int32x4_t
+
+/// Dot product arithmetic (indexed)
+name = vdot
+out-lane-suffixes
+constn = LANE
+multi_fn = static_assert_imm-in2_dot-LANE
+multi_fn = transmute, c:merge4_t2, c
+multi_fn = simd_shuffle!, c:out_t, c, c, {dup-out_len-LANE as u32}
+multi_fn = vdot-out-noext, a, b, {transmute, c}
+a = 1, 2, 1, 2
+b = 255, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8
+c = 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8
+n = 0
+validate 285, 72, 31, 72
+target = dotprod
+
+// Only AArch64 has the laneq forms.
 aarch64 = udot
-generate uint32x2_t:uint8x8_t:uint8x8_t:uint32x2_t, uint32x2_t:uint8x8_t:uint8x16_t:uint32x2_t
-generate uint32x4_t:uint8x16_t:uint8x8_t:uint32x4_t, uint32x4_t:uint8x16_t:uint8x16_t:uint32x4_t
+generate uint32x2_t:uint8x8_t:uint8x16_t:uint32x2_t
+generate uint32x4_t:uint8x16_t:uint8x16_t:uint32x4_t
+
+arm = vudot
+generate uint32x2_t:uint8x8_t:uint8x8_t:uint32x2_t
+generate uint32x4_t:uint8x16_t:uint8x8_t:uint32x4_t
 
 /// Maximum (vector)
 name = vmax

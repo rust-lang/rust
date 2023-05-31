@@ -22,5 +22,7 @@ features! {
     @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] sha2: "sha2";
     /// FEAT_SHA1 & FEAT_SHA256 (SHA1 & SHA2-256 instructions)
     @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] i8mm: "i8mm";
-    /// FEAT_I8MM
+    /// FEAT_I8MM (integer matrix multiplication, plus ASIMD support)
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] dotprod: "dotprod";
+    /// FEAT_DotProd (Vector Dot-Product - ASIMDDP)
 }
