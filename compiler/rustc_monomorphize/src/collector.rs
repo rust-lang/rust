@@ -226,43 +226,7 @@ pub struct InliningMap<'tcx> {
     inlines: GrowableBitSet<usize>,
 }
 
-/// Struct to store mono items in each collecting and if they should
-/// be inlined. We call `instantiation_mode` to get their inlining
-/// status when inserting new elements, which avoids calling it in
-/// `inlining_map.lock_mut()`. See the `collect_items_rec` implementation
-/// below.
-struct MonoItems<'tcx> {
-    // If this is false, we do not need to compute whether items
-    // will need to be inlined.
-    compute_inlining: bool,
-
-    // The TyCtxt used to determine whether the a item should
-    // be inlined.
-    tcx: TyCtxt<'tcx>,
-
-    // The collected mono items. The bool field in each element
-    // indicates whether this element should be inlined.
-    items: Vec<(Spanned<MonoItem<'tcx>>, bool /*inlined*/)>,
-}
-
-impl<'tcx> MonoItems<'tcx> {
-    #[inline]
-    fn push(&mut self, item: Spanned<MonoItem<'tcx>>) {
-        self.extend([item]);
-    }
-
-    #[inline]
-    fn extend<T: IntoIterator<Item = Spanned<MonoItem<'tcx>>>>(&mut self, iter: T) {
-        self.items.extend(iter.into_iter().map(|mono_item| {
-            let inlined = if !self.compute_inlining {
-                false
-            } else {
-                mono_item.node.instantiation_mode(self.tcx) == InstantiationMode::LocalCopy
-            };
-            (mono_item, inlined)
-        }))
-    }
-}
+type MonoItems<'tcx> = Vec<Spanned<MonoItem<'tcx>>>;
 
 impl<'tcx> InliningMap<'tcx> {
     fn new() -> InliningMap<'tcx> {
@@ -275,8 +239,9 @@ impl<'tcx> InliningMap<'tcx> {
 
     fn record_accesses<'a>(
         &mut self,
+        tcx: TyCtxt<'tcx>,
         source: MonoItem<'tcx>,
-        new_targets: &'a [(Spanned<MonoItem<'tcx>>, bool)],
+        new_targets: &'a [Spanned<MonoItem<'tcx>>],
     ) where
         'tcx: 'a,
     {
@@ -287,9 +252,10 @@ impl<'tcx> InliningMap<'tcx> {
         self.targets.reserve(new_items_count);
         self.inlines.ensure(new_items_count_total);
 
-        for (i, (Spanned { node: mono_item, .. }, inlined)) in new_targets.into_iter().enumerate() {
+        for (i, Spanned { node: mono_item, .. }) in new_targets.into_iter().enumerate() {
             self.targets.push(*mono_item);
-            if *inlined {
+            let is_inlined = mono_item.instantiation_mode(tcx) == InstantiationMode::LocalCopy;
+            if is_inlined {
                 self.inlines.insert(i + start_index);
             }
         }
@@ -367,7 +333,7 @@ pub fn collect_crate_mono_items(
 #[instrument(skip(tcx, mode), level = "debug")]
 fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionMode) -> Vec<MonoItem<'_>> {
     debug!("collecting roots");
-    let mut roots = MonoItems { compute_inlining: false, tcx, items: Vec::new() };
+    let mut roots = Vec::new();
 
     {
         let entry_fn = tcx.entry_fn(());
@@ -393,9 +359,8 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionMode) -> Vec<MonoItem<
     // whose predicates hold. Luckily, items that aren't instantiable
     // can't actually be used, so we can just skip codegenning them.
     roots
-        .items
         .into_iter()
-        .filter_map(|(Spanned { node: mono_item, .. }, _)| {
+        .filter_map(|Spanned { node: mono_item, .. }| {
             mono_item.is_instantiable(tcx).then_some(mono_item)
         })
         .collect()
@@ -417,7 +382,7 @@ fn collect_items_rec<'tcx>(
         return;
     }
 
-    let mut neighbors = MonoItems { compute_inlining: true, tcx, items: Vec::new() };
+    let mut neighbors = Vec::new();
     let recursion_depth_reset;
 
     //
@@ -542,9 +507,9 @@ fn collect_items_rec<'tcx>(
             formatted_item,
         });
     }
-    inlining_map.lock_mut().record_accesses(starting_point.node, &neighbors.items);
+    inlining_map.lock_mut().record_accesses(tcx, starting_point.node, &neighbors);
 
-    for (neighbour, _) in neighbors.items {
+    for neighbour in neighbors {
         collect_items_rec(tcx, neighbour, visited, recursion_depths, recursion_limit, inlining_map);
     }
 
