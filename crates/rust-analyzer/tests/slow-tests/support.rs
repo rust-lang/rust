@@ -165,7 +165,7 @@ impl Server {
     fn new(dir: TestDir, config: Config) -> Server {
         let (connection, client) = Connection::memory();
 
-        let _thread = stdx::thread::Builder::new(stdx::thread::QoSClass::Utility)
+        let _thread = stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker)
             .name("test server".to_string())
             .spawn(move || main_loop(config, connection).unwrap())
             .expect("failed to spawn a thread");
