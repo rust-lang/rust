@@ -589,17 +589,6 @@ pub fn structurally_relate_consts<'tcx, R: TypeRelation<'tcx>>(
     debug!("{}.structurally_relate_consts(a = {:?}, b = {:?})", relation.tag(), a, b);
     let tcx = relation.tcx();
 
-    // HACK(const_generics): We still need to eagerly evaluate consts when
-    // relating them because during `normalize_param_env_or_error`,
-    // we may relate an evaluated constant in a obligation against
-    // an unnormalized (i.e. unevaluated) const in the param-env.
-    // FIXME(generic_const_exprs): Once we always lazily unify unevaluated constants
-    // these `eval` calls can be removed.
-    if !tcx.features().generic_const_exprs {
-        a = a.eval(tcx, relation.param_env());
-        b = b.eval(tcx, relation.param_env());
-    }
-
     if tcx.features().generic_const_exprs {
         a = tcx.expand_abstract_consts(a);
         b = tcx.expand_abstract_consts(b);
