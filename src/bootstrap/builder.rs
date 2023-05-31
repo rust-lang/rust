@@ -571,7 +571,7 @@ impl<'a> ShouldRun<'a> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, ValueEnum)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum Kind {
     #[clap(alias = "b")]
     Build,
@@ -642,7 +642,10 @@ impl Kind {
             Kind::Doc => "Documenting",
             Kind::Run => "Running",
             Kind::Suggest => "Suggesting",
-            _ => return format!("{self:?}"),
+            _ => {
+                let title_letter = self.as_str()[0..1].to_ascii_uppercase();
+                return format!("{title_letter}{}ing", &self.as_str()[1..]);
+            }
         }
         .to_owned()
     }
