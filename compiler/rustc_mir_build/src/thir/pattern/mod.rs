@@ -519,16 +519,18 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         };
 
         let cid = GlobalId { instance, promoted: None };
-        // Prefer
+        // Prefer valtrees over opaque constants.
         let const_value = self
             .tcx
             .const_eval_global_id_for_typeck(param_env_reveal_all, cid, Some(span))
-            .and_then(|val| match val {
-                Some(valtree) => Ok(mir::ConstantKind::Ty(self.tcx.mk_const(valtree, ty))),
-                None => self
-                    .tcx
-                    .const_eval_global_id(param_env_reveal_all, cid, Some(span))
-                    .map(|lit| mir::ConstantKind::Val(lit, ty)),
+            .map(|val| match val {
+                Some(valtree) => mir::ConstantKind::Ty(self.tcx.mk_const(valtree, ty)),
+                None => mir::ConstantKind::Val(
+                    self.tcx
+                        .const_eval_global_id(param_env_reveal_all, cid, Some(span))
+                        .expect("const_eval_global_id_for_typeck should have already failed"),
+                    ty,
+                ),
             });
 
         match const_value {
