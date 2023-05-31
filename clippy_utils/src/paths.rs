@@ -163,3 +163,5 @@ pub const VEC_IS_EMPTY: [&str; 4] = ["alloc", "vec", "Vec", "is_empty"];
 pub const VEC_POP: [&str; 4] = ["alloc", "vec", "Vec", "pop"];
 pub const OPTION_UNWRAP: [&str; 4] = ["core", "option", "Option", "unwrap"];
 pub const OPTION_EXPECT: [&str; 4] = ["core", "option", "Option", "expect"];
+pub const FORMATTER: [&str; 3] = ["core", "fmt", "Formatter"];
+pub const DEBUG_STRUCT: [&str; 4] = ["core", "fmt", "builders", "DebugStruct"];

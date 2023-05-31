@@ -203,6 +203,7 @@ mod missing_assert_message;
 mod missing_const_for_fn;
 mod missing_doc;
 mod missing_enforced_import_rename;
+mod missing_fields_in_debug;
 mod missing_inline;
 mod missing_trait_methods;
 mod mixed_read_write_in_expression;
@@ -994,6 +995,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| Box::new(ref_patterns::RefPatterns));
     store.register_late_pass(|_| Box::new(default_constructed_unit_structs::DefaultConstructedUnitStructs));
     store.register_early_pass(|| Box::new(needless_else::NeedlessElse));
+    store.register_late_pass(|_| Box::new(missing_fields_in_debug::MissingFieldsInDebug));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
