@@ -140,20 +140,17 @@ impl IntRange {
         value: mir::ConstantKind<'tcx>,
     ) -> Option<IntRange> {
         let ty = value.ty();
-        if let Some((target_size, bias)) = Self::integral_size_and_signed_bias(tcx, ty) {
-            let val = match value {
-                mir::ConstantKind::Ty(c) if let ty::ConstKind::Value(valtree) = c.kind() => {
-                    valtree.unwrap_leaf().to_bits(target_size).ok()
-                },
-                // This is a more general form of the previous case.
-                _ => value.try_eval_bits(tcx, param_env, ty),
-            }?;
+        let (target_size, bias) = Self::integral_size_and_signed_bias(tcx, ty)?;
+        let val = match value {
+            mir::ConstantKind::Ty(c) if let ty::ConstKind::Value(valtree) = c.kind() => {
+                valtree.unwrap_leaf().to_bits(target_size).ok()
+            },
+            // This is a more general form of the previous case.
+            _ => value.try_eval_bits(tcx, param_env, ty),
+        }?;
 
-            let val = val ^ bias;
-            Some(IntRange { range: val..=val, bias })
-        } else {
-            None
-        }
+        let val = val ^ bias;
+        Some(IntRange { range: val..=val, bias })
     }
 
     #[inline]
