@@ -1,6 +1,7 @@
 use super::bitmask::BitMask;
 use super::EMPTY;
 use core::mem;
+use core::num::NonZeroU16;
 
 #[cfg(target_arch = "x86")]
 use core::arch::x86;
@@ -8,6 +9,7 @@ use core::arch::x86;
 use core::arch::x86_64 as x86;
 
 pub(crate) type BitMaskWord = u16;
+pub(crate) type NonZeroBitMaskWord = NonZeroU16;
 pub(crate) const BITMASK_STRIDE: usize = 1;
 pub(crate) const BITMASK_MASK: BitMaskWord = 0xffff;
 pub(crate) const BITMASK_ITER_MASK: BitMaskWord = !0;
