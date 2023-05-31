@@ -1490,7 +1490,7 @@ fn item_constant(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, c: &cle
         let expr_lowercase = Some(expr.to_lowercase());
 
         if value_lowercase != expr_lowercase
-            && value_lowercase.as_ref().map(|s| s.trim_end_matches("i32")) != expr_lowercase
+            && value_lowercase.as_ref().map(|s| s.trim_end_matches("i32")) != expr_lowercase.as_deref()
         {
             if let Some(ref value) = value {
                 write!(w, " // {value}", value = Escape(value.as_str()));
