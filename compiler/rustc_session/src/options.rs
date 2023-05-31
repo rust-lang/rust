@@ -1372,8 +1372,6 @@ options! {
         "set options for branch target identification and pointer authentication on AArch64"),
     cf_protection: CFProtection = (CFProtection::None, parse_cfprotection, [TRACKED],
         "instrument control-flow architecture protection"),
-    cgu_partitioning_strategy: Option<String> = (None, parse_opt_string, [TRACKED],
-        "the codegen unit partitioning strategy to use"),
     codegen_backend: Option<String> = (None, parse_opt_string, [TRACKED],
         "the backend to use"),
     combine_cgu: bool = (false, parse_bool, [TRACKED],
