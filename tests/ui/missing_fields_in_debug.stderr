@@ -69,45 +69,5 @@ LL |     b: String,
    = help: consider including all fields in this `Debug` impl
    = help: consider calling `.finish_non_exhaustive()` if you intend to ignore fields
 
-error: manual `Debug` impl does not include all fields
-  --> $DIR/missing_fields_in_debug.rs:119:1
-   |
-LL | / impl fmt::Debug for MultiVariantEnum {
-LL | |     // match arm Self::B ignores `b`
-LL | |     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-LL | |         match self {
-...  |
-LL | |     }
-LL | | }
-   | |_^
-   |
-note: the field referenced by this binding is unused
-  --> $DIR/missing_fields_in_debug.rs:124:26
-   |
-LL |             Self::B { a, b } => formatter.debug_struct("B").field("a", &a).finish(),
-   |                          ^
-   = help: consider including all fields in this `Debug` impl
-   = help: consider calling `.finish_non_exhaustive()` if you intend to ignore fields
-
-error: manual `Debug` impl does not include all fields
-  --> $DIR/missing_fields_in_debug.rs:170:1
-   |
-LL | / impl fmt::Debug for MultiVariantRest {
-LL | |     // `a` field ignored due to rest pattern
-LL | |     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-LL | |         match self {
-...  |
-LL | |     }
-LL | | }
-   | |_^
-   |
-note: more unused fields here due to rest pattern `..`
-  --> $DIR/missing_fields_in_debug.rs:175:13
-   |
-LL |             Self::B { b, .. } => formatter.debug_struct("B").field("b", &b).finish(),
-   |             ^^^^^^^^^^^^^^^^^
-   = help: consider including all fields in this `Debug` impl
-   = help: consider calling `.finish_non_exhaustive()` if you intend to ignore fields
-
-error: aborting due to 5 previous errors
+error: aborting due to 3 previous errors
 

@@ -2,22 +2,22 @@ use std::ops::ControlFlow;
 
 use clippy_utils::{
     diagnostics::span_lint_and_then,
-    paths,
+    is_path_lang_item, paths,
     ty::match_type,
     visitors::{for_each_expr, Visitable},
 };
 use rustc_ast::LitKind;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::Block;
 use rustc_hir::{
     def::{DefKind, Res},
-    Expr, ImplItemKind, MatchSource, Node,
+    Expr, ImplItemKind, LangItem, Node,
 };
-use rustc_hir::{Block, PatKind};
 use rustc_hir::{ExprKind, Impl, ItemKind, QPath, TyKind};
 use rustc_hir::{ImplItem, Item, VariantData};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::Ty;
 use rustc_middle::ty::TypeckResults;
-use rustc_middle::ty::{EarlyBinder, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{sym, Span, Symbol};
 
@@ -38,11 +38,12 @@ declare_clippy_lint! {
     /// Oftentimes there is more logic to a `Debug` impl if it uses `write!` macro, so it tries
     /// to be on the conservative side and not lint in those cases in an attempt to prevent false positives.
     ///
-    /// This lint also does not look through function calls, so calling `.field(self.as_slice())` for example
-    /// does not consider fields used inside of `as_slice()` as used by the `Debug` impl.
+    /// This lint also does not look through function calls, so calling a function does not consider fields
+    /// used inside of that function as used by the `Debug` impl.
     ///
     /// Lastly, it also ignores tuple structs as their `DebugTuple` formatter does not have a `finish_non_exhaustive`
-    /// method.
+    /// method, as well as enums because their exhaustiveness is already checked by the compiler when matching on the enum,
+    /// making it much less likely to accidentally forget to update the `Debug` impl when adding a new variant.
     ///
     /// ### Example
     /// ```rust
@@ -185,8 +186,7 @@ fn check_struct<'tcx>(
         .fields()
         .iter()
         .filter_map(|field| {
-            let EarlyBinder(field_ty) = cx.tcx.type_of(field.def_id);
-            if field_accesses.contains(&field.ident.name) || field_ty.is_phantom_data() {
+            if field_accesses.contains(&field.ident.name) || is_path_lang_item(cx, field.ty, LangItem::PhantomData) {
                 None
             } else {
                 Some((field.span, "this field is unused"))
@@ -197,82 +197,6 @@ fn check_struct<'tcx>(
     // only lint if there's also at least one direct field access to allow patterns
     // where one might have a newtype struct and uses fields from the wrapped type
     if !span_notes.is_empty() && has_direct_field_access {
-        report_lints(cx, item.span, span_notes);
-    }
-}
-
-/// Attempts to find unused fields in variants assuming that
-/// the item is an enum.
-///
-/// Currently, only simple cases are detected where the user
-/// matches on `self` and calls `debug_struct` inside of the arms
-fn check_enum<'tcx>(
-    cx: &LateContext<'tcx>,
-    typeck_results: &TypeckResults<'tcx>,
-    block: &'tcx Block<'tcx>,
-    self_ty: Ty<'tcx>,
-    item: &'tcx Item<'tcx>,
-) {
-    let Some(arms) = for_each_expr(block, |expr| {
-        if let ExprKind::Match(val, arms, MatchSource::Normal) = expr.kind
-            && let match_ty = typeck_results.expr_ty_adjusted(val).peel_refs()
-            && match_ty == self_ty
-        {
-            ControlFlow::Break(arms)
-        } else {
-            ControlFlow::Continue(())
-        }
-    }) else {
-        return;
-    };
-
-    let mut span_notes = Vec::new();
-
-    for arm in arms {
-        if !should_lint(cx, typeck_results, arm.body) {
-            continue;
-        }
-
-        arm.pat.walk_always(|pat| match pat.kind {
-            PatKind::Wild => span_notes.push((pat.span, "unused field here due to wildcard `_`")),
-            PatKind::Tuple(_, rest) | PatKind::TupleStruct(.., rest) if rest.as_opt_usize().is_some() => {
-                span_notes.push((pat.span, "more unused fields here due to rest pattern `..`"));
-            },
-            PatKind::Struct(.., true) => {
-                span_notes.push((pat.span, "more unused fields here due to rest pattern `..`"));
-            },
-            _ => {},
-        });
-
-        let mut field_accesses = FxHashSet::default();
-        let mut check_field_access = |sym, expr| {
-            if !typeck_results.expr_ty(expr).is_phantom_data() {
-                arm.pat.each_binding(|_, _, _, pat_ident| {
-                    if sym == pat_ident.name {
-                        field_accesses.insert(pat_ident);
-                    }
-                });
-            }
-        };
-
-        for_each_expr(arm.body, |expr| {
-            if let ExprKind::Path(QPath::Resolved(_, path)) = expr.kind && let Some(segment) = path.segments.first()
-            {
-                check_field_access(segment.ident.name, expr);
-            } else if let Some(sym) = as_field_call(cx, typeck_results, expr) {
-                check_field_access(sym, expr);
-            }
-            ControlFlow::<!, _>::Continue(())
-        });
-
-        arm.pat.each_binding(|_, _, span, pat_ident| {
-            if !field_accesses.contains(&pat_ident) {
-                span_notes.push((span, "the field referenced by this binding is unused"));
-            }
-        });
-    }
-
-    if !span_notes.is_empty() {
         report_lints(cx, item.span, span_notes);
     }
 }
@@ -301,10 +225,9 @@ impl<'tcx> LateLintPass<'tcx> for MissingFieldsInDebug {
             && let typeck_results = cx.tcx.typeck_body(*body_id)
             && should_lint(cx, typeck_results, block)
         {
-            match &self_item.kind {
-                ItemKind::Struct(data, _) => check_struct(cx, typeck_results, block, self_ty, item, data),
-                ItemKind::Enum(..) => check_enum(cx, typeck_results, block, self_ty, item),
-                _ => {}
+            // we intentionally only lint structs, see lint description
+            if let ItemKind::Struct(data, _) = &self_item.kind {
+                check_struct(cx, typeck_results, block, self_ty, item, data);
             }
         }
     }
