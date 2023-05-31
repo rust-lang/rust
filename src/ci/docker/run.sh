@@ -254,6 +254,7 @@ docker \
   --env DEPLOY \
   --env DEPLOY_ALT \
   --env CI \
+  --env DOWNLOAD_RUSTC \
   --env GITHUB_ACTIONS \
   --env GITHUB_REF \
   --env TOOLSTATE_REPO_ACCESS_TOKEN \

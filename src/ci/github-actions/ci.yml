@@ -310,6 +310,7 @@ jobs:
     <<: *base-ci-job
     name: PR - ${{ matrix.name }}
     env:
+      DOWNLOAD_RUSTC: 1
       <<: [*shared-ci-variables, *public-variables]
       PR_CI_JOB: 1
     if: github.event_name == 'pull_request'
@@ -433,6 +434,8 @@ jobs:
             <<: *job-linux-8c
 
           - name: x86_64-gnu
+            env:
+              DOWNLOAD_RUSTC: 1
             <<: *job-linux-4c
 
           # This job ensures commits landing on nightly still pass the full

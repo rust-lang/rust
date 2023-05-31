@@ -121,6 +121,10 @@ else
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-assertions"
   fi
 
+  if [ "$DOWNLOAD_RUSTC" = 1 ]; then
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.download-rustc=if-unchanged"
+  fi
+
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.verify-llvm-ir"
 
   # We enable this for non-dist builders, since those aren't trying to produce

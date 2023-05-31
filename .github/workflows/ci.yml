@@ -37,6 +37,7 @@ jobs:
   pr:
     name: "PR - ${{ matrix.name }}"
     env:
+      DOWNLOAD_RUSTC: 1
       PR_CI_JOB: 1
       CI_JOB_NAME: "${{ matrix.name }}"
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
@@ -268,8 +269,9 @@ jobs:
             os: ubuntu-20.04-8core-32gb
             env: {}
           - name: x86_64-gnu
+            env:
+              DOWNLOAD_RUSTC: 1
             os: ubuntu-20.04-4core-16gb
-            env: {}
           - name: x86_64-gnu-stable
             env:
               IMAGE: x86_64-gnu
