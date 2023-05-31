@@ -231,17 +231,15 @@ impl<'tcx> InferCtxt<'tcx> {
             {
                 let (a, b) = if relation.a_is_expected() { (a, b) } else { (b, a) };
 
-                relation.register_predicates([ty::Binder::dummy(
-                    if self.next_trait_solver() {
-                        ty::PredicateKind::AliasRelate(
-                            a.into(),
-                            b.into(),
-                            ty::AliasRelationDirection::Equate,
-                        )
-                    } else {
-                        ty::PredicateKind::ConstEquate(a, b)
-                    },
-                )]);
+                relation.register_predicates([ty::Binder::dummy(if self.next_trait_solver() {
+                    ty::PredicateKind::AliasRelate(
+                        a.into(),
+                        b.into(),
+                        ty::AliasRelationDirection::Equate,
+                    )
+                } else {
+                    ty::PredicateKind::ConstEquate(a, b)
+                })]);
 
                 return Ok(b);
             }
