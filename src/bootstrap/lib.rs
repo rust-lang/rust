@@ -27,6 +27,7 @@ use std::process::{Command, Stdio};
 use std::str;
 
 use build_helper::ci::{gha, CiEnv};
+use build_helper::detail_exit_macro;
 use channel::GitInfo;
 use config::{DryRun, Target};
 use filetime::FileTime;
@@ -699,7 +700,7 @@ impl Build {
             for failure in failures.iter() {
                 eprintln!("  - {}\n", failure);
             }
-            detail_exit(1);
+            detail_exit_macro!(1);
         }
 
         #[cfg(feature = "build-metrics")]
@@ -1482,7 +1483,7 @@ impl Build {
                 "Error: Unable to find the stamp file {}, did you try to keep a nonexistent build stage?",
                 stamp.display()
             );
-            crate::detail_exit(1);
+            crate::detail_exit_macro!(1);
         }
 
         let mut paths = Vec::new();
@@ -1674,7 +1675,7 @@ Alternatively, set `download-ci-llvm = true` in that `[llvm]` section
 to download LLVM rather than building it.
 "
                 );
-                detail_exit(1);
+                detail_exit_macro!(1);
             }
         }
 
@@ -1738,18 +1739,6 @@ fn chmod(path: &Path, perms: u32) {
 }
 #[cfg(windows)]
 fn chmod(_path: &Path, _perms: u32) {}
-
-/// If code is not 0 (successful exit status), exit status is 101 (rust's default error code.)
-/// If the test is running and code is an error code, it will cause a panic.
-fn detail_exit(code: i32) -> ! {
-    // if in test and code is an error code, panic with status code provided
-    if cfg!(test) {
-        panic!("status code: {}", code);
-    } else {
-        // otherwise,exit with provided status code
-        std::process::exit(code);
-    }
-}
 
 impl Compiler {
     pub fn with_stage(mut self, stage: u32) -> Compiler {
