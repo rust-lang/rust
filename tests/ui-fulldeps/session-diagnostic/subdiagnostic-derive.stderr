@@ -26,7 +26,7 @@ error: `#[label = ...]` is not a valid attribute
 LL | #[label = "..."]
    | ^^^^^^^^^^^^^^^^
 
-error: invalid nested attribute
+error: only `no_span` is a valid nested attribute
   --> $DIR/subdiagnostic-derive.rs:87:9
    |
 LL | #[label(bug = "...")]
@@ -44,7 +44,7 @@ error: unexpected literal in nested attribute, expected ident
 LL | #[label("...")]
    |         ^^^^^
 
-error: invalid nested attribute
+error: only `no_span` is a valid nested attribute
   --> $DIR/subdiagnostic-derive.rs:106:9
    |
 LL | #[label(slug = 4)]
@@ -56,7 +56,7 @@ error: diagnostic slug must be first argument of a `#[label(...)]` attribute
 LL | #[label(slug = 4)]
    | ^^^^^^^^^^^^^^^^^^
 
-error: invalid nested attribute
+error: only `no_span` is a valid nested attribute
   --> $DIR/subdiagnostic-derive.rs:116:9
    |
 LL | #[label(slug("..."))]
@@ -74,13 +74,13 @@ error: unexpected end of input, unexpected token in nested attribute, expected i
 LL | #[label()]
    |         ^
 
-error: invalid nested attribute
+error: only `no_span` is a valid nested attribute
   --> $DIR/subdiagnostic-derive.rs:145:27
    |
 LL | #[label(no_crate_example, code = "...")]
    |                           ^^^^
 
-error: invalid nested attribute
+error: only `no_span` is a valid nested attribute
   --> $DIR/subdiagnostic-derive.rs:154:27
    |
 LL | #[label(no_crate_example, applicability = "machine-applicable")]
@@ -116,7 +116,7 @@ error: `#[bar(...)]` is not a valid attribute
 LL |     #[bar("...")]
    |     ^^^^^^^^^^^^^
 
-error: invalid nested attribute
+error: only `no_span` is a valid nested attribute
   --> $DIR/subdiagnostic-derive.rs:225:13
    |
 LL |     #[label(code = "...")]
@@ -312,7 +312,7 @@ error: invalid nested attribute
 LL | #[multipart_suggestion(no_crate_example, code = "...", applicability = "machine-applicable")]
    |                                          ^^^^
    |
-   = help: only `style` and `applicability` are valid nested attributes
+   = help: only `no_span`, `style` and `applicability` are valid nested attributes
 
 error: multipart suggestion without any `#[suggestion_part(...)]` fields
   --> $DIR/subdiagnostic-derive.rs:540:1

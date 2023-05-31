@@ -1,8 +1,9 @@
-use crate::fluent_generated as fluent;
+use crate::error::UnsupportedFnAbi;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::query::TyCtxtAt;
 use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::{self, ReprOptions, Ty, TyCtxt, TypeVisitableExt};
+use rustc_error_messages::DiagnosticMessage;
 use rustc_errors::{DiagnosticBuilder, Handler, IntoDiagnostic};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -14,7 +15,7 @@ use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::*;
 use rustc_target::spec::{abi::Abi as SpecAbi, HasTargetSpec, PanicStrategy, Target};
 
-use std::cmp::{self};
+use std::cmp;
 use std::fmt;
 use std::num::NonZeroUsize;
 use std::ops::Bound;
@@ -214,29 +215,29 @@ pub enum LayoutError<'tcx> {
     Cycle,
 }
 
-impl IntoDiagnostic<'_, !> for LayoutError<'_> {
-    fn into_diagnostic(self, handler: &Handler) -> DiagnosticBuilder<'_, !> {
-        let mut diag = handler.struct_fatal("");
-
+impl<'tcx> LayoutError<'tcx> {
+    pub fn diagnostic_message(&self) -> DiagnosticMessage {
+        use crate::fluent_generated::*;
+        use LayoutError::*;
         match self {
-            LayoutError::Unknown(ty) => {
-                diag.set_arg("ty", ty);
-                diag.set_primary_message(fluent::middle_unknown_layout);
-            }
-            LayoutError::SizeOverflow(ty) => {
-                diag.set_arg("ty", ty);
-                diag.set_primary_message(fluent::middle_values_too_big);
-            }
-            LayoutError::NormalizationFailure(ty, e) => {
-                diag.set_arg("ty", ty);
-                diag.set_arg("failure_ty", e.get_type_for_failure());
-                diag.set_primary_message(fluent::middle_cannot_be_normalized);
-            }
-            LayoutError::Cycle => {
-                diag.set_primary_message(fluent::middle_cycle);
-            }
+            Unknown(_) => middle_unknown_layout,
+            SizeOverflow(_) => middle_values_too_big,
+            NormalizationFailure(_, _) => middle_cannot_be_normalized,
+            Cycle => middle_cycle,
         }
-        diag
+    }
+
+    pub fn into_diagnostic(self) -> crate::error::LayoutError<'tcx> {
+        use crate::error::LayoutError as E;
+        use LayoutError::*;
+        match self {
+            Unknown(ty) => E::Unknown { ty },
+            SizeOverflow(ty) => E::Overflow { ty },
+            NormalizationFailure(ty, e) => {
+                E::NormalizationFailure { ty, failure_ty: e.get_type_for_failure() }
+            }
+            Cycle => E::Cycle,
+        }
     }
 }
 
@@ -330,11 +331,8 @@ impl<'tcx> SizeSkeleton<'tcx> {
                         Ok(SizeSkeleton::Pointer { non_zero, tail: tcx.erase_regions(tail) })
                     }
                     _ => bug!(
-                        "SizeSkeleton::compute({}): layout errored ({}), yet \
-                              tail `{}` is not a type parameter or a projection",
-                        ty,
-                        err,
-                        tail
+                        "SizeSkeleton::compute({ty}): layout errored ({err:?}), yet \
+                              tail `{tail}` is not a type parameter or a projection",
                     ),
                 }
             }
@@ -940,12 +938,8 @@ where
             TyMaybeWithLayout::Ty(field_ty) => {
                 cx.tcx().layout_of(cx.param_env().and(field_ty)).unwrap_or_else(|e| {
                     bug!(
-                        "failed to get layout for `{}`: {},\n\
-                         despite it being a field (#{}) of an existing layout: {:#?}",
-                        field_ty,
-                        e,
-                        i,
-                        this
+                        "failed to get layout for `{field_ty}`: {e:?},\n\
+                         despite it being a field (#{i}) of an existing layout: {this:#?}",
                     )
                 })
             }
@@ -1262,18 +1256,15 @@ impl From<call::AdjustForForeignAbiError> for FnAbiError<'_> {
     }
 }
 
-impl<'tcx> fmt::Display for FnAbiError<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl<'a, 'b> IntoDiagnostic<'a, !> for FnAbiError<'b> {
+    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, !> {
         match self {
-            Self::Layout(err) => err.fmt(f),
-            Self::AdjustForForeignAbi(err) => err.fmt(f),
+            Self::Layout(e) => e.into_diagnostic().into_diagnostic(handler),
+            Self::AdjustForForeignAbi(call::AdjustForForeignAbiError::Unsupported {
+                arch,
+                abi,
+            }) => UnsupportedFnAbi { arch, abi: abi.name() }.into_diagnostic(handler),
         }
-    }
-}
-
-impl IntoDiagnostic<'_, !> for FnAbiError<'_> {
-    fn into_diagnostic(self, handler: &Handler) -> DiagnosticBuilder<'_, !> {
-        handler.struct_fatal(self.to_string())
     }
 }
 

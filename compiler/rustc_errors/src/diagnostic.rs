@@ -10,7 +10,7 @@ use rustc_lint_defs::{Applicability, LintExpectationId};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 use std::borrow::Cow;
-use std::fmt;
+use std::fmt::{self, Debug};
 use std::hash::{Hash, Hasher};
 use std::panic::Location;
 
@@ -33,7 +33,7 @@ pub type DiagnosticArgName<'source> = Cow<'source, str>;
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
 pub enum DiagnosticArgValue<'source> {
     Str(Cow<'source, str>),
-    Number(usize),
+    Number(i128),
     StrListSepByAnd(Vec<Cow<'source, str>>),
 }
 

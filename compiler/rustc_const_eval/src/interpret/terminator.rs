@@ -15,6 +15,7 @@ use super::{
     FnVal, ImmTy, Immediate, InterpCx, InterpResult, MPlaceTy, Machine, MemoryKind, OpTy, Operand,
     PlaceTy, Scalar, StackPopCleanup,
 };
+use crate::fluent_generated as fluent;
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub(super) fn eval_terminator(
@@ -172,7 +173,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             InlineAsm { template, ref operands, options, destination, .. } => {
                 M::eval_inline_asm(self, template, operands, options)?;
                 if options.contains(InlineAsmOptions::NORETURN) {
-                    throw_ub_format!("returned from noreturn inline assembly");
+                    throw_ub_custom!(fluent::const_eval_noreturn_asm_returned);
                 }
                 self.go_to_block(
                     destination
@@ -288,15 +289,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             return Ok(());
         }
         // Find next caller arg.
-        let (caller_arg, caller_abi) = caller_args.next().ok_or_else(|| {
-            err_ub_format!("calling a function with fewer arguments than it requires")
-        })?;
+        let Some((caller_arg, caller_abi)) = caller_args.next() else {
+            throw_ub_custom!(fluent::const_eval_not_enough_caller_args);
+        };
         // Now, check
         if !Self::check_argument_compat(caller_abi, callee_abi) {
-            throw_ub_format!(
-                "calling a function with argument of type {:?} passing data of type {:?}",
-                callee_arg.layout.ty,
-                caller_arg.layout.ty
+            let callee_ty = format!("{}", callee_arg.layout.ty);
+            let caller_ty = format!("{}", caller_arg.layout.ty);
+            throw_ub_custom!(
+                fluent::const_eval_incompatible_types,
+                callee_ty = callee_ty,
+                caller_ty = caller_ty,
             )
         }
         // Special handling for unsized parameters.
@@ -398,10 +401,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 if M::enforce_abi(self) {
                     if caller_fn_abi.conv != callee_fn_abi.conv {
-                        throw_ub_format!(
-                            "calling a function with calling convention {:?} using calling convention {:?}",
-                            callee_fn_abi.conv,
-                            caller_fn_abi.conv
+                        throw_ub_custom!(
+                            fluent::const_eval_incompatible_calling_conventions,
+                            callee_conv = format!("{:?}", callee_fn_abi.conv),
+                            caller_conv = format!("{:?}", caller_fn_abi.conv),
                         )
                     }
                 }
@@ -508,15 +511,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         "mismatch between callee ABI and callee body arguments"
                     );
                     if caller_args.next().is_some() {
-                        throw_ub_format!("calling a function with more arguments than it expected")
+                        throw_ub_custom!(fluent::const_eval_too_many_caller_args);
                     }
                     // Don't forget to check the return type!
                     if !Self::check_argument_compat(&caller_fn_abi.ret, &callee_fn_abi.ret) {
-                        throw_ub_format!(
-                            "calling a function with return type {:?} passing \
-                                    return place of type {:?}",
-                            callee_fn_abi.ret.layout.ty,
-                            caller_fn_abi.ret.layout.ty,
+                        let callee_ty = format!("{}", callee_fn_abi.ret.layout.ty);
+                        let caller_ty = format!("{}", caller_fn_abi.ret.layout.ty);
+                        throw_ub_custom!(
+                            fluent::const_eval_incompatible_return_types,
+                            callee_ty = callee_ty,
+                            caller_ty = caller_ty,
                         )
                     }
                 };
@@ -587,9 +591,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     let (recv, vptr) = self.unpack_dyn_star(&receiver_place.into())?;
                     let (dyn_ty, dyn_trait) = self.get_ptr_vtable(vptr)?;
                     if dyn_trait != data.principal() {
-                        throw_ub_format!(
-                            "`dyn*` call on a pointer whose vtable does not match its type"
-                        );
+                        throw_ub_custom!(fluent::const_eval_dyn_star_call_vtable_mismatch);
                     }
                     let recv = recv.assert_mem_place(); // we passed an MPlaceTy to `unpack_dyn_star` so we definitely still have one
 
@@ -609,9 +611,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     let vptr = receiver_place.meta.unwrap_meta().to_pointer(self)?;
                     let (dyn_ty, dyn_trait) = self.get_ptr_vtable(vptr)?;
                     if dyn_trait != data.principal() {
-                        throw_ub_format!(
-                            "`dyn` call on a pointer whose vtable does not match its type"
-                        );
+                        throw_ub_custom!(fluent::const_eval_dyn_call_vtable_mismatch);
                     }
 
                     // It might be surprising that we use a pointer as the receiver even if this
@@ -623,7 +623,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // Now determine the actual method to call. We can do that in two different ways and
                 // compare them to ensure everything fits.
                 let Some(ty::VtblEntry::Method(fn_inst)) = self.get_vtable_entries(vptr)?.get(idx).copied() else {
-                    throw_ub_format!("`dyn` call trying to call something that is not a method")
+                    // FIXME(fee1-dead) these could be variants of the UB info enum instead of this
+                    throw_ub_custom!(fluent::const_eval_dyn_call_not_a_method);
                 };
                 trace!("Virtual call dispatches to {fn_inst:#?}");
                 if cfg!(debug_assertions) {

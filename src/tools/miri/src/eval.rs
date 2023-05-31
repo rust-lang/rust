@@ -422,8 +422,9 @@ pub fn eval_entry<'tcx>(
     let mut ecx = match create_ecx(tcx, entry_id, entry_type, &config) {
         Ok(v) => v,
         Err(err) => {
-            err.print_backtrace();
-            panic!("Miri initialization error: {}", err.kind())
+            let (kind, backtrace) = err.into_parts();
+            backtrace.print_backtrace();
+            panic!("Miri initialization error: {kind:?}")
         }
     };
 

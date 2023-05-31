@@ -1,17 +1,15 @@
-use std::error::Error;
-use std::fmt;
+use std::mem;
 
-use rustc_errors::Diagnostic;
+use rustc_errors::{DiagnosticArgValue, DiagnosticMessage, IntoDiagnostic, IntoDiagnosticArg};
 use rustc_middle::mir::AssertKind;
-use rustc_middle::query::TyCtxtAt;
+use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::{layout::LayoutError, ConstInt};
-use rustc_span::{Span, Symbol};
+use rustc_span::source_map::Spanned;
+use rustc_span::{ErrorGuaranteed, Span, Symbol};
 
 use super::InterpCx;
-use crate::interpret::{
-    struct_error, ErrorHandled, FrameInfo, InterpError, InterpErrorInfo, Machine, MachineStopType,
-    UnsupportedOpInfo,
-};
+use crate::errors::{self, FrameNote, ReportErrorExt};
+use crate::interpret::{ErrorHandled, InterpError, InterpErrorInfo, Machine, MachineStopType};
 
 /// The CTFE machine has some custom error kinds.
 #[derive(Clone, Debug)]
@@ -23,7 +21,35 @@ pub enum ConstEvalErrKind {
     Abort(String),
 }
 
-impl MachineStopType for ConstEvalErrKind {}
+impl MachineStopType for ConstEvalErrKind {
+    fn diagnostic_message(&self) -> DiagnosticMessage {
+        use crate::fluent_generated::*;
+        use ConstEvalErrKind::*;
+        match self {
+            ConstAccessesStatic => const_eval_const_accesses_static,
+            ModifiedGlobal => const_eval_modified_global,
+            Panic { .. } => const_eval_panic,
+            AssertFailure(x) => x.diagnostic_message(),
+            Abort(msg) => msg.to_string().into(),
+        }
+    }
+    fn add_args(
+        self: Box<Self>,
+        adder: &mut dyn FnMut(std::borrow::Cow<'static, str>, DiagnosticArgValue<'static>),
+    ) {
+        use ConstEvalErrKind::*;
+        match *self {
+            ConstAccessesStatic | ModifiedGlobal | Abort(_) => {}
+            AssertFailure(kind) => kind.add_args(adder),
+            Panic { msg, line, col, file } => {
+                adder("msg".into(), msg.into_diagnostic_arg());
+                adder("file".into(), file.into_diagnostic_arg());
+                adder("line".into(), line.into_diagnostic_arg());
+                adder("col".into(), col.into_diagnostic_arg());
+            }
+        }
+    }
+}
 
 // The errors become `MachineStop` with plain strings when being raised.
 // `ConstEvalErr` (in `librustc_middle/mir/interpret/error.rs`) knows to
@@ -34,151 +60,117 @@ impl<'tcx> Into<InterpErrorInfo<'tcx>> for ConstEvalErrKind {
     }
 }
 
-impl fmt::Display for ConstEvalErrKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use self::ConstEvalErrKind::*;
-        match self {
-            ConstAccessesStatic => write!(f, "constant accesses static"),
-            ModifiedGlobal => {
-                write!(f, "modifying a static's initial value from another static's initializer")
+pub fn get_span_and_frames<'tcx, 'mir, M: Machine<'mir, 'tcx>>(
+    ecx: &InterpCx<'mir, 'tcx, M>,
+) -> (Span, Vec<errors::FrameNote>)
+where
+    'tcx: 'mir,
+{
+    let mut stacktrace = ecx.generate_stacktrace();
+    // Filter out `requires_caller_location` frames.
+    stacktrace.retain(|frame| !frame.instance.def.requires_caller_location(*ecx.tcx));
+    let span = stacktrace.first().map(|f| f.span).unwrap_or(ecx.tcx.span);
+
+    let mut frames = Vec::new();
+
+    // Add notes to the backtrace. Don't print a single-line backtrace though.
+    if stacktrace.len() > 1 {
+        // Helper closure to print duplicated lines.
+        let mut add_frame = |mut frame: errors::FrameNote| {
+            frames.push(errors::FrameNote { times: 0, ..frame.clone() });
+            // Don't print [... additional calls ...] if the number of lines is small
+            if frame.times < 3 {
+                let times = frame.times;
+                frame.times = 0;
+                frames.extend(std::iter::repeat(frame).take(times as usize));
+            } else {
+                frames.push(frame);
             }
-            AssertFailure(msg) => write!(f, "{:?}", msg),
-            Panic { msg, line, col, file } => {
-                write!(f, "the evaluated program panicked at '{}', {}:{}:{}", msg, file, line, col)
-            }
-            Abort(msg) => write!(f, "{}", msg),
-        }
-    }
-}
+        };
 
-impl Error for ConstEvalErrKind {}
-
-/// When const-evaluation errors, this type is constructed with the resulting information,
-/// and then used to emit the error as a lint or hard error.
-#[derive(Debug)]
-pub(super) struct ConstEvalErr<'tcx> {
-    pub span: Span,
-    pub error: InterpError<'tcx>,
-    pub stacktrace: Vec<FrameInfo<'tcx>>,
-}
-
-impl<'tcx> ConstEvalErr<'tcx> {
-    /// Turn an interpreter error into something to report to the user.
-    /// As a side-effect, if RUSTC_CTFE_BACKTRACE is set, this prints the backtrace.
-    /// Should be called only if the error is actually going to be reported!
-    pub fn new<'mir, M: Machine<'mir, 'tcx>>(
-        ecx: &InterpCx<'mir, 'tcx, M>,
-        error: InterpErrorInfo<'tcx>,
-        span: Option<Span>,
-    ) -> ConstEvalErr<'tcx>
-    where
-        'tcx: 'mir,
-    {
-        error.print_backtrace();
-        let mut stacktrace = ecx.generate_stacktrace();
-        // Filter out `requires_caller_location` frames.
-        stacktrace.retain(|frame| !frame.instance.def.requires_caller_location(*ecx.tcx));
-        // If `span` is missing, use topmost remaining frame, or else the "root" span from `ecx.tcx`.
-        let span = span.or_else(|| stacktrace.first().map(|f| f.span)).unwrap_or(ecx.tcx.span);
-        ConstEvalErr { error: error.into_kind(), stacktrace, span }
-    }
-
-    pub(super) fn report(&self, tcx: TyCtxtAt<'tcx>, message: &str) -> ErrorHandled {
-        self.report_decorated(tcx, message, |_| {})
-    }
-
-    #[instrument(level = "trace", skip(self, decorate))]
-    pub(super) fn decorate(&self, err: &mut Diagnostic, decorate: impl FnOnce(&mut Diagnostic)) {
-        trace!("reporting const eval failure at {:?}", self.span);
-        // Add some more context for select error types.
-        match self.error {
-            InterpError::Unsupported(
-                UnsupportedOpInfo::ReadPointerAsBytes
-                | UnsupportedOpInfo::PartialPointerOverwrite(_)
-                | UnsupportedOpInfo::PartialPointerCopy(_),
-            ) => {
-                err.help("this code performed an operation that depends on the underlying bytes representing a pointer");
-                err.help("the absolute address of a pointer is not known at compile-time, so such operations are not supported");
-            }
-            _ => {}
-        }
-        // Add spans for the stacktrace. Don't print a single-line backtrace though.
-        if self.stacktrace.len() > 1 {
-            // Helper closure to print duplicated lines.
-            let mut flush_last_line = |last_frame: Option<(String, _)>, times| {
-                if let Some((line, span)) = last_frame {
-                    err.span_note(span, line.clone());
-                    // Don't print [... additional calls ...] if the number of lines is small
-                    if times < 3 {
-                        for _ in 0..times {
-                            err.span_note(span, line.clone());
-                        }
-                    } else {
-                        err.span_note(
-                            span,
-                            format!("[... {} additional calls {} ...]", times, &line),
-                        );
-                    }
+        let mut last_frame: Option<errors::FrameNote> = None;
+        for frame_info in &stacktrace {
+            let frame = frame_info.as_note(*ecx.tcx);
+            match last_frame.as_mut() {
+                Some(last_frame)
+                    if last_frame.span == frame.span
+                        && last_frame.where_ == frame.where_
+                        && last_frame.instance == frame.instance =>
+                {
+                    last_frame.times += 1;
                 }
-            };
-
-            let mut last_frame = None;
-            let mut times = 0;
-            for frame_info in &self.stacktrace {
-                let frame = (frame_info.to_string(), frame_info.span);
-                if last_frame.as_ref() == Some(&frame) {
-                    times += 1;
-                } else {
-                    flush_last_line(last_frame, times);
+                Some(last_frame) => {
+                    add_frame(mem::replace(last_frame, frame));
+                }
+                None => {
                     last_frame = Some(frame);
-                    times = 0;
                 }
             }
-            flush_last_line(last_frame, times);
         }
-        // Let the caller attach any additional information it wants.
-        decorate(err);
+        if let Some(frame) = last_frame {
+            add_frame(frame);
+        }
     }
 
-    /// Create a diagnostic for this const eval error.
-    ///
-    /// Sets the message passed in via `message` and adds span labels with detailed error
-    /// information before handing control back to `decorate` to do any final annotations,
-    /// after which the diagnostic is emitted.
-    ///
-    /// If `lint_root.is_some()` report it as a lint, else report it as a hard error.
-    /// (Except that for some errors, we ignore all that -- see `must_error` below.)
-    #[instrument(skip(self, tcx, decorate), level = "debug")]
-    pub(super) fn report_decorated(
-        &self,
-        tcx: TyCtxtAt<'tcx>,
-        message: &str,
-        decorate: impl FnOnce(&mut Diagnostic),
-    ) -> ErrorHandled {
-        debug!("self.error: {:?}", self.error);
-        // Special handling for certain errors
-        match &self.error {
-            // Don't emit a new diagnostic for these errors
-            err_inval!(Layout(LayoutError::Unknown(_))) | err_inval!(TooGeneric) => {
-                ErrorHandled::TooGeneric
+    (span, frames)
+}
+
+/// Create a diagnostic for a const eval error.
+///
+/// This will use the `mk` function for creating the error which will get passed labels according to
+/// the `InterpError` and the span and a stacktrace of current execution according to
+/// `get_span_and_frames`.
+pub(super) fn report<'tcx, C, F, E>(
+    tcx: TyCtxt<'tcx>,
+    error: InterpError<'tcx>,
+    span: Option<Span>,
+    get_span_and_frames: C,
+    mk: F,
+) -> ErrorHandled
+where
+    C: FnOnce() -> (Span, Vec<FrameNote>),
+    F: FnOnce(Span, Vec<FrameNote>) -> E,
+    E: IntoDiagnostic<'tcx, ErrorGuaranteed>,
+{
+    // Special handling for certain errors
+    match error {
+        // Don't emit a new diagnostic for these errors
+        err_inval!(Layout(LayoutError::Unknown(_))) | err_inval!(TooGeneric) => {
+            ErrorHandled::TooGeneric
+        }
+        err_inval!(AlreadyReported(error_reported)) => ErrorHandled::Reported(error_reported),
+        err_inval!(Layout(layout_error @ LayoutError::SizeOverflow(_))) => {
+            // We must *always* hard error on these, even if the caller wants just a lint.
+            // The `message` makes little sense here, this is a more serious error than the
+            // caller thinks anyway.
+            // See <https://github.com/rust-lang/rust/pull/63152>.
+            let (our_span, frames) = get_span_and_frames();
+            let span = span.unwrap_or(our_span);
+            let mut err =
+                tcx.sess.create_err(Spanned { span, node: layout_error.into_diagnostic() });
+            err.code(rustc_errors::error_code!(E0080));
+            let Some((mut err, handler)) = err.into_diagnostic() else {
+                    panic!("did not emit diag");
+                };
+            for frame in frames {
+                err.eager_subdiagnostic(handler, frame);
             }
-            err_inval!(AlreadyReported(error_reported)) => ErrorHandled::Reported(*error_reported),
-            err_inval!(Layout(LayoutError::SizeOverflow(_))) => {
-                // We must *always* hard error on these, even if the caller wants just a lint.
-                // The `message` makes little sense here, this is a more serious error than the
-                // caller thinks anyway.
-                // See <https://github.com/rust-lang/rust/pull/63152>.
-                let mut err = struct_error(tcx, &self.error.to_string());
-                self.decorate(&mut err, decorate);
-                ErrorHandled::Reported(err.emit().into())
-            }
-            _ => {
-                // Report as hard error.
-                let mut err = struct_error(tcx, message);
-                err.span_label(self.span, self.error.to_string());
-                self.decorate(&mut err, decorate);
-                ErrorHandled::Reported(err.emit().into())
-            }
+
+            ErrorHandled::Reported(handler.emit_diagnostic(&mut err).unwrap().into())
+        }
+        _ => {
+            // Report as hard error.
+            let (our_span, frames) = get_span_and_frames();
+            let span = span.unwrap_or(our_span);
+            let err = mk(span, frames);
+            let mut err = tcx.sess.create_err(err);
+
+            let msg = error.diagnostic_message();
+            error.add_args(&tcx.sess.parse_sess.span_diagnostic, &mut err);
+
+            // Use *our* span to label the interp error
+            err.span_label(our_span, msg);
+            ErrorHandled::Reported(err.emit().into())
         }
     }
 }
