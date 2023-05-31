@@ -26,7 +26,7 @@ use crate::traits::project::ProjectAndUnifyResult;
 use crate::traits::project::ProjectionCacheKeyExt;
 use crate::traits::ProjectionCacheKey;
 use crate::traits::Unimplemented;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::Diagnostic;
 use rustc_hir as hir;
@@ -163,10 +163,6 @@ struct TraitObligationStack<'prev, 'tcx> {
 
     /// The number of parent frames plus one (thus, the topmost frame has depth 1).
     depth: usize,
-
-    /// The depth-first number of this node in the search graph -- a
-    /// pre-order index. Basically, a freshly incremented counter.
-    dfn: usize,
 }
 
 struct SelectionCandidateSet<'tcx> {
@@ -705,10 +701,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // goals, it isn't in a cycle). If `Foo<T>: Trait` later doesn't
                     // hold, then `Bar<T>: Send` shouldn't hold. Therefore, we
                     // *do* need to keep track of coinductive cycles.
-
-                    let cache = previous_stack.cache;
-                    let dfn = cache.next_dfn();
-
                     for stack_arg in previous_stack.cache.wf_args.borrow().iter().rev() {
                         if stack_arg.0 != arg {
                             continue;
@@ -756,16 +748,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             let result =
                                 self.evaluate_predicates_recursively(previous_stack, obligations);
                             cache.wf_args.borrow_mut().pop();
-
-                            let result = result?;
-
-                            if !result.must_apply_modulo_regions() {
-                                cache.on_failure(dfn);
-                            }
-
-                            cache.on_completion(dfn);
-
-                            Ok(result)
+                            result
                         }
                         None => Ok(EvaluatedToAmbig),
                     }
@@ -1037,12 +1020,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return Ok(result);
         }
 
-        if let Some(result) = stack.cache().get_provisional(fresh_trait_pred) {
-            debug!("PROVISIONAL CACHE HIT");
-            stack.update_reached_depth(result.reached_depth);
-            return Ok(result.result);
-        }
-
         // Check if this is a match for something already on the
         // stack. If so, we don't want to insert the result into the
         // main cache (it is cycle dependent) nor the provisional
@@ -1098,25 +1075,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         });
 
         let result = result?;
-
-        if !result.must_apply_modulo_regions() {
-            stack.cache().on_failure(stack.dfn);
-        }
-
         let reached_depth = stack.reached_depth.get();
         if reached_depth >= stack.depth {
             debug!("CACHE MISS");
             self.insert_evaluation_cache(param_env, fresh_trait_pred, dep_node, result);
-            stack.cache().on_completion(stack.dfn);
-        } else {
-            debug!("PROVISIONAL");
-            debug!(
-                "caching provisionally because {:?} \
-                 is a cycle participant (at depth {}, reached depth {})",
-                fresh_trait_pred, stack.depth, reached_depth,
-            );
-
-            stack.cache().insert_provisional(stack.dfn, reached_depth, fresh_trait_pred, result);
         }
 
         Ok(result)
@@ -2580,15 +2542,12 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         obligation: &'o TraitObligation<'tcx>,
     ) -> TraitObligationStack<'o, 'tcx> {
         let fresh_trait_pred = obligation.predicate.fold_with(&mut self.freshener);
-
-        let dfn = previous_stack.cache.next_dfn();
         let depth = previous_stack.depth() + 1;
         TraitObligationStack {
             obligation,
             fresh_trait_pred,
             reached_depth: Cell::new(depth),
             previous: previous_stack,
-            dfn,
             depth,
         }
     }
@@ -2772,26 +2731,6 @@ impl<'o, 'tcx> TraitObligationStack<'o, 'tcx> {
 /// error. When we pop the node at `reached_depth` from the stack, we
 /// can commit all the things that remain in the provisional cache.
 struct ProvisionalEvaluationCache<'tcx> {
-    /// next "depth first number" to issue -- just a counter
-    dfn: Cell<usize>,
-
-    /// Map from cache key to the provisionally evaluated thing.
-    /// The cache entries contain the result but also the DFN in which they
-    /// were added. The DFN is used to clear out values on failure.
-    ///
-    /// Imagine we have a stack like:
-    ///
-    /// - `A B C` and we add a cache for the result of C (DFN 2)
-    /// - Then we have a stack `A B D` where `D` has DFN 3
-    /// - We try to solve D by evaluating E: `A B D E` (DFN 4)
-    /// - `E` generates various cache entries which have cyclic dependencies on `B`
-    ///   - `A B D E F` and so forth
-    ///   - the DFN of `F` for example would be 5
-    /// - then we determine that `E` is in error -- we will then clear
-    ///   all cache values whose DFN is >= 4 -- in this case, that
-    ///   means the cached value for `F`.
-    map: RefCell<FxIndexMap<ty::PolyTraitPredicate<'tcx>, ProvisionalEvaluation>>,
-
     /// The stack of args that we assume to be true because a `WF(arg)` predicate
     /// is on the stack above (and because of wellformedness is coinductive).
     /// In an "ideal" world, this would share a stack with trait predicates in
@@ -2802,150 +2741,14 @@ struct ProvisionalEvaluationCache<'tcx> {
     wf_args: RefCell<Vec<(ty::GenericArg<'tcx>, usize)>>,
 }
 
-/// A cache value for the provisional cache: contains the depth-first
-/// number (DFN) and result.
-#[derive(Copy, Clone, Debug)]
-struct ProvisionalEvaluation {
-    from_dfn: usize,
-    reached_depth: usize,
-    result: EvaluationResult,
-}
 
 impl<'tcx> Default for ProvisionalEvaluationCache<'tcx> {
     fn default() -> Self {
-        Self { dfn: Cell::new(0), map: Default::default(), wf_args: Default::default() }
+        Self { wf_args: Default::default() }
     }
 }
 
 impl<'tcx> ProvisionalEvaluationCache<'tcx> {
-    /// Get the next DFN in sequence (basically a counter).
-    fn next_dfn(&self) -> usize {
-        let result = self.dfn.get();
-        self.dfn.set(result + 1);
-        result
-    }
-
-    /// Check the provisional cache for any result for
-    /// `fresh_trait_ref`. If there is a hit, then you must consider
-    /// it an access to the stack slots at depth
-    /// `reached_depth` (from the returned value).
-    fn get_provisional(
-        &self,
-        fresh_trait_pred: ty::PolyTraitPredicate<'tcx>,
-    ) -> Option<ProvisionalEvaluation> {
-        debug!(
-            ?fresh_trait_pred,
-            "get_provisional = {:#?}",
-            self.map.borrow().get(&fresh_trait_pred),
-        );
-        Some(*self.map.borrow().get(&fresh_trait_pred)?)
-    }
-
-    /// Insert a provisional result into the cache. The result came
-    /// from the node with the given DFN. It accessed a minimum depth
-    /// of `reached_depth` to compute. It evaluated `fresh_trait_pred`
-    /// and resulted in `result`.
-    fn insert_provisional(
-        &self,
-        from_dfn: usize,
-        reached_depth: usize,
-        fresh_trait_pred: ty::PolyTraitPredicate<'tcx>,
-        result: EvaluationResult,
-    ) {
-        debug!(?from_dfn, ?fresh_trait_pred, ?result, "insert_provisional");
-
-        let mut map = self.map.borrow_mut();
-
-        // Subtle: when we complete working on the DFN `from_dfn`, anything
-        // that remains in the provisional cache must be dependent on some older
-        // stack entry than `from_dfn`. We have to update their depth with our transitive
-        // depth in that case or else it would be referring to some popped note.
-        //
-        // Example:
-        // A (reached depth 0)
-        //   ...
-        //      B // depth 1 -- reached depth = 0
-        //          C // depth 2 -- reached depth = 1 (should be 0)
-        //              B
-        //          A // depth 0
-        //   D (reached depth 1)
-        //      C (cache -- reached depth = 2)
-        for (_k, v) in &mut *map {
-            if v.from_dfn >= from_dfn {
-                v.reached_depth = reached_depth.min(v.reached_depth);
-            }
-        }
-
-        map.insert(fresh_trait_pred, ProvisionalEvaluation { from_dfn, reached_depth, result });
-    }
-
-    /// Invoked when the node with dfn `dfn` does not get a successful
-    /// result. This will clear out any provisional cache entries
-    /// that were added since `dfn` was created. This is because the
-    /// provisional entries are things which must assume that the
-    /// things on the stack at the time of their creation succeeded --
-    /// since the failing node is presently at the top of the stack,
-    /// these provisional entries must either depend on it or some
-    /// ancestor of it.
-    fn on_failure(&self, dfn: usize) {
-        debug!(?dfn, "on_failure");
-        self.map.borrow_mut().retain(|key, eval| {
-            if !eval.from_dfn >= dfn {
-                debug!("on_failure: removing {:?}", key);
-                false
-            } else {
-                true
-            }
-        });
-    }
-
-    /// Invoked when the node at depth `depth` completed without
-    /// depending on anything higher in the stack (if that completion
-    /// was a failure, then `on_failure` should have been invoked
-    /// already).
-    ///
-    /// Note that we may still have provisional cache items remaining
-    /// in the cache when this is done. For example, if there is a
-    /// cycle:
-    ///
-    /// * A depends on...
-    ///     * B depends on A
-    ///     * C depends on...
-    ///         * D depends on C
-    ///     * ...
-    ///
-    /// Then as we complete the C node we will have a provisional cache
-    /// with results for A, B, C, and D. This method would clear out
-    /// the C and D results, but leave A and B provisional.
-    ///
-    /// This is determined based on the DFN: we remove any provisional
-    /// results created since `dfn` started (e.g., in our example, dfn
-    /// would be 2, representing the C node, and hence we would
-    /// remove the result for D, which has DFN 3, but not the results for
-    /// A and B, which have DFNs 0 and 1 respectively).
-    ///
-    /// Note that we *do not* attempt to cache these cycle participants
-    /// in the evaluation cache. Doing so would require carefully computing
-    /// the correct `DepNode` to store in the cache entry:
-    /// cycle participants may implicitly depend on query results
-    /// related to other participants in the cycle, due to our logic
-    /// which examines the evaluation stack.
-    ///
-    /// We used to try to perform this caching,
-    /// but it lead to multiple incremental compilation ICEs
-    /// (see #92987 and #96319), and was very hard to understand.
-    /// Fortunately, removing the caching didn't seem to
-    /// have a performance impact in practice.
-    fn on_completion(&self, dfn: usize) {
-        debug!(?dfn, "on_completion");
-        self.map.borrow_mut().retain(|fresh_trait_pred, eval| {
-            if eval.from_dfn >= dfn {
-                debug!(?fresh_trait_pred, ?eval, "on_completion");
-                return false;
-            }
-            true
-        });
-    }
 }
 
 #[derive(Copy, Clone)]
