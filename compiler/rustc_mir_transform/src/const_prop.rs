@@ -889,6 +889,21 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
             StatementKind::StorageLive(local) => {
                 Self::remove_const(&mut self.ecx, local);
             }
+            // We do not need to mark dead locals as such. For `FullConstProp` locals,
+            // this allows to propagate the single assigned value in this case:
+            // ```
+            // let x = SOME_CONST;
+            // if a {
+            //   f(copy x);
+            //   StorageDead(x);
+            // } else {
+            //   g(copy x);
+            //   StorageDead(x);
+            // }
+            // ```
+            //
+            // This may propagate a constant where the local would be uninit or dead.
+            // In both cases, this does not matter, as those reads would be UB anyway.
             _ => {}
         }
     }
