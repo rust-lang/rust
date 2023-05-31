@@ -1477,27 +1477,22 @@ fn item_constant(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, c: &cle
         let value = c.value(tcx);
         let is_literal = c.is_literal(tcx);
         let expr = c.expr(tcx);
-        if value.is_some() || is_literal {
-            if is_literal {
-                write!(w, " = {expr};", expr = Escape(&expr));
-            } else if let Some(value) = &value {
-                write!(w, " = {value};", value = Escape(value));
-            } else {
-                w.write_str(";");
-            }
+
+        if is_literal {
+            write!(w, " = {expr};", expr = Escape(&expr));
+        } else if let Some(value) = &value {
+            write!(w, " = {value};", value = Escape(value));
+        } else {
+            w.write_str(";");
         }
 
-        if !is_literal {
-            if let Some(value) = &value {
-                let value_lowercase = value.to_lowercase();
-                let expr_lowercase = expr.to_lowercase();
+        let value_lowercase = value.to_lowercase();
+        let expr_lowercase = expr.to_lowercase();
 
-                if value_lowercase != expr_lowercase
-                    && value_lowercase.trim_end_matches("i32") != expr_lowercase
-                {
-                    write!(w, " // {value}", value = Escape(value));
-                }
-            }
+        if value_lowercase != expr_lowercase
+            && value_lowercase.trim_end_matches("i32") != expr_lowercase
+        {
+            write!(w, " // {value}", value = Escape(value));
         }
     });
 
