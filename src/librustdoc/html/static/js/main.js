@@ -779,6 +779,13 @@ function preLoadCss(cssUrl) {
         });
     });
 
+    /**
+     * Show a tooltip immediately.
+     *
+     * @param {DOMElement} e - The tooltip's anchor point. The DOM is consulted to figure
+     *                         out what the tooltip should contain, and where it should be
+     *                         positioned.
+     */
     function showTooltip(e) {
         const notable_ty = e.getAttribute("data-notable-ty");
         if (!window.NOTABLE_TRAITS && notable_ty) {
@@ -789,8 +796,9 @@ function preLoadCss(cssUrl) {
                 throw new Error("showTooltip() called with notable without any notable traits!");
             }
         }
+        // Make this function idempotent. If the tooltip is already shown, avoid doing extra work
+        // and leave it alone.
         if (window.CURRENT_TOOLTIP_ELEMENT && window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE === e) {
-            // Make this function idempotent.
             clearTooltipHoverTimeout(window.CURRENT_TOOLTIP_ELEMENT);
             return;
         }
@@ -800,6 +808,7 @@ function preLoadCss(cssUrl) {
             wrapper.innerHTML = "<div class=\"content\">" +
                 window.NOTABLE_TRAITS[notable_ty] + "</div>";
         } else {
+            // Replace any `title` attribute with `data-title` to avoid double tooltips.
             if (e.getAttribute("title") !== null) {
                 e.setAttribute("data-title", e.getAttribute("title"));
                 e.removeAttribute("title");
@@ -859,6 +868,17 @@ function preLoadCss(cssUrl) {
         };
     }
 
+    /**
+     * Show or hide the tooltip after a timeout. If a timeout was already set before this function
+     * was called, that timeout gets cleared. If the tooltip is already in the requested state,
+     * this function will still clear any pending timeout, but otherwise do nothing.
+     *
+     * @param {DOMElement} element - The tooltip's anchor point. The DOM is consulted to figure
+     *                               out what the tooltip should contain, and where it should be
+     *                               positioned.
+     * @param {boolean}    show    - If true, the tooltip will be made visible. If false, it will
+     *                               be hidden.
+     */
     function setTooltipHoverTimeout(element, show) {
         clearTooltipHoverTimeout(element);
         if (!show && !window.CURRENT_TOOLTIP_ELEMENT) {
@@ -883,6 +903,13 @@ function preLoadCss(cssUrl) {
         }, show ? window.RUSTDOC_TOOLTIP_HOVER_MS : window.RUSTDOC_TOOLTIP_HOVER_EXIT_MS);
     }
 
+    /**
+     * If a show/hide timeout was set by `setTooltipHoverTimeout`, cancel it. If none exists,
+     * do nothing.
+     *
+     * @param {DOMElement} element - The tooltip's anchor point,
+     *                               as passed to `setTooltipHoverTimeout`.
+     */
     function clearTooltipHoverTimeout(element) {
         if (element.TOOLTIP_HOVER_TIMEOUT !== undefined) {
             removeClass(window.CURRENT_TOOLTIP_ELEMENT, "fade-out");
@@ -910,6 +937,12 @@ function preLoadCss(cssUrl) {
         }
     }
 
+    /**
+     * Hide the current tooltip immediately.
+     *
+     * @param {boolean} focus - If set to `true`, move keyboard focus to the tooltip anchor point.
+     *                          If set to `false`, leave keyboard focus alone.
+     */
     function hideTooltip(focus) {
         if (window.CURRENT_TOOLTIP_ELEMENT) {
             if (window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE.TOOLTIP_FORCE_VISIBLE) {
