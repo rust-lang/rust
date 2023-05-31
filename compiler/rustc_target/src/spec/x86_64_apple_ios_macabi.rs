@@ -15,7 +15,7 @@ pub fn target() -> Target {
             .into(),
         arch: arch.target_arch(),
         options: TargetOptions {
-            max_atomic_width: Some(64),
+            max_atomic_width: Some(128),
             stack_probes: StackProbeType::X86,
             ..base
         },
