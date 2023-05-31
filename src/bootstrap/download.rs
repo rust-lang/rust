@@ -219,6 +219,7 @@ impl Config {
             "--connect-timeout",
             "30", // timeout if cannot connect within 30 seconds
             "--retry",
+            "--retry-connrefused",
             "3",
             "-SRf",
         ]);
