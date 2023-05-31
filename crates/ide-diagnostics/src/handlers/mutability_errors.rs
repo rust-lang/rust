@@ -18,7 +18,8 @@ pub(crate) fn need_mut(ctx: &DiagnosticsContext<'_>, d: &hir::NeedMut) -> Diagno
         let use_range = d.span.value.text_range();
         for source in d.local.sources(ctx.sema.db) {
             let Some(ast) = source.name() else { continue };
-            edit_builder.insert(ast.syntax().text_range().start(), "mut ".to_string());
+            // FIXME: macros
+            edit_builder.insert(ast.value.syntax().text_range().start(), "mut ".to_string());
         }
         let edit = edit_builder.finish();
         Some(vec![fix(
