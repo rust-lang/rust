@@ -918,6 +918,10 @@ class RustBuild(object):
             args.append("--color=always")
         elif color == "never":
             args.append("--color=never")
+        try:
+            args += env["CARGOFLAGS"].split()
+        except KeyError:
+            pass
 
         # Run this from the source directory so cargo finds .cargo/config
         run(args, env=env, verbose=self.verbose, cwd=self.rust_root)
