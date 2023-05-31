@@ -44,32 +44,12 @@ use self::imp::Group;
 
 // Branch prediction hint. This is currently only available on nightly but it
 // consistently improves performance by 10-15%.
+#[cfg(not(feature = "nightly"))]
+use core::convert::identity as likely;
+#[cfg(not(feature = "nightly"))]
+use core::convert::identity as unlikely;
 #[cfg(feature = "nightly")]
 use core::intrinsics::{likely, unlikely};
-
-// On stable we can use #[cold] to get a equivalent effect: this attributes
-// suggests that the function is unlikely to be called
-#[cfg(not(feature = "nightly"))]
-#[inline]
-#[cold]
-fn cold() {}
-
-#[cfg(not(feature = "nightly"))]
-#[inline]
-fn likely(b: bool) -> bool {
-    if !b {
-        cold();
-    }
-    b
-}
-#[cfg(not(feature = "nightly"))]
-#[inline]
-fn unlikely(b: bool) -> bool {
-    if b {
-        cold();
-    }
-    b
-}
 
 // Use strict provenance functions if available.
 #[cfg(feature = "nightly")]
@@ -1668,14 +1648,14 @@ impl<A: Allocator + Clone> RawTableInner<A> {
             //   we will never end up in the given branch, since
             //   `(probe_seq.pos + bit) & self.bucket_mask` in `find_insert_slot_in_group` cannot
             //   return a full bucket index. For tables smaller than the group width, calling the
-            //   `lowest_set_bit_nonzero` function (when `nightly` feature enabled) is also
+            //   `unwrap_unchecked` function is also
             //   safe, as the trailing control bytes outside the range of the table are filled
             //   with EMPTY bytes, so this second scan either finds an empty slot (due to the
-            //   load factor) or hits the trailing control bytes (containing EMPTY). See
-            //   `intrinsics::cttz_nonzero` for more information.
+            //   load factor) or hits the trailing control bytes (containing EMPTY).
             index = Group::load_aligned(self.ctrl(0))
                 .match_empty_or_deleted()
-                .lowest_set_bit_nonzero();
+                .lowest_set_bit()
+                .unwrap_unchecked();
         }
         InsertSlot { index }
     }

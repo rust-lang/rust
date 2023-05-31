@@ -1,6 +1,6 @@
-use super::imp::{BitMaskWord, BITMASK_ITER_MASK, BITMASK_MASK, BITMASK_STRIDE};
-#[cfg(feature = "nightly")]
-use core::intrinsics;
+use super::imp::{
+    BitMaskWord, NonZeroBitMaskWord, BITMASK_ITER_MASK, BITMASK_MASK, BITMASK_STRIDE,
+};
 
 /// A bit mask which contains the result of a `Match` operation on a `Group` and
 /// allows iterating through them.
@@ -47,24 +47,11 @@ impl BitMask {
     /// Returns the first set bit in the `BitMask`, if there is one.
     #[inline]
     pub(crate) fn lowest_set_bit(self) -> Option<usize> {
-        if self.0 == 0 {
-            None
+        if let Some(nonzero) = NonZeroBitMaskWord::new(self.0) {
+            Some(Self::nonzero_trailing_zeros(nonzero))
         } else {
-            Some(unsafe { self.lowest_set_bit_nonzero() })
+            None
         }
-    }
-
-    /// Returns the first set bit in the `BitMask`, if there is one. The
-    /// bitmask must not be empty.
-    #[inline]
-    #[cfg(feature = "nightly")]
-    pub(crate) unsafe fn lowest_set_bit_nonzero(self) -> usize {
-        intrinsics::cttz_nonzero(self.0) as usize / BITMASK_STRIDE
-    }
-    #[inline]
-    #[cfg(not(feature = "nightly"))]
-    pub(crate) unsafe fn lowest_set_bit_nonzero(self) -> usize {
-        self.trailing_zeros()
     }
 
     /// Returns the number of trailing zeroes in the `BitMask`.
@@ -79,6 +66,18 @@ impl BitMask {
             self.0.swap_bytes().leading_zeros() as usize / BITMASK_STRIDE
         } else {
             self.0.trailing_zeros() as usize / BITMASK_STRIDE
+        }
+    }
+
+    /// Same as above but takes a `NonZeroBitMaskWord`.
+    #[inline]
+    fn nonzero_trailing_zeros(nonzero: NonZeroBitMaskWord) -> usize {
+        if cfg!(target_arch = "arm") && BITMASK_STRIDE % 8 == 0 {
+            // SAFETY: A byte-swapped non-zero value is still non-zero.
+            let swapped = unsafe { NonZeroBitMaskWord::new_unchecked(nonzero.get().swap_bytes()) };
+            swapped.leading_zeros() as usize / BITMASK_STRIDE
+        } else {
+            nonzero.trailing_zeros() as usize / BITMASK_STRIDE
         }
     }
 

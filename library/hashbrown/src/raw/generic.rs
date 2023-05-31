@@ -5,22 +5,24 @@ use core::{mem, ptr};
 // Use the native word size as the group size. Using a 64-bit group size on
 // a 32-bit architecture will just end up being more expensive because
 // shifts and multiplies will need to be emulated.
-#[cfg(any(
-    target_pointer_width = "64",
-    target_arch = "aarch64",
-    target_arch = "x86_64",
-    target_arch = "wasm32",
-))]
-type GroupWord = u64;
-#[cfg(all(
-    any(target_pointer_width = "32", target_pointer_width = "16"),
-    not(target_arch = "aarch64"),
-    not(target_arch = "x86_64"),
-    not(target_arch = "wasm32"),
-))]
-type GroupWord = u32;
+
+cfg_if! {
+    if #[cfg(any(
+        target_pointer_width = "64",
+        target_arch = "aarch64",
+        target_arch = "x86_64",
+        target_arch = "wasm32",
+    ))] {
+        type GroupWord = u64;
+        type NonZeroGroupWord = core::num::NonZeroU64;
+    } else {
+        type GroupWord = u32;
+        type NonZeroGroupWord = core::num::NonZeroU32;
+    }
+}
 
 pub(crate) type BitMaskWord = GroupWord;
+pub(crate) type NonZeroBitMaskWord = NonZeroGroupWord;
 pub(crate) const BITMASK_STRIDE: usize = 8;
 // We only care about the highest bit of each byte for the mask.
 #[allow(clippy::cast_possible_truncation, clippy::unnecessary_cast)]

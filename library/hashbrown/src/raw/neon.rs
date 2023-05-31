@@ -2,8 +2,10 @@ use super::bitmask::BitMask;
 use super::EMPTY;
 use core::arch::aarch64 as neon;
 use core::mem;
+use core::num::NonZeroU64;
 
 pub(crate) type BitMaskWord = u64;
+pub(crate) type NonZeroBitMaskWord = NonZeroU64;
 pub(crate) const BITMASK_STRIDE: usize = 8;
 pub(crate) const BITMASK_MASK: BitMaskWord = !0;
 pub(crate) const BITMASK_ITER_MASK: BitMaskWord = 0x8080_8080_8080_8080;

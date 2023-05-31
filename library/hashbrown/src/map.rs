@@ -260,29 +260,6 @@ where
     hash_builder.hash_one(val)
 }
 
-#[cfg(not(feature = "nightly"))]
-#[cfg_attr(feature = "inline-more", inline)]
-pub(crate) fn make_insert_hash<K, S>(hash_builder: &S, val: &K) -> u64
-where
-    K: Hash,
-    S: BuildHasher,
-{
-    use core::hash::Hasher;
-    let mut state = hash_builder.build_hasher();
-    val.hash(&mut state);
-    state.finish()
-}
-
-#[cfg(feature = "nightly")]
-#[cfg_attr(feature = "inline-more", inline)]
-pub(crate) fn make_insert_hash<K, S>(hash_builder: &S, val: &K) -> u64
-where
-    K: Hash,
-    S: BuildHasher,
-{
-    hash_builder.hash_one(val)
-}
-
 #[cfg(feature = "ahash")]
 impl<K, V> HashMap<K, V, DefaultHashBuilder> {
     /// Creates an empty `HashMap`.
@@ -368,8 +345,6 @@ impl<K, V, A: Allocator + Clone> HashMap<K, V, DefaultHashBuilder, A> {
     /// # Examples
     ///
     /// ```
-    /// # #[cfg(feature = "nightly")]
-    /// # fn test() {
     /// use hashbrown::HashMap;
     /// use bumpalo::Bump;
     ///
@@ -388,11 +363,6 @@ impl<K, V, A: Allocator + Clone> HashMap<K, V, DefaultHashBuilder, A> {
     /// assert_eq!(map.len(), 1);
     /// // And it also allocates some capacity
     /// assert!(map.capacity() > 1);
-    /// # }
-    /// # fn main() {
-    /// #     #[cfg(feature = "nightly")]
-    /// #     test()
-    /// # }
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn new_in(alloc: A) -> Self {
@@ -419,8 +389,6 @@ impl<K, V, A: Allocator + Clone> HashMap<K, V, DefaultHashBuilder, A> {
     /// # Examples
     ///
     /// ```
-    /// # #[cfg(feature = "nightly")]
-    /// # fn test() {
     /// use hashbrown::HashMap;
     /// use bumpalo::Bump;
     ///
@@ -444,11 +412,6 @@ impl<K, V, A: Allocator + Clone> HashMap<K, V, DefaultHashBuilder, A> {
     /// assert_eq!(map.len(), 5);
     /// // But its capacity isn't changed
     /// assert_eq!(map.capacity(), empty_map_capacity)
-    /// # }
-    /// # fn main() {
-    /// #     #[cfg(feature = "nightly")]
-    /// #     test()
-    /// # }
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
@@ -1262,7 +1225,7 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn entry(&mut self, key: K) -> Entry<'_, K, V, S, A> {
-        let hash = make_insert_hash::<K, S>(&self.hash_builder, &key);
+        let hash = make_hash::<K, S>(&self.hash_builder, &key);
         if let Some(elem) = self.table.find(hash, equivalent_key(&key)) {
             Entry::Occupied(OccupiedEntry {
                 hash,
@@ -1782,7 +1745,7 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {
-        let hash = make_insert_hash::<K, S>(&self.hash_builder, &k);
+        let hash = make_hash::<K, S>(&self.hash_builder, &k);
         let hasher = make_hasher::<_, V, S>(&self.hash_builder);
         match self
             .table
@@ -1849,7 +1812,7 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn insert_unique_unchecked(&mut self, k: K, v: V) -> (&K, &mut V) {
-        let hash = make_insert_hash::<K, S>(&self.hash_builder, &k);
+        let hash = make_hash::<K, S>(&self.hash_builder, &k);
         let bucket = self
             .table
             .insert(hash, (k, v), make_hasher::<_, V, S>(&self.hash_builder));
@@ -4003,7 +3966,7 @@ impl<'a, K, V, S, A: Allocator + Clone> RawVacantEntryMut<'a, K, V, S, A> {
         K: Hash,
         S: BuildHasher,
     {
-        let hash = make_insert_hash::<K, S>(self.hash_builder, &key);
+        let hash = make_hash::<K, S>(self.hash_builder, &key);
         self.insert_hashed_nocheck(hash, key, value)
     }
 
@@ -4111,7 +4074,7 @@ impl<'a, K, V, S, A: Allocator + Clone> RawVacantEntryMut<'a, K, V, S, A> {
         K: Hash,
         S: BuildHasher,
     {
-        let hash = make_insert_hash::<K, S>(self.hash_builder, &key);
+        let hash = make_hash::<K, S>(self.hash_builder, &key);
         let elem = self.table.insert(
             hash,
             (key, value),
@@ -8194,7 +8157,7 @@ mod test_map {
         let mut map: HashMap<_, _> = xs.iter().copied().collect();
 
         let compute_hash = |map: &HashMap<i32, i32>, k: i32| -> u64 {
-            super::make_insert_hash::<i32, _>(map.hasher(), &k)
+            super::make_hash::<i32, _>(map.hasher(), &k)
         };
 
         // Existing key (insert)
@@ -8356,7 +8319,7 @@ mod test_map {
             loop {
                 // occasionally remove some elements
                 if i < n && rng.gen_bool(0.1) {
-                    let hash_value = super::make_insert_hash(&hash_builder, &i);
+                    let hash_value = super::make_hash(&hash_builder, &i);
 
                     unsafe {
                         let e = map.table.find(hash_value, |q| q.0.eq(&i));
