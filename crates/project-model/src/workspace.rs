@@ -24,7 +24,7 @@ use crate::{
     rustc_cfg,
     sysroot::SysrootCrate,
     target_data_layout, utf8_stdout, CargoConfig, CargoWorkspace, InvocationStrategy, ManifestPath,
-    Package, ProjectJson, ProjectManifest, Sysroot, TargetKind, WorkspaceBuildScripts,
+    Package, ProjectJson, ProjectManifest, Sysroot, TargetData, TargetKind, WorkspaceBuildScripts,
 };
 
 /// A set of cfg-overrides per crate.
@@ -900,7 +900,24 @@ fn cargo_to_crate_graph(
                 // https://github.com/rust-lang/rust-analyzer/issues/11300
                 continue;
             }
-            let Some(file_id) =  load(&cargo[tgt].root) else { continue };
+            let &TargetData { ref name, kind, is_proc_macro, ref root, .. } = &cargo[tgt];
+
+            if kind == TargetKind::Lib
+                && sysroot.map_or(false, |sysroot| root.starts_with(sysroot.src_root()))
+            {
+                if let Some(&(_, crate_id, _)) =
+                    public_deps.deps.iter().find(|(dep_name, ..)| dep_name.as_smol_str() == name)
+                {
+                    pkg_crates.entry(pkg).or_insert_with(Vec::new).push((crate_id, kind));
+
+                    lib_tgt = Some((crate_id, name.clone()));
+                    pkg_to_lib_crate.insert(pkg, crate_id);
+                    // sysroot is inside the workspace, prevent the sysroot crates from being duplicated here
+                    continue;
+                }
+            }
+
+            let Some(file_id) = load(root) else { continue };
 
             let crate_id = add_target_crate_root(
                 crate_graph,
@@ -909,23 +926,23 @@ fn cargo_to_crate_graph(
                 build_scripts.get_output(pkg),
                 cfg_options.clone(),
                 file_id,
-                &cargo[tgt].name,
-                cargo[tgt].is_proc_macro,
+                name,
+                is_proc_macro,
                 target_layout.clone(),
                 false,
                 channel,
             );
-            if cargo[tgt].kind == TargetKind::Lib {
-                lib_tgt = Some((crate_id, cargo[tgt].name.clone()));
+            if kind == TargetKind::Lib {
+                lib_tgt = Some((crate_id, name.clone()));
                 pkg_to_lib_crate.insert(pkg, crate_id);
             }
             // Even crates that don't set proc-macro = true are allowed to depend on proc_macro
             // (just none of the APIs work when called outside of a proc macro).
             if let Some(proc_macro) = libproc_macro {
-                add_proc_macro_dep(crate_graph, crate_id, proc_macro, cargo[tgt].is_proc_macro);
+                add_proc_macro_dep(crate_graph, crate_id, proc_macro, is_proc_macro);
             }
 
-            pkg_crates.entry(pkg).or_insert_with(Vec::new).push((crate_id, cargo[tgt].kind));
+            pkg_crates.entry(pkg).or_insert_with(Vec::new).push((crate_id, kind));
         }
 
         // Set deps to the core, std and to the lib target of the current package

@@ -2703,8 +2703,8 @@ impl LocalSource {
         self.source.file_id
     }
 
-    pub fn name(&self) -> Option<ast::Name> {
-        self.source.value.name()
+    pub fn name(&self) -> Option<InFile<ast::Name>> {
+        self.source.as_ref().map(|it| it.name()).transpose()
     }
 
     pub fn syntax(&self) -> &SyntaxNode {

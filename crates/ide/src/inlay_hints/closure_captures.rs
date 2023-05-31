@@ -74,7 +74,7 @@ pub(super) fn hints(
                     capture.display_place(sema.db)
                 ),
                 None,
-                source.name().and_then(|name| sema.original_range_opt(name.syntax())),
+                source.name().and_then(|name| name.syntax().original_file_range_opt(sema.db)),
             ),
             text_edit: None,
             position: InlayHintPosition::After,
