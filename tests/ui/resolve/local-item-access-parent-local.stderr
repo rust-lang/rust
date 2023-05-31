@@ -1,0 +1,28 @@
+error[E0434]: can't capture dynamic environment in a fn item
+  --> $DIR/local-item-access-parent-local.rs:6:9
+   |
+LL |         foo;
+   |         ^^^
+   |
+   = help: use the `|| { ... }` closure form instead
+
+error[E0435]: attempt to use a non-constant value in a constant
+  --> $DIR/local-item-access-parent-local.rs:10:9
+   |
+LL |     const C: () = {
+   |     ------- help: consider using `let` instead of `const`: `let C`
+LL |         foo;
+   |         ^^^ non-constant value
+
+error[E0435]: attempt to use a non-constant value in a constant
+  --> $DIR/local-item-access-parent-local.rs:14:9
+   |
+LL |     static S: () = {
+   |     -------- help: consider using `let` instead of `static`: `let S`
+LL |         foo;
+   |         ^^^ non-constant value
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0434, E0435.
+For more information about an error, try `rustc --explain E0434`.

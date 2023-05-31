@@ -306,6 +306,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         // Walk backwards up the ribs in scope.
         let mut module = self.graph_root;
+        let mut local_res_from_parent = None;
         for i in (0..ribs.len()).rev() {
             debug!("walk rib\n{:?}", ribs[i].bindings);
             // Use the rib kind to determine whether we are resolving parameters
@@ -314,14 +315,30 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             if let Some((original_rib_ident_def, res)) = ribs[i].bindings.get_key_value(&rib_ident)
             {
                 // The ident resolves to a type parameter or local variable.
-                return Some(LexicalScopeBinding::Res(self.validate_res_from_ribs(
+                let (validated_res, err) = self.validate_res_from_ribs(
                     i,
                     rib_ident,
                     *res,
                     finalize.map(|finalize| finalize.path_span),
                     *original_rib_ident_def,
                     ribs,
-                )));
+                );
+
+                if let Res::Local(_) = res
+                    && let Some((span, err )) = err
+                {
+                    // We found a local variable in a parent item but we might
+                    // find an item in the value namespace in an ancestor
+                    // so delay keep looking
+                    if local_res_from_parent.is_none() {
+                        local_res_from_parent = Some((validated_res, span, err));
+                    }
+                } else {
+                    if let Some((span, err)) = err {
+                        self.report_error(span, err);
+                    }
+                    return Some(LexicalScopeBinding::Res(validated_res));
+                }
             }
 
             module = match ribs[i].kind {
@@ -363,6 +380,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         )
         .ok()
         .map(LexicalScopeBinding::Item)
+        .or_else(|| {
+            local_res_from_parent.map(|(res, span, err)| {
+                // we didn't find an item in an ancestor rib, so report the error that we attempt to use a local
+                // of a parent item
+                self.report_error(span, err);
+                LexicalScopeBinding::Res(res)
+            })
+        })
     }
 
     /// Resolve an identifier in lexical scope.
@@ -1072,30 +1097,32 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// Validate a local resolution (from ribs).
     #[instrument(level = "debug", skip(self, all_ribs))]
     fn validate_res_from_ribs(
-        &mut self,
+        &self,
         rib_index: usize,
         rib_ident: Ident,
         mut res: Res,
         finalize: Option<Span>,
         original_rib_ident_def: Ident,
         all_ribs: &[Rib<'a>],
-    ) -> Res {
+    ) -> (Res, Option<(Span, ResolutionError<'a>)>) {
         const CG_BUG_STR: &str = "min_const_generics resolve check didn't stop compilation";
         debug!("validate_res_from_ribs({:?})", res);
         let ribs = &all_ribs[rib_index + 1..];
 
         // An invalid forward use of a generic parameter from a previous default.
         if let RibKind::ForwardGenericParamBan = all_ribs[rib_index].kind {
-            if let Some(span) = finalize {
-                let res_error = if rib_ident.name == kw::SelfUpper {
-                    ResolutionError::SelfInGenericParamDefault
-                } else {
-                    ResolutionError::ForwardDeclaredGenericParam
-                };
-                self.report_error(span, res_error);
-            }
             assert_eq!(res, Res::Err);
-            return Res::Err;
+            let err = finalize.map(|span| {
+                (
+                    span,
+                    if rib_ident.name == kw::SelfUpper {
+                        ResolutionError::SelfInGenericParamDefault
+                    } else {
+                        ResolutionError::ForwardDeclaredGenericParam
+                    },
+                )
+            });
+            return (Res::Err, err);
         }
 
         match res {
@@ -1146,33 +1173,33 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                         ),
                                     ),
                                 };
-                                self.report_error(span, resolution_error);
+                                res_err = Some((span, resolution_error));
                             }
-                            return Res::Err;
+                            break;
                         }
                         RibKind::ConstParamTy => {
                             if let Some(span) = finalize {
-                                self.report_error(
+                                // FIXME: This error is wrong, we have a local here not a const param!
+                                res_err = Some((
                                     span,
                                     ParamInTyOfConstParam {
                                         name: rib_ident.name,
                                         param_kind: None,
                                     },
-                                );
+                                ));
                             }
-                            return Res::Err;
+                            break;
                         }
                         RibKind::InlineAsmSym => {
                             if let Some(span) = finalize {
-                                self.report_error(span, InvalidAsmSym);
+                                res_err = Some((span, InvalidAsmSym));
                             }
-                            return Res::Err;
+                            break;
                         }
                     }
                 }
-                if let Some((span, res_err)) = res_err {
-                    self.report_error(span, res_err);
-                    return Res::Err;
+                if res_err.is_some() {
+                    return (Res::Err, res_err);
                 }
             }
             Res::Def(DefKind::TyParam, _) | Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } => {
@@ -1207,7 +1234,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                         is_trait_impl,
                                     }
                                 } else {
-                                    if let Some(span) = finalize {
+                                    let err = if let Some(span) = finalize {
                                         let error = match cause {
                                             NoConstantGenericsReason::IsEnumDiscriminant => {
                                                 ResolutionError::ParamInEnumDiscriminant {
@@ -1223,11 +1250,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                 }
                                             }
                                         };
-                                        self.report_error(span, error);
                                         self.tcx.sess.delay_span_bug(span, CG_BUG_STR);
-                                    }
+                                        Some((span, error))
+                                    } else {
+                                        None
+                                    };
 
-                                    return Res::Err;
+                                    return (Res::Err, err);
                                 }
                             }
 
@@ -1237,29 +1266,33 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         // This was an attempt to use a type parameter outside its scope.
                         RibKind::Item(has_generic_params) => has_generic_params,
                         RibKind::ConstParamTy => {
-                            if let Some(span) = finalize {
-                                self.report_error(
+                            let err = if let Some(span) = finalize {
+                                Some((
                                     span,
                                     ResolutionError::ParamInTyOfConstParam {
                                         name: rib_ident.name,
                                         param_kind: Some(errors::ParamKindInTyOfConstParam::Type),
                                     },
-                                );
-                            }
-                            return Res::Err;
+                                ))
+                            } else {
+                                None
+                            };
+                            return (Res::Err, err);
                         }
                     };
 
-                    if let Some(span) = finalize {
-                        self.report_error(
+                    let err = if let Some(span) = finalize {
+                        Some((
                             span,
                             ResolutionError::GenericParamsFromOuterFunction(
                                 res,
                                 has_generic_params,
                             ),
-                        );
-                    }
-                    return Res::Err;
+                        ))
+                    } else {
+                        None
+                    };
+                    return (Res::Err, err);
                 }
             }
             Res::Def(DefKind::ConstParam, _) => {
@@ -1275,7 +1308,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                         RibKind::ConstantItem(trivial, _) => {
                             if let ConstantHasGenerics::No(cause) = trivial {
-                                if let Some(span) = finalize {
+                                let err = if let Some(span) = finalize {
                                     let error = match cause {
                                         NoConstantGenericsReason::IsEnumDiscriminant => {
                                             ResolutionError::ParamInEnumDiscriminant {
@@ -1292,10 +1325,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                             }
                                         }
                                     };
-                                    self.report_error(span, error);
-                                }
+                                    Some((span, error))
+                                } else {
+                                    None
+                                };
 
-                                return Res::Err;
+                                return (Res::Err, err);
                             }
 
                             continue;
@@ -1303,35 +1338,39 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                         RibKind::Item(has_generic_params) => has_generic_params,
                         RibKind::ConstParamTy => {
-                            if let Some(span) = finalize {
-                                self.report_error(
+                            let err = if let Some(span) = finalize {
+                                Some((
                                     span,
                                     ResolutionError::ParamInTyOfConstParam {
                                         name: rib_ident.name,
                                         param_kind: Some(errors::ParamKindInTyOfConstParam::Const),
                                     },
-                                );
-                            }
-                            return Res::Err;
+                                ))
+                            } else {
+                                None
+                            };
+                            return (Res::Err, err);
                         }
                     };
 
                     // This was an attempt to use a const parameter outside its scope.
-                    if let Some(span) = finalize {
-                        self.report_error(
+                    let err = if let Some(span) = finalize {
+                        Some((
                             span,
                             ResolutionError::GenericParamsFromOuterFunction(
                                 res,
                                 has_generic_params,
                             ),
-                        );
-                    }
-                    return Res::Err;
+                        ))
+                    } else {
+                        None
+                    };
+                    return (Res::Err, err);
                 }
             }
             _ => {}
         }
-        res
+        (res, None)
     }
 
     #[instrument(level = "debug", skip(self))]
