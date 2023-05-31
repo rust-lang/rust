@@ -916,16 +916,8 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
-        #[cfg(bootstrap)]
         // SAFETY: the caller must uphold the safety contract for `offset`.
-        unsafe {
-            self.offset(count as isize)
-        }
-        #[cfg(not(bootstrap))]
-        // SAFETY: the caller must uphold the safety contract for `offset`.
-        unsafe {
-            intrinsics::offset(self, count)
-        }
+        unsafe { intrinsics::offset(self, count) }
     }
 
     /// Calculates the offset from a pointer in bytes (convenience for `.byte_offset(count as isize)`).
@@ -1195,7 +1187,7 @@ impl<T: ?Sized> *const T {
     ///
     /// [`ptr::read`]: crate::ptr::read()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[rustc_const_stable(feature = "const_ptr_read", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_ptr_read", since = "1.71.0")]
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn read(self) -> T
@@ -1236,7 +1228,7 @@ impl<T: ?Sized> *const T {
     ///
     /// [`ptr::read_unaligned`]: crate::ptr::read_unaligned()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[rustc_const_stable(feature = "const_ptr_read", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_ptr_read", since = "1.71.0")]
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn read_unaligned(self) -> T

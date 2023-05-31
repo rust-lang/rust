@@ -968,7 +968,7 @@ pub const fn replace<T>(dest: &mut T, src: T) -> T {
 /// Integers and other types implementing [`Copy`] are unaffected by `drop`.
 ///
 /// ```
-/// # #![cfg_attr(not(bootstrap), allow(dropping_copy_types))]
+/// # #![allow(dropping_copy_types)]
 /// #[derive(Copy, Clone)]
 /// struct Foo(u8);
 ///
@@ -1316,7 +1316,6 @@ impl<T> SizedTypeProperties for T {}
 ///
 /// assert_eq!(mem::offset_of!(NestedA, b.0), 0);
 /// ```
-#[cfg(not(bootstrap))]
 #[unstable(feature = "offset_of", issue = "106655")]
 #[allow_internal_unstable(builtin_syntax)]
 pub macro offset_of($Container:ty, $($fields:tt).+ $(,)?) {

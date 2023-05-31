@@ -1385,7 +1385,6 @@ extern "rust-intrinsic" {
     ///
     /// This is not expected to ever be exposed directly to users, rather it
     /// may eventually be exposed through some more-constrained API.
-    #[cfg(not(bootstrap))]
     #[rustc_const_stable(feature = "const_transmute", since = "1.56.0")]
     #[rustc_nounwind]
     pub fn transmute_unchecked<Src, Dst>(src: Src) -> Dst;
@@ -1425,18 +1424,10 @@ extern "rust-intrinsic" {
     /// returned value will result in undefined behavior.
     ///
     /// The stabilized version of this intrinsic is [`pointer::offset`].
-    #[cfg(not(bootstrap))]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     #[rustc_nounwind]
     pub fn offset<Ptr, Delta>(dst: Ptr, offset: Delta) -> Ptr;
-
-    /// The bootstrap version of this is more restricted.
-    #[cfg(bootstrap)]
-    #[must_use = "returns a new pointer rather than modifying its argument"]
-    #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
-    #[rustc_nounwind]
-    pub fn offset<T>(dst: *const T, offset: isize) -> *const T;
 
     /// Calculates the offset from a pointer, potentially wrapping.
     ///
@@ -2260,7 +2251,7 @@ extern "rust-intrinsic" {
     /// This intrinsic can *only* be called where the pointer is a local without
     /// projections (`read_via_copy(ptr)`, not `read_via_copy(*ptr)`) so that it
     /// trivially obeys runtime-MIR rules about derefs in operands.
-    #[rustc_const_stable(feature = "const_ptr_read", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_ptr_read", since = "1.71.0")]
     #[rustc_nounwind]
     pub fn read_via_copy<T>(ptr: *const T) -> T;
 
@@ -2270,7 +2261,6 @@ extern "rust-intrinsic" {
     /// This intrinsic can *only* be called where the pointer is a local without
     /// projections (`write_via_move(ptr, x)`, not `write_via_move(*ptr, x)`) so
     /// that it trivially obeys runtime-MIR rules about derefs in operands.
-    #[cfg(not(bootstrap))]
     #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
     #[rustc_nounwind]
     pub fn write_via_move<T>(ptr: *mut T, value: T);
@@ -2830,26 +2820,5 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
             [T](dst: *mut T) => is_aligned_and_not_null(dst)
         );
         write_bytes(dst, val, count)
-    }
-}
-
-/// Polyfill for bootstrap
-#[cfg(bootstrap)]
-pub const unsafe fn transmute_unchecked<Src, Dst>(src: Src) -> Dst {
-    use crate::mem::*;
-    // SAFETY: It's a transmute -- the caller promised it's fine.
-    unsafe { transmute_copy(&ManuallyDrop::new(src)) }
-}
-
-/// Polyfill for bootstrap
-#[cfg(bootstrap)]
-pub const unsafe fn write_via_move<T>(ptr: *mut T, value: T) {
-    use crate::mem::*;
-    // SAFETY: the caller must guarantee that `dst` is valid for writes.
-    // `dst` cannot overlap `src` because the caller has mutable access
-    // to `dst` while `src` is owned by this function.
-    unsafe {
-        copy_nonoverlapping::<T>(&value, ptr, 1);
-        forget(value);
     }
 }

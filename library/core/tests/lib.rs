@@ -109,7 +109,7 @@
 #![feature(utf8_chunks)]
 #![feature(is_ascii_octdigit)]
 #![feature(get_many_mut)]
-#![cfg_attr(not(bootstrap), feature(offset_of))]
+#![feature(offset_of)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(fuzzy_provenance_casts)]
 

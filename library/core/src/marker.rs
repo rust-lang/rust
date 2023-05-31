@@ -971,7 +971,7 @@ pub trait Tuple {}
 pub trait PointerLike {}
 
 /// A marker for types which can be used as types of `const` generic parameters.
-#[cfg_attr(not(bootstrap), lang = "const_param_ty")]
+#[lang = "const_param_ty"]
 #[unstable(feature = "adt_const_params", issue = "95174")]
 #[rustc_on_unimplemented(message = "`{Self}` can't be used as a const parameter type")]
 pub trait ConstParamTy: StructuralEq {}
@@ -979,7 +979,6 @@ pub trait ConstParamTy: StructuralEq {}
 /// Derive macro generating an impl of the trait `ConstParamTy`.
 #[rustc_builtin_macro]
 #[unstable(feature = "adt_const_params", issue = "95174")]
-#[cfg(not(bootstrap))]
 pub macro ConstParamTy($item:item) {
     /* compiler built-in */
 }

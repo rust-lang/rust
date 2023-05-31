@@ -81,7 +81,7 @@ use crate::str;
 #[derive(Hash)]
 #[stable(feature = "core_c_str", since = "1.64.0")]
 #[rustc_has_incoherent_inherent_impls]
-#[cfg_attr(not(bootstrap), lang = "CStr")]
+#[lang = "CStr"]
 // FIXME:
 // `fn from` in `impl From<&CStr> for Box<CStr>` current implementation relies
 // on `CStr` being layout-compatible with `[u8]`.
@@ -531,8 +531,8 @@ impl CStr {
     /// # }
     /// ```
     #[inline]
-    #[stable(feature = "cstr_is_empty", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "cstr_is_empty", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "cstr_is_empty", since = "1.71.0")]
+    #[rustc_const_stable(feature = "cstr_is_empty", since = "1.71.0")]
     pub const fn is_empty(&self) -> bool {
         // SAFETY: We know there is at least one byte; for empty strings it
         // is the NUL terminator.
