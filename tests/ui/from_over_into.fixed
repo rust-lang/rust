@@ -88,4 +88,14 @@ impl Into<Opaque> for IntoOpaque {
     fn into(self) -> Opaque {}
 }
 
+pub struct Lval<T>(T);
+
+pub struct Rval<T>(T);
+
+impl<T> From<Lval<T>> for Rval<Lval<T>> {
+    fn from(val: Lval<T>) -> Self {
+        Rval(val)
+    }
+}
+
 fn main() {}
