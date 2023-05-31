@@ -1081,14 +1081,6 @@ rustc_queries! {
         desc { "destructuring MIR constant"}
     }
 
-    /// Dereference a constant reference or raw pointer and turn the result into a constant
-    /// again.
-    query deref_mir_constant(
-        key: ty::ParamEnvAnd<'tcx, mir::ConstantKind<'tcx>>
-    ) -> mir::ConstantKind<'tcx> {
-        desc { "dereferencing MIR constant" }
-    }
-
     query const_caller_location(key: (rustc_span::Symbol, u32, u32)) -> ConstValue<'tcx> {
         desc { "getting a &core::panic::Location referring to a span" }
     }
@@ -1098,10 +1090,6 @@ rustc_queries! {
         key: LitToConstInput<'tcx>
     ) -> Result<ty::Const<'tcx>, LitToConstError> {
         desc { "converting literal to const" }
-    }
-
-    query lit_to_mir_constant(key: LitToConstInput<'tcx>) -> Result<mir::ConstantKind<'tcx>, LitToConstError> {
-        desc { "converting literal to mir constant" }
     }
 
     query check_match(key: LocalDefId) -> Result<(), rustc_errors::ErrorGuaranteed> {

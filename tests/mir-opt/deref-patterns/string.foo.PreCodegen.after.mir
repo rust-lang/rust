@@ -35,7 +35,7 @@ fn foo(_1: Option<String>) -> i32 {
                                          // + literal: Const { ty: for<'a, 'b> fn(&'a str, &'b str) -> bool {<str as PartialEq>::eq}, val: Value(<ZST>) }
                                          // mir::Constant
                                          // + span: $DIR/string.rs:9:14: 9:17
-                                         // + literal: Const { ty: &str, val: Value(Slice(..)) }
+                                         // + literal: Const { ty: &str, val: Value(ValTree::Branch(..)) }
     }
 
     bb3: {
