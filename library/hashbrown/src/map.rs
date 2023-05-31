@@ -345,8 +345,6 @@ impl<K, V, A: Allocator + Clone> HashMap<K, V, DefaultHashBuilder, A> {
     /// # Examples
     ///
     /// ```
-    /// # #[cfg(feature = "nightly")]
-    /// # fn test() {
     /// use hashbrown::HashMap;
     /// use bumpalo::Bump;
     ///
@@ -365,11 +363,6 @@ impl<K, V, A: Allocator + Clone> HashMap<K, V, DefaultHashBuilder, A> {
     /// assert_eq!(map.len(), 1);
     /// // And it also allocates some capacity
     /// assert!(map.capacity() > 1);
-    /// # }
-    /// # fn main() {
-    /// #     #[cfg(feature = "nightly")]
-    /// #     test()
-    /// # }
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn new_in(alloc: A) -> Self {
@@ -396,8 +389,6 @@ impl<K, V, A: Allocator + Clone> HashMap<K, V, DefaultHashBuilder, A> {
     /// # Examples
     ///
     /// ```
-    /// # #[cfg(feature = "nightly")]
-    /// # fn test() {
     /// use hashbrown::HashMap;
     /// use bumpalo::Bump;
     ///
@@ -421,11 +412,6 @@ impl<K, V, A: Allocator + Clone> HashMap<K, V, DefaultHashBuilder, A> {
     /// assert_eq!(map.len(), 5);
     /// // But its capacity isn't changed
     /// assert_eq!(map.capacity(), empty_map_capacity)
-    /// # }
-    /// # fn main() {
-    /// #     #[cfg(feature = "nightly")]
-    /// #     test()
-    /// # }
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
