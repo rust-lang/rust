@@ -356,7 +356,9 @@ fn set_seq_par_equivalence_into_iter_empty() {
     let vec_seq = SET_EMPTY.clone().into_iter().collect::<Vec<_>>();
     let vec_par = SET_EMPTY.clone().into_par_iter().collect::<Vec<_>>();
 
-    assert_eq3!(vec_seq, vec_par, []);
+    // Work around type inference failure introduced by rend dev-dependency.
+    let empty: [char; 0] = [];
+    assert_eq3!(vec_seq, vec_par, empty);
 }
 
 #[test]
