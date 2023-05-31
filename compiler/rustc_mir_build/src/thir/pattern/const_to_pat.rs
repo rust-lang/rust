@@ -369,13 +369,6 @@ impl<'tcx> ConstToPat<'tcx> {
                 suffix: Box::new([]),
             },
             ty::Ref(_, pointee_ty, ..) => match *pointee_ty.kind() {
-                // These are not allowed and will error elsewhere anyway.
-                ty::Dynamic(..) => {
-                    self.saw_const_match_error.set(true);
-                    let err = InvalidPattern { span, non_sm_ty: ty };
-                    tcx.sess.emit_err(err);
-                    PatKind::Wild
-                }
                 // `&str` is represented as a valtree, let's keep using this
                 // optimization for now.
                 ty::Str => PatKind::Constant { value: mir::ConstantKind::Ty(tcx.mk_const(cv, ty)) },
@@ -467,6 +460,7 @@ impl<'tcx> ConstToPat<'tcx> {
                         let err = UnsizedPattern { span, non_sm_ty: *pointee_ty };
                         tcx.sess.emit_err(err);
 
+                        // FIXME: introduce PatKind::Error to silence follow up diagnostics due to unreachable patterns.
                         PatKind::Wild
                     } else {
                         let old = self.behind_reference.replace(true);
