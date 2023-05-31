@@ -132,7 +132,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 | ty::ConstKind::Unevaluated(_)
                 | ty::ConstKind::Error(_)
                 | ty::ConstKind::Expr(_) => {
-                    span_bug!(self.span, "unevaluated const in `to_pat`: {:?}", c.kind())
+                    span_bug!(self.span, "unexpected const in `to_pat`: {:?}", c.kind())
                 }
                 ty::ConstKind::Value(valtree) => self
                     .recur(valtree, cv.ty(), mir_structural_match_violation.unwrap_or(false))
