@@ -16,5 +16,10 @@ fn bar() -> [(); 10] {
         *b
     }]
 }
-
-fn main() {}
+fn main() {
+    let my_usize = const {
+        let a = 10_usize;
+        let b: &'_ usize = &a;
+        *b
+    };
+}
