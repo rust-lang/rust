@@ -42,7 +42,6 @@ use crate::formats::item_type::ItemType;
 use crate::html::render::Context;
 use crate::passes::collect_intra_doc_links::UrlFragment;
 
-pub(crate) use self::FnRetTy::*;
 pub(crate) use self::ItemKind::*;
 pub(crate) use self::SelfTy::*;
 pub(crate) use self::Type::{
@@ -1353,7 +1352,7 @@ pub(crate) struct Function {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) struct FnDecl {
     pub(crate) inputs: Arguments,
-    pub(crate) output: FnRetTy,
+    pub(crate) output: Type,
     pub(crate) c_variadic: bool,
 }
 
@@ -1371,18 +1370,16 @@ impl FnDecl {
     ///
     /// This function will panic if the return type does not match the expected sugaring for async
     /// functions.
-    pub(crate) fn sugared_async_return_type(&self) -> FnRetTy {
-        match &self.output {
-            FnRetTy::Return(Type::ImplTrait(bounds)) => match &bounds[0] {
-                GenericBound::TraitBound(PolyTrait { trait_, .. }, ..) => {
-                    let bindings = trait_.bindings().unwrap();
-                    let ret_ty = bindings[0].term();
-                    let ty = ret_ty.ty().expect("Unexpected constant return term");
-                    FnRetTy::Return(ty.clone())
-                }
-                _ => panic!("unexpected desugaring of async function"),
-            },
-            _ => panic!("unexpected desugaring of async function"),
+    pub(crate) fn sugared_async_return_type(&self) -> Type {
+        if let Type::ImplTrait(v) = &self.output &&
+            let [GenericBound::TraitBound(PolyTrait { trait_, .. }, _ )] = &v[..]
+        {
+            let bindings = trait_.bindings().unwrap();
+            let ret_ty = bindings[0].term();
+            let ty = ret_ty.ty().expect("Unexpected constant return term");
+            ty.clone()
+        } else {
+            panic!("unexpected desugaring of async function")
         }
     }
 }
@@ -1421,21 +1418,6 @@ impl Argument {
                 Some(SelfBorrowed(lifetime.clone(), mutability))
             }
             _ => Some(SelfExplicit(self.type_.clone())),
-        }
-    }
-}
-
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub(crate) enum FnRetTy {
-    Return(Type),
-    DefaultReturn,
-}
-
-impl FnRetTy {
-    pub(crate) fn as_return(&self) -> Option<&Type> {
-        match self {
-            Return(ret) => Some(ret),
-            DefaultReturn => None,
         }
     }
 }
@@ -1639,6 +1621,10 @@ impl Type {
 
     pub(crate) fn is_impl_trait(&self) -> bool {
         matches!(self, Type::ImplTrait(_))
+    }
+
+    pub(crate) fn is_unit(&self) -> bool {
+        matches!(self, Type::Tuple(v) if v.is_empty())
     }
 
     pub(crate) fn projection(&self) -> Option<(&Type, DefId, PathSegment)> {
