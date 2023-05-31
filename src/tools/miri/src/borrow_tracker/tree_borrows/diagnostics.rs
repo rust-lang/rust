@@ -92,7 +92,7 @@ impl HistoryData {
         {
             // NOTE: `transition_range` is explicitly absent from the error message, it has no significance
             // to the user. The meaningful one is `access_range`.
-            self.events.push((Some(span.data()), format!("{this} then transitioned {transition} due to a {rel} {access_kind} at offsets {access_range:?}", rel = if is_foreign { "foreign" } else { "child" })));
+            self.events.push((Some(span.data()), format!("{this} later transitioned to {endpoint} due to a {rel} {access_kind} at offsets {access_range:?}", endpoint = transition.endpoint(), rel = if is_foreign { "foreign" } else { "child" })));
             self.events.push((None, format!("this corresponds to {}", transition.summary())));
         }
     }
@@ -212,12 +212,13 @@ impl History {
 
     /// Reconstruct the history relevant to `error_offset` by filtering
     /// only events whose range contains the offset we are interested in.
-    fn extract_relevant(&self, error_offset: u64) -> Self {
+    fn extract_relevant(&self, error_offset: u64, error_kind: TransitionError) -> Self {
         History {
             events: self
                 .events
                 .iter()
                 .filter(|e| e.transition_range.contains(&error_offset))
+                .filter(|e| e.transition.is_relevant(error_kind))
                 .cloned()
                 .collect::<Vec<_>>(),
             created: self.created,
@@ -303,7 +304,7 @@ impl TbError<'_> {
             history.extend(self.accessed_info.history.forget(), "accessed", false);
         }
         history.extend(
-            self.conflicting_info.history.extract_relevant(self.error_offset),
+            self.conflicting_info.history.extract_relevant(self.error_offset, self.error_kind),
             conflicting_tag_name,
             true,
         );
