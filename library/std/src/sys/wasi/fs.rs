@@ -104,7 +104,7 @@ impl FileAttr {
         Ok(SystemTime::from_wasi_timestamp(self.meta.ctim))
     }
 
-    pub fn as_wasi(&self) -> &wasi::Filestat {
+    pub(crate) fn as_wasi(&self) -> &wasi::Filestat {
         &self.meta
     }
 }
@@ -142,7 +142,7 @@ impl FileType {
         self.bits == wasi::FILETYPE_SYMBOLIC_LINK
     }
 
-    pub fn bits(&self) -> wasi::Filetype {
+    pub(crate) fn bits(&self) -> wasi::Filetype {
         self.bits
     }
 }
