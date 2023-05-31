@@ -267,6 +267,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let is_no_inline = use_attrs.lists(sym::doc).has_word(sym::no_inline)
             || use_attrs.lists(sym::doc).has_word(sym::hidden);
 
+        if is_no_inline {
+            return false;
+        }
+
         // For cross-crate impl inlining we need to know whether items are
         // reachable in documentation -- a previously unreachable item can be
         // made reachable by cross-crate inlining which we're checking here.
@@ -281,31 +285,38 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         };
 
         let is_private = !self.cx.cache.effective_visibilities.is_directly_public(tcx, ori_res_did);
-        let is_hidden = inherits_doc_hidden(tcx, res_did, None);
+        let is_hidden = tcx.is_doc_hidden(ori_res_did);
+        let item = tcx.hir().get_by_def_id(res_did);
 
-        // Only inline if requested or if the item would otherwise be stripped.
-        if (!please_inline && !is_private && !is_hidden) || is_no_inline {
-            return false;
-        }
-
-        if !please_inline &&
-            let Some(item_def_id) = reexport_chain(tcx, def_id, res_did).iter()
+        if !please_inline {
+            let inherits_hidden = inherits_doc_hidden(tcx, res_did, None);
+            // Only inline if requested or if the item would otherwise be stripped.
+            //
+            // If it's a doc hidden module, we need to keep it in case some of its inner items
+            // are re-exported.
+            if (!is_private && !inherits_hidden) || (
+                is_hidden &&
+                !matches!(item, Node::Item(&hir::Item { kind: hir::ItemKind::Mod(_), .. }))
+            ) {
+                return false;
+            } else if let Some(item_def_id) = reexport_chain(tcx, def_id, res_did).iter()
                 .flat_map(|reexport| reexport.id()).map(|id| id.expect_local())
                 .chain(iter::once(res_did)).nth(1) &&
-            item_def_id != def_id &&
-            self
-                .cx
-                .cache
-                .effective_visibilities
-                .is_directly_public(tcx, item_def_id.to_def_id()) &&
-            !inherits_doc_hidden(tcx, item_def_id, None)
-        {
-            // The imported item is public and not `doc(hidden)` so no need to inline it.
-            return false;
+                item_def_id != def_id &&
+                self
+                    .cx
+                    .cache
+                    .effective_visibilities
+                    .is_directly_public(tcx, item_def_id.to_def_id()) &&
+                !inherits_doc_hidden(tcx, item_def_id, None)
+            {
+                // The imported item is public and not `doc(hidden)` so no need to inline it.
+                return false;
+            }
         }
 
         let is_bang_macro = matches!(
-            tcx.hir().get_by_def_id(res_did),
+            item,
             Node::Item(&hir::Item { kind: hir::ItemKind::Macro(_, MacroKind::Bang), .. })
         );
 
@@ -317,12 +328,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             // Bang macros are handled a bit on their because of how they are handled by the
             // compiler. If they have `#[doc(hidden)]` and the re-export doesn't have
             // `#[doc(inline)]`, then we don't inline it.
-            Node::Item(_)
-                if is_bang_macro
-                    && !please_inline
-                    && renamed.is_some()
-                    && self.cx.tcx.is_doc_hidden(ori_res_did) =>
-            {
+            Node::Item(_) if is_bang_macro && !please_inline && renamed.is_some() && is_hidden => {
                 return false;
             }
             Node::Item(&hir::Item { kind: hir::ItemKind::Mod(ref m), .. }) if glob => {
@@ -455,6 +461,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                             is_glob,
                             please_inline,
                         ) {
+                            debug!("Inlining {:?}", item.owner_id.def_id);
                             continue;
                         }
                     }

@@ -184,7 +184,7 @@ impl<'tcx> RegionHighlightMode<'tcx> {
 
     /// Convenience wrapper for `highlighting_region`.
     pub fn highlighting_region_vid(&mut self, vid: ty::RegionVid, number: usize) {
-        self.highlighting_region(self.tcx.mk_re_var(vid), number)
+        self.highlighting_region(ty::Region::new_var(self.tcx, vid), number)
     }
 
     /// Returns `Some(n)` with the number to use for the given region, if any.
@@ -685,29 +685,30 @@ pub trait PrettyPrinter<'tcx>:
             }
             ty::FnPtr(ref bare_fn) => p!(print(bare_fn)),
             ty::Infer(infer_ty) => {
-                let verbose = self.should_print_verbose();
+                if self.should_print_verbose() {
+                    p!(write("{:?}", ty.kind()));
+                    return Ok(self);
+                }
+
                 if let ty::TyVar(ty_vid) = infer_ty {
                     if let Some(name) = self.ty_infer_name(ty_vid) {
                         p!(write("{}", name))
                     } else {
-                        if verbose {
-                            p!(write("{:?}", infer_ty))
-                        } else {
-                            p!(write("{}", infer_ty))
-                        }
+                        p!(write("{}", infer_ty))
                     }
                 } else {
-                    if verbose { p!(write("{:?}", infer_ty)) } else { p!(write("{}", infer_ty)) }
+                    p!(write("{}", infer_ty))
                 }
             }
             ty::Error(_) => p!("{{type error}}"),
             ty::Param(ref param_ty) => p!(print(param_ty)),
             ty::Bound(debruijn, bound_ty) => match bound_ty.kind {
-                ty::BoundTyKind::Anon => debug_bound_var(&mut self, debruijn, bound_ty.var)?,
+                ty::BoundTyKind::Anon => {
+                    rustc_type_ir::debug_bound_var(&mut self, debruijn, bound_ty.var)?
+                }
                 ty::BoundTyKind::Param(_, s) => match self.should_print_verbose() {
-                    true if debruijn == ty::INNERMOST => p!(write("^{}", s)),
-                    true => p!(write("^{}_{}", debruijn.index(), s)),
-                    false => p!(write("{}", s)),
+                    true => p!(write("{:?}", ty.kind())),
+                    false => p!(write("{s}")),
                 },
             },
             ty::Adt(def, substs) => {
@@ -740,10 +741,11 @@ pub trait PrettyPrinter<'tcx>:
                 }
             }
             ty::Placeholder(placeholder) => match placeholder.bound.kind {
-                ty::BoundTyKind::Anon => {
-                    debug_placeholder_var(&mut self, placeholder.universe, placeholder.bound.var)?;
-                }
-                ty::BoundTyKind::Param(_, name) => p!(write("{}", name)),
+                ty::BoundTyKind::Anon => p!(write("{placeholder:?}")),
+                ty::BoundTyKind::Param(_, name) => match self.should_print_verbose() {
+                    true => p!(write("{:?}", ty.kind())),
+                    false => p!(write("{name}")),
+                },
             },
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
                 // We use verbose printing in 'NO_QUERIES' mode, to
@@ -1372,11 +1374,9 @@ pub trait PrettyPrinter<'tcx>:
             }
 
             ty::ConstKind::Bound(debruijn, bound_var) => {
-                debug_bound_var(&mut self, debruijn, bound_var)?
+                rustc_type_ir::debug_bound_var(&mut self, debruijn, bound_var)?
             }
-            ty::ConstKind::Placeholder(placeholder) => {
-                debug_placeholder_var(&mut self, placeholder.universe, placeholder.bound)?;
-            },
+            ty::ConstKind::Placeholder(placeholder) => p!(write("{placeholder:?}")),
             // FIXME(generic_const_exprs):
             // write out some legible representation of an abstract const?
             ty::ConstKind::Expr(_) => p!("{{const expr}}"),
@@ -2303,7 +2303,7 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
         };
         if let ty::ReLateBound(debruijn1, br) = *region {
             assert_eq!(debruijn1, ty::INNERMOST);
-            self.tcx.mk_re_late_bound(self.current_index, br)
+            ty::Region::new_late_bound(self.tcx, self.current_index, br)
         } else {
             region
         }
@@ -2415,7 +2415,8 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                         if let Some(lt_idx) = lifetime_idx {
                             if lt_idx > binder_level_idx {
                                 let kind = ty::BrNamed(CRATE_DEF_ID.to_def_id(), name);
-                                return tcx.mk_re_late_bound(
+                                return ty::Region::new_late_bound(
+                                    tcx,
                                     ty::INNERMOST,
                                     ty::BoundRegion { var: br.var, kind },
                                 );
@@ -2430,7 +2431,8 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                         if let Some(lt_idx) = lifetime_idx {
                             if lt_idx > binder_level_idx {
                                 let kind = ty::BrNamed(def_id, name);
-                                return tcx.mk_re_late_bound(
+                                return ty::Region::new_late_bound(
+                                    tcx,
                                     ty::INNERMOST,
                                     ty::BoundRegion { var: br.var, kind },
                                 );
@@ -2443,7 +2445,8 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                         if let Some(lt_idx) = lifetime_idx {
                             if lt_idx > binder_level_idx {
                                 let kind = br.kind;
-                                return tcx.mk_re_late_bound(
+                                return ty::Region::new_late_bound(
+                                    tcx,
                                     ty::INNERMOST,
                                     ty::BoundRegion { var: br.var, kind },
                                 );
@@ -2458,7 +2461,11 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                     start_or_continue(&mut self, "for<", ", ");
                     do_continue(&mut self, name);
                 }
-                tcx.mk_re_late_bound(ty::INNERMOST, ty::BoundRegion { var: br.var, kind })
+                ty::Region::new_late_bound(
+                    tcx,
+                    ty::INNERMOST,
+                    ty::BoundRegion { var: br.var, kind },
+                )
             };
             let mut folder = RegionFolder {
                 tcx,
@@ -3064,28 +3071,4 @@ pub struct OpaqueFnEntry<'tcx> {
     fn_mut_trait_ref: Option<ty::PolyTraitRef<'tcx>>,
     fn_trait_ref: Option<ty::PolyTraitRef<'tcx>>,
     return_ty: Option<ty::Binder<'tcx, Term<'tcx>>>,
-}
-
-pub fn debug_bound_var<T: std::fmt::Write>(
-    fmt: &mut T,
-    debruijn: ty::DebruijnIndex,
-    var: ty::BoundVar,
-) -> Result<(), std::fmt::Error> {
-    if debruijn == ty::INNERMOST {
-        write!(fmt, "^{}", var.index())
-    } else {
-        write!(fmt, "^{}_{}", debruijn.index(), var.index())
-    }
-}
-
-pub fn debug_placeholder_var<T: std::fmt::Write>(
-    fmt: &mut T,
-    universe: ty::UniverseIndex,
-    bound: ty::BoundVar,
-) -> Result<(), std::fmt::Error> {
-    if universe == ty::UniverseIndex::ROOT {
-        write!(fmt, "!{}", bound.index())
-    } else {
-        write!(fmt, "!{}_{}", universe.index(), bound.index())
-    }
 }

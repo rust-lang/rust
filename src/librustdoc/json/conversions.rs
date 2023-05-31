@@ -624,10 +624,7 @@ impl FromWithTcx<clean::FnDecl> for FnDecl {
                 .into_iter()
                 .map(|arg| (arg.name.to_string(), arg.type_.into_tcx(tcx)))
                 .collect(),
-            output: match output {
-                clean::FnRetTy::Return(t) => Some(t.into_tcx(tcx)),
-                clean::FnRetTy::DefaultReturn => None,
-            },
+            output: if output.is_unit() { None } else { Some(output.into_tcx(tcx)) },
             c_variadic,
         }
     }

@@ -400,7 +400,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         data
     }
 
-    pub(super) fn data(&self) -> &RegionConstraintData<'tcx> {
+    pub fn data(&self) -> &RegionConstraintData<'tcx> {
         &self.data
     }
 
@@ -610,13 +610,13 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         let resolved = ut
             .probe_value(root_vid)
             .get_value_ignoring_universes()
-            .unwrap_or_else(|| tcx.mk_re_var(root_vid));
+            .unwrap_or_else(|| ty::Region::new_var(tcx, root_vid));
 
         // Don't resolve a variable to a region that it cannot name.
         if self.var_universe(vid).can_name(self.universe(resolved)) {
             resolved
         } else {
-            tcx.mk_re_var(vid)
+            ty::Region::new_var(tcx, vid)
         }
     }
 
@@ -637,7 +637,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     ) -> Region<'tcx> {
         let vars = TwoRegions { a, b };
         if let Some(&c) = self.combine_map(t).get(&vars) {
-            return tcx.mk_re_var(c);
+            return ty::Region::new_var(tcx, c);
         }
         let a_universe = self.universe(a);
         let b_universe = self.universe(b);
@@ -645,7 +645,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         let c = self.new_region_var(c_universe, MiscVariable(origin.span()));
         self.combine_map(t).insert(vars, c);
         self.undo_log.push(AddCombination(t, vars));
-        let new_r = tcx.mk_re_var(c);
+        let new_r = ty::Region::new_var(tcx, c);
         for old_r in [a, b] {
             match t {
                 Glb => self.make_subregion(origin.clone(), new_r, old_r),
@@ -683,15 +683,10 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     }
 
     /// See `InferCtxt::region_constraints_added_in_snapshot`.
-    pub fn region_constraints_added_in_snapshot(&self, mark: &Snapshot<'tcx>) -> Option<bool> {
+    pub fn region_constraints_added_in_snapshot(&self, mark: &Snapshot<'tcx>) -> bool {
         self.undo_log
             .region_constraints_in_snapshot(mark)
-            .map(|&elt| match elt {
-                AddConstraint(constraint) => Some(constraint.involves_placeholders()),
-                _ => None,
-            })
-            .max()
-            .unwrap_or(None)
+            .any(|&elt| matches!(elt, AddConstraint(_)))
     }
 
     #[inline]

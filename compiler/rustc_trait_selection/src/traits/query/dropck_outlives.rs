@@ -307,13 +307,13 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
             // there, but that needs some way to handle cycles.
             constraints
                 .dtorck_types
-                .extend(dtorck_types.iter().map(|t| EarlyBinder::new(*t).subst(tcx, substs)));
+                .extend(dtorck_types.iter().map(|t| EarlyBinder::bind(*t).subst(tcx, substs)));
             constraints
                 .outlives
-                .extend(outlives.iter().map(|t| EarlyBinder::new(*t).subst(tcx, substs)));
+                .extend(outlives.iter().map(|t| EarlyBinder::bind(*t).subst(tcx, substs)));
             constraints
                 .overflows
-                .extend(overflows.iter().map(|t| EarlyBinder::new(*t).subst(tcx, substs)));
+                .extend(overflows.iter().map(|t| EarlyBinder::bind(*t).subst(tcx, substs)));
         }
 
         // Objects must be alive in order for their destructor

@@ -413,7 +413,7 @@ impl<'tcx> ClosureOutlivesSubjectTy<'tcx> {
             ty::ReVar(vid) => {
                 let br =
                     ty::BoundRegion { var: ty::BoundVar::new(vid.index()), kind: ty::BrAnon(None) };
-                tcx.mk_re_late_bound(depth, br)
+                ty::Region::new_late_bound(tcx, depth, br)
             }
             _ => bug!("unexpected region in ClosureOutlivesSubjectTy: {r:?}"),
         });

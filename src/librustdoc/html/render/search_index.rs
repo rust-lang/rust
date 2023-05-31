@@ -7,7 +7,7 @@ use rustc_span::symbol::Symbol;
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 
 use crate::clean;
-use crate::clean::types::{FnRetTy, Function, Generics, ItemId, Type, WherePredicate};
+use crate::clean::types::{Function, Generics, ItemId, Type, WherePredicate};
 use crate::formats::cache::{Cache, OrphanImplItem};
 use crate::formats::item_type::ItemType;
 use crate::html::format::join_with_double_colon;
@@ -656,22 +656,9 @@ fn get_fn_inputs_and_outputs<'tcx>(
     }
 
     let mut ret_types = Vec::new();
-    match decl.output {
-        FnRetTy::Return(ref return_type) => {
-            add_generics_and_bounds_as_types(
-                self_,
-                generics,
-                return_type,
-                tcx,
-                0,
-                &mut ret_types,
-                cache,
-            );
-            if ret_types.is_empty() {
-                ret_types.push(get_index_type(return_type, vec![]));
-            }
-        }
-        _ => {}
-    };
+    add_generics_and_bounds_as_types(self_, generics, &decl.output, tcx, 0, &mut ret_types, cache);
+    if ret_types.is_empty() {
+        ret_types.push(get_index_type(&decl.output, vec![]));
+    }
     (all_types, ret_types)
 }

@@ -412,9 +412,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         BorrowKind::Shallow => {
                             PlaceContext::NonMutatingUse(NonMutatingUseContext::ShallowBorrow)
                         }
-                        BorrowKind::Unique => {
-                            PlaceContext::NonMutatingUse(NonMutatingUseContext::UniqueBorrow)
-                        }
+                        BorrowKind::Unique => PlaceContext::MutatingUse(MutatingUseContext::Borrow),
                         BorrowKind::Mut { .. } => {
                             PlaceContext::MutatingUse(MutatingUseContext::Borrow)
                         }

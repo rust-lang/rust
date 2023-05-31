@@ -291,10 +291,12 @@ impl<'tcx> CodegenUnit<'tcx> {
         self.primary = true;
     }
 
+    /// The order of these items is non-determinstic.
     pub fn items(&self) -> &FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)> {
         &self.items
     }
 
+    /// The order of these items is non-determinstic.
     pub fn items_mut(&mut self) -> &mut FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)> {
         &mut self.items
     }

@@ -1,0 +1,110 @@
+warning: calls to `std::str::from_utf8_unchecked_mut` with a invalid literal are undefined behavior
+  --> $DIR/invalid_from_utf8.rs:19:9
+   |
+LL |         std::str::from_utf8_unchecked_mut(&mut [99, 108, 130, 105, 112, 112, 121]);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------------------------------------^
+   |                                           |
+   |                                           the literal was valid UTF-8 up to the 2 bytes
+   |
+note: the lint level is defined here
+  --> $DIR/invalid_from_utf8.rs:4:9
+   |
+LL | #![warn(invalid_from_utf8_unchecked)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: calls to `std::str::from_utf8_unchecked_mut` with a invalid literal are undefined behavior
+  --> $DIR/invalid_from_utf8.rs:21:9
+   |
+LL |         std::str::from_utf8_unchecked_mut(&mut [b'c', b'l', b'\x82', b'i', b'p', b'p', b'y']);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^--------------------------------------------------^
+   |                                           |
+   |                                           the literal was valid UTF-8 up to the 2 bytes
+
+warning: calls to `std::str::from_utf8_unchecked` with a invalid literal are undefined behavior
+  --> $DIR/invalid_from_utf8.rs:39:9
+   |
+LL |         std::str::from_utf8_unchecked(&[99, 108, 130, 105, 112, 112, 121]);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------------------------------^
+   |                                       |
+   |                                       the literal was valid UTF-8 up to the 2 bytes
+
+warning: calls to `std::str::from_utf8_unchecked` with a invalid literal are undefined behavior
+  --> $DIR/invalid_from_utf8.rs:41:9
+   |
+LL |         std::str::from_utf8_unchecked(&[b'c', b'l', b'\x82', b'i', b'p', b'p', b'y']);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^----------------------------------------------^
+   |                                       |
+   |                                       the literal was valid UTF-8 up to the 2 bytes
+
+warning: calls to `std::str::from_utf8_unchecked` with a invalid literal are undefined behavior
+  --> $DIR/invalid_from_utf8.rs:43:9
+   |
+LL |         std::str::from_utf8_unchecked(b"cl\x82ippy");
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------------^
+   |                                       |
+   |                                       the literal was valid UTF-8 up to the 2 bytes
+
+warning: calls to `std::str::from_utf8_unchecked` with a invalid literal are undefined behavior
+  --> $DIR/invalid_from_utf8.rs:45:9
+   |
+LL |         std::str::from_utf8_unchecked(concat_bytes!(b"cl", b"\x82ippy"));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------------------------------^
+   |                                       |
+   |                                       the literal was valid UTF-8 up to the 2 bytes
+
+warning: calls to `std::str::from_utf8_mut` with a invalid literal always return an error
+  --> $DIR/invalid_from_utf8.rs:62:9
+   |
+LL |         std::str::from_utf8_mut(&mut [99, 108, 130, 105, 112, 112, 121]);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^---------------------------------------^
+   |                                 |
+   |                                 the literal was valid UTF-8 up to the 2 bytes
+   |
+note: the lint level is defined here
+  --> $DIR/invalid_from_utf8.rs:5:9
+   |
+LL | #![warn(invalid_from_utf8)]
+   |         ^^^^^^^^^^^^^^^^^
+
+warning: calls to `std::str::from_utf8_mut` with a invalid literal always return an error
+  --> $DIR/invalid_from_utf8.rs:64:9
+   |
+LL |         std::str::from_utf8_mut(&mut [b'c', b'l', b'\x82', b'i', b'p', b'p', b'y']);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^--------------------------------------------------^
+   |                                 |
+   |                                 the literal was valid UTF-8 up to the 2 bytes
+
+warning: calls to `std::str::from_utf8` with a invalid literal always return an error
+  --> $DIR/invalid_from_utf8.rs:82:9
+   |
+LL |         std::str::from_utf8(&[99, 108, 130, 105, 112, 112, 121]);
+   |         ^^^^^^^^^^^^^^^^^^^^-----------------------------------^
+   |                             |
+   |                             the literal was valid UTF-8 up to the 2 bytes
+
+warning: calls to `std::str::from_utf8` with a invalid literal always return an error
+  --> $DIR/invalid_from_utf8.rs:84:9
+   |
+LL |         std::str::from_utf8(&[b'c', b'l', b'\x82', b'i', b'p', b'p', b'y']);
+   |         ^^^^^^^^^^^^^^^^^^^^----------------------------------------------^
+   |                             |
+   |                             the literal was valid UTF-8 up to the 2 bytes
+
+warning: calls to `std::str::from_utf8` with a invalid literal always return an error
+  --> $DIR/invalid_from_utf8.rs:86:9
+   |
+LL |         std::str::from_utf8(b"cl\x82ippy");
+   |         ^^^^^^^^^^^^^^^^^^^^-------------^
+   |                             |
+   |                             the literal was valid UTF-8 up to the 2 bytes
+
+warning: calls to `std::str::from_utf8` with a invalid literal always return an error
+  --> $DIR/invalid_from_utf8.rs:88:9
+   |
+LL |         std::str::from_utf8(concat_bytes!(b"cl", b"\x82ippy"));
+   |         ^^^^^^^^^^^^^^^^^^^^---------------------------------^
+   |                             |
+   |                             the literal was valid UTF-8 up to the 2 bytes
+
+warning: 12 warnings emitted
+

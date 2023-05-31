@@ -40,7 +40,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                 let infcx = cx.tcx.infer_ctxt().build();
                 let substs = infcx.fresh_substs_for_item(DUMMY_SP, item_def_id);
                 let impl_ty = ty.subst(infcx.tcx, substs);
-                let param_env = EarlyBinder::new(param_env).subst(infcx.tcx, substs);
+                let param_env = EarlyBinder::bind(param_env).subst(infcx.tcx, substs);
 
                 let impl_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl_def_id);
                 let impl_trait_ref = trait_ref.subst(infcx.tcx, impl_substs);

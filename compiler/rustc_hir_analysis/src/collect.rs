@@ -440,7 +440,7 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
                                     self.tcx.replace_late_bound_regions_uncached(
                                         poly_trait_ref,
                                         |_| {
-                                            self.tcx.mk_re_early_bound(ty::EarlyBoundRegion {
+                                            ty::Region::new_early_bound(self.tcx, ty::EarlyBoundRegion {
                                                 def_id: item_def_id,
                                                 index: 0,
                                                 name: Symbol::intern(&lt_name),
@@ -1124,7 +1124,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<ty::PolyFnSig<
             bug!("unexpected sort of node in fn_sig(): {:?}", x);
         }
     };
-    ty::EarlyBinder::new(output)
+    ty::EarlyBinder::bind(output)
 }
 
 fn infer_return_ty_for_fn_sig<'tcx>(
@@ -1312,7 +1312,7 @@ fn impl_trait_ref(
                 check_impl_constness(tcx, impl_.constness, ast_trait_ref),
             )
         })
-        .map(ty::EarlyBinder::new)
+        .map(ty::EarlyBinder::bind)
 }
 
 fn check_impl_constness(

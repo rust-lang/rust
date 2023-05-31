@@ -5,7 +5,7 @@
 //! [trait-specialization]: https://rustc-dev-guide.rust-lang.org/traits/specialization.html
 
 use crate::infer::outlives::env::OutlivesEnvironment;
-use crate::infer::{CombinedSnapshot, InferOk};
+use crate::infer::InferOk;
 use crate::traits::outlives_bounds::InferCtxtExt as _;
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::util::impl_subject_and_oblig;
@@ -62,6 +62,21 @@ pub fn add_placeholder_note(err: &mut Diagnostic) {
     );
 }
 
+#[derive(Debug, Clone, Copy)]
+enum TrackAmbiguityCauses {
+    Yes,
+    No,
+}
+
+impl TrackAmbiguityCauses {
+    fn is_yes(self) -> bool {
+        match self {
+            TrackAmbiguityCauses::Yes => true,
+            TrackAmbiguityCauses::No => false,
+        }
+    }
+}
+
 /// If there are types that satisfy both impls, returns `Some`
 /// with a suitably-freshened `ImplHeader` with those types
 /// substituted. Otherwise, returns `None`.
@@ -97,29 +112,28 @@ pub fn overlapping_impls(
         return None;
     }
 
-    let infcx = tcx
-        .infer_ctxt()
-        .with_opaque_type_inference(DefiningAnchor::Bubble)
-        .intercrate(true)
-        .build();
-    let selcx = &mut SelectionContext::new(&infcx);
-    let overlaps =
-        overlap(selcx, skip_leak_check, impl1_def_id, impl2_def_id, overlap_mode).is_some();
-    if !overlaps {
-        return None;
-    }
+    let _overlap_with_bad_diagnostics = overlap(
+        tcx,
+        TrackAmbiguityCauses::No,
+        skip_leak_check,
+        impl1_def_id,
+        impl2_def_id,
+        overlap_mode,
+    )?;
 
     // In the case where we detect an error, run the check again, but
     // this time tracking intercrate ambiguity causes for better
     // diagnostics. (These take time and can lead to false errors.)
-    let infcx = tcx
-        .infer_ctxt()
-        .with_opaque_type_inference(DefiningAnchor::Bubble)
-        .intercrate(true)
-        .build();
-    let selcx = &mut SelectionContext::new(&infcx);
-    selcx.enable_tracking_intercrate_ambiguity_causes();
-    Some(overlap(selcx, skip_leak_check, impl1_def_id, impl2_def_id, overlap_mode).unwrap())
+    let overlap = overlap(
+        tcx,
+        TrackAmbiguityCauses::Yes,
+        skip_leak_check,
+        impl1_def_id,
+        impl2_def_id,
+        overlap_mode,
+    )
+    .unwrap();
+    Some(overlap)
 }
 
 fn with_fresh_ty_vars<'cx, 'tcx>(
@@ -146,38 +160,32 @@ fn with_fresh_ty_vars<'cx, 'tcx>(
 
 /// Can both impl `a` and impl `b` be satisfied by a common type (including
 /// where-clauses)? If so, returns an `ImplHeader` that unifies the two impls.
-fn overlap<'cx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'tcx>,
+#[instrument(level = "debug", skip(tcx))]
+fn overlap<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    track_ambiguity_causes: TrackAmbiguityCauses,
     skip_leak_check: SkipLeakCheck,
     impl1_def_id: DefId,
     impl2_def_id: DefId,
     overlap_mode: OverlapMode,
 ) -> Option<OverlapResult<'tcx>> {
-    debug!(
-        "overlap(impl1_def_id={:?}, impl2_def_id={:?}, overlap_mode={:?})",
-        impl1_def_id, impl2_def_id, overlap_mode
-    );
-
-    selcx.infcx.probe_maybe_skip_leak_check(skip_leak_check.is_yes(), |snapshot| {
-        overlap_within_probe(selcx, impl1_def_id, impl2_def_id, overlap_mode, snapshot)
-    })
-}
-
-fn overlap_within_probe<'cx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'tcx>,
-    impl1_def_id: DefId,
-    impl2_def_id: DefId,
-    overlap_mode: OverlapMode,
-    snapshot: &CombinedSnapshot<'tcx>,
-) -> Option<OverlapResult<'tcx>> {
-    let infcx = selcx.infcx;
-
     if overlap_mode.use_negative_impl() {
-        if negative_impl(infcx.tcx, impl1_def_id, impl2_def_id)
-            || negative_impl(infcx.tcx, impl2_def_id, impl1_def_id)
+        if negative_impl(tcx, impl1_def_id, impl2_def_id)
+            || negative_impl(tcx, impl2_def_id, impl1_def_id)
         {
             return None;
         }
+    }
+
+    let infcx = tcx
+        .infer_ctxt()
+        .with_opaque_type_inference(DefiningAnchor::Bubble)
+        .skip_leak_check(skip_leak_check.is_yes())
+        .intercrate(true)
+        .build();
+    let selcx = &mut SelectionContext::new(&infcx);
+    if track_ambiguity_causes.is_yes() {
+        selcx.enable_tracking_intercrate_ambiguity_causes();
     }
 
     // For the purposes of this check, we don't bring any placeholder
@@ -198,18 +206,23 @@ fn overlap_within_probe<'cx, 'tcx>(
         }
     }
 
-    // We disable the leak when creating the `snapshot` by using
-    // `infcx.probe_maybe_disable_leak_check`.
-    if infcx.leak_check(true, snapshot).is_err() {
+    // We toggle the `leak_check` by using `skip_leak_check` when constructing the
+    // inference context, so this may be a noop.
+    if infcx.leak_check(ty::UniverseIndex::ROOT, None).is_err() {
         debug!("overlap: leak check failed");
         return None;
     }
 
     let intercrate_ambiguity_causes = selcx.take_intercrate_ambiguity_causes();
     debug!("overlap: intercrate_ambiguity_causes={:#?}", intercrate_ambiguity_causes);
-
-    let involves_placeholder =
-        matches!(selcx.infcx.region_constraints_added_in_snapshot(snapshot), Some(true));
+    let involves_placeholder = infcx
+        .inner
+        .borrow_mut()
+        .unwrap_region_constraints()
+        .data()
+        .constraints
+        .iter()
+        .any(|c| c.0.involves_placeholders());
 
     let impl_header = selcx.infcx.resolve_vars_if_possible(impl1_header);
     Some(OverlapResult { impl_header, intercrate_ambiguity_causes, involves_placeholder })

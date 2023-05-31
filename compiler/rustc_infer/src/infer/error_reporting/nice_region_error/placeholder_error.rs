@@ -79,7 +79,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 sup_placeholder @ Region(Interned(RePlaceholder(_), _)),
                 _,
             )) => self.try_report_trait_placeholder_mismatch(
-                Some(self.tcx().mk_re_var(*vid)),
+                Some(ty::Region::new_var(self.tcx(), *vid)),
                 cause,
                 Some(*sub_placeholder),
                 Some(*sup_placeholder),
@@ -95,7 +95,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 _,
                 _,
             )) => self.try_report_trait_placeholder_mismatch(
-                Some(self.tcx().mk_re_var(*vid)),
+                Some(ty::Region::new_var(self.tcx(), *vid)),
                 cause,
                 Some(*sub_placeholder),
                 None,
@@ -111,7 +111,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 sup_placeholder @ Region(Interned(RePlaceholder(_), _)),
                 _,
             )) => self.try_report_trait_placeholder_mismatch(
-                Some(self.tcx().mk_re_var(*vid)),
+                Some(ty::Region::new_var(self.tcx(), *vid)),
                 cause,
                 None,
                 Some(*sup_placeholder),
@@ -127,7 +127,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 sup_placeholder @ Region(Interned(RePlaceholder(_), _)),
                 _,
             )) => self.try_report_trait_placeholder_mismatch(
-                Some(self.tcx().mk_re_var(*vid)),
+                Some(ty::Region::new_var(self.tcx(), *vid)),
                 cause,
                 None,
                 Some(*sup_placeholder),
@@ -141,7 +141,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 SubregionOrigin::Subtype(box TypeTrace { cause, values }),
                 sup_placeholder @ Region(Interned(RePlaceholder(_), _)),
             )) => self.try_report_trait_placeholder_mismatch(
-                Some(self.tcx().mk_re_var(*vid)),
+                Some(ty::Region::new_var(self.tcx(), *vid)),
                 cause,
                 None,
                 Some(*sup_placeholder),

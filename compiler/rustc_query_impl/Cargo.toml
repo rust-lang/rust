@@ -7,7 +7,7 @@ edition = "2021"
 
 
 [dependencies]
-memoffset = { version = "0.6.0", features = ["unstable_const"] }
+memoffset = { version = "0.8.0", features = ["unstable_const"] }
 field-offset = "0.3.5"
 measureme = "10.0.0"
 rustc_ast = { path = "../rustc_ast" }

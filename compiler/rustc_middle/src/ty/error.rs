@@ -45,7 +45,6 @@ pub enum TypeError<'tcx> {
 
     RegionsDoesNotOutlive(Region<'tcx>, Region<'tcx>),
     RegionsInsufficientlyPolymorphic(BoundRegionKind, Region<'tcx>),
-    RegionsOverlyPolymorphic(BoundRegionKind, Region<'tcx>),
     RegionsPlaceholderMismatch,
 
     Sorts(ExpectedFound<Ty<'tcx>>),
@@ -74,7 +73,6 @@ impl TypeError<'_> {
         match self {
             TypeError::RegionsDoesNotOutlive(_, _)
             | TypeError::RegionsInsufficientlyPolymorphic(_, _)
-            | TypeError::RegionsOverlyPolymorphic(_, _)
             | TypeError::RegionsPlaceholderMismatch => true,
             _ => false,
         }
@@ -97,11 +95,6 @@ impl<'tcx> TypeError<'tcx> {
                 format!("expected {}, found {}", expected, found)
             }
         }
-
-        let br_string = |br: ty::BoundRegionKind| match br {
-            ty::BrNamed(_, name) => format!(" {}", name),
-            _ => String::new(),
-        };
 
         match self {
             CyclicTy(_) => "cyclic type of infinite size".into(),
@@ -144,11 +137,6 @@ impl<'tcx> TypeError<'tcx> {
             RegionsInsufficientlyPolymorphic(..) => {
                 "one type is more general than the other".into()
             }
-            RegionsOverlyPolymorphic(br, _) => format!(
-                "expected concrete lifetime, found bound lifetime parameter{}",
-                br_string(br)
-            )
-            .into(),
             RegionsPlaceholderMismatch => "one type is more general than the other".into(),
             ArgumentSorts(values, _) | Sorts(values) => {
                 let expected = values.expected.sort_string(tcx);
@@ -228,7 +216,6 @@ impl<'tcx> TypeError<'tcx> {
             | FieldMisMatch(..)
             | RegionsDoesNotOutlive(..)
             | RegionsInsufficientlyPolymorphic(..)
-            | RegionsOverlyPolymorphic(..)
             | RegionsPlaceholderMismatch
             | Traits(_)
             | ProjectionMismatched(_)
