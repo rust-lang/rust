@@ -73,7 +73,10 @@ impl<'tcx> fmt::Display for BorrowData<'tcx> {
             mir::BorrowKind::Shared => "",
             mir::BorrowKind::Shallow => "shallow ",
             mir::BorrowKind::Mut { kind: mir::MutBorrowKind::ClosureCapture } => "uniq ",
-            mir::BorrowKind::Mut { .. } => "mut ",
+            // FIXME: differentiate `TwoPhaseBorrow`
+            mir::BorrowKind::Mut {
+                kind: mir::MutBorrowKind::Default | mir::MutBorrowKind::TwoPhaseBorrow,
+            } => "mut ",
         };
         write!(w, "&{:?} {}{:?}", self.region, kind, self.borrowed_place)
     }

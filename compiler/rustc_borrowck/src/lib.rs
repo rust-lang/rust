@@ -1958,14 +1958,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let the_place_err;
 
         match kind {
-            Reservation(WriteKind::MutableBorrow(borrow_kind @ BorrowKind::Mut { .. }))
-            | Write(WriteKind::MutableBorrow(borrow_kind @ BorrowKind::Mut { .. })) => {
-                let is_local_mutation_allowed = match borrow_kind {
-                    BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture } => {
-                        LocalMutationIsAllowed::Yes
+            Reservation(WriteKind::MutableBorrow(BorrowKind::Mut { kind: mut_borrow_kind }))
+            | Write(WriteKind::MutableBorrow(BorrowKind::Mut { kind: mut_borrow_kind })) => {
+                let is_local_mutation_allowed = match mut_borrow_kind {
+                    // `ClosureCapture` is used for mutable variable with a immutable binding.
+                    // This is only behaviour difference between `ClosureCapture` and mutable borrows.
+                    MutBorrowKind::ClosureCapture => LocalMutationIsAllowed::Yes,
+                    MutBorrowKind::Default | MutBorrowKind::TwoPhaseBorrow => {
+                        is_local_mutation_allowed
                     }
-                    BorrowKind::Mut { .. } => is_local_mutation_allowed,
-                    BorrowKind::Shared | BorrowKind::Shallow => unreachable!(),
                 };
                 match self.is_mutable(place.as_ref(), is_local_mutation_allowed) {
                     Ok(root_place) => {

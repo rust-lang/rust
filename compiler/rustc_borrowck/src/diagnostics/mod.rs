@@ -628,10 +628,9 @@ impl UseSpans<'_> {
                 err.subdiagnostic(match kind {
                     Some(kd) => match kd {
                         rustc_middle::mir::BorrowKind::Shared
-                        | rustc_middle::mir::BorrowKind::Shallow
-                        | rustc_middle::mir::BorrowKind::Mut {
-                            kind: rustc_middle::mir::MutBorrowKind::ClosureCapture,
-                        } => CaptureVarKind::Immut { kind_span: capture_kind_span },
+                        | rustc_middle::mir::BorrowKind::Shallow => {
+                            CaptureVarKind::Immut { kind_span: capture_kind_span }
+                        }
 
                         rustc_middle::mir::BorrowKind::Mut { .. } => {
                             CaptureVarKind::Mut { kind_span: capture_kind_span }

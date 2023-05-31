@@ -465,7 +465,9 @@ impl<'tcx> Validator<'_, 'tcx> {
                 }
             }
 
-            BorrowKind::Mut { .. } => {
+            // FIXME: consider changing this to only promote &mut [] for default borrows,
+            // also forbidding two phase borrows
+            BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::TwoPhaseBorrow } => {
                 let ty = place.ty(self.body, self.tcx).ty;
 
                 // In theory, any zero-sized value could be borrowed

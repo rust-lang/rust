@@ -2042,18 +2042,12 @@ impl BorrowKind {
 
     pub fn allows_two_phase_borrow(&self) -> bool {
         match *self {
-            BorrowKind::Shared | BorrowKind::Shallow => false,
-            BorrowKind::Mut { kind } => kind == MutBorrowKind::TwoPhaseBorrow,
-        }
-    }
-
-    // FIXME: won't be used after diagnostic migration
-    pub fn describe_mutability(&self) -> &str {
-        match *self {
             BorrowKind::Shared
             | BorrowKind::Shallow
-            | BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture } => "immutable",
-            BorrowKind::Mut { .. } => "mutable",
+            | BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::ClosureCapture } => {
+                false
+            }
+            BorrowKind::Mut { kind: MutBorrowKind::TwoPhaseBorrow } => true,
         }
     }
 }
