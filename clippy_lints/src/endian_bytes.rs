@@ -9,7 +9,7 @@ use std::borrow::Cow;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for the usage of the `to_ne_bytes` method.
+    /// Checks for the usage of the `to_ne_bytes` method and/or the function `from_ne_bytes`.
     ///
     /// ### Why is this bad?
     /// It's not, but some may prefer to specify the target endianness explicitly.
@@ -27,7 +27,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for the usage of the `to_le_bytes` method.
+    /// Checks for the usage of the `to_le_bytes` method and/or the function `from_le_bytes`.
     ///
     /// ### Why is this bad?
     /// It's not, but some may wish to lint usage of this method, either to suggest using the host
@@ -46,7 +46,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for the usage of the `to_be_bytes` method.
+    /// Checks for the usage of the `to_be_bytes` method and/or the function `from_be_bytes`.
     ///
     /// ### Why is this bad?
     /// It's not, but some may wish to lint usage of this method, either to suggest using the host
@@ -64,6 +64,10 @@ declare_clippy_lint! {
 }
 
 declare_lint_pass!(EndianBytes => [HOST_ENDIAN_BYTES, LITTLE_ENDIAN_BYTES, BIG_ENDIAN_BYTES]);
+
+const HOST_NAMES: [&str; 2] = ["from_ne_bytes", "to_ne_bytes"];
+const LITTLE_NAMES: [&str; 2] = ["from_le_bytes", "to_le_bytes"];
+const BIG_NAMES: [&str; 2] = ["from_be_bytes", "to_be_bytes"];
 
 #[derive(Clone, Debug)]
 enum LintKind {
@@ -85,11 +89,29 @@ impl LintKind {
         }
     }
 
-    fn to_name(&self, prefix: &str) -> String {
+    fn to_name(&self, prefix: &str) -> &str {
         match self {
-            LintKind::Host => format!("{prefix}_ne_bytes"),
-            LintKind::Little => format!("{prefix}_le_bytes"),
-            LintKind::Big => format!("{prefix}_be_bytes"),
+            LintKind::Host => {
+                if prefix == "from" {
+                    HOST_NAMES[0]
+                } else {
+                    HOST_NAMES[1]
+                }
+            },
+            LintKind::Little => {
+                if prefix == "from" {
+                    LITTLE_NAMES[0]
+                } else {
+                    LITTLE_NAMES[1]
+                }
+            },
+            LintKind::Big => {
+                if prefix == "from" {
+                    BIG_NAMES[0]
+                } else {
+                    BIG_NAMES[1]
+                }
+            },
         }
     }
 }
@@ -105,7 +127,7 @@ impl LateLintPass<'_> for EndianBytes {
             if args.is_empty();
             let ty = cx.typeck_results().expr_ty(receiver);
             if ty.is_primitive_ty();
-            if try_lint_endian_bytes(cx, expr, "to", method_name.ident.name, ty);
+            if maybe_lint_endian_bytes(cx, expr, "to", method_name.ident.name, ty);
             then {
                 return;
             }
@@ -119,16 +141,16 @@ impl LateLintPass<'_> for EndianBytes {
             let ty = cx.typeck_results().expr_ty(expr);
             if ty.is_primitive_ty();
             then {
-                try_lint_endian_bytes(cx, expr, "from", *function_name, ty);
+                maybe_lint_endian_bytes(cx, expr, "from", *function_name, ty);
             }
         }
     }
 }
 
-fn try_lint_endian_bytes(cx: &LateContext<'_>, expr: &Expr<'_>, prefix: &str, name: Symbol, ty: Ty<'_>) -> bool {
-    let ne = format!("{prefix}_ne_bytes");
-    let le = format!("{prefix}_le_bytes");
-    let be = format!("{prefix}_be_bytes");
+fn maybe_lint_endian_bytes(cx: &LateContext<'_>, expr: &Expr<'_>, prefix: &str, name: Symbol, ty: Ty<'_>) -> bool {
+    let ne = LintKind::Host.to_name(prefix);
+    let le = LintKind::Little.to_name(prefix);
+    let be = LintKind::Big.to_name(prefix);
 
     let (lint, other_lints) = match name.as_str() {
         name if name == ne => ((&LintKind::Host), [(&LintKind::Little), (&LintKind::Big)]),
