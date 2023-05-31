@@ -701,7 +701,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // goals, it isn't in a cycle). If `Foo<T>: Trait` later doesn't
                     // hold, then `Bar<T>: Send` shouldn't hold. Therefore, we
                     // *do* need to keep track of coinductive cycles.
-                    for stack_arg in previous_stack.cache.wf_args.borrow().iter().rev() {
+                    let cache = previous_stack.cache;
+                    for stack_arg in cache.wf_args.borrow().iter().rev() {
                         if stack_arg.0 != arg {
                             continue;
                         }
