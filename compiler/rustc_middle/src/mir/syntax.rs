@@ -220,6 +220,11 @@ pub enum BorrowKind {
     /// immutable, but not aliasable. This solves the problem. For
     /// simplicity, we don't give users the way to express this
     /// borrow, it's just used when translating closures.
+    ///
+    // FIXME(#112072): This is wrong. Unique borrows are mutable borrows except
+    // that they do not require their pointee to be marked as a mutable.
+    // They should still be treated as mutable borrows in every other way,
+    // e.g. for variance or overlap checking.
     Unique,
 
     /// Data is mutable and not aliasable.

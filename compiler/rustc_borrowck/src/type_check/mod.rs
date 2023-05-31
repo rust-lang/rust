@@ -775,9 +775,10 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 ty::Invariant
             }
             PlaceContext::NonMutatingUse(
-                Inspect | Copy | Move | SharedBorrow | ShallowBorrow | UniqueBorrow | AddressOf
-                | Projection,
-            ) => ty::Covariant,
+                Inspect | Copy | Move | SharedBorrow | ShallowBorrow | AddressOf | Projection
+            ) => {
+                ty::Covariant
+            },
             PlaceContext::NonUse(AscribeUserTy) => ty::Covariant,
         }
     }
