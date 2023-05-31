@@ -48,6 +48,17 @@ impl Std {
     }
 }
 
+/// Given an `alias` selected by the `Step` and the paths passed on the command line,
+/// return a list of the crates that should be built.
+///
+/// Normally, people will pass *just* `library` if they pass it.
+/// But it's possible (although strange) to pass something like `library std core`.
+/// Build all crates anyway, as if they hadn't passed the other args.
+pub(crate) fn make_run_crates(run: &RunConfig<'_>, alias: &str) -> Interned<Vec<String>> {
+    let has_alias = run.paths.iter().any(|set| set.assert_single_path().path.ends_with(alias));
+    if has_alias { Default::default() } else { run.cargo_crates_in_set() }
+}
+
 impl Step for Std {
     type Output = ();
     const DEFAULT: bool = true;
@@ -62,16 +73,10 @@ impl Step for Std {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        // Normally, people will pass *just* library if they pass it.
-        // But it's possible (although strange) to pass something like `library std core`.
-        // Build all crates anyway, as if they hadn't passed the other args.
-        let has_library =
-            run.paths.iter().any(|set| set.assert_single_path().path.ends_with("library"));
-        let crates = if has_library { Default::default() } else { run.cargo_crates_in_set() };
         run.builder.ensure(Std {
             compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
             target: run.target,
-            crates,
+            crates: make_run_crates(&run, "library"),
         });
     }
 
@@ -615,6 +620,8 @@ impl Step for Rustc {
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let mut crates = run.builder.in_tree_crates("rustc-main", None);
         for (i, krate) in crates.iter().enumerate() {
+            // We can't allow `build rustc` as an alias for this Step, because that's reserved by `Assemble`.
+            // Ideally Assemble would use `build compiler` instead, but that seems too confusing to be worth the breaking change.
             if krate.name == "rustc-main" {
                 crates.swap_remove(i);
                 break;
@@ -1679,7 +1686,7 @@ pub fn run_cargo(
     });
 
     if !ok {
-        crate::detail_exit(1);
+        crate::detail_exit_macro!(1);
     }
 
     // Ok now we need to actually find all the files listed in `toplevel`. We've

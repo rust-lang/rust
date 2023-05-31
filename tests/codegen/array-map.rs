@@ -4,7 +4,6 @@
 // ignore-debug (the extra assertions get in the way)
 
 #![crate_type = "lib"]
-#![feature(array_zip)]
 
 // CHECK-LABEL: @short_integer_map
 #[no_mangle]
@@ -14,16 +13,6 @@ pub fn short_integer_map(x: [u32; 8]) -> [u32; 8] {
     // CHECK: or <8 x i32>
     // CHECK: store <8 x i32>
     x.map(|x| 2 * x + 1)
-}
-
-// CHECK-LABEL: @short_integer_zip_map
-#[no_mangle]
-pub fn short_integer_zip_map(x: [u32; 8], y: [u32; 8]) -> [u32; 8] {
-    // CHECK: %[[A:.+]] = load <8 x i32>
-    // CHECK: %[[B:.+]] = load <8 x i32>
-    // CHECK: sub <8 x i32> %[[B]], %[[A]]
-    // CHECK: store <8 x i32>
-    x.zip(y).map(|(x, y)| x - y)
 }
 
 // This test is checking that LLVM can SRoA away a bunch of the overhead,

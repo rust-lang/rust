@@ -8,10 +8,10 @@ use crate::traits::*;
 use crate::MemFlags;
 
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{ConstValue, Pointer, Scalar};
+use rustc_middle::mir::interpret::{alloc_range, ConstValue, Pointer, Scalar};
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::Ty;
-use rustc_target::abi::{Abi, Align, Size};
+use rustc_target::abi::{self, Abi, Align, Size};
 
 use std::fmt;
 
@@ -115,11 +115,80 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 OperandValue::Pair(a_llval, b_llval)
             }
             ConstValue::ByRef { alloc, offset } => {
-                return bx.load_operand(bx.from_const_alloc(layout, alloc, offset));
+                return Self::from_const_alloc(bx, layout, alloc, offset);
             }
         };
 
         OperandRef { val, layout }
+    }
+
+    fn from_const_alloc<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+        bx: &mut Bx,
+        layout: TyAndLayout<'tcx>,
+        alloc: rustc_middle::mir::interpret::ConstAllocation<'tcx>,
+        offset: Size,
+    ) -> Self {
+        let alloc_align = alloc.inner().align;
+        assert_eq!(alloc_align, layout.align.abi);
+        let ty = bx.type_ptr_to(bx.cx().backend_type(layout));
+
+        let read_scalar = |start, size, s: abi::Scalar, ty| {
+            let val = alloc
+                .0
+                .read_scalar(
+                    bx,
+                    alloc_range(start, size),
+                    /*read_provenance*/ matches!(s.primitive(), abi::Pointer(_)),
+                )
+                .unwrap();
+            bx.scalar_to_backend(val, s, ty)
+        };
+
+        // It may seem like all types with `Scalar` or `ScalarPair` ABI are fair game at this point.
+        // However, `MaybeUninit<u64>` is considered a `Scalar` as far as its layout is concerned --
+        // and yet cannot be represented by an interpreter `Scalar`, since we have to handle the
+        // case where some of the bytes are initialized and others are not. So, we need an extra
+        // check that walks over the type of `mplace` to make sure it is truly correct to treat this
+        // like a `Scalar` (or `ScalarPair`).
+        match layout.abi {
+            Abi::Scalar(s @ abi::Scalar::Initialized { .. }) => {
+                let size = s.size(bx);
+                assert_eq!(size, layout.size, "abi::Scalar size does not match layout size");
+                let val = read_scalar(Size::ZERO, size, s, ty);
+                OperandRef { val: OperandValue::Immediate(val), layout }
+            }
+            Abi::ScalarPair(
+                a @ abi::Scalar::Initialized { .. },
+                b @ abi::Scalar::Initialized { .. },
+            ) => {
+                let (a_size, b_size) = (a.size(bx), b.size(bx));
+                let b_offset = a_size.align_to(b.align(bx).abi);
+                assert!(b_offset.bytes() > 0);
+                let a_val = read_scalar(
+                    Size::ZERO,
+                    a_size,
+                    a,
+                    bx.scalar_pair_element_backend_type(layout, 0, true),
+                );
+                let b_val = read_scalar(
+                    b_offset,
+                    b_size,
+                    b,
+                    bx.scalar_pair_element_backend_type(layout, 1, true),
+                );
+                OperandRef { val: OperandValue::Pair(a_val, b_val), layout }
+            }
+            _ if layout.is_zst() => OperandRef::new_zst(bx, layout),
+            _ => {
+                // Neither a scalar nor scalar pair. Load from a place
+                let init = bx.const_data_from_alloc(alloc);
+                let base_addr = bx.static_addr_of(init, alloc_align, None);
+
+                let llval = bx.const_ptr_byte_offset(base_addr, offset);
+                let llval = bx.const_bitcast(llval, ty);
+                bx.load_operand(PlaceRef::new_sized(llval, layout))
+            }
+        }
     }
 
     /// Asserts that this operand refers to a scalar and returns

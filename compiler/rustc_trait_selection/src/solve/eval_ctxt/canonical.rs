@@ -137,6 +137,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
     #[instrument(level = "debug", skip(self), ret)]
     fn compute_external_query_constraints(&self) -> Result<ExternalConstraints<'tcx>, NoSolution> {
+        // We only check for leaks from universes which were entered inside
+        // of the query.
+        self.infcx.leak_check(self.max_input_universe, None).map_err(|e| {
+            debug!(?e, "failed the leak check");
+            NoSolution
+        })?;
+
         // Cannot use `take_registered_region_obligations` as we may compute the response
         // inside of a `probe` whenever we have multiple choices inside of the solver.
         let region_obligations = self.infcx.inner.borrow().region_obligations().to_owned();

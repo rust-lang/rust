@@ -251,14 +251,13 @@ pub struct InferCtxt<'tcx> {
     /// solving is left to borrowck instead.
     pub considering_regions: bool,
 
-    pub inner: RefCell<InferCtxtInner<'tcx>>,
-
     /// If set, this flag causes us to skip the 'leak check' during
     /// higher-ranked subtyping operations. This flag is a temporary one used
     /// to manage the removal of the leak-check: for the time being, we still run the
-    /// leak-check, but we issue warnings. This flag can only be set to true
-    /// when entering a snapshot.
-    skip_leak_check: Cell<bool>,
+    /// leak-check, but we issue warnings.
+    skip_leak_check: bool,
+
+    pub inner: RefCell<InferCtxtInner<'tcx>>,
 
     /// Once region inference is done, the values for each variable.
     lexical_region_resolutions: RefCell<Option<LexicalRegionResolutions<'tcx>>>,
@@ -543,6 +542,7 @@ pub struct InferCtxtBuilder<'tcx> {
     tcx: TyCtxt<'tcx>,
     defining_use_anchor: DefiningAnchor,
     considering_regions: bool,
+    skip_leak_check: bool,
     /// Whether we are in coherence mode.
     intercrate: bool,
 }
@@ -557,6 +557,7 @@ impl<'tcx> TyCtxtInferExt<'tcx> for TyCtxt<'tcx> {
             tcx: self,
             defining_use_anchor: DefiningAnchor::Error,
             considering_regions: true,
+            skip_leak_check: false,
             intercrate: false,
         }
     }
@@ -584,6 +585,11 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
         self
     }
 
+    pub fn skip_leak_check(mut self, skip_leak_check: bool) -> Self {
+        self.skip_leak_check = skip_leak_check;
+        self
+    }
+
     /// Given a canonical value `C` as a starting point, create an
     /// inference context that contains each of the bound values
     /// within instantiated as a fresh variable. The `f` closure is
@@ -605,11 +611,18 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     }
 
     pub fn build(&mut self) -> InferCtxt<'tcx> {
-        let InferCtxtBuilder { tcx, defining_use_anchor, considering_regions, intercrate } = *self;
+        let InferCtxtBuilder {
+            tcx,
+            defining_use_anchor,
+            considering_regions,
+            skip_leak_check,
+            intercrate,
+        } = *self;
         InferCtxt {
             tcx,
             defining_use_anchor,
             considering_regions,
+            skip_leak_check,
             inner: RefCell::new(InferCtxtInner::new()),
             lexical_region_resolutions: RefCell::new(None),
             selection_cache: Default::default(),
@@ -619,7 +632,6 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             tainted_by_errors: Cell::new(None),
             err_count_on_creation: tcx.sess.err_count(),
             in_snapshot: Cell::new(false),
-            skip_leak_check: Cell::new(false),
             universe: Cell::new(ty::UniverseIndex::ROOT),
             intercrate,
         }
@@ -815,32 +827,9 @@ impl<'tcx> InferCtxt<'tcx> {
         r
     }
 
-    /// If `should_skip` is true, then execute `f` then unroll any bindings it creates.
-    #[instrument(skip(self, f), level = "debug")]
-    pub fn probe_maybe_skip_leak_check<R, F>(&self, should_skip: bool, f: F) -> R
-    where
-        F: FnOnce(&CombinedSnapshot<'tcx>) -> R,
-    {
-        let snapshot = self.start_snapshot();
-        let was_skip_leak_check = self.skip_leak_check.get();
-        if should_skip {
-            self.skip_leak_check.set(true);
-        }
-        let r = f(&snapshot);
-        self.rollback_to("probe", snapshot);
-        self.skip_leak_check.set(was_skip_leak_check);
-        r
-    }
-
-    /// Scan the constraints produced since `snapshot` began and returns:
-    ///
-    /// - `None` -- if none of them involves "region outlives" constraints.
-    /// - `Some(true)` -- if there are `'a: 'b` constraints where `'a` or `'b` is a placeholder.
-    /// - `Some(false)` -- if there are `'a: 'b` constraints but none involve placeholders.
-    pub fn region_constraints_added_in_snapshot(
-        &self,
-        snapshot: &CombinedSnapshot<'tcx>,
-    ) -> Option<bool> {
+    /// Scan the constraints produced since `snapshot` and check whether
+    /// we added any region constraints.
+    pub fn region_constraints_added_in_snapshot(&self, snapshot: &CombinedSnapshot<'tcx>) -> bool {
         self.inner
             .borrow_mut()
             .unwrap_region_constraints()
@@ -1065,7 +1054,7 @@ impl<'tcx> InferCtxt<'tcx> {
     ) -> ty::Region<'tcx> {
         let region_var =
             self.inner.borrow_mut().unwrap_region_constraints().new_region_var(universe, origin);
-        self.tcx.mk_re_var(region_var)
+        ty::Region::new_var(self.tcx, region_var)
     }
 
     /// Return the universe that the region `r` was created in. For

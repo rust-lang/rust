@@ -709,7 +709,7 @@ impl<'tcx> TyCtxt<'tcx> {
             .as_ref()
             .map_or_else(|| [].iter(), |l| l.field_tys.iter())
             .filter(|decl| !decl.ignore_for_traits)
-            .map(|decl| ty::EarlyBinder::new(decl.ty))
+            .map(|decl| ty::EarlyBinder::bind(decl.ty))
     }
 
     /// Normalizes all opaque types in the given value, replacing them

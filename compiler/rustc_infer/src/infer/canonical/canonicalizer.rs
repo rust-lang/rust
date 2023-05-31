@@ -771,7 +771,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
     ) -> ty::Region<'tcx> {
         let var = self.canonical_var(info, r.into());
         let br = ty::BoundRegion { var, kind: ty::BrAnon(None) };
-        self.interner().mk_re_late_bound(self.binder_index, br)
+        ty::Region::new_late_bound(self.interner(), self.binder_index, br)
     }
 
     /// Given a type variable `ty_var` of the given kind, first check

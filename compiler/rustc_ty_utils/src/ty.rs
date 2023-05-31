@@ -287,12 +287,13 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
             let shifted_alias_ty = self.tcx.fold_regions(unshifted_alias_ty, |re, depth| {
                 if let ty::ReLateBound(index, bv) = re.kind() {
                     if depth != ty::INNERMOST {
-                        return self.tcx.mk_re_error_with_message(
+                        return ty::Region::new_error_with_message(
+                            self.tcx,
                             DUMMY_SP,
                             "we shouldn't walk non-predicate binders with `impl Trait`...",
                         );
                     }
-                    self.tcx.mk_re_late_bound(index.shifted_out_to_binder(self.depth), bv)
+                    ty::Region::new_late_bound(self.tcx, index.shifted_out_to_binder(self.depth), bv)
                 } else {
                     re
                 }
@@ -506,7 +507,7 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<EarlyBinder<Ty<'
 
     if self_ty_matches {
         debug!("issue33140_self_ty - MATCHES!");
-        Some(EarlyBinder::new(self_ty))
+        Some(EarlyBinder::bind(self_ty))
     } else {
         debug!("issue33140_self_ty - non-matching self type");
         None

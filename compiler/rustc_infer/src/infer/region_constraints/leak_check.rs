@@ -3,7 +3,6 @@ use crate::infer::CombinedSnapshot;
 use rustc_data_structures::{
     fx::FxIndexMap,
     graph::{scc::Sccs, vec_graph::VecGraph},
-    undo_log::UndoLogs,
 };
 use rustc_index::Idx;
 use rustc_middle::ty::error::TypeError;
@@ -13,7 +12,9 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     /// Searches new universes created during `snapshot`, looking for
     /// placeholders that may "leak" out from the universes they are contained
     /// in. If any leaking placeholders are found, then an `Err` is returned
-    /// (typically leading to the snapshot being reversed).
+    /// (typically leading to the snapshot being reversed). This algorithm
+    /// only looks at placeholders which cannot be named by `outer_universe`,
+    /// as this is the universe we're currently checking for a leak.
     ///
     /// The leak check *used* to be the only way we had to handle higher-ranked
     /// obligations. Now that we have integrated universes into the region
@@ -55,6 +56,12 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     ///   * if they must also be equal to a placeholder P, and U cannot name P, report an error, as that
     ///     indicates `P: R` and `R` is in an incompatible universe
     ///
+    /// To improve performance and for the old trait solver caching to be sound, this takes
+    /// an optional snapshot in which case we only look at region constraints added in that
+    /// snapshot. If we were to not do that the `leak_check` during evaluation can rely on
+    /// region constraints added outside of that evaluation. As that is not reflected in the
+    /// cache key this would be unsound.
+    ///
     /// # Historical note
     ///
     /// Older variants of the leak check used to report errors for these
@@ -62,36 +69,21 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     ///
     /// * R: P1, even if R cannot name P1, because R = 'static is a valid sol'n
     /// * R: P1, R: P2, as above
+    #[instrument(level = "debug", skip(self, tcx, only_consider_snapshot), ret)]
     pub fn leak_check(
         &mut self,
         tcx: TyCtxt<'tcx>,
-        overly_polymorphic: bool,
+        outer_universe: ty::UniverseIndex,
         max_universe: ty::UniverseIndex,
-        snapshot: &CombinedSnapshot<'tcx>,
+        only_consider_snapshot: Option<&CombinedSnapshot<'tcx>>,
     ) -> RelateResult<'tcx, ()> {
-        debug!(
-            "leak_check(max_universe={:?}, snapshot.universe={:?}, overly_polymorphic={:?})",
-            max_universe, snapshot.universe, overly_polymorphic
-        );
-
-        assert!(UndoLogs::<super::UndoLog<'_>>::in_snapshot(&self.undo_log));
-
-        let universe_at_start_of_snapshot = snapshot.universe;
-        if universe_at_start_of_snapshot == max_universe {
+        if outer_universe == max_universe {
             return Ok(());
         }
 
-        let mini_graph =
-            &MiniGraph::new(tcx, self.undo_log.region_constraints(), &self.storage.data.verifys);
+        let mini_graph = &MiniGraph::new(tcx, &self, only_consider_snapshot);
 
-        let mut leak_check = LeakCheck::new(
-            tcx,
-            universe_at_start_of_snapshot,
-            max_universe,
-            overly_polymorphic,
-            mini_graph,
-            self,
-        );
+        let mut leak_check = LeakCheck::new(tcx, outer_universe, max_universe, mini_graph, self);
         leak_check.assign_placeholder_values()?;
         leak_check.propagate_scc_value()?;
         Ok(())
@@ -100,9 +92,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
 
 struct LeakCheck<'me, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    universe_at_start_of_snapshot: ty::UniverseIndex,
-    /// Only used when reporting region errors.
-    overly_polymorphic: bool,
+    outer_universe: ty::UniverseIndex,
     mini_graph: &'me MiniGraph<'tcx>,
     rcc: &'me RegionConstraintCollector<'me, 'tcx>,
 
@@ -130,17 +120,15 @@ struct LeakCheck<'me, 'tcx> {
 impl<'me, 'tcx> LeakCheck<'me, 'tcx> {
     fn new(
         tcx: TyCtxt<'tcx>,
-        universe_at_start_of_snapshot: ty::UniverseIndex,
+        outer_universe: ty::UniverseIndex,
         max_universe: ty::UniverseIndex,
-        overly_polymorphic: bool,
         mini_graph: &'me MiniGraph<'tcx>,
         rcc: &'me RegionConstraintCollector<'me, 'tcx>,
     ) -> Self {
         let dummy_scc_universe = SccUniverse { universe: max_universe, region: None };
         Self {
             tcx,
-            universe_at_start_of_snapshot,
-            overly_polymorphic,
+            outer_universe,
             mini_graph,
             rcc,
             scc_placeholders: IndexVec::from_elem_n(None, mini_graph.sccs.num_sccs()),
@@ -165,7 +153,7 @@ impl<'me, 'tcx> LeakCheck<'me, 'tcx> {
 
             // Detect those SCCs that directly contain a placeholder
             if let ty::RePlaceholder(placeholder) = **region {
-                if self.universe_at_start_of_snapshot.cannot_name(placeholder.universe) {
+                if self.outer_universe.cannot_name(placeholder.universe) {
                     self.assign_scc_value(scc, placeholder)?;
                 }
             }
@@ -280,7 +268,7 @@ impl<'me, 'tcx> LeakCheck<'me, 'tcx> {
         placeholder1: ty::PlaceholderRegion,
         placeholder2: ty::PlaceholderRegion,
     ) -> TypeError<'tcx> {
-        self.error(placeholder1, self.tcx.mk_re_placeholder(placeholder2))
+        self.error(placeholder1, ty::Region::new_placeholder(self.tcx, placeholder2))
     }
 
     fn error(
@@ -289,11 +277,7 @@ impl<'me, 'tcx> LeakCheck<'me, 'tcx> {
         other_region: ty::Region<'tcx>,
     ) -> TypeError<'tcx> {
         debug!("error: placeholder={:?}, other_region={:?}", placeholder, other_region);
-        if self.overly_polymorphic {
-            TypeError::RegionsOverlyPolymorphic(placeholder.bound.kind, other_region)
-        } else {
-            TypeError::RegionsInsufficientlyPolymorphic(placeholder.bound.kind, other_region)
-        }
+        TypeError::RegionsInsufficientlyPolymorphic(placeholder.bound.kind, other_region)
     }
 }
 
@@ -379,56 +363,70 @@ struct MiniGraph<'tcx> {
 }
 
 impl<'tcx> MiniGraph<'tcx> {
-    fn new<'a>(
+    fn new(
         tcx: TyCtxt<'tcx>,
-        undo_log: impl Iterator<Item = &'a UndoLog<'tcx>>,
-        verifys: &[Verify<'tcx>],
-    ) -> Self
-    where
-        'tcx: 'a,
-    {
+        region_constraints: &RegionConstraintCollector<'_, 'tcx>,
+        only_consider_snapshot: Option<&CombinedSnapshot<'tcx>>,
+    ) -> Self {
         let mut nodes = FxIndexMap::default();
         let mut edges = Vec::new();
 
         // Note that if `R2: R1`, we get a callback `r1, r2`, so `target` is first parameter.
-        Self::iterate_undo_log(tcx, undo_log, verifys, |target, source| {
-            let source_node = Self::add_node(&mut nodes, source);
-            let target_node = Self::add_node(&mut nodes, target);
-            edges.push((source_node, target_node));
-        });
+        Self::iterate_region_constraints(
+            tcx,
+            region_constraints,
+            only_consider_snapshot,
+            |target, source| {
+                let source_node = Self::add_node(&mut nodes, source);
+                let target_node = Self::add_node(&mut nodes, target);
+                edges.push((source_node, target_node));
+            },
+        );
         let graph = VecGraph::new(nodes.len(), edges);
         let sccs = Sccs::new(&graph);
         Self { nodes, sccs }
     }
 
     /// Invokes `each_edge(R1, R2)` for each edge where `R2: R1`
-    fn iterate_undo_log<'a>(
+    fn iterate_region_constraints(
         tcx: TyCtxt<'tcx>,
-        undo_log: impl Iterator<Item = &'a UndoLog<'tcx>>,
-        verifys: &[Verify<'tcx>],
+        region_constraints: &RegionConstraintCollector<'_, 'tcx>,
+        only_consider_snapshot: Option<&CombinedSnapshot<'tcx>>,
         mut each_edge: impl FnMut(ty::Region<'tcx>, ty::Region<'tcx>),
-    ) where
-        'tcx: 'a,
-    {
-        for undo_entry in undo_log {
-            match undo_entry {
-                &AddConstraint(Constraint::VarSubVar(a, b)) => {
-                    each_edge(tcx.mk_re_var(a), tcx.mk_re_var(b));
+    ) {
+        let mut each_constraint = |constraint| match constraint {
+            &Constraint::VarSubVar(a, b) => {
+                each_edge(ty::Region::new_var(tcx, a), ty::Region::new_var(tcx, b));
+            }
+            &Constraint::RegSubVar(a, b) => {
+                each_edge(a, ty::Region::new_var(tcx, b));
+            }
+            &Constraint::VarSubReg(a, b) => {
+                each_edge(ty::Region::new_var(tcx, a), b);
+            }
+            &Constraint::RegSubReg(a, b) => {
+                each_edge(a, b);
+            }
+        };
+
+        if let Some(snapshot) = only_consider_snapshot {
+            for undo_entry in
+                region_constraints.undo_log.region_constraints_in_snapshot(&snapshot.undo_snapshot)
+            {
+                match undo_entry {
+                    AddConstraint(constraint) => {
+                        each_constraint(constraint);
+                    }
+                    &AddVerify(i) => span_bug!(
+                        region_constraints.data().verifys[i].origin.span(),
+                        "we never add verifications while doing higher-ranked things",
+                    ),
+                    &AddCombination(..) | &AddVar(..) => {}
                 }
-                &AddConstraint(Constraint::RegSubVar(a, b)) => {
-                    each_edge(a, tcx.mk_re_var(b));
-                }
-                &AddConstraint(Constraint::VarSubReg(a, b)) => {
-                    each_edge(tcx.mk_re_var(a), b);
-                }
-                &AddConstraint(Constraint::RegSubReg(a, b)) => {
-                    each_edge(a, b);
-                }
-                &AddVerify(i) => span_bug!(
-                    verifys[i].origin.span(),
-                    "we never add verifications while doing higher-ranked things",
-                ),
-                &AddCombination(..) | &AddVar(..) => {}
+            }
+        } else {
+            for (constraint, _origin) in &region_constraints.data().constraints {
+                each_constraint(constraint)
             }
         }
     }

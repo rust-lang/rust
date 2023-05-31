@@ -216,7 +216,6 @@ impl<'tcx> Visitor<'tcx> for SsaVisitor<'_> {
             PlaceContext::NonMutatingUse(
                 NonMutatingUseContext::SharedBorrow
                 | NonMutatingUseContext::ShallowBorrow
-                | NonMutatingUseContext::UniqueBorrow
                 | NonMutatingUseContext::AddressOf,
             )
             | PlaceContext::MutatingUse(_) => {

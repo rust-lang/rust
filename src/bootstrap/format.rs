@@ -40,7 +40,7 @@ fn rustfmt(src: &Path, rustfmt: &Path, paths: &[PathBuf], check: bool) -> impl F
                         code, run `./x.py fmt` instead.",
                 cmd_debug,
             );
-            crate::detail_exit(1);
+            crate::detail_exit_macro!(1);
         }
         true
     }
@@ -196,7 +196,7 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
 
     let rustfmt_path = build.initial_rustfmt().unwrap_or_else(|| {
         eprintln!("./x.py fmt is not supported on this channel");
-        crate::detail_exit(1);
+        crate::detail_exit_macro!(1);
     });
     assert!(rustfmt_path.exists(), "{}", rustfmt_path.display());
     let src = build.src.clone();

@@ -264,7 +264,7 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for mir::Place<'tcx> {
 
 impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::Region<'tcx> {
     fn decode(decoder: &mut D) -> Self {
-        decoder.interner().mk_region_from_kind(Decodable::decode(decoder))
+        ty::Region::new_from_kind(decoder.interner(), Decodable::decode(decoder))
     }
 }
 

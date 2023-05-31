@@ -824,7 +824,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'_, 'tcx> {
                 let universe = self.universe_for(debruijn);
                 let p = ty::PlaceholderRegion { universe, bound: br };
                 self.mapped_regions.insert(p, br);
-                self.infcx.tcx.mk_re_placeholder(p)
+                ty::Region::new_placeholder(self.infcx.tcx, p)
             }
             _ => r,
         }
@@ -945,7 +945,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
                         let db = ty::DebruijnIndex::from_usize(
                             self.universe_indices.len() - index + self.current_index.as_usize() - 1,
                         );
-                        self.interner().mk_re_late_bound(db, *replace_var)
+                        ty::Region::new_late_bound(self.interner(), db, *replace_var)
                     }
                     None => r1,
                 }

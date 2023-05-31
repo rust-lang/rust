@@ -101,7 +101,7 @@ impl Step for CrateBootstrap {
         );
         builder.info(&format!(
             "{} {} stage0 ({})",
-            builder.kind.test_description(),
+            builder.kind.description(),
             path,
             bootstrap_host,
         ));
@@ -220,7 +220,7 @@ impl Step for HtmlCheck {
         }
         // Ensure that a few different kinds of documentation are available.
         builder.default_doc(&[]);
-        builder.ensure(crate::doc::Rustc { target: self.target, stage: builder.top_stage });
+        builder.ensure(crate::doc::Rustc::new(builder.top_stage, self.target, builder));
 
         try_run(builder, builder.tool_cmd(Tool::HtmlChecker).arg(builder.doc_out(self.target)));
     }
@@ -773,7 +773,7 @@ impl Step for Clippy {
         }
 
         if !builder.config.cmd.bless() {
-            crate::detail_exit(1);
+            crate::detail_exit_macro!(1);
         }
 
         let mut cargo = builder.cargo(compiler, Mode::ToolRustc, SourceType::InTree, host, "run");
@@ -886,11 +886,11 @@ impl Step for RustdocJSStd {
                     command.arg("--test-file").arg(path);
                 }
             }
-            builder.ensure(crate::doc::Std {
-                target: self.target,
-                stage: builder.top_stage,
-                format: DocumentationFormat::HTML,
-            });
+            builder.ensure(crate::doc::Std::new(
+                builder.top_stage,
+                self.target,
+                DocumentationFormat::HTML,
+            ));
             builder.run(&mut command);
         } else {
             builder.info("No nodejs found, skipping \"tests/rustdoc-js-std\" tests");
@@ -1085,7 +1085,7 @@ help: to skip test's attempt to check tidiness, pass `--exclude src/tools/tidy` 
                     PATH = inferred_rustfmt_dir.display(),
                     CHAN = builder.config.channel,
                 );
-                crate::detail_exit(1);
+                crate::detail_exit_macro!(1);
             }
             crate::format::format(&builder, !builder.config.cmd.bless(), &[]);
         }
@@ -1108,7 +1108,7 @@ help: to skip test's attempt to check tidiness, pass `--exclude src/tools/tidy` 
                 eprintln!(
                     "x.py completions were changed; run `x.py run generate-completions` to update them"
                 );
-                crate::detail_exit(1);
+                crate::detail_exit_macro!(1);
             }
         }
     }
@@ -1329,7 +1329,7 @@ help: to test the compiler, use `--stage 1` instead
 help: to test the standard library, use `--stage 0 library/std` instead
 note: if you're sure you want to do this, please open an issue as to why. In the meantime, you can override this with `COMPILETEST_FORCE_STAGE0=1`."
             );
-            crate::detail_exit(1);
+            crate::detail_exit_macro!(1);
         }
 
         let mut compiler = self.compiler;

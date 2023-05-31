@@ -1257,9 +1257,9 @@ impl clean::Impl {
                 };
                 primitive_link_fragment(f, PrimitiveType::Tuple, &format!("fn ({name}₁, {name}₂, …, {name}ₙ{ellipsis})"), "#trait-implementations-1", cx)?;
                 // Write output.
-                if let clean::FnRetTy::Return(ty) = &bare_fn.decl.output {
+                if !bare_fn.decl.output.is_unit() {
                     write!(f, " -> ")?;
-                    fmt_type(ty, f, use_absolute, cx)?;
+                    fmt_type(&bare_fn.decl.output, f, use_absolute, cx)?;
                 }
             } else if let Some(ty) = self.kind.as_blanket_ty() {
                 fmt_type(ty, f, use_absolute, cx)?;
@@ -1292,22 +1292,6 @@ impl clean::Arguments {
                 }
             }
             Ok(())
-        })
-    }
-}
-
-impl clean::FnRetTy {
-    pub(crate) fn print<'a, 'tcx: 'a>(
-        &'a self,
-        cx: &'a Context<'tcx>,
-    ) -> impl fmt::Display + 'a + Captures<'tcx> {
-        display_fn(move |f| match self {
-            clean::Return(clean::Tuple(tys)) if tys.is_empty() => Ok(()),
-            clean::Return(ty) if f.alternate() => {
-                write!(f, " -> {:#}", ty.print(cx))
-            }
-            clean::Return(ty) => write!(f, " -&gt; {}", ty.print(cx)),
-            clean::DefaultReturn => Ok(()),
         })
     }
 }
@@ -1366,7 +1350,7 @@ impl clean::FnDecl {
                     "({args:#}{ellipsis}){arrow:#}",
                     args = self.inputs.print(cx),
                     ellipsis = ellipsis,
-                    arrow = self.output.print(cx)
+                    arrow = self.print_output(cx)
                 )
             } else {
                 write!(
@@ -1374,7 +1358,7 @@ impl clean::FnDecl {
                     "({args}{ellipsis}){arrow}",
                     args = self.inputs.print(cx),
                     ellipsis = ellipsis,
-                    arrow = self.output.print(cx)
+                    arrow = self.print_output(cx)
                 )
             }
         })
@@ -1464,8 +1448,21 @@ impl clean::FnDecl {
             Some(n) => write!(f, "\n{})", Indent(n))?,
         };
 
-        fmt::Display::fmt(&self.output.print(cx), f)?;
+        fmt::Display::fmt(&self.print_output(cx), f)?;
         Ok(())
+    }
+
+    pub(crate) fn print_output<'a, 'tcx: 'a>(
+        &'a self,
+        cx: &'a Context<'tcx>,
+    ) -> impl fmt::Display + 'a + Captures<'tcx> {
+        display_fn(move |f| match &self.output {
+            clean::Tuple(tys) if tys.is_empty() => Ok(()),
+            ty if f.alternate() => {
+                write!(f, " -> {:#}", ty.print(cx))
+            }
+            ty => write!(f, " -&gt; {}", ty.print(cx)),
+        })
     }
 }
 

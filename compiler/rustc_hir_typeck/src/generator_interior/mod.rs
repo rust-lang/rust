@@ -269,7 +269,7 @@ pub fn resolve_interior<'a, 'tcx>(
                     },
                     _ => mk_bound_region(ty::BrAnon(None)),
                 };
-                let r = fcx.tcx.mk_re_late_bound(current_depth, br);
+                let r = ty::Region::new_late_bound(fcx.tcx, current_depth, br);
                 r
             });
             captured_tys.insert(ty).then(|| {
@@ -295,7 +295,11 @@ pub fn resolve_interior<'a, 'tcx>(
                     let var = ty::BoundVar::from_usize(bound_vars.len());
                     bound_vars.push(ty::BoundVariableKind::Region(kind));
                     counter += 1;
-                    fcx.tcx.mk_re_late_bound(ty::INNERMOST, ty::BoundRegion { var, kind })
+                    ty::Region::new_late_bound(
+                        fcx.tcx,
+                        ty::INNERMOST,
+                        ty::BoundRegion { var, kind },
+                    )
                 },
                 types: &mut |b| bug!("unexpected bound ty in binder: {b:?}"),
                 consts: &mut |b, ty| bug!("unexpected bound ct in binder: {b:?} {ty}"),

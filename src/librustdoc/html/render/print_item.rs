@@ -587,8 +587,7 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &cle
         + name.as_str().len()
         + generics_len;
 
-    let notable_traits =
-        f.decl.output.as_return().and_then(|output| notable_traits_button(output, cx));
+    let notable_traits = notable_traits_button(&f.decl.output, cx);
 
     wrap_item(w, |w| {
         w.reserve(header_len);
@@ -1420,30 +1419,36 @@ fn item_macro(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     write!(w, "{}", document(cx, it, None, HeadingOffset::H2))
 }
 
-fn item_proc_macro(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, m: &clean::ProcMacro) {
-    wrap_item(w, |w| {
+fn item_proc_macro(
+    w: &mut impl fmt::Write,
+    cx: &mut Context<'_>,
+    it: &clean::Item,
+    m: &clean::ProcMacro,
+) {
+    let mut buffer = Buffer::new();
+    wrap_item(&mut buffer, |buffer| {
         let name = it.name.expect("proc-macros always have names");
         match m.kind {
             MacroKind::Bang => {
-                write!(w, "{}!() {{ /* proc-macro */ }}", name);
+                write!(buffer, "{}!() {{ /* proc-macro */ }}", name);
             }
             MacroKind::Attr => {
-                write!(w, "#[{}]", name);
+                write!(buffer, "#[{}]", name);
             }
             MacroKind::Derive => {
-                write!(w, "#[derive({})]", name);
+                write!(buffer, "#[derive({})]", name);
                 if !m.helpers.is_empty() {
-                    w.push_str("\n{\n");
-                    w.push_str("    // Attributes available to this derive:\n");
+                    buffer.push_str("\n{\n");
+                    buffer.push_str("    // Attributes available to this derive:\n");
                     for attr in &m.helpers {
-                        writeln!(w, "    #[{}]", attr);
+                        writeln!(buffer, "    #[{}]", attr);
                     }
-                    w.push_str("}\n");
+                    buffer.push_str("}\n");
                 }
             }
         }
     });
-    write!(w, "{}", document(cx, it, None, HeadingOffset::H2))
+    write!(w, "{}{}", buffer.into_inner(), document(cx, it, None, HeadingOffset::H2)).unwrap();
 }
 
 fn item_primitive(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {

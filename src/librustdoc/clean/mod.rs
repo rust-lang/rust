@@ -1111,8 +1111,8 @@ fn clean_fn_decl_with_args<'tcx>(
     args: Arguments,
 ) -> FnDecl {
     let output = match decl.output {
-        hir::FnRetTy::Return(typ) => Return(clean_ty(typ, cx)),
-        hir::FnRetTy::DefaultReturn(..) => DefaultReturn,
+        hir::FnRetTy::Return(typ) => clean_ty(typ, cx),
+        hir::FnRetTy::DefaultReturn(..) => Type::Tuple(Vec::new()),
     };
     FnDecl { inputs: args, output, c_variadic: decl.c_variadic }
 }
@@ -1126,10 +1126,7 @@ fn clean_fn_decl_from_did_and_sig<'tcx>(
 
     // We assume all empty tuples are default return type. This theoretically can discard `-> ()`,
     // but shouldn't change any code meaning.
-    let output = match clean_middle_ty(sig.output(), cx, None) {
-        Type::Tuple(inner) if inner.is_empty() => DefaultReturn,
-        ty => Return(ty),
-    };
+    let output = clean_middle_ty(sig.output(), cx, None);
 
     FnDecl {
         output,
