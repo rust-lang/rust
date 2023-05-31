@@ -25,7 +25,8 @@ use rustc_middle::mir::{BorrowKind, Mutability};
 use rustc_middle::thir::{Ascription, BindingMode, FieldPat, LocalVarId, Pat, PatKind, PatRange};
 use rustc_middle::ty::subst::{GenericArg, SubstsRef};
 use rustc_middle::ty::CanonicalUserTypeAnnotation;
-use rustc_middle::ty::{self, AdtDef, ConstKind, Region, Ty, TyCtxt, UserType};
+use rustc_middle::ty::TypeVisitableExt;
+use rustc_middle::ty::{self, AdtDef, Region, Ty, TyCtxt, UserType};
 use rustc_span::{Span, Symbol};
 use rustc_target::abi::FieldIdx;
 
@@ -585,43 +586,71 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         id: hir::HirId,
         span: Span,
     ) -> PatKind<'tcx> {
-        let value = mir::ConstantKind::from_inline_const(self.tcx, anon_const.def_id);
-        let value = match value {
-            mir::ConstantKind::Ty(_) => value,
-            // Evaluate early like we do in `lower_path`.
-            mir::ConstantKind::Unevaluated(ct, ty) => {
-                let ct = ty::UnevaluatedConst { def: ct.def, substs: ct.substs };
-                if let Ok(Some(valtree)) =
-                    self.tcx.const_eval_resolve_for_typeck(self.param_env, ct, Some(span))
-                {
-                    mir::ConstantKind::Ty(self.tcx.mk_const(valtree, ty))
-                } else {
-                    value.eval(self.tcx, self.param_env)
-                }
-            }
-            mir::ConstantKind::Val(_, _) => unreachable!(),
+        let tcx = self.tcx;
+        let def_id = anon_const.def_id;
+        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+        let body_id = match tcx.hir().get(hir_id) {
+            hir::Node::AnonConst(ac) => ac.body,
+            _ => span_bug!(
+                tcx.def_span(def_id.to_def_id()),
+                "from_inline_const can only process anonymous constants"
+            ),
         };
+        let expr = &tcx.hir().body(body_id).value;
+        let ty = tcx.typeck(def_id).node_type(hir_id);
 
-        match value {
-            mir::ConstantKind::Ty(c) => match c.kind() {
-                ConstKind::Param(_) => {
-                    self.tcx.sess.emit_err(ConstParamInPattern { span });
-                    return PatKind::Wild;
+        // Special case inline consts that are just literals. This is solely
+        // a performance optimization, as we could also just go through the regular
+        // const eval path below.
+        // FIXME: investigate the performance impact of removing this.
+        let lit_input = match expr.kind {
+            hir::ExprKind::Lit(ref lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: false }),
+            hir::ExprKind::Unary(hir::UnOp::Neg, ref expr) => match expr.kind {
+                hir::ExprKind::Lit(ref lit) => {
+                    Some(LitToConstInput { lit: &lit.node, ty, neg: true })
                 }
-                ConstKind::Error(_) => {
-                    return PatKind::Wild;
-                }
-                _ => {}
+                _ => None,
             },
-            mir::ConstantKind::Val(_, _) => {}
-            mir::ConstantKind::Unevaluated(..) => {
-                // If we land here it means the const can't be evaluated because it's `TooGeneric`.
-                self.tcx.sess.emit_err(ConstPatternDependsOnGenericParameter { span });
-                return PatKind::Wild;
+            _ => None,
+        };
+        if let Some(lit_input) = lit_input {
+            match tcx.at(expr.span).lit_to_const(lit_input) {
+                Ok(c) => return self.const_to_pat(ConstantKind::Ty(c), id, span, None).kind,
+                // If an error occurred, ignore that it's a literal
+                // and leave reporting the error up to const eval of
+                // the unevaluated constant below.
+                Err(_) => {}
             }
         }
 
-        self.const_to_pat(value, id, span, None).kind
+        let typeck_root_def_id = tcx.typeck_root_def_id(def_id.to_def_id());
+        let parent_substs =
+            tcx.erase_regions(ty::InternalSubsts::identity_for_item(tcx, typeck_root_def_id));
+        let substs =
+            ty::InlineConstSubsts::new(tcx, ty::InlineConstSubstsParts { parent_substs, ty })
+                .substs;
+
+        let uneval = mir::UnevaluatedConst { def: def_id.to_def_id(), substs, promoted: None };
+        debug_assert!(!substs.has_free_regions());
+
+        let ct = ty::UnevaluatedConst { def: def_id.to_def_id(), substs: substs };
+        // First try using a valtree in order to destructure the constant into a pattern.
+        if let Ok(Some(valtree)) =
+            self.tcx.const_eval_resolve_for_typeck(self.param_env, ct, Some(span))
+        {
+            self.const_to_pat(ConstantKind::Ty(self.tcx.mk_const(valtree, ty)), id, span, None).kind
+        } else {
+            // If that fails, convert it to an opaque constant pattern.
+            match tcx.const_eval_resolve(self.param_env, uneval, None) {
+                Ok(val) => self.const_to_pat(mir::ConstantKind::Val(val, ty), id, span, None).kind,
+                Err(ErrorHandled::TooGeneric) => {
+                    // If we land here it means the const can't be evaluated because it's `TooGeneric`.
+                    self.tcx.sess.emit_err(ConstPatternDependsOnGenericParameter { span });
+                    PatKind::Wild
+                }
+                Err(ErrorHandled::Reported(_)) => PatKind::Wild,
+            }
+        }
     }
 
     /// Converts literals, paths and negation of literals to patterns.
