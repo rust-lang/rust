@@ -296,25 +296,13 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
         Allocation::from_bytes(slice, Align::ONE, Mutability::Not)
     }
 
-    /// Try to create an Allocation of `size` bytes, failing if there is not enough memory
-    /// available to the compiler to do so.
-    ///
-    /// If `panic_on_fail` is true, this will never return `Err`.
-    pub fn uninit<'tcx>(size: Size, align: Align, panic_on_fail: bool) -> InterpResult<'tcx, Self> {
-        let bytes = Bytes::zeroed(size, align).ok_or_else(|| {
-            // This results in an error that can happen non-deterministically, since the memory
-            // available to the compiler can change between runs. Normally queries are always
-            // deterministic. However, we can be non-deterministic here because all uses of const
-            // evaluation (including ConstProp!) will make compilation fail (via hard error
-            // or ICE) upon encountering a `MemoryExhausted` error.
-            if panic_on_fail {
-                panic!("Allocation::uninit called with panic_on_fail had allocation failure")
-            }
-            ty::tls::with(|tcx| {
-                tcx.sess.delay_span_bug(DUMMY_SP, "exhausted memory during interpretation")
-            });
-            InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
-        })?;
+    fn uninit_inner<R>(size: Size, align: Align, fail: impl FnOnce() -> R) -> Result<Self, R> {
+        // This results in an error that can happen non-deterministically, since the memory
+        // available to the compiler can change between runs. Normally queries are always
+        // deterministic. However, we can be non-deterministic here because all uses of const
+        // evaluation (including ConstProp!) will make compilation fail (via hard error
+        // or ICE) upon encountering a `MemoryExhausted` error.
+        let bytes = Bytes::zeroed(size, align).ok_or_else(fail)?;
 
         Ok(Allocation {
             bytes,
@@ -324,6 +312,28 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
             mutability: Mutability::Mut,
             extra: (),
         })
+    }
+
+    /// Try to create an Allocation of `size` bytes, failing if there is not enough memory
+    /// available to the compiler to do so.
+    pub fn try_uninit<'tcx>(size: Size, align: Align) -> InterpResult<'tcx, Self> {
+        Self::uninit_inner(size, align, || {
+            ty::tls::with(|tcx| {
+                tcx.sess.delay_span_bug(DUMMY_SP, "exhausted memory during interpretation")
+            });
+            InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted).into()
+        })
+    }
+
+    /// Try to create an Allocation of `size` bytes, panics if there is not enough memory
+    /// available to the compiler to do so.
+    pub fn uninit(size: Size, align: Align) -> Self {
+        match Self::uninit_inner(size, align, || {
+            panic!("Allocation::uninit called with panic_on_fail had allocation failure");
+        }) {
+            Ok(x) => x,
+            Err(x) => x,
+        }
     }
 }
 

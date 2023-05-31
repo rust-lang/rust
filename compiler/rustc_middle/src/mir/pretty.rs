@@ -846,7 +846,7 @@ fn write_allocation_newline(
 /// The `prefix` argument allows callers to add an arbitrary prefix before each line (even if there
 /// is only one line). Note that your prefix should contain a trailing space as the lines are
 /// printed directly after it.
-fn write_allocation_bytes<'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>(
+pub fn write_allocation_bytes<'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>(
     tcx: TyCtxt<'tcx>,
     alloc: &Allocation<Prov, Extra, Bytes>,
     w: &mut dyn std::fmt::Write,

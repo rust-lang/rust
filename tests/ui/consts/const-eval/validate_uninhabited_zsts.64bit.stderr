@@ -28,7 +28,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/validate_uninhabited_zsts.rs:21:42
    |
 LL | const BAR: [empty::Empty; 3] = [unsafe { std::mem::transmute(()) }; 3];
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .0: encountered a value of uninhabited type empty::Void
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .0: encountered a value of uninhabited type `Void`
 
 warning: the type `empty::Empty` does not permit zero-initialization
   --> $DIR/validate_uninhabited_zsts.rs:21:42

@@ -492,6 +492,10 @@ impl MultiSpan {
         replacements_occurred
     }
 
+    pub fn pop_span_label(&mut self) -> Option<(Span, DiagnosticMessage)> {
+        self.span_labels.pop()
+    }
+
     /// Returns the strings to highlight. We always ensure that there
     /// is an entry for each of the primary spans -- for each primary
     /// span `P`, if there is at least one label with span `P`, we return
