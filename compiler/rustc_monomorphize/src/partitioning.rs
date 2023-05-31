@@ -424,7 +424,7 @@ fn place_inlined_mono_items<'tcx>(
         // Collect all items that need to be available in this codegen unit.
         let mut reachable = FxHashSet::default();
         for root in old_codegen_unit.items().keys() {
-            follow_inlining(*root, cx.inlining_map, &mut reachable);
+            follow_inlining(cx.tcx, *root, cx.inlining_map, &mut reachable);
         }
 
         let mut new_codegen_unit = CodegenUnit::new(old_codegen_unit.name());
@@ -478,6 +478,7 @@ fn place_inlined_mono_items<'tcx>(
     return mono_item_placements;
 
     fn follow_inlining<'tcx>(
+        tcx: TyCtxt<'tcx>,
         mono_item: MonoItem<'tcx>,
         inlining_map: &InliningMap<'tcx>,
         visited: &mut FxHashSet<MonoItem<'tcx>>,
@@ -486,8 +487,8 @@ fn place_inlined_mono_items<'tcx>(
             return;
         }
 
-        inlining_map.with_inlining_candidates(mono_item, |target| {
-            follow_inlining(target, inlining_map, visited);
+        inlining_map.with_inlining_candidates(tcx, mono_item, |target| {
+            follow_inlining(tcx, target, inlining_map, visited);
         });
     }
 }
