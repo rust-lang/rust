@@ -2741,14 +2741,10 @@ struct ProvisionalEvaluationCache<'tcx> {
     wf_args: RefCell<Vec<(ty::GenericArg<'tcx>, usize)>>,
 }
 
-
 impl<'tcx> Default for ProvisionalEvaluationCache<'tcx> {
     fn default() -> Self {
         Self { wf_args: Default::default() }
     }
-}
-
-impl<'tcx> ProvisionalEvaluationCache<'tcx> {
 }
 
 #[derive(Copy, Clone)]
