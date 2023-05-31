@@ -727,7 +727,7 @@ where
 }
 
 /// Convert pair of `ops::Bound`s into `ops::Range` without performing any bounds checking and (in debug) overflow checking
-fn into_range_unchecked(
+pub(crate) fn into_range_unchecked(
     len: usize,
     (start, end): (ops::Bound<usize>, ops::Bound<usize>),
 ) -> ops::Range<usize> {
@@ -747,7 +747,7 @@ fn into_range_unchecked(
 
 /// Convert pair of `ops::Bound`s into `ops::Range`.
 /// Returns `None` on overflowing indices.
-fn into_range(
+pub(crate) fn into_range(
     len: usize,
     (start, end): (ops::Bound<usize>, ops::Bound<usize>),
 ) -> Option<ops::Range<usize>> {
@@ -772,7 +772,7 @@ fn into_range(
 
 /// Convert pair of `ops::Bound`s into `ops::Range`.
 /// Panics on overflowing indices.
-fn into_slice_range(
+pub(crate) fn into_slice_range(
     len: usize,
     (start, end): (ops::Bound<usize>, ops::Bound<usize>),
 ) -> ops::Range<usize> {
