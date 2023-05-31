@@ -49,7 +49,7 @@ impl<'tcx> InferCtxt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
     ) -> InferOk<'tcx, T> {
         // We handle opaque types differently in the new solver.
-        if self.tcx.trait_solver_next() {
+        if self.next_trait_solver() {
             return InferOk { value, obligations: vec![] };
         }
 
@@ -578,7 +578,7 @@ impl<'tcx> InferCtxt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         hidden_ty: Ty<'tcx>,
     ) -> InferResult<'tcx, ()> {
-        assert!(self.tcx.trait_solver_next());
+        assert!(self.next_trait_solver());
         let origin = self
             .opaque_type_origin(opaque_type_key.def_id)
             .expect("should be called for defining usages only");
@@ -614,7 +614,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     ty::Alias(ty::Projection, projection_ty)
                         if !projection_ty.has_escaping_bound_vars()
                             && !tcx.is_impl_trait_in_trait(projection_ty.def_id)
-                            && !tcx.trait_solver_next() =>
+                            && !self.next_trait_solver() =>
                     {
                         self.infer_projection(
                             param_env,

@@ -2333,7 +2333,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.opt_local_def_id_to_hir_id(local_def_id).unwrap()
     }
 
-    pub fn trait_solver_next(self) -> bool {
+    pub fn next_trait_solver_globally(self) -> bool {
         self.sess.opts.unstable_opts.trait_solver == rustc_session::config::TraitSolver::Next
     }
 

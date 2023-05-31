@@ -330,6 +330,8 @@ pub struct InferCtxt<'tcx> {
     /// there is no type that the user could *actually name* that
     /// would satisfy it. This avoids crippling inference, basically.
     pub intercrate: bool,
+
+    next_trait_solver: bool,
 }
 
 /// See the `error_reporting` module for more details.
@@ -545,6 +547,9 @@ pub struct InferCtxtBuilder<'tcx> {
     skip_leak_check: bool,
     /// Whether we are in coherence mode.
     intercrate: bool,
+    /// Whether we should use the new trait solver in the local inference context,
+    /// which affects things like which solver is used in `predicate_may_hold`.
+    next_trait_solver: bool,
 }
 
 pub trait TyCtxtInferExt<'tcx> {
@@ -559,6 +564,7 @@ impl<'tcx> TyCtxtInferExt<'tcx> for TyCtxt<'tcx> {
             considering_regions: true,
             skip_leak_check: false,
             intercrate: false,
+            next_trait_solver: self.next_trait_solver_globally(),
         }
     }
 }
@@ -572,6 +578,11 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     /// in mir borrowck.
     pub fn with_opaque_type_inference(mut self, defining_use_anchor: DefiningAnchor) -> Self {
         self.defining_use_anchor = defining_use_anchor;
+        self
+    }
+
+    pub fn with_next_trait_solver(mut self, next_trait_solver: bool) -> Self {
+        self.next_trait_solver = next_trait_solver;
         self
     }
 
@@ -617,6 +628,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             considering_regions,
             skip_leak_check,
             intercrate,
+            next_trait_solver,
         } = *self;
         InferCtxt {
             tcx,
@@ -634,6 +646,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             in_snapshot: Cell::new(false),
             universe: Cell::new(ty::UniverseIndex::ROOT),
             intercrate,
+            next_trait_solver,
         }
     }
 }
@@ -670,6 +683,10 @@ pub struct CombinedSnapshot<'tcx> {
 }
 
 impl<'tcx> InferCtxt<'tcx> {
+    pub fn next_trait_solver(&self) -> bool {
+        self.next_trait_solver
+    }
+
     /// Creates a `TypeErrCtxt` for emitting various inference errors.
     /// During typeck, use `FnCtxt::err_ctxt` instead.
     pub fn err_ctxt(&self) -> TypeErrCtxt<'_, 'tcx> {
