@@ -490,9 +490,9 @@ pub static TRACK_DIAGNOSTICS: AtomicRef<fn(&mut Diagnostic, &mut dyn FnMut(&mut 
 
 #[derive(Copy, Clone, Default)]
 pub struct HandlerFlags {
-    /// If false, warning-level lints are suppressed.
-    /// (rustc: see `--allow warnings` and `--cap-lints`)
-    pub can_emit_warnings: bool,
+    /// If true, warning-level lints are suppressed.
+    /// (rustc: see `--cap-lints`)
+    pub cap_lints_allow: bool,
     /// If true, error-level diagnostics are upgraded to bug-level.
     /// (rustc: see `-Z treat-err-as-bug`)
     pub treat_err_as_bug: Option<NonZeroUsize>,
@@ -545,7 +545,7 @@ impl Drop for HandlerInner {
 impl Handler {
     pub fn with_tty_emitter(
         color_config: ColorConfig,
-        can_emit_warnings: bool,
+        cap_lints_allow: bool,
         treat_err_as_bug: Option<NonZeroUsize>,
         sm: Option<Lrc<SourceMap>>,
         fluent_bundle: Option<Lrc<FluentBundle>>,
@@ -556,7 +556,7 @@ impl Handler {
             sm,
             fluent_bundle,
             fallback_bundle,
-            HandlerFlags { can_emit_warnings, treat_err_as_bug, ..Default::default() },
+            HandlerFlags { cap_lints_allow, treat_err_as_bug, ..Default::default() },
         )
     }
 
@@ -583,13 +583,13 @@ impl Handler {
     }
 
     pub fn with_emitter(
-        can_emit_warnings: bool,
+        cap_lints_allow: bool,
         treat_err_as_bug: Option<NonZeroUsize>,
         emitter: Box<dyn Emitter + sync::Send>,
     ) -> Self {
         Handler::with_emitter_and_flags(
             emitter,
-            HandlerFlags { can_emit_warnings, treat_err_as_bug, ..Default::default() },
+            HandlerFlags { cap_lints_allow, treat_err_as_bug, ..Default::default() },
         )
     }
 
@@ -644,8 +644,8 @@ impl Handler {
 
     // This is here to not allow mutation of flags;
     // as of this writing it's only used in tests in librustc_middle.
-    pub fn can_emit_warnings(&self) -> bool {
-        self.flags.can_emit_warnings
+    pub fn cap_lints_allow(&self) -> bool {
+        self.flags.cap_lints_allow
     }
 
     /// Resets the diagnostic error count as well as the cached emitted diagnostics.
@@ -706,7 +706,7 @@ impl Handler {
     /// Construct a builder at the `Warning` level at the given `span` and with the `msg`.
     ///
     /// Attempting to `.emit()` the builder will only emit if either:
-    /// * `can_emit_warnings` is `true`
+    /// * `cap_lints_allow` is `false`
     /// * `is_force_warn` was set in `DiagnosticId::Lint`
     #[rustc_lint_diagnostics]
     #[track_caller]
@@ -724,7 +724,7 @@ impl Handler {
     /// The `id` is used for lint emissions which should also fulfill a lint expectation.
     ///
     /// Attempting to `.emit()` the builder will only emit if either:
-    /// * `can_emit_warnings` is `true`
+    /// * `cap_lints_allow` is `false`
     /// * `is_force_warn` was set in `DiagnosticId::Lint`
     #[track_caller]
     pub fn struct_span_warn_with_expectation(
@@ -769,7 +769,7 @@ impl Handler {
     /// Construct a builder at the `Warning` level with the `msg`.
     ///
     /// Attempting to `.emit()` the builder will only emit if either:
-    /// * `can_emit_warnings` is `true`
+    /// * `cap_lints_allow` is `false`
     /// * `is_force_warn` was set in `DiagnosticId::Lint`
     #[rustc_lint_diagnostics]
     #[track_caller]
@@ -781,7 +781,7 @@ impl Handler {
     /// lint emissions which should also fulfill a lint expectation.
     ///
     /// Attempting to `.emit()` the builder will only emit if either:
-    /// * `can_emit_warnings` is `true`
+    /// * `cap_lints_allow` is `false`
     /// * `is_force_warn` was set in `DiagnosticId::Lint`
     #[track_caller]
     pub fn struct_warn_with_expectation(
@@ -1356,7 +1356,7 @@ impl HandlerInner {
         }
 
         if matches!(diagnostic.level, Warning(_))
-            && !self.flags.can_emit_warnings
+            && self.flags.cap_lints_allow
             && !diagnostic.is_force_warn()
         {
             if diagnostic.has_future_breakage() {

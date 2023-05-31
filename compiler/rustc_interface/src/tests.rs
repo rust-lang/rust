@@ -140,28 +140,6 @@ fn test_switch_implies_cfg_test_unless_cfg_test() {
 }
 
 #[test]
-fn test_can_print_warnings() {
-    rustc_span::create_default_session_globals_then(|| {
-        let matches = optgroups().parse(&["-Awarnings".to_string()]).unwrap();
-        let (sess, _) = mk_session(matches);
-        assert!(!sess.diagnostic().can_emit_warnings());
-    });
-
-    rustc_span::create_default_session_globals_then(|| {
-        let matches =
-            optgroups().parse(&["-Awarnings".to_string(), "-Dwarnings".to_string()]).unwrap();
-        let (sess, _) = mk_session(matches);
-        assert!(sess.diagnostic().can_emit_warnings());
-    });
-
-    rustc_span::create_default_session_globals_then(|| {
-        let matches = optgroups().parse(&["-Adead_code".to_string()]).unwrap();
-        let (sess, _) = mk_session(matches);
-        assert!(sess.diagnostic().can_emit_warnings());
-    });
-}
-
-#[test]
 fn test_output_types_tracking_hash_different_paths() {
     let mut v1 = Options::default();
     let mut v2 = Options::default();

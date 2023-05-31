@@ -75,7 +75,7 @@ pub fn reveal_actual_level(
     src: &mut LintLevelSource,
     sess: &Session,
     lint: LintId,
-    probe_for_lint_level: impl FnOnce(LintId) -> (Option<Level>, LintLevelSource),
+    probe_for_lint_level: impl Fn(LintId) -> (Option<Level>, LintLevelSource),
 ) -> Level {
     // If `level` is none then we actually assume the default level for this lint.
     let mut level = level.unwrap_or_else(|| lint.lint.default_level(sess.edition()));
@@ -83,17 +83,43 @@ pub fn reveal_actual_level(
     // If we're about to issue a warning, check at the last minute for any
     // directives against the warnings "lint". If, for example, there's an
     // `allow(warnings)` in scope then we want to respect that instead.
+    // However, if there's a command line `-Awarnings`, we need to respect
+    // that as higher precedence.
     //
     // We exempt `FORBIDDEN_LINT_GROUPS` from this because it specifically
     // triggers in cases (like #80988) where you have `forbid(warnings)`,
     // and so if we turned that into an error, it'd defeat the purpose of the
     // future compatibility warning.
-    if level == Level::Warn && lint != LintId::of(FORBIDDEN_LINT_GROUPS) {
-        let (warnings_level, warnings_src) = probe_for_lint_level(LintId::of(builtin::WARNINGS));
-        if let Some(configured_warning_level) = warnings_level {
-            if configured_warning_level != Level::Warn {
-                level = configured_warning_level;
-                *src = warnings_src;
+    if lint != LintId::of(FORBIDDEN_LINT_GROUPS) {
+        if level == Level::Warn {
+            if let Some((name, cmdline_warnings_level)) = sess
+                .opts
+                .lint_opts
+                .iter()
+                .find(|(name, _)| name == builtin::WARNINGS.name_lower().as_str())
+            {
+                level = *cmdline_warnings_level;
+                let sym = Symbol::intern(name);
+                *src = LintLevelSource::CommandLine(sym, *cmdline_warnings_level);
+            } else {
+                let (warnings_level, warnings_src) =
+                    probe_for_lint_level(LintId::of(builtin::WARNINGS));
+                if let Some(configured_warning_level) = warnings_level {
+                    if configured_warning_level != Level::Warn {
+                        level = configured_warning_level;
+                        *src = warnings_src;
+                    }
+                }
+            }
+        }
+
+        if lint != LintId::of(builtin::WARNINGS) {
+            // If we have `-Awarnings -Dspecific-lint` we want to keep the `specific-lint`'s level
+            // instead.
+            let (lint_level, lint_src) = probe_for_lint_level(lint);
+            if let Some(lint_level) = lint_level && matches!(lint_src, LintLevelSource::CommandLine(..)) {
+                level = lint_level;
+                *src = lint_src;
             }
         }
     }

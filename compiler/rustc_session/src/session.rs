@@ -947,7 +947,7 @@ impl Session {
                 let mut fuel = self.optimization_fuel.lock();
                 ret = fuel.remaining != 0;
                 if fuel.remaining == 0 && !fuel.out_of_fuel {
-                    if self.diagnostic().can_emit_warnings() {
+                    if !self.diagnostic().cap_lints_allow() {
                         // We only call `msg` in case we can actually emit warnings.
                         // Otherwise, this could cause a `delay_good_path_bug` to
                         // trigger (issue #79546).
@@ -1371,16 +1371,7 @@ pub fn build_session(
     target_override: Option<Target>,
     cfg_version: &'static str,
 ) -> Session {
-    // FIXME: This is not general enough to make the warning lint completely override
-    // normal diagnostic warnings, since the warning lint can also be denied and changed
-    // later via the source code.
-    let warnings_allow = sopts
-        .lint_opts
-        .iter()
-        .rfind(|&(key, _)| *key == "warnings")
-        .is_some_and(|&(_, level)| level == lint::Allow);
     let cap_lints_allow = sopts.lint_cap.is_some_and(|cap| cap == lint::Allow);
-    let can_emit_warnings = !(warnings_allow || cap_lints_allow);
 
     let sysroot = match &sopts.maybe_sysroot {
         Some(sysroot) => sysroot.clone(),
@@ -1418,7 +1409,7 @@ pub fn build_session(
 
     let span_diagnostic = rustc_errors::Handler::with_emitter_and_flags(
         emitter,
-        sopts.unstable_opts.diagnostic_handler_flags(can_emit_warnings),
+        sopts.unstable_opts.diagnostic_handler_flags(cap_lints_allow),
     );
 
     let self_profiler = if let SwitchWithOptPath::Enabled(ref d) = sopts.unstable_opts.self_profile

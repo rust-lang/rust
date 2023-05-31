@@ -873,9 +873,9 @@ impl Options {
 }
 
 impl UnstableOptions {
-    pub fn diagnostic_handler_flags(&self, can_emit_warnings: bool) -> HandlerFlags {
+    pub fn diagnostic_handler_flags(&self, cap_lints_allow: bool) -> HandlerFlags {
         HandlerFlags {
-            can_emit_warnings,
+            cap_lints_allow,
             treat_err_as_bug: self.treat_err_as_bug,
             dont_buffer_diagnostics: self.dont_buffer_diagnostics,
             report_delayed_bugs: self.report_delayed_bugs,
