@@ -68,7 +68,7 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
                 }
             }
 
-            ty::EarlyBinder(required_predicates)
+            ty::EarlyBinder::bind(required_predicates)
         })
     }
 }

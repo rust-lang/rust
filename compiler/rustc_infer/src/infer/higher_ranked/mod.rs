@@ -82,8 +82,10 @@ impl<'tcx> InferCtxt<'tcx> {
 
         let delegate = FnMutDelegate {
             regions: &mut |br: ty::BoundRegion| {
-                self.tcx
-                    .mk_re_placeholder(ty::PlaceholderRegion { universe: next_universe, bound: br })
+                ty::Region::new_placeholder(
+                    self.tcx,
+                    ty::PlaceholderRegion { universe: next_universe, bound: br },
+                )
             },
             types: &mut |bound_ty: ty::BoundTy| {
                 self.tcx.mk_placeholder(ty::PlaceholderType {
@@ -103,13 +105,15 @@ impl<'tcx> InferCtxt<'tcx> {
         self.tcx.replace_bound_vars_uncached(binder, delegate)
     }
 
-    /// See [RegionConstraintCollector::leak_check][1].
+    /// See [RegionConstraintCollector::leak_check][1]. We only check placeholder
+    /// leaking into `outer_universe`, i.e. placeholders which cannot be named by that
+    /// universe.
     ///
     /// [1]: crate::infer::region_constraints::RegionConstraintCollector::leak_check
     pub fn leak_check(
         &self,
-        overly_polymorphic: bool,
-        snapshot: &CombinedSnapshot<'tcx>,
+        outer_universe: ty::UniverseIndex,
+        only_consider_snapshot: Option<&CombinedSnapshot<'tcx>>,
     ) -> RelateResult<'tcx, ()> {
         // If the user gave `-Zno-leak-check`, or we have been
         // configured to skip the leak check, then skip the leak check
@@ -117,15 +121,15 @@ impl<'tcx> InferCtxt<'tcx> {
         // subtyping errors that it would have caught will now be
         // caught later on, during region checking. However, we
         // continue to use it for a transition period.
-        if self.tcx.sess.opts.unstable_opts.no_leak_check || self.skip_leak_check.get() {
+        if self.tcx.sess.opts.unstable_opts.no_leak_check || self.skip_leak_check {
             return Ok(());
         }
 
         self.inner.borrow_mut().unwrap_region_constraints().leak_check(
             self.tcx,
-            overly_polymorphic,
+            outer_universe,
             self.universe(),
-            snapshot,
+            only_consider_snapshot,
         )
     }
 }

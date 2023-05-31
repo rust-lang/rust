@@ -210,7 +210,7 @@ fn drop_tys_helper<'tcx>(
             match subty.kind() {
                 ty::Adt(adt_id, subst) => {
                     for subty in tcx.adt_drop_tys(adt_id.did())? {
-                        vec.push(EarlyBinder(subty).subst(tcx, subst));
+                        vec.push(EarlyBinder::bind(subty).subst(tcx, subst));
                     }
                 }
                 _ => vec.push(subty),

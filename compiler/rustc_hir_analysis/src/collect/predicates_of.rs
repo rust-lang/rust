@@ -306,11 +306,14 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
 
             let Some(dup_index) = generics.param_def_id_to_index(tcx, dup_def) else { bug!() };
 
-            let dup_region = tcx.mk_re_early_bound(ty::EarlyBoundRegion {
-                def_id: dup_def,
-                index: dup_index,
-                name: duplicate.name.ident().name,
-            });
+            let dup_region = ty::Region::new_early_bound(
+                tcx,
+                ty::EarlyBoundRegion {
+                    def_id: dup_def,
+                    index: dup_index,
+                    name: duplicate.name.ident().name,
+                },
+            );
             predicates.push((
                 ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::RegionOutlives(
                     ty::OutlivesPredicate(orig_region, dup_region),

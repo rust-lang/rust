@@ -527,9 +527,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         substs.extend(trait_predicate.trait_ref.substs.iter());
                         let mut bound_vars: smallvec::SmallVec<[ty::BoundVariableKind; 8]> =
                             smallvec::SmallVec::with_capacity(
-                                bound.0.kind().bound_vars().len() + defs.count(),
+                                bound.skip_binder().kind().bound_vars().len() + defs.count(),
                             );
-                        bound_vars.extend(bound.0.kind().bound_vars().into_iter());
+                        bound_vars.extend(bound.skip_binder().kind().bound_vars().into_iter());
                         InternalSubsts::fill_single(&mut substs, defs, &mut |param, _| match param
                             .kind
                         {
@@ -550,7 +550,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 let kind = ty::BoundRegionKind::BrNamed(param.def_id, param.name);
                                 let bound_var = ty::BoundVariableKind::Region(kind);
                                 bound_vars.push(bound_var);
-                                tcx.mk_re_late_bound(
+                                ty::Region::new_late_bound(
+                                    tcx,
                                     ty::INNERMOST,
                                     ty::BoundRegion {
                                         var: ty::BoundVar::from_usize(bound_vars.len() - 1),

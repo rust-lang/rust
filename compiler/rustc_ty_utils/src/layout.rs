@@ -610,7 +610,7 @@ fn generator_layout<'tcx>(
 ) -> Result<Layout<'tcx>, LayoutError<'tcx>> {
     use SavedLocalEligibility::*;
     let tcx = cx.tcx;
-    let subst_field = |ty: Ty<'tcx>| EarlyBinder(ty).subst(tcx, substs);
+    let subst_field = |ty: Ty<'tcx>| EarlyBinder::bind(ty).subst(tcx, substs);
 
     let Some(info) = tcx.generator_layout(def_id) else {
         return Err(LayoutError::Unknown(ty));

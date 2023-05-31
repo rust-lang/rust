@@ -13,15 +13,15 @@ fn ub_if_b(_1: Thing) -> Thing {
 
     bb0: {
         _2 = discriminant(_1);           // scope 0 at $DIR/duplicate_switch_targets.rs:+1:11: +1:12
-        switchInt(move _2) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/duplicate_switch_targets.rs:+1:5: +1:12
+        switchInt(move _2) -> [0: bb1, otherwise: bb2]; // scope 0 at $DIR/duplicate_switch_targets.rs:+1:5: +1:12
     }
 
     bb1: {
-        unreachable;                     // scope 2 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+        _0 = move _1;                    // scope 0 at $DIR/duplicate_switch_targets.rs:+2:21: +2:22
+        return;                          // scope 0 at $DIR/duplicate_switch_targets.rs:+5:2: +5:2
     }
 
     bb2: {
-        _0 = move _1;                    // scope 0 at $DIR/duplicate_switch_targets.rs:+2:21: +2:22
-        return;                          // scope 0 at $DIR/duplicate_switch_targets.rs:+5:2: +5:2
+        unreachable;                     // scope 2 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
     }
 }

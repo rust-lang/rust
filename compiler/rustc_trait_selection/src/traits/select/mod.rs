@@ -561,9 +561,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         op: impl FnOnce(&mut Self) -> Result<EvaluationResult, OverflowError>,
     ) -> Result<EvaluationResult, OverflowError> {
         self.infcx.probe(|snapshot| -> Result<EvaluationResult, OverflowError> {
+            let outer_universe = self.infcx.universe();
             let result = op(self)?;
 
-            match self.infcx.leak_check(true, snapshot) {
+            match self.infcx.leak_check(outer_universe, Some(snapshot)) {
                 Ok(()) => {}
                 Err(_) => return Ok(EvaluatedToErr),
             }
@@ -572,9 +573,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 return Ok(result.max(EvaluatedToOkModuloOpaqueTypes));
             }
 
-            match self.infcx.region_constraints_added_in_snapshot(snapshot) {
-                None => Ok(result),
-                Some(_) => Ok(result.max(EvaluatedToOkModuloRegions)),
+            if self.infcx.region_constraints_added_in_snapshot(snapshot) {
+                Ok(result.max(EvaluatedToOkModuloRegions))
+            } else {
+                Ok(result)
             }
         })
     }
@@ -2149,13 +2151,11 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             ty::Adt(def, substs) => {
                 let sized_crit = def.sized_constraint(self.tcx());
                 // (*) binder moved here
-                Where(obligation.predicate.rebind({
-                    sized_crit
-                        .0
-                        .iter()
-                        .map(|ty| sized_crit.rebind(*ty).subst(self.tcx(), substs))
-                        .collect()
-                }))
+                Where(
+                    obligation
+                        .predicate
+                        .rebind(sized_crit.subst_iter_copied(self.tcx(), substs).collect()),
+                )
             }
 
             ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) => None,
@@ -3029,7 +3029,7 @@ fn bind_generator_hidden_types_above<'tcx>(
                             kind: ty::BrAnon(None),
                         };
                         counter += 1;
-                        tcx.mk_re_late_bound(current_depth, br)
+                        ty::Region::new_late_bound(tcx, current_depth, br)
                     }
                     r => bug!("unexpected region: {r:?}"),
                 })

@@ -122,7 +122,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
 
                     self.fcx
                         .need_type_info_err_in_generator(self.kind, span, unresolved_term)
-                        .span_note(yield_data.span, &*note)
+                        .span_note(yield_data.span, note)
                         .emit();
                 }
             } else {
@@ -269,7 +269,7 @@ pub fn resolve_interior<'a, 'tcx>(
                     },
                     _ => mk_bound_region(ty::BrAnon(None)),
                 };
-                let r = fcx.tcx.mk_re_late_bound(current_depth, br);
+                let r = ty::Region::new_late_bound(fcx.tcx, current_depth, br);
                 r
             });
             captured_tys.insert(ty).then(|| {
@@ -295,7 +295,11 @@ pub fn resolve_interior<'a, 'tcx>(
                     let var = ty::BoundVar::from_usize(bound_vars.len());
                     bound_vars.push(ty::BoundVariableKind::Region(kind));
                     counter += 1;
-                    fcx.tcx.mk_re_late_bound(ty::INNERMOST, ty::BoundRegion { var, kind })
+                    ty::Region::new_late_bound(
+                        fcx.tcx,
+                        ty::INNERMOST,
+                        ty::BoundRegion { var, kind },
+                    )
                 },
                 types: &mut |b| bug!("unexpected bound ty in binder: {b:?}"),
                 consts: &mut |b, ty| bug!("unexpected bound ct in binder: {b:?} {ty}"),
@@ -686,7 +690,7 @@ fn check_must_not_suspend_def(
                 // Add optional reason note
                 if let Some(note) = attr.value_str() {
                     // FIXME(guswynn): consider formatting this better
-                    lint.span_note(data.source_span, note.as_str());
+                    lint.span_note(data.source_span, note.to_string());
                 }
 
                 // Add some quick suggestions on what to do

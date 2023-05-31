@@ -419,7 +419,7 @@ pub fn thir_abstract_const(
 
     let root_span = body.exprs[body_id].span;
 
-    Ok(Some(ty::EarlyBinder(recurse_build(tcx, body, body_id, root_span)?)))
+    Ok(Some(ty::EarlyBinder::bind(recurse_build(tcx, body, body_id, root_span)?)))
 }
 
 pub fn provide(providers: &mut Providers) {

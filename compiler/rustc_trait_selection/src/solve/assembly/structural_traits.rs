@@ -96,7 +96,7 @@ pub(in crate::solve) fn replace_erased_lifetimes_with_bound_vars<'tcx>(
             let br =
                 ty::BoundRegion { var: ty::BoundVar::from_u32(counter), kind: ty::BrAnon(None) };
             counter += 1;
-            tcx.mk_re_late_bound(current_depth, br)
+            ty::Region::new_late_bound(tcx, current_depth, br)
         }
         // All free regions should be erased here.
         r => bug!("unexpected region: {r:?}"),
@@ -148,11 +148,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
 
         ty::Adt(def, substs) => {
             let sized_crit = def.sized_constraint(ecx.tcx());
-            Ok(sized_crit
-                .0
-                .iter()
-                .map(|ty| sized_crit.rebind(*ty).subst(ecx.tcx(), substs))
-                .collect())
+            Ok(sized_crit.subst_iter_copied(ecx.tcx(), substs).collect())
         }
     }
 }

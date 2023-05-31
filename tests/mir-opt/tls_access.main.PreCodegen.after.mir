@@ -2,27 +2,27 @@
 
 fn main() -> () {
     let mut _0: ();                      // return place in scope 0 at $DIR/tls_access.rs:+0:11: +0:11
-    let _2: *mut u8;                     // in scope 0 at $DIR/tls_access.rs:+2:18: +2:21
+    let _1: *mut u8;                     // in scope 0 at $DIR/tls_access.rs:+2:18: +2:21
     let mut _3: *mut u8;                 // in scope 0 at $DIR/tls_access.rs:+3:9: +3:12
     scope 1 {
-        let _1: &u8;                     // in scope 1 at $DIR/tls_access.rs:+2:13: +2:14
+        let _2: &u8;                     // in scope 1 at $DIR/tls_access.rs:+2:13: +2:14
         scope 2 {
-            debug a => _1;               // in scope 2 at $DIR/tls_access.rs:+2:13: +2:14
+            debug a => _2;               // in scope 2 at $DIR/tls_access.rs:+2:13: +2:14
         }
     }
 
     bb0: {
-        StorageLive(_1);                 // scope 1 at $DIR/tls_access.rs:+2:13: +2:14
-        StorageLive(_2);                 // scope 1 at $DIR/tls_access.rs:+2:18: +2:21
-        _2 = &/*tls*/ mut FOO;           // scope 1 at $DIR/tls_access.rs:+2:18: +2:21
-        _1 = &(*_2);                     // scope 1 at $DIR/tls_access.rs:+2:17: +2:21
+        StorageLive(_2);                 // scope 1 at $DIR/tls_access.rs:+2:13: +2:14
+        StorageLive(_1);                 // scope 1 at $DIR/tls_access.rs:+2:18: +2:21
+        _1 = &/*tls*/ mut FOO;           // scope 1 at $DIR/tls_access.rs:+2:18: +2:21
+        _2 = &(*_1);                     // scope 1 at $DIR/tls_access.rs:+2:17: +2:21
         StorageLive(_3);                 // scope 2 at $DIR/tls_access.rs:+3:9: +3:12
         _3 = &/*tls*/ mut FOO;           // scope 2 at $DIR/tls_access.rs:+3:9: +3:12
         (*_3) = const 42_u8;             // scope 2 at $DIR/tls_access.rs:+3:9: +3:17
         StorageDead(_3);                 // scope 2 at $DIR/tls_access.rs:+3:17: +3:18
         _0 = const ();                   // scope 1 at $DIR/tls_access.rs:+1:5: +4:6
-        StorageDead(_2);                 // scope 1 at $DIR/tls_access.rs:+4:5: +4:6
         StorageDead(_1);                 // scope 1 at $DIR/tls_access.rs:+4:5: +4:6
+        StorageDead(_2);                 // scope 1 at $DIR/tls_access.rs:+4:5: +4:6
         return;                          // scope 0 at $DIR/tls_access.rs:+5:2: +5:2
     }
 }

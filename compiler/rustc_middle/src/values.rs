@@ -96,13 +96,13 @@ impl<'tcx> Value<TyCtxt<'tcx>, DepKind> for Representability {
 
 impl<'tcx> Value<TyCtxt<'tcx>, DepKind> for ty::EarlyBinder<Ty<'_>> {
     fn from_cycle_error(tcx: TyCtxt<'tcx>, cycle: &[QueryInfo<DepKind>]) -> Self {
-        ty::EarlyBinder(Ty::from_cycle_error(tcx, cycle))
+        ty::EarlyBinder::bind(Ty::from_cycle_error(tcx, cycle))
     }
 }
 
 impl<'tcx> Value<TyCtxt<'tcx>, DepKind> for ty::EarlyBinder<ty::Binder<'_, ty::FnSig<'_>>> {
     fn from_cycle_error(tcx: TyCtxt<'tcx>, cycle: &[QueryInfo<DepKind>]) -> Self {
-        ty::EarlyBinder(ty::Binder::from_cycle_error(tcx, cycle))
+        ty::EarlyBinder::bind(ty::Binder::from_cycle_error(tcx, cycle))
     }
 }
 

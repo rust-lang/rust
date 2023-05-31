@@ -462,7 +462,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                 let substs = if self.substs.is_empty() {
                     substs
                 } else {
-                    EarlyBinder(substs).subst(self.lcx.tcx, self.substs)
+                    EarlyBinder::bind(substs).subst(self.lcx.tcx, self.substs)
                 };
 
                 let result = self

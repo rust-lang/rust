@@ -21,7 +21,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
         let mut impls = Vec::new();
         for trait_def_id in cx.tcx.all_traits() {
             if !cx.cache.effective_visibilities.is_reachable(cx.tcx, trait_def_id)
-                || cx.generated_synthetics.get(&(ty.0, trait_def_id)).is_some()
+                || cx.generated_synthetics.get(&(ty.skip_binder(), trait_def_id)).is_some()
             {
                 continue;
             }
@@ -34,13 +34,13 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                     impl_def_id
                 );
                 let trait_ref = cx.tcx.impl_trait_ref(impl_def_id).unwrap();
-                if !matches!(trait_ref.0.self_ty().kind(), ty::Param(_)) {
+                if !matches!(trait_ref.skip_binder().self_ty().kind(), ty::Param(_)) {
                     continue;
                 }
                 let infcx = cx.tcx.infer_ctxt().build();
                 let substs = infcx.fresh_substs_for_item(DUMMY_SP, item_def_id);
                 let impl_ty = ty.subst(infcx.tcx, substs);
-                let param_env = EarlyBinder(param_env).subst(infcx.tcx, substs);
+                let param_env = EarlyBinder::bind(param_env).subst(infcx.tcx, substs);
 
                 let impl_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl_def_id);
                 let impl_trait_ref = trait_ref.subst(infcx.tcx, impl_substs);
@@ -87,7 +87,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                     trait_ref, ty
                 );
 
-                cx.generated_synthetics.insert((ty.0, trait_def_id));
+                cx.generated_synthetics.insert((ty.skip_binder(), trait_def_id));
 
                 impls.push(Item {
                     name: None,
@@ -104,10 +104,10 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                         // the post-inference `trait_ref`, as it's more accurate.
                         trait_: Some(clean_trait_ref_with_bindings(
                             cx,
-                            ty::Binder::dummy(trait_ref.0),
+                            ty::Binder::dummy(trait_ref.skip_binder()),
                             ThinVec::new(),
                         )),
-                        for_: clean_middle_ty(ty::Binder::dummy(ty.0), cx, None),
+                        for_: clean_middle_ty(ty::Binder::dummy(ty.skip_binder()), cx, None),
                         items: cx
                             .tcx
                             .associated_items(impl_def_id)
@@ -116,7 +116,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             .collect::<Vec<_>>(),
                         polarity: ty::ImplPolarity::Positive,
                         kind: ImplKind::Blanket(Box::new(clean_middle_ty(
-                            ty::Binder::dummy(trait_ref.0.self_ty()),
+                            ty::Binder::dummy(trait_ref.skip_binder().self_ty()),
                             cx,
                             None,
                         ))),

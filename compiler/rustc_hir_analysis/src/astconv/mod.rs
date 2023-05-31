@@ -239,7 +239,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     var: ty::BoundVar::from_u32(index),
                     kind: ty::BrNamed(def_id, name),
                 };
-                tcx.mk_re_late_bound(debruijn, br)
+                ty::Region::new_late_bound(tcx, debruijn, br)
             }
 
             Some(rbv::ResolvedArg::EarlyBound(def_id)) => {
@@ -247,12 +247,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let item_def_id = tcx.hir().ty_param_owner(def_id.expect_local());
                 let generics = tcx.generics_of(item_def_id);
                 let index = generics.param_def_id_to_index[&def_id];
-                tcx.mk_re_early_bound(ty::EarlyBoundRegion { def_id, index, name })
+                ty::Region::new_early_bound(tcx, ty::EarlyBoundRegion { def_id, index, name })
             }
 
             Some(rbv::ResolvedArg::Free(scope, id)) => {
                 let name = lifetime_name(id.expect_local());
-                tcx.mk_re_free(scope, ty::BrNamed(id, name))
+                ty::Region::new_free(tcx, scope, ty::BrNamed(id, name))
 
                 // (*) -- not late-bound, won't change
             }
@@ -269,7 +269,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     // elision. `resolve_lifetime` should have
                     // reported an error in this case -- but if
                     // not, let's error out.
-                    tcx.mk_re_error_with_message(
+                    ty::Region::new_error_with_message(
+                        tcx,
                         lifetime.ident.span,
                         "unelided lifetime in signature",
                     )
@@ -485,7 +486,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             debug!(?param, "unelided lifetime in signature");
 
                             // This indicates an illegal lifetime in a non-assoc-trait position
-                            tcx.mk_re_error_with_message(
+                            ty::Region::new_error_with_message(
+                                tcx,
                                 self.span,
                                 "unelided lifetime in signature",
                             )
@@ -1219,15 +1221,15 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let substs =
                 candidate.skip_binder().substs.extend_to(tcx, assoc_item.def_id, |param, _| {
                     let subst = match param.kind {
-                        GenericParamDefKind::Lifetime => tcx
-                            .mk_re_late_bound(
-                                ty::INNERMOST,
-                                ty::BoundRegion {
-                                    var: ty::BoundVar::from_usize(num_bound_vars),
-                                    kind: ty::BoundRegionKind::BrNamed(param.def_id, param.name),
-                                },
-                            )
-                            .into(),
+                        GenericParamDefKind::Lifetime => ty::Region::new_late_bound(
+                            tcx,
+                            ty::INNERMOST,
+                            ty::BoundRegion {
+                                var: ty::BoundVar::from_usize(num_bound_vars),
+                                kind: ty::BoundRegionKind::BrNamed(param.def_id, param.name),
+                            },
+                        )
+                        .into(),
                         GenericParamDefKind::Type { .. } => tcx
                             .mk_bound(
                                 ty::INNERMOST,
@@ -1278,7 +1280,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             // params (and trait ref's late bound params). This logic is very similar to
             // `Predicate::subst_supertrait`, and it's no coincidence why.
             let shifted_output = tcx.shift_bound_var_indices(num_bound_vars, output);
-            let subst_output = ty::EarlyBinder(shifted_output).subst(tcx, substs);
+            let subst_output = ty::EarlyBinder::bind(shifted_output).subst(tcx, substs);
 
             let bound_vars = tcx.late_bound_vars(binding.hir_id);
             ty::Binder::bind_with_vars(subst_output, bound_vars)
@@ -1804,7 +1806,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         } else {
                             err.emit()
                         };
-                        tcx.mk_re_error(e)
+                        ty::Region::new_error(tcx, e)
                     })
                 }
             })

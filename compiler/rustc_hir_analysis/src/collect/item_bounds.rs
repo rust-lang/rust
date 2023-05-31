@@ -86,7 +86,7 @@ pub(super) fn explicit_item_bounds(
         Some(ty::ImplTraitInTraitData::Trait { opaque_def_id, .. }) => {
             let item = tcx.hir().get_by_def_id(opaque_def_id.expect_local()).expect_item();
             let opaque_ty = item.expect_opaque_ty();
-            return ty::EarlyBinder(opaque_type_bounds(
+            return ty::EarlyBinder::bind(opaque_type_bounds(
                 tcx,
                 opaque_def_id.expect_local(),
                 opaque_ty.bounds,
@@ -124,7 +124,7 @@ pub(super) fn explicit_item_bounds(
         }
         _ => bug!("item_bounds called on {:?}", def_id),
     };
-    ty::EarlyBinder(bounds)
+    ty::EarlyBinder::bind(bounds)
 }
 
 pub(super) fn item_bounds(

@@ -11,6 +11,8 @@
 #![feature(never_type)]
 #![feature(panic_always_abort)]
 
+#![allow(invalid_from_utf8)]
+
 extern crate libc;
 
 use std::alloc::{GlobalAlloc, Layout};

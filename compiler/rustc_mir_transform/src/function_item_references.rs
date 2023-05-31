@@ -83,7 +83,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
                         // If the inner type matches the type bound by `Pointer`
                         if inner_ty == bound_ty {
                             // Do a substitution using the parameters from the callsite
-                            let subst_ty = EarlyBinder(inner_ty).subst(self.tcx, substs_ref);
+                            let subst_ty = EarlyBinder::bind(inner_ty).subst(self.tcx, substs_ref);
                             if let Some((fn_id, fn_substs)) =
                                 FunctionItemRefChecker::is_fn_ref(subst_ty)
                             {

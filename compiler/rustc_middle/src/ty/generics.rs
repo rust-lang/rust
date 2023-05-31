@@ -100,7 +100,7 @@ impl GenericParamDef {
         preceding_substs: &[ty::GenericArg<'tcx>],
     ) -> ty::GenericArg<'tcx> {
         match &self.kind {
-            ty::GenericParamDefKind::Lifetime => tcx.mk_re_error_misc().into(),
+            ty::GenericParamDefKind::Lifetime => ty::Region::new_error_misc(tcx).into(),
             ty::GenericParamDefKind::Type { .. } => tcx.ty_error_misc().into(),
             ty::GenericParamDefKind::Const { .. } => {
                 tcx.const_error_misc(tcx.type_of(self.def_id).subst(tcx, preceding_substs)).into()
@@ -343,7 +343,7 @@ impl<'tcx> GenericPredicates<'tcx> {
         substs: SubstsRef<'tcx>,
     ) -> impl Iterator<Item = (Predicate<'tcx>, Span)> + DoubleEndedIterator + ExactSizeIterator
     {
-        EarlyBinder(self.predicates).subst_iter_copied(tcx, substs)
+        EarlyBinder::bind(self.predicates).subst_iter_copied(tcx, substs)
     }
 
     #[instrument(level = "debug", skip(self, tcx))]
@@ -358,7 +358,7 @@ impl<'tcx> GenericPredicates<'tcx> {
         }
         instantiated
             .predicates
-            .extend(self.predicates.iter().map(|(p, _)| EarlyBinder(*p).subst(tcx, substs)));
+            .extend(self.predicates.iter().map(|(p, _)| EarlyBinder::bind(*p).subst(tcx, substs)));
         instantiated.spans.extend(self.predicates.iter().map(|(_, sp)| *sp));
     }
 

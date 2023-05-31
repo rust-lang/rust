@@ -25,6 +25,7 @@ use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
     self, ObligationCause, ObligationCauseCode, ObligationCtxt, Reveal,
 };
+use std::borrow::Cow;
 use std::iter;
 
 /// Checks that a method from an impl conforms to the signature of
@@ -471,7 +472,8 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RemapLateBound<'_, 'tcx> {
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         if let ty::ReFree(fr) = *r {
-            self.tcx.mk_re_free(
+            ty::Region::new_free(
+                self.tcx,
                 fr.scope,
                 self.mapping.get(&fr.bound_region).copied().unwrap_or(fr.bound_region),
             )
@@ -684,7 +686,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                 &cause,
                 hir.get_if_local(impl_m.def_id)
                     .and_then(|node| node.fn_decl())
-                    .map(|decl| (decl.output.span(), "return type in trait".to_owned())),
+                    .map(|decl| (decl.output.span(), Cow::from("return type in trait"))),
                 Some(infer::ValuePairs::Terms(ExpectedFound {
                     expected: trait_return_ty.into(),
                     found: impl_return_ty.into(),
@@ -785,23 +787,23 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                     }
                     let Some(ty::ReEarlyBound(e)) = map.get(&region.into()).map(|r| r.expect_region().kind())
                     else {
-                        return tcx.mk_re_error_with_message(return_span, "expected ReFree to map to ReEarlyBound")
+                        return ty::Region::new_error_with_message(tcx, return_span, "expected ReFree to map to ReEarlyBound")
                     };
-                    tcx.mk_re_early_bound(ty::EarlyBoundRegion {
+                    ty::Region::new_early_bound(tcx, ty::EarlyBoundRegion {
                         def_id: e.def_id,
                         name: e.name,
                         index: (e.index as usize - num_trait_substs + num_impl_substs) as u32,
                     })
                 });
                 debug!(%ty);
-                collected_tys.insert(def_id, ty::EarlyBinder(ty));
+                collected_tys.insert(def_id, ty::EarlyBinder::bind(ty));
             }
             Err(err) => {
                 let reported = tcx.sess.delay_span_bug(
                     return_span,
                     format!("could not fully resolve: {ty} => {err:?}"),
                 );
-                collected_tys.insert(def_id, ty::EarlyBinder(tcx.ty_error(reported)));
+                collected_tys.insert(def_id, ty::EarlyBinder::bind(tcx.ty_error(reported)));
             }
         }
     }
@@ -901,7 +903,7 @@ fn report_trait_method_mismatch<'tcx>(
             if trait_m.fn_has_self_parameter =>
         {
             let ty = trait_sig.inputs()[0];
-            let sugg = match ExplicitSelf::determine(ty, |_| ty == impl_trait_ref.self_ty()) {
+            let sugg = match ExplicitSelf::determine(ty, |ty| ty == impl_trait_ref.self_ty()) {
                 ExplicitSelf::ByValue => "self".to_owned(),
                 ExplicitSelf::ByReference(_, hir::Mutability::Not) => "&self".to_owned(),
                 ExplicitSelf::ByReference(_, hir::Mutability::Mut) => "&mut self".to_owned(),
@@ -963,7 +965,7 @@ fn report_trait_method_mismatch<'tcx>(
     infcx.err_ctxt().note_type_err(
         &mut diag,
         &cause,
-        trait_err_span.map(|sp| (sp, "type in trait".to_owned())),
+        trait_err_span.map(|sp| (sp, Cow::from("type in trait"))),
         Some(infer::ValuePairs::Sigs(ExpectedFound { expected: trait_sig, found: impl_sig })),
         terr,
         false,
@@ -1731,7 +1733,7 @@ pub(super) fn compare_impl_const_raw(
         infcx.err_ctxt().note_type_err(
             &mut diag,
             &cause,
-            trait_c_span.map(|span| (span, "type in trait".to_owned())),
+            trait_c_span.map(|span| (span, Cow::from("type in trait"))),
             Some(infer::ValuePairs::Terms(ExpectedFound {
                 expected: trait_ty.into(),
                 found: impl_ty.into(),
@@ -1932,7 +1934,8 @@ pub(super) fn check_type_bounds<'tcx>(
                 let kind = ty::BoundRegionKind::BrNamed(param.def_id, param.name);
                 let bound_var = ty::BoundVariableKind::Region(kind);
                 bound_vars.push(bound_var);
-                tcx.mk_re_late_bound(
+                ty::Region::new_late_bound(
+                    tcx,
                     ty::INNERMOST,
                     ty::BoundRegion { var: ty::BoundVar::from_usize(bound_vars.len() - 1), kind },
                 )

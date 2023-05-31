@@ -241,7 +241,7 @@ fn is_contains_sig(cx: &LateContext<'_>, call_id: HirId, iter_expr: &Expr<'_>) -
         && let proj_ty = cx.tcx.mk_projection(iter_item.def_id, substs)
         && let Ok(item_ty) = cx.tcx.try_normalize_erasing_regions(cx.param_env, proj_ty)
     {
-        item_ty == EarlyBinder(search_ty).subst(cx.tcx, cx.typeck_results().node_substs(call_id))
+        item_ty == EarlyBinder::bind(search_ty).subst(cx.tcx, cx.typeck_results().node_substs(call_id))
     } else {
         false
     }

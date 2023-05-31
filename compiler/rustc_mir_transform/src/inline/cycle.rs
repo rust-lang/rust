@@ -47,7 +47,7 @@ pub(crate) fn mir_callgraph_reachable<'tcx>(
             let Ok(substs) = caller.try_subst_mir_and_normalize_erasing_regions(
                 tcx,
                 param_env,
-                ty::EarlyBinder(substs),
+                ty::EarlyBinder::bind(substs),
             ) else {
                 trace!(?caller, ?param_env, ?substs, "cannot normalize, skipping");
                 continue;

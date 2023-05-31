@@ -115,6 +115,16 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type FreeRegion = ty::FreeRegion;
     type RegionVid = ty::RegionVid;
     type PlaceholderRegion = ty::PlaceholderRegion;
+
+    fn ty_and_mut_to_parts(
+        TypeAndMut { ty, mutbl }: TypeAndMut<'tcx>,
+    ) -> (Self::Ty, Self::Mutability) {
+        (ty, mutbl)
+    }
+
+    fn mutability_is_mut(mutbl: Self::Mutability) -> bool {
+        mutbl.is_mut()
+    }
 }
 
 type InternedSet<'tcx, T> = ShardedHashMap<InternedInSet<'tcx, T>, ()>;
@@ -713,30 +723,6 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_ty_from_kind(Error(reported))
     }
 
-    /// Constructs a `RegionKind::ReError` lifetime.
-    #[track_caller]
-    pub fn mk_re_error(self, reported: ErrorGuaranteed) -> Region<'tcx> {
-        self.intern_region(ty::ReError(reported))
-    }
-
-    /// Constructs a `RegionKind::ReError` lifetime and registers a `delay_span_bug` to ensure it
-    /// gets used.
-    #[track_caller]
-    pub fn mk_re_error_misc(self) -> Region<'tcx> {
-        self.mk_re_error_with_message(
-            DUMMY_SP,
-            "RegionKind::ReError constructed but no error reported",
-        )
-    }
-
-    /// Constructs a `RegionKind::ReError` lifetime and registers a `delay_span_bug` with the given
-    /// `msg` to ensure it gets used.
-    #[track_caller]
-    pub fn mk_re_error_with_message<S: Into<MultiSpan>>(self, span: S, msg: &str) -> Region<'tcx> {
-        let reported = self.sess.delay_span_bug(span, msg);
-        self.mk_re_error(reported)
-    }
-
     /// Like [TyCtxt::ty_error] but for constants, with current `ErrorGuaranteed`
     #[track_caller]
     pub fn const_error(self, ty: Ty<'tcx>, reported: ErrorGuaranteed) -> Const<'tcx> {
@@ -759,7 +745,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         ty: Ty<'tcx>,
         span: S,
-        msg: &str,
+        msg: &'static str,
     ) -> Const<'tcx> {
         let reported = self.sess.delay_span_bug(span, msg);
         self.mk_const(ty::ConstKind::Error(reported), ty)
@@ -1515,9 +1501,9 @@ macro_rules! direct_interners {
 
 // Functions with a `mk_` prefix are intended for use outside this file and
 // crate. Functions with an `intern_` prefix are intended for use within this
-// file only, and have a corresponding `mk_` function.
+// crate only, and have a corresponding `mk_` function.
 direct_interners! {
-    region: intern_region(RegionKind<'tcx>): Region -> Region<'tcx>,
+    region: pub(crate) intern_region(RegionKind<'tcx>): Region -> Region<'tcx>,
     const_: intern_const(ConstData<'tcx>): Const -> Const<'tcx>,
     const_allocation: pub mk_const_alloc(Allocation): ConstAllocation -> ConstAllocation<'tcx>,
     layout: pub mk_layout(LayoutS): Layout -> Layout<'tcx>,
@@ -1992,7 +1978,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn mk_param_from_def(self, param: &ty::GenericParamDef) -> GenericArg<'tcx> {
         match param.kind {
             GenericParamDefKind::Lifetime => {
-                self.mk_re_early_bound(param.to_early_bound_region_data()).into()
+                ty::Region::new_early_bound(self, param.to_early_bound_region_data()).into()
             }
             GenericParamDefKind::Type { .. } => self.mk_ty_param(param.index, param.name).into(),
             GenericParamDefKind::Const { .. } => self
@@ -2030,65 +2016,6 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn mk_opaque(self, def_id: DefId, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
         self.mk_alias(ty::Opaque, self.mk_alias_ty(def_id, substs))
-    }
-
-    #[inline]
-    pub fn mk_re_early_bound(self, early_bound_region: ty::EarlyBoundRegion) -> Region<'tcx> {
-        self.intern_region(ty::ReEarlyBound(early_bound_region))
-    }
-
-    #[inline]
-    pub fn mk_re_late_bound(
-        self,
-        debruijn: ty::DebruijnIndex,
-        bound_region: ty::BoundRegion,
-    ) -> Region<'tcx> {
-        // Use a pre-interned one when possible.
-        if let ty::BoundRegion { var, kind: ty::BrAnon(None) } = bound_region
-            && let Some(inner) = self.lifetimes.re_late_bounds.get(debruijn.as_usize())
-            && let Some(re) = inner.get(var.as_usize()).copied()
-        {
-            re
-        } else {
-            self.intern_region(ty::ReLateBound(debruijn, bound_region))
-        }
-    }
-
-    #[inline]
-    pub fn mk_re_free(self, scope: DefId, bound_region: ty::BoundRegionKind) -> Region<'tcx> {
-        self.intern_region(ty::ReFree(ty::FreeRegion { scope, bound_region }))
-    }
-
-    #[inline]
-    pub fn mk_re_var(self, v: ty::RegionVid) -> Region<'tcx> {
-        // Use a pre-interned one when possible.
-        self.lifetimes
-            .re_vars
-            .get(v.as_usize())
-            .copied()
-            .unwrap_or_else(|| self.intern_region(ty::ReVar(v)))
-    }
-
-    #[inline]
-    pub fn mk_re_placeholder(self, placeholder: ty::PlaceholderRegion) -> Region<'tcx> {
-        self.intern_region(ty::RePlaceholder(placeholder))
-    }
-
-    // Avoid this in favour of more specific `mk_re_*` methods, where possible,
-    // to avoid the cost of the `match`.
-    pub fn mk_region_from_kind(self, kind: ty::RegionKind<'tcx>) -> Region<'tcx> {
-        match kind {
-            ty::ReEarlyBound(region) => self.mk_re_early_bound(region),
-            ty::ReLateBound(debruijn, region) => self.mk_re_late_bound(debruijn, region),
-            ty::ReFree(ty::FreeRegion { scope, bound_region }) => {
-                self.mk_re_free(scope, bound_region)
-            }
-            ty::ReStatic => self.lifetimes.re_static,
-            ty::ReVar(vid) => self.mk_re_var(vid),
-            ty::RePlaceholder(region) => self.mk_re_placeholder(region),
-            ty::ReErased => self.lifetimes.re_erased,
-            ty::ReError(reported) => self.mk_re_error(reported),
-        }
     }
 
     pub fn mk_place_field(self, place: Place<'tcx>, f: FieldIdx, ty: Ty<'tcx>) -> Place<'tcx> {

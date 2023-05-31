@@ -558,7 +558,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         }
 
         // Take the `Diagnostic` by replacing it with a dummy.
-        let dummy = Diagnostic::new(Level::Allow, DiagnosticMessage::Str("".to_string()));
+        let dummy = Diagnostic::new(Level::Allow, DiagnosticMessage::from(""));
         let diagnostic = std::mem::replace(&mut *self.inner.diagnostic, dummy);
 
         // Disable the ICE on `Drop`.
@@ -627,7 +627,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     pub fn span_labels(
         &mut self,
         spans: impl IntoIterator<Item = Span>,
-        label: impl AsRef<str>,
+        label: &str,
     ) -> &mut Self);
 
     forward!(pub fn note_expected_found(
@@ -781,8 +781,8 @@ impl Drop for DiagnosticBuilderInner<'_> {
                 if !panicking() {
                     handler.emit_diagnostic(&mut Diagnostic::new(
                         Level::Bug,
-                        DiagnosticMessage::Str(
-                            "the following error was constructed but not emitted".to_string(),
+                        DiagnosticMessage::from(
+                            "the following error was constructed but not emitted",
                         ),
                     ));
                     handler.emit_diagnostic(&mut self.diagnostic);

@@ -88,7 +88,35 @@ impl fmt::Debug for ty::FreeRegion {
 
 impl<'tcx> fmt::Debug for ty::FnSig<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "({:?}; c_variadic: {})->{:?}", self.inputs(), self.c_variadic, self.output())
+        let ty::FnSig { inputs_and_output: _, c_variadic, unsafety, abi } = self;
+
+        write!(f, "{}", unsafety.prefix_str())?;
+        match abi {
+            rustc_target::spec::abi::Abi::Rust => (),
+            abi => write!(f, "extern \"{abi:?}\" ")?,
+        };
+
+        write!(f, "fn(")?;
+        let inputs = self.inputs();
+        match inputs.len() {
+            0 if *c_variadic => write!(f, "...)")?,
+            0 => write!(f, ")")?,
+            _ => {
+                for ty in &self.inputs()[0..(self.inputs().len() - 1)] {
+                    write!(f, "{ty:?}, ")?;
+                }
+                write!(f, "{:?}", self.inputs().last().unwrap())?;
+                if *c_variadic {
+                    write!(f, "...")?;
+                }
+                write!(f, ")")?;
+            }
+        }
+
+        match self.output().kind() {
+            ty::Tuple(list) if list.is_empty() => Ok(()),
+            _ => write!(f, " -> {:?}", self.output()),
+        }
     }
 }
 
@@ -216,16 +244,33 @@ impl<'tcx> fmt::Debug for ty::ConstKind<'tcx> {
         match self {
             Param(param) => write!(f, "{param:?}"),
             Infer(var) => write!(f, "{var:?}"),
-            Bound(debruijn, var) => ty::print::debug_bound_var(f, *debruijn, *var),
-            Placeholder(placeholder) => {
-                ty::print::debug_placeholder_var(f, placeholder.universe, placeholder.bound)
-            }
+            Bound(debruijn, var) => rustc_type_ir::debug_bound_var(f, *debruijn, *var),
+            Placeholder(placeholder) => write!(f, "{placeholder:?}"),
             Unevaluated(uv) => {
                 f.debug_tuple("Unevaluated").field(&uv.substs).field(&uv.def).finish()
             }
             Value(valtree) => write!(f, "{valtree:?}"),
-            Error(_) => write!(f, "[const error]"),
+            Error(_) => write!(f, "{{const error}}"),
             Expr(expr) => write!(f, "{expr:?}"),
+        }
+    }
+}
+
+impl fmt::Debug for ty::BoundTy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.kind {
+            ty::BoundTyKind::Anon => write!(f, "{:?}", self.var),
+            ty::BoundTyKind::Param(_, sym) => write!(f, "{sym:?}"),
+        }
+    }
+}
+
+impl<T: fmt::Debug> fmt::Debug for ty::Placeholder<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.universe == ty::UniverseIndex::ROOT {
+            write!(f, "!{:?}", self.bound)
+        } else {
+            write!(f, "!{}_{:?}", self.universe.index(), self.bound)
         }
     }
 }
@@ -294,6 +339,7 @@ TrivialTypeTraversalAndLiftImpls! {
     crate::ty::AliasRelationDirection,
     crate::ty::Placeholder<crate::ty::BoundRegion>,
     crate::ty::Placeholder<crate::ty::BoundTy>,
+    crate::ty::Placeholder<ty::BoundVar>,
     crate::ty::ClosureKind,
     crate::ty::FreeRegion,
     crate::ty::InferTy,
@@ -310,7 +356,6 @@ TrivialTypeTraversalAndLiftImpls! {
     interpret::Scalar,
     rustc_target::abi::Size,
     ty::BoundVar,
-    ty::Placeholder<ty::BoundVar>,
 }
 
 TrivialTypeTraversalAndLiftImpls! {

@@ -93,7 +93,7 @@ fn make_mir_scope<'ll, 'tcx>(
             let callee = cx.tcx.subst_and_normalize_erasing_regions(
                 instance.substs,
                 ty::ParamEnv::reveal_all(),
-                ty::EarlyBinder(callee),
+                ty::EarlyBinder::bind(callee),
             );
             let callee_fn_abi = cx.fn_abi_of_instance(callee, ty::List::empty());
             cx.dbg_scope_fn(callee, callee_fn_abi, None)

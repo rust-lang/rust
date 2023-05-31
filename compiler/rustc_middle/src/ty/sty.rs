@@ -15,14 +15,14 @@ use hir::def::DefKind;
 use polonius_engine::Atom;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::intern::Interned;
-use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
+use rustc_errors::{DiagnosticArgValue, ErrorGuaranteed, IntoDiagnosticArg, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
 use rustc_index::Idx;
 use rustc_macros::HashStable;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use rustc_target::spec::abi::{self, Abi};
 use std::borrow::Cow;
@@ -568,7 +568,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
         let layout = tcx.generator_layout(def_id).unwrap();
         layout.variant_fields.iter().map(move |variant| {
             variant.iter().map(move |field| {
-                ty::EarlyBinder(layout.field_tys[*field].ty).subst(tcx, self.substs)
+                ty::EarlyBinder::bind(layout.field_tys[*field].ty).subst(tcx, self.substs)
             })
         })
     }
@@ -1459,6 +1459,103 @@ impl ParamConst {
 #[rustc_pass_by_value]
 pub struct Region<'tcx>(pub Interned<'tcx, RegionKind<'tcx>>);
 
+impl<'tcx> Region<'tcx> {
+    #[inline]
+    pub fn new_early_bound(
+        tcx: TyCtxt<'tcx>,
+        early_bound_region: ty::EarlyBoundRegion,
+    ) -> Region<'tcx> {
+        tcx.intern_region(ty::ReEarlyBound(early_bound_region))
+    }
+
+    #[inline]
+    pub fn new_late_bound(
+        tcx: TyCtxt<'tcx>,
+        debruijn: ty::DebruijnIndex,
+        bound_region: ty::BoundRegion,
+    ) -> Region<'tcx> {
+        // Use a pre-interned one when possible.
+        if let ty::BoundRegion { var, kind: ty::BrAnon(None) } = bound_region
+            && let Some(inner) = tcx.lifetimes.re_late_bounds.get(debruijn.as_usize())
+            && let Some(re) = inner.get(var.as_usize()).copied()
+        {
+            re
+        } else {
+            tcx.intern_region(ty::ReLateBound(debruijn, bound_region))
+        }
+    }
+
+    #[inline]
+    pub fn new_free(
+        tcx: TyCtxt<'tcx>,
+        scope: DefId,
+        bound_region: ty::BoundRegionKind,
+    ) -> Region<'tcx> {
+        tcx.intern_region(ty::ReFree(ty::FreeRegion { scope, bound_region }))
+    }
+
+    #[inline]
+    pub fn new_var(tcx: TyCtxt<'tcx>, v: ty::RegionVid) -> Region<'tcx> {
+        // Use a pre-interned one when possible.
+        tcx.lifetimes
+            .re_vars
+            .get(v.as_usize())
+            .copied()
+            .unwrap_or_else(|| tcx.intern_region(ty::ReVar(v)))
+    }
+
+    #[inline]
+    pub fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderRegion) -> Region<'tcx> {
+        tcx.intern_region(ty::RePlaceholder(placeholder))
+    }
+
+    /// Constructs a `RegionKind::ReError` region.
+    #[track_caller]
+    pub fn new_error(tcx: TyCtxt<'tcx>, reported: ErrorGuaranteed) -> Region<'tcx> {
+        tcx.intern_region(ty::ReError(reported))
+    }
+
+    /// Constructs a `RegionKind::ReError` region and registers a `delay_span_bug` to ensure it
+    /// gets used.
+    #[track_caller]
+    pub fn new_error_misc(tcx: TyCtxt<'tcx>) -> Region<'tcx> {
+        Region::new_error_with_message(
+            tcx,
+            DUMMY_SP,
+            "RegionKind::ReError constructed but no error reported",
+        )
+    }
+
+    /// Constructs a `RegionKind::ReError` region and registers a `delay_span_bug` with the given
+    /// `msg` to ensure it gets used.
+    #[track_caller]
+    pub fn new_error_with_message<S: Into<MultiSpan>>(
+        tcx: TyCtxt<'tcx>,
+        span: S,
+        msg: &'static str,
+    ) -> Region<'tcx> {
+        let reported = tcx.sess.delay_span_bug(span, msg);
+        Region::new_error(tcx, reported)
+    }
+
+    /// Avoid this in favour of more specific `new_*` methods, where possible,
+    /// to avoid the cost of the `match`.
+    pub fn new_from_kind(tcx: TyCtxt<'tcx>, kind: RegionKind<'tcx>) -> Region<'tcx> {
+        match kind {
+            ty::ReEarlyBound(region) => Region::new_early_bound(tcx, region),
+            ty::ReLateBound(debruijn, region) => Region::new_late_bound(tcx, debruijn, region),
+            ty::ReFree(ty::FreeRegion { scope, bound_region }) => {
+                Region::new_free(tcx, scope, bound_region)
+            }
+            ty::ReStatic => tcx.lifetimes.re_static,
+            ty::ReVar(vid) => Region::new_var(tcx, vid),
+            ty::RePlaceholder(region) => Region::new_placeholder(tcx, region),
+            ty::ReErased => tcx.lifetimes.re_erased,
+            ty::ReError(reported) => Region::new_error(tcx, reported),
+        }
+    }
+}
+
 impl<'tcx> Deref for Region<'tcx> {
     type Target = RegionKind<'tcx>;
 
@@ -1511,10 +1608,11 @@ impl Atom for RegionVid {
 
 rustc_index::newtype_index! {
     #[derive(HashStable)]
+    #[debug_format = "{}"]
     pub struct BoundVar {}
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub struct BoundTy {
     pub var: BoundVar,
@@ -2366,7 +2464,7 @@ impl<'tcx> Ty<'tcx> {
 
             ty::Tuple(tys) => tys.iter().all(|ty| ty.is_trivially_sized(tcx)),
 
-            ty::Adt(def, _substs) => def.sized_constraint(tcx).0.is_empty(),
+            ty::Adt(def, _substs) => def.sized_constraint(tcx).skip_binder().is_empty(),
 
             ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) => false,
 

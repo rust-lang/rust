@@ -360,7 +360,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // consider a "quick reject". This avoids creating more types
                 // and so forth that we need to.
                 let impl_trait_ref = self.tcx().impl_trait_ref(impl_def_id).unwrap();
-                if !drcx.substs_refs_may_unify(obligation_substs, impl_trait_ref.0.substs) {
+                if !drcx
+                    .substs_refs_may_unify(obligation_substs, impl_trait_ref.skip_binder().substs)
+                {
                     return;
                 }
                 if self.reject_fn_ptr_impls(

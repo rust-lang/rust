@@ -352,14 +352,9 @@ impl Diagnostic {
 
     /// Labels all the given spans with the provided label.
     /// See [`Self::span_label()`] for more information.
-    pub fn span_labels(
-        &mut self,
-        spans: impl IntoIterator<Item = Span>,
-        label: impl AsRef<str>,
-    ) -> &mut Self {
-        let label = label.as_ref();
+    pub fn span_labels(&mut self, spans: impl IntoIterator<Item = Span>, label: &str) -> &mut Self {
         for span in spans {
-            self.span_label(span, label);
+            self.span_label(span, label.to_string());
         }
         self
     }
@@ -394,17 +389,18 @@ impl Diagnostic {
         expected: DiagnosticStyledString,
         found: DiagnosticStyledString,
     ) -> &mut Self {
-        let mut msg: Vec<_> = vec![("required when trying to coerce from type `", Style::NoStyle)];
+        let mut msg: Vec<_> =
+            vec![(Cow::from("required when trying to coerce from type `"), Style::NoStyle)];
         msg.extend(expected.0.iter().map(|x| match *x {
-            StringPart::Normal(ref s) => (s.as_str(), Style::NoStyle),
-            StringPart::Highlighted(ref s) => (s.as_str(), Style::Highlight),
+            StringPart::Normal(ref s) => (Cow::from(s.clone()), Style::NoStyle),
+            StringPart::Highlighted(ref s) => (Cow::from(s.clone()), Style::Highlight),
         }));
-        msg.push(("` to type '", Style::NoStyle));
+        msg.push((Cow::from("` to type '"), Style::NoStyle));
         msg.extend(found.0.iter().map(|x| match *x {
-            StringPart::Normal(ref s) => (s.as_str(), Style::NoStyle),
-            StringPart::Highlighted(ref s) => (s.as_str(), Style::Highlight),
+            StringPart::Normal(ref s) => (Cow::from(s.clone()), Style::NoStyle),
+            StringPart::Highlighted(ref s) => (Cow::from(s.clone()), Style::Highlight),
         }));
-        msg.push(("`", Style::NoStyle));
+        msg.push((Cow::from("`"), Style::NoStyle));
 
         // For now, just attach these as notes
         self.highlighted_note(msg);

@@ -254,5 +254,5 @@ pub fn const_param_default(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBind
             "`const_param_default` expected a generic parameter with a constant"
         ),
     };
-    ty::EarlyBinder(Const::from_anon_const(tcx, default_def_id))
+    ty::EarlyBinder::bind(Const::from_anon_const(tcx, default_def_id))
 }

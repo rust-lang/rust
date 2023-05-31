@@ -68,12 +68,13 @@ pub(super) fn infer_predicates(
             // Therefore mark `predicates_added` as true and which will ensure
             // we walk the crates again and re-calculate predicates for all
             // items.
-            let item_predicates_len: usize =
-                global_inferred_outlives.get(&item_did.to_def_id()).map_or(0, |p| p.0.len());
+            let item_predicates_len: usize = global_inferred_outlives
+                .get(&item_did.to_def_id())
+                .map_or(0, |p| p.as_ref().skip_binder().len());
             if item_required_predicates.len() > item_predicates_len {
                 predicates_added = true;
                 global_inferred_outlives
-                    .insert(item_did.to_def_id(), ty::EarlyBinder(item_required_predicates));
+                    .insert(item_did.to_def_id(), ty::EarlyBinder::bind(item_required_predicates));
             }
         }
 
@@ -137,7 +138,9 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 // 'a` holds for `Foo`.
                 debug!("Adt");
                 if let Some(unsubstituted_predicates) = global_inferred_outlives.get(&def.did()) {
-                    for (unsubstituted_predicate, &span) in &unsubstituted_predicates.0 {
+                    for (unsubstituted_predicate, &span) in
+                        unsubstituted_predicates.as_ref().skip_binder()
+                    {
                         // `unsubstituted_predicate` is `U: 'b` in the
                         // example above. So apply the substitution to
                         // get `T: 'a` (or `predicate`):
@@ -251,7 +254,7 @@ fn check_explicit_predicates<'tcx>(
     );
     let explicit_predicates = explicit_map.explicit_predicates_of(tcx, def_id);
 
-    for (outlives_predicate, &span) in &explicit_predicates.0 {
+    for (outlives_predicate, &span) in explicit_predicates.as_ref().skip_binder() {
         debug!("outlives_predicate = {:?}", &outlives_predicate);
 
         // Careful: If we are inferring the effects of a `dyn Trait<..>`

@@ -294,7 +294,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         };
         Arc::new(chalk_solve::rust_ir::FnDefDatum {
             id: fn_def_id,
-            sig: sig.0.lower_into(self.interner),
+            sig: sig.skip_binder().lower_into(self.interner),
             binders: chalk_ir::Binders::new(binders, bound),
         })
     }
@@ -727,7 +727,7 @@ fn bound_vars_for_item(tcx: TyCtxt<'_>, def_id: DefId) -> SubstsRef<'_> {
                 var: ty::BoundVar::from_usize(substs.len()),
                 kind: ty::BrAnon(None),
             };
-            tcx.mk_re_late_bound(ty::INNERMOST, br).into()
+            ty::Region::new_late_bound(tcx, ty::INNERMOST, br).into()
         }
 
         ty::GenericParamDefKind::Const { .. } => tcx

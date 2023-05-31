@@ -57,22 +57,22 @@ define-function: (
 
 call-function: ("check-filter", {
     "theme": "ayu",
-    "border": "rgb(92, 103, 115)",
+    "border": "#5c6773",
     "filter": "invert(0.41) sepia(0.12) saturate(4.87) hue-rotate(171deg) brightness(0.94) contrast(0.94)",
-    "hover_border": "rgb(224, 224, 224)",
+    "hover_border": "#e0e0e0",
     "hover_filter": "invert(0.98) sepia(0.12) saturate(0.81) hue-rotate(343deg) brightness(1.13) contrast(0.76)",
 })
 call-function: ("check-filter", {
     "theme": "dark",
-    "border": "rgb(224, 224, 224)",
+    "border": "#e0e0e0",
     "filter": "invert(0.94) sepia(0) saturate(7.21) hue-rotate(255deg) brightness(0.9) contrast(0.9)",
-    "hover_border": "rgb(33, 150, 243)",
+    "hover_border": "#2196f3",
     "hover_filter": "invert(0.69) sepia(0.6) saturate(66.13) hue-rotate(184deg) brightness(1) contrast(0.91)",
 })
 call-function: ("check-filter", {
     "theme": "light",
-    "border": "rgb(224, 224, 224)",
+    "border": "#e0e0e0",
     "filter": "invert(1) sepia(0) saturate(42.23) hue-rotate(289deg) brightness(1.14) contrast(0.76)",
-    "hover_border": "rgb(113, 113, 113)",
+    "hover_border": "#717171",
     "hover_filter": "invert(0.44) sepia(0.18) saturate(0.23) hue-rotate(317deg) brightness(0.96) contrast(0.93)",
 })

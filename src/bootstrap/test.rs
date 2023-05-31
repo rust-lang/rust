@@ -101,7 +101,7 @@ impl Step for CrateBootstrap {
         );
         builder.info(&format!(
             "{} {} stage0 ({})",
-            builder.kind.test_description(),
+            builder.kind.description(),
             path,
             bootstrap_host,
         ));
@@ -220,7 +220,7 @@ impl Step for HtmlCheck {
         }
         // Ensure that a few different kinds of documentation are available.
         builder.default_doc(&[]);
-        builder.ensure(crate::doc::Rustc { target: self.target, stage: builder.top_stage });
+        builder.ensure(crate::doc::Rustc::new(builder.top_stage, self.target, builder));
 
         try_run(builder, builder.tool_cmd(Tool::HtmlChecker).arg(builder.doc_out(self.target)));
     }
@@ -886,11 +886,11 @@ impl Step for RustdocJSStd {
                     command.arg("--test-file").arg(path);
                 }
             }
-            builder.ensure(crate::doc::Std {
-                target: self.target,
-                stage: builder.top_stage,
-                format: DocumentationFormat::HTML,
-            });
+            builder.ensure(crate::doc::Std::new(
+                builder.top_stage,
+                self.target,
+                DocumentationFormat::HTML,
+            ));
             builder.run(&mut command);
         } else {
             builder.info("No nodejs found, skipping \"tests/rustdoc-js-std\" tests");

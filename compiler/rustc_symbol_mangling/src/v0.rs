@@ -274,7 +274,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
 
         let mut param_env = self.tcx.param_env_reveal_all_normalized(impl_def_id);
         if !substs.is_empty() {
-            param_env = EarlyBinder(param_env).subst(self.tcx, substs);
+            param_env = EarlyBinder::bind(param_env).subst(self.tcx, substs);
         }
 
         match &mut impl_trait_ref {

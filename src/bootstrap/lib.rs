@@ -1020,8 +1020,8 @@ impl Build {
         host: impl Into<Option<TargetSelection>>,
         target: impl Into<Option<TargetSelection>>,
     ) -> Option<gha::Group> {
-        let action = action.into();
-        let msg = |fmt| format!("{action:?}ing stage{stage} {what}{fmt}");
+        let action = action.into().description();
+        let msg = |fmt| format!("{action} stage{stage} {what}{fmt}");
         let msg = if let Some(target) = target.into() {
             let host = host.into().unwrap();
             if host == target {

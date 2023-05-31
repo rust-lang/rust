@@ -668,14 +668,15 @@ pub fn make_query_region_constraints<'tcx>(
             let constraint = match *k {
                 // Swap regions because we are going from sub (<=) to outlives
                 // (>=).
-                Constraint::VarSubVar(v1, v2) => {
-                    ty::OutlivesPredicate(tcx.mk_re_var(v2).into(), tcx.mk_re_var(v1))
-                }
+                Constraint::VarSubVar(v1, v2) => ty::OutlivesPredicate(
+                    ty::Region::new_var(tcx, v2).into(),
+                    ty::Region::new_var(tcx, v1),
+                ),
                 Constraint::VarSubReg(v1, r2) => {
-                    ty::OutlivesPredicate(r2.into(), tcx.mk_re_var(v1))
+                    ty::OutlivesPredicate(r2.into(), ty::Region::new_var(tcx, v1))
                 }
                 Constraint::RegSubVar(r1, v2) => {
-                    ty::OutlivesPredicate(tcx.mk_re_var(v2).into(), r1)
+                    ty::OutlivesPredicate(ty::Region::new_var(tcx, v2).into(), r1)
                 }
                 Constraint::RegSubReg(r1, r2) => ty::OutlivesPredicate(r2.into(), r1),
             };
@@ -719,7 +720,7 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
     }
 
     fn next_placeholder_region(&mut self, placeholder: ty::PlaceholderRegion) -> ty::Region<'tcx> {
-        self.infcx.tcx.mk_re_placeholder(placeholder)
+        ty::Region::new_placeholder(self.infcx.tcx, placeholder)
     }
 
     fn generalize_existential(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx> {

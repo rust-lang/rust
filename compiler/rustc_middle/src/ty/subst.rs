@@ -538,13 +538,17 @@ impl<'tcx, T: TypeVisitable<TyCtxt<'tcx>>> TypeVisitable<TyCtxt<'tcx>> for &'tcx
 /// [`subst_identity`](EarlyBinder::subst_identity) or [`skip_binder`](EarlyBinder::skip_binder).
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(Encodable, Decodable, HashStable)]
-pub struct EarlyBinder<T>(pub T);
+pub struct EarlyBinder<T>(T);
 
 /// For early binders, you should first call `subst` before using any visitors.
 impl<'tcx, T> !TypeFoldable<TyCtxt<'tcx>> for ty::EarlyBinder<T> {}
 impl<'tcx, T> !TypeVisitable<TyCtxt<'tcx>> for ty::EarlyBinder<T> {}
 
 impl<T> EarlyBinder<T> {
+    pub fn bind(inner: T) -> EarlyBinder<T> {
+        EarlyBinder(inner)
+    }
+
     pub fn as_ref(&self) -> EarlyBinder<&T> {
         EarlyBinder(&self.0)
     }
@@ -581,6 +585,9 @@ impl<T> EarlyBinder<T> {
     /// (e.g., getting the `DefId` of the inner value or getting the number of
     /// arguments of an `FnSig`). Otherwise, consider using
     /// [`subst_identity`](EarlyBinder::subst_identity).
+    ///
+    /// To skip the binder on `x: &EarlyBinder<T>` to obtain `&T`, leverage
+    /// [`EarlyBinder::as_ref`](EarlyBinder::as_ref): `x.as_ref().skip_binder()`.
     ///
     /// See also [`Binder::skip_binder`](super::Binder::skip_binder), which is
     /// the analogous operation on [`super::Binder`].

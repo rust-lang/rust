@@ -662,10 +662,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let root = stat!("final", || {
             let attrs = tcx.hir().krate_attrs();
             self.lazy(CrateRoot {
-                name: tcx.crate_name(LOCAL_CRATE),
+                header: CrateHeader {
+                    name: tcx.crate_name(LOCAL_CRATE),
+                    triple: tcx.sess.opts.target_triple.clone(),
+                    hash: tcx.crate_hash(LOCAL_CRATE),
+                    is_proc_macro_crate: proc_macro_data.is_some(),
+                },
                 extra_filename: tcx.sess.opts.cg.extra_filename.clone(),
-                triple: tcx.sess.opts.target_triple.clone(),
-                hash: tcx.crate_hash(LOCAL_CRATE),
                 stable_crate_id: tcx.def_path_hash(LOCAL_CRATE.as_def_id()).stable_crate_id(),
                 required_panic_strategy: tcx.required_panic_strategy(LOCAL_CRATE),
                 panic_in_drop_strategy: tcx.sess.opts.unstable_opts.panic_in_drop,
@@ -1727,7 +1730,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             ty::Closure(_, substs) => {
                 let constness = self.tcx.constness(def_id.to_def_id());
                 self.tables.constness.set_some(def_id.to_def_id().index, constness);
-                record!(self.tables.fn_sig[def_id.to_def_id()] <- ty::EarlyBinder(substs.as_closure().sig()));
+                record!(self.tables.fn_sig[def_id.to_def_id()] <- ty::EarlyBinder::bind(substs.as_closure().sig()));
             }
 
             _ => bug!("closure that is neither generator nor closure"),
