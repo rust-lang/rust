@@ -10,7 +10,7 @@ keywords = ["hash", "no_std", "hashmap", "swisstable"]
 categories = ["data-structures", "no-std"]
 exclude = [".github", "/ci/*"]
 edition = "2021"
-rust-version = "1.63.0"
+rust-version = "1.64.0"
 
 [dependencies]
 # For the default hasher

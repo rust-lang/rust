@@ -21,7 +21,6 @@
         allocator_api,
         slice_ptr_get,
         maybe_uninit_array_assume_init,
-        build_hasher_simple_hash_one,
         strict_provenance
     )
 )]
