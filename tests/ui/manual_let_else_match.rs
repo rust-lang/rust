@@ -72,6 +72,11 @@ fn fire() {
         _ => return,
     };
 
+    let _value = match Some(build_enum()) {
+        Some(Variant::Bar(v) | Variant::Baz(v)) => v,
+        _ => return,
+    };
+
     let data = [1_u8, 2, 3, 4, 0, 0, 0, 0];
     let data = match data.as_slice() {
         [data @ .., 0, 0, 0, 0] | [data @ .., 0, 0] | [data @ .., 0] => data,

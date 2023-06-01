@@ -159,7 +159,7 @@ fn emit_manual_let_else(
             } else {
                 format!("{{ {sn_else} }}")
             };
-            let sn_bl = replace_in_pattern(cx, span, local, pat, &mut app);
+            let sn_bl = replace_in_pattern(cx, span, local, pat, &mut app, true);
             let sugg = format!("let {sn_bl} = {sn_expr} else {else_bl};");
             diag.span_suggestion(span, "consider writing", sugg, app);
         },
@@ -173,6 +173,7 @@ fn replace_in_pattern(
     local: &Pat<'_>,
     pat: &Pat<'_>,
     app: &mut Applicability,
+    top_level: bool,
 ) -> String {
     let mut bindings_count = 0;
     pat.each_binding_or_first(&mut |_, _, _, _| bindings_count += 1);
@@ -191,16 +192,20 @@ fn replace_in_pattern(
         PatKind::Or(pats) => {
             let patterns = pats
                 .iter()
-                .map(|pat| replace_in_pattern(cx, span, local, pat, app))
+                .map(|pat| replace_in_pattern(cx, span, local, pat, app, false))
                 .collect::<Vec<_>>();
             let or_pat = patterns.join(" | ");
-            return format!("({or_pat})");
+            if top_level {
+                return format!("({or_pat})");
+            } else {
+                return or_pat;
+            }
         },
         // Replace the variable name iff `TupleStruct` has one argument like `Variant(v)`.
         PatKind::TupleStruct(ref w, args, dot_dot_pos) => {
             let mut args = args
                 .iter()
-                .map(|pat| replace_in_pattern(cx, span, local, pat, app))
+                .map(|pat| replace_in_pattern(cx, span, local, pat, app, false))
                 .collect::<Vec<_>>();
             if let Some(pos) = dot_dot_pos.as_opt_usize() {
                 args.insert(pos, "..".to_owned());
