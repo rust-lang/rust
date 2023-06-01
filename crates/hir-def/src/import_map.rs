@@ -11,8 +11,8 @@ use rustc_hash::{FxHashSet, FxHasher};
 use triomphe::Arc;
 
 use crate::{
-    db::DefDatabase, item_scope::ItemInNs, visibility::Visibility, AssocItemId, ModuleDefId,
-    ModuleId, TraitId,
+    db::DefDatabase, item_scope::ItemInNs, nameres::DefMap, visibility::Visibility, AssocItemId,
+    ModuleDefId, ModuleId, TraitId,
 };
 
 type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<FxHasher>>;
@@ -183,7 +183,7 @@ fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> ImportMap {
 
     // We look only into modules that are public(ly reexported), starting with the crate root.
     let empty = ImportPath { segments: vec![] };
-    let root = def_map.module_id(def_map.root());
+    let root = def_map.module_id(DefMap::ROOT);
     let mut worklist = vec![(root, empty)];
     while let Some((module, mod_path)) = worklist.pop() {
         let ext_def_map;

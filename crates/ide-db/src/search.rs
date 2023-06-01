@@ -225,7 +225,7 @@ impl Definition {
         // def is crate root
         // FIXME: We don't do searches for crates currently, as a crate does not actually have a single name
         if let &Definition::Module(module) = self {
-            if module.is_crate_root(db) {
+            if module.is_crate_root() {
                 return SearchScope::reverse_dependencies(db, module.krate());
             }
         }
@@ -392,7 +392,7 @@ impl<'a> FindUsages<'a> {
 
         let name = match self.def {
             // special case crate modules as these do not have a proper name
-            Definition::Module(module) if module.is_crate_root(self.sema.db) => {
+            Definition::Module(module) if module.is_crate_root() => {
                 // FIXME: This assumes the crate name is always equal to its display name when it really isn't
                 module
                     .krate()
@@ -500,7 +500,7 @@ impl<'a> FindUsages<'a> {
             let scope =
                 search_scope.intersection(&SearchScope::module_and_children(self.sema.db, module));
 
-            let is_crate_root = module.is_crate_root(self.sema.db).then(|| Finder::new("crate"));
+            let is_crate_root = module.is_crate_root().then(|| Finder::new("crate"));
             let finder = &Finder::new("super");
 
             for (text, file_id, search_range) in scope_files(sema, &scope) {

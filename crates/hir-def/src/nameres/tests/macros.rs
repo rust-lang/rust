@@ -750,7 +750,7 @@ macro_rules! foo {
 pub use core::clone::Clone;
 "#,
     );
-    assert_eq!(map.modules[map.root].scope.impls().len(), 1);
+    assert_eq!(map.modules[DefMap::ROOT].scope.impls().len(), 1);
 }
 
 #[test]
@@ -772,7 +772,7 @@ pub macro Copy {}
 pub macro Clone {}
 "#,
     );
-    assert_eq!(map.modules[map.root].scope.impls().len(), 2);
+    assert_eq!(map.modules[DefMap::ROOT].scope.impls().len(), 2);
 }
 
 #[test]
@@ -815,7 +815,7 @@ pub macro derive($item:item) {}
 pub macro Clone {}
 "#,
     );
-    assert_eq!(map.modules[map.root].scope.impls().len(), 1);
+    assert_eq!(map.modules[DefMap::ROOT].scope.impls().len(), 1);
 }
 
 #[test]
@@ -1286,7 +1286,7 @@ fn proc_attr(a: TokenStream, b: TokenStream) -> TokenStream { a }
     let krate = db.crate_graph().iter().next().unwrap();
     let def_map = db.crate_def_map(krate);
 
-    let root_module = &def_map[def_map.root()].scope;
+    let root_module = &def_map[DefMap::ROOT].scope;
     assert!(
         root_module.legacy_macros().count() == 0,
         "`#[macro_use]` shouldn't bring macros into textual macro scope",
@@ -1392,7 +1392,7 @@ macro_rules! derive { () => {} }
 struct S;
     "#,
     );
-    assert_eq!(map.modules[map.root].scope.impls().len(), 1);
+    assert_eq!(map.modules[DefMap::ROOT].scope.impls().len(), 1);
 }
 
 #[test]

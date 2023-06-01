@@ -1073,7 +1073,7 @@ impl ExprCollector<'_> {
             match block_id.map(|block_id| (self.db.block_def_map(block_id), block_id)) {
                 Some((def_map, block_id)) => {
                     self.body.block_scopes.push(block_id);
-                    (def_map.module_id(def_map.root()), def_map)
+                    (def_map.module_id(DefMap::ROOT), def_map)
                 }
                 None => (self.expander.module, self.def_map.clone()),
             };

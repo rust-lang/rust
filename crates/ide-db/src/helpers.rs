@@ -77,7 +77,7 @@ pub fn visit_file_defs(
     }
     module.impl_defs(db).into_iter().for_each(|impl_| cb(impl_.into()));
 
-    let is_root = module.is_crate_root(db);
+    let is_root = module.is_crate_root();
     module
         .legacy_macros(db)
         .into_iter()

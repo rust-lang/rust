@@ -158,7 +158,7 @@ impl Completions {
         path_ctx: &PathCompletionCtx,
     ) {
         ctx.process_all_names(&mut |name, res, doc_aliases| match res {
-            ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) if m.is_crate_root(ctx.db) => {
+            ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) if m.is_crate_root() => {
                 self.add_module(ctx, path_ctx, m, name, doc_aliases);
             }
             _ => (),

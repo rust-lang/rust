@@ -1,7 +1,7 @@
 use std::{fmt, marker::PhantomData};
 
 use hir::{
-    db::{AstIdMapQuery, AttrsQuery, ParseMacroExpansionQuery},
+    db::{AstIdMapQuery, AttrsQuery, BlockDefMapQuery, ParseMacroExpansionQuery},
     Attr, Attrs, ExpandResult, MacroFile, Module,
 };
 use ide_db::{
@@ -51,6 +51,7 @@ pub(crate) fn status(db: &RootDatabase, file_id: Option<FileId>) -> String {
     format_to!(buf, "\nDebug info:\n");
     format_to!(buf, "{}\n", collect_query(AttrsQuery.in_db(db)));
     format_to!(buf, "{} ast id maps\n", collect_query_count(AstIdMapQuery.in_db(db)));
+    format_to!(buf, "{} block def maps\n", collect_query_count(BlockDefMapQuery.in_db(db)));
 
     if let Some(file_id) = file_id {
         format_to!(buf, "\nFile info:\n");

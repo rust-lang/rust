@@ -71,7 +71,7 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap, tree_id: T
     for dep in &krate.dependencies {
         tracing::debug!("crate dep {:?} -> {:?}", dep.name, dep.crate_id);
         let dep_def_map = db.crate_def_map(dep.crate_id);
-        let dep_root = dep_def_map.module_id(dep_def_map.root);
+        let dep_root = dep_def_map.module_id(DefMap::ROOT);
 
         deps.insert(dep.as_name(), dep_root);
 
@@ -287,7 +287,7 @@ impl DefCollector<'_> {
 
         let file_id = self.db.crate_graph()[self.def_map.krate].root_file_id;
         let item_tree = self.db.file_item_tree(file_id.into());
-        let module_id = self.def_map.root;
+        let module_id = DefMap::ROOT;
 
         let attrs = item_tree.top_level_attrs(self.db, self.def_map.krate);
 
@@ -382,7 +382,7 @@ impl DefCollector<'_> {
 
     fn seed_with_inner(&mut self, tree_id: TreeId) {
         let item_tree = tree_id.item_tree(self.db);
-        let module_id = self.def_map.root;
+        let module_id = DefMap::ROOT;
 
         let is_cfg_enabled = item_tree
             .top_level_attrs(self.db, self.def_map.krate)
@@ -464,7 +464,7 @@ impl DefCollector<'_> {
             // Additionally, while the proc macro entry points must be `pub`, they are not publicly
             // exported in type/value namespace. This function reduces the visibility of all items
             // in the crate root that aren't proc macros.
-            let root = self.def_map.root;
+            let root = DefMap::ROOT;
             let module_id = self.def_map.module_id(root);
             let root = &mut self.def_map.modules[root];
             root.scope.censor_non_proc_macros(module_id);
@@ -560,13 +560,8 @@ impl DefCollector<'_> {
         };
         let path = ModPath::from_segments(path_kind, [krate, name![prelude], edition]);
 
-        let (per_ns, _) = self.def_map.resolve_path(
-            self.db,
-            self.def_map.root,
-            &path,
-            BuiltinShadowMode::Other,
-            None,
-        );
+        let (per_ns, _) =
+            self.def_map.resolve_path(self.db, DefMap::ROOT, &path, BuiltinShadowMode::Other, None);
 
         match per_ns.types {
             Some((ModuleDefId::ModuleId(m), _)) => {
@@ -661,7 +656,7 @@ impl DefCollector<'_> {
         // In Rust, `#[macro_export]` macros are unconditionally visible at the
         // crate root, even if the parent modules is **not** visible.
         if export {
-            let module_id = self.def_map.root;
+            let module_id = DefMap::ROOT;
             self.def_map.modules[module_id].scope.declare(macro_.into());
             self.update(
                 module_id,
@@ -712,7 +707,7 @@ impl DefCollector<'_> {
     /// A proc macro is similar to normal macro scope, but it would not visible in legacy textual scoped.
     /// And unconditionally exported.
     fn define_proc_macro(&mut self, name: Name, macro_: ProcMacroId) {
-        let module_id = self.def_map.root;
+        let module_id = DefMap::ROOT;
         self.def_map.modules[module_id].scope.declare(macro_.into());
         self.update(
             module_id,
@@ -732,7 +727,7 @@ impl DefCollector<'_> {
         let def_map = self.db.crate_def_map(krate);
         // `#[macro_use]` brings macros into macro_use prelude. Yes, even non-`macro_rules!`
         // macros.
-        let root_scope = &def_map[def_map.root].scope;
+        let root_scope = &def_map[DefMap::ROOT].scope;
         if let Some(names) = names {
             for name in names {
                 // FIXME: Report diagnostic on 404.
@@ -834,9 +829,9 @@ impl DefCollector<'_> {
             let root = match self.def_map.block {
                 Some(_) => {
                     let def_map = self.def_map.crate_root(self.db).def_map(self.db);
-                    def_map.module_id(def_map.root())
+                    def_map.module_id(DefMap::ROOT)
                 }
-                None => self.def_map.module_id(self.def_map.root()),
+                None => self.def_map.module_id(DefMap::ROOT),
             };
             Some(root)
         } else {
@@ -879,7 +874,7 @@ impl DefCollector<'_> {
                 // extern crates in the crate root are special-cased to insert entries into the extern prelude: rust-lang/rust#54658
                 if import.is_extern_crate
                     && self.def_map.block.is_none()
-                    && module_id == self.def_map.root
+                    && module_id == DefMap::ROOT
                 {
                     if let (Some(ModuleDefId::ModuleId(def)), Some(name)) = (def.take_types(), name)
                     {
@@ -1525,7 +1520,7 @@ impl ModCollector<'_, '_> {
 
     fn collect(&mut self, items: &[ModItem], container: ItemContainerId) {
         let krate = self.def_collector.def_map.krate;
-        let is_crate_root = self.module_id == self.def_collector.def_map.root;
+        let is_crate_root = self.module_id == DefMap::ROOT;
 
         // Note: don't assert that inserted value is fresh: it's simply not true
         // for macros.
@@ -1641,9 +1636,9 @@ impl ModCollector<'_, '_> {
                         FunctionLoc { container, id: ItemTreeId::new(self.tree_id, id) }.intern(db);
 
                     let vis = resolve_vis(def_map, &self.item_tree[it.visibility]);
-                    if self.def_collector.is_proc_macro && self.module_id == def_map.root {
+                    if self.def_collector.is_proc_macro && self.module_id == DefMap::ROOT {
                         if let Some(proc_macro) = attrs.parse_proc_macro_decl(&it.name) {
-                            let crate_root = def_map.module_id(def_map.root);
+                            let crate_root = def_map.module_id(DefMap::ROOT);
                             self.def_collector.export_proc_macro(
                                 proc_macro,
                                 ItemTreeId::new(self.tree_id, id),

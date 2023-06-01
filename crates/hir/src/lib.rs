@@ -118,7 +118,7 @@ pub use {
         find_path::PrefixKind,
         import_map,
         lang_item::LangItem,
-        nameres::ModuleSource,
+        nameres::{DefMap, ModuleSource},
         path::{ModPath, PathKind},
         type_ref::{Mutability, TypeRef},
         visibility::Visibility,
@@ -202,7 +202,7 @@ impl Crate {
 
     pub fn root_module(self, db: &dyn HirDatabase) -> Module {
         let def_map = db.crate_def_map(self.id);
-        Module { id: def_map.module_id(def_map.root()) }
+        Module { id: def_map.module_id(DefMap::ROOT) }
     }
 
     pub fn modules(self, db: &dyn HirDatabase) -> Vec<Module> {
@@ -475,12 +475,11 @@ impl Module {
     /// in the module tree of any target in `Cargo.toml`.
     pub fn crate_root(self, db: &dyn HirDatabase) -> Module {
         let def_map = db.crate_def_map(self.id.krate());
-        Module { id: def_map.module_id(def_map.root()) }
+        Module { id: def_map.module_id(DefMap::ROOT) }
     }
 
-    pub fn is_crate_root(self, db: &dyn HirDatabase) -> bool {
-        let def_map = db.crate_def_map(self.id.krate());
-        def_map.root() == self.id.local_id
+    pub fn is_crate_root(self) -> bool {
+        DefMap::ROOT == self.id.local_id
     }
 
     /// Iterates over all child modules.

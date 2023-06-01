@@ -110,7 +110,7 @@ impl TestDB {
                 }
                 _ => {
                     // FIXME: handle `mod` inside block expression
-                    return def_map.module_id(def_map.root());
+                    return def_map.module_id(DefMap::ROOT);
                 }
             }
         }
@@ -119,7 +119,7 @@ impl TestDB {
     /// Finds the smallest/innermost module in `def_map` containing `position`.
     fn mod_at_position(&self, def_map: &DefMap, position: FilePosition) -> LocalModuleId {
         let mut size = None;
-        let mut res = def_map.root();
+        let mut res = DefMap::ROOT;
         for (module, data) in def_map.modules() {
             let src = data.definition_source(self);
             if src.file_id != position.file_id.into() {

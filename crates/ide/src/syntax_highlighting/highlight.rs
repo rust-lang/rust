@@ -340,7 +340,7 @@ fn highlight_def(
         Definition::Field(_) => Highlight::new(HlTag::Symbol(SymbolKind::Field)),
         Definition::Module(module) => {
             let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Module));
-            if module.is_crate_root(db) {
+            if module.is_crate_root() {
                 h |= HlMod::CrateRoot;
             }
             h

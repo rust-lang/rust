@@ -94,7 +94,6 @@ use crate::{
 pub struct DefMap {
     _c: Count<Self>,
     block: Option<BlockInfo>,
-    root: LocalModuleId,
     modules: Arena<ModuleData>,
     krate: CrateId,
     /// The prelude module for this crate. This either comes from an import
@@ -141,7 +140,19 @@ struct BlockInfo {
     /// The `BlockId` this `DefMap` was created from.
     block: BlockId,
     /// The containing module.
-    parent: ModuleId,
+    parent: BlockRelativeModuleId,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+struct BlockRelativeModuleId {
+    block: Option<BlockId>,
+    local_id: LocalModuleId,
+}
+
+impl BlockRelativeModuleId {
+    fn def_map(self, db: &dyn DefDatabase, krate: CrateId) -> Arc<DefMap> {
+        ModuleId { krate, block: self.block, local_id: self.local_id }.def_map(db)
+    }
 }
 
 impl std::ops::Index<LocalModuleId> for DefMap {
@@ -231,6 +242,8 @@ pub struct ModuleData {
 }
 
 impl DefMap {
+    pub const ROOT: LocalModuleId = LocalModuleId::from_raw(la_arena::RawIdx::from_u32(0));
+
     pub(crate) fn crate_def_map_query(db: &dyn DefDatabase, krate: CrateId) -> Arc<DefMap> {
         let _p = profile::span("crate_def_map_query").detail(|| {
             db.crate_graph()[krate].display_name.as_deref().unwrap_or_default().to_string()
@@ -266,7 +279,13 @@ impl DefMap {
             ModuleData::new(ModuleOrigin::BlockExpr { block: block.ast_id }, visibility);
 
         let mut def_map = DefMap::empty(krate, parent_map.edition, module_data);
-        def_map.block = Some(BlockInfo { block: block_id, parent: block.module });
+        def_map.block = Some(BlockInfo {
+            block: block_id,
+            parent: BlockRelativeModuleId {
+                block: block.module.block,
+                local_id: block.module.local_id,
+            },
+        });
 
         let def_map = collector::collect_defs(db, def_map, tree_id);
         Arc::new(def_map)
@@ -275,6 +294,7 @@ impl DefMap {
     fn empty(krate: CrateId, edition: Edition, module_data: ModuleData) -> DefMap {
         let mut modules: Arena<ModuleData> = Arena::default();
         let root = modules.alloc(module_data);
+        assert_eq!(root, Self::ROOT);
 
         DefMap {
             _c: Count::new(),
@@ -289,7 +309,6 @@ impl DefMap {
             proc_macro_loading_error: None,
             derive_helpers_in_scope: FxHashMap::default(),
             prelude: None,
-            root,
             modules,
             registered_attrs: Vec::new(),
             registered_tools: Vec::new(),
@@ -339,10 +358,6 @@ impl DefMap {
         self.no_std || self.no_core
     }
 
-    pub fn root(&self) -> LocalModuleId {
-        self.root
-    }
-
     pub fn fn_as_proc_macro(&self, id: FunctionId) -> Option<ProcMacroId> {
         self.fn_proc_macro_mapping.get(&id).copied()
     }
@@ -377,9 +392,9 @@ impl DefMap {
     }
 
     pub(crate) fn crate_root(&self, db: &dyn DefDatabase) -> ModuleId {
-        self.with_ancestor_maps(db, self.root, &mut |def_map, _module| {
+        self.with_ancestor_maps(db, Self::ROOT, &mut |def_map, _module| {
             if def_map.block.is_none() {
-                Some(def_map.module_id(def_map.root))
+                Some(def_map.module_id(Self::ROOT))
             } else {
                 None
             }
@@ -439,7 +454,7 @@ impl DefMap {
         }
         let mut block = self.block;
         while let Some(block_info) = block {
-            let parent = block_info.parent.def_map(db);
+            let parent = block_info.parent.def_map(db, self.krate);
             if let Some(it) = f(&parent, block_info.parent.local_id) {
                 return Some(it);
             }
@@ -452,7 +467,8 @@ impl DefMap {
     /// If this `DefMap` is for a block expression, returns the module containing the block (which
     /// might again be a block, or a module inside a block).
     pub fn parent(&self) -> Option<ModuleId> {
-        Some(self.block?.parent)
+        let BlockRelativeModuleId { block, local_id } = self.block?.parent;
+        Some(ModuleId { krate: self.krate, block, local_id })
     }
 
     /// Returns the module containing `local_mod`, either the parent `mod`, or the module (or block) containing
@@ -460,7 +476,13 @@ impl DefMap {
     pub fn containing_module(&self, local_mod: LocalModuleId) -> Option<ModuleId> {
         match self[local_mod].parent {
             Some(parent) => Some(self.module_id(parent)),
-            None => self.block.map(|block| block.parent),
+            None => {
+                self.block.map(
+                    |BlockInfo { parent: BlockRelativeModuleId { block, local_id }, .. }| {
+                        ModuleId { krate: self.krate, block, local_id }
+                    },
+                )
+            }
         }
     }
 
@@ -471,12 +493,12 @@ impl DefMap {
         let mut arc;
         let mut current_map = self;
         while let Some(block) = current_map.block {
-            go(&mut buf, db, current_map, "block scope", current_map.root);
+            go(&mut buf, db, current_map, "block scope", Self::ROOT);
             buf.push('\n');
-            arc = block.parent.def_map(db);
+            arc = block.parent.def_map(db, self.krate);
             current_map = &arc;
         }
-        go(&mut buf, db, current_map, "crate", current_map.root);
+        go(&mut buf, db, current_map, "crate", Self::ROOT);
         return buf;
 
         fn go(
@@ -506,7 +528,7 @@ impl DefMap {
         let mut current_map = self;
         while let Some(block) = current_map.block {
             format_to!(buf, "{:?} in {:?}\n", block.block, block.parent);
-            arc = block.parent.def_map(db);
+            arc = block.parent.def_map(db, self.krate);
             current_map = &arc;
         }
 
@@ -534,7 +556,6 @@ impl DefMap {
             recursion_limit: _,
             krate: _,
             prelude: _,
-            root: _,
             rustc_coherence_is_core: _,
             no_core: _,
             no_std: _,

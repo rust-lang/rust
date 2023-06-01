@@ -121,7 +121,7 @@ impl DefMap {
             // ...unless we're resolving visibility for an associated item in an impl.
             if self.block_id() != m.block && !within_impl {
                 cov_mark::hit!(adjust_vis_in_block_def_map);
-                vis = Visibility::Module(self.module_id(self.root()));
+                vis = Visibility::Module(self.module_id(Self::ROOT));
                 tracing::debug!("visibility {:?} points outside DefMap, adjusting to {:?}", m, vis);
             }
         }
@@ -173,7 +173,7 @@ impl DefMap {
             match &current_map.block {
                 Some(block) => {
                     original_module = block.parent.local_id;
-                    arc = block.parent.def_map(db);
+                    arc = block.parent.def_map(db, current_map.krate);
                     current_map = &*arc;
                 }
                 None => return result,
@@ -207,7 +207,7 @@ impl DefMap {
                     PerNs::types(self.crate_root(db).into(), Visibility::Public)
                 } else {
                     let def_map = db.crate_def_map(krate);
-                    let module = def_map.module_id(def_map.root);
+                    let module = def_map.module_id(Self::ROOT);
                     cov_mark::hit!(macro_dollar_crate_other);
                     PerNs::types(module.into(), Visibility::Public)
                 }
@@ -268,14 +268,17 @@ impl DefMap {
                                     path.display(db.upcast()),
                                     new_path.display(db.upcast())
                                 );
-                                return block.parent.def_map(db).resolve_path_fp_with_macro(
-                                    db,
-                                    mode,
-                                    block.parent.local_id,
-                                    &new_path,
-                                    shadow,
-                                    expected_macro_subns,
-                                );
+                                return block
+                                    .parent
+                                    .def_map(db, self.krate)
+                                    .resolve_path_fp_with_macro(
+                                        db,
+                                        mode,
+                                        block.parent.local_id,
+                                        &new_path,
+                                        shadow,
+                                        expected_macro_subns,
+                                    );
                             }
                             None => {
                                 tracing::debug!("super path in root module");
@@ -476,9 +479,9 @@ impl DefMap {
         let from_crate_root = match self.block {
             Some(_) => {
                 let def_map = self.crate_root(db).def_map(db);
-                def_map[def_map.root].scope.get(name)
+                def_map[Self::ROOT].scope.get(name)
             }
-            None => self[self.root].scope.get(name),
+            None => self[Self::ROOT].scope.get(name),
         };
         let from_extern_prelude = || {
             self.resolve_name_in_extern_prelude(db, name)
