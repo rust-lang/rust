@@ -75,7 +75,8 @@ fn main() {
     let opt_a = Some(a.clone());
     let b = opt_a.unwrap().deref();
 
-    // make sure `Aaa::deref` instead of `aaa.deref()` works as well as fully qualified syntax
+    // make sure `Aaa::deref` instead of `aaa.deref()` is not linted, as well as fully qualified
+    // syntax
 
     Aaa::deref(&Aaa);
     Aaa::deref_mut(&mut Aaa);

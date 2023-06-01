@@ -67,46 +67,10 @@ LL |     let b = opt_a.unwrap().deref();
    |             ^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&*opt_a.unwrap()`
 
 error: explicit `deref` method call
-  --> $DIR/explicit_deref_methods.rs:80:5
-   |
-LL |     Aaa::deref(&Aaa);
-   |     ^^^^^^^^^^^^^^^^ help: try this: `&*Aaa`
-
-error: explicit `deref_mut` method call
-  --> $DIR/explicit_deref_methods.rs:81:5
-   |
-LL |     Aaa::deref_mut(&mut Aaa);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&mut *Aaa`
-
-error: explicit `deref` method call
-  --> $DIR/explicit_deref_methods.rs:82:5
-   |
-LL |     <Aaa as Deref>::deref(&Aaa);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&*Aaa`
-
-error: explicit `deref_mut` method call
-  --> $DIR/explicit_deref_methods.rs:83:5
-   |
-LL |     <Aaa as DerefMut>::deref_mut(&mut Aaa);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&mut *Aaa`
-
-error: explicit `deref` method call
-  --> $DIR/explicit_deref_methods.rs:85:5
-   |
-LL |     Aaa::deref(&aaa);
-   |     ^^^^^^^^^^^^^^^^ help: try this: `&*aaa`
-
-error: explicit `deref_mut` method call
-  --> $DIR/explicit_deref_methods.rs:86:5
-   |
-LL |     Aaa::deref_mut(&mut aaa);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&mut *aaa`
-
-error: explicit `deref` method call
-  --> $DIR/explicit_deref_methods.rs:112:31
+  --> $DIR/explicit_deref_methods.rs:113:31
    |
 LL |     let b: &str = expr_deref!(a.deref());
    |                               ^^^^^^^^^ help: try this: `&*a`
 
-error: aborting due to 18 previous errors
+error: aborting due to 12 previous errors
 

@@ -75,15 +75,16 @@ fn main() {
     let opt_a = Some(a.clone());
     let b = &*opt_a.unwrap();
 
-    // make sure `Aaa::deref` instead of `aaa.deref()` works as well as fully qualified syntax
+    // make sure `Aaa::deref` instead of `aaa.deref()` is not linted, as well as fully qualified
+    // syntax
 
-    &*Aaa;
-    &mut *Aaa;
-    &*Aaa;
-    &mut *Aaa;
+    Aaa::deref(&Aaa);
+    Aaa::deref_mut(&mut Aaa);
+    <Aaa as Deref>::deref(&Aaa);
+    <Aaa as DerefMut>::deref_mut(&mut Aaa);
     let mut aaa = Aaa;
-    &*aaa;
-    &mut *aaa;
+    Aaa::deref(&aaa);
+    Aaa::deref_mut(&mut aaa);
 
     // following should not require linting
 
