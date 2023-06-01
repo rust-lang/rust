@@ -155,7 +155,7 @@ impl_lint_pass!(Dereferencing<'_> => [
 
 #[derive(Default)]
 pub struct Dereferencing<'tcx> {
-    state: Option<(State, StateData)>,
+    state: Option<(State<'tcx>, StateData)>,
 
     // While parsing a `deref` method call in ufcs form, the path to the function is itself an
     // expression. This is to store the id of that expression so it can be skipped when
@@ -210,12 +210,13 @@ struct DerefedBorrow {
 }
 
 #[derive(Debug)]
-enum State {
+enum State<'tcx> {
     // Any number of deref method calls.
     DerefMethod {
         // The number of calls in a sequence which changed the referenced type
         ty_changed_count: usize,
         is_final_ufcs: bool,
+        call_args: Option<&'tcx [Expr<'tcx>]>,
         /// The required mutability
         target_mut: Mutability,
     },
@@ -312,10 +313,16 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                             && position.lint_explicit_deref() =>
                     {
                         let ty_changed_count = usize::from(!deref_method_same_type(expr_ty, typeck.expr_ty(sub_expr)));
+                        let (is_final_ufcs, call_args) = if let ExprKind::Call(_, args) = expr.kind {
+                            (true, Some(args))
+                        } else {
+                            (false, None)
+                        };
                         self.state = Some((
                             State::DerefMethod {
                                 ty_changed_count,
-                                is_final_ufcs: matches!(expr.kind, ExprKind::Call(..)),
+                                is_final_ufcs,
+                                call_args,
                                 target_mut,
                             },
                             StateData {
@@ -438,6 +445,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                             ty_changed_count + 1
                         },
                         is_final_ufcs: matches!(expr.kind, ExprKind::Call(..)),
+                        call_args: None,
                         target_mut,
                     },
                     data,
@@ -1472,11 +1480,12 @@ fn ty_contains_field(ty: Ty<'_>, name: Symbol) -> bool {
 }
 
 #[expect(clippy::needless_pass_by_value, clippy::too_many_lines)]
-fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data: StateData) {
+fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State<'_>, data: StateData) {
     match state {
         State::DerefMethod {
             ty_changed_count,
             is_final_ufcs,
+            call_args,
             target_mut,
         } => {
             let mut app = Applicability::MachineApplicable;
@@ -1503,11 +1512,24 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data
                 "&"
             };
 
-            let expr_str = if !expr_is_macro_call && is_final_ufcs && expr.precedence().order() < PREC_PREFIX {
+            let mut expr_str = if !expr_is_macro_call && is_final_ufcs && expr.precedence().order() < PREC_PREFIX {
                 format!("({expr_str})")
             } else {
                 expr_str.into_owned()
             };
+
+            // Fix #10850, changes suggestion if it's `Foo::deref` instead of `foo.deref`. Since `Foo::deref` is
+            // a `Call` instead of a `MethodCall` this should catch all instances of this, even if it's fully
+            // qualified or whatnot.
+            if is_final_ufcs && let Some(args) = call_args {
+                // Remove ref if it's there
+                let arg = if let ExprKind::AddrOf(.., arg) = args[0].kind {
+                    arg
+                } else {
+                    &args[0]
+                };
+                expr_str = snippet_with_applicability(cx, arg.span, "{ .. }", &mut app).to_string();
+            }
 
             span_lint_and_sugg(
                 cx,
