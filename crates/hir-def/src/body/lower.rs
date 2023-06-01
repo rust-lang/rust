@@ -744,10 +744,13 @@ impl ExprCollector<'_> {
             args: Box::new([self.collect_pat_top(e.pat())]),
             ellipsis: None,
         };
+        let label = e.label().map(|label| self.collect_label(label));
         let some_arm = MatchArm {
             pat: self.alloc_pat_desugared(some_pat),
             guard: None,
-            expr: self.collect_expr_opt(e.loop_body().map(|x| x.into())),
+            expr: self.with_opt_labeled_rib(label, |this| {
+                this.collect_expr_opt(e.loop_body().map(|x| x.into()))
+            }),
         };
         let iter_name = Name::generate_new_name();
         let iter_binding = self.alloc_binding(iter_name.clone(), BindingAnnotation::Mutable);
@@ -769,7 +772,6 @@ impl ExprCollector<'_> {
             Expr::Match { expr: iter_next_expr, arms: Box::new([none_arm, some_arm]) },
             syntax_ptr.clone(),
         );
-        let label = e.label().map(|label| self.collect_label(label));
         let loop_outer =
             self.alloc_expr(Expr::Loop { body: loop_inner, label }, syntax_ptr.clone());
         let iter_pat = self.alloc_pat_desugared(Pat::Bind { id: iter_binding, subpat: None });
@@ -1425,6 +1427,17 @@ impl ExprCollector<'_> {
         let res = f(self);
         self.label_ribs.pop();
         res
+    }
+
+    fn with_opt_labeled_rib<T>(
+        &mut self,
+        label: Option<LabelId>,
+        f: impl FnOnce(&mut Self) -> T,
+    ) -> T {
+        match label {
+            None => f(self),
+            Some(label) => self.with_labeled_rib(label, f),
+        }
     }
     // endregion: labels
 }
