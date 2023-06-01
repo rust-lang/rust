@@ -630,10 +630,14 @@ Before submitting your PR make sure you followed all the basic requirements:
 
 ## Adding configuration to a lint
 
-Clippy supports the configuration of lints values using a `clippy.toml` file in a directory specified by
-the environment variable `CLIPPY_CONF_DIR`, or if that's not found, the environment variable
-[CARGO_MANIFEST_DIR](https://doc.rust-lang.org/cargo/reference/environment-variables.html), or if that isn't
-found, the current directory. Adding a configuration to a lint can be useful for
+Clippy supports the configuration of lints values using a `clippy.toml` file which is searched for in:
+
+1. The directory specified by the `CLIPPY_CONF_DIR` environment variable, or
+2. The directory specified by the
+[CARGO_MANIFEST_DIR](https://doc.rust-lang.org/cargo/reference/environment-variables.html) environment variable, or
+3. The current directory.
+
+Adding a configuration to a lint can be useful for
 thresholds or to constrain some behavior that can be seen as a false positive
 for some users. Adding a configuration is done in the following steps:
 
