@@ -80,11 +80,6 @@ impl<'tcx> LateLintPass<'tcx> for FromOverInto {
             && cx.tcx.is_diagnostic_item(sym::Into, middle_trait_ref.def_id)
             && !matches!(middle_trait_ref.substs.type_at(1).kind(), ty::Alias(ty::Opaque, _))
         {
-            if !target_ty.find_self_aliases().is_empty() {
-                // It's tricky to expand self-aliases correctly, we'll ignore it to not cause a
-                // bad suggestion/fix.
-                return;
-            }
             span_lint_and_then(
                 cx,
                 FROM_OVER_INTO,
@@ -161,6 +156,11 @@ fn convert_to_from(
     self_ty: &Ty<'_>,
     impl_item_ref: &ImplItemRef,
 ) -> Option<Vec<(Span, String)>> {
+    if !target_ty.find_self_aliases().is_empty() {
+        // It's tricky to expand self-aliases correctly, we'll ignore it to not cause a
+        // bad suggestion/fix.
+        return None;
+    }
     let impl_item = cx.tcx.hir().impl_item(impl_item_ref.id);
     let ImplItemKind::Fn(ref sig, body_id) = impl_item.kind else { return None };
     let body = cx.tcx.hir().body(body_id);
