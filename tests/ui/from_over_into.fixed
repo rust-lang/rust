@@ -92,9 +92,9 @@ pub struct Lval<T>(T);
 
 pub struct Rval<T>(T);
 
-impl<T> From<Lval<T>> for Rval<Lval<T>> {
-    fn from(val: Lval<T>) -> Self {
-        Rval(val)
+impl<T> Into<Rval<Self>> for Lval<T> {
+    fn into(self) -> Rval<Self> {
+        Rval(self)
     }
 }
 

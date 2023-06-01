@@ -71,18 +71,5 @@ LL ~         fn from(val: Vec<T>) -> Self {
 LL ~             FromOverInto(val)
    |
 
-error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
-  --> $DIR/from_over_into.rs:95:1
-   |
-LL | impl<T> Into<Rval<Self>> for Lval<T> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: replace the `Into` implementation with `From<Lval<T>>`
-   |
-LL ~ impl<T> From<Lval<T>> for Rval<Lval<T>> {
-LL ~     fn from(val: Lval<T>) -> Self {
-LL ~         Rval(val)
-   |
-
-error: aborting due to 6 previous errors
+error: aborting due to 5 previous errors
 

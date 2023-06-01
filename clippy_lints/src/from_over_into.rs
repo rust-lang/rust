@@ -80,6 +80,11 @@ impl<'tcx> LateLintPass<'tcx> for FromOverInto {
             && cx.tcx.is_diagnostic_item(sym::Into, middle_trait_ref.def_id)
             && !matches!(middle_trait_ref.substs.type_at(1).kind(), ty::Alias(ty::Opaque, _))
         {
+            if !target_ty.find_self_aliases().is_empty() {
+                // It's tricky to expand self-aliases correctly, we'll ignore it to not cause a
+                // bad suggestion/fix.
+                return;
+            }
             span_lint_and_then(
                 cx,
                 FROM_OVER_INTO,
@@ -163,8 +168,7 @@ fn convert_to_from(
     let PatKind::Binding(.., self_ident, None) = input.pat.kind else { return None };
 
     let from = snippet_opt(cx, self_ty.span)?;
-    // If Self is used, it refers to `self_ty`, which is now out `from` snippet
-    let into = replace_self(&snippet_opt(cx, target_ty.span)?, &from);
+    let into = snippet_opt(cx, target_ty.span)?;
 
     let mut suggestions = vec![
         // impl Into<T> for U  ->  impl From<T> for U
@@ -212,76 +216,4 @@ fn convert_to_from(
     }
 
     Some(suggestions)
-}
-
-fn replace_self(input: &str, replace_with: &str) -> String {
-    const SELF: &str = "Self";
-    let mut chunks = input.split(SELF).peekable();
-    if let Some(first) = chunks.next() {
-        let mut last_ended_with_break = false;
-        // Heuristic, we're making a guess that the expansion probably doesn't exceed `input.len() * 2`
-        let mut output = String::with_capacity(input.len() * 2);
-        if first.is_empty() || first.ends_with(word_break) {
-            last_ended_with_break = true;
-        }
-        output.push_str(first);
-        while let Some(val) = chunks.next() {
-            let is_last = chunks.peek().is_none();
-            if last_ended_with_break && is_last && val.is_empty() {
-                output.push_str(replace_with);
-                break;
-            }
-            let this_starts_with_break = val.starts_with(word_break);
-            let this_ends_with_break = val.ends_with(word_break);
-            if this_starts_with_break && last_ended_with_break {
-                output.push_str(replace_with);
-            } else {
-                output.push_str(SELF);
-            }
-            output.push_str(val);
-            last_ended_with_break = this_ends_with_break;
-        }
-        output
-    } else {
-        input.to_string()
-    }
-}
-
-#[inline]
-fn word_break(ch: char) -> bool {
-    !ch.is_alphanumeric()
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::from_over_into::replace_self;
-
-    #[test]
-    fn replace_doesnt_touch_coincidental_self() {
-        let input = "impl Into<SelfType> for String {";
-        assert_eq!(input, &replace_self(input, "T"));
-    }
-
-    #[test]
-    fn replace_replaces_self() {
-        let input = "impl Into<Self> for String {";
-        assert_eq!("impl Into<String> for String {", &replace_self(input, "String"));
-    }
-    #[test]
-    fn replace_replaces_self_many() {
-        let input = "impl Into<Self<Self<SelfSelfSelfSelf>>> for Self {";
-        assert_eq!(
-            "impl Into<String<String<SelfSelfSelfSelf>>> for String {",
-            &replace_self(input, "String")
-        );
-    }
-
-    #[test]
-    fn replace_replaces_self_many_starts_ends_self() {
-        let input = "Self impl Into<Self<Self<SelfSelf>>> for Self";
-        assert_eq!(
-            "String impl Into<String<String<SelfSelf>>> for String",
-            &replace_self(input, "String")
-        );
-    }
 }
