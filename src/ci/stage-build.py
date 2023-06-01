@@ -48,6 +48,11 @@ RUSTC_PGO_CRATES = [
 
 LLVM_BOLT_CRATES = LLVM_PGO_CRATES
 
+
+def is_try_build() -> bool:
+    return os.environ.get("DIST_TRY_BUILD", "0") != "0"
+
+
 class Pipeline:
     # Paths
     def checkout_path(self) -> Path:
@@ -851,6 +856,13 @@ def run(runner: BenchmarkRunner):
 
     build_args = sys.argv[1:]
 
+    # Skip components that are not needed for try builds to speed them up
+    if is_try_build():
+        LOGGER.info("Skipping building of unimportant components for a try build")
+        for target in ("rust-docs", "rustc-docs", "rust-docs-json", "rust-analyzer",
+                       "rustc-src", "clippy", "miri", "rustfmt"):
+            build_args.extend(["--exclude", target])
+
     timer = Timer()
     pipeline = create_pipeline()
 
@@ -864,6 +876,7 @@ def run(runner: BenchmarkRunner):
         print_free_disk_space(pipeline)
 
     print_binary_sizes(pipeline)
+
 
 if __name__ == "__main__":
     runner = DefaultBenchmarkRunner()

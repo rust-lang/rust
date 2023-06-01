@@ -757,6 +757,7 @@ jobs:
     <<: *base-ci-job
     name: try - ${{ matrix.name }}
     env:
+      DIST_TRY_BUILD: 1
       <<: [*shared-ci-variables, *prod-variables]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust'
     strategy:
