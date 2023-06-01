@@ -422,33 +422,22 @@ fn place_inlined_mono_items<'tcx>(
 
     let single_codegen_unit = codegen_units.len() == 1;
 
-    for old_codegen_unit in codegen_units.iter_mut() {
+    for cgu in codegen_units.iter_mut() {
         // Collect all items that need to be available in this codegen unit.
         let mut reachable = FxHashSet::default();
-        for root in old_codegen_unit.items().keys() {
+        for root in cgu.items().keys() {
             follow_inlining(cx.tcx, *root, cx.usage_map, &mut reachable);
         }
 
-        let mut new_codegen_unit = CodegenUnit::new(old_codegen_unit.name());
-
         // Add all monomorphizations that are not already there.
         for mono_item in reachable {
-            if let Some(linkage) = old_codegen_unit.items().get(&mono_item) {
-                // This is a root, just copy it over.
-                new_codegen_unit.items_mut().insert(mono_item, *linkage);
-            } else {
+            if !cgu.items().contains_key(&mono_item) {
                 if roots.contains(&mono_item) {
-                    bug!(
-                        "GloballyShared mono-item inlined into other CGU: \
-                          {:?}",
-                        mono_item
-                    );
+                    bug!("GloballyShared mono-item inlined into other CGU: {:?}", mono_item);
                 }
 
                 // This is a CGU-private copy.
-                new_codegen_unit
-                    .items_mut()
-                    .insert(mono_item, (Linkage::Internal, Visibility::Default));
+                cgu.items_mut().insert(mono_item, (Linkage::Internal, Visibility::Default));
             }
 
             if !single_codegen_unit {
@@ -458,23 +447,17 @@ fn place_inlined_mono_items<'tcx>(
                     Entry::Occupied(e) => {
                         let placement = e.into_mut();
                         debug_assert!(match *placement {
-                            MonoItemPlacement::SingleCgu { cgu_name } => {
-                                cgu_name != new_codegen_unit.name()
-                            }
+                            MonoItemPlacement::SingleCgu { cgu_name } => cgu_name != cgu.name(),
                             MonoItemPlacement::MultipleCgus => true,
                         });
                         *placement = MonoItemPlacement::MultipleCgus;
                     }
                     Entry::Vacant(e) => {
-                        e.insert(MonoItemPlacement::SingleCgu {
-                            cgu_name: new_codegen_unit.name(),
-                        });
+                        e.insert(MonoItemPlacement::SingleCgu { cgu_name: cgu.name() });
                     }
                 }
             }
         }
-
-        *old_codegen_unit = new_codegen_unit;
     }
 
     return mono_item_placements;
