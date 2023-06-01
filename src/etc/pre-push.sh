@@ -14,4 +14,4 @@ ROOT_DIR="$(git rev-parse --show-toplevel)"
 echo "Running pre-push script $ROOT_DIR/x test tidy"
 
 cd "$ROOT_DIR"
-CARGOFLAGS="--locked" ./x test tidy
+./x test tidy --set build.locked-deps=true
