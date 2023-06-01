@@ -25,7 +25,7 @@ const fn call_foo() -> u32 {
     foo();
     foo();
     foo();
-    foo(); //~ ERROR evaluation of constant value failed [E0080]
+    foo(); //~ ERROR is taking a long time
     0
 }
 

@@ -351,8 +351,6 @@ declare_features! (
     (active, const_async_blocks, "1.53.0", Some(85368), None),
     /// Allows `const || {}` closures in const contexts.
     (incomplete, const_closures, "1.68.0", Some(106003), None),
-    /// Allows limiting the evaluation steps of const expressions
-    (active, const_eval_limit, "1.43.0", Some(67217), None),
     /// Allows the definition of `const extern fn` and `const unsafe extern fn`.
     (active, const_extern_fn, "1.40.0", Some(64926), None),
     /// Allows basic arithmetic on floating point types in a `const fn`.

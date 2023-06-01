@@ -16,11 +16,11 @@ use std::fmt;
 use rustc_ast::Mutability;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::AssertMessage;
-use rustc_session::Limit;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi as CallAbi;
 
+use crate::errors::{LongRunning, LongRunningWarn};
 use crate::interpret::{
     self, compile_time_machine, AllocId, ConstAllocation, FnVal, Frame, ImmTy, InterpCx,
     InterpResult, OpTy, PlaceTy, Pointer, Scalar,
@@ -28,13 +28,24 @@ use crate::interpret::{
 
 use super::error::*;
 
+/// When hitting this many interpreted terminators we emit a deny by default lint
+/// that notfies the user that their constant takes a long time to evaluate. If that's
+/// what they intended, they can just allow the lint.
+const LINT_TERMINATOR_LIMIT: usize = 2_000_000;
+/// The limit used by `-Z tiny-const-eval-limit`. This smaller limit is useful for internal
+/// tests not needing to run 30s or more to show some behaviour.
+const TINY_LINT_TERMINATOR_LIMIT: usize = 20;
+/// After this many interpreted terminators, we start emitting progress indicators at every
+/// power of two of interpreted terminators.
+const PROGRESS_INDICATOR_START: usize = 4_000_000;
+
 /// Extra machine state for CTFE, and the Machine instance
 pub struct CompileTimeInterpreter<'mir, 'tcx> {
-    /// For now, the number of terminators that can be evaluated before we throw a resource
-    /// exhaustion error.
+    /// The number of terminators that have been evaluated.
     ///
-    /// Setting this to `0` disables the limit and allows the interpreter to run forever.
-    pub(super) steps_remaining: usize,
+    /// This is used to produce lints informing the user that the compiler is not stuck.
+    /// Set to `usize::MAX` to never report anything.
+    pub(super) num_evaluated_steps: usize,
 
     /// The virtual call stack.
     pub(super) stack: Vec<Frame<'mir, 'tcx, AllocId, ()>>,
@@ -72,13 +83,9 @@ impl CheckAlignment {
 }
 
 impl<'mir, 'tcx> CompileTimeInterpreter<'mir, 'tcx> {
-    pub(crate) fn new(
-        const_eval_limit: Limit,
-        can_access_statics: bool,
-        check_alignment: CheckAlignment,
-    ) -> Self {
+    pub(crate) fn new(can_access_statics: bool, check_alignment: CheckAlignment) -> Self {
         CompileTimeInterpreter {
-            steps_remaining: const_eval_limit.0,
+            num_evaluated_steps: 0,
             stack: Vec::new(),
             can_access_statics,
             check_alignment,
@@ -569,13 +576,54 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
     fn increment_const_eval_counter(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
         // The step limit has already been hit in a previous call to `increment_const_eval_counter`.
-        if ecx.machine.steps_remaining == 0 {
-            return Ok(());
-        }
 
-        ecx.machine.steps_remaining -= 1;
-        if ecx.machine.steps_remaining == 0 {
-            throw_exhaust!(StepLimitReached)
+        if let Some(new_steps) = ecx.machine.num_evaluated_steps.checked_add(1) {
+            let (limit, start) = if ecx.tcx.sess.opts.unstable_opts.tiny_const_eval_limit {
+                (TINY_LINT_TERMINATOR_LIMIT, TINY_LINT_TERMINATOR_LIMIT)
+            } else {
+                (LINT_TERMINATOR_LIMIT, PROGRESS_INDICATOR_START)
+            };
+
+            ecx.machine.num_evaluated_steps = new_steps;
+            // By default, we have a *deny* lint kicking in after some time
+            // to ensure `loop {}` doesn't just go forever.
+            // In case that lint got reduced, in particular for `--cap-lint` situations, we also
+            // have a hard warning shown every now and then for really long executions.
+            if new_steps == limit {
+                // By default, we stop after a million steps, but the user can disable this lint
+                // to be able to run until the heat death of the universe or power loss, whichever
+                // comes first.
+                let hir_id = ecx.best_lint_scope();
+                let is_error = ecx
+                    .tcx
+                    .lint_level_at_node(
+                        rustc_session::lint::builtin::LONG_RUNNING_CONST_EVAL,
+                        hir_id,
+                    )
+                    .0
+                    .is_error();
+                let span = ecx.cur_span();
+                ecx.tcx.emit_spanned_lint(
+                    rustc_session::lint::builtin::LONG_RUNNING_CONST_EVAL,
+                    hir_id,
+                    span,
+                    LongRunning { item_span: ecx.tcx.span },
+                );
+                // If this was a hard error, don't bother continuing evaluation.
+                if is_error {
+                    let guard = ecx
+                        .tcx
+                        .sess
+                        .delay_span_bug(span, "The deny lint should have already errored");
+                    throw_inval!(AlreadyReported(guard.into()));
+                }
+            } else if new_steps > start && new_steps.is_power_of_two() {
+                // Only report after a certain number of terminators have been evaluated and the
+                // current number of evaluated terminators is a power of 2. The latter gives us a cheap
+                // way to implement exponential backoff.
+                let span = ecx.cur_span();
+                ecx.tcx.sess.emit_warning(LongRunningWarn { span, item_span: ecx.tcx.span });
+            }
         }
 
         Ok(())

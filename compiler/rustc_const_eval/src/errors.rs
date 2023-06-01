@@ -1,5 +1,5 @@
 use rustc_hir::ConstContext;
-use rustc_macros::Diagnostic;
+use rustc_macros::{Diagnostic, LintDiagnostic};
 use rustc_span::Span;
 
 #[derive(Diagnostic)]
@@ -193,4 +193,22 @@ pub(crate) struct InteriorMutableDataRefer {
 pub(crate) struct InteriorMutabilityBorrow {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(const_eval_long_running)]
+#[note]
+pub struct LongRunning {
+    #[help]
+    pub item_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(const_eval_long_running)]
+pub struct LongRunningWarn {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[help]
+    pub item_span: Span,
 }
