@@ -13,16 +13,9 @@ error: internal compiler error: projection clauses should be implied from elsewh
 LL | async fn foo(x: u32) -> u32 {
    |                         ^^^query stack during panic:
 #0 [typeck] type-checking `foo`
-#1 [thir_body] building THIR for `foo`
-#2 [check_match] match-checking `foo`
-#3 [mir_built] building MIR for `foo`
-#4 [unsafety_check_result] unsafety-checking `foo`
-#5 [mir_const] preparing `foo` for borrow checking
-#6 [mir_promoted] promoting constants in MIR for `foo`
-#7 [mir_borrowck] borrow-checking `foo`
-#8 [type_of] computing type of `foo::{opaque#0}`
-#9 [check_mod_item_types] checking item types in top-level module
-#10 [analysis] running analysis passes on this crate
+#1 [type_of] computing type of `foo::{opaque#0}`
+#2 [check_mod_item_types] checking item types in top-level module
+#3 [analysis] running analysis passes on this crate
 end of query stack
 error: aborting due to 2 previous errors
 

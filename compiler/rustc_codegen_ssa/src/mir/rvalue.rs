@@ -70,6 +70,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     OperandValue::Ref(_, Some(_), _) => {
                         bug!("unsized coercion on an unsized rvalue");
                     }
+                    OperandValue::ZeroSized => {
+                        bug!("unsized coercion on a ZST rvalue");
+                    }
                 }
             }
 
@@ -165,11 +168,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
 
         match src.val {
-            OperandValue::Ref(..) => {
+            OperandValue::Ref(..) | OperandValue::ZeroSized => {
                 span_bug!(
                     self.mir.span,
                     "Operand path should have handled transmute \
-                    from `Ref` {src:?} to place {dst:?}"
+                    from {src:?} to place {dst:?}"
                 );
             }
             OperandValue::Immediate(..) | OperandValue::Pair(..) => {
@@ -220,17 +223,22 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let fake_place = PlaceRef::new_sized_aligned(cast_ptr, cast, align);
                 Some(bx.load_operand(fake_place).val)
             }
+            OperandValue::ZeroSized => {
+                let OperandValueKind::ZeroSized = operand_kind else {
+                    bug!("Found {operand_kind:?} for operand {operand:?}");
+                };
+                if let OperandValueKind::ZeroSized = cast_kind {
+                    Some(OperandValue::ZeroSized)
+                } else {
+                    None
+                }
+            }
             OperandValue::Immediate(imm) => {
                 let OperandValueKind::Immediate(in_scalar) = operand_kind else {
                     bug!("Found {operand_kind:?} for operand {operand:?}");
                 };
-                if let OperandValueKind::Immediate(out_scalar) = cast_kind {
-                    match (in_scalar, out_scalar) {
-                        (ScalarOrZst::Zst, ScalarOrZst::Zst) => {
-                            Some(OperandRef::new_zst(bx, cast).val)
-                        }
-                        (ScalarOrZst::Scalar(in_scalar), ScalarOrZst::Scalar(out_scalar))
-                            if in_scalar.size(self.cx) == out_scalar.size(self.cx) =>
+                if let OperandValueKind::Immediate(out_scalar) = cast_kind
+                    && in_scalar.size(self.cx) == out_scalar.size(self.cx)
                         {
                             let operand_bty = bx.backend_type(operand.layout);
                             let cast_bty = bx.backend_type(cast);
@@ -242,9 +250,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 out_scalar,
                                 cast_bty,
                             )))
-                        }
-                        _ => None,
-                    }
                 } else {
                     None
                 }
@@ -457,6 +462,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             OperandValue::Ref(..) => {
                                 bug!("by-ref operand {:?} in `codegen_rvalue_operand`", operand);
                             }
+                            OperandValue::ZeroSized => {
+                                bug!("zero-sized operand {:?} in `codegen_rvalue_operand`", operand);
+                            }
                         };
                         let (lldata, llextra) =
                             base::unsize_ptr(bx, lldata, operand.layout.ty, cast.ty, llextra);
@@ -490,6 +498,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             OperandValue::Ref(_, _, _) => todo!(),
                             OperandValue::Immediate(v) => (v, None),
                             OperandValue::Pair(v, l) => (v, Some(l)),
+                            OperandValue::ZeroSized => bug!("ZST -- which is not PointerLike -- in DynStar"),
                         };
                         let (lldata, llextra) =
                             base::cast_to_dyn_star(bx, lldata, operand.layout, cast.ty, llextra);
@@ -718,7 +727,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // According to `rvalue_creates_operand`, only ZST
                 // aggregate rvalues are allowed to be operands.
                 let ty = rvalue.ty(self.mir, self.cx.tcx());
-                OperandRef::new_zst(bx, self.cx.layout_of(self.monomorphize(ty)))
+                OperandRef::zero_sized(self.cx.layout_of(self.monomorphize(ty)))
             }
             mir::Rvalue::ShallowInitBox(ref operand, content_ty) => {
                 let operand = self.codegen_operand(bx, operand);
@@ -936,6 +945,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // Can always load from a pointer as needed
                     (OperandValueKind::Ref, _) => true,
 
+                    // ZST-to-ZST is the easiest thing ever
+                    (OperandValueKind::ZeroSized, OperandValueKind::ZeroSized) => true,
+
+                    // But if only one of them is a ZST the sizes can't match
+                    (OperandValueKind::ZeroSized, _) | (_, OperandValueKind::ZeroSized) => false,
+
                     // Need to generate an `alloc` to get a pointer from an immediate
                     (OperandValueKind::Immediate(..) | OperandValueKind::Pair(..), OperandValueKind::Ref) => false,
 
@@ -979,12 +994,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     /// Gets which variant of [`OperandValue`] is expected for a particular type.
     fn value_kind(&self, layout: TyAndLayout<'tcx>) -> OperandValueKind {
-        if self.cx.is_backend_immediate(layout) {
+        if layout.is_zst() {
+            OperandValueKind::ZeroSized
+        } else if self.cx.is_backend_immediate(layout) {
             debug_assert!(!self.cx.is_backend_scalar_pair(layout));
             OperandValueKind::Immediate(match layout.abi {
-                abi::Abi::Scalar(s) => ScalarOrZst::Scalar(s),
-                abi::Abi::Vector { element, .. } => ScalarOrZst::Scalar(element),
-                _ if layout.is_zst() => ScalarOrZst::Zst,
+                abi::Abi::Scalar(s) => s,
+                abi::Abi::Vector { element, .. } => element,
                 x => span_bug!(self.mir.span, "Couldn't translate {x:?} as backend immediate"),
             })
         } else if self.cx.is_backend_scalar_pair(layout) {
@@ -1007,21 +1023,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 #[derive(Debug, Copy, Clone)]
 enum OperandValueKind {
     Ref,
-    Immediate(ScalarOrZst),
+    Immediate(abi::Scalar),
     Pair(abi::Scalar, abi::Scalar),
-}
-
-#[derive(Debug, Copy, Clone)]
-enum ScalarOrZst {
-    Zst,
-    Scalar(abi::Scalar),
-}
-
-impl ScalarOrZst {
-    pub fn size(self, cx: &impl abi::HasDataLayout) -> abi::Size {
-        match self {
-            ScalarOrZst::Zst => abi::Size::ZERO,
-            ScalarOrZst::Scalar(s) => s.size(cx),
-        }
-    }
+    ZeroSized,
 }

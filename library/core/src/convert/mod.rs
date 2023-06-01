@@ -495,8 +495,7 @@ pub trait Into<T>: Sized {
 /// By converting underlying error types to our own custom error type that encapsulates the
 /// underlying error type, we can return a single error type without losing information on the
 /// underlying cause. The '?' operator automatically converts the underlying error type to our
-/// custom error type by calling `Into<CliError>::into` which is automatically provided when
-/// implementing `From`. The compiler then infers which implementation of `Into` should be used.
+/// custom error type with `From::from`.
 ///
 /// ```
 /// use std::fs;
