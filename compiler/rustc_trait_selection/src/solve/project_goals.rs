@@ -22,25 +22,55 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         &mut self,
         goal: Goal<'tcx, ProjectionPredicate<'tcx>>,
     ) -> QueryResult<'tcx> {
-        match goal.predicate.projection_ty.kind(self.tcx()) {
-            ty::AliasKind::Projection => {
-                // To only compute normalization once for each projection we only
-                // normalize if the expected term is an unconstrained inference variable.
-                //
-                // E.g. for `<T as Trait>::Assoc == u32` we recursively compute the goal
-                // `exists<U> <T as Trait>::Assoc == U` and then take the resulting type for
-                // `U` and equate it with `u32`. This means that we don't need a separate
-                // projection cache in the solver.
-                if self.term_is_fully_unconstrained(goal) {
-                    let candidates = self.assemble_and_evaluate_candidates(goal);
-                    self.merge_candidates(candidates)
-                } else {
-                    self.set_normalizes_to_hack_goal(goal);
-                    self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        let def_id = goal.predicate.def_id();
+        match self.tcx().def_kind(def_id) {
+            DefKind::AssocTy | DefKind::AssocConst => {
+                match self.tcx().associated_item(def_id).container {
+                    ty::AssocItemContainer::TraitContainer => {
+                        // To only compute normalization once for each projection we only
+                        // normalize if the expected term is an unconstrained inference variable.
+                        //
+                        // E.g. for `<T as Trait>::Assoc == u32` we recursively compute the goal
+                        // `exists<U> <T as Trait>::Assoc == U` and then take the resulting type for
+                        // `U` and equate it with `u32`. This means that we don't need a separate
+                        // projection cache in the solver.
+                        if self.term_is_fully_unconstrained(goal) {
+                            let candidates = self.assemble_and_evaluate_candidates(goal);
+                            self.merge_candidates(candidates)
+                        } else {
+                            self.set_normalizes_to_hack_goal(goal);
+                            self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                        }
+                    }
+                    ty::AssocItemContainer::ImplContainer => bug!("IATs not supported here yet"),
                 }
             }
-            ty::AliasKind::Opaque => self.normalize_opaque_type(goal),
-            ty::AliasKind::Inherent => bug!("IATs not supported here yet"),
+            DefKind::AnonConst => self.normalize_anon_const(goal),
+            DefKind::OpaqueTy => self.normalize_opaque_type(goal),
+            kind => bug!("uknown DefKind {} in projection goal: {goal:#?}", kind.descr(def_id)),
+        }
+    }
+
+    #[instrument(level = "debug", skip(self), ret)]
+    fn normalize_anon_const(
+        &mut self,
+        goal: Goal<'tcx, ty::ProjectionPredicate<'tcx>>,
+    ) -> QueryResult<'tcx> {
+        if let Some(normalized_const) = self.try_const_eval_resolve(
+            goal.param_env,
+            ty::UnevaluatedConst::new(
+                goal.predicate.projection_ty.def_id,
+                goal.predicate.projection_ty.substs,
+            ),
+            self.tcx()
+                .type_of(goal.predicate.projection_ty.def_id)
+                .no_bound_vars()
+                .expect("const ty should not rely on other generics"),
+        ) {
+            self.eq(goal.param_env, normalized_const, goal.predicate.term.ct().unwrap())?;
+            self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        } else {
+            self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
         }
     }
 }

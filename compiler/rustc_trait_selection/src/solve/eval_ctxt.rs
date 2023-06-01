@@ -772,4 +772,21 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
         values
     }
+
+    // Try to evaluate a const, or return `None` if the const is too generic.
+    // This doesn't mean the const isn't evaluatable, though, and should be treated
+    // as an ambiguity rather than no-solution.
+    pub(super) fn try_const_eval_resolve(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        unevaluated: ty::UnevaluatedConst<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Option<ty::Const<'tcx>> {
+        use rustc_middle::mir::interpret::ErrorHandled;
+        match self.infcx.try_const_eval_resolve(param_env, unevaluated, ty, None) {
+            Ok(ct) => Some(ct),
+            Err(ErrorHandled::Reported(e)) => Some(self.tcx().const_error(ty, e.into())),
+            Err(ErrorHandled::TooGeneric) => None,
+        }
+    }
 }
