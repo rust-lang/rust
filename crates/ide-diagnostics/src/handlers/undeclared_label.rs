@@ -34,6 +34,31 @@ fn foo() {
     }
 
     #[test]
+    fn for_loop() {
+        check_diagnostics(
+            r#"
+//- minicore: iterator
+fn foo() {
+    'xxx: for _ in unknown {
+        'yyy: for _ in unknown {
+            break 'xxx;
+            continue 'yyy;
+            break 'zzz;
+                //^^^^ error: use of undeclared label `'zzz`
+        }
+        continue 'xxx;
+        continue 'yyy;
+               //^^^^ error: use of undeclared label `'yyy`
+        break 'xxx;
+        break 'yyy;
+            //^^^^ error: use of undeclared label `'yyy`
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
     fn try_operator_desugar_works() {
         check_diagnostics(
             r#"
