@@ -1,3 +1,7 @@
+//! This module provides the ability to emit compiler errors to macro developers. Instead of
+//! using `panic!()` and letting the macro panic, you can use the [`Diagnostic`] structure for more helpful
+//! errors. It allows you to specify where an error occurs, the reason an error occured, and
+//! what level it is.
 use crate::Span;
 
 /// An enum representing a diagnostic level.
@@ -44,7 +48,22 @@ impl<'a> MultiSpan for &'a [Span] {
 }
 
 /// A structure representing a diagnostic message and associated children
-/// messages.
+/// messages. Diagnostics are used to report errors when a procedural macro
+/// is generating code, as it's more friendly to macro users and macro developers
+/// than panicking.
+/// # Examples
+/// Emitting a simple error diagnostic at the callsite.
+/// ```rust
+/// Diagnostic::spanned(Level::Error, "unclosed tag", Span::call_site())
+///     .emit();
+///````
+/// Emitting a diagnostic at a warning level with some help.
+/// ```rust
+/// Diagnostic::spanned(Level::Error, "invalid tag", Span::call_site())
+///     .span_help(Span::call_site(), "did you mean `h3` instead of `g3`?")
+///     .emit();
+/// ```
+///
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
 #[derive(Clone, Debug)]
 pub struct Diagnostic {
@@ -95,6 +114,10 @@ impl<'a> Iterator for Children<'a> {
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
 impl Diagnostic {
     /// Creates a new diagnostic with the given `level` and `message`.
+    /// # Example
+    /// ```rust
+    /// let diag = Diagnostic::new(Level::Error, "unclosed tag");
+    /// ```
     #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
     pub fn new<T: Into<String>>(level: Level, message: T) -> Diagnostic {
         Diagnostic { level, message: message.into(), spans: vec![], children: vec![] }
@@ -102,6 +125,10 @@ impl Diagnostic {
 
     /// Creates a new diagnostic with the given `level` and `message` pointing to
     /// the given set of `spans`.
+    /// # Example
+    /// ```rust
+    /// let diag = Diagnostic::spanned(Level::Warning, "");
+    /// ```
     #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
     pub fn spanned<S, T>(spans: S, level: Level, message: T) -> Diagnostic
     where
@@ -146,7 +173,7 @@ impl Diagnostic {
         &self.spans
     }
 
-    /// Sets the `Span`s in `self` to `spans`.
+    /// Sets the `Span`s in `self` to `spans` from the function.
     #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
     pub fn set_spans<S: MultiSpan>(&mut self, spans: S) {
         self.spans = spans.into_spans();
@@ -158,7 +185,12 @@ impl Diagnostic {
         Children(self.children.iter())
     }
 
-    /// Emit the diagnostic.
+    /// Emits the diagnostic, spawning an error with the level provided.
+    /// # Example
+    /// ```rust
+    /// let diag = Diagnostic::spanned(Level::Warning, "invalid identifier", Span::call_site())
+    ///     .emit();
+    /// ```
     #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
     pub fn emit(self) {
         fn to_internal(diag: Diagnostic) -> crate::bridge::Diagnostic<crate::bridge::client::Span> {
