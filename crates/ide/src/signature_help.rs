@@ -1996,7 +1996,6 @@ fn main() {
 
     #[test]
     fn test_tuple_expr_expected() {
-        // FIXME: Seems like we discard valuable results in typeck here
         check(
             r#"
 fn main() {
@@ -2004,19 +2003,20 @@ fn main() {
 }
 "#,
             expect![[r#"
-                (&str, u32)
-                 ^^^^  ---
+                (&str, u32, u32)
+                 ^^^^  ---  ---
             "#]],
         );
+        // FIXME: Should typeck report a 4-ary tuple for the expression here?
         check(
             r#"
 fn main() {
-    let _: (&str, u32, u32, u32)= ($0, 1, 3);
+    let _: (&str, u32, u32, u32) = ($0, 1, 3);
 }
 "#,
             expect![[r#"
-                (&str, u32)
-                 ^^^^  ---
+                (&str, u32, u32)
+                 ^^^^  ---  ---
             "#]],
         );
         check(
@@ -2026,15 +2026,25 @@ fn main() {
 }
 "#,
             expect![[r#"
-                (&str, u32, u32)
-                 ^^^^  ---  ---
+                (&str, u32, u32, i32)
+                 ^^^^  ---  ---  ---
             "#]],
         );
     }
 
     #[test]
     fn test_tuple_pat_free() {
-        // FIXME: Seems like we discard valuable results in typeck here
+        check(
+            r#"
+fn main() {
+    let ($0, 1, 3);
+}
+"#,
+            expect![[r#"
+                ({unknown}, i32, i32)
+                 ^^^^^^^^^  ---  ---
+            "#]],
+        );
         check(
             r#"
 fn main() {
@@ -2123,10 +2133,9 @@ fn main() {
     let ($0, 1, 3): (i32, i32, i32);
 }
 "#,
-            // FIXME: tuple pat should be of size 3 ideally
             expect![[r#"
-                (i32, i32)
-                 ^^^  ---
+                (i32, i32, i32)
+                 ^^^  ---  ---
             "#]],
         );
         check(
@@ -2182,7 +2191,7 @@ fn main() {
     let ($0 1, 3) = (1, 2, 3);
 }
 "#,
-            // FIXME: tuple pat should be of size 3 ideally
+            // FIXME: Should typeck report a 3-ary tuple for the pattern here?
             expect![[r#"
                 (i32, i32)
                  ^^^  ---

@@ -542,9 +542,18 @@ impl ExprCollector<'_> {
                 self.alloc_expr(Expr::BinaryOp { lhs, rhs, op }, syntax_ptr)
             }
             ast::Expr::TupleExpr(e) => {
-                let exprs = e.fields().map(|expr| self.collect_expr(expr)).collect();
+                let mut exprs: Vec<_> = e.fields().map(|expr| self.collect_expr(expr)).collect();
+                // if there is a leading comma, the user is most likely to type out a leading expression
+                // so we insert a missing expression at the beginning for IDE features
+                if comma_follows_token(e.l_paren_token()) {
+                    exprs.insert(0, self.missing_expr());
+                }
+
                 self.alloc_expr(
-                    Expr::Tuple { exprs, is_assignee_expr: self.is_lowering_assignee_expr },
+                    Expr::Tuple {
+                        exprs: exprs.into_boxed_slice(),
+                        is_assignee_expr: self.is_lowering_assignee_expr,
+                    },
                     syntax_ptr,
                 )
             }
@@ -1180,7 +1189,11 @@ impl ExprCollector<'_> {
             ast::Pat::TupleStructPat(p) => {
                 let path =
                     p.path().and_then(|path| self.expander.parse_path(self.db, path)).map(Box::new);
-                let (args, ellipsis) = self.collect_tuple_pat(p.fields(), binding_list);
+                let (args, ellipsis) = self.collect_tuple_pat(
+                    p.fields(),
+                    comma_follows_token(p.l_paren_token()),
+                    binding_list,
+                );
                 Pat::TupleStruct { path, args, ellipsis }
             }
             ast::Pat::RefPat(p) => {
@@ -1199,7 +1212,11 @@ impl ExprCollector<'_> {
             }
             ast::Pat::ParenPat(p) => return self.collect_pat_opt(p.pat(), binding_list),
             ast::Pat::TuplePat(p) => {
-                let (args, ellipsis) = self.collect_tuple_pat(p.fields(), binding_list);
+                let (args, ellipsis) = self.collect_tuple_pat(
+                    p.fields(),
+                    comma_follows_token(p.l_paren_token()),
+                    binding_list,
+                );
                 Pat::Tuple { args, ellipsis }
             }
             ast::Pat::WildcardPat(_) => Pat::Wild,
@@ -1323,18 +1340,24 @@ impl ExprCollector<'_> {
     fn collect_tuple_pat(
         &mut self,
         args: AstChildren<ast::Pat>,
+        has_leading_comma: bool,
         binding_list: &mut BindingList,
     ) -> (Box<[PatId]>, Option<usize>) {
         // Find the location of the `..`, if there is one. Note that we do not
         // consider the possibility of there being multiple `..` here.
         let ellipsis = args.clone().position(|p| matches!(p, ast::Pat::RestPat(_)));
         // We want to skip the `..` pattern here, since we account for it above.
-        let args = args
+        let mut args: Vec<_> = args
             .filter(|p| !matches!(p, ast::Pat::RestPat(_)))
             .map(|p| self.collect_pat(p, binding_list))
             .collect();
+        // if there is a leading comma, the user is most likely to type out a leading pattern
+        // so we insert a missing pattern at the beginning for IDE features
+        if has_leading_comma {
+            args.insert(0, self.missing_pat());
+        }
 
-        (args, ellipsis)
+        (args.into_boxed_slice(), ellipsis)
     }
 
     // endregion: patterns
@@ -1492,4 +1515,9 @@ impl ExprCollector<'_> {
     fn alloc_label_desugared(&mut self, label: Label) -> LabelId {
         self.body.labels.alloc(label)
     }
+}
+
+fn comma_follows_token(t: Option<syntax::SyntaxToken>) -> bool {
+    (|| syntax::algo::skip_trivia_token(t?.next_token()?, syntax::Direction::Next))()
+        .map_or(false, |it| it.kind() == syntax::T![,])
 }
