@@ -322,9 +322,12 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 ty::PredicateKind::Ambiguous => {
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 }
-                // FIXME: implement these predicates :)
-                ty::PredicateKind::ConstEvaluatable(_) | ty::PredicateKind::ConstEquate(_, _) => {
+                // FIXME: implement this predicate :)
+                ty::PredicateKind::ConstEvaluatable(_) => {
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                }
+                ty::PredicateKind::ConstEquate(_, _) => {
+                    bug!("ConstEquate should not be emitted when `-Ztrait-solver=next` is active")
                 }
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for Chalk")
