@@ -10,7 +10,7 @@ pub const CONST_S: &'static str = "show this";
 pub const CONST_I32: i32 = 42;
 
 // @hasraw show_const_contents/constant.CONST_I32_HEX.html '= 0x42;'
-// @!hasraw show_const_contents/constant.CONST_I32_HEX.html '; //'
+// @!hasraw show_const_contents/constant.CONST_I32_HEX.html ';'
 pub const CONST_I32_HEX: i32 = 0x42;
 
 // @hasraw show_const_contents/constant.CONST_NEG_I32.html '= -42;'
@@ -21,14 +21,14 @@ pub const CONST_NEG_I32: i32 = -42;
 // @!hasraw show_const_contents/constant.CONST_EQ_TO_VALUE_I32.html '// 42i32'
 pub const CONST_EQ_TO_VALUE_I32: i32 = 42i32;
 
-// @hasraw show_const_contents/constant.CONST_CALC_I32.html '= _; // 43i32'
+// @hasraw show_const_contents/constant.CONST_CALC_I32.html '= 43i32'
 pub const CONST_CALC_I32: i32 = 42 + 1;
 
 // @!hasraw show_const_contents/constant.CONST_REF_I32.html '= &42;'
 // @!hasraw show_const_contents/constant.CONST_REF_I32.html '; //'
 pub const CONST_REF_I32: &'static i32 = &42;
 
-// @hasraw show_const_contents/constant.CONST_I32_MAX.html '= i32::MAX; // 2_147_483_647i32'
+// @hasraw show_const_contents/constant.CONST_I32_MAX.html '= 2_147_483_647i32'
 pub const CONST_I32_MAX: i32 = i32::MAX;
 
 // @!hasraw show_const_contents/constant.UNIT.html '= ();'
@@ -51,7 +51,7 @@ pub const MY_TYPE_WITH_STR: MyTypeWithStr = MyTypeWithStr("show this");
 // @hasraw show_const_contents/constant.PI.html '; // 3.14159274f32'
 pub use std::f32::consts::PI;
 
-// @hasraw show_const_contents/constant.MAX.html '= i32::MAX; // 2_147_483_647i32'
+// @hasraw show_const_contents/constant.MAX.html '= 2_147_483_647i32'
 #[allow(deprecated, deprecated_in_future)]
 pub use std::i32::MAX;
 
@@ -61,7 +61,7 @@ macro_rules! int_module {
     )
 }
 
-// @hasraw show_const_contents/constant.MIN.html '= i16::MIN; // -32_768i16'
+// @hasraw show_const_contents/constant.MIN.html '= -32_768i16'
 int_module!(i16);
 
 // @has show_const_contents/constant.ESCAPE.html //pre '= r#"<script>alert("ESCAPE");</script>"#;'
