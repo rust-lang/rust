@@ -15,8 +15,9 @@ use ide_db::{
 use stdx::format_to;
 use syntax::{
     algo,
-    ast::{self, HasArgList},
-    match_ast, AstNode, Direction, SyntaxElementChildren, SyntaxToken, TextRange, TextSize,
+    ast::{self, AstChildren, HasArgList},
+    match_ast, AstNode, Direction, NodeOrToken, SyntaxElementChildren, SyntaxNode, SyntaxToken,
+    TextRange, TextSize, T,
 };
 
 use crate::RootDatabase;
@@ -115,6 +116,20 @@ pub(crate) fn signature_help(db: &RootDatabase, position: FilePosition) -> Optio
                         continue;
                     }
                     return signature_help_for_tuple_struct_pat(&sema, tuple_pat, token);
+                },
+                ast::TuplePat(tuple_pat) => {
+                    let cursor_outside = tuple_pat.r_paren_token().as_ref() == Some(&token);
+                    if cursor_outside {
+                        continue;
+                    }
+                    return signature_help_for_tuple_pat(&sema, tuple_pat, token);
+                },
+                ast::TupleExpr(tuple_expr) => {
+                    let cursor_outside = tuple_expr.r_paren_token().as_ref() == Some(&token);
+                    if cursor_outside {
+                        continue;
+                    }
+                    return signature_help_for_tuple_expr(&sema, tuple_expr, token);
                 },
                 _ => (),
             }
@@ -395,19 +410,16 @@ fn signature_help_for_tuple_struct_pat(
     pat: ast::TupleStructPat,
     token: SyntaxToken,
 ) -> Option<SignatureHelp> {
-    let rest_pat = pat.fields().find(|it| matches!(it, ast::Pat::RestPat(_)));
-    let is_left_of_rest_pat =
-        rest_pat.map_or(true, |it| token.text_range().start() < it.syntax().text_range().end());
-
+    let path = pat.path()?;
+    let path_res = sema.resolve_path(&path)?;
     let mut res = SignatureHelp {
         doc: None,
         signature: String::new(),
         parameters: vec![],
         active_parameter: None,
     };
-
     let db = sema.db;
-    let path_res = sema.resolve_path(&pat.path()?)?;
+
     let fields: Vec<_> = if let PathResolution::Def(ModuleDef::Variant(variant)) = path_res {
         let en = variant.parent_enum(db);
 
@@ -435,30 +447,72 @@ fn signature_help_for_tuple_struct_pat(
             _ => return None,
         }
     };
-    let commas = pat
-        .syntax()
-        .children_with_tokens()
-        .filter_map(syntax::NodeOrToken::into_token)
-        .filter(|t| t.kind() == syntax::T![,]);
-    res.active_parameter = Some(if is_left_of_rest_pat {
-        commas.take_while(|t| t.text_range().start() <= token.text_range().start()).count()
-    } else {
-        let n_commas = commas
-            .collect::<Vec<_>>()
-            .into_iter()
-            .rev()
-            .take_while(|t| t.text_range().start() > token.text_range().start())
-            .count();
-        fields.len().saturating_sub(1).saturating_sub(n_commas)
-    });
+    Some(signature_help_for_tuple_pat_ish(
+        db,
+        res,
+        pat.syntax(),
+        token,
+        pat.fields(),
+        fields.into_iter().map(|it| it.ty(db)),
+    ))
+}
 
+fn signature_help_for_tuple_pat(
+    sema: &Semantics<'_, RootDatabase>,
+    pat: ast::TuplePat,
+    token: SyntaxToken,
+) -> Option<SignatureHelp> {
+    let db = sema.db;
+    let field_pats = pat.fields();
+    let pat = pat.into();
+    let ty = sema.type_of_pat(&pat)?;
+    let fields = ty.original.tuple_fields(db);
+
+    Some(signature_help_for_tuple_pat_ish(
+        db,
+        SignatureHelp {
+            doc: None,
+            signature: String::from('('),
+            parameters: vec![],
+            active_parameter: None,
+        },
+        pat.syntax(),
+        token,
+        field_pats,
+        fields.into_iter(),
+    ))
+}
+
+fn signature_help_for_tuple_expr(
+    sema: &Semantics<'_, RootDatabase>,
+    expr: ast::TupleExpr,
+    token: SyntaxToken,
+) -> Option<SignatureHelp> {
+    let active_parameter = Some(
+        expr.syntax()
+            .children_with_tokens()
+            .filter_map(NodeOrToken::into_token)
+            .filter(|t| t.kind() == T![,])
+            .take_while(|t| t.text_range().start() <= token.text_range().start())
+            .count(),
+    );
+
+    let db = sema.db;
+    let mut res = SignatureHelp {
+        doc: None,
+        signature: String::from('('),
+        parameters: vec![],
+        active_parameter,
+    };
+    let expr = sema.type_of_expr(&expr.into())?;
+    let fields = expr.original.tuple_fields(db);
     let mut buf = String::new();
-    for ty in fields.into_iter().map(|it| it.ty(db)) {
+    for ty in fields {
         format_to!(buf, "{}", ty.display_truncated(db, Some(20)));
         res.push_call_param(&buf);
         buf.clear();
     }
-    res.signature.push_str(")");
+    res.signature.push(')');
     Some(res)
 }
 
@@ -470,8 +524,8 @@ fn signature_help_for_record_(
     token: SyntaxToken,
 ) -> Option<SignatureHelp> {
     let active_parameter = field_list_children
-        .filter_map(syntax::NodeOrToken::into_token)
-        .filter(|t| t.kind() == syntax::T![,])
+        .filter_map(NodeOrToken::into_token)
+        .filter(|t| t.kind() == T![,])
         .take_while(|t| t.text_range().start() <= token.text_range().start())
         .count();
 
@@ -542,6 +596,46 @@ fn signature_help_for_record_(
     Some(res)
 }
 
+fn signature_help_for_tuple_pat_ish(
+    db: &RootDatabase,
+    mut res: SignatureHelp,
+    pat: &SyntaxNode,
+    token: SyntaxToken,
+    mut field_pats: AstChildren<ast::Pat>,
+    fields: impl ExactSizeIterator<Item = hir::Type>,
+) -> SignatureHelp {
+    let rest_pat = field_pats.find(|it| matches!(it, ast::Pat::RestPat(_)));
+    let is_left_of_rest_pat =
+        rest_pat.map_or(true, |it| token.text_range().start() < it.syntax().text_range().end());
+
+    let commas = pat
+        .children_with_tokens()
+        .filter_map(NodeOrToken::into_token)
+        .filter(|t| t.kind() == T![,]);
+
+    res.active_parameter = {
+        Some(if is_left_of_rest_pat {
+            commas.take_while(|t| t.text_range().start() <= token.text_range().start()).count()
+        } else {
+            let n_commas = commas
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev()
+                .take_while(|t| t.text_range().start() > token.text_range().start())
+                .count();
+            fields.len().saturating_sub(1).saturating_sub(n_commas)
+        })
+    };
+
+    let mut buf = String::new();
+    for ty in fields {
+        format_to!(buf, "{}", ty.display_truncated(db, Some(20)));
+        res.push_call_param(&buf);
+        buf.clear();
+    }
+    res.signature.push_str(")");
+    res
+}
 #[cfg(test)]
 mod tests {
     use std::iter;
@@ -1848,6 +1942,292 @@ fn main() {
             expect![[r#"
                 fn bar(_: A)
                        ^^^^
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_tuple_expr_free() {
+        check(
+            r#"
+fn main() {
+    (0$0, 1, 3);
+}
+"#,
+            expect![[r#"
+                (i32, i32, i32)
+                 ^^^  ---  ---
+            "#]],
+        );
+        check(
+            r#"
+fn main() {
+    ($0 1, 3);
+}
+"#,
+            expect![[r#"
+                (i32, i32)
+                 ^^^  ---
+            "#]],
+        );
+        check(
+            r#"
+fn main() {
+    (1, 3 $0);
+}
+"#,
+            expect![[r#"
+                (i32, i32)
+                 ---  ^^^
+            "#]],
+        );
+        check(
+            r#"
+fn main() {
+    (1, 3 $0,);
+}
+"#,
+            expect![[r#"
+                (i32, i32)
+                 ---  ^^^
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_tuple_expr_expected() {
+        check(
+            r#"
+fn main() {
+    let _: (&str, u32, u32)= ($0, 1, 3);
+}
+"#,
+            expect![[r#"
+                (&str, u32, u32)
+                 ^^^^  ---  ---
+            "#]],
+        );
+        // FIXME: Should typeck report a 4-ary tuple for the expression here?
+        check(
+            r#"
+fn main() {
+    let _: (&str, u32, u32, u32) = ($0, 1, 3);
+}
+"#,
+            expect![[r#"
+                (&str, u32, u32)
+                 ^^^^  ---  ---
+            "#]],
+        );
+        check(
+            r#"
+fn main() {
+    let _: (&str, u32, u32)= ($0, 1, 3, 5);
+}
+"#,
+            expect![[r#"
+                (&str, u32, u32, i32)
+                 ^^^^  ---  ---  ---
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_tuple_pat_free() {
+        check(
+            r#"
+fn main() {
+    let ($0, 1, 3);
+}
+"#,
+            expect![[r#"
+                ({unknown}, i32, i32)
+                 ^^^^^^^^^  ---  ---
+            "#]],
+        );
+        check(
+            r#"
+fn main() {
+    let (0$0, 1, 3);
+}
+"#,
+            expect![[r#"
+                (i32, i32, i32)
+                 ^^^  ---  ---
+            "#]],
+        );
+        check(
+            r#"
+fn main() {
+    let ($0 1, 3);
+}
+"#,
+            expect![[r#"
+                (i32, i32)
+                 ^^^  ---
+            "#]],
+        );
+        check(
+            r#"
+fn main() {
+    let (1, 3 $0);
+}
+"#,
+            expect![[r#"
+                (i32, i32)
+                 ---  ^^^
+            "#]],
+        );
+        check(
+            r#"
+fn main() {
+    let (1, 3 $0,);
+}
+"#,
+            expect![[r#"
+                (i32, i32)
+                 ---  ^^^
+            "#]],
+        );
+        check(
+            r#"
+fn main() {
+    let (1, 3 $0, ..);
+}
+"#,
+            expect![[r#"
+                (i32, i32)
+                 ---  ^^^
+            "#]],
+        );
+        check(
+            r#"
+fn main() {
+    let (1, 3, .., $0);
+}
+"#,
+            // FIXME: This is wrong, this should not mark the last as active
+            expect![[r#"
+                (i32, i32)
+                 ---  ^^^
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_tuple_pat_expected() {
+        check(
+            r#"
+fn main() {
+    let (0$0, 1, 3): (i32, i32, i32);
+}
+"#,
+            expect![[r#"
+                (i32, i32, i32)
+                 ^^^  ---  ---
+            "#]],
+        );
+        check(
+            r#"
+fn main() {
+    let ($0, 1, 3): (i32, i32, i32);
+}
+"#,
+            expect![[r#"
+                (i32, i32, i32)
+                 ^^^  ---  ---
+            "#]],
+        );
+        check(
+            r#"
+fn main() {
+    let (1, 3 $0): (i32,);
+}
+"#,
+            expect![[r#"
+                (i32, i32)
+                 ---  ^^^
+            "#]],
+        );
+        check(
+            r#"
+fn main() {
+    let (1, 3 $0, ..): (i32, i32, i32, i32);
+}
+"#,
+            expect![[r#"
+                (i32, i32, i32, i32)
+                 ---  ^^^  ---  ---
+            "#]],
+        );
+        check(
+            r#"
+fn main() {
+    let (1, 3, .., $0): (i32, i32, i32);
+}
+"#,
+            expect![[r#"
+                (i32, i32, i32)
+                 ---  ---  ^^^
+            "#]],
+        );
+    }
+    #[test]
+    fn test_tuple_pat_expected_inferred() {
+        check(
+            r#"
+fn main() {
+    let (0$0, 1, 3) = (1, 2 ,3);
+}
+"#,
+            expect![[r#"
+                (i32, i32, i32)
+                 ^^^  ---  ---
+            "#]],
+        );
+        check(
+            r#"
+fn main() {
+    let ($0 1, 3) = (1, 2, 3);
+}
+"#,
+            // FIXME: Should typeck report a 3-ary tuple for the pattern here?
+            expect![[r#"
+                (i32, i32)
+                 ^^^  ---
+            "#]],
+        );
+        check(
+            r#"
+fn main() {
+    let (1, 3 $0) = (1,);
+}
+"#,
+            expect![[r#"
+                (i32, i32)
+                 ---  ^^^
+            "#]],
+        );
+        check(
+            r#"
+fn main() {
+    let (1, 3 $0, ..) = (1, 2, 3, 4);
+}
+"#,
+            expect![[r#"
+                (i32, i32, i32, i32)
+                 ---  ^^^  ---  ---
+            "#]],
+        );
+        check(
+            r#"
+fn main() {
+    let (1, 3, .., $0) = (1, 2, 3);
+}
+"#,
+            expect![[r#"
+                (i32, i32, i32)
+                 ---  ---  ^^^
             "#]],
         );
     }
