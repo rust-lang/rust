@@ -486,7 +486,7 @@ pub fn lookup_conf_file() -> io::Result<(Option<PathBuf>, Vec<String>)> {
     const CONFIG_FILE_NAMES: [&str; 2] = [".clippy.toml", "clippy.toml"];
 
     // Start looking for a config file in CLIPPY_CONF_DIR, or failing that, CARGO_MANIFEST_DIR.
-    // If neither of those exist, use ".".
+    // If neither of those exist, use ".". (Update documentation if this priority changes)
     let mut current = env::var_os("CLIPPY_CONF_DIR")
         .or_else(|| env::var_os("CARGO_MANIFEST_DIR"))
         .map_or_else(|| PathBuf::from("."), PathBuf::from)

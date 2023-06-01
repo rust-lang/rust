@@ -2,8 +2,10 @@
 
 > **Note:** The configuration file is unstable and may be deprecated in the future.
 
-Some lints can be configured in a TOML file named `clippy.toml` or `.clippy.toml`. It contains a
-basic `variable = value` mapping e.g.
+Some lints can be configured in a TOML file named `clippy.toml` or `.clippy.toml`, placed in a directory specified by
+the environment variable `CLIPPY_CONF_DIR`, or if that's not found, the environment variable
+[CARGO_MANIFEST_DIR](https://doc.rust-lang.org/cargo/reference/environment-variables.html), or if that isn't
+found, the current directory. It contains a basic `variable = value` mapping e.g.
 
 ```toml
 avoid-breaking-exported-api = false
