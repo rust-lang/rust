@@ -309,7 +309,8 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// status_code <= 400 && status_code > 500;
+    /// # let status_code = 200;
+    /// if status_code <= 400 && status_code > 500 {}
     /// ```
     #[clippy::version = "1.71.0"]
     pub IMPOSSIBLE_DOUBLE_CONST_COMPARISONS,
@@ -328,7 +329,8 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// status_code <= 400 && status_code < 500;
+    /// # let status_code = 200;
+    /// if status_code <= 400 && status_code < 500 {}
     /// ```
     #[clippy::version = "1.71.0"]
     pub INEFFECTIVE_DOUBLE_CONST_COMPARISONS,
