@@ -115,14 +115,14 @@ use rustc_middle::ty::{self, visit::TypeVisitableExt, InstanceDef, TyCtxt};
 use rustc_session::config::{DumpMonoStatsFormat, SwitchWithOptPath};
 use rustc_span::symbol::Symbol;
 
-use crate::collector::InliningMap;
+use crate::collector::UsageMap;
 use crate::collector::{self, MonoItemCollectionMode};
 use crate::errors::{CouldntDumpMonoStats, SymbolAlreadyDefined, UnknownCguCollectionMode};
 
 struct PartitioningCx<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     target_cgu_count: usize,
-    inlining_map: &'a InliningMap<'tcx>,
+    usage_map: &'a UsageMap<'tcx>,
 }
 
 struct PlacedRootMonoItems<'tcx> {
@@ -138,14 +138,14 @@ fn partition<'tcx, I>(
     tcx: TyCtxt<'tcx>,
     mono_items: &mut I,
     max_cgu_count: usize,
-    inlining_map: &InliningMap<'tcx>,
+    usage_map: &UsageMap<'tcx>,
 ) -> Vec<CodegenUnit<'tcx>>
 where
     I: Iterator<Item = MonoItem<'tcx>>,
 {
     let _prof_timer = tcx.prof.generic_activity("cgu_partitioning");
 
-    let cx = &PartitioningCx { tcx, target_cgu_count: max_cgu_count, inlining_map };
+    let cx = &PartitioningCx { tcx, target_cgu_count: max_cgu_count, usage_map };
 
     // In the first step, we place all regular monomorphizations into their
     // respective 'home' codegen unit. Regular monomorphizations are all
@@ -405,7 +405,7 @@ fn merge_codegen_units<'tcx>(
 }
 
 /// For symbol internalization, we need to know whether a symbol/mono-item is
-/// accessed from outside the codegen unit it is defined in. This type is used
+/// used from outside the codegen unit it is defined in. This type is used
 /// to keep track of that.
 #[derive(Clone, PartialEq, Eq, Debug)]
 enum MonoItemPlacement {
@@ -426,7 +426,7 @@ fn place_inlined_mono_items<'tcx>(
         // Collect all items that need to be available in this codegen unit.
         let mut reachable = FxHashSet::default();
         for root in old_codegen_unit.items().keys() {
-            follow_inlining(cx.tcx, *root, cx.inlining_map, &mut reachable);
+            follow_inlining(cx.tcx, *root, cx.usage_map, &mut reachable);
         }
 
         let mut new_codegen_unit = CodegenUnit::new(old_codegen_unit.name());
@@ -481,16 +481,16 @@ fn place_inlined_mono_items<'tcx>(
 
     fn follow_inlining<'tcx>(
         tcx: TyCtxt<'tcx>,
-        mono_item: MonoItem<'tcx>,
-        inlining_map: &InliningMap<'tcx>,
+        item: MonoItem<'tcx>,
+        usage_map: &UsageMap<'tcx>,
         visited: &mut FxHashSet<MonoItem<'tcx>>,
     ) {
-        if !visited.insert(mono_item) {
+        if !visited.insert(item) {
             return;
         }
 
-        inlining_map.with_inlining_candidates(tcx, mono_item, |target| {
-            follow_inlining(tcx, target, inlining_map, visited);
+        usage_map.for_each_inlined_used_item(tcx, item, |inlined_item| {
+            follow_inlining(tcx, inlined_item, usage_map, visited);
         });
     }
 }
@@ -504,7 +504,7 @@ fn internalize_symbols<'tcx>(
     if codegen_units.len() == 1 {
         // Fast path for when there is only one codegen unit. In this case we
         // can internalize all candidates, since there is nowhere else they
-        // could be accessed from.
+        // could be used from.
         for cgu in codegen_units {
             for candidate in &internalization_candidates {
                 cgu.items_mut().insert(*candidate, (Linkage::Internal, Visibility::Default));
@@ -516,43 +516,43 @@ fn internalize_symbols<'tcx>(
 
     // Build a map from every monomorphization to all the monomorphizations that
     // reference it.
-    let mut accessor_map: FxHashMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>> = Default::default();
-    cx.inlining_map.iter_accesses(|accessor, accessees| {
-        for accessee in accessees {
-            accessor_map.entry(*accessee).or_default().push(accessor);
+    let mut user_map: FxHashMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>> = Default::default();
+    cx.usage_map.for_each_item_and_its_used_items(|user_item, used_items| {
+        for used_item in used_items {
+            user_map.entry(*used_item).or_default().push(user_item);
         }
     });
 
     // For each internalization candidates in each codegen unit, check if it is
-    // accessed from outside its defining codegen unit.
+    // used from outside its defining codegen unit.
     for cgu in codegen_units {
         let home_cgu = MonoItemPlacement::SingleCgu { cgu_name: cgu.name() };
 
-        for (accessee, linkage_and_visibility) in cgu.items_mut() {
-            if !internalization_candidates.contains(accessee) {
+        for (item, linkage_and_visibility) in cgu.items_mut() {
+            if !internalization_candidates.contains(item) {
                 // This item is no candidate for internalizing, so skip it.
                 continue;
             }
-            debug_assert_eq!(mono_item_placements[accessee], home_cgu);
+            debug_assert_eq!(mono_item_placements[item], home_cgu);
 
-            if let Some(accessors) = accessor_map.get(accessee) {
-                if accessors
+            if let Some(user_items) = user_map.get(item) {
+                if user_items
                     .iter()
-                    .filter_map(|accessor| {
-                        // Some accessors might not have been
+                    .filter_map(|user_item| {
+                        // Some user mono items might not have been
                         // instantiated. We can safely ignore those.
-                        mono_item_placements.get(accessor)
+                        mono_item_placements.get(user_item)
                     })
                     .any(|placement| *placement != home_cgu)
                 {
-                    // Found an accessor from another CGU, so skip to the next
-                    // item without marking this one as internal.
+                    // Found a user from another CGU, so skip to the next item
+                    // without marking this one as internal.
                     continue;
                 }
             }
 
-            // If we got here, we did not find any accesses from other CGUs,
-            // so it's fine to make this monomorphization internal.
+            // If we got here, we did not find any uses from other CGUs, so
+            // it's fine to make this monomorphization internal.
             *linkage_and_visibility = (Linkage::Internal, Visibility::Default);
         }
     }
@@ -788,7 +788,7 @@ fn mono_item_visibility<'tcx>(
     } else {
         // If this isn't a generic function then we mark this a `Default` if
         // this is a reachable item, meaning that it's a symbol other crates may
-        // access when they link to us.
+        // use when they link to us.
         if tcx.is_reachable_non_generic(def_id.to_def_id()) {
             *can_be_internalized = false;
             debug_assert!(!is_generic);
@@ -968,7 +968,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
         }
     };
 
-    let (items, inlining_map) = collector::collect_crate_mono_items(tcx, collection_mode);
+    let (items, usage_map) = collector::collect_crate_mono_items(tcx, collection_mode);
 
     tcx.sess.abort_if_errors();
 
@@ -979,7 +979,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
                     tcx,
                     &mut items.iter().copied(),
                     tcx.sess.codegen_units(),
-                    &inlining_map,
+                    &usage_map,
                 );
                 codegen_units[0].make_primary();
                 &*tcx.arena.alloc_from_iter(codegen_units)
