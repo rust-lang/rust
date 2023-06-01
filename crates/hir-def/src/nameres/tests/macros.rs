@@ -1094,8 +1094,8 @@ pub fn derive_macro_2(_item: TokenStream) -> TokenStream {
     let krate = db.crate_graph().iter().next().unwrap();
     let def_map = db.crate_def_map(krate);
 
-    assert_eq!(def_map.exported_derives.len(), 1);
-    match def_map.exported_derives.values().next() {
+    assert_eq!(def_map.data.exported_derives.len(), 1);
+    match def_map.data.exported_derives.values().next() {
         Some(helpers) => match &**helpers {
             [attr] => assert_eq!(attr.display(&db).to_string(), "helper_attr"),
             _ => unreachable!(),

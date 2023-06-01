@@ -218,7 +218,7 @@ impl DefMap {
             // rust-lang/rust#57745)
             // FIXME there must be a nicer way to write this condition
             PathKind::Plain | PathKind::Abs
-                if self.edition == Edition::Edition2015
+                if self.data.edition == Edition::Edition2015
                     && (path.kind == PathKind::Abs || mode == ResolveMode::Import) =>
             {
                 let (_, segment) = match segments.next() {

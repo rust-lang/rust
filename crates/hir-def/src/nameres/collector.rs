@@ -98,11 +98,11 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap, tree_id: T
                     .collect()
             }
             Some(Err(e)) => {
-                def_map.proc_macro_loading_error = Some(e.clone().into_boxed_str());
+                def_map.data.proc_macro_loading_error = Some(e.clone().into_boxed_str());
                 Vec::new()
             }
             None => {
-                def_map.proc_macro_loading_error =
+                def_map.data.proc_macro_loading_error =
                     Some("No proc-macros present for crate".to_owned().into_boxed_str());
                 Vec::new()
             }
@@ -306,7 +306,7 @@ impl DefCollector<'_> {
             if *attr_name == hir_expand::name![recursion_limit] {
                 if let Some(limit) = attr.string_value() {
                     if let Ok(limit) = limit.parse() {
-                        self.def_map.recursion_limit = Some(limit);
+                        self.def_map.data.recursion_limit = Some(limit);
                     }
                 }
                 continue;
@@ -320,17 +320,17 @@ impl DefCollector<'_> {
             }
 
             if *attr_name == hir_expand::name![no_core] {
-                self.def_map.no_core = true;
+                self.def_map.data.no_core = true;
                 continue;
             }
 
             if *attr_name == hir_expand::name![no_std] {
-                self.def_map.no_std = true;
+                self.def_map.data.no_std = true;
                 continue;
             }
 
             if attr_name.as_text().as_deref() == Some("rustc_coherence_is_core") {
-                self.def_map.rustc_coherence_is_core = true;
+                self.def_map.data.rustc_coherence_is_core = true;
                 continue;
             }
 
@@ -344,7 +344,7 @@ impl DefCollector<'_> {
                         [name] => Some(name.to_smol_str()),
                         _ => None,
                     });
-                self.def_map.unstable_features.extend(features);
+                self.def_map.data.unstable_features.extend(features);
             }
 
             let attr_is_register_like = *attr_name == hir_expand::name![register_attr]
@@ -359,10 +359,10 @@ impl DefCollector<'_> {
             };
 
             if *attr_name == hir_expand::name![register_attr] {
-                self.def_map.registered_attrs.push(registered_name.to_smol_str());
+                self.def_map.data.registered_attrs.push(registered_name.to_smol_str());
                 cov_mark::hit!(register_attr);
             } else {
-                self.def_map.registered_tools.push(registered_name.to_smol_str());
+                self.def_map.data.registered_tools.push(registered_name.to_smol_str());
                 cov_mark::hit!(register_tool);
             }
         }
@@ -530,12 +530,12 @@ impl DefCollector<'_> {
     fn inject_prelude(&mut self) {
         // See compiler/rustc_builtin_macros/src/standard_library_imports.rs
 
-        if self.def_map.no_core {
+        if self.def_map.data.no_core {
             // libcore does not get a prelude.
             return;
         }
 
-        let krate = if self.def_map.no_std {
+        let krate = if self.def_map.data.no_std {
             name![core]
         } else {
             let std = name![std];
@@ -548,13 +548,13 @@ impl DefCollector<'_> {
             }
         };
 
-        let edition = match self.def_map.edition {
+        let edition = match self.def_map.data.edition {
             Edition::Edition2015 => name![rust_2015],
             Edition::Edition2018 => name![rust_2018],
             Edition::Edition2021 => name![rust_2021],
         };
 
-        let path_kind = match self.def_map.edition {
+        let path_kind = match self.def_map.data.edition {
             Edition::Edition2015 => PathKind::Plain,
             _ => PathKind::Abs,
         };
@@ -611,10 +611,11 @@ impl DefCollector<'_> {
         self.define_proc_macro(def.name.clone(), proc_macro_id);
         if let ProcMacroKind::CustomDerive { helpers } = def.kind {
             self.def_map
+                .data
                 .exported_derives
                 .insert(macro_id_to_def_id(self.db, proc_macro_id.into()), helpers);
         }
-        self.def_map.fn_proc_macro_mapping.insert(fn_id, proc_macro_id);
+        self.def_map.data.fn_proc_macro_mapping.insert(fn_id, proc_macro_id);
     }
 
     /// Define a macro with `macro_rules`.
@@ -773,7 +774,7 @@ impl DefCollector<'_> {
     fn resolve_import(&self, module_id: LocalModuleId, import: &Import) -> PartialResolvedImport {
         let _p = profile::span("resolve_import")
             .detail(|| format!("{}", import.path.display(self.db.upcast())));
-        tracing::debug!("resolving import: {:?} ({:?})", import, self.def_map.edition);
+        tracing::debug!("resolving import: {:?} ({:?})", import, self.def_map.data.edition);
         if import.is_extern_crate {
             let name = import
                 .path
@@ -1153,7 +1154,7 @@ impl DefCollector<'_> {
                         // Record its helper attributes.
                         if def_id.krate != self.def_map.krate {
                             let def_map = self.db.crate_def_map(def_id.krate);
-                            if let Some(helpers) = def_map.exported_derives.get(&def_id) {
+                            if let Some(helpers) = def_map.data.exported_derives.get(&def_id) {
                                 self.def_map
                                     .derive_helpers_in_scope
                                     .entry(ast_id.ast_id.map(|it| it.upcast()))
@@ -2166,6 +2167,7 @@ impl ModCollector<'_, '_> {
         if let Some(helpers) = helpers_opt {
             self.def_collector
                 .def_map
+                .data
                 .exported_derives
                 .insert(macro_id_to_def_id(self.def_collector.db, macro_id.into()), helpers);
         }

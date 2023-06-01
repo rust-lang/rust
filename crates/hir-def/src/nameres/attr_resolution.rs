@@ -78,7 +78,7 @@ impl DefMap {
             let name = name.to_smol_str();
             let pred = |n: &_| *n == name;
 
-            let registered = self.registered_tools.iter().map(SmolStr::as_str);
+            let registered = self.data.registered_tools.iter().map(SmolStr::as_str);
             let is_tool = TOOL_MODULES.iter().copied().chain(registered).any(pred);
             // FIXME: tool modules can be shadowed by actual modules
             if is_tool {
@@ -86,7 +86,7 @@ impl DefMap {
             }
 
             if segments.len() == 1 {
-                let mut registered = self.registered_attrs.iter().map(SmolStr::as_str);
+                let mut registered = self.data.registered_attrs.iter().map(SmolStr::as_str);
                 let is_inert = find_builtin_attr_idx(&name).is_some() || registered.any(pred);
                 return is_inert;
             }

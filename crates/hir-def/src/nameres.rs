@@ -109,14 +109,23 @@ pub struct DefMap {
     /// this contains all kinds of macro, not just `macro_rules!` macro.
     macro_use_prelude: FxHashMap<Name, MacroId>,
 
+    /// Tracks which custom derives are in scope for an item, to allow resolution of derive helper
+    /// attributes.
+    derive_helpers_in_scope: FxHashMap<AstId<ast::Item>, Vec<(Name, MacroId, MacroCallId)>>,
+
+    diagnostics: Vec<DefDiagnostic>,
+
+    // FIXME: Arc this so we can share it with block def maps
+    data: CrateData,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct CrateData {
     /// Side table for resolving derive helpers.
     exported_derives: FxHashMap<MacroDefId, Box<[Name]>>,
     fn_proc_macro_mapping: FxHashMap<FunctionId, ProcMacroId>,
     /// The error that occurred when failing to load the proc-macro dll.
     proc_macro_loading_error: Option<Box<str>>,
-    /// Tracks which custom derives are in scope for an item, to allow resolution of derive helper
-    /// attributes.
-    derive_helpers_in_scope: FxHashMap<AstId<ast::Item>, Vec<(Name, MacroId, MacroCallId)>>,
 
     /// Custom attributes registered with `#![register_attr]`.
     registered_attrs: Vec<SmolStr>,
@@ -131,7 +140,6 @@ pub struct DefMap {
 
     edition: Edition,
     recursion_limit: Option<u32>,
-    diagnostics: Vec<DefDiagnostic>,
 }
 
 /// For `DefMap`s computed for a block expression, this stores its location in the parent map.
@@ -278,7 +286,7 @@ impl DefMap {
         let module_data =
             ModuleData::new(ModuleOrigin::BlockExpr { block: block.ast_id }, visibility);
 
-        let mut def_map = DefMap::empty(krate, parent_map.edition, module_data);
+        let mut def_map = DefMap::empty(krate, parent_map.data.edition, module_data);
         def_map.block = Some(BlockInfo {
             block: block_id,
             parent: BlockRelativeModuleId {
@@ -300,23 +308,25 @@ impl DefMap {
             _c: Count::new(),
             block: None,
             krate,
-            edition,
-            recursion_limit: None,
             extern_prelude: FxHashMap::default(),
             macro_use_prelude: FxHashMap::default(),
-            exported_derives: FxHashMap::default(),
-            fn_proc_macro_mapping: FxHashMap::default(),
-            proc_macro_loading_error: None,
             derive_helpers_in_scope: FxHashMap::default(),
             prelude: None,
             modules,
-            registered_attrs: Vec::new(),
-            registered_tools: Vec::new(),
-            unstable_features: FxHashSet::default(),
             diagnostics: Vec::new(),
-            rustc_coherence_is_core: false,
-            no_core: false,
-            no_std: false,
+            data: CrateData {
+                recursion_limit: None,
+                exported_derives: FxHashMap::default(),
+                fn_proc_macro_mapping: FxHashMap::default(),
+                proc_macro_loading_error: None,
+                registered_attrs: Vec::new(),
+                registered_tools: Vec::new(),
+                unstable_features: FxHashSet::default(),
+                rustc_coherence_is_core: false,
+                no_core: false,
+                no_std: false,
+                edition,
+            },
         }
     }
 
@@ -339,31 +349,31 @@ impl DefMap {
     }
 
     pub fn registered_tools(&self) -> &[SmolStr] {
-        &self.registered_tools
+        &self.data.registered_tools
     }
 
     pub fn registered_attrs(&self) -> &[SmolStr] {
-        &self.registered_attrs
+        &self.data.registered_attrs
     }
 
     pub fn is_unstable_feature_enabled(&self, feature: &str) -> bool {
-        self.unstable_features.contains(feature)
+        self.data.unstable_features.contains(feature)
     }
 
     pub fn is_rustc_coherence_is_core(&self) -> bool {
-        self.rustc_coherence_is_core
+        self.data.rustc_coherence_is_core
     }
 
     pub fn is_no_std(&self) -> bool {
-        self.no_std || self.no_core
+        self.data.no_std || self.data.no_core
     }
 
     pub fn fn_as_proc_macro(&self, id: FunctionId) -> Option<ProcMacroId> {
-        self.fn_proc_macro_mapping.get(&id).copied()
+        self.data.fn_proc_macro_mapping.get(&id).copied()
     }
 
     pub fn proc_macro_loading_error(&self) -> Option<&str> {
-        self.proc_macro_loading_error.as_deref()
+        self.data.proc_macro_loading_error.as_deref()
     }
 
     pub fn krate(&self) -> CrateId {
@@ -540,25 +550,28 @@ impl DefMap {
         // Exhaustive match to require handling new fields.
         let Self {
             _c: _,
-            exported_derives,
             extern_prelude,
             macro_use_prelude,
             diagnostics,
             modules,
-            registered_attrs,
-            registered_tools,
-            fn_proc_macro_mapping,
             derive_helpers_in_scope,
-            unstable_features,
-            proc_macro_loading_error: _,
             block: _,
-            edition: _,
-            recursion_limit: _,
             krate: _,
             prelude: _,
-            rustc_coherence_is_core: _,
-            no_core: _,
-            no_std: _,
+            data:
+                CrateData {
+                    exported_derives,
+                    fn_proc_macro_mapping,
+                    registered_attrs,
+                    registered_tools,
+                    unstable_features,
+                    proc_macro_loading_error: _,
+                    rustc_coherence_is_core: _,
+                    no_core: _,
+                    no_std: _,
+                    edition: _,
+                    recursion_limit: _,
+                },
         } = self;
 
         extern_prelude.shrink_to_fit();
@@ -583,7 +596,7 @@ impl DefMap {
     }
 
     pub fn recursion_limit(&self) -> Option<u32> {
-        self.recursion_limit
+        self.data.recursion_limit
     }
 }
 
