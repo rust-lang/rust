@@ -5,6 +5,8 @@
 #![allow(clippy::bind_instead_of_map)]
 #![allow(clippy::map_identity)]
 
+use std::ops::Deref;
+
 extern crate proc_macros;
 use proc_macros::with_span;
 
@@ -41,6 +43,15 @@ impl Drop for Issue9427FollowUp {
     }
 }
 
+struct Issue10437;
+impl Deref for Issue10437 {
+    type Target = u32;
+    fn deref(&self) -> &Self::Target {
+        println!("side effect deref");
+        &0
+    }
+}
+
 fn main() {
     let astronomers_pi = 10;
     let ext_arr: [usize; 1] = [2];
@@ -64,6 +75,12 @@ fn main() {
     let _ = opt.ok_or_else(|| 2);
     let _ = nested_tuple_opt.unwrap_or_else(|| Some((1, 2)));
     let _ = cond.then(|| astronomers_pi);
+
+    // Should lint - Builtin deref
+    let r = &1;
+    let _ = Some(1).unwrap_or_else(|| *r);
+    let b = Box::new(1);
+    let _ = Some(1).unwrap_or_else(|| *b);
 
     // Cases when unwrap is not called on a simple variable
     let _ = Some(10).unwrap_or_else(|| 2);
@@ -92,6 +109,9 @@ fn main() {
     let _ = deep.0.or_else(some_call);
     let _ = deep.0.or_else(|| some_call());
     let _ = opt.ok_or_else(|| ext_arr[0]);
+
+    let _ = Some(1).unwrap_or_else(|| *Issue10437); // Issue10437 has a deref impl
+    let _ = Some(1).unwrap_or(*Issue10437);
 
     // Should not lint - bool
     let _ = (0 == 1).then(|| Issue9427(0)); // Issue9427 has a significant drop
