@@ -195,7 +195,6 @@ use rustc_session::lint::builtin::LARGE_ASSIGNMENTS;
 use rustc_session::Limit;
 use rustc_span::source_map::{dummy_spanned, respan, Span, Spanned, DUMMY_SP};
 use rustc_target::abi::Size;
-use std::ops::Range;
 use std::path::PathBuf;
 
 use crate::errors::{
@@ -209,27 +208,18 @@ pub enum MonoItemCollectionMode {
 }
 
 pub struct UsageMap<'tcx> {
-    // Maps every mono item to the mono items used by it. Those mono items
-    // are represented as a range, which indexes into `used_items`.
-    used_map: FxHashMap<MonoItem<'tcx>, Range<usize>>,
+    // Maps every mono item to the mono items used by it.
+    used_map: FxHashMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>>,
 
     // Maps every mono item to the mono items that use it.
     user_map: FxHashMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>>,
-
-    // A mono item that is used by N different other mono items will appear
-    // here N times. Indexed into by the ranges in `used_map`.
-    used_items: Vec<MonoItem<'tcx>>,
 }
 
 type MonoItems<'tcx> = Vec<Spanned<MonoItem<'tcx>>>;
 
 impl<'tcx> UsageMap<'tcx> {
     fn new() -> UsageMap<'tcx> {
-        UsageMap {
-            used_map: FxHashMap::default(),
-            user_map: FxHashMap::default(),
-            used_items: Vec::new(),
-        }
+        UsageMap { used_map: FxHashMap::default(), user_map: FxHashMap::default() }
     }
 
     fn record_used<'a>(
@@ -239,18 +229,12 @@ impl<'tcx> UsageMap<'tcx> {
     ) where
         'tcx: 'a,
     {
-        let old_len = self.used_items.len();
-        let new_len = old_len + used_items.len();
-        let new_items_range = old_len..new_len;
-
-        self.used_items.reserve(used_items.len());
-
-        for Spanned { node: used_item, .. } in used_items.into_iter() {
-            self.used_items.push(*used_item);
-            self.user_map.entry(*used_item).or_default().push(user_item);
+        let used_items: Vec<_> = used_items.iter().map(|item| item.node).collect();
+        for &used_item in used_items.iter() {
+            self.user_map.entry(used_item).or_default().push(user_item);
         }
 
-        assert!(self.used_map.insert(user_item, new_items_range).is_none());
+        assert!(self.used_map.insert(user_item, used_items).is_none());
     }
 
     pub fn get_user_items(&self, item: MonoItem<'tcx>) -> Option<&[MonoItem<'tcx>]> {
@@ -262,12 +246,11 @@ impl<'tcx> UsageMap<'tcx> {
     where
         F: FnMut(MonoItem<'tcx>),
     {
-        if let Some(range) = self.used_map.get(&item) {
-            for used_item in self.used_items[range.clone()].iter() {
-                let is_inlined = used_item.instantiation_mode(tcx) == InstantiationMode::LocalCopy;
-                if is_inlined {
-                    f(*used_item);
-                }
+        let used_items = self.used_map.get(&item).unwrap();
+        for used_item in used_items.iter() {
+            let is_inlined = used_item.instantiation_mode(tcx) == InstantiationMode::LocalCopy;
+            if is_inlined {
+                f(*used_item);
             }
         }
     }
