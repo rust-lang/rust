@@ -2256,11 +2256,13 @@ fn add_order_independent_options(
     } else if flavor == LinkerFlavor::Bpf {
         cmd.arg("--cpu");
         cmd.arg(&codegen_results.crate_info.target_cpu);
-        cmd.arg("--cpu-features");
-        cmd.arg(match &sess.opts.cg.target_feature {
-            feat if !feat.is_empty() => feat.as_ref(),
-            _ => sess.target.options.features.as_ref(),
-        });
+        if let Some(feat) = [sess.opts.cg.target_feature.as_str(), &sess.target.options.features]
+            .into_iter()
+            .find(|feat| !feat.is_empty())
+        {
+            cmd.arg("--cpu-features");
+            cmd.arg(feat);
+        }
     }
 
     cmd.linker_plugin_lto();
