@@ -514,15 +514,6 @@ fn internalize_symbols<'tcx>(
         return;
     }
 
-    // Build a map from every monomorphization to all the monomorphizations that
-    // reference it.
-    let mut user_map: FxHashMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>> = Default::default();
-    cx.usage_map.for_each_item_and_its_used_items(|user_item, used_items| {
-        for used_item in used_items {
-            user_map.entry(*used_item).or_default().push(user_item);
-        }
-    });
-
     // For each internalization candidates in each codegen unit, check if it is
     // used from outside its defining codegen unit.
     for cgu in codegen_units {
@@ -535,7 +526,7 @@ fn internalize_symbols<'tcx>(
             }
             debug_assert_eq!(mono_item_placements[item], home_cgu);
 
-            if let Some(user_items) = user_map.get(item) {
+            if let Some(user_items) = cx.usage_map.get_user_items(*item) {
                 if user_items
                     .iter()
                     .filter_map(|user_item| {

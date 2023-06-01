@@ -213,6 +213,9 @@ pub struct UsageMap<'tcx> {
     // are represented as a range, which indexes into `used_items`.
     used_map: FxHashMap<MonoItem<'tcx>, Range<usize>>,
 
+    // Maps every mono item to the mono items that use it.
+    user_map: FxHashMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>>,
+
     // A mono item that is used by N different other mono items will appear
     // here N times. Indexed into by the ranges in `used_map`.
     used_items: Vec<MonoItem<'tcx>>,
@@ -222,7 +225,11 @@ type MonoItems<'tcx> = Vec<Spanned<MonoItem<'tcx>>>;
 
 impl<'tcx> UsageMap<'tcx> {
     fn new() -> UsageMap<'tcx> {
-        UsageMap { used_map: FxHashMap::default(), used_items: Vec::new() }
+        UsageMap {
+            used_map: FxHashMap::default(),
+            user_map: FxHashMap::default(),
+            used_items: Vec::new(),
+        }
     }
 
     fn record_used<'a>(
@@ -240,9 +247,14 @@ impl<'tcx> UsageMap<'tcx> {
 
         for Spanned { node: used_item, .. } in used_items.into_iter() {
             self.used_items.push(*used_item);
+            self.user_map.entry(*used_item).or_default().push(user_item);
         }
 
         assert!(self.used_map.insert(user_item, new_items_range).is_none());
+    }
+
+    pub fn get_user_items(&self, item: MonoItem<'tcx>) -> Option<&[MonoItem<'tcx>]> {
+        self.user_map.get(&item).map(|items| items.as_slice())
     }
 
     /// Internally iterate over all inlined items used by `item`.
@@ -257,16 +269,6 @@ impl<'tcx> UsageMap<'tcx> {
                     f(*used_item);
                 }
             }
-        }
-    }
-
-    /// Internally iterate over each item and the items used by it.
-    pub fn for_each_item_and_its_used_items<F>(&self, mut f: F)
-    where
-        F: FnMut(MonoItem<'tcx>, &[MonoItem<'tcx>]),
-    {
-        for (&item, range) in &self.used_map {
-            f(item, &self.used_items[range.clone()])
         }
     }
 }
