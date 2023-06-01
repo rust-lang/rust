@@ -578,6 +578,7 @@ jobs:
       actions: write
     name: "try - ${{ matrix.name }}"
     env:
+      DIST_TRY_BUILD: 1
       CI_JOB_NAME: "${{ matrix.name }}"
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       SCCACHE_BUCKET: rust-lang-ci-sccache2
