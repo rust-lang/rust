@@ -1289,7 +1289,7 @@ trait Foo where Self$0 {
 impl Foo for () {}
 "#,
             expect![[r#"
-                Self TypeParam FileId(0) 6..9 6..9
+                Self TypeParam FileId(0) 0..44 6..9
 
                 FileId(0) 16..20
                 FileId(0) 37..41
@@ -1380,7 +1380,7 @@ fn foo<T: Bar>(_: impl Bar, _: &dyn Bar) {}
 trait Foo = where Self$0: ;
 "#,
             expect![[r#"
-                Self TypeParam FileId(0) 6..9 6..9
+                Self TypeParam FileId(0) 0..25 6..9
 
                 FileId(0) 18..22
             "#]],
