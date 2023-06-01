@@ -103,8 +103,6 @@ pub struct DefMap {
     /// but that attribute is nightly and when used in a block, it affects resolution globally
     /// so we aren't handling this correctly anyways).
     prelude: Option<ModuleId>,
-    /// The extern prelude is only populated for non-block DefMaps
-    extern_prelude: FxHashMap<Name, ModuleId>,
     /// `macro_use` prelude that contains macros from `#[macro_use]`'d external crates. Note that
     /// this contains all kinds of macro, not just `macro_rules!` macro.
     macro_use_prelude: FxHashMap<Name, MacroId>,
@@ -115,12 +113,13 @@ pub struct DefMap {
 
     diagnostics: Vec<DefDiagnostic>,
 
-    // FIXME: Arc this so we can share it with block def maps
     data: Arc<CrateData>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct CrateData {
+    extern_prelude: FxHashMap<Name, ModuleId>,
+
     /// Side table for resolving derive helpers.
     exported_derives: FxHashMap<MacroDefId, Box<[Name]>>,
     fn_proc_macro_mapping: FxHashMap<FunctionId, ProcMacroId>,
@@ -141,9 +140,11 @@ struct CrateData {
     edition: Edition,
     recursion_limit: Option<u32>,
 }
+
 impl CrateData {
     fn shrink_to_fit(&mut self) {
         let Self {
+            extern_prelude,
             exported_derives,
             fn_proc_macro_mapping,
             registered_attrs,
@@ -156,6 +157,7 @@ impl CrateData {
             edition: _,
             recursion_limit: _,
         } = self;
+        extern_prelude.shrink_to_fit();
         exported_derives.shrink_to_fit();
         fn_proc_macro_mapping.shrink_to_fit();
         registered_attrs.shrink_to_fit();
@@ -181,7 +183,11 @@ struct BlockRelativeModuleId {
 
 impl BlockRelativeModuleId {
     fn def_map(self, db: &dyn DefDatabase, krate: CrateId) -> Arc<DefMap> {
-        ModuleId { krate, block: self.block, local_id: self.local_id }.def_map(db)
+        self.into_module(krate).def_map(db)
+    }
+
+    fn into_module(self, krate: CrateId) -> ModuleId {
+        ModuleId { krate, block: self.block, local_id: self.local_id }
     }
 }
 
@@ -330,15 +336,14 @@ impl DefMap {
         DefMap {
             _c: Count::new(),
             block: None,
+            modules,
             krate,
-            extern_prelude: FxHashMap::default(),
+            prelude: None,
             macro_use_prelude: FxHashMap::default(),
             derive_helpers_in_scope: FxHashMap::default(),
-            prelude: None,
-            modules,
             diagnostics: Vec::new(),
             data: Arc::new(CrateData {
-                recursion_limit: None,
+                extern_prelude: FxHashMap::default(),
                 exported_derives: FxHashMap::default(),
                 fn_proc_macro_mapping: FxHashMap::default(),
                 proc_macro_loading_error: None,
@@ -349,6 +354,7 @@ impl DefMap {
                 no_core: false,
                 no_std: false,
                 edition,
+                recursion_limit: None,
             }),
         }
     }
@@ -412,7 +418,7 @@ impl DefMap {
     }
 
     pub(crate) fn extern_prelude(&self) -> impl Iterator<Item = (&Name, ModuleId)> + '_ {
-        self.extern_prelude.iter().map(|(name, def)| (name, *def))
+        self.data.extern_prelude.iter().map(|(name, def)| (name, *def))
     }
 
     pub(crate) fn macro_use_prelude(&self) -> impl Iterator<Item = (&Name, MacroId)> + '_ {
@@ -573,7 +579,6 @@ impl DefMap {
         // Exhaustive match to require handling new fields.
         let Self {
             _c: _,
-            extern_prelude,
             macro_use_prelude,
             diagnostics,
             modules,
@@ -584,7 +589,6 @@ impl DefMap {
             data: _,
         } = self;
 
-        extern_prelude.shrink_to_fit();
         macro_use_prelude.shrink_to_fit();
         diagnostics.shrink_to_fit();
         modules.shrink_to_fit();

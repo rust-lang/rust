@@ -80,8 +80,8 @@ impl DefMap {
         name: &Name,
     ) -> Option<ModuleId> {
         match self.block {
-            Some(_) => self.crate_root(db).def_map(db).extern_prelude.get(name).copied(),
-            None => self.extern_prelude.get(name).copied(),
+            Some(_) => self.crate_root(db).def_map(db).data.extern_prelude.get(name).copied(),
+            None => self.data.extern_prelude.get(name).copied(),
         }
     }
 
@@ -304,7 +304,7 @@ impl DefMap {
                     Some((_, segment)) => segment,
                     None => return ResolvePathResult::empty(ReachedFixedPoint::Yes),
                 };
-                if let Some(&def) = self.extern_prelude.get(segment) {
+                if let Some(&def) = self.data.extern_prelude.get(segment) {
                     tracing::debug!("absolute path {:?} resolved to crate {:?}", path, def);
                     PerNs::types(def.into(), Visibility::Public)
                 } else {
@@ -453,7 +453,8 @@ impl DefMap {
         };
 
         let extern_prelude = || {
-            self.extern_prelude
+            self.data
+                .extern_prelude
                 .get(name)
                 .map_or(PerNs::none(), |&it| PerNs::types(it.into(), Visibility::Public))
         };

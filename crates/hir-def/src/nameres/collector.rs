@@ -5,7 +5,7 @@
 
 use std::{iter, mem};
 
-use base_db::{CrateId, Edition, FileId};
+use base_db::{CrateId, Dependency, Edition, FileId};
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{
@@ -62,7 +62,7 @@ static GLOB_RECURSION_LIMIT: Limit = Limit::new(100);
 static EXPANSION_DEPTH_LIMIT: Limit = Limit::new(128);
 static FIXED_POINT_LIMIT: Limit = Limit::new(8192);
 
-pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap, tree_id: TreeId) -> DefMap {
+pub(super) fn collect_defs(db: &dyn DefDatabase, def_map: DefMap, tree_id: TreeId) -> DefMap {
     let crate_graph = db.crate_graph();
 
     let mut deps = FxHashMap::default();
@@ -70,14 +70,8 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap, tree_id: T
     let krate = &crate_graph[def_map.krate];
     for dep in &krate.dependencies {
         tracing::debug!("crate dep {:?} -> {:?}", dep.name, dep.crate_id);
-        let dep_def_map = db.crate_def_map(dep.crate_id);
-        let dep_root = dep_def_map.module_id(DefMap::ROOT);
 
-        deps.insert(dep.as_name(), dep_root);
-
-        if dep.is_prelude() && !tree_id.is_block() {
-            def_map.extern_prelude.insert(dep.as_name(), dep_root);
-        }
+        deps.insert(dep.as_name(), dep.clone());
     }
 
     let cfg_options = &krate.cfg_options;
@@ -245,7 +239,7 @@ enum MacroDirectiveKind {
 struct DefCollector<'a> {
     db: &'a dyn DefDatabase,
     def_map: DefMap,
-    deps: FxHashMap<Name, ModuleId>,
+    deps: FxHashMap<Name, Dependency>,
     glob_imports: FxHashMap<LocalModuleId, Vec<(LocalModuleId, Visibility)>>,
     unresolved_imports: Vec<ImportDirective>,
     indeterminate_imports: Vec<ImportDirective>,
@@ -287,6 +281,15 @@ impl DefCollector<'_> {
 
         if let Err(e) = &self.proc_macros {
             crate_data.proc_macro_loading_error = Some(e.clone());
+        }
+
+        for (name, dep) in &self.deps {
+            if dep.is_prelude() {
+                crate_data.extern_prelude.insert(
+                    name.clone(),
+                    ModuleId { krate: dep.crate_id, block: None, local_id: DefMap::ROOT },
+                );
+            }
         }
 
         // Process other crate-level attributes.
@@ -832,15 +835,16 @@ impl DefCollector<'_> {
         if *name == name!(self) {
             cov_mark::hit!(extern_crate_self_as);
             let root = match self.def_map.block {
-                Some(_) => {
-                    let def_map = self.def_map.crate_root(self.db).def_map(self.db);
-                    def_map.module_id(DefMap::ROOT)
-                }
+                Some(_) => self.def_map.crate_root(self.db),
                 None => self.def_map.module_id(DefMap::ROOT),
             };
             Some(root)
         } else {
-            self.deps.get(name).copied()
+            self.deps.get(name).map(|dep| ModuleId {
+                krate: dep.crate_id,
+                block: None,
+                local_id: DefMap::ROOT,
+            })
         }
     }
 
@@ -883,7 +887,10 @@ impl DefCollector<'_> {
                 {
                     if let (Some(ModuleDefId::ModuleId(def)), Some(name)) = (def.take_types(), name)
                     {
-                        self.def_map.extern_prelude.insert(name.clone(), def);
+                        Arc::get_mut(&mut self.def_map.data)
+                            .unwrap()
+                            .extern_prelude
+                            .insert(name.clone(), def);
                     }
                 }
 
