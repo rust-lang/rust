@@ -413,6 +413,16 @@ fn tuple_pat(p: &mut Parser<'_>) -> CompletedMarker {
     let mut has_comma = false;
     let mut has_pat = false;
     let mut has_rest = false;
+
+    // test_err tuple_pat_leading_comma
+    // fn foo() {
+    //     let (,);
+    // }
+    if p.eat(T![,]) {
+        p.error("expected pattern");
+        has_comma = true;
+    }
+
     while !p.at(EOF) && !p.at(T![')']) {
         has_pat = true;
         if !p.at_ts(PAT_TOP_FIRST) {

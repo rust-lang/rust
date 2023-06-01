@@ -2003,7 +2003,10 @@ fn main() {
     let _: (&str, u32, u32)= ($0, 1, 3);
 }
 "#,
-            expect![""],
+            expect![[r#"
+                (&str, u32)
+                 ^^^^  ---
+            "#]],
         );
         check(
             r#"
@@ -2011,7 +2014,10 @@ fn main() {
     let _: (&str, u32, u32, u32)= ($0, 1, 3);
 }
 "#,
-            expect![""],
+            expect![[r#"
+                (&str, u32)
+                 ^^^^  ---
+            "#]],
         );
         check(
             r#"
@@ -2019,7 +2025,10 @@ fn main() {
     let _: (&str, u32, u32)= ($0, 1, 3, 5);
 }
 "#,
-            expect![""],
+            expect![[r#"
+                (&str, u32, u32)
+                 ^^^^  ---  ---
+            "#]],
         );
     }
 
@@ -2111,7 +2120,7 @@ fn main() {
         check(
             r#"
 fn main() {
-    let ($0 1, 3): (i32, i32, i32);
+    let ($0, 1, 3): (i32, i32, i32);
 }
 "#,
             // FIXME: tuple pat should be of size 3 ideally
