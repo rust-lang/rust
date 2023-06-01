@@ -113,11 +113,12 @@ pub struct DefMap {
 
     diagnostics: Vec<DefDiagnostic>,
 
-    data: Arc<CrateData>,
+    data: Arc<DefMapCrateData>,
 }
 
+/// Data that belongs to a crate which is shared between a crate's def map and all its block def maps.
 #[derive(Clone, Debug, PartialEq, Eq)]
-struct CrateData {
+struct DefMapCrateData {
     extern_prelude: FxHashMap<Name, ModuleId>,
 
     /// Side table for resolving derive helpers.
@@ -141,7 +142,7 @@ struct CrateData {
     recursion_limit: Option<u32>,
 }
 
-impl CrateData {
+impl DefMapCrateData {
     fn shrink_to_fit(&mut self) {
         let Self {
             extern_prelude,
@@ -342,7 +343,7 @@ impl DefMap {
             macro_use_prelude: FxHashMap::default(),
             derive_helpers_in_scope: FxHashMap::default(),
             diagnostics: Vec::new(),
-            data: Arc::new(CrateData {
+            data: Arc::new(DefMapCrateData {
                 extern_prelude: FxHashMap::default(),
                 exported_derives: FxHashMap::default(),
                 fn_proc_macro_mapping: FxHashMap::default(),
