@@ -431,15 +431,8 @@ impl DefMap {
         ModuleId { krate: self.krate, local_id, block }
     }
 
-    pub(crate) fn crate_root(&self, db: &dyn DefDatabase) -> ModuleId {
-        self.with_ancestor_maps(db, Self::ROOT, &mut |def_map, _module| {
-            if def_map.block.is_none() {
-                Some(def_map.module_id(Self::ROOT))
-            } else {
-                None
-            }
-        })
-        .expect("DefMap chain without root")
+    pub(crate) fn crate_root(&self) -> ModuleId {
+        ModuleId { krate: self.krate, block: None, local_id: DefMap::ROOT }
     }
 
     pub(crate) fn resolve_path(

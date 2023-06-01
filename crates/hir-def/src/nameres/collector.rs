@@ -834,11 +834,7 @@ impl DefCollector<'_> {
     fn resolve_extern_crate(&self, name: &Name) -> Option<ModuleId> {
         if *name == name!(self) {
             cov_mark::hit!(extern_crate_self_as);
-            let root = match self.def_map.block {
-                Some(_) => self.def_map.crate_root(self.db),
-                None => self.def_map.module_id(DefMap::ROOT),
-            };
-            Some(root)
+            Some(self.def_map.crate_root())
         } else {
             self.deps.get(name).map(|dep| ModuleId {
                 krate: dep.crate_id,

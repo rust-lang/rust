@@ -20,7 +20,7 @@ use crate::{
     path::{ModPath, PathKind},
     per_ns::PerNs,
     visibility::{RawVisibility, Visibility},
-    AdtId, CrateId, EnumVariantId, LocalModuleId, ModuleDefId, ModuleId,
+    AdtId, CrateId, EnumVariantId, LocalModuleId, ModuleDefId,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -74,17 +74,6 @@ impl PerNs {
 }
 
 impl DefMap {
-    pub(super) fn resolve_name_in_extern_prelude(
-        &self,
-        db: &dyn DefDatabase,
-        name: &Name,
-    ) -> Option<ModuleId> {
-        match self.block {
-            Some(_) => self.crate_root(db).def_map(db).data.extern_prelude.get(name).copied(),
-            None => self.data.extern_prelude.get(name).copied(),
-        }
-    }
-
     pub(crate) fn resolve_visibility(
         &self,
         db: &dyn DefDatabase,
@@ -204,7 +193,7 @@ impl DefMap {
             PathKind::DollarCrate(krate) => {
                 if krate == self.krate {
                     cov_mark::hit!(macro_dollar_crate_self);
-                    PerNs::types(self.crate_root(db).into(), Visibility::Public)
+                    PerNs::types(self.crate_root().into(), Visibility::Public)
                 } else {
                     let def_map = db.crate_def_map(krate);
                     let module = def_map.module_id(Self::ROOT);
@@ -212,7 +201,7 @@ impl DefMap {
                     PerNs::types(module.into(), Visibility::Public)
                 }
             }
-            PathKind::Crate => PerNs::types(self.crate_root(db).into(), Visibility::Public),
+            PathKind::Crate => PerNs::types(self.crate_root().into(), Visibility::Public),
             // plain import or absolute path in 2015: crate-relative with
             // fallback to extern prelude (with the simplification in
             // rust-lang/rust#57745)
@@ -453,6 +442,10 @@ impl DefMap {
         };
 
         let extern_prelude = || {
+            if self.block.is_some() {
+                // Don't resolve extern prelude in block `DefMap`s.
+                return PerNs::none();
+            }
             self.data
                 .extern_prelude
                 .get(name)
@@ -479,13 +472,20 @@ impl DefMap {
     ) -> PerNs {
         let from_crate_root = match self.block {
             Some(_) => {
-                let def_map = self.crate_root(db).def_map(db);
+                let def_map = self.crate_root().def_map(db);
                 def_map[Self::ROOT].scope.get(name)
             }
             None => self[Self::ROOT].scope.get(name),
         };
         let from_extern_prelude = || {
-            self.resolve_name_in_extern_prelude(db, name)
+            if self.block.is_some() {
+                // Don't resolve extern prelude in block `DefMap`s.
+                return PerNs::none();
+            }
+            self.data
+                .extern_prelude
+                .get(name)
+                .copied()
                 .map_or(PerNs::none(), |it| PerNs::types(it.into(), Visibility::Public))
         };
 

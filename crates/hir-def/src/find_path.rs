@@ -81,7 +81,7 @@ fn find_path_inner(
     }
 
     let def_map = from.def_map(db);
-    let crate_root = def_map.crate_root(db);
+    let crate_root = def_map.crate_root();
     // - if the item is a module, jump straight to module search
     if let ItemInNs::Types(ModuleDefId::ModuleId(module_id)) = item {
         let mut visited_modules = FxHashSet::default();
@@ -454,7 +454,7 @@ fn find_local_import_locations(
         worklist.push(ancestor);
     }
 
-    let def_map = def_map.crate_root(db).def_map(db);
+    let def_map = def_map.crate_root().def_map(db);
 
     let mut seen: FxHashSet<_> = FxHashSet::default();
 
