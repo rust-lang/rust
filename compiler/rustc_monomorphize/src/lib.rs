@@ -1,4 +1,5 @@
 #![feature(array_windows)]
+#![feature(is_sorted)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 #![deny(rustc::untranslatable_diagnostic)]
