@@ -126,11 +126,14 @@ struct PartitioningCx<'a, 'tcx> {
 }
 
 struct PlacedRootMonoItems<'tcx> {
+    /// The codegen units, sorted by name to make things deterministic.
     codegen_units: Vec<CodegenUnit<'tcx>>,
+
     roots: FxHashSet<MonoItem<'tcx>>,
     internalization_candidates: FxHashSet<MonoItem<'tcx>>,
 }
 
+// The output CGUs are sorted by name.
 fn partition<'tcx, I>(
     tcx: TyCtxt<'tcx>,
     mono_items: &mut I,
@@ -143,6 +146,7 @@ where
     let _prof_timer = tcx.prof.generic_activity("cgu_partitioning");
 
     let cx = &PartitioningCx { tcx, target_cgu_count: max_cgu_count, inlining_map };
+
     // In the first step, we place all regular monomorphizations into their
     // respective 'home' codegen unit. Regular monomorphizations are all
     // functions and statics defined in the local crate.
@@ -225,8 +229,8 @@ where
         dead_code_cgu.make_code_coverage_dead_code_cgu();
     }
 
-    // Finally, sort by codegen unit name, so that we get deterministic results.
-    codegen_units.sort_by(|a, b| a.name().as_str().cmp(b.name().as_str()));
+    // Ensure CGUs are sorted by name, so that we get deterministic results.
+    assert!(codegen_units.is_sorted_by(|a, b| Some(a.name().as_str().cmp(b.name().as_str()))));
 
     debug_dump(tcx, "FINAL", &codegen_units);
 
@@ -301,27 +305,22 @@ where
         codegen_units.insert(codegen_unit_name, CodegenUnit::new(codegen_unit_name));
     }
 
-    let codegen_units = codegen_units.into_values().collect();
+    let mut codegen_units: Vec<_> = codegen_units.into_values().collect();
+    codegen_units.sort_by(|a, b| a.name().as_str().cmp(b.name().as_str()));
+
     PlacedRootMonoItems { codegen_units, roots, internalization_candidates }
 }
 
+// This function requires the CGUs to be sorted by name on input, and ensures
+// they are sorted by name on return, for deterministic behaviour.
 fn merge_codegen_units<'tcx>(
     cx: &PartitioningCx<'_, 'tcx>,
     codegen_units: &mut Vec<CodegenUnit<'tcx>>,
 ) {
     assert!(cx.target_cgu_count >= 1);
 
-    // Note that at this point in time the `codegen_units` here may not be
-    // in a deterministic order (but we know they're deterministically the
-    // same set). We want this merging to produce a deterministic ordering
-    // of codegen units from the input.
-    //
-    // Due to basically how we've implemented the merging below (merge the
-    // two smallest into each other) we're sure to start off with a
-    // deterministic order (sorted by name). This'll mean that if two cgus
-    // have the same size the stable sort below will keep everything nice
-    // and deterministic.
-    codegen_units.sort_by(|a, b| a.name().as_str().cmp(b.name().as_str()));
+    // A sorted order here ensures merging is deterministic.
+    assert!(codegen_units.is_sorted_by(|a, b| Some(a.name().as_str().cmp(b.name().as_str()))));
 
     // This map keeps track of what got merged into what.
     let mut cgu_contents: FxHashMap<Symbol, Vec<Symbol>> =
@@ -400,6 +399,9 @@ fn merge_codegen_units<'tcx>(
             cgu.set_name(numbered_codegen_unit_name);
         }
     }
+
+    // A sorted order here ensures what follows can be deterministic.
+    codegen_units.sort_by(|a, b| a.name().as_str().cmp(b.name().as_str()));
 }
 
 /// For symbol internalization, we need to know whether a symbol/mono-item is
@@ -859,36 +861,46 @@ fn default_visibility(tcx: TyCtxt<'_>, id: DefId, is_generic: bool) -> Visibilit
         _ => Visibility::Hidden,
     }
 }
+
 fn debug_dump<'a, 'tcx: 'a>(tcx: TyCtxt<'tcx>, label: &str, cgus: &[CodegenUnit<'tcx>]) {
     let dump = move || {
         use std::fmt::Write;
 
         let num_cgus = cgus.len();
-        let max = cgus.iter().map(|cgu| cgu.size_estimate()).max().unwrap();
-        let min = cgus.iter().map(|cgu| cgu.size_estimate()).min().unwrap();
-        let ratio = max as f64 / min as f64;
+        let num_items: usize = cgus.iter().map(|cgu| cgu.items().len()).sum();
+        let total_size: usize = cgus.iter().map(|cgu| cgu.size_estimate()).sum();
+        let max_size = cgus.iter().map(|cgu| cgu.size_estimate()).max().unwrap();
+        let min_size = cgus.iter().map(|cgu| cgu.size_estimate()).min().unwrap();
+        let max_min_size_ratio = max_size as f64 / min_size as f64;
 
         let s = &mut String::new();
         let _ = writeln!(
             s,
-            "{label} ({num_cgus} CodegenUnits, max={max}, min={min}, max/min={ratio:.1}):"
+            "{label} ({num_items} items, total_size={total_size}; {num_cgus} CGUs, \
+             max_size={max_size}, min_size={min_size}, max_size/min_size={max_min_size_ratio:.1}):"
         );
-        for cgu in cgus {
-            let _ =
-                writeln!(s, "CodegenUnit {} estimated size {}:", cgu.name(), cgu.size_estimate());
+        for (i, cgu) in cgus.iter().enumerate() {
+            let num_items = cgu.items().len();
+            let _ = writeln!(
+                s,
+                "- CGU[{i}] {} ({num_items} items, size={}):",
+                cgu.name(),
+                cgu.size_estimate()
+            );
 
-            for (mono_item, linkage) in cgu.items() {
-                let symbol_name = mono_item.symbol_name(tcx).name;
+            // The order of `cgu.items()` is non-deterministic; sort it by name
+            // to give deterministic output.
+            let mut items: Vec<_> = cgu.items().iter().collect();
+            items.sort_by_key(|(item, _)| item.symbol_name(tcx).name);
+            for (item, linkage) in items {
+                let symbol_name = item.symbol_name(tcx).name;
                 let symbol_hash_start = symbol_name.rfind('h');
                 let symbol_hash = symbol_hash_start.map_or("<no hash>", |i| &symbol_name[i..]);
 
+                let size = item.size_estimate(tcx);
                 let _ = with_no_trimmed_paths!(writeln!(
                     s,
-                    " - {} [{:?}] [{}] estimated size {}",
-                    mono_item,
-                    linkage,
-                    symbol_hash,
-                    mono_item.size_estimate(tcx)
+                    "  - {item} [{linkage:?}] [{symbol_hash}] (size={size})"
                 ));
             }
 
