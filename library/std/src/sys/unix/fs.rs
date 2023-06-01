@@ -1063,7 +1063,7 @@ impl File {
         cfg_has_statx! {
             if let Some(ret) = unsafe { try_statx(
                 fd,
-                b"\0" as *const _ as *const c_char,
+                c"".as_ptr() as *const c_char,
                 libc::AT_EMPTY_PATH | libc::AT_STATX_SYNC_AS_STAT,
                 libc::STATX_ALL,
             ) } {

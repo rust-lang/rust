@@ -317,7 +317,7 @@ pub unsafe fn NtWriteFile(
 // Functions that aren't available on every version of Windows that we support,
 // but we still use them and just provide some form of a fallback implementation.
 compat_fn_with_fallback! {
-    pub static KERNEL32: &CStr = ansi_str!("kernel32");
+    pub static KERNEL32: &CStr = c"kernel32";
 
     // >= Win10 1607
     // https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreaddescription
@@ -350,7 +350,7 @@ compat_fn_optional! {
 }
 
 compat_fn_with_fallback! {
-    pub static NTDLL: &CStr = ansi_str!("ntdll");
+    pub static NTDLL: &CStr = c"ntdll";
 
     pub fn NtCreateKeyedEvent(
         KeyedEventHandle: LPHANDLE,
