@@ -2,7 +2,7 @@
 
 use std::iter;
 
-use hir::{db::DefDatabase, InFile, ModuleSource};
+use hir::{db::DefDatabase, DefMap, InFile, ModuleSource};
 use ide_db::{
     base_db::{FileId, FileLoader, SourceDatabase, SourceDatabaseExt},
     source_change::SourceChange,
@@ -74,7 +74,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, file_id: FileId) -> Option<Vec<Assist>> {
     'crates: for &krate in &*ctx.sema.db.relevant_crates(file_id) {
         let crate_def_map = ctx.sema.db.crate_def_map(krate);
 
-        let root_module = &crate_def_map[crate_def_map.root()];
+        let root_module = &crate_def_map[DefMap::ROOT];
         let Some(root_file_id) = root_module.origin.file_id() else { continue };
         let Some(crate_root_path) = source_root.path_for_file(&root_file_id) else { continue };
         let Some(rel) = parent.strip_prefix(&crate_root_path.parent()?) else { continue };

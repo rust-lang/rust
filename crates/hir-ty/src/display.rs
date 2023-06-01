@@ -13,6 +13,7 @@ use hir_def::{
     generics::{TypeOrConstParamData, TypeParamProvenance},
     item_scope::ItemInNs,
     lang_item::{LangItem, LangItemTarget},
+    nameres::DefMap,
     path::{Path, PathKind},
     type_ref::{TraitBoundModifier, TypeBound, TypeRef},
     visibility::Visibility,
@@ -1488,7 +1489,7 @@ pub fn write_visibility(
         Visibility::Public => write!(f, "pub "),
         Visibility::Module(vis_id) => {
             let def_map = module_id.def_map(f.db.upcast());
-            let root_module_id = def_map.module_id(def_map.root());
+            let root_module_id = def_map.module_id(DefMap::ROOT);
             if vis_id == module_id {
                 // pub(self) or omitted
                 Ok(())

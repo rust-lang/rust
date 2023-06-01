@@ -20,7 +20,7 @@ use crate::{
     path::{ModPath, PathKind},
     per_ns::PerNs,
     visibility::{RawVisibility, Visibility},
-    AdtId, CrateId, EnumVariantId, LocalModuleId, ModuleDefId, ModuleId,
+    AdtId, CrateId, EnumVariantId, LocalModuleId, ModuleDefId,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -74,17 +74,6 @@ impl PerNs {
 }
 
 impl DefMap {
-    pub(super) fn resolve_name_in_extern_prelude(
-        &self,
-        db: &dyn DefDatabase,
-        name: &Name,
-    ) -> Option<ModuleId> {
-        match self.block {
-            Some(_) => self.crate_root(db).def_map(db).extern_prelude.get(name).copied(),
-            None => self.extern_prelude.get(name).copied(),
-        }
-    }
-
     pub(crate) fn resolve_visibility(
         &self,
         db: &dyn DefDatabase,
@@ -121,7 +110,7 @@ impl DefMap {
             // ...unless we're resolving visibility for an associated item in an impl.
             if self.block_id() != m.block && !within_impl {
                 cov_mark::hit!(adjust_vis_in_block_def_map);
-                vis = Visibility::Module(self.module_id(self.root()));
+                vis = Visibility::Module(self.module_id(Self::ROOT));
                 tracing::debug!("visibility {:?} points outside DefMap, adjusting to {:?}", m, vis);
             }
         }
@@ -173,7 +162,7 @@ impl DefMap {
             match &current_map.block {
                 Some(block) => {
                     original_module = block.parent.local_id;
-                    arc = block.parent.def_map(db);
+                    arc = block.parent.def_map(db, current_map.krate);
                     current_map = &*arc;
                 }
                 None => return result,
@@ -204,21 +193,21 @@ impl DefMap {
             PathKind::DollarCrate(krate) => {
                 if krate == self.krate {
                     cov_mark::hit!(macro_dollar_crate_self);
-                    PerNs::types(self.crate_root(db).into(), Visibility::Public)
+                    PerNs::types(self.crate_root().into(), Visibility::Public)
                 } else {
                     let def_map = db.crate_def_map(krate);
-                    let module = def_map.module_id(def_map.root);
+                    let module = def_map.module_id(Self::ROOT);
                     cov_mark::hit!(macro_dollar_crate_other);
                     PerNs::types(module.into(), Visibility::Public)
                 }
             }
-            PathKind::Crate => PerNs::types(self.crate_root(db).into(), Visibility::Public),
+            PathKind::Crate => PerNs::types(self.crate_root().into(), Visibility::Public),
             // plain import or absolute path in 2015: crate-relative with
             // fallback to extern prelude (with the simplification in
             // rust-lang/rust#57745)
             // FIXME there must be a nicer way to write this condition
             PathKind::Plain | PathKind::Abs
-                if self.edition == Edition::Edition2015
+                if self.data.edition == Edition::Edition2015
                     && (path.kind == PathKind::Abs || mode == ResolveMode::Import) =>
             {
                 let (_, segment) = match segments.next() {
@@ -268,14 +257,17 @@ impl DefMap {
                                     path.display(db.upcast()),
                                     new_path.display(db.upcast())
                                 );
-                                return block.parent.def_map(db).resolve_path_fp_with_macro(
-                                    db,
-                                    mode,
-                                    block.parent.local_id,
-                                    &new_path,
-                                    shadow,
-                                    expected_macro_subns,
-                                );
+                                return block
+                                    .parent
+                                    .def_map(db, self.krate)
+                                    .resolve_path_fp_with_macro(
+                                        db,
+                                        mode,
+                                        block.parent.local_id,
+                                        &new_path,
+                                        shadow,
+                                        expected_macro_subns,
+                                    );
                             }
                             None => {
                                 tracing::debug!("super path in root module");
@@ -301,7 +293,7 @@ impl DefMap {
                     Some((_, segment)) => segment,
                     None => return ResolvePathResult::empty(ReachedFixedPoint::Yes),
                 };
-                if let Some(&def) = self.extern_prelude.get(segment) {
+                if let Some(&def) = self.data.extern_prelude.get(segment) {
                     tracing::debug!("absolute path {:?} resolved to crate {:?}", path, def);
                     PerNs::types(def.into(), Visibility::Public)
                 } else {
@@ -450,7 +442,12 @@ impl DefMap {
         };
 
         let extern_prelude = || {
-            self.extern_prelude
+            if self.block.is_some() {
+                // Don't resolve extern prelude in block `DefMap`s.
+                return PerNs::none();
+            }
+            self.data
+                .extern_prelude
                 .get(name)
                 .map_or(PerNs::none(), |&it| PerNs::types(it.into(), Visibility::Public))
         };
@@ -475,13 +472,20 @@ impl DefMap {
     ) -> PerNs {
         let from_crate_root = match self.block {
             Some(_) => {
-                let def_map = self.crate_root(db).def_map(db);
-                def_map[def_map.root].scope.get(name)
+                let def_map = self.crate_root().def_map(db);
+                def_map[Self::ROOT].scope.get(name)
             }
-            None => self[self.root].scope.get(name),
+            None => self[Self::ROOT].scope.get(name),
         };
         let from_extern_prelude = || {
-            self.resolve_name_in_extern_prelude(db, name)
+            if self.block.is_some() {
+                // Don't resolve extern prelude in block `DefMap`s.
+                return PerNs::none();
+            }
+            self.data
+                .extern_prelude
+                .get(name)
+                .copied()
                 .map_or(PerNs::none(), |it| PerNs::types(it.into(), Visibility::Public))
         };
 

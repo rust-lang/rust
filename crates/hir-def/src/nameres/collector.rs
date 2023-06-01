@@ -5,7 +5,7 @@
 
 use std::{iter, mem};
 
-use base_db::{CrateId, Edition, FileId};
+use base_db::{CrateId, Dependency, Edition, FileId};
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{
@@ -62,7 +62,7 @@ static GLOB_RECURSION_LIMIT: Limit = Limit::new(100);
 static EXPANSION_DEPTH_LIMIT: Limit = Limit::new(128);
 static FIXED_POINT_LIMIT: Limit = Limit::new(8192);
 
-pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap, tree_id: TreeId) -> DefMap {
+pub(super) fn collect_defs(db: &dyn DefDatabase, def_map: DefMap, tree_id: TreeId) -> DefMap {
     let crate_graph = db.crate_graph();
 
     let mut deps = FxHashMap::default();
@@ -70,14 +70,8 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap, tree_id: T
     let krate = &crate_graph[def_map.krate];
     for dep in &krate.dependencies {
         tracing::debug!("crate dep {:?} -> {:?}", dep.name, dep.crate_id);
-        let dep_def_map = db.crate_def_map(dep.crate_id);
-        let dep_root = dep_def_map.module_id(dep_def_map.root);
 
-        deps.insert(dep.as_name(), dep_root);
-
-        if dep.is_prelude() && !tree_id.is_block() {
-            def_map.extern_prelude.insert(dep.as_name(), dep_root);
-        }
+        deps.insert(dep.as_name(), dep.clone());
     }
 
     let cfg_options = &krate.cfg_options;
@@ -86,7 +80,7 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap, tree_id: T
     let proc_macros = if is_proc_macro {
         match db.proc_macros().get(&def_map.krate) {
             Some(Ok(proc_macros)) => {
-                proc_macros
+                Ok(proc_macros
                     .iter()
                     .enumerate()
                     .map(|(idx, it)| {
@@ -95,20 +89,13 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap, tree_id: T
                             tt::Ident { text: it.name.clone(), span: tt::TokenId::unspecified() };
                         (name.as_name(), ProcMacroExpander::new(base_db::ProcMacroId(idx as u32)))
                     })
-                    .collect()
+                    .collect())
             }
-            Some(Err(e)) => {
-                def_map.proc_macro_loading_error = Some(e.clone().into_boxed_str());
-                Vec::new()
-            }
-            None => {
-                def_map.proc_macro_loading_error =
-                    Some("No proc-macros present for crate".to_owned().into_boxed_str());
-                Vec::new()
-            }
+            Some(Err(e)) => Err(e.clone().into_boxed_str()),
+            None => Err("No proc-macros present for crate".to_owned().into_boxed_str()),
         }
     } else {
-        vec![]
+        Ok(vec![])
     };
 
     let mut collector = DefCollector {
@@ -252,7 +239,7 @@ enum MacroDirectiveKind {
 struct DefCollector<'a> {
     db: &'a dyn DefDatabase,
     def_map: DefMap,
-    deps: FxHashMap<Name, ModuleId>,
+    deps: FxHashMap<Name, Dependency>,
     glob_imports: FxHashMap<LocalModuleId, Vec<(LocalModuleId, Visibility)>>,
     unresolved_imports: Vec<ImportDirective>,
     indeterminate_imports: Vec<ImportDirective>,
@@ -263,7 +250,7 @@ struct DefCollector<'a> {
     /// built by the build system, and is the list of proc. macros we can actually expand. It is
     /// empty when proc. macro support is disabled (in which case we still do name resolution for
     /// them).
-    proc_macros: Vec<(Name, ProcMacroExpander)>,
+    proc_macros: Result<Vec<(Name, ProcMacroExpander)>, Box<str>>,
     is_proc_macro: bool,
     from_glob_import: PerNsGlobImports,
     /// If we fail to resolve an attribute on a `ModItem`, we fall back to ignoring the attribute.
@@ -287,9 +274,23 @@ impl DefCollector<'_> {
 
         let file_id = self.db.crate_graph()[self.def_map.krate].root_file_id;
         let item_tree = self.db.file_item_tree(file_id.into());
-        let module_id = self.def_map.root;
+        let module_id = DefMap::ROOT;
 
         let attrs = item_tree.top_level_attrs(self.db, self.def_map.krate);
+        let crate_data = Arc::get_mut(&mut self.def_map.data).unwrap();
+
+        if let Err(e) = &self.proc_macros {
+            crate_data.proc_macro_loading_error = Some(e.clone());
+        }
+
+        for (name, dep) in &self.deps {
+            if dep.is_prelude() {
+                crate_data.extern_prelude.insert(
+                    name.clone(),
+                    ModuleId { krate: dep.crate_id, block: None, local_id: DefMap::ROOT },
+                );
+            }
+        }
 
         // Process other crate-level attributes.
         for attr in &*attrs {
@@ -306,7 +307,7 @@ impl DefCollector<'_> {
             if *attr_name == hir_expand::name![recursion_limit] {
                 if let Some(limit) = attr.string_value() {
                     if let Ok(limit) = limit.parse() {
-                        self.def_map.recursion_limit = Some(limit);
+                        crate_data.recursion_limit = Some(limit);
                     }
                 }
                 continue;
@@ -320,17 +321,17 @@ impl DefCollector<'_> {
             }
 
             if *attr_name == hir_expand::name![no_core] {
-                self.def_map.no_core = true;
+                crate_data.no_core = true;
                 continue;
             }
 
             if *attr_name == hir_expand::name![no_std] {
-                self.def_map.no_std = true;
+                crate_data.no_std = true;
                 continue;
             }
 
             if attr_name.as_text().as_deref() == Some("rustc_coherence_is_core") {
-                self.def_map.rustc_coherence_is_core = true;
+                crate_data.rustc_coherence_is_core = true;
                 continue;
             }
 
@@ -344,7 +345,7 @@ impl DefCollector<'_> {
                         [name] => Some(name.to_smol_str()),
                         _ => None,
                     });
-                self.def_map.unstable_features.extend(features);
+                crate_data.unstable_features.extend(features);
             }
 
             let attr_is_register_like = *attr_name == hir_expand::name![register_attr]
@@ -359,14 +360,15 @@ impl DefCollector<'_> {
             };
 
             if *attr_name == hir_expand::name![register_attr] {
-                self.def_map.registered_attrs.push(registered_name.to_smol_str());
+                crate_data.registered_attrs.push(registered_name.to_smol_str());
                 cov_mark::hit!(register_attr);
             } else {
-                self.def_map.registered_tools.push(registered_name.to_smol_str());
+                crate_data.registered_tools.push(registered_name.to_smol_str());
                 cov_mark::hit!(register_tool);
             }
         }
 
+        crate_data.shrink_to_fit();
         self.inject_prelude();
 
         ModCollector {
@@ -382,7 +384,7 @@ impl DefCollector<'_> {
 
     fn seed_with_inner(&mut self, tree_id: TreeId) {
         let item_tree = tree_id.item_tree(self.db);
-        let module_id = self.def_map.root;
+        let module_id = DefMap::ROOT;
 
         let is_cfg_enabled = item_tree
             .top_level_attrs(self.db, self.def_map.krate)
@@ -464,7 +466,7 @@ impl DefCollector<'_> {
             // Additionally, while the proc macro entry points must be `pub`, they are not publicly
             // exported in type/value namespace. This function reduces the visibility of all items
             // in the crate root that aren't proc macros.
-            let root = self.def_map.root;
+            let root = DefMap::ROOT;
             let module_id = self.def_map.module_id(root);
             let root = &mut self.def_map.modules[root];
             root.scope.censor_non_proc_macros(module_id);
@@ -530,12 +532,12 @@ impl DefCollector<'_> {
     fn inject_prelude(&mut self) {
         // See compiler/rustc_builtin_macros/src/standard_library_imports.rs
 
-        if self.def_map.no_core {
+        if self.def_map.data.no_core {
             // libcore does not get a prelude.
             return;
         }
 
-        let krate = if self.def_map.no_std {
+        let krate = if self.def_map.data.no_std {
             name![core]
         } else {
             let std = name![std];
@@ -548,25 +550,20 @@ impl DefCollector<'_> {
             }
         };
 
-        let edition = match self.def_map.edition {
+        let edition = match self.def_map.data.edition {
             Edition::Edition2015 => name![rust_2015],
             Edition::Edition2018 => name![rust_2018],
             Edition::Edition2021 => name![rust_2021],
         };
 
-        let path_kind = match self.def_map.edition {
+        let path_kind = match self.def_map.data.edition {
             Edition::Edition2015 => PathKind::Plain,
             _ => PathKind::Abs,
         };
         let path = ModPath::from_segments(path_kind, [krate, name![prelude], edition]);
 
-        let (per_ns, _) = self.def_map.resolve_path(
-            self.db,
-            self.def_map.root,
-            &path,
-            BuiltinShadowMode::Other,
-            None,
-        );
+        let (per_ns, _) =
+            self.def_map.resolve_path(self.db, DefMap::ROOT, &path, BuiltinShadowMode::Other, None);
 
         match per_ns.types {
             Some((ModuleDefId::ModuleId(m), _)) => {
@@ -603,23 +600,29 @@ impl DefCollector<'_> {
         def: ProcMacroDef,
         id: ItemTreeId<item_tree::Function>,
         fn_id: FunctionId,
-        module_id: ModuleId,
     ) {
+        if self.def_map.block.is_some() {
+            return;
+        }
+        let crate_root = self.def_map.module_id(DefMap::ROOT);
+
         let kind = def.kind.to_basedb_kind();
-        let (expander, kind) = match self.proc_macros.iter().find(|(n, _)| n == &def.name) {
-            Some(&(_, expander)) => (expander, kind),
-            None => (ProcMacroExpander::dummy(), kind),
-        };
+        let (expander, kind) =
+            match self.proc_macros.as_ref().map(|it| it.iter().find(|(n, _)| n == &def.name)) {
+                Ok(Some(&(_, expander))) => (expander, kind),
+                _ => (ProcMacroExpander::dummy(), kind),
+            };
 
         let proc_macro_id =
-            ProcMacroLoc { container: module_id, id, expander, kind }.intern(self.db);
+            ProcMacroLoc { container: crate_root, id, expander, kind }.intern(self.db);
         self.define_proc_macro(def.name.clone(), proc_macro_id);
+        let crate_data = Arc::get_mut(&mut self.def_map.data).unwrap();
         if let ProcMacroKind::CustomDerive { helpers } = def.kind {
-            self.def_map
+            crate_data
                 .exported_derives
                 .insert(macro_id_to_def_id(self.db, proc_macro_id.into()), helpers);
         }
-        self.def_map.fn_proc_macro_mapping.insert(fn_id, proc_macro_id);
+        crate_data.fn_proc_macro_mapping.insert(fn_id, proc_macro_id);
     }
 
     /// Define a macro with `macro_rules`.
@@ -661,7 +664,7 @@ impl DefCollector<'_> {
         // In Rust, `#[macro_export]` macros are unconditionally visible at the
         // crate root, even if the parent modules is **not** visible.
         if export {
-            let module_id = self.def_map.root;
+            let module_id = DefMap::ROOT;
             self.def_map.modules[module_id].scope.declare(macro_.into());
             self.update(
                 module_id,
@@ -712,7 +715,7 @@ impl DefCollector<'_> {
     /// A proc macro is similar to normal macro scope, but it would not visible in legacy textual scoped.
     /// And unconditionally exported.
     fn define_proc_macro(&mut self, name: Name, macro_: ProcMacroId) {
-        let module_id = self.def_map.root;
+        let module_id = DefMap::ROOT;
         self.def_map.modules[module_id].scope.declare(macro_.into());
         self.update(
             module_id,
@@ -732,7 +735,7 @@ impl DefCollector<'_> {
         let def_map = self.db.crate_def_map(krate);
         // `#[macro_use]` brings macros into macro_use prelude. Yes, even non-`macro_rules!`
         // macros.
-        let root_scope = &def_map[def_map.root].scope;
+        let root_scope = &def_map[DefMap::ROOT].scope;
         if let Some(names) = names {
             for name in names {
                 // FIXME: Report diagnostic on 404.
@@ -778,7 +781,7 @@ impl DefCollector<'_> {
     fn resolve_import(&self, module_id: LocalModuleId, import: &Import) -> PartialResolvedImport {
         let _p = profile::span("resolve_import")
             .detail(|| format!("{}", import.path.display(self.db.upcast())));
-        tracing::debug!("resolving import: {:?} ({:?})", import, self.def_map.edition);
+        tracing::debug!("resolving import: {:?} ({:?})", import, self.def_map.data.edition);
         if import.is_extern_crate {
             let name = import
                 .path
@@ -831,16 +834,13 @@ impl DefCollector<'_> {
     fn resolve_extern_crate(&self, name: &Name) -> Option<ModuleId> {
         if *name == name!(self) {
             cov_mark::hit!(extern_crate_self_as);
-            let root = match self.def_map.block {
-                Some(_) => {
-                    let def_map = self.def_map.crate_root(self.db).def_map(self.db);
-                    def_map.module_id(def_map.root())
-                }
-                None => self.def_map.module_id(self.def_map.root()),
-            };
-            Some(root)
+            Some(self.def_map.crate_root())
         } else {
-            self.deps.get(name).copied()
+            self.deps.get(name).map(|dep| ModuleId {
+                krate: dep.crate_id,
+                block: None,
+                local_id: DefMap::ROOT,
+            })
         }
     }
 
@@ -879,11 +879,14 @@ impl DefCollector<'_> {
                 // extern crates in the crate root are special-cased to insert entries into the extern prelude: rust-lang/rust#54658
                 if import.is_extern_crate
                     && self.def_map.block.is_none()
-                    && module_id == self.def_map.root
+                    && module_id == DefMap::ROOT
                 {
                     if let (Some(ModuleDefId::ModuleId(def)), Some(name)) = (def.take_types(), name)
                     {
-                        self.def_map.extern_prelude.insert(name.clone(), def);
+                        Arc::get_mut(&mut self.def_map.data)
+                            .unwrap()
+                            .extern_prelude
+                            .insert(name.clone(), def);
                     }
                 }
 
@@ -1158,7 +1161,7 @@ impl DefCollector<'_> {
                         // Record its helper attributes.
                         if def_id.krate != self.def_map.krate {
                             let def_map = self.db.crate_def_map(def_id.krate);
-                            if let Some(helpers) = def_map.exported_derives.get(&def_id) {
+                            if let Some(helpers) = def_map.data.exported_derives.get(&def_id) {
                                 self.def_map
                                     .derive_helpers_in_scope
                                     .entry(ast_id.ast_id.map(|it| it.upcast()))
@@ -1525,7 +1528,7 @@ impl ModCollector<'_, '_> {
 
     fn collect(&mut self, items: &[ModItem], container: ItemContainerId) {
         let krate = self.def_collector.def_map.krate;
-        let is_crate_root = self.module_id == self.def_collector.def_map.root;
+        let is_crate_root = self.module_id == DefMap::ROOT;
 
         // Note: don't assert that inserted value is fresh: it's simply not true
         // for macros.
@@ -1641,14 +1644,12 @@ impl ModCollector<'_, '_> {
                         FunctionLoc { container, id: ItemTreeId::new(self.tree_id, id) }.intern(db);
 
                     let vis = resolve_vis(def_map, &self.item_tree[it.visibility]);
-                    if self.def_collector.is_proc_macro && self.module_id == def_map.root {
+                    if self.def_collector.is_proc_macro && self.module_id == DefMap::ROOT {
                         if let Some(proc_macro) = attrs.parse_proc_macro_decl(&it.name) {
-                            let crate_root = def_map.module_id(def_map.root);
                             self.def_collector.export_proc_macro(
                                 proc_macro,
                                 ItemTreeId::new(self.tree_id, id),
                                 fn_id,
-                                crate_root,
                             );
                         }
                     }
@@ -2169,10 +2170,12 @@ impl ModCollector<'_, '_> {
             &self.item_tree[mac.visibility],
         );
         if let Some(helpers) = helpers_opt {
-            self.def_collector
-                .def_map
-                .exported_derives
-                .insert(macro_id_to_def_id(self.def_collector.db, macro_id.into()), helpers);
+            if self.def_collector.def_map.block.is_none() {
+                Arc::get_mut(&mut self.def_collector.def_map.data)
+                    .unwrap()
+                    .exported_derives
+                    .insert(macro_id_to_def_id(self.def_collector.db, macro_id.into()), helpers);
+            }
         }
     }
 
@@ -2280,7 +2283,7 @@ mod tests {
             unresolved_macros: Vec::new(),
             mod_dirs: FxHashMap::default(),
             cfg_options: &CfgOptions::default(),
-            proc_macros: Default::default(),
+            proc_macros: Ok(vec![]),
             from_glob_import: Default::default(),
             skip_attrs: Default::default(),
             is_proc_macro: false,

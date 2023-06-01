@@ -18,6 +18,18 @@ pub use map::{ArenaMap, Entry, OccupiedEntry, VacantEntry};
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RawIdx(u32);
 
+impl RawIdx {
+    /// Constructs a [`RawIdx`] from a u32.
+    pub const fn from_u32(u32: u32) -> Self {
+        RawIdx(u32)
+    }
+
+    /// Deconstructs a [`RawIdx`] into the underlying u32.
+    pub const fn into_u32(self) -> u32 {
+        self.0
+    }
+}
+
 impl From<RawIdx> for u32 {
     #[inline]
     fn from(raw: RawIdx) -> u32 {
@@ -94,12 +106,12 @@ impl<T> fmt::Debug for Idx<T> {
 
 impl<T> Idx<T> {
     /// Creates a new index from a [`RawIdx`].
-    pub fn from_raw(raw: RawIdx) -> Self {
+    pub const fn from_raw(raw: RawIdx) -> Self {
         Idx { raw, _ty: PhantomData }
     }
 
     /// Converts this index into the underlying [`RawIdx`].
-    pub fn into_raw(self) -> RawIdx {
+    pub const fn into_raw(self) -> RawIdx {
         self.raw
     }
 }

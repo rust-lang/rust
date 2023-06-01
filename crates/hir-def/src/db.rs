@@ -198,14 +198,13 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
 
     // endregion:attrs
 
-    #[salsa::invoke(LangItems::crate_lang_items_query)]
-    fn crate_lang_items(&self, krate: CrateId) -> Arc<LangItems>;
-
     #[salsa::invoke(LangItems::lang_item_query)]
     fn lang_item(&self, start_crate: CrateId, item: LangItem) -> Option<LangItemTarget>;
 
     #[salsa::invoke(ImportMap::import_map_query)]
     fn import_map(&self, krate: CrateId) -> Arc<ImportMap>;
+
+    // region:visibilities
 
     #[salsa::invoke(visibility::field_visibilities_query)]
     fn field_visibilities(&self, var: VariantId) -> Arc<ArenaMap<LocalFieldId, Visibility>>;
@@ -217,8 +216,14 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
     #[salsa::invoke(visibility::const_visibility_query)]
     fn const_visibility(&self, def: ConstId) -> Visibility;
 
+    // endregion:visibilities
+
+    #[salsa::invoke(LangItems::crate_lang_items_query)]
+    fn crate_lang_items(&self, krate: CrateId) -> Arc<LangItems>;
+
     #[salsa::transparent]
     fn crate_limits(&self, crate_id: CrateId) -> CrateLimits;
+
     #[salsa::transparent]
     fn recursion_limit(&self, crate_id: CrateId) -> u32;
 

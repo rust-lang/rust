@@ -35,7 +35,7 @@ use tt::token_id::{Subtree, TokenId};
 use crate::{
     db::DefDatabase,
     macro_id_to_def_id,
-    nameres::{MacroSubNs, ModuleSource},
+    nameres::{DefMap, MacroSubNs, ModuleSource},
     resolver::HasResolver,
     src::HasSource,
     test_db::TestDB,
@@ -61,7 +61,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
     let db = TestDB::with_files_extra_proc_macros(ra_fixture, extra_proc_macros);
     let krate = db.crate_graph().iter().next().unwrap();
     let def_map = db.crate_def_map(krate);
-    let local_id = def_map.root();
+    let local_id = DefMap::ROOT;
     let module = def_map.module_id(local_id);
     let resolver = module.resolver(&db);
     let source = def_map[local_id].definition_source(&db);
