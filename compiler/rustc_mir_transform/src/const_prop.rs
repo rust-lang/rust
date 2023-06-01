@@ -103,7 +103,14 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
         // That would require a uniform one-def no-mutation analysis
         // and RPO (or recursing when needing the value of a local).
         let mut optimization_finder = ConstPropagator::new(body, dummy_body, tcx);
-        optimization_finder.visit_body(body);
+
+        // Traverse the body in reverse post-order, to ensure that `FullConstProp` locals are
+        // assigned before being read.
+        let postorder = body.basic_blocks.postorder().to_vec();
+        for bb in postorder.into_iter().rev() {
+            let data = &mut body.basic_blocks.as_mut_preserves_cfg()[bb];
+            optimization_finder.visit_basic_block_data(bb, data);
+        }
 
         trace!("ConstProp done for {:?}", def_id);
     }
@@ -789,12 +796,6 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
         self.tcx
     }
 
-    fn visit_body(&mut self, body: &mut Body<'tcx>) {
-        for (bb, data) in body.basic_blocks.as_mut_preserves_cfg().iter_enumerated_mut() {
-            self.visit_basic_block_data(bb, data);
-        }
-    }
-
     fn visit_operand(&mut self, operand: &mut Operand<'tcx>, location: Location) {
         self.super_operand(operand, location);
 
@@ -885,14 +886,23 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
                 }
             }
             StatementKind::StorageLive(local) => {
-                let frame = self.ecx.frame_mut();
-                frame.locals[local].value =
-                    LocalValue::Live(interpret::Operand::Immediate(interpret::Immediate::Uninit));
+                Self::remove_const(&mut self.ecx, local);
             }
-            StatementKind::StorageDead(local) => {
-                let frame = self.ecx.frame_mut();
-                frame.locals[local].value = LocalValue::Dead;
-            }
+            // We do not need to mark dead locals as such. For `FullConstProp` locals,
+            // this allows to propagate the single assigned value in this case:
+            // ```
+            // let x = SOME_CONST;
+            // if a {
+            //   f(copy x);
+            //   StorageDead(x);
+            // } else {
+            //   g(copy x);
+            //   StorageDead(x);
+            // }
+            // ```
+            //
+            // This may propagate a constant where the local would be uninit or dead.
+            // In both cases, this does not matter, as those reads would be UB anyway.
             _ => {}
         }
     }
