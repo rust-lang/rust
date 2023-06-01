@@ -1317,10 +1317,14 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// A bare `pub` visibility may be misleading if the item is not actually
-    /// publicly exported from the crate. The `pub(crate)` visibility is
-    /// recommended to be used instead, which more clearly expresses the intent
-    /// that the item is only visible within its own crate.
+    /// The `pub` keyword both expresses an intent for an item to be publicly available, and also
+    /// signals to the compiler to make the item publicly accessible. The intent can only be
+    /// satisfied, however, if all items which contain this item are *also* publicly accessible.
+    /// Thus, this lint serves to identify situations where the intent does not match the reality.
+    ///
+    /// If you wish the item to be accessible elsewhere within the crate, but not outside it, the
+    /// `pub(crate)` visibility is recommended to be used instead. This more clearly expresses the
+    /// intent that the item is only visible within its own crate.
     ///
     /// This lint is "allow" by default because it will trigger for a large
     /// amount existing Rust code, and has some false-positives. Eventually it
