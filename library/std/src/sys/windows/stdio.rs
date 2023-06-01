@@ -11,6 +11,9 @@ use crate::sys::cvt;
 use crate::sys::handle::Handle;
 use core::str::utf8_char_width;
 
+#[cfg(test)]
+mod tests;
+
 // Don't cache handles but get them fresh for every read/write. This allows us to track changes to
 // the value over time (such as if a process calls `SetStdHandle` while it's running). See #40490.
 pub struct Stdin {
@@ -382,6 +385,10 @@ fn read_u16s(handle: c::HANDLE, buf: &mut [MaybeUninit<u16>]) -> io::Result<usiz
 fn utf16_to_utf8(utf16: &[u16], utf8: &mut [u8]) -> io::Result<usize> {
     debug_assert!(utf16.len() <= c::c_int::MAX as usize);
     debug_assert!(utf8.len() <= c::c_int::MAX as usize);
+
+    if utf16.is_empty() {
+        return Ok(0);
+    }
 
     let result = unsafe {
         c::WideCharToMultiByte(
