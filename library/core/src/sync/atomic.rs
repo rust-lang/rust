@@ -107,6 +107,33 @@
 //! }
 //! ```
 //!
+//! Although the most convenient way to use an atomic type is to wrap it as an `Arc`,
+//! it is possible to share an atomic type between threads without `Arc`.
+//!
+//! ```
+//! use std::sync::atomic::{AtomicUsize, Ordering};
+//! use std::thread;
+//!
+//! fn main() {
+//!     let data: [usize; 20] = b"Fearless Concurrency".map(Into::into);
+//!
+//!     let result = AtomicUsize::new(0);
+//!     // Create a scope to process sum in parallel.
+//!     thread::scope(|s| {
+//!         // choose the size (data.len()+N-1)/N to divide the data into N chunks
+//!         // this is actually data.len().div_ceil(N) but currently it is an unstable feature
+//!         for chunk in data.chunks((data.len()+2)/3) {
+//!             s.spawn(|| {
+//!                 let sum = chunk.iter().sum();
+//!                 // Accumulate results
+//!                 result.fetch_add(sum, Ordering::SeqCst);
+//!             });
+//!         }
+//!     });
+//!     assert_eq!(result.into_inner(), data.iter().sum());
+//! }
+//! ```
+//!
 //! Keep a global count of live threads:
 //!
 //! ```
