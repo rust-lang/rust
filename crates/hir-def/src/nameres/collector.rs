@@ -86,7 +86,7 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap, tree_id: T
     let proc_macros = if is_proc_macro {
         match db.proc_macros().get(&def_map.krate) {
             Some(Ok(proc_macros)) => {
-                proc_macros
+                Ok(proc_macros
                     .iter()
                     .enumerate()
                     .map(|(idx, it)| {
@@ -95,20 +95,13 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap, tree_id: T
                             tt::Ident { text: it.name.clone(), span: tt::TokenId::unspecified() };
                         (name.as_name(), ProcMacroExpander::new(base_db::ProcMacroId(idx as u32)))
                     })
-                    .collect()
+                    .collect())
             }
-            Some(Err(e)) => {
-                def_map.data.proc_macro_loading_error = Some(e.clone().into_boxed_str());
-                Vec::new()
-            }
-            None => {
-                def_map.data.proc_macro_loading_error =
-                    Some("No proc-macros present for crate".to_owned().into_boxed_str());
-                Vec::new()
-            }
+            Some(Err(e)) => Err(e.clone().into_boxed_str()),
+            None => Err("No proc-macros present for crate".to_owned().into_boxed_str()),
         }
     } else {
-        vec![]
+        Ok(vec![])
     };
 
     let mut collector = DefCollector {
@@ -263,7 +256,7 @@ struct DefCollector<'a> {
     /// built by the build system, and is the list of proc. macros we can actually expand. It is
     /// empty when proc. macro support is disabled (in which case we still do name resolution for
     /// them).
-    proc_macros: Vec<(Name, ProcMacroExpander)>,
+    proc_macros: Result<Vec<(Name, ProcMacroExpander)>, Box<str>>,
     is_proc_macro: bool,
     from_glob_import: PerNsGlobImports,
     /// If we fail to resolve an attribute on a `ModItem`, we fall back to ignoring the attribute.
@@ -290,6 +283,11 @@ impl DefCollector<'_> {
         let module_id = DefMap::ROOT;
 
         let attrs = item_tree.top_level_attrs(self.db, self.def_map.krate);
+        let crate_data = Arc::get_mut(&mut self.def_map.data).unwrap();
+
+        if let Err(e) = &self.proc_macros {
+            crate_data.proc_macro_loading_error = Some(e.clone());
+        }
 
         // Process other crate-level attributes.
         for attr in &*attrs {
@@ -306,7 +304,7 @@ impl DefCollector<'_> {
             if *attr_name == hir_expand::name![recursion_limit] {
                 if let Some(limit) = attr.string_value() {
                     if let Ok(limit) = limit.parse() {
-                        self.def_map.data.recursion_limit = Some(limit);
+                        crate_data.recursion_limit = Some(limit);
                     }
                 }
                 continue;
@@ -320,17 +318,17 @@ impl DefCollector<'_> {
             }
 
             if *attr_name == hir_expand::name![no_core] {
-                self.def_map.data.no_core = true;
+                crate_data.no_core = true;
                 continue;
             }
 
             if *attr_name == hir_expand::name![no_std] {
-                self.def_map.data.no_std = true;
+                crate_data.no_std = true;
                 continue;
             }
 
             if attr_name.as_text().as_deref() == Some("rustc_coherence_is_core") {
-                self.def_map.data.rustc_coherence_is_core = true;
+                crate_data.rustc_coherence_is_core = true;
                 continue;
             }
 
@@ -344,7 +342,7 @@ impl DefCollector<'_> {
                         [name] => Some(name.to_smol_str()),
                         _ => None,
                     });
-                self.def_map.data.unstable_features.extend(features);
+                crate_data.unstable_features.extend(features);
             }
 
             let attr_is_register_like = *attr_name == hir_expand::name![register_attr]
@@ -359,14 +357,15 @@ impl DefCollector<'_> {
             };
 
             if *attr_name == hir_expand::name![register_attr] {
-                self.def_map.data.registered_attrs.push(registered_name.to_smol_str());
+                crate_data.registered_attrs.push(registered_name.to_smol_str());
                 cov_mark::hit!(register_attr);
             } else {
-                self.def_map.data.registered_tools.push(registered_name.to_smol_str());
+                crate_data.registered_tools.push(registered_name.to_smol_str());
                 cov_mark::hit!(register_tool);
             }
         }
 
+        crate_data.shrink_to_fit();
         self.inject_prelude();
 
         ModCollector {
@@ -598,24 +597,29 @@ impl DefCollector<'_> {
         def: ProcMacroDef,
         id: ItemTreeId<item_tree::Function>,
         fn_id: FunctionId,
-        module_id: ModuleId,
     ) {
+        if self.def_map.block.is_some() {
+            return;
+        }
+        let crate_root = self.def_map.module_id(DefMap::ROOT);
+
         let kind = def.kind.to_basedb_kind();
-        let (expander, kind) = match self.proc_macros.iter().find(|(n, _)| n == &def.name) {
-            Some(&(_, expander)) => (expander, kind),
-            None => (ProcMacroExpander::dummy(), kind),
-        };
+        let (expander, kind) =
+            match self.proc_macros.as_ref().map(|it| it.iter().find(|(n, _)| n == &def.name)) {
+                Ok(Some(&(_, expander))) => (expander, kind),
+                _ => (ProcMacroExpander::dummy(), kind),
+            };
 
         let proc_macro_id =
-            ProcMacroLoc { container: module_id, id, expander, kind }.intern(self.db);
+            ProcMacroLoc { container: crate_root, id, expander, kind }.intern(self.db);
         self.define_proc_macro(def.name.clone(), proc_macro_id);
+        let crate_data = Arc::get_mut(&mut self.def_map.data).unwrap();
         if let ProcMacroKind::CustomDerive { helpers } = def.kind {
-            self.def_map
-                .data
+            crate_data
                 .exported_derives
                 .insert(macro_id_to_def_id(self.db, proc_macro_id.into()), helpers);
         }
-        self.def_map.data.fn_proc_macro_mapping.insert(fn_id, proc_macro_id);
+        crate_data.fn_proc_macro_mapping.insert(fn_id, proc_macro_id);
     }
 
     /// Define a macro with `macro_rules`.
@@ -1639,12 +1643,10 @@ impl ModCollector<'_, '_> {
                     let vis = resolve_vis(def_map, &self.item_tree[it.visibility]);
                     if self.def_collector.is_proc_macro && self.module_id == DefMap::ROOT {
                         if let Some(proc_macro) = attrs.parse_proc_macro_decl(&it.name) {
-                            let crate_root = def_map.module_id(DefMap::ROOT);
                             self.def_collector.export_proc_macro(
                                 proc_macro,
                                 ItemTreeId::new(self.tree_id, id),
                                 fn_id,
-                                crate_root,
                             );
                         }
                     }
@@ -2165,11 +2167,12 @@ impl ModCollector<'_, '_> {
             &self.item_tree[mac.visibility],
         );
         if let Some(helpers) = helpers_opt {
-            self.def_collector
-                .def_map
-                .data
-                .exported_derives
-                .insert(macro_id_to_def_id(self.def_collector.db, macro_id.into()), helpers);
+            if self.def_collector.def_map.block.is_none() {
+                Arc::get_mut(&mut self.def_collector.def_map.data)
+                    .unwrap()
+                    .exported_derives
+                    .insert(macro_id_to_def_id(self.def_collector.db, macro_id.into()), helpers);
+            }
         }
     }
 
@@ -2277,7 +2280,7 @@ mod tests {
             unresolved_macros: Vec::new(),
             mod_dirs: FxHashMap::default(),
             cfg_options: &CfgOptions::default(),
-            proc_macros: Default::default(),
+            proc_macros: Ok(vec![]),
             from_glob_import: Default::default(),
             skip_attrs: Default::default(),
             is_proc_macro: false,

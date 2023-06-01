@@ -116,10 +116,10 @@ pub struct DefMap {
     diagnostics: Vec<DefDiagnostic>,
 
     // FIXME: Arc this so we can share it with block def maps
-    data: CrateData,
+    data: Arc<CrateData>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 struct CrateData {
     /// Side table for resolving derive helpers.
     exported_derives: FxHashMap<MacroDefId, Box<[Name]>>,
@@ -140,6 +140,28 @@ struct CrateData {
 
     edition: Edition,
     recursion_limit: Option<u32>,
+}
+impl CrateData {
+    fn shrink_to_fit(&mut self) {
+        let Self {
+            exported_derives,
+            fn_proc_macro_mapping,
+            registered_attrs,
+            registered_tools,
+            unstable_features,
+            proc_macro_loading_error: _,
+            rustc_coherence_is_core: _,
+            no_core: _,
+            no_std: _,
+            edition: _,
+            recursion_limit: _,
+        } = self;
+        exported_derives.shrink_to_fit();
+        fn_proc_macro_mapping.shrink_to_fit();
+        registered_attrs.shrink_to_fit();
+        registered_tools.shrink_to_fit();
+        unstable_features.shrink_to_fit();
+    }
 }
 
 /// For `DefMap`s computed for a block expression, this stores its location in the parent map.
@@ -287,6 +309,7 @@ impl DefMap {
             ModuleData::new(ModuleOrigin::BlockExpr { block: block.ast_id }, visibility);
 
         let mut def_map = DefMap::empty(krate, parent_map.data.edition, module_data);
+        def_map.data = parent_map.data.clone();
         def_map.block = Some(BlockInfo {
             block: block_id,
             parent: BlockRelativeModuleId {
@@ -314,7 +337,7 @@ impl DefMap {
             prelude: None,
             modules,
             diagnostics: Vec::new(),
-            data: CrateData {
+            data: Arc::new(CrateData {
                 recursion_limit: None,
                 exported_derives: FxHashMap::default(),
                 fn_proc_macro_mapping: FxHashMap::default(),
@@ -326,7 +349,7 @@ impl DefMap {
                 no_core: false,
                 no_std: false,
                 edition,
-            },
+            }),
         }
     }
 
@@ -558,32 +581,14 @@ impl DefMap {
             block: _,
             krate: _,
             prelude: _,
-            data:
-                CrateData {
-                    exported_derives,
-                    fn_proc_macro_mapping,
-                    registered_attrs,
-                    registered_tools,
-                    unstable_features,
-                    proc_macro_loading_error: _,
-                    rustc_coherence_is_core: _,
-                    no_core: _,
-                    no_std: _,
-                    edition: _,
-                    recursion_limit: _,
-                },
+            data: _,
         } = self;
 
         extern_prelude.shrink_to_fit();
         macro_use_prelude.shrink_to_fit();
-        exported_derives.shrink_to_fit();
         diagnostics.shrink_to_fit();
         modules.shrink_to_fit();
-        registered_attrs.shrink_to_fit();
-        registered_tools.shrink_to_fit();
-        fn_proc_macro_mapping.shrink_to_fit();
         derive_helpers_in_scope.shrink_to_fit();
-        unstable_features.shrink_to_fit();
         for (_, module) in modules.iter_mut() {
             module.children.shrink_to_fit();
             module.scope.shrink_to_fit();
