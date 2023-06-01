@@ -372,6 +372,14 @@ cc = ["@GuillaumeGomez"]
 message = "Some changes might have occurred in exhaustiveness checking"
 cc = ["@Nadrieril"]
 
+[mentions."library/portable-simd"]
+message = """
+Portable SIMD is developed in its own repository. If possible, consider \
+making this change to [rust-lang/portable-simd](https://github.com/rust-lang/portable-simd) \
+instead.
+"""
+cc = ["@calebzulawski"]
+
 [mentions."src/librustdoc/clean/types.rs"]
 cc = ["@camelid"]
 
