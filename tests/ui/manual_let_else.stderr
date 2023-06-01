@@ -234,7 +234,7 @@ LL +     };
 error: this could be rewritten as `let...else`
   --> $DIR/manual_let_else.rs:131:5
    |
-LL | /     let v = if let (Some(v_some), w_some) = (g(), 0) {
+LL | /     let (w, S { v }) = if let (Some(v_some), w_some) = (g().map(|_| S { v: 0 }), 0) {
 LL | |         (w_some, v_some)
 LL | |     } else {
 LL | |         return;
@@ -243,7 +243,7 @@ LL | |     };
    |
 help: consider writing
    |
-LL ~     let (Some(v_some), w_some) = (g(), 0) else {
+LL ~     let (Some(S { v }), w) = (g().map(|_| S { v: 0 }), 0) else {
 LL +         return;
 LL +     };
    |
@@ -295,7 +295,13 @@ LL |     let v = if let Variant::A(.., a) = e() { a } else { return };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let Variant::A(.., v) = e() else { return };`
 
 error: this could be rewritten as `let...else`
-  --> $DIR/manual_let_else.rs:272:5
+  --> $DIR/manual_let_else.rs:165:5
+   |
+LL |     let w = if let (Some(v), ()) = (g(), ()) { v } else { return };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let (Some(w), ()) = (g(), ()) else { return };`
+
+error: this could be rewritten as `let...else`
+  --> $DIR/manual_let_else.rs:275:5
    |
 LL | /     let _ = match ff {
 LL | |         Some(value) => value,
@@ -303,5 +309,5 @@ LL | |         _ => macro_call!(),
 LL | |     };
    | |______^ help: consider writing: `let Some(_) = ff else { macro_call!() };`
 
-error: aborting due to 22 previous errors
+error: aborting due to 23 previous errors
 
