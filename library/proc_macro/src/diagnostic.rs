@@ -127,7 +127,7 @@ impl Diagnostic {
     /// the given set of `spans`.
     /// # Example
     /// ```rust
-    /// let diag = Diagnostic::spanned(Level::Warning, "");
+    /// let diag = Diagnostic::spanned(Level::Warning, "", Span::call_site());
     /// ```
     #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
     pub fn spanned<S, T>(spans: S, level: Level, message: T) -> Diagnostic
@@ -144,6 +144,11 @@ impl Diagnostic {
     diagnostic_child_methods!(span_help, help, Level::Help);
 
     /// Returns the diagnostic `level` for `self`.
+    /// # Example
+    /// ```
+    /// let diag = Diagnostic::new(Level::Warning, "some warning text");
+    /// assert_eq!(diag.level(), Level::Warning);
+    /// ```
     #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
     pub fn level(&self) -> Level {
         self.level
@@ -156,6 +161,11 @@ impl Diagnostic {
     }
 
     /// Returns the message in `self`.
+    /// # Example
+    /// ```
+    /// let diag = Diagnostic::new(Level::Warning, "some warning text");
+    /// assert_eq!(diag.message(), "some warning text");
+    /// ```
     #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
     pub fn message(&self) -> &str {
         &self.message
