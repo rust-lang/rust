@@ -147,8 +147,8 @@ fn emit_manual_let_else(
         "this could be rewritten as `let...else`",
         |diag| {
             // This is far from perfect, for example there needs to be:
-            // * tracking for multi-binding cases: let (foo, bar) = if let (Some(foo), Ok(bar)) = ...
-            // * renamings of the bindings for many `PatKind`s like structs, slices, etc.
+            // * renamings of the bindings for many `PatKind`s like slices, etc.
+            // * limitations in the existing replacement algorithms
             // * unused binding collision detection with existing ones
             // for this to be machine applicable.
             let mut app = Applicability::HasPlaceholders;
@@ -226,6 +226,33 @@ fn replace_in_pattern(
                     return format!("({or_pat})");
                 }
                 return or_pat;
+            },
+            PatKind::Struct(path, fields, has_dot_dot) => {
+                let fields = fields
+                    .iter()
+                    .map(|fld| {
+                        if let PatKind::Binding(_, _, name, None) = fld.pat.kind &&
+                            let Some(pat_to_put) = ident_map.get(&name.name)
+                        {
+                            let (sn_fld_name, _) = snippet_with_context(cx, fld.ident.span, span.ctxt(), "", app);
+                            let (sn_ptp, _) = snippet_with_context(cx, pat_to_put.span, span.ctxt(), "", app);
+                            // TODO: this is a bit of a hack, but it does its job. Ideally, we'd check if pat_to_put is
+                            // a PatKind::Binding but that is also hard to get right.
+                            if sn_fld_name == sn_ptp {
+                                // Field init shorthand
+                                return format!("{sn_fld_name}");
+                            }
+                            return format!("{sn_fld_name}: {sn_ptp}");
+                        }
+                        let (sn_fld, _) = snippet_with_context(cx, fld.span, span.ctxt(), "", app);
+                        sn_fld.into_owned()
+                    })
+                    .collect::<Vec<_>>();
+                let fields_string = fields.join(", ");
+
+                let dot_dot_str = if has_dot_dot { " .." } else { "" };
+                let (sn_pth, _) = snippet_with_context(cx, path.span(), span.ctxt(), "", app);
+                return format!("{sn_pth} {{ {fields_string}{dot_dot_str} }}");
             },
             // Replace the variable name iff `TupleStruct` has one argument like `Variant(v)`.
             PatKind::TupleStruct(ref w, args, dot_dot_pos) => {

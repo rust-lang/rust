@@ -163,6 +163,27 @@ fn fire() {
 
     // () is preserved: a bit of an edge case but make sure it stays around
     let w = if let (Some(v), ()) = (g(), ()) { v } else { return };
+
+    // Tuple structs work
+    let w = if let Some(S { v: x }) = Some(S { v: 0 }) {
+        x
+    } else {
+        return;
+    };
+
+    // Field init shorthand is suggested
+    let v = if let Some(S { v: x }) = Some(S { v: 0 }) {
+        x
+    } else {
+        return;
+    };
+
+    // Multi-field structs also work
+    let (x, S { v }, w) = if let Some(U { v, w, x }) = None::<U<S<()>>> {
+        (x, v, w)
+    } else {
+        return;
+    };
 }
 
 fn not_fire() {
@@ -298,6 +319,12 @@ fn not_fire() {
     };
 }
 
-struct S {
-    v: u32,
+struct S<T> {
+    v: T,
+}
+
+struct U<T> {
+    v: T,
+    w: T,
+    x: T,
 }

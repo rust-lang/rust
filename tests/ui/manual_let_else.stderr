@@ -301,7 +301,58 @@ LL |     let w = if let (Some(v), ()) = (g(), ()) { v } else { return };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let (Some(w), ()) = (g(), ()) else { return };`
 
 error: this could be rewritten as `let...else`
-  --> $DIR/manual_let_else.rs:275:5
+  --> $DIR/manual_let_else.rs:168:5
+   |
+LL | /     let w = if let Some(S { v: x }) = Some(S { v: 0 }) {
+LL | |         x
+LL | |     } else {
+LL | |         return;
+LL | |     };
+   | |______^
+   |
+help: consider writing
+   |
+LL ~     let Some(S { v: w }) = Some(S { v: 0 }) else {
+LL +         return;
+LL +     };
+   |
+
+error: this could be rewritten as `let...else`
+  --> $DIR/manual_let_else.rs:175:5
+   |
+LL | /     let v = if let Some(S { v: x }) = Some(S { v: 0 }) {
+LL | |         x
+LL | |     } else {
+LL | |         return;
+LL | |     };
+   | |______^
+   |
+help: consider writing
+   |
+LL ~     let Some(S { v }) = Some(S { v: 0 }) else {
+LL +         return;
+LL +     };
+   |
+
+error: this could be rewritten as `let...else`
+  --> $DIR/manual_let_else.rs:182:5
+   |
+LL | /     let (x, S { v }, w) = if let Some(U { v, w, x }) = None::<U<S<()>>> {
+LL | |         (x, v, w)
+LL | |     } else {
+LL | |         return;
+LL | |     };
+   | |______^
+   |
+help: consider writing
+   |
+LL ~     let Some(U { v: S { v }, w, x }) = None::<U<S<()>>> else {
+LL +         return;
+LL +     };
+   |
+
+error: this could be rewritten as `let...else`
+  --> $DIR/manual_let_else.rs:296:5
    |
 LL | /     let _ = match ff {
 LL | |         Some(value) => value,
@@ -309,5 +360,5 @@ LL | |         _ => macro_call!(),
 LL | |     };
    | |______^ help: consider writing: `let Some(_) = ff else { macro_call!() };`
 
-error: aborting due to 23 previous errors
+error: aborting due to 26 previous errors
 
