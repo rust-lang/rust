@@ -1772,6 +1772,14 @@ impl Step for BookTest {
     ///
     /// This uses the `rustdoc` that sits next to `compiler`.
     fn run(self, builder: &Builder<'_>) {
+        let host = self.compiler.host;
+        let _guard = builder.msg(
+            Kind::Test,
+            self.compiler.stage,
+            &format!("book {}", self.name),
+            host,
+            host,
+        );
         // External docs are different from local because:
         // - Some books need pre-processing by mdbook before being tested.
         // - They need to save their state to toolstate.
@@ -1963,7 +1971,7 @@ fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> 
         }
     }
 
-    builder.info(&format!("doc tests for: {}", markdown.display()));
+    builder.verbose(&format!("doc tests for: {}", markdown.display()));
     let mut cmd = builder.rustdoc_cmd(compiler);
     builder.add_rust_test_threads(&mut cmd);
     // allow for unstable options such as new editions
