@@ -426,7 +426,10 @@ fn place_inlined_mono_items<'tcx>(
         // Collect all items that need to be available in this codegen unit.
         let mut reachable = FxHashSet::default();
         for root in cgu.items().keys() {
-            follow_inlining(cx.tcx, *root, cx.usage_map, &mut reachable);
+            // Insert the root item itself, plus all inlined items that are
+            // reachable from it without going via another root item.
+            reachable.insert(*root);
+            get_reachable_inlined_items(cx.tcx, *root, cx.usage_map, &mut reachable);
         }
 
         // Add all monomorphizations that are not already there.
@@ -462,18 +465,17 @@ fn place_inlined_mono_items<'tcx>(
 
     return mono_item_placements;
 
-    fn follow_inlining<'tcx>(
+    fn get_reachable_inlined_items<'tcx>(
         tcx: TyCtxt<'tcx>,
         item: MonoItem<'tcx>,
         usage_map: &UsageMap<'tcx>,
         visited: &mut FxHashSet<MonoItem<'tcx>>,
     ) {
-        if !visited.insert(item) {
-            return;
-        }
-
         usage_map.for_each_inlined_used_item(tcx, item, |inlined_item| {
-            follow_inlining(tcx, inlined_item, usage_map, visited);
+            let is_new = visited.insert(inlined_item);
+            if is_new {
+                get_reachable_inlined_items(tcx, inlined_item, usage_map, visited);
+            }
         });
     }
 }
