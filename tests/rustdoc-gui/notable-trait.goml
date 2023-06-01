@@ -122,7 +122,7 @@ assert-count: ("//*[@class='tooltip popover']", 0)
 // Now check the colors.
 define-function: (
     "check-colors",
-    (theme, header_color, content_color, type_color, trait_color),
+    (theme, header_color, content_color, type_color, trait_color, link_color),
     block {
         go-to: "file://" + |DOC_PATH| + "/test_docs/struct.NotableStructWithLongName.html"
         // This is needed to ensure that the text color is computed.
@@ -133,8 +133,20 @@ define-function: (
         // We reload the page so the local storage settings are being used.
         reload:
 
+        assert-css: (
+             "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']",
+             {"color": |content_color|},
+             ALL,
+        )
+
         move-cursor-to: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"
-        assert-count: (".tooltip.popover", 1)
+        wait-for-count: (".tooltip.popover", 1)
+
+        assert-css: (
+             "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']",
+             {"color": |link_color|},
+             ALL,
+        )
 
         assert-css: (
              ".tooltip.popover h3",
@@ -163,6 +175,7 @@ call-function: (
     "check-colors",
     {
         "theme": "ayu",
+        "link_color": "rgb(57, 175, 215)",
         "content_color": "rgb(230, 225, 207)",
         "header_color": "rgb(255, 255, 255)",
         "type_color": "rgb(255, 160, 165)",
@@ -174,6 +187,7 @@ call-function: (
     "check-colors",
     {
         "theme": "dark",
+        "link_color": "rgb(210, 153, 29)",
         "content_color": "rgb(221, 221, 221)",
         "header_color": "rgb(221, 221, 221)",
         "type_color": "rgb(45, 191, 184)",
@@ -185,6 +199,7 @@ call-function: (
     "check-colors",
     {
         "theme": "light",
+        "link_color": "rgb(56, 115, 173)",
         "content_color": "rgb(0, 0, 0)",
         "header_color": "rgb(0, 0, 0)",
         "type_color": "rgb(173, 55, 138)",
