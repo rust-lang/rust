@@ -54,16 +54,19 @@ impl<'a> MultiSpan for &'a [Span] {
 /// # Examples
 /// Emitting a simple error diagnostic at the callsite.
 /// ```rust
+/// # use proc_macro::Diagnostic;
+/// # use proc_macro::Level;
 /// Diagnostic::spanned(Level::Error, "unclosed tag", Span::call_site())
 ///     .emit();
 ///````
 /// Emitting a diagnostic at a warning level with some help.
 /// ```rust
+/// # use proc_macro::Diagnostic;
+/// # use proc_macro::Level;
 /// Diagnostic::spanned(Level::Error, "invalid tag", Span::call_site())
 ///     .span_help(Span::call_site(), "did you mean `h3` instead of `g3`?")
 ///     .emit();
 /// ```
-///
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
 #[derive(Clone, Debug)]
 pub struct Diagnostic {
@@ -116,6 +119,8 @@ impl Diagnostic {
     /// Creates a new diagnostic with the given `level` and `message`.
     /// # Example
     /// ```rust
+    /// # use proc_macro::Diagnostic;
+    /// # use proc_macro::Level;
     /// let diag = Diagnostic::new(Level::Error, "unclosed tag");
     /// ```
     #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
@@ -127,6 +132,8 @@ impl Diagnostic {
     /// the given set of `spans`.
     /// # Example
     /// ```rust
+    /// # use proc_macro::Diagnostic;
+    /// # use proc_macro::Level;
     /// let diag = Diagnostic::spanned(Level::Warning, "", Span::call_site());
     /// ```
     #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
@@ -146,6 +153,8 @@ impl Diagnostic {
     /// Returns the diagnostic `level` for `self`.
     /// # Example
     /// ```
+    /// # use proc_macro::Diagnostic;
+    /// # use proc_macro::Level;
     /// let diag = Diagnostic::new(Level::Warning, "some warning text");
     /// assert_eq!(diag.level(), Level::Warning);
     /// ```
@@ -198,6 +207,8 @@ impl Diagnostic {
     /// Emits the diagnostic, spawning an error with the level provided.
     /// # Example
     /// ```rust
+    /// # use proc_macro::Diagnostic;
+    /// # use proc_macro::Level;
     /// let diag = Diagnostic::spanned(Level::Warning, "invalid identifier", Span::call_site())
     ///     .emit();
     /// ```
