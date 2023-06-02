@@ -5,6 +5,7 @@
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use clippy_dev::{bless, dogfood, fmt, lint, new_lint, serve, setup, update_lints};
 use indoc::indoc;
+use std::convert::Infallible;
 
 fn main() {
     let matches = get_clap_config();
@@ -180,7 +181,8 @@ fn get_clap_config() -> ArgMatches {
                         .short('n')
                         .long("name")
                         .help("Name of the new lint in snake case, ex: fn_too_long")
-                        .required(true),
+                        .required(true)
+                        .value_parser(|name: &str| Ok::<_, Infallible>(name.replace('-', "_"))),
                     Arg::new("category")
                         .short('c')
                         .long("category")

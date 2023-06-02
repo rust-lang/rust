@@ -294,7 +294,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "tar",
- "toml",
+ "toml 0.5.7",
  "xz2",
 ]
 
@@ -311,7 +311,7 @@ dependencies = [
  "indexmap",
  "serde",
  "serde_json",
- "toml",
+ "toml 0.5.7",
 ]
 
 [[package]]
@@ -581,7 +581,7 @@ checksum = "8a2dd5a6fe8c6e3502f568a6353e5273bbb15193ad9a89e457b9970798efbea1"
 
 [[package]]
 name = "clippy"
-version = "0.1.71"
+version = "0.1.72"
 dependencies = [
  "clap 4.2.1",
  "clippy_lints",
@@ -596,7 +596,6 @@ dependencies = [
  "quote",
  "regex",
  "rustc-semver",
- "rustc-workspace-hack",
  "rustc_tools_util",
  "serde",
  "syn 2.0.8",
@@ -604,7 +603,7 @@ dependencies = [
  "termize",
  "tester",
  "tokio",
- "toml",
+ "toml 0.7.4",
  "walkdir",
 ]
 
@@ -623,7 +622,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.71"
+version = "0.1.72"
 dependencies = [
  "arrayvec",
  "cargo_metadata 0.15.3",
@@ -639,7 +638,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
- "toml",
+ "toml 0.7.4",
  "unicode-normalization",
  "unicode-script",
  "url",
@@ -647,7 +646,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.71"
+version = "0.1.72"
 dependencies = [
  "arrayvec",
  "if_chain",
@@ -930,7 +929,7 @@ checksum = "a0afaad2b26fa326569eb264b1363e8ae3357618c43982b3f285f0774ce76b69"
 
 [[package]]
 name = "declare_clippy_lint"
-version = "0.1.71"
+version = "0.1.72"
 dependencies = [
  "itertools",
  "quote",
@@ -2111,7 +2110,7 @@ dependencies = [
  "serde_json",
  "shlex",
  "tempfile",
- "toml",
+ "toml 0.5.7",
  "topological-sort",
 ]
 
@@ -4363,7 +4362,7 @@ dependencies = [
  "serde_json",
  "term",
  "thiserror",
- "toml",
+ "toml 0.5.7",
  "unicode-segmentation",
  "unicode-width",
  "unicode_categories",
@@ -4481,6 +4480,15 @@ dependencies = [
  "indexmap",
  "itoa",
  "ryu",
+ "serde",
+]
+
+[[package]]
+name = "serde_spanned"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "93107647184f6027e3b7dcb2e11034cf95ffa1e3a682c67951963ac69c1c007d"
+dependencies = [
  "serde",
 ]
 
@@ -4996,6 +5004,40 @@ dependencies = [
 ]
 
 [[package]]
+name = "toml"
+version = "0.7.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6135d499e69981f9ff0ef2167955a5333c35e36f6937d382974566b3d5b94ec"
+dependencies = [
+ "serde",
+ "serde_spanned",
+ "toml_datetime",
+ "toml_edit",
+]
+
+[[package]]
+name = "toml_datetime"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a76a9312f5ba4c2dec6b9161fdf25d87ad8a09256ccea5a556fef03c706a10f"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "toml_edit"
+version = "0.19.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2380d56e8670370eee6566b0bfd4265f65b3f432e8c6d85623f728d4fa31f739"
+dependencies = [
+ "indexmap",
+ "serde",
+ "serde_spanned",
+ "toml_datetime",
+ "winnow",
+]
+
+[[package]]
 name = "topological-sort"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5358,7 +5400,6 @@ dependencies = [
  "idna",
  "matches",
  "percent-encoding",
- "serde",
 ]
 
 [[package]]
@@ -5684,6 +5725,15 @@ name = "windows_x86_64_msvc"
 version = "0.48.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1a515f5799fe4961cb532f983ce2b23082366b898e52ffbce459c86f67c8378a"
+
+[[package]]
+name = "winnow"
+version = "0.4.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61de7bac303dc551fe038e2b3cef0f571087a47571ea6e79a87692ac99b99699"
+dependencies = [
+ "memchr",
+]
 
 [[package]]
 name = "writeable"

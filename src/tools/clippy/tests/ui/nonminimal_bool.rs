@@ -110,3 +110,17 @@ fn issue_10435() {
         println!("{}", line!());
     }
 }
+
+fn issue10836() {
+    struct Foo(bool);
+    impl std::ops::Not for Foo {
+        type Output = bool;
+
+        fn not(self) -> Self::Output {
+            !self.0
+        }
+    }
+
+    // Should not lint
+    let _: bool = !!Foo(true);
+}

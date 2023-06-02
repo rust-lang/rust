@@ -70,7 +70,7 @@ fn track_clippy_args(parse_sess: &mut ParseSess, args_env_var: &Option<String>) 
 
 /// Track files that may be accessed at runtime in `file_depinfo` so that cargo will re-run clippy
 /// when any of them are modified
-fn track_files(parse_sess: &mut ParseSess, conf_path_string: Option<String>) {
+fn track_files(parse_sess: &mut ParseSess) {
     let file_depinfo = parse_sess.file_depinfo.get_mut();
 
     // Used by `clippy::cargo` lints and to determine the MSRV. `cargo clippy` executes `clippy-driver`
@@ -79,10 +79,7 @@ fn track_files(parse_sess: &mut ParseSess, conf_path_string: Option<String>) {
         file_depinfo.insert(Symbol::intern("Cargo.toml"));
     }
 
-    // `clippy.toml`
-    if let Some(path) = conf_path_string {
-        file_depinfo.insert(Symbol::intern(&path));
-    }
+    // `clippy.toml` will be automatically tracked as it's loaded with `sess.source_map().load_file()`
 
     // During development track the `clippy-driver` executable so that cargo will re-run clippy whenever
     // it is rebuilt
@@ -126,17 +123,11 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
     #[allow(rustc::bad_opt_access)]
     fn config(&mut self, config: &mut interface::Config) {
         let conf_path = clippy_lints::lookup_conf_file();
-        let conf_path_string = if let Ok((Some(path), _)) = &conf_path {
-            path.to_str().map(String::from)
-        } else {
-            None
-        };
-
         let previous = config.register_lints.take();
         let clippy_args_var = self.clippy_args_var.take();
         config.parse_sess_created = Some(Box::new(move |parse_sess| {
             track_clippy_args(parse_sess, &clippy_args_var);
-            track_files(parse_sess, conf_path_string);
+            track_files(parse_sess);
         }));
         config.register_lints = Some(Box::new(move |sess, lint_store| {
             // technically we're ~guaranteed that this is none but might as well call anything that
