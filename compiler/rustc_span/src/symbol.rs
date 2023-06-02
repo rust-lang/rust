@@ -1270,6 +1270,7 @@ symbols! {
         rustc_diagnostic_macros,
         rustc_dirty,
         rustc_do_not_const_check,
+        rustc_do_not_implement_via_object,
         rustc_doc_primitive,
         rustc_dummy,
         rustc_dump_env_program_clauses,

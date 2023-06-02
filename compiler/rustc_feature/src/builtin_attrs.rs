@@ -709,6 +709,11 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "#[rustc_deny_explicit_impl] enforces that a trait can have no user-provided impls"
     ),
     rustc_attr!(
+        rustc_do_not_implement_via_object, AttributeType::Normal, template!(Word), ErrorFollowing, @only_local: true,
+        "#[rustc_do_not_implement_via_object] marks a trait so that `dyn Trait` does not \
+        implement `Trait` (without requiring `Sized` as a supertrait)"
+    ),
+    rustc_attr!(
         rustc_has_incoherent_inherent_impls, AttributeType::Normal, template!(Word), ErrorFollowing,
         "#[rustc_has_incoherent_inherent_impls] allows the addition of incoherent inherent impls for \
          the given type by annotating all impl items with #[rustc_allow_incoherent_impl]."

@@ -174,6 +174,7 @@ pub trait Sized {
 #[unstable(feature = "unsize", issue = "18598")]
 #[lang = "unsize"]
 #[rustc_deny_explicit_impl]
+#[cfg_attr(not(bootstrap), rustc_do_not_implement_via_object)]
 pub trait Unsize<T: ?Sized> {
     // Empty.
 }
@@ -855,6 +856,7 @@ impl<T: ?Sized> StructuralEq for PhantomData<T> {}
 )]
 #[lang = "discriminant_kind"]
 #[rustc_deny_explicit_impl]
+#[cfg_attr(not(bootstrap), rustc_do_not_implement_via_object)]
 pub trait DiscriminantKind {
     /// The type of the discriminant, which must satisfy the trait
     /// bounds required by `mem::Discriminant`.
@@ -960,6 +962,7 @@ marker_impls! {
 #[lang = "destruct"]
 #[rustc_on_unimplemented(message = "can't drop `{Self}`", append_const_msg)]
 #[rustc_deny_explicit_impl]
+#[cfg_attr(not(bootstrap), rustc_do_not_implement_via_object)]
 #[const_trait]
 pub trait Destruct {}
 
@@ -971,6 +974,7 @@ pub trait Destruct {}
 #[lang = "tuple_trait"]
 #[rustc_on_unimplemented(message = "`{Self}` is not a tuple")]
 #[rustc_deny_explicit_impl]
+#[cfg_attr(not(bootstrap), rustc_do_not_implement_via_object)]
 pub trait Tuple {}
 
 /// A marker for pointer-like types.
