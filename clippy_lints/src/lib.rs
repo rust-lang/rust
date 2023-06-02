@@ -336,7 +336,7 @@ mod zero_sized_map_values;
 
 pub use crate::utils::conf::{lookup_conf_file, Conf};
 use crate::utils::{
-    conf::{format_error, metadata::get_configuration_metadata, TryConf},
+    conf::{metadata::get_configuration_metadata, TryConf},
     FindAll,
 };
 
@@ -372,23 +372,36 @@ pub fn read_conf(sess: &Session, path: &io::Result<(Option<PathBuf>, Vec<String>
         },
     };
 
-    let TryConf { conf, errors, warnings } = utils::conf::read(file_name);
+    let TryConf { conf, errors, warnings } = utils::conf::read(sess, file_name);
     // all conf errors are non-fatal, we just use the default conf in case of error
     for error in errors {
-        sess.err(format!(
-            "error reading Clippy's configuration file `{}`: {}",
-            file_name.display(),
-            format_error(error)
-        ));
+        if let Some(span) = error.span {
+            sess.span_err(
+                span,
+                format!("error reading Clippy's configuration file: {}", error.message),
+            );
+        } else {
+            sess.err(format!(
+                "error reading Clippy's configuration file `{}`: {}",
+                file_name.display(),
+                error.message
+            ));
+        }
     }
 
     for warning in warnings {
-        sess.struct_warn(format!(
-            "error reading Clippy's configuration file `{}`: {}",
-            file_name.display(),
-            format_error(warning)
-        ))
-        .emit();
+        if let Some(span) = warning.span {
+            sess.span_warn(
+                span,
+                format!("error reading Clippy's configuration file: {}", warning.message),
+            );
+        } else {
+            sess.warn(format!(
+                "error reading Clippy's configuration file `{}`: {}",
+                file_name.display(),
+                warning.message
+            ));
+        }
     }
 
     conf
