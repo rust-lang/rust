@@ -328,7 +328,7 @@ pub unsafe trait Allocator {
     #[must_use] // Doesn't actually work
     type Result<T, E: Error>
     where
-        E: IntoLayout;
+        E: HandleAllocError;
 
     /// Function to map allocation results into `Self::Result`.
     ///
@@ -338,7 +338,7 @@ pub unsafe trait Allocator {
     #[must_use]
     fn map_result<T, E: Error>(result: Result<T, E>) -> Self::Result<T, E>
     where
-        E: IntoLayout;
+        E: HandleAllocError;
 
     /// Result type returned by functions that are conditionally fallible.
     ///
@@ -414,12 +414,12 @@ where
     #[cfg(not(no_global_oom_handling))]
     type Result<T, E: Error> = A::Result<T, E>
     where
-        E: IntoLayout;
+        E: HandleAllocError;
 
     #[cfg(not(no_global_oom_handling))]
     fn map_result<T, E: Error>(result: Result<T, E>) -> Self::Result<T, E>
     where
-        E: IntoLayout,
+        E: HandleAllocError,
     {
         A::map_result(result)
     }
@@ -445,22 +445,22 @@ pub(crate) fn capacity_overflow() -> ! {
     panic!("capacity overflow");
 }
 
-/// Trait for converting an error into a `Layout` struct,
-/// used for passing the layout to [`handle_alloc_error`].
+/// Trait for handling alloc errors for allocators which
+/// panic or abort instead of returning errors.
 #[cfg(not(no_global_oom_handling))]
 #[unstable(feature = "allocator_api", issue = "32838")]
-pub trait IntoLayout {
-    /// Convert into a `Layout` struct.
-    fn into_layout(self) -> Layout;
+pub trait HandleAllocError {
+    /// Globally handle this allocation error, using [`handle_alloc_error`]
+    fn handle_alloc_error(self) -> !;
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[unstable(feature = "allocator_api", issue = "32838")]
-impl IntoLayout for TryReserveError {
-    fn into_layout(self) -> Layout {
+impl HandleAllocError for TryReserveError {
+    fn handle_alloc_error(self) -> ! {
         match self.kind() {
             TryReserveErrorKind::CapacityOverflow => capacity_overflow(),
-            TryReserveErrorKind::AllocError { layout, .. } => layout,
+            TryReserveErrorKind::AllocError { layout, .. } => handle_alloc_error(layout),
         }
     }
 }
@@ -535,13 +535,13 @@ where
 
     type Result<T, E: Error> = T
     where
-        E: IntoLayout;
+        E: HandleAllocError;
 
     fn map_result<T, E: Error>(result: Result<T, E>) -> Self::Result<T, E>
     where
-        E: IntoLayout,
+        E: HandleAllocError,
     {
-        result.unwrap_or_else(|e| handle_alloc_error(e.into_layout()))
+        result.unwrap_or_else(|e| e.handle_alloc_error())
     }
 }
 
@@ -624,12 +624,12 @@ where
     #[cfg(not(no_global_oom_handling))]
     type Result<T, E: Error> = Result<T, E>
     where
-        E: IntoLayout;
+        E: HandleAllocError;
 
     #[cfg(not(no_global_oom_handling))]
     fn map_result<T, E: Error>(result: Result<T, E>) -> Self::Result<T, E>
     where
-        E: IntoLayout,
+        E: HandleAllocError,
     {
         result
     }

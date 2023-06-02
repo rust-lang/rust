@@ -16,7 +16,7 @@ use core::ptr::{self, NonNull};
 pub use crate::falloc::{Allocator, FallibleAdapter};
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[cfg(not(no_global_oom_handling))]
-pub use crate::falloc::{InfallibleAdapter, IntoLayout};
+pub use crate::falloc::{HandleAllocError, InfallibleAdapter};
 #[stable(feature = "alloc_module", since = "1.28.0")]
 #[doc(inline)]
 #[allow(deprecated)]
@@ -333,14 +333,14 @@ unsafe impl Allocator for Global {
     #[cfg(not(no_global_oom_handling))]
     type Result<T, E: Error> = T
     where
-        E: IntoLayout;
+        E: HandleAllocError;
 
     #[cfg(not(no_global_oom_handling))]
     fn map_result<T, E: Error>(result: Result<T, E>) -> Self::Result<T, E>
     where
-        E: IntoLayout,
+        E: HandleAllocError,
     {
-        result.unwrap_or_else(|e| handle_alloc_error(e.into_layout()))
+        result.unwrap_or_else(|e| e.handle_alloc_error())
     }
 
     #[cfg(no_global_oom_handling)]

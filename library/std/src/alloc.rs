@@ -287,13 +287,13 @@ unsafe impl Allocator for System {
 
     type Result<T, E: core::error::Error> = T
     where
-        E: IntoLayout;
+        E: HandleAllocError;
 
     fn map_result<T, E: core::error::Error>(result: Result<T, E>) -> Self::Result<T, E>
     where
-        E: IntoLayout,
+        E: HandleAllocError,
     {
-        result.unwrap_or_else(|e| handle_alloc_error(e.into_layout()))
+        result.unwrap_or_else(|e| e.handle_alloc_error())
     }
 }
 
