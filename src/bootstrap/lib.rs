@@ -1045,8 +1045,8 @@ impl Build {
         what: impl Display,
         target: TargetSelection,
     ) -> Option<gha::Group> {
-        let action = action.into();
-        let msg = format!("{action:?}ing {what} for {target}");
+        let action = action.into().description();
+        let msg = format!("{action} {what} for {target}");
         self.group(&msg)
     }
 
@@ -1058,8 +1058,8 @@ impl Build {
         host: TargetSelection,
         target: TargetSelection,
     ) -> Option<gha::Group> {
-        let action = action.into();
-        let msg = |fmt| format!("{action:?}ing {what} {fmt}");
+        let action = action.into().description();
+        let msg = |fmt| format!("{action} {what} {fmt}");
         let msg = if host == target {
             msg(format_args!("(stage{stage} -> stage{}, {target})", stage + 1))
         } else {
