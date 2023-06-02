@@ -6,5 +6,11 @@ LL | #[allow(dead_code)]
    |
    = note: `-D clippy::allow-attributes` implied by `-D warnings`
 
-error: aborting due to previous error
+error: #[allow] attribute found
+  --> $DIR/allow_attributes.rs:23:30
+   |
+LL | #[cfg_attr(panic = "unwind", allow(dead_code))]
+   |                              ^^^^^ help: replace it with: `expect`
+
+error: aborting due to 2 previous errors
 

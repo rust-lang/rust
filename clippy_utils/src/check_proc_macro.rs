@@ -29,12 +29,16 @@ use rustc_span::{Span, Symbol};
 use rustc_target::spec::abi::Abi;
 
 /// The search pattern to look for. Used by `span_matches_pat`
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub enum Pat {
     /// A single string.
     Str(&'static str),
+    /// A single string.
+    OwnedStr(String),
     /// Any of the given strings.
     MultiStr(&'static [&'static str]),
+    /// Any of the given strings.
+    OwnedMultiStr(Vec<String>),
     /// The string representation of the symbol.
     Sym(Symbol),
     /// Any decimal or hexadecimal digit depending on the location.
@@ -55,12 +59,16 @@ fn span_matches_pat(sess: &Session, span: Span, start_pat: Pat, end_pat: Pat) ->
         let end_str = s.trim_end_matches(|c: char| c.is_whitespace() || c == ')' || c == ',');
         (match start_pat {
             Pat::Str(text) => start_str.starts_with(text),
+            Pat::OwnedStr(text) => start_str.starts_with(&text),
             Pat::MultiStr(texts) => texts.iter().any(|s| start_str.starts_with(s)),
+            Pat::OwnedMultiStr(texts) => texts.iter().any(|s| start_str.starts_with(s)),
             Pat::Sym(sym) => start_str.starts_with(sym.as_str()),
             Pat::Num => start_str.as_bytes().first().map_or(false, u8::is_ascii_digit),
         } && match end_pat {
             Pat::Str(text) => end_str.ends_with(text),
+            Pat::OwnedStr(text) => end_str.starts_with(&text),
             Pat::MultiStr(texts) => texts.iter().any(|s| start_str.ends_with(s)),
+            Pat::OwnedMultiStr(texts) => texts.iter().any(|s| start_str.starts_with(s)),
             Pat::Sym(sym) => end_str.ends_with(sym.as_str()),
             Pat::Num => end_str.as_bytes().last().map_or(false, u8::is_ascii_hexdigit),
         })
@@ -278,11 +286,21 @@ fn fn_kind_pat(tcx: TyCtxt<'_>, kind: &FnKind<'_>, body: &Body<'_>, hir_id: HirI
 fn attr_search_pat(attr: &Attribute) -> (Pat, Pat) {
     match attr.kind {
         AttrKind::Normal(..) => {
-            if matches!(attr.style, AttrStyle::Outer) {
+            let mut pat = if matches!(attr.style, AttrStyle::Outer) {
                 (Pat::Str("#["), Pat::Str("]"))
             } else {
                 (Pat::Str("#!["), Pat::Str("]"))
+            };
+
+            if let Some(ident) = attr.ident() && let Pat::Str(old_pat) = pat.0 {
+                // TODO: I feel like it's likely we can use `Cow` instead but this will require quite a bit of
+                // refactoring
+                // NOTE: This will likely have false positives, like `allow = 1`
+                pat.0 = Pat::OwnedMultiStr(vec![ident.to_string(), old_pat.to_owned()]);
+                pat.1 = Pat::Str("");
             }
+
+            pat
         },
         AttrKind::DocComment(_kind @ CommentKind::Line, ..) => {
             if matches!(attr.style, AttrStyle::Outer) {

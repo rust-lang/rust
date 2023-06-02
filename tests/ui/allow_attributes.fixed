@@ -20,7 +20,7 @@ struct T3;
 #[warn(clippy::needless_borrow)] // Should not lint
 struct T4;
 // `panic = "unwind"` should always be true
-#[cfg_attr(panic = "unwind", allow(dead_code))]
+#[cfg_attr(panic = "unwind", expect(dead_code))]
 struct CfgT;
 
 fn ignore_external() {
