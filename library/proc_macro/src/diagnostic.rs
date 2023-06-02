@@ -50,7 +50,7 @@ impl<'a> MultiSpan for &'a [Span] {
 /// A structure representing a diagnostic message and associated children
 /// messages. Diagnostics are used to report errors when a procedural macro
 /// is generating code, as it's more friendly to macro users and macro developers
-/// than panicking.
+/// than panicking or using `compile_error!()` in the macro's output.
 /// # Examples
 /// Emitting a simple error diagnostic at the callsite.
 /// ```rust
