@@ -195,6 +195,7 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         "s390x" => Architecture::S390x,
         "mips" => Architecture::Mips,
         "mips64" => Architecture::Mips64,
+        "mips64r6" => Architecture::Mips64,
         "x86_64" => {
             if sess.target.pointer_width == 32 {
                 Architecture::X86_64_X32

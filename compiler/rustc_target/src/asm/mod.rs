@@ -240,6 +240,7 @@ impl FromStr for InlineAsmArch {
             "loongarch64" => Ok(Self::LoongArch64),
             "mips" => Ok(Self::Mips),
             "mips64" => Ok(Self::Mips64),
+            "mips64r6" => Ok(Self::Mips64),
             "s390x" => Ok(Self::S390x),
             "spirv" => Ok(Self::SpirV),
             "wasm32" => Ok(Self::Wasm32),
