@@ -1852,10 +1852,53 @@ impl<'a> Parser<'a> {
         let (fields, _trailing, _recovered) = self.parse_seq_to_before_end(
             &TokenKind::CloseDelim(Delimiter::Parenthesis),
             seq_sep,
-            Parser::parse_field_name,
+            |this| {
+                let token::Literal(token::Lit { kind: token::Float, symbol, suffix }) = this.token.kind
+                else {
+                    return Ok(thin_vec![this.parse_field_name()?]);
+                };
+                let res = match this.break_up_float(symbol) {
+                    // 1e2
+                    DestructuredFloat::Single(sym, sp) => {
+                        this.bump();
+                        thin_vec![Ident::new(sym, sp)]
+                    }
+                    // 1.
+                    DestructuredFloat::TrailingDot(sym, sym_span, dot_span) => {
+                        assert!(suffix.is_none());
+                        // Analogous to Self::break_and_eat
+                        this.token_cursor.break_last_token = true;
+                        // This might work, in cases like `1. 2.3`, and might not,
+                        // in cases like `offset_of!(Ty, 1.)`.
+                        this.token = Token::new(token::Ident(sym, false), sym_span);
+                        this.bump_with((Token::new(token::Dot, dot_span), this.token_spacing));
+                        thin_vec![Ident::new(sym, sym_span)]
+                    }
+                    // 1.2 | 1.2e3
+                    DestructuredFloat::MiddleDot(
+                        symbol1,
+                        ident1_span,
+                        _dot_span,
+                        symbol2,
+                        ident2_span,
+                    ) => {
+                        this.bump();
+                        thin_vec![
+                            Ident::new(symbol1, ident1_span),
+                            Ident::new(symbol2, ident2_span)
+                        ]
+                    }
+                    DestructuredFloat::Error => {
+                        this.bump();
+                        thin_vec![Ident::new(symbol, this.prev_token.span)]
+                    }
+                };
+                Ok(res)
+            },
         )?;
+        let fields = fields.into_iter().flatten().collect::<Vec<_>>();
         let span = lo.to(self.token.span);
-        Ok(self.mk_expr(span, ExprKind::OffsetOf(container, fields.to_vec().into())))
+        Ok(self.mk_expr(span, ExprKind::OffsetOf(container, fields.into())))
     }
 
     /// Returns a string literal if the next token is a string literal.

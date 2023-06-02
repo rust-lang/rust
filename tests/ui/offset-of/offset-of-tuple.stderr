@@ -1,37 +1,241 @@
+error: suffixes on a tuple index are invalid
+  --> $DIR/offset-of-tuple.rs:19:35
+   |
+LL |     builtin # offset_of((u8, u8), 1_u8);
+   |                                   ^^^^ invalid suffix `u8`
+
 error: expected identifier, found `+`
-  --> $DIR/offset-of-tuple.rs:9:35
+  --> $DIR/offset-of-tuple.rs:23:37
    |
-LL |     builtin # offset_of((u8, u8), +1);
-   |                                   ^ expected identifier
+LL |     { builtin # offset_of((u8, u8), +1) };
+   |                                     ^ expected identifier
+
+error: expected identifier, found `)`
+  --> $DIR/offset-of-tuple.rs:24:39
+   |
+LL |     { builtin # offset_of((u8, u8), 1.) };
+   |                                       ^ expected identifier
+
+error: expected identifier, found `)`
+  --> $DIR/offset-of-tuple.rs:25:40
+   |
+LL |     { builtin # offset_of((u8, u8), 1 .) };
+   |                                        ^ expected identifier
+
+error: expected identifier, found `)`
+  --> $DIR/offset-of-tuple.rs:47:45
+   |
+LL |     { builtin # offset_of(ComplexTup, 0.0.1.) };
+   |                                             ^ expected identifier
+
+error: expected identifier, found `)`
+  --> $DIR/offset-of-tuple.rs:48:46
+   |
+LL |     { builtin # offset_of(ComplexTup, 0 .0.1.) };
+   |                                              ^ expected identifier
+
+error: expected identifier, found `)`
+  --> $DIR/offset-of-tuple.rs:49:47
+   |
+LL |     { builtin # offset_of(ComplexTup, 0 . 0.1.) };
+   |                                               ^ expected identifier
+
+error: expected identifier, found `)`
+  --> $DIR/offset-of-tuple.rs:50:46
+   |
+LL |     { builtin # offset_of(ComplexTup, 0. 0.1.) };
+   |                                              ^ expected identifier
+
+error: expected identifier, found `)`
+  --> $DIR/offset-of-tuple.rs:51:46
+   |
+LL |     { builtin # offset_of(ComplexTup, 0.0 .1.) };
+   |                                              ^ expected identifier
+
+error: expected identifier, found `)`
+  --> $DIR/offset-of-tuple.rs:52:47
+   |
+LL |     { builtin # offset_of(ComplexTup, 0.0 . 1.) };
+   |                                               ^ expected identifier
+
+error: expected identifier, found `)`
+  --> $DIR/offset-of-tuple.rs:53:46
+   |
+LL |     { builtin # offset_of(ComplexTup, 0.0. 1.) };
+   |                                              ^ expected identifier
+
+error: suffixes on a tuple index are invalid
+  --> $DIR/offset-of-tuple.rs:10:26
+   |
+LL |     offset_of!((u8, u8), 1_u8);
+   |                          ^^^^ invalid suffix `u8`
 
 error: no rules expected the token `1`
-  --> $DIR/offset-of-tuple.rs:6:38
+  --> $DIR/offset-of-tuple.rs:12:27
    |
-LL |     core::mem::offset_of!((u8, u8), +1);
-   |                                      ^ no rules expected this token in macro call
+LL |     offset_of!((u8, u8), +1);
+   |                           ^ no rules expected this token in macro call
    |
    = note: while trying to match sequence start
 
 error: no rules expected the token `1`
-  --> $DIR/offset-of-tuple.rs:7:38
+  --> $DIR/offset-of-tuple.rs:13:27
    |
-LL |     core::mem::offset_of!((u8, u8), -1);
-   |                                      ^ no rules expected this token in macro call
+LL |     offset_of!((u8, u8), -1);
+   |                           ^ no rules expected this token in macro call
    |
    = note: while trying to match sequence start
 
-error[E0609]: no field `_0` on type `(u8, u8)`
-  --> $DIR/offset-of-tuple.rs:5:37
+error: expected identifier, found `)`
+  --> $DIR/offset-of-tuple.rs:14:5
    |
-LL |     core::mem::offset_of!((u8, u8), _0);
-   |                                     ^^
+LL |     offset_of!((u8, u8), 1.);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     expected identifier
+   |     in this macro invocation
+   |
+   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unexpected end of macro invocation
+  --> $DIR/offset-of-tuple.rs:15:29
+   |
+LL |     offset_of!((u8, u8), 1 .);
+   |                             ^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$fields:tt`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+
+error: expected identifier, found `)`
+  --> $DIR/offset-of-tuple.rs:36:5
+   |
+LL |     offset_of!(ComplexTup, 0.0.1.);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     expected identifier
+   |     in this macro invocation
+   |
+   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unexpected end of macro invocation
+  --> $DIR/offset-of-tuple.rs:37:35
+   |
+LL |     offset_of!(ComplexTup, 0 .0.1.);
+   |                                   ^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$fields:tt`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+
+error: unexpected end of macro invocation
+  --> $DIR/offset-of-tuple.rs:38:36
+   |
+LL |     offset_of!(ComplexTup, 0 . 0.1.);
+   |                                    ^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$fields:tt`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+
+error: no rules expected the token `0.1`
+  --> $DIR/offset-of-tuple.rs:39:31
+   |
+LL |     offset_of!(ComplexTup, 0. 0.1.);
+   |                               ^^^ no rules expected this token in macro call
+   |
+   = note: while trying to match sequence start
+
+error: expected identifier, found `)`
+  --> $DIR/offset-of-tuple.rs:40:5
+   |
+LL |     offset_of!(ComplexTup, 0.0 .1.);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     expected identifier
+   |     in this macro invocation
+   |
+   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected identifier, found `)`
+  --> $DIR/offset-of-tuple.rs:41:5
+   |
+LL |     offset_of!(ComplexTup, 0.0 . 1.);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     expected identifier
+   |     in this macro invocation
+   |
+   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected identifier, found `)`
+  --> $DIR/offset-of-tuple.rs:42:5
+   |
+LL |     offset_of!(ComplexTup, 0.0. 1.);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     expected identifier
+   |     in this macro invocation
+   |
+   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0609]: no field `_0` on type `(u8, u8)`
-  --> $DIR/offset-of-tuple.rs:8:35
+  --> $DIR/offset-of-tuple.rs:7:26
+   |
+LL |     offset_of!((u8, u8), _0);
+   |                          ^^
+
+error[E0609]: no field `01` on type `(u8, u8)`
+  --> $DIR/offset-of-tuple.rs:8:26
+   |
+LL |     offset_of!((u8, u8), 01);
+   |                          ^^
+
+error[E0609]: no field `1e2` on type `(u8, u8)`
+  --> $DIR/offset-of-tuple.rs:9:26
+   |
+LL |     offset_of!((u8, u8), 1e2);
+   |                          ^^^
+
+error[E0609]: no field `1_` on type `(u8, u8)`
+  --> $DIR/offset-of-tuple.rs:10:26
+   |
+LL |     offset_of!((u8, u8), 1_u8);
+   |                          ^^^^
+
+error[E0609]: no field `1e2` on type `(u8, u8)`
+  --> $DIR/offset-of-tuple.rs:16:35
+   |
+LL |     builtin # offset_of((u8, u8), 1e2);
+   |                                   ^^^
+
+error[E0609]: no field `_0` on type `(u8, u8)`
+  --> $DIR/offset-of-tuple.rs:17:35
    |
 LL |     builtin # offset_of((u8, u8), _0);
    |                                   ^^
 
-error: aborting due to 5 previous errors
+error[E0609]: no field `01` on type `(u8, u8)`
+  --> $DIR/offset-of-tuple.rs:18:35
+   |
+LL |     builtin # offset_of((u8, u8), 01);
+   |                                   ^^
+
+error[E0609]: no field `1_` on type `(u8, u8)`
+  --> $DIR/offset-of-tuple.rs:19:35
+   |
+LL |     builtin # offset_of((u8, u8), 1_u8);
+   |                                   ^^^^
+
+error[E0609]: no field `2` on type `(u8, u16)`
+  --> $DIR/offset-of-tuple.rs:31:47
+   |
+LL |     offset_of!(((u8, u16), (u32, u16, u8)), 0.2);
+   |                                               ^
+
+error[E0609]: no field `0` on type `u8`
+  --> $DIR/offset-of-tuple.rs:33:49
+   |
+LL |     offset_of!(((u8, u16), (u32, u16, u8)), 1.2.0);
+   |                                                 ^
+
+error: aborting due to 33 previous errors
 
 For more information about this error, try `rustc --explain E0609`.
