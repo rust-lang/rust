@@ -25,29 +25,39 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let def_id = goal.predicate.def_id();
         match self.tcx().def_kind(def_id) {
             DefKind::AssocTy | DefKind::AssocConst => {
-                match self.tcx().associated_item(def_id).container {
-                    ty::AssocItemContainer::TraitContainer => {
-                        // To only compute normalization once for each projection we only
-                        // normalize if the expected term is an unconstrained inference variable.
-                        //
-                        // E.g. for `<T as Trait>::Assoc == u32` we recursively compute the goal
-                        // `exists<U> <T as Trait>::Assoc == U` and then take the resulting type for
-                        // `U` and equate it with `u32`. This means that we don't need a separate
-                        // projection cache in the solver.
-                        if self.term_is_fully_unconstrained(goal) {
+                // To only compute normalization once for each projection we only
+                // assemble normalization candidates if the expected term is an
+                // unconstrained inference variable.
+                //
+                // Why: For better cache hits, since if we have an unconstrained RHS then
+                // there are only as many cache keys as there are (canonicalized) alias
+                // types in each normalizes-to goal. This also weakens inference in a
+                // forwards-compatible way so we don't use the value of the RHS term to
+                // affect candidate assembly for projections.
+                //
+                // E.g. for `<T as Trait>::Assoc == u32` we recursively compute the goal
+                // `exists<U> <T as Trait>::Assoc == U` and then take the resulting type for
+                // `U` and equate it with `u32`. This means that we don't need a separate
+                // projection cache in the solver, since we're piggybacking off of regular
+                // goal caching.
+                if self.term_is_fully_unconstrained(goal) {
+                    match self.tcx().associated_item(def_id).container {
+                        ty::AssocItemContainer::TraitContainer => {
                             let candidates = self.assemble_and_evaluate_candidates(goal);
                             self.merge_candidates(candidates)
-                        } else {
-                            self.set_normalizes_to_hack_goal(goal);
-                            self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                        }
+                        ty::AssocItemContainer::ImplContainer => {
+                            bug!("IATs not supported here yet")
                         }
                     }
-                    ty::AssocItemContainer::ImplContainer => bug!("IATs not supported here yet"),
+                } else {
+                    self.set_normalizes_to_hack_goal(goal);
+                    self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 }
             }
             DefKind::AnonConst => self.normalize_anon_const(goal),
             DefKind::OpaqueTy => self.normalize_opaque_type(goal),
-            kind => bug!("uknown DefKind {} in projection goal: {goal:#?}", kind.descr(def_id)),
+            kind => bug!("unknown DefKind {} in projection goal: {goal:#?}", kind.descr(def_id)),
         }
     }
 
@@ -203,17 +213,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             );
 
             // Finally we construct the actual value of the associated type.
-            let is_const = matches!(tcx.def_kind(assoc_def.item.def_id), DefKind::AssocConst);
-            let ty = tcx.type_of(assoc_def.item.def_id);
-            let term: ty::EarlyBinder<ty::Term<'tcx>> = if is_const {
-                let identity_substs =
-                    ty::InternalSubsts::identity_for_item(tcx, assoc_def.item.def_id);
-                let did = assoc_def.item.def_id;
-                let kind =
-                    ty::ConstKind::Unevaluated(ty::UnevaluatedConst::new(did, identity_substs));
-                ty.map_bound(|ty| tcx.mk_const(kind, ty).into())
-            } else {
-                ty.map_bound(|ty| ty.into())
+            let term = match assoc_def.item.kind {
+                ty::AssocKind::Type => tcx.type_of(assoc_def.item.def_id).map_bound(|ty| ty.into()),
+                ty::AssocKind::Const => bug!("associated const projection is not supported yet"),
+                ty::AssocKind::Fn => unreachable!("we should never project to a fn"),
             };
 
             ecx.eq(goal.param_env, goal.predicate.term, term.subst(tcx, substs))
