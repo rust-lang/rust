@@ -7212,43 +7212,169 @@ generate uint64x2_t
 
 /// Floating-point round to 32-bit integer, using current rounding mode
 name = vrnd32x
-a = 1.1, 1.9, -1.7, -2.3
-validate 1.0, 2.0, -2.0, -2.0
 target = frintts
+
+// For validation, the rounding mode should be the default: round-to-nearest (ties-to-even).
+a = -1.5, 2.9, 1.5, -2.5
+validate -2.0, 3.0, 2.0, -2.0
 
 aarch64 = frint32x
 link-aarch64 = frint32x._EXT_
-generate float32x2_t, float32x4_t, float64x2_t
+generate float32x2_t, float32x4_t
+
+// The float64x1_t form uses a different LLVM link and isn't supported by Clang
+// (and so has no intrinsic-test), so perform extra validation to make sure
+// that it matches the float64x2_t form.
+
+a = 1.5, -2.5
+validate 2.0, -2.0
+// - The biggest f64 that rounds to i32::MAX.
+// - The smallest positive f64 that rounds out of range.
+a = 2147483647.499999762, 2147483647.5
+validate 2147483647.0, -2147483648.0
+// - The smallest f64 that rounds to i32::MIN + 1.
+// - The largest negative f64 that rounds out of range.
+a = -2147483647.499999762, -2147483648.500000477
+validate -2147483647.0, -2147483648.0
+generate float64x2_t
+
+// Odd-numbered tests for float64x1_t coverage.
+a = 2.9
+validate 3.0
+a = -2.5
+validate -2.0
+a = 2147483647.5
+validate -2147483648.0
+a = -2147483648.500000477
+validate -2147483648.0
+
+multi_fn = transmute, {self-out-_, {simd_extract, a, 0}}
+link-aarch64 = llvm.aarch64.frint32x.f64:f64:::f64
+generate float64x1_t
 
 /// Floating-point round to 32-bit integer toward zero
 name = vrnd32z
-a = 1.1, 1.9, -1.7, -2.3
-validate 1.0, 1.0, -1.0, -2.0
 target = frintts
+
+a = -1.5, 2.9, 1.5, -2.5
+validate -1.0, 2.0, 1.0, -2.0
 
 aarch64 = frint32z
 link-aarch64 = frint32z._EXT_
-generate float32x2_t, float32x4_t, float64x2_t
+generate float32x2_t, float32x4_t
+
+// The float64x1_t form uses a different LLVM link and isn't supported by Clang
+// (and so has no intrinsic-test), so perform extra validation to make sure
+// that it matches the float64x2_t form.
+
+a = 1.5, -2.5
+validate 1.0, -2.0
+// - The biggest f64 that rounds to i32::MAX.
+// - The smallest positive f64 that rounds out of range.
+a = 2147483647.999999762, 2147483648.0
+validate 2147483647.0, -2147483648.0
+// - The smallest f64 that rounds to i32::MIN + 1.
+// - The largest negative f64 that rounds out of range.
+a = -2147483647.999999762, -2147483649.0
+validate -2147483647.0, -2147483648.0
+generate float64x2_t
+
+// Odd-numbered tests for float64x1_t coverage.
+a = 2.9
+validate 2.0
+a = -2.5
+validate -2.0
+a = 2147483648.0
+validate -2147483648.0
+a = -2147483649.0
+validate -2147483648.0
+
+multi_fn = transmute, {self-out-_, {simd_extract, a, 0}}
+link-aarch64 = llvm.aarch64.frint32z.f64:f64:::f64
+generate float64x1_t
 
 /// Floating-point round to 64-bit integer, using current rounding mode
 name = vrnd64x
-a = 1.1, 1.9, -1.7, -2.3
-validate 1.0, 2.0, -2.0, -2.0
 target = frintts
+
+// For validation, the rounding mode should be the default: round-to-nearest (ties-to-even).
+a = -1.5, 2.9, 1.5, -2.5
+validate -2.0, 3.0, 2.0, -2.0
 
 aarch64 = frint64x
 link-aarch64 = frint64x._EXT_
-generate float32x2_t, float32x4_t, float64x2_t
+generate float32x2_t, float32x4_t
+
+// The float64x1_t form uses a different LLVM link and isn't supported by Clang
+// (and so has no intrinsic-test), so perform extra validation to make sure
+// that it matches the float64x2_t form.
+
+a = 1.5, -2.5
+validate 2.0, -2.0
+// - The biggest f64 representable as an i64 (0x7ffffffffffffc00).
+// - The smallest positive f64 that is out of range (2^63).
+a = 9223372036854774784.0, 9223372036854775808.0
+validate 9223372036854774784.0, -9223372036854775808.0
+// - The smallest f64 representable as an i64 (i64::MIN).
+// - The biggest negative f64 that is out of range.
+a = -9223372036854775808.0, -9223372036854777856.0
+validate -9223372036854775808.0, -9223372036854775808.0
+generate float64x2_t
+
+// Odd-numbered tests for float64x1_t coverage.
+a = 2.9
+validate 3.0
+a = -2.5
+validate -2.0
+a = 9223372036854775808.0
+validate -9223372036854775808.0
+a = -9223372036854777856.0
+validate -9223372036854775808.0
+
+multi_fn = transmute, {self-out-_, {simd_extract, a, 0}}
+link-aarch64 = llvm.aarch64.frint64x.f64:f64:::f64
+generate float64x1_t
 
 /// Floating-point round to 64-bit integer toward zero
 name = vrnd64z
-a = 1.1, 1.9, -1.7, -2.3
-validate 1.0, 1.0, -1.0, -2.0
 target = frintts
+
+a = -1.5, 2.9, 1.5, -2.5
+validate -1.0, 2.0, 1.0, -2.0
 
 aarch64 = frint64z
 link-aarch64 = frint64z._EXT_
-generate float32x2_t, float32x4_t, float64x2_t
+generate float32x2_t, float32x4_t
+
+// The float64x1_t form uses a different LLVM link and isn't supported by Clang
+// (and so has no intrinsic-test), so perform extra validation to make sure
+// that it matches the float64x2_t form.
+
+a = 1.5, -2.5
+validate 1.0, -2.0
+// - The biggest f64 representable as an i64 (0x7ffffffffffffc00).
+// - The smallest positive f64 that is out of range (2^63).
+a = 9223372036854774784.0, 9223372036854775808.0
+validate 9223372036854774784.0, -9223372036854775808.0
+// - The smallest f64 representable as an i64 (i64::MIN).
+// - The biggest negative f64 that is out of range.
+a = -9223372036854775808.0, -9223372036854777856.0
+validate -9223372036854775808.0, -9223372036854775808.0
+generate float64x2_t
+
+// Odd-numbered tests for float64x1_t coverage.
+a = 2.9
+validate 2.0
+a = -2.5
+validate -2.0
+a = 9223372036854775808.0
+validate -9223372036854775808.0
+a = -9223372036854777856.0
+validate -9223372036854775808.0
+
+multi_fn = transmute, {self-out-_, {simd_extract, a, 0}}
+link-aarch64 = llvm.aarch64.frint64z.f64:f64:::f64
+generate float64x1_t
 
 /// Transpose elements
 name = vtrn
