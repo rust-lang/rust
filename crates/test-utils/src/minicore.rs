@@ -941,6 +941,13 @@ pub mod option {
             }
         }
 
+        pub const fn as_ref(&self) -> Option<&T> {
+            match self {
+                Some(x) => Some(x),
+                None => None,
+            }
+        }
+
         pub fn and<U>(self, optb: Option<U>) -> Option<U> {
             loop {}
         }

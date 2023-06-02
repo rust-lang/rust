@@ -2107,14 +2107,6 @@ impl Const {
     pub fn render_eval(self, db: &dyn HirDatabase) -> Result<String, ConstEvalError> {
         let c = db.const_eval(self.id.into(), Substitution::empty(Interner))?;
         let r = format!("{}", HexifiedConst(c).display(db));
-        // We want to see things like `<utf8-error>` and `<layout-error>` as they are probably bug in our
-        // implementation, but there is no need to show things like `<enum-not-supported>` or `<ref-not-supported>` to
-        // the user.
-        if r.contains("not-supported>") {
-            return Err(ConstEvalError::MirEvalError(MirEvalError::NotSupported(
-                "rendering complex constants".to_string(),
-            )));
-        }
         return Ok(r);
     }
 }

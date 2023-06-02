@@ -30,7 +30,7 @@ use crate::{
     method_resolution::{is_dyn_method, lookup_impl_method},
     name, static_lifetime,
     traits::FnTrait,
-    utils::ClosureSubst,
+    utils::{detect_variant_from_bytes, ClosureSubst},
     CallableDefId, ClosureId, Const, ConstScalar, FnDefId, GenericArgData, Interner, MemoryMap,
     Substitution, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind,
 };
@@ -1536,36 +1536,99 @@ impl Evaluator<'_> {
     }
 
     fn create_memory_map(&self, bytes: &[u8], ty: &Ty, locals: &Locals<'_>) -> Result<MemoryMap> {
-        // FIXME: support indirect references
-        let mut mm = MemoryMap::default();
-        match ty.kind(Interner) {
-            TyKind::Ref(_, _, t) => {
-                let size = self.size_align_of(t, locals)?;
-                match size {
-                    Some((size, _)) => {
-                        let addr_usize = from_bytes!(usize, bytes);
-                        mm.insert(
-                            addr_usize,
-                            self.read_memory(Address::from_usize(addr_usize), size)?.to_vec(),
-                        )
-                    }
-                    None => {
-                        let element_size = match t.kind(Interner) {
-                            TyKind::Str => 1,
-                            TyKind::Slice(t) => {
-                                self.size_of_sized(t, locals, "slice inner type")?
+        fn rec(
+            this: &Evaluator<'_>,
+            bytes: &[u8],
+            ty: &Ty,
+            locals: &Locals<'_>,
+            mm: &mut MemoryMap,
+        ) -> Result<()> {
+            match ty.kind(Interner) {
+                TyKind::Ref(_, _, t) => {
+                    let size = this.size_align_of(t, locals)?;
+                    match size {
+                        Some((size, _)) => {
+                            let addr_usize = from_bytes!(usize, bytes);
+                            mm.insert(
+                                addr_usize,
+                                this.read_memory(Address::from_usize(addr_usize), size)?.to_vec(),
+                            )
+                        }
+                        None => {
+                            let mut check_inner = None;
+                            let element_size = match t.kind(Interner) {
+                                TyKind::Str => 1,
+                                TyKind::Slice(t) => {
+                                    check_inner = Some(t);
+                                    this.size_of_sized(t, locals, "slice inner type")?
+                                }
+                                _ => return Ok(()), // FIXME: support other kind of unsized types
+                            };
+                            let (addr, meta) = bytes.split_at(bytes.len() / 2);
+                            let count = from_bytes!(usize, meta);
+                            let size = element_size * count;
+                            let addr = Address::from_bytes(addr)?;
+                            let b = this.read_memory(addr, size)?;
+                            mm.insert(addr.to_usize(), b.to_vec());
+                            if let Some(ty) = check_inner {
+                                for i in 0..count {
+                                    let offset = element_size * i;
+                                    rec(this, &b[offset..offset + element_size], ty, locals, mm)?;
+                                }
                             }
-                            _ => return Ok(mm), // FIXME: support other kind of unsized types
-                        };
-                        let (addr, meta) = bytes.split_at(bytes.len() / 2);
-                        let size = element_size * from_bytes!(usize, meta);
-                        let addr = Address::from_bytes(addr)?;
-                        mm.insert(addr.to_usize(), self.read_memory(addr, size)?.to_vec());
+                        }
                     }
                 }
+                chalk_ir::TyKind::Tuple(_, subst) => {
+                    let layout = this.layout(ty)?;
+                    for (id, ty) in subst.iter(Interner).enumerate() {
+                        let ty = ty.assert_ty_ref(Interner); // Tuple only has type argument
+                        let offset = layout.fields.offset(id).bytes_usize();
+                        let size = this.layout(ty)?.size.bytes_usize();
+                        rec(this, &bytes[offset..offset + size], ty, locals, mm)?;
+                    }
+                }
+                chalk_ir::TyKind::Adt(adt, subst) => match adt.0 {
+                    AdtId::StructId(s) => {
+                        let data = this.db.struct_data(s);
+                        let layout = this.layout(ty)?;
+                        let field_types = this.db.field_types(s.into());
+                        for (f, _) in data.variant_data.fields().iter() {
+                            let offset = layout
+                                .fields
+                                .offset(u32::from(f.into_raw()) as usize)
+                                .bytes_usize();
+                            let ty = &field_types[f].clone().substitute(Interner, subst);
+                            let size = this.layout(ty)?.size.bytes_usize();
+                            rec(this, &bytes[offset..offset + size], ty, locals, mm)?;
+                        }
+                    }
+                    AdtId::EnumId(e) => {
+                        let layout = this.layout(ty)?;
+                        if let Some((v, l)) =
+                            detect_variant_from_bytes(&layout, this.db, this.crate_id, bytes, e)
+                        {
+                            let data = &this.db.enum_data(e).variants[v].variant_data;
+                            let field_types = this
+                                .db
+                                .field_types(EnumVariantId { parent: e, local_id: v }.into());
+                            for (f, _) in data.fields().iter() {
+                                let offset =
+                                    l.fields.offset(u32::from(f.into_raw()) as usize).bytes_usize();
+                                let ty = &field_types[f].clone().substitute(Interner, subst);
+                                let size = this.layout(ty)?.size.bytes_usize();
+                                rec(this, &bytes[offset..offset + size], ty, locals, mm)?;
+                            }
+                        }
+                    }
+                    AdtId::UnionId(_) => (),
+                },
+                _ => (),
             }
-            _ => (),
+            Ok(())
         }
+        let mut mm = MemoryMap::default();
+        rec(self, bytes, ty, locals, &mut mm)?;
         Ok(mm)
     }
 
