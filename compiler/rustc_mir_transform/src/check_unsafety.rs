@@ -421,10 +421,8 @@ impl<'tcx> intravisit::Visitor<'tcx> for UnusedUnsafeVisitor<'_, 'tcx> {
         intravisit::walk_block(self, block);
     }
 
-    fn visit_anon_const(&mut self, c: &'tcx hir::AnonConst) {
-        if matches!(self.tcx.def_kind(c.def_id), DefKind::InlineConst) {
-            self.visit_body(self.tcx.hir().body(c.body))
-        }
+    fn visit_inline_const(&mut self, c: &'tcx hir::ConstBlock) {
+        self.visit_body(self.tcx.hir().body(c.body))
     }
 
     fn visit_fn(

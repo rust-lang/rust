@@ -270,6 +270,7 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
                 | hir::Node::Variant(..)
                 | hir::Node::Field(..)
                 | hir::Node::AnonConst(..)
+                | hir::Node::ConstBlock(..)
                 | hir::Node::Stmt(..)
                 | hir::Node::PathSegment(..)
                 | hir::Node::Ty(..)

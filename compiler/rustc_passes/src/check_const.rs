@@ -199,6 +199,11 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
         self.recurse_into(kind, None, |this| intravisit::walk_anon_const(this, anon));
     }
 
+    fn visit_inline_const(&mut self, block: &'tcx hir::ConstBlock) {
+        let kind = Some(hir::ConstContext::Const);
+        self.recurse_into(kind, None, |this| intravisit::walk_inline_const(this, block));
+    }
+
     fn visit_body(&mut self, body: &'tcx hir::Body<'tcx>) {
         let owner = self.tcx.hir().body_owner_def_id(body.id());
         let kind = self.tcx.hir().body_const_context(owner);

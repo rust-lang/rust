@@ -24,7 +24,7 @@ enum Context {
     Closure(Span),
     AsyncClosure(Span),
     LabeledBlock,
-    AnonConst,
+    Constant,
 }
 
 #[derive(Copy, Clone)]
@@ -53,7 +53,11 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
     }
 
     fn visit_anon_const(&mut self, c: &'hir hir::AnonConst) {
-        self.with_context(AnonConst, |v| intravisit::walk_anon_const(v, c));
+        self.with_context(Constant, |v| intravisit::walk_anon_const(v, c));
+    }
+
+    fn visit_inline_const(&mut self, c: &'hir hir::ConstBlock) {
+        self.with_context(Constant, |v| intravisit::walk_inline_const(v, c));
     }
 
     fn visit_expr(&mut self, e: &'hir hir::Expr<'hir>) {
@@ -192,7 +196,7 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
             AsyncClosure(closure_span) => {
                 self.sess.emit_err(BreakInsideAsyncBlock { span, closure_span, name });
             }
-            Normal | AnonConst => {
+            Normal | Constant => {
                 self.sess.emit_err(OutsideLoop { span, name, is_break: name == "break" });
             }
         }
