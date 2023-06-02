@@ -1,6 +1,7 @@
 //@run-rustfix
 // rustfix-only-machine-applicable
 #![feature(lint_reasons)]
+#![warn(clippy::redundant_clone)]
 #![allow(clippy::drop_non_drop, clippy::implicit_clone, clippy::uninlined_format_args)]
 
 use std::ffi::OsString;
