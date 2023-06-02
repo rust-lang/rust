@@ -1,0 +1,17 @@
+// Regression test for issue 111184, where ty::GeneratorWitness were not expected to occur in
+// encode_ty and caused the compiler to ICE.
+//
+// needs-sanitizer-cfi
+// compile-flags: -Clto -Ctarget-feature=-crt-static -Zsanitizer=cfi --edition=2021
+// no-prefer-dynamic
+// only-x86_64-unknown-linux-gnu
+// run-pass
+
+use std::future::Future;
+
+async fn foo() {}
+fn bar<T>(_: impl Future<Output = T>) {}
+
+fn main() {
+    bar(foo());
+}
