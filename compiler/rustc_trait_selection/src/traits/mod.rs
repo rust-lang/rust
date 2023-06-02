@@ -62,9 +62,7 @@ pub use self::specialize::specialization_graph::FutureCompatOverlapErrorKind;
 pub use self::specialize::{
     specialization_graph, translate_substs, translate_substs_with_cause, OverlapError,
 };
-pub use self::structural_match::{
-    search_for_adt_const_param_violation, search_for_structural_match_violation,
-};
+pub use self::structural_match::search_for_structural_match_violation;
 pub use self::structural_normalize::StructurallyNormalizeExt;
 pub use self::util::elaborate;
 pub use self::util::{expand_trait_aliases, TraitAliasExpander};

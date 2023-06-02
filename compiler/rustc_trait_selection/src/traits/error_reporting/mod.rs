@@ -149,6 +149,12 @@ pub trait TypeErrCtxtExt<'tcx> {
         root_obligation: &PredicateObligation<'tcx>,
         error: &SelectionError<'tcx>,
     );
+
+    fn report_const_param_not_wf(
+        &self,
+        ty: Ty<'tcx>,
+        obligation: &PredicateObligation<'tcx>,
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>;
 }
 
 impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
@@ -641,6 +647,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         span = obligation.cause.span;
                     }
                 }
+
                 if let ObligationCauseCode::CompareImplItemObligation {
                     impl_item_def_id,
                     trait_item_def_id,
@@ -654,6 +661,13 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         &format!("`{}`", obligation.predicate),
                     )
                     .emit();
+                    return;
+                }
+
+                // Report a const-param specific error
+                if let ObligationCauseCode::ConstParam(ty) = *obligation.cause.code().peel_derives()
+                {
+                    self.report_const_param_not_wf(ty, &obligation).emit();
                     return;
                 }
 
@@ -1162,6 +1176,102 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         self.note_obligation_cause(&mut err, &obligation);
         self.point_at_returns_when_relevant(&mut err, &obligation);
         err.emit();
+    }
+
+    fn report_const_param_not_wf(
+        &self,
+        ty: Ty<'tcx>,
+        obligation: &PredicateObligation<'tcx>,
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+        let span = obligation.cause.span;
+
+        let mut diag = match ty.kind() {
+            _ if ty.has_param() => {
+                span_bug!(span, "const param tys cannot mention other generic parameters");
+            }
+            ty::Float(_) => {
+                struct_span_err!(
+                    self.tcx.sess,
+                    span,
+                    E0741,
+                    "`{ty}` is forbidden as the type of a const generic parameter",
+                )
+            }
+            ty::FnPtr(_) => {
+                struct_span_err!(
+                    self.tcx.sess,
+                    span,
+                    E0741,
+                    "using function pointers as const generic parameters is forbidden",
+                )
+            }
+            ty::RawPtr(_) => {
+                struct_span_err!(
+                    self.tcx.sess,
+                    span,
+                    E0741,
+                    "using raw pointers as const generic parameters is forbidden",
+                )
+            }
+            ty::Adt(def, _) => {
+                // We should probably see if we're *allowed* to derive `ConstParamTy` on the type...
+                let mut diag = struct_span_err!(
+                    self.tcx.sess,
+                    span,
+                    E0741,
+                    "`{ty}` must implement `ConstParamTy` to be used as the type of a const generic parameter",
+                );
+                // Only suggest derive if this isn't a derived obligation,
+                // and the struct is local.
+                if let Some(span) = self.tcx.hir().span_if_local(def.did())
+                    && obligation.cause.code().parent().is_none()
+                {
+                    if ty.is_structural_eq_shallow(self.tcx) {
+                        diag.span_suggestion(
+                            span,
+                            "add `#[derive(ConstParamTy)]` to the struct",
+                            "#[derive(ConstParamTy)]\n",
+                            Applicability::MachineApplicable,
+                        );
+                    } else {
+                        // FIXME(adt_const_params): We should check there's not already an
+                        // overlapping `Eq`/`PartialEq` impl.
+                        diag.span_suggestion(
+                            span,
+                            "add `#[derive(ConstParamTy, PartialEq, Eq)]` to the struct",
+                            "#[derive(ConstParamTy, PartialEq, Eq)]\n",
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                }
+                diag
+            }
+            _ => {
+                struct_span_err!(
+                    self.tcx.sess,
+                    span,
+                    E0741,
+                    "`{ty}` can't be used as a const parameter type",
+                )
+            }
+        };
+
+        let mut code = obligation.cause.code();
+        let mut pred = obligation.predicate.to_opt_poly_trait_pred();
+        while let Some((next_code, next_pred)) = code.parent() {
+            if let Some(pred) = pred {
+                let pred = self.instantiate_binder_with_placeholders(pred);
+                diag.note(format!(
+                    "`{}` must implement `{}`, but it does not",
+                    pred.self_ty(),
+                    pred.print_modifiers_and_trait_path()
+                ));
+            }
+            code = next_code;
+            pred = next_pred;
+        }
+
+        diag
     }
 }
 

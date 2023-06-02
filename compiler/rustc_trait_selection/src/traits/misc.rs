@@ -100,7 +100,8 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
         | ty::Str
         | ty::Array(..)
         | ty::Slice(_)
-        | ty::Ref(.., hir::Mutability::Not) => return Ok(()),
+        | ty::Ref(.., hir::Mutability::Not)
+        | ty::Tuple(_) => return Ok(()),
 
         &ty::Adt(adt, substs) => (adt, substs),
 

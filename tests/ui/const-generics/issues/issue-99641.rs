@@ -3,10 +3,10 @@
 
 fn main() {
     pub struct Color<const WHITE: (fn(),)>;
-    //~^ ERROR using function pointers
+    //~^ ERROR `(fn(),)` can't be used as a const parameter type
 
     impl<const WHITE: (fn(),)> Color<WHITE> {
-        //~^ ERROR using function pointers
+        //~^ ERROR `(fn(),)` can't be used as a const parameter type
         pub fn new() -> Self {
             Color::<WHITE>
         }
