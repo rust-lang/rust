@@ -1,0 +1,28 @@
+error: feature may misspelled as features
+  --> $DIR/cfg_features.rs:4:11
+   |
+LL |     #[cfg(features = "not-really-a-feature")]
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `feature = "not-really-a-feature"`
+   |
+   = note: `-D clippy::maybe-misused-cfg` implied by `-D warnings`
+
+error: feature may misspelled as features
+  --> $DIR/cfg_features.rs:7:34
+   |
+LL |     #[cfg(all(feature = "right", features = "wrong"))]
+   |                                  ^^^^^^^^^^^^^^^^^^ help: use: `feature = "wrong"`
+
+error: feature may misspelled as features
+  --> $DIR/cfg_features.rs:10:15
+   |
+LL |     #[cfg(all(features = "wrong1", any(feature = "right", features = "wrong2", feature, features)))]
+   |               ^^^^^^^^^^^^^^^^^^^ help: use: `feature = "wrong1"`
+
+error: feature may misspelled as features
+  --> $DIR/cfg_features.rs:10:59
+   |
+LL |     #[cfg(all(features = "wrong1", any(feature = "right", features = "wrong2", feature, features)))]
+   |                                                           ^^^^^^^^^^^^^^^^^^^ help: use: `feature = "wrong2"`
+
+error: aborting due to 4 previous errors
+
