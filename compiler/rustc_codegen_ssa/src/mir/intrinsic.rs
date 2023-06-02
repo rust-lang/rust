@@ -211,8 +211,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 args[1].val.unaligned_volatile_store(bx, dst);
                 return;
             }
-            | sym::unchecked_div
-            | sym::unchecked_rem
             | sym::unchecked_shl
             | sym::unchecked_shr
             | sym::unchecked_add
@@ -227,20 +225,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 bx.exactsdiv(args[0].immediate(), args[1].immediate())
                             } else {
                                 bx.exactudiv(args[0].immediate(), args[1].immediate())
-                            }
-                        }
-                        sym::unchecked_div => {
-                            if signed {
-                                bx.sdiv(args[0].immediate(), args[1].immediate())
-                            } else {
-                                bx.udiv(args[0].immediate(), args[1].immediate())
-                            }
-                        }
-                        sym::unchecked_rem => {
-                            if signed {
-                                bx.srem(args[0].immediate(), args[1].immediate())
-                            } else {
-                                bx.urem(args[0].immediate(), args[1].immediate())
                             }
                         }
                         sym::unchecked_shl => bx.shl(args[0].immediate(), args[1].immediate()),

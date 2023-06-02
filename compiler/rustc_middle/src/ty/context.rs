@@ -1015,15 +1015,6 @@ impl<'tcx> TyCtxt<'tcx> {
         self.query_system.on_disk_cache.as_ref().map_or(Ok(0), |c| c.serialize(self, encoder))
     }
 
-    /// If `true`, we should use lazy normalization for constants, otherwise
-    /// we still evaluate them eagerly.
-    #[inline]
-    pub fn lazy_normalization(self) -> bool {
-        let features = self.features();
-        // Note: We only use lazy normalization for generic const expressions.
-        features.generic_const_exprs
-    }
-
     #[inline]
     pub fn local_crate_exports_generics(self) -> bool {
         debug_assert!(self.sess.opts.share_generics());

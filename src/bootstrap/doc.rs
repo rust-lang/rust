@@ -834,6 +834,7 @@ macro_rules! tool_doc {
                 cargo.arg("-Zskip-rustdoc-fingerprint");
                 // Only include compiler crates, no dependencies of those, such as `libc`.
                 cargo.arg("--no-deps");
+                cargo.arg("--lib");
                 $(
                     cargo.arg("-p").arg($krate);
                 )+

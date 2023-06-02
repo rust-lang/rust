@@ -223,6 +223,14 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
+    fn visit_inline_const(&mut self, constant: &'hir ConstBlock) {
+        self.insert(DUMMY_SP, constant.hir_id, Node::ConstBlock(constant));
+
+        self.with_parent(constant.hir_id, |this| {
+            intravisit::walk_inline_const(this, constant);
+        });
+    }
+
     fn visit_expr(&mut self, expr: &'hir Expr<'hir>) {
         self.insert(expr.span, expr.hir_id, Node::Expr(expr));
 

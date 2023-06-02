@@ -22,25 +22,65 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         &mut self,
         goal: Goal<'tcx, ProjectionPredicate<'tcx>>,
     ) -> QueryResult<'tcx> {
-        match goal.predicate.projection_ty.kind(self.tcx()) {
-            ty::AliasKind::Projection => {
+        let def_id = goal.predicate.def_id();
+        match self.tcx().def_kind(def_id) {
+            DefKind::AssocTy | DefKind::AssocConst => {
                 // To only compute normalization once for each projection we only
-                // normalize if the expected term is an unconstrained inference variable.
+                // assemble normalization candidates if the expected term is an
+                // unconstrained inference variable.
+                //
+                // Why: For better cache hits, since if we have an unconstrained RHS then
+                // there are only as many cache keys as there are (canonicalized) alias
+                // types in each normalizes-to goal. This also weakens inference in a
+                // forwards-compatible way so we don't use the value of the RHS term to
+                // affect candidate assembly for projections.
                 //
                 // E.g. for `<T as Trait>::Assoc == u32` we recursively compute the goal
                 // `exists<U> <T as Trait>::Assoc == U` and then take the resulting type for
                 // `U` and equate it with `u32`. This means that we don't need a separate
-                // projection cache in the solver.
+                // projection cache in the solver, since we're piggybacking off of regular
+                // goal caching.
                 if self.term_is_fully_unconstrained(goal) {
-                    let candidates = self.assemble_and_evaluate_candidates(goal);
-                    self.merge_candidates(candidates)
+                    match self.tcx().associated_item(def_id).container {
+                        ty::AssocItemContainer::TraitContainer => {
+                            let candidates = self.assemble_and_evaluate_candidates(goal);
+                            self.merge_candidates(candidates)
+                        }
+                        ty::AssocItemContainer::ImplContainer => {
+                            bug!("IATs not supported here yet")
+                        }
+                    }
                 } else {
                     self.set_normalizes_to_hack_goal(goal);
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 }
             }
-            ty::AliasKind::Opaque => self.normalize_opaque_type(goal),
-            ty::AliasKind::Inherent => bug!("IATs not supported here yet"),
+            DefKind::AnonConst => self.normalize_anon_const(goal),
+            DefKind::OpaqueTy => self.normalize_opaque_type(goal),
+            kind => bug!("unknown DefKind {} in projection goal: {goal:#?}", kind.descr(def_id)),
+        }
+    }
+
+    #[instrument(level = "debug", skip(self), ret)]
+    fn normalize_anon_const(
+        &mut self,
+        goal: Goal<'tcx, ty::ProjectionPredicate<'tcx>>,
+    ) -> QueryResult<'tcx> {
+        if let Some(normalized_const) = self.try_const_eval_resolve(
+            goal.param_env,
+            ty::UnevaluatedConst::new(
+                goal.predicate.projection_ty.def_id,
+                goal.predicate.projection_ty.substs,
+            ),
+            self.tcx()
+                .type_of(goal.predicate.projection_ty.def_id)
+                .no_bound_vars()
+                .expect("const ty should not rely on other generics"),
+        ) {
+            self.eq(goal.param_env, normalized_const, goal.predicate.term.ct().unwrap())?;
+            self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        } else {
+            self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
         }
     }
 }
@@ -173,17 +213,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             );
 
             // Finally we construct the actual value of the associated type.
-            let is_const = matches!(tcx.def_kind(assoc_def.item.def_id), DefKind::AssocConst);
-            let ty = tcx.type_of(assoc_def.item.def_id);
-            let term: ty::EarlyBinder<ty::Term<'tcx>> = if is_const {
-                let identity_substs =
-                    ty::InternalSubsts::identity_for_item(tcx, assoc_def.item.def_id);
-                let did = assoc_def.item.def_id;
-                let kind =
-                    ty::ConstKind::Unevaluated(ty::UnevaluatedConst::new(did, identity_substs));
-                ty.map_bound(|ty| tcx.mk_const(kind, ty).into())
-            } else {
-                ty.map_bound(|ty| ty.into())
+            let term = match assoc_def.item.kind {
+                ty::AssocKind::Type => tcx.type_of(assoc_def.item.def_id).map_bound(|ty| ty.into()),
+                ty::AssocKind::Const => bug!("associated const projection is not supported yet"),
+                ty::AssocKind::Fn => unreachable!("we should never project to a fn"),
             };
 
             ecx.eq(goal.param_env, goal.predicate.term, term.subst(tcx, substs))
@@ -193,10 +226,14 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
     }
 
     fn consider_auto_trait_candidate(
-        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
-        bug!("auto traits do not have associated types: {:?}", goal);
+        ecx.tcx().sess.delay_span_bug(
+            ecx.tcx().def_span(goal.predicate.def_id()),
+            "associated types not allowed on auto traits",
+        );
+        Err(NoSolution)
     }
 
     fn consider_trait_alias_candidate(
