@@ -43,7 +43,7 @@
 //! Additionally this specialization doesn't make sense for ZSTs as there is no reallocation to
 //! avoid and it would make pointer arithmetic more difficult.
 //!
-//! [`Allocator`]: core::alloc::Allocator
+//! [`Allocator`]: crate::alloc::Allocator
 //!
 //! # Drop- and panic-safety
 //!

@@ -2016,7 +2016,15 @@ impl<I> FromIterator<I> for Box<[I]> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_slice_clone", since = "1.3.0")]
-impl<T: Clone, A: Allocator<Result<Self, TryReserveError> = Self> + Clone> Clone for Box<[T], A> {
+impl<T: Clone, A: Clone> Clone for Box<[T], A>
+where
+    // Would like to see something like this work eventually,
+    // using `feature(non_lifetime_binders)` (#108185), but
+    // for now we'll have to enumerate each case that's needed.
+    // A: for<X, Y> Allocator<Result<X, Y> = X>,
+    A: Allocator<Result<Vec<T, A>, TryReserveError> = Vec<T, A>>,
+    A: Allocator<Result<Self, TryReserveError> = Self>,
+{
     fn clone(&self) -> Self {
         let alloc = Box::allocator(self).clone();
         self.to_vec_in(alloc).into_boxed_slice()

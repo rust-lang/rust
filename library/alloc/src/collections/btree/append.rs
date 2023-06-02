@@ -1,6 +1,6 @@
 use super::merge_iter::MergeIterInner;
 use super::node::{self, Root};
-use core::alloc::Allocator;
+use crate::alloc::Allocator;
 use core::iter::FusedIterator;
 
 impl<K, V> Root<K, V> {

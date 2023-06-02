@@ -1,6 +1,10 @@
 #[cfg(not(no_global_oom_handling))]
 use super::AsVecIntoIter;
+#[cfg(not(no_global_oom_handling))]
+use super::Vec;
 use crate::alloc::{Allocator, Global};
+#[cfg(not(no_global_oom_handling))]
+use crate::collections::TryReserveError;
 #[cfg(not(no_global_oom_handling))]
 use crate::collections::VecDeque;
 use crate::raw_vec::RawVec;
@@ -383,7 +387,10 @@ where
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "vec_into_iter_clone", since = "1.8.0")]
-impl<T: Clone, A: Allocator + Clone> Clone for IntoIter<T, A> {
+impl<T: Clone, A: Clone> Clone for IntoIter<T, A>
+where
+    A: Allocator<Result<Vec<T, A>, TryReserveError> = Vec<T, A>>,
+{
     #[cfg(not(test))]
     fn clone(&self) -> Self {
         self.as_slice().to_vec_in(self.alloc.deref().clone()).into_iter()

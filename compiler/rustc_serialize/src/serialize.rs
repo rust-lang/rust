@@ -3,6 +3,7 @@
 use std::alloc::Allocator;
 use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
+use std::collections::TryReserveError;
 use std::marker::PhantomData;
 use std::path;
 use std::rc::Rc;
@@ -273,7 +274,11 @@ impl<D: Decoder, T> Decodable<D> for PhantomData<T> {
     }
 }
 
-impl<D: Decoder, A: Allocator + Default, T: Decodable<D>> Decodable<D> for Box<[T], A> {
+impl<D: Decoder, A: Default, T: Decodable<D>> Decodable<D> for Box<[T], A>
+where
+    A: Allocator<Result<Vec<T, A>, TryReserveError> = Vec<T, A>>,
+    A: Allocator<Result<Box<[T], A>, TryReserveError> = Box<[T], A>>,
+{
     fn decode(d: &mut D) -> Box<[T], A> {
         let v: Vec<T, A> = Decodable::decode(d);
         v.into_boxed_slice()
@@ -308,7 +313,10 @@ impl<S: Encoder, T: Encodable<S>> Encodable<S> for Vec<T> {
     }
 }
 
-impl<D: Decoder, T: Decodable<D>, A: Allocator + Default> Decodable<D> for Vec<T, A> {
+impl<D: Decoder, T: Decodable<D>, A: Default> Decodable<D> for Vec<T, A>
+where
+    A: Allocator<Result<Vec<T, A>, TryReserveError> = Vec<T, A>>,
+{
     default fn decode(d: &mut D) -> Vec<T, A> {
         let len = d.read_usize();
         let allocator = A::default();

@@ -1,9 +1,8 @@
-use core::alloc::{Allocator, Layout};
 use core::assert_eq;
 use core::iter::IntoIterator;
 use core::num::NonZeroUsize;
 use core::ptr::NonNull;
-use std::alloc::System;
+use std::alloc::{Allocator, Layout, System, FallibleAdapter, IntoLayout, handle_alloc_error};
 use std::assert_matches::assert_matches;
 use std::borrow::Cow;
 use std::cell::Cell;
@@ -1095,6 +1094,17 @@ fn test_into_iter_drop_allocator() {
         unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
             // Safety: Invariants passed to caller.
             unsafe { System.deallocate(ptr, layout) }
+        }
+
+        type Result<T, E: std::error::Error> = T
+        where
+            E: IntoLayout;
+
+        fn map_result<T, E: std::error::Error>(result: Result<T, E>) -> Self::Result<T, E>
+        where
+            E: IntoLayout
+        {
+            result.unwrap_or_else(|e| handle_alloc_error(e.into_layout()))
         }
     }
 

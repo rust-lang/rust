@@ -1732,7 +1732,7 @@ impl<T, A: Allocator> Vec<T, A> {
         }
 
         /* INVARIANT: vec.len() > read >= write > write-1 >= 0 */
-        struct FillGapOnDrop<'a, T, A: core::alloc::Allocator> {
+        struct FillGapOnDrop<'a, T, A: crate::alloc::Allocator> {
             /* Offset of the element we want to check if it is duplicate */
             read: usize,
 
@@ -1744,7 +1744,7 @@ impl<T, A: Allocator> Vec<T, A> {
             vec: &'a mut Vec<T, A>,
         }
 
-        impl<'a, T, A: core::alloc::Allocator> Drop for FillGapOnDrop<'a, T, A> {
+        impl<'a, T, A: crate::alloc::Allocator> Drop for FillGapOnDrop<'a, T, A> {
             fn drop(&mut self) {
                 /* This code gets executed when `same_bucket` panics */
 
@@ -2663,7 +2663,10 @@ impl<T, A: Allocator> ops::DerefMut for Vec<T, A> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Clone, A: Allocator + Clone> Clone for Vec<T, A> {
+impl<T: Clone, A: Clone> Clone for Vec<T, A>
+where
+    A: Allocator<Result<Self, TryReserveError> = Self>,
+{
     #[cfg(not(test))]
     fn clone(&self) -> Self {
         let alloc = self.allocator().clone();

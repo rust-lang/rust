@@ -20,7 +20,7 @@ fn allocator_param() -> Result<(), TryReserveError> {
     struct BoundedAlloc {
         fuel: Cell<usize>,
     }
-    unsafe impl core::alloc::Allocator for BoundedAlloc {
+    unsafe impl crate::alloc::Allocator for BoundedAlloc {
         fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
             let size = layout.size();
             if size > self.fuel.get() {

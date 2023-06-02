@@ -28,6 +28,8 @@ use crate::alloc::{self, Global};
 #[cfg(not(no_global_oom_handling))]
 use crate::borrow::ToOwned;
 use crate::boxed::Box;
+#[cfg(not(no_global_oom_handling))]
+use crate::collections::TryReserveError;
 use crate::vec::Vec;
 
 #[cfg(test)]
@@ -89,9 +91,11 @@ pub use hack::to_vec;
 // `core::slice::SliceExt` - we need to supply these functions for the
 // `test_permutations` test
 pub(crate) mod hack {
-    use core::alloc::Allocator;
+    use crate::alloc::Allocator;
 
     use crate::boxed::Box;
+    #[cfg(not(no_global_oom_handling))]
+    use crate::collections::TryReserveError;
     use crate::vec::Vec;
 
     // We shouldn't add inline attribute to this since this is used in
@@ -107,13 +111,16 @@ pub(crate) mod hack {
 
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    pub fn to_vec<T: ConvertVec, A: Allocator>(s: &[T], alloc: A) -> Vec<T, A> {
+    pub fn to_vec<T: ConvertVec, A: Allocator>(
+        s: &[T],
+        alloc: A,
+    ) -> Result<Vec<T, A>, TryReserveError> {
         T::to_vec(s, alloc)
     }
 
     #[cfg(not(no_global_oom_handling))]
     pub trait ConvertVec {
-        fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A>
+        fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Result<Vec<Self, A>, TryReserveError>
         where
             Self: Sized;
     }
@@ -121,7 +128,10 @@ pub(crate) mod hack {
     #[cfg(not(no_global_oom_handling))]
     impl<T: Clone> ConvertVec for T {
         #[inline]
-        default fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A> {
+        default fn to_vec<A: Allocator>(
+            s: &[Self],
+            alloc: A,
+        ) -> Result<Vec<Self, A>, TryReserveError> {
             struct DropGuard<'a, T, A: Allocator> {
                 vec: &'a mut Vec<T, A>,
                 num_init: usize,
@@ -136,7 +146,7 @@ pub(crate) mod hack {
                     }
                 }
             }
-            let mut vec = Vec::with_capacity_in(s.len(), alloc);
+            let mut vec = Vec::try_with_capacity_in(s.len(), alloc)?;
             let mut guard = DropGuard { vec: &mut vec, num_init: 0 };
             let slots = guard.vec.spare_capacity_mut();
             // .take(slots.len()) is necessary for LLVM to remove bounds checks
@@ -151,15 +161,15 @@ pub(crate) mod hack {
             unsafe {
                 vec.set_len(s.len());
             }
-            vec
+            Ok(vec)
         }
     }
 
     #[cfg(not(no_global_oom_handling))]
     impl<T: Copy> ConvertVec for T {
         #[inline]
-        fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A> {
-            let mut v = Vec::with_capacity_in(s.len(), alloc);
+        fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Result<Vec<Self, A>, TryReserveError> {
+            let mut v = Vec::try_with_capacity_in(s.len(), alloc)?;
             // SAFETY:
             // allocated above with the capacity of `s`, and initialize to `s.len()` in
             // ptr::copy_to_non_overlapping below.
@@ -167,7 +177,7 @@ pub(crate) mod hack {
                 s.as_ptr().copy_to_nonoverlapping(v.as_mut_ptr(), s.len());
                 v.set_len(s.len());
             }
-            v
+            Ok(v)
         }
     }
 }
@@ -433,12 +443,12 @@ impl<T> [T] {
     #[rustc_allow_incoherent_impl]
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn to_vec_in<A: Allocator>(&self, alloc: A) -> Vec<T, A>
+    pub fn to_vec_in<A: Allocator>(&self, alloc: A) -> A::Result<Vec<T, A>, TryReserveError>
     where
         T: Clone,
     {
         // N.B., see the `hack` module in this file for more details.
-        hack::to_vec(self, alloc)
+        A::map_result(hack::to_vec(self, alloc))
     }
 
     /// Converts `self` into a vector without clones or allocation.

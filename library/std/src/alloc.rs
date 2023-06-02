@@ -284,6 +284,17 @@ unsafe impl Allocator for System {
             },
         }
     }
+
+    type Result<T, E: core::error::Error> = T
+    where
+        E: IntoLayout;
+
+    fn map_result<T, E: core::error::Error>(result: Result<T, E>) -> Self::Result<T, E>
+    where
+        E: IntoLayout,
+    {
+        result.unwrap_or_else(|e| handle_alloc_error(e.into_layout()))
+    }
 }
 
 static HOOK: AtomicPtr<()> = AtomicPtr::new(ptr::null_mut());

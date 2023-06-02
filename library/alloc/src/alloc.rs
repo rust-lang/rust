@@ -3,6 +3,8 @@
 #![stable(feature = "alloc_module", since = "1.28.0")]
 
 #[cfg(not(test))]
+use core::error::Error;
+#[cfg(not(test))]
 use core::intrinsics;
 use core::intrinsics::{min_align_of_val, size_of_val};
 
@@ -10,9 +12,15 @@ use core::ptr::Unique;
 #[cfg(not(test))]
 use core::ptr::{self, NonNull};
 
+#[unstable(feature = "allocator_api", issue = "32838")]
+pub use crate::falloc::{Allocator, FallibleAdapter};
+#[unstable(feature = "allocator_api", issue = "32838")]
+#[cfg(not(no_global_oom_handling))]
+pub use crate::falloc::{InfallibleAdapter, IntoLayout};
 #[stable(feature = "alloc_module", since = "1.28.0")]
 #[doc(inline)]
-pub use core::alloc::*;
+#[allow(deprecated)]
+pub use core::alloc::{AllocError, GlobalAlloc, Layout, LayoutErr, LayoutError};
 
 #[cfg(test)]
 mod tests;
@@ -320,6 +328,27 @@ unsafe impl Allocator for Global {
                 Ok(new_ptr)
             },
         }
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    type Result<T, E: Error> = T
+    where
+        E: IntoLayout;
+
+    #[cfg(not(no_global_oom_handling))]
+    fn map_result<T, E: Error>(result: Result<T, E>) -> Self::Result<T, E>
+    where
+        E: IntoLayout,
+    {
+        result.unwrap_or_else(|e| handle_alloc_error(e.into_layout()))
+    }
+
+    #[cfg(no_global_oom_handling)]
+    type Result<T, E: Error> = Result<T, E>;
+
+    #[cfg(no_global_oom_handling)]
+    fn map_result<T, E: Error>(result: Result<T, E>) -> Self::Result<T, E> {
+        result
     }
 }
 

@@ -12,13 +12,22 @@ use super::VecDeque;
 /// (provided by the [`IntoIterator`] trait). See its documentation for more.
 ///
 /// [`into_iter`]: VecDeque::into_iter
-#[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<
     T,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 > {
     inner: VecDeque<T, A>,
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T, A: Allocator> Clone for IntoIter<T, A>
+where
+    VecDeque<T, A>: Clone,
+{
+    fn clone(&self) -> Self {
+        Self { inner: self.inner.clone() }
+    }
 }
 
 impl<T, A: Allocator> IntoIter<T, A> {
