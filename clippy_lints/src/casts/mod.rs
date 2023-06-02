@@ -17,6 +17,7 @@ mod fn_to_numeric_cast;
 mod fn_to_numeric_cast_any;
 mod fn_to_numeric_cast_with_truncation;
 mod ptr_as_ptr;
+mod ptr_cast_constness;
 mod unnecessary_cast;
 mod utils;
 
@@ -363,7 +364,7 @@ declare_clippy_lint! {
     /// namely `*const T` to `*const U` and `*mut T` to `*mut U`.
     ///
     /// ### Why is this bad?
-    /// Though `as` casts between raw pointers is not terrible, `pointer::cast` is safer because
+    /// Though `as` casts between raw pointers are not terrible, `pointer::cast` is safer because
     /// it cannot accidentally change the pointer's mutability nor cast the pointer to other types like `usize`.
     ///
     /// ### Example
@@ -384,6 +385,34 @@ declare_clippy_lint! {
     pub PTR_AS_PTR,
     pedantic,
     "casting using `as` from and to raw pointers that doesn't change its mutability, where `pointer::cast` could take the place of `as`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `as` casts between raw pointers which change its constness, namely `*const T` to
+    /// `*mut T` and `*mut T` to `*const T`.
+    ///
+    /// ### Why is this bad?
+    /// Though `as` casts between raw pointers are not terrible, `pointer::cast_mut` and
+    /// `pointer::cast_const` are safer because they cannot accidentally cast the pointer to another
+    /// type.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let ptr: *const u32 = &42_u32;
+    /// let mut_ptr = ptr as *mut u32;
+    /// let ptr = mut_ptr as *const u32;
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let ptr: *const u32 = &42_u32;
+    /// let mut_ptr = ptr.cast_mut();
+    /// let ptr = mut_ptr.cast_const();
+    /// ```
+    #[clippy::version = "1.71.0"]
+    pub PTR_CAST_CONSTNESS,
+    pedantic,
+    "casting using `as` from and to raw pointers to change constness when specialized methods apply"
 }
 
 declare_clippy_lint! {
@@ -652,6 +681,7 @@ impl_lint_pass!(Casts => [
     FN_TO_NUMERIC_CAST_WITH_TRUNCATION,
     CHAR_LIT_AS_U8,
     PTR_AS_PTR,
+    PTR_CAST_CONSTNESS,
     CAST_ENUM_TRUNCATION,
     CAST_ENUM_CONSTRUCTOR,
     CAST_ABS_TO_UNSIGNED,
@@ -685,6 +715,7 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
                 return;
             }
             cast_slice_from_raw_parts::check(cx, expr, cast_expr, cast_to, &self.msrv);
+            ptr_cast_constness::check(cx, expr, cast_expr, cast_from, cast_to, &self.msrv);
             as_ptr_cast_mut::check(cx, expr, cast_expr, cast_to);
             fn_to_numeric_cast_any::check(cx, expr, cast_expr, cast_from, cast_to);
             fn_to_numeric_cast::check(cx, expr, cast_expr, cast_from, cast_to);

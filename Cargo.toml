@@ -1,6 +1,6 @@
 [package]
 name = "clippy"
-version = "0.1.71"
+version = "0.1.72"
 description = "A bunch of helpful lints to avoid common pitfalls in Rust"
 repository = "https://github.com/rust-lang/rust-clippy"
 readme = "README.md"
@@ -30,15 +30,10 @@ termize = "0.1"
 compiletest_rs = { version = "0.10", features = ["tmp"] }
 tester = "0.9"
 regex = "1.5"
-toml = "0.5"
+toml = "0.7.3"
 walkdir = "2.3"
 # This is used by the `collect-metadata` alias.
 filetime = "0.2"
-
-# A noop dependency that changes in the Rust repository, it's a bit of a hack.
-# See the `src/tools/rustc-workspace-hack/README.md` file in `rust-lang/rust`
-# for more information.
-rustc-workspace-hack = "1.0"
 
 # UI test dependencies
 clap = { version = "4.1.4", features = ["derive"] }

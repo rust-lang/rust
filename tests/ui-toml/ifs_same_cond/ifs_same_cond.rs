@@ -1,5 +1,5 @@
 #![warn(clippy::ifs_same_cond)]
-#![allow(clippy::if_same_then_else, clippy::comparison_chain)]
+#![allow(clippy::if_same_then_else, clippy::comparison_chain, clippy::needless_else)]
 
 fn main() {}
 

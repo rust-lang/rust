@@ -1,6 +1,6 @@
 [package]
 name = "declare_clippy_lint"
-version = "0.1.71"
+version = "0.1.72"
 edition = "2021"
 publish = false
 

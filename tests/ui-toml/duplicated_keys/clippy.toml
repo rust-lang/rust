@@ -1,5 +1,2 @@
 cognitive-complexity-threshold = 2
-# This is the deprecated name for the same key
-cyclomatic-complexity-threshold = 3
-# Check we get duplication warning regardless of order
 cognitive-complexity-threshold = 4

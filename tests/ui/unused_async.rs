@@ -3,6 +3,26 @@
 use std::future::Future;
 use std::pin::Pin;
 
+mod issue10800 {
+    #![allow(dead_code, unused_must_use, clippy::no_effect)]
+
+    use std::future::ready;
+
+    async fn async_block_await() {
+        async {
+            ready(()).await;
+        };
+    }
+
+    async fn normal_block_await() {
+        {
+            {
+                ready(()).await;
+            }
+        }
+    }
+}
+
 async fn foo() -> i32 {
     4
 }

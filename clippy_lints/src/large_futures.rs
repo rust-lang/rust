@@ -38,7 +38,7 @@ declare_clippy_lint! {
     ///     wait(fut).await;
     /// }
     /// ```
-    #[clippy::version = "1.68.0"]
+    #[clippy::version = "1.70.0"]
     pub LARGE_FUTURES,
     pedantic,
     "large future may lead to unexpected stack overflows"
