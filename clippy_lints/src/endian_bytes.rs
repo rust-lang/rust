@@ -95,7 +95,7 @@ impl LintKind {
     }
 
     fn as_name(&self, prefix: &Prefix) -> &str {
-        let index = if matches!(prefix, Prefix::From) { 0 } else { 1 };
+        let index = usize::from(matches!(prefix, Prefix::To));
 
         match self {
             LintKind::Host => HOST_NAMES[index],
