@@ -128,8 +128,6 @@ pub struct Limits {
     pub move_size_limit: Limit,
     /// The maximum length of types during monomorphization.
     pub type_length_limit: Limit,
-    /// The maximum blocks a const expression can evaluate.
-    pub const_eval_limit: Limit,
 }
 
 pub struct CompilerIO {

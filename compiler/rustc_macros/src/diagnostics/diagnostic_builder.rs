@@ -14,6 +14,8 @@ use syn::Token;
 use syn::{parse_quote, spanned::Spanned, Attribute, Meta, Path, Type};
 use synstructure::{BindingInfo, Structure, VariantInfo};
 
+use super::utils::SubdiagnosticVariant;
+
 /// What kind of diagnostic is being derived - a fatal/error/warning or a lint?
 #[derive(Clone, PartialEq, Eq)]
 pub(crate) enum DiagnosticDeriveKind {
@@ -150,19 +152,19 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
     fn parse_subdiag_attribute(
         &self,
         attr: &Attribute,
-    ) -> Result<Option<(SubdiagnosticKind, Path)>, DiagnosticDeriveError> {
-        let Some((subdiag, slug)) = SubdiagnosticKind::from_attr(attr, self)? else {
+    ) -> Result<Option<(SubdiagnosticKind, Path, bool)>, DiagnosticDeriveError> {
+        let Some(subdiag) = SubdiagnosticVariant::from_attr(attr, self)? else {
             // Some attributes aren't errors - like documentation comments - but also aren't
             // subdiagnostics.
             return Ok(None);
         };
 
-        if let SubdiagnosticKind::MultipartSuggestion { .. } = subdiag {
+        if let SubdiagnosticKind::MultipartSuggestion { .. } = subdiag.kind {
             throw_invalid_attr!(attr, |diag| diag
                 .help("consider creating a `Subdiagnostic` instead"));
         }
 
-        let slug = slug.unwrap_or_else(|| match subdiag {
+        let slug = subdiag.slug.unwrap_or_else(|| match subdiag.kind {
             SubdiagnosticKind::Label => parse_quote! { _subdiag::label },
             SubdiagnosticKind::Note => parse_quote! { _subdiag::note },
             SubdiagnosticKind::Help => parse_quote! { _subdiag::help },
@@ -171,7 +173,7 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
             SubdiagnosticKind::MultipartSuggestion { .. } => unreachable!(),
         });
 
-        Ok(Some((subdiag, slug)))
+        Ok(Some((subdiag.kind, slug, subdiag.no_span)))
     }
 
     /// Establishes state in the `DiagnosticDeriveBuilder` resulting from the struct
@@ -229,7 +231,7 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
             return Ok(tokens);
         }
 
-        let Some((subdiag, slug)) = self.parse_subdiag_attribute(attr)? else {
+        let Some((subdiag, slug, _no_span)) = self.parse_subdiag_attribute(attr)? else {
             // Some attributes aren't errors - like documentation comments - but also aren't
             // subdiagnostics.
             return Ok(quote! {});
@@ -380,7 +382,7 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
             _ => (),
         }
 
-        let Some((subdiag, slug)) = self.parse_subdiag_attribute(attr)? else {
+        let Some((subdiag, slug, _no_span)) = self.parse_subdiag_attribute(attr)? else {
             // Some attributes aren't errors - like documentation comments - but also aren't
             // subdiagnostics.
             return Ok(quote! {});

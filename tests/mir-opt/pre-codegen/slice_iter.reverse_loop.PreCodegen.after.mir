@@ -44,21 +44,20 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
                         scope 13 (inlined NonNull::<T>::new_unchecked) { // at $SRC_DIR/core/src/slice/iter.rs:LL:COL
                             debug ptr => _9; // in scope 13 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
                             let mut _10: *const T; // in scope 13 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
-                            let mut _24: *mut T; // in scope 13 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
                             scope 14 {
                                 scope 15 (inlined NonNull::<T>::new_unchecked::runtime::<T>) { // at $SRC_DIR/core/src/intrinsics.rs:LL:COL
-                                    debug ptr => _24; // in scope 15 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+                                    debug ptr => _9; // in scope 15 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
                                     scope 16 (inlined ptr::mut_ptr::<impl *mut T>::is_null) { // at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
-                                        debug self => _24; // in scope 16 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
-                                        let mut _25: *mut u8; // in scope 16 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
+                                        debug self => _9; // in scope 16 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
+                                        let mut _24: *mut u8; // in scope 16 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
                                         scope 17 {
                                             scope 18 (inlined ptr::mut_ptr::<impl *mut T>::is_null::runtime_impl) { // at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
-                                                debug ptr => _25; // in scope 18 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
+                                                debug ptr => _24; // in scope 18 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
                                                 scope 19 (inlined ptr::mut_ptr::<impl *mut u8>::addr) { // at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
-                                                    debug self => _25; // in scope 19 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
+                                                    debug self => _24; // in scope 19 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
                                                     scope 20 {
                                                         scope 21 (inlined ptr::mut_ptr::<impl *mut u8>::cast::<()>) { // at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
-                                                            debug self => _25; // in scope 21 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
+                                                            debug self => _24; // in scope 21 at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
                                                         }
                                                     }
                                                 }
@@ -134,10 +133,8 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         _9 = _4 as *mut T (PtrToPtr);    // scope 7 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
         StorageLive(_10);                // scope 7 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
         StorageLive(_24);                // scope 7 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
-        StorageLive(_25);                // scope 7 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
         _10 = _9 as *const T (Pointer(MutToConstPointer)); // scope 14 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
         _11 = NonNull::<T> { pointer: _10 }; // scope 14 at $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
-        StorageDead(_25);                // scope 7 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
         StorageDead(_24);                // scope 7 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
         StorageDead(_10);                // scope 7 at $SRC_DIR/core/src/slice/iter.rs:LL:COL
         StorageDead(_9);                 // scope 7 at $SRC_DIR/core/src/slice/iter.rs:LL:COL

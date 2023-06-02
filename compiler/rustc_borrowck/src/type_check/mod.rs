@@ -188,9 +188,6 @@ pub(crate) fn type_check<'mir, 'tcx>(
 
     // FIXME(-Ztrait-solver=next): A bit dubious that we're only registering
     // predefined opaques in the typeck root.
-    // FIXME(-Ztrait-solver=next): This is also totally wrong for TAITs, since
-    // the HIR typeck map defining usages back to their definition params,
-    // they won't actually match up with the usages in this body...
     if infcx.tcx.trait_solver_next() && !infcx.tcx.is_typeck_child(body.source.def_id()) {
         checker.register_predefined_opaques_in_new_solver();
     }
@@ -1042,10 +1039,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             .typeck(self.body.source.def_id().expect_local())
             .concrete_opaque_types
             .iter()
-            .map(|(&def_id, &hidden_ty)| {
-                let substs = ty::InternalSubsts::identity_for_item(self.infcx.tcx, def_id);
-                (ty::OpaqueTypeKey { def_id, substs }, hidden_ty)
-            })
+            .map(|(k, v)| (*k, *v))
             .collect();
 
         let renumbered_opaques = self.infcx.tcx.fold_regions(opaques, |_, _| {

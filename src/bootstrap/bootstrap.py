@@ -835,7 +835,7 @@ class RustBuild(object):
         """
         return os.path.join(self.build_dir, "bootstrap", "debug", "bootstrap")
 
-    def build_bootstrap(self, color, verbose_count):
+    def build_bootstrap(self, color, warnings, verbose_count):
         """Build bootstrap"""
         env = os.environ.copy()
         if "GITHUB_ACTIONS" in env:
@@ -877,6 +877,12 @@ class RustBuild(object):
 
         # preserve existing RUSTFLAGS
         env.setdefault("RUSTFLAGS", "")
+        # we need to explicitly add +xgot here so that we can successfully bootstrap
+        # a usable stage1 compiler
+        # FIXME: remove this if condition on the next bootstrap bump
+        # cfg(bootstrap)
+        if self.build_triple().startswith('mips'):
+            env["RUSTFLAGS"] += " -Ctarget-feature=+xgot"
         target_features = []
         if self.get_toml("crt-static", build_section) == "true":
             target_features += ["+crt-static"]
@@ -888,7 +894,11 @@ class RustBuild(object):
         if target_linker is not None:
             env["RUSTFLAGS"] += " -C linker=" + target_linker
         env["RUSTFLAGS"] += " -Wrust_2018_idioms -Wunused_lifetimes"
-        if self.get_toml("deny-warnings", "rust") != "false":
+        if warnings == "default":
+            deny_warnings = self.get_toml("deny-warnings", "rust") != "false"
+        else:
+            deny_warnings = warnings == "deny"
+        if deny_warnings:
             env["RUSTFLAGS"] += " -Dwarnings"
 
         env["PATH"] = os.path.join(self.bin_root(), "bin") + \
@@ -912,6 +922,10 @@ class RustBuild(object):
             args.append("--color=always")
         elif color == "never":
             args.append("--color=never")
+        try:
+            args += env["CARGOFLAGS"].split()
+        except KeyError:
+            pass
 
         # Run this from the source directory so cargo finds .cargo/config
         run(args, env=env, verbose=self.verbose, cwd=self.rust_root)
@@ -977,6 +991,7 @@ def parse_args():
     parser.add_argument('--color', choices=['always', 'never', 'auto'])
     parser.add_argument('--clean', action='store_true')
     parser.add_argument('--json-output', action='store_true')
+    parser.add_argument('--warnings', choices=['deny', 'warn', 'default'], default='default')
     parser.add_argument('-v', '--verbose', action='count', default=0)
 
     return parser.parse_known_args(sys.argv)[0]
@@ -1042,7 +1057,7 @@ def bootstrap(args):
     # Fetch/build the bootstrap
     build.download_toolchain()
     sys.stdout.flush()
-    build.build_bootstrap(args.color, verbose_count)
+    build.build_bootstrap(args.color, args.warnings, verbose_count)
     sys.stdout.flush()
 
     # Run the bootstrap

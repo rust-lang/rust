@@ -285,7 +285,13 @@ provide! { tcx, def_id, other, cdata,
     is_ctfe_mir_available => { cdata.is_ctfe_mir_available(def_id.index) }
 
     dylib_dependency_formats => { cdata.get_dylib_dependency_formats(tcx) }
-    is_private_dep => { cdata.private_dep }
+    is_private_dep => {
+        // Parallel compiler needs to synchronize type checking and linting (which use this flag)
+        // so that they happen strictly crate loading. Otherwise, the full list of available
+        // impls aren't loaded yet.
+        use std::sync::atomic::Ordering;
+        cdata.private_dep.load(Ordering::Acquire)
+    }
     is_panic_runtime => { cdata.root.panic_runtime }
     is_compiler_builtins => { cdata.root.compiler_builtins }
     has_global_allocator => { cdata.root.has_global_allocator }

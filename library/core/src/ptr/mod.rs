@@ -698,6 +698,7 @@ where
 #[inline(always)]
 #[must_use]
 #[unstable(feature = "ptr_from_ref", issue = "106116")]
+#[rustc_diagnostic_item = "ptr_from_ref"]
 pub const fn from_ref<T: ?Sized>(r: &T) -> *const T {
     r
 }
@@ -1139,7 +1140,7 @@ pub const unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
 /// [valid]: self#safety
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_stable(feature = "const_ptr_read", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "const_ptr_read", since = "1.71.0")]
 #[rustc_allow_const_fn_unstable(const_mut_refs, const_maybe_uninit_as_mut_ptr)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub const unsafe fn read<T>(src: *const T) -> T {
@@ -1256,7 +1257,7 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 /// ```
 #[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
-#[rustc_const_stable(feature = "const_ptr_read", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "const_ptr_read", since = "1.71.0")]
 #[rustc_allow_const_fn_unstable(const_mut_refs, const_maybe_uninit_as_mut_ptr)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub const unsafe fn read_unaligned<T>(src: *const T) -> T {

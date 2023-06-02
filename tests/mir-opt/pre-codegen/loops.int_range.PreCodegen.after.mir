@@ -1,0 +1,118 @@
+// MIR for `int_range` after PreCodegen
+
+fn int_range(_1: usize, _2: usize) -> () {
+    debug start => _1;                   // in scope 0 at $DIR/loops.rs:+0:18: +0:23
+    debug end => _2;                     // in scope 0 at $DIR/loops.rs:+0:32: +0:35
+    let mut _0: ();                      // return place in scope 0 at $DIR/loops.rs:+0:44: +0:44
+    let mut _3: std::ops::Range<usize>;  // in scope 0 at $DIR/loops.rs:+1:14: +1:24
+    let mut _4: std::ops::Range<usize>;  // in scope 0 at $DIR/loops.rs:+1:14: +1:24
+    let mut _5: &mut std::ops::Range<usize>; // in scope 0 at $DIR/loops.rs:+1:14: +1:24
+    let mut _9: std::option::Option<usize>; // in scope 0 at $DIR/loops.rs:+1:14: +1:24
+    let mut _12: isize;                  // in scope 0 at $DIR/loops.rs:+1:5: +3:6
+    let _14: ();                         // in scope 0 at $DIR/loops.rs:+1:14: +1:24
+    scope 1 {
+        debug iter => _4;                // in scope 1 at $DIR/loops.rs:+1:14: +1:24
+        let _13: usize;                  // in scope 1 at $DIR/loops.rs:+1:9: +1:10
+        scope 2 {
+            debug i => _13;              // in scope 2 at $DIR/loops.rs:+1:9: +1:10
+        }
+        scope 4 (inlined iter::range::<impl Iterator for std::ops::Range<usize>>::next) { // at $DIR/loops.rs:8:14: 8:24
+            debug self => _5;            // in scope 4 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+            scope 5 (inlined <std::ops::Range<usize> as iter::range::RangeIteratorImpl>::spec_next) { // at $SRC_DIR/core/src/iter/range.rs:LL:COL
+                debug self => _5;        // in scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+                let mut _6: &usize;      // in scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+                let mut _7: &usize;      // in scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+                let mut _8: bool;        // in scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+                let _10: usize;          // in scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+                let mut _11: usize;      // in scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+                scope 6 {
+                    debug old => _10;    // in scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+                    scope 7 {
+                    }
+                }
+            }
+        }
+    }
+    scope 3 (inlined <std::ops::Range<usize> as IntoIterator>::into_iter) { // at $DIR/loops.rs:8:14: 8:24
+        debug self => _3;                // in scope 3 at $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+    }
+
+    bb0: {
+        _3 = std::ops::Range::<usize> { start: _1, end: _2 }; // scope 0 at $DIR/loops.rs:+1:14: +1:24
+        StorageLive(_4);                 // scope 0 at $DIR/loops.rs:+1:14: +1:24
+        _4 = move _3;                    // scope 0 at $DIR/loops.rs:+1:14: +1:24
+        goto -> bb1;                     // scope 1 at $DIR/loops.rs:+1:5: +3:6
+    }
+
+    bb1: {
+        StorageLive(_9);                 // scope 1 at $DIR/loops.rs:+1:14: +1:24
+        _5 = &mut _4;                    // scope 1 at $DIR/loops.rs:+1:14: +1:24
+        StorageLive(_10);                // scope 4 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        StorageLive(_8);                 // scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        StorageLive(_6);                 // scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        _6 = &((*_5).0: usize);          // scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        StorageLive(_7);                 // scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        _7 = &((*_5).1: usize);          // scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        _8 = <usize as PartialOrd>::lt(move _6, move _7) -> bb2; // scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+                                         // mir::Constant
+                                         // + span: $SRC_DIR/core/src/iter/range.rs:LL:COL
+                                         // + literal: Const { ty: for<'a, 'b> fn(&'a usize, &'b usize) -> bool {<usize as PartialOrd>::lt}, val: Value(<ZST>) }
+    }
+
+    bb2: {
+        StorageDead(_7);                 // scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        StorageDead(_6);                 // scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        switchInt(move _8) -> [0: bb3, otherwise: bb4]; // scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+    }
+
+    bb3: {
+        _9 = Option::<usize>::None;      // scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        goto -> bb6;                     // scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+    }
+
+    bb4: {
+        _10 = ((*_5).0: usize);          // scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        StorageLive(_11);                // scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        _11 = <usize as Step>::forward_unchecked(_10, const 1_usize) -> bb5; // scope 7 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+                                         // mir::Constant
+                                         // + span: $SRC_DIR/core/src/iter/range.rs:LL:COL
+                                         // + literal: Const { ty: unsafe fn(usize, usize) -> usize {<usize as Step>::forward_unchecked}, val: Value(<ZST>) }
+    }
+
+    bb5: {
+        ((*_5).0: usize) = move _11;     // scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        StorageDead(_11);                // scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        _9 = Option::<usize>::Some(_10); // scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        goto -> bb6;                     // scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+    }
+
+    bb6: {
+        StorageDead(_8);                 // scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        StorageDead(_10);                // scope 4 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        _12 = discriminant(_9);          // scope 1 at $DIR/loops.rs:+1:14: +1:24
+        switchInt(move _12) -> [0: bb7, 1: bb8, otherwise: bb10]; // scope 1 at $DIR/loops.rs:+1:14: +1:24
+    }
+
+    bb7: {
+        StorageDead(_9);                 // scope 1 at $DIR/loops.rs:+3:5: +3:6
+        StorageDead(_4);                 // scope 0 at $DIR/loops.rs:+3:5: +3:6
+        return;                          // scope 0 at $DIR/loops.rs:+4:2: +4:2
+    }
+
+    bb8: {
+        _13 = ((_9 as Some).0: usize);   // scope 1 at $DIR/loops.rs:+1:9: +1:10
+        _14 = opaque::<usize>(_13) -> bb9; // scope 2 at $DIR/loops.rs:+2:9: +2:18
+                                         // mir::Constant
+                                         // + span: $DIR/loops.rs:9:9: 9:15
+                                         // + literal: Const { ty: fn(usize) {opaque::<usize>}, val: Value(<ZST>) }
+    }
+
+    bb9: {
+        StorageDead(_9);                 // scope 1 at $DIR/loops.rs:+3:5: +3:6
+        goto -> bb1;                     // scope 1 at $DIR/loops.rs:+1:5: +3:6
+    }
+
+    bb10: {
+        unreachable;                     // scope 1 at $DIR/loops.rs:+1:14: +1:24
+    }
+}

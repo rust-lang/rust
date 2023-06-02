@@ -3,6 +3,6 @@
 // could also be allowed.
 
 const CONST_RAW: *const Vec<i32> = &Vec::new() as *const _;
-//~^ ERROR untyped pointers are not allowed in constant
+//~^ ERROR unsupported untyped pointer in constant
 
 fn main() {}

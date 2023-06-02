@@ -2,10 +2,8 @@
 
 use crate::errors::MaxNumNodesInConstErr;
 use crate::interpret::{
-    intern_const_alloc_recursive, ConstValue, InternKind, InterpCx, InterpResult, MemPlaceMeta,
-    Scalar,
+    intern_const_alloc_recursive, ConstValue, InternKind, InterpCx, InterpResult, Scalar,
 };
-use rustc_hir::Mutability;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId};
 use rustc_middle::ty::{self, TyCtxt};
@@ -75,17 +73,8 @@ pub(crate) fn eval_to_valtree<'tcx>(
             let global_const_id = cid.display(tcx);
             match err {
                 ValTreeCreationError::NodesOverflow => {
-                    let msg = format!(
-                        "maximum number of nodes exceeded in constant {}",
-                        &global_const_id
-                    );
-                    let mut diag = match tcx.hir().span_if_local(did) {
-                        Some(span) => {
-                            tcx.sess.create_err(MaxNumNodesInConstErr { span, global_const_id })
-                        }
-                        None => tcx.sess.struct_err(msg),
-                    };
-                    diag.emit();
+                    let span = tcx.hir().span_if_local(did);
+                    tcx.sess.emit_err(MaxNumNodesInConstErr { span, global_const_id });
 
                     Ok(None)
                 }
@@ -130,39 +119,4 @@ pub(crate) fn try_destructure_mir_constant<'tcx>(
     let fields = tcx.arena.alloc_from_iter(fields_iter);
 
     Ok(mir::DestructuredConstant { variant, fields })
-}
-
-#[instrument(skip(tcx), level = "debug")]
-pub(crate) fn deref_mir_constant<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    val: mir::ConstantKind<'tcx>,
-) -> mir::ConstantKind<'tcx> {
-    let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
-    let op = ecx.eval_mir_constant(&val, None, None).unwrap();
-    let mplace = ecx.deref_operand(&op).unwrap();
-    if let Some(alloc_id) = mplace.ptr.provenance {
-        assert_eq!(
-            tcx.global_alloc(alloc_id).unwrap_memory().0.0.mutability,
-            Mutability::Not,
-            "deref_mir_constant cannot be used with mutable allocations as \
-            that could allow pattern matching to observe mutable statics",
-        );
-    }
-
-    let ty = match mplace.meta {
-        MemPlaceMeta::None => mplace.layout.ty,
-        // In case of unsized types, figure out the real type behind.
-        MemPlaceMeta::Meta(scalar) => match mplace.layout.ty.kind() {
-            ty::Str => bug!("there's no sized equivalent of a `str`"),
-            ty::Slice(elem_ty) => tcx.mk_array(*elem_ty, scalar.to_target_usize(&tcx).unwrap()),
-            _ => bug!(
-                "type {} should not have metadata, but had {:?}",
-                mplace.layout.ty,
-                mplace.meta
-            ),
-        },
-    };
-
-    mir::ConstantKind::Val(op_to_const(&ecx, &mplace.into()), ty)
 }

@@ -82,8 +82,6 @@ use std::iter;
 use std::mem;
 use std::ops::{Bound, Deref};
 
-const TINY_CONST_EVAL_LIMIT: Limit = Limit(20);
-
 #[allow(rustc::usage_of_ty_tykind)]
 impl<'tcx> Interner for TyCtxt<'tcx> {
     type AdtDef = ty::AdtDef<'tcx>;
@@ -1176,14 +1174,6 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn move_size_limit(self) -> Limit {
         self.limits(()).move_size_limit
-    }
-
-    pub fn const_eval_limit(self) -> Limit {
-        if self.sess.opts.unstable_opts.tiny_const_eval_limit {
-            TINY_CONST_EVAL_LIMIT
-        } else {
-            self.limits(()).const_eval_limit
-        }
     }
 
     pub fn all_traits(self) -> impl Iterator<Item = DefId> + 'tcx {

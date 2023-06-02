@@ -4,41 +4,6 @@ error[E0391]: cycle detected when computing type of `cycle1::{opaque#0}`
 LL | fn cycle1() -> impl Clone {
    |                ^^^^^^^^^^
    |
-note: ...which requires borrow-checking `cycle1`...
-  --> $DIR/auto-trait-leak.rs:12:1
-   |
-LL | fn cycle1() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires promoting constants in MIR for `cycle1`...
-  --> $DIR/auto-trait-leak.rs:12:1
-   |
-LL | fn cycle1() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires preparing `cycle1` for borrow checking...
-  --> $DIR/auto-trait-leak.rs:12:1
-   |
-LL | fn cycle1() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires unsafety-checking `cycle1`...
-  --> $DIR/auto-trait-leak.rs:12:1
-   |
-LL | fn cycle1() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires building MIR for `cycle1`...
-  --> $DIR/auto-trait-leak.rs:12:1
-   |
-LL | fn cycle1() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires match-checking `cycle1`...
-  --> $DIR/auto-trait-leak.rs:12:1
-   |
-LL | fn cycle1() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires building THIR for `cycle1`...
-  --> $DIR/auto-trait-leak.rs:12:1
-   |
-LL | fn cycle1() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires type-checking `cycle1`...
   --> $DIR/auto-trait-leak.rs:14:5
    |
@@ -50,41 +15,6 @@ note: ...which requires computing type of `cycle2::{opaque#0}`...
    |
 LL | fn cycle2() -> impl Clone {
    |                ^^^^^^^^^^
-note: ...which requires borrow-checking `cycle2`...
-  --> $DIR/auto-trait-leak.rs:19:1
-   |
-LL | fn cycle2() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires promoting constants in MIR for `cycle2`...
-  --> $DIR/auto-trait-leak.rs:19:1
-   |
-LL | fn cycle2() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires preparing `cycle2` for borrow checking...
-  --> $DIR/auto-trait-leak.rs:19:1
-   |
-LL | fn cycle2() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires unsafety-checking `cycle2`...
-  --> $DIR/auto-trait-leak.rs:19:1
-   |
-LL | fn cycle2() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires building MIR for `cycle2`...
-  --> $DIR/auto-trait-leak.rs:19:1
-   |
-LL | fn cycle2() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires match-checking `cycle2`...
-  --> $DIR/auto-trait-leak.rs:19:1
-   |
-LL | fn cycle2() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires building THIR for `cycle2`...
-  --> $DIR/auto-trait-leak.rs:19:1
-   |
-LL | fn cycle2() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires type-checking `cycle2`...
   --> $DIR/auto-trait-leak.rs:20:5
    |

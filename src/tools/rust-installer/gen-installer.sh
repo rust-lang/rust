@@ -11,5 +11,9 @@ abs_path() {
     (unset CDPATH && cd "$path" > /dev/null && pwd)
 }
 
+# Running cargo will read the libstd Cargo.toml
+# which uses the unstable `public-dependency` feature.
+export RUSTC_BOOTSTRAP=1
+
 src_dir="$(abs_path $(dirname "$0"))"
 $CARGO run --manifest-path="$src_dir/Cargo.toml" -- generate "$@"

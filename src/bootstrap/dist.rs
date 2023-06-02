@@ -1009,6 +1009,9 @@ impl Step for PlainSourceTarball {
                 .arg(builder.src.join("./compiler/rustc_codegen_cranelift/Cargo.toml"))
                 .arg("--sync")
                 .arg(builder.src.join("./src/bootstrap/Cargo.toml"))
+                // Will read the libstd Cargo.toml
+                // which uses the unstable `public-dependency` feature.
+                .env("RUSTC_BOOTSTRAP", "1")
                 .current_dir(&plain_dst_src);
 
             let config = if !builder.config.dry_run() {

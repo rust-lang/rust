@@ -439,7 +439,7 @@ where
     /// Given the metadata, extract out the value at a particular index (if any).
     #[inline(never)]
     pub(super) fn get<'a, 'tcx, M: Metadata<'a, 'tcx>>(&self, metadata: M, i: I) -> T::Value<'tcx> {
-        debug!("LazyTable::lookup: index={:?} len={:?}", i, self.encoded_size);
+        trace!("LazyTable::lookup: index={:?} len={:?}", i, self.encoded_size);
 
         let start = self.position.get();
         let bytes = &metadata.blob()[start..start + self.encoded_size];

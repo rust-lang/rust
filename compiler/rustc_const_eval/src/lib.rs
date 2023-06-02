@@ -4,6 +4,7 @@ Rust MIR: a lowered representation of Rust.
 
 */
 
+#![deny(rustc::untranslatable_diagnostic)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(decl_macro)]
@@ -33,6 +34,8 @@ pub mod interpret;
 pub mod transform;
 pub mod util;
 
+pub use errors::ReportErrorExt;
+
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_fluent_macro::fluent_messages;
 use rustc_middle::query::Providers;
@@ -55,10 +58,6 @@ pub fn provide(providers: &mut Providers) {
     };
     providers.valtree_to_const_val = |tcx, (ty, valtree)| {
         const_eval::valtree_to_const_value(tcx, ty::ParamEnv::empty().and(ty), valtree)
-    };
-    providers.deref_mir_constant = |tcx, param_env_and_value| {
-        let (param_env, value) = param_env_and_value.into_parts();
-        const_eval::deref_mir_constant(tcx, param_env, value)
     };
     providers.check_validity_requirement = |tcx, (init_kind, param_env_and_ty)| {
         util::check_validity_requirement(tcx, init_kind, param_env_and_ty)

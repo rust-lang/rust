@@ -13,41 +13,6 @@ error[E0391]: cycle detected when computing type of `make_dyn_star::{opaque#0}`
 LL | fn make_dyn_star<'a, T: PointerLike + Debug + 'a>(t: T) -> impl PointerLike + Debug + 'a {
    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: ...which requires borrow-checking `make_dyn_star`...
-  --> $DIR/param-env-infer.rs:11:1
-   |
-LL | fn make_dyn_star<'a, T: PointerLike + Debug + 'a>(t: T) -> impl PointerLike + Debug + 'a {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires promoting constants in MIR for `make_dyn_star`...
-  --> $DIR/param-env-infer.rs:11:1
-   |
-LL | fn make_dyn_star<'a, T: PointerLike + Debug + 'a>(t: T) -> impl PointerLike + Debug + 'a {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires preparing `make_dyn_star` for borrow checking...
-  --> $DIR/param-env-infer.rs:11:1
-   |
-LL | fn make_dyn_star<'a, T: PointerLike + Debug + 'a>(t: T) -> impl PointerLike + Debug + 'a {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires unsafety-checking `make_dyn_star`...
-  --> $DIR/param-env-infer.rs:11:1
-   |
-LL | fn make_dyn_star<'a, T: PointerLike + Debug + 'a>(t: T) -> impl PointerLike + Debug + 'a {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires building MIR for `make_dyn_star`...
-  --> $DIR/param-env-infer.rs:11:1
-   |
-LL | fn make_dyn_star<'a, T: PointerLike + Debug + 'a>(t: T) -> impl PointerLike + Debug + 'a {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires match-checking `make_dyn_star`...
-  --> $DIR/param-env-infer.rs:11:1
-   |
-LL | fn make_dyn_star<'a, T: PointerLike + Debug + 'a>(t: T) -> impl PointerLike + Debug + 'a {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires building THIR for `make_dyn_star`...
-  --> $DIR/param-env-infer.rs:11:1
-   |
-LL | fn make_dyn_star<'a, T: PointerLike + Debug + 'a>(t: T) -> impl PointerLike + Debug + 'a {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires type-checking `make_dyn_star`...
   --> $DIR/param-env-infer.rs:11:1
    |

@@ -2624,7 +2624,7 @@ impl ToString for String {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "fmt_arguments_to_string_specialization", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "fmt_arguments_to_string_specialization", since = "1.71.0")]
 impl ToString for fmt::Arguments<'_> {
     #[inline]
     fn to_string(&self) -> String {

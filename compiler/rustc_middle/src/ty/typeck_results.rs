@@ -155,11 +155,7 @@ pub struct TypeckResults<'tcx> {
     /// We also store the type here, so that the compiler can use it as a hint
     /// for figuring out hidden types, even if they are only set in dead code
     /// (which doesn't show up in MIR).
-    ///
-    /// These types are mapped back to the opaque's identity substitutions
-    /// (with erased regions), which is why we don't associated substs with any
-    /// of these usages.
-    pub concrete_opaque_types: FxIndexMap<LocalDefId, ty::OpaqueHiddenType<'tcx>>,
+    pub concrete_opaque_types: FxIndexMap<ty::OpaqueTypeKey<'tcx>, ty::OpaqueHiddenType<'tcx>>,
 
     /// Tracks the minimum captures required for a closure;
     /// see `MinCaptureInformationMap` for more details.

@@ -202,7 +202,7 @@ mod c_long_definition {
 //     would be uninhabited and at least dereferencing such pointers would
 //     be UB.
 #[doc = include_str!("c_void.md")]
-#[cfg_attr(not(bootstrap), lang = "c_void")]
+#[lang = "c_void"]
 #[cfg_attr(not(doc), repr(u8))] // work around https://github.com/rust-lang/rust/issues/90435
 #[stable(feature = "core_c_void", since = "1.30.0")]
 pub enum c_void {

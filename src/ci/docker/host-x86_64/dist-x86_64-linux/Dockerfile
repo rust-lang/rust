@@ -55,7 +55,7 @@ RUN ./build-clang.sh
 ENV CC=clang CXX=clang++
 
 # rustc-perf version from 2023-03-15
-ENV PERF_COMMIT 9dfaa35193154b690922347ee1141a06ec87a199
+ENV PERF_COMMIT 8b2ac3042e1ff2c0074455a0a3618adef97156b1
 RUN curl -LS -o perf.zip https://github.com/rust-lang/rustc-perf/archive/$PERF_COMMIT.zip && \
     unzip perf.zip && \
     mv rustc-perf-$PERF_COMMIT rustc-perf && \

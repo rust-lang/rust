@@ -28,7 +28,7 @@ pub struct ConstGoto;
 
 impl<'tcx> MirPass<'tcx> for ConstGoto {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 4
+        sess.mir_opt_level() >= 2
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {

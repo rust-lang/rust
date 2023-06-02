@@ -356,10 +356,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(recursion_limit, CrateLevel, template!(NameValueStr: "N"), FutureWarnFollowing),
     ungated!(type_length_limit, CrateLevel, template!(NameValueStr: "N"), FutureWarnFollowing),
     gated!(
-        const_eval_limit, CrateLevel, template!(NameValueStr: "N"), ErrorFollowing,
-        const_eval_limit, experimental!(const_eval_limit)
-    ),
-    gated!(
         move_size_limit, CrateLevel, template!(NameValueStr: "N"), ErrorFollowing,
         large_assignments, experimental!(move_size_limit)
     ),

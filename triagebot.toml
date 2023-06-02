@@ -387,6 +387,10 @@ cc = [
 message = "Some changes occurred in HTML/CSS themes."
 cc = ["@GuillaumeGomez"]
 
+[mentions."tests/rustdoc-gui/"]
+message = "Some changes occurred in GUI tests."
+cc = ["@GuillaumeGomez"]
+
 [mentions."src/librustdoc/html/static/css/themes/ayu.css"]
 message = "A change occurred in the Ayu theme."
 cc = ["@Cldfire"]
