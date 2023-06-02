@@ -136,7 +136,7 @@ struct PlacedRootMonoItems<'tcx> {
 // The output CGUs are sorted by name.
 fn partition<'tcx, I>(
     tcx: TyCtxt<'tcx>,
-    mono_items: &mut I,
+    mono_items: I,
     max_cgu_count: usize,
     usage_map: &UsageMap<'tcx>,
 ) -> Vec<CodegenUnit<'tcx>>
@@ -239,7 +239,7 @@ where
 
 fn place_root_mono_items<'tcx, I>(
     cx: &PartitioningCx<'_, 'tcx>,
-    mono_items: &mut I,
+    mono_items: I,
 ) -> PlacedRootMonoItems<'tcx>
 where
     I: Iterator<Item = MonoItem<'tcx>>,
@@ -951,12 +951,8 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
     let (codegen_units, _) = tcx.sess.time("partition_and_assert_distinct_symbols", || {
         sync::join(
             || {
-                let mut codegen_units = partition(
-                    tcx,
-                    &mut items.iter().copied(),
-                    tcx.sess.codegen_units(),
-                    &usage_map,
-                );
+                let mut codegen_units =
+                    partition(tcx, items.iter().copied(), tcx.sess.codegen_units(), &usage_map);
                 codegen_units[0].make_primary();
                 &*tcx.arena.alloc_from_iter(codegen_units)
             },
