@@ -4,6 +4,7 @@ Rust MIR: a lowered representation of Rust.
 
 */
 
+#![deny(rustc::untranslatable_diagnostic)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(decl_macro)]
@@ -32,6 +33,8 @@ mod errors;
 pub mod interpret;
 pub mod transform;
 pub mod util;
+
+pub use errors::ReportErrorExt;
 
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_fluent_macro::fluent_messages;

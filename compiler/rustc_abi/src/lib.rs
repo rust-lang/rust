@@ -209,7 +209,7 @@ pub enum TargetDataLayoutErrors<'a> {
     InvalidAddressSpace { addr_space: &'a str, cause: &'a str, err: ParseIntError },
     InvalidBits { kind: &'a str, bit: &'a str, cause: &'a str, err: ParseIntError },
     MissingAlignment { cause: &'a str },
-    InvalidAlignment { cause: &'a str, err: String },
+    InvalidAlignment { cause: &'a str, err: AlignFromBytesError },
     InconsistentTargetArchitecture { dl: &'a str, target: &'a str },
     InconsistentTargetPointerWidth { pointer_size: u64, target: u32 },
     InvalidBitsSize { err: String },
@@ -640,30 +640,65 @@ impl fmt::Debug for Align {
     }
 }
 
+#[derive(Clone, Copy)]
+pub enum AlignFromBytesError {
+    NotPowerOfTwo(u64),
+    TooLarge(u64),
+}
+
+impl AlignFromBytesError {
+    pub fn diag_ident(self) -> &'static str {
+        match self {
+            Self::NotPowerOfTwo(_) => "not_power_of_two",
+            Self::TooLarge(_) => "too_large",
+        }
+    }
+
+    pub fn align(self) -> u64 {
+        let (Self::NotPowerOfTwo(align) | Self::TooLarge(align)) = self;
+        align
+    }
+}
+
+impl fmt::Debug for AlignFromBytesError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
+    }
+}
+
+impl fmt::Display for AlignFromBytesError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AlignFromBytesError::NotPowerOfTwo(align) => write!(f, "`{align}` is not a power of 2"),
+            AlignFromBytesError::TooLarge(align) => write!(f, "`{align}` is too large"),
+        }
+    }
+}
+
 impl Align {
     pub const ONE: Align = Align { pow2: 0 };
     pub const MAX: Align = Align { pow2: 29 };
 
     #[inline]
-    pub fn from_bits(bits: u64) -> Result<Align, String> {
+    pub fn from_bits(bits: u64) -> Result<Align, AlignFromBytesError> {
         Align::from_bytes(Size::from_bits(bits).bytes())
     }
 
     #[inline]
-    pub fn from_bytes(align: u64) -> Result<Align, String> {
+    pub fn from_bytes(align: u64) -> Result<Align, AlignFromBytesError> {
         // Treat an alignment of 0 bytes like 1-byte alignment.
         if align == 0 {
             return Ok(Align::ONE);
         }
 
         #[cold]
-        fn not_power_of_2(align: u64) -> String {
-            format!("`{}` is not a power of 2", align)
+        fn not_power_of_2(align: u64) -> AlignFromBytesError {
+            AlignFromBytesError::NotPowerOfTwo(align)
         }
 
         #[cold]
-        fn too_large(align: u64) -> String {
-            format!("`{}` is too large", align)
+        fn too_large(align: u64) -> AlignFromBytesError {
+            AlignFromBytesError::TooLarge(align)
         }
 
         let tz = align.trailing_zeros();

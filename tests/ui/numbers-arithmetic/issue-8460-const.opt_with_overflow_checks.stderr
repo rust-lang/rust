@@ -76,37 +76,37 @@ error: this operation will panic at runtime
   --> $DIR/issue-8460-const.rs:35:36
    |
 LL |     assert!(thread::spawn(move|| { isize::MIN % -1; }).join().is_err());
-   |                                    ^^^^^^^^^^^^^^^ attempt to compute the remainder of `isize::MIN % -1_isize`, which would overflow
+   |                                    ^^^^^^^^^^^^^^^ attempt to compute `isize::MIN % -1_isize`, which would overflow
 
 error: this operation will panic at runtime
   --> $DIR/issue-8460-const.rs:37:36
    |
 LL |     assert!(thread::spawn(move|| { i8::MIN % -1; }).join().is_err());
-   |                                    ^^^^^^^^^^^^ attempt to compute the remainder of `i8::MIN % -1_i8`, which would overflow
+   |                                    ^^^^^^^^^^^^ attempt to compute `i8::MIN % -1_i8`, which would overflow
 
 error: this operation will panic at runtime
   --> $DIR/issue-8460-const.rs:39:36
    |
 LL |     assert!(thread::spawn(move|| { i16::MIN % -1; }).join().is_err());
-   |                                    ^^^^^^^^^^^^^ attempt to compute the remainder of `i16::MIN % -1_i16`, which would overflow
+   |                                    ^^^^^^^^^^^^^ attempt to compute `i16::MIN % -1_i16`, which would overflow
 
 error: this operation will panic at runtime
   --> $DIR/issue-8460-const.rs:41:36
    |
 LL |     assert!(thread::spawn(move|| { i32::MIN % -1; }).join().is_err());
-   |                                    ^^^^^^^^^^^^^ attempt to compute the remainder of `i32::MIN % -1_i32`, which would overflow
+   |                                    ^^^^^^^^^^^^^ attempt to compute `i32::MIN % -1_i32`, which would overflow
 
 error: this operation will panic at runtime
   --> $DIR/issue-8460-const.rs:43:36
    |
 LL |     assert!(thread::spawn(move|| { i64::MIN % -1; }).join().is_err());
-   |                                    ^^^^^^^^^^^^^ attempt to compute the remainder of `i64::MIN % -1_i64`, which would overflow
+   |                                    ^^^^^^^^^^^^^ attempt to compute `i64::MIN % -1_i64`, which would overflow
 
 error: this operation will panic at runtime
   --> $DIR/issue-8460-const.rs:45:36
    |
 LL |     assert!(thread::spawn(move|| { i128::MIN % -1; }).join().is_err());
-   |                                    ^^^^^^^^^^^^^^ attempt to compute the remainder of `i128::MIN % -1_i128`, which would overflow
+   |                                    ^^^^^^^^^^^^^^ attempt to compute `i128::MIN % -1_i128`, which would overflow
 
 error: this operation will panic at runtime
   --> $DIR/issue-8460-const.rs:47:36

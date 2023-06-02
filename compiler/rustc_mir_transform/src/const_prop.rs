@@ -4,6 +4,7 @@
 use either::Right;
 
 use rustc_const_eval::const_eval::CheckAlignment;
+use rustc_const_eval::ReportErrorExt;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
@@ -37,6 +38,7 @@ macro_rules! throw_machine_stop_str {
     ($($tt:tt)*) => {{
         // We make a new local type for it. The type itself does not carry any information,
         // but its vtable (for the `MachineStopType` trait) does.
+        #[derive(Debug)]
         struct Zst;
         // Printing this type shows the desired string.
         impl std::fmt::Display for Zst {
@@ -44,7 +46,17 @@ macro_rules! throw_machine_stop_str {
                 write!(f, $($tt)*)
             }
         }
-        impl rustc_middle::mir::interpret::MachineStopType for Zst {}
+
+        impl rustc_middle::mir::interpret::MachineStopType for Zst {
+            fn diagnostic_message(&self) -> rustc_errors::DiagnosticMessage {
+                self.to_string().into()
+            }
+
+            fn add_args(
+                self: Box<Self>,
+                _: &mut dyn FnMut(std::borrow::Cow<'static, str>, rustc_errors::DiagnosticArgValue<'static>),
+            ) {}
+        }
         throw_machine_stop!(Zst)
     }};
 }
@@ -374,7 +386,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 op
             }
             Err(e) => {
-                trace!("get_const failed: {}", e);
+                trace!("get_const failed: {:?}", e.into_kind().debug());
                 return None;
             }
         };

@@ -2,7 +2,6 @@ use crate::abi::{self, Abi, Align, FieldsShape, Size};
 use crate::abi::{HasDataLayout, TyAbiInterface, TyAndLayout};
 use crate::spec::{self, HasTargetSpec};
 use rustc_span::Symbol;
-use std::fmt;
 use std::str::FromStr;
 
 mod aarch64;
@@ -631,16 +630,6 @@ pub struct FnAbi<'a, Ty> {
 pub enum AdjustForForeignAbiError {
     /// Target architecture doesn't support "foreign" (i.e. non-Rust) ABIs.
     Unsupported { arch: Symbol, abi: spec::abi::Abi },
-}
-
-impl fmt::Display for AdjustForForeignAbiError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Unsupported { arch, abi } => {
-                write!(f, "target architecture {arch:?} does not support `extern {abi}` ABI")
-            }
-        }
-    }
 }
 
 impl<'a, Ty> FnAbi<'a, Ty> {

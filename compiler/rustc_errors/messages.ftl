@@ -8,7 +8,11 @@ errors_target_invalid_address_space =
     invalid address space `{$addr_space}` for `{$cause}` in "data-layout": {$err}
 
 errors_target_invalid_alignment =
-    invalid alignment for `{$cause}` in "data-layout": {$err}
+    invalid alignment for `{$cause}` in "data-layout": `{$align}` is {$err_kind ->
+        [not_power_of_two] not a power of 2
+        [too_large] too large
+        *[other] {""}
+    }
 
 errors_target_invalid_bits =
     invalid {$kind} `{$bit}` for `{$cause}` in "data-layout": {$err}

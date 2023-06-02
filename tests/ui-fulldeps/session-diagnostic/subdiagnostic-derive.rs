@@ -85,7 +85,7 @@ struct F {
 
 #[derive(Subdiagnostic)]
 #[label(bug = "...")]
-//~^ ERROR invalid nested attribute
+//~^ ERROR only `no_span` is a valid nested attribute
 //~| ERROR diagnostic slug must be first argument
 struct G {
     #[primary_span]
@@ -104,7 +104,7 @@ struct H {
 
 #[derive(Subdiagnostic)]
 #[label(slug = 4)]
-//~^ ERROR invalid nested attribute
+//~^ ERROR only `no_span` is a valid nested attribute
 //~| ERROR diagnostic slug must be first argument
 struct J {
     #[primary_span]
@@ -114,7 +114,7 @@ struct J {
 
 #[derive(Subdiagnostic)]
 #[label(slug("..."))]
-//~^ ERROR invalid nested attribute
+//~^ ERROR only `no_span` is a valid nested attribute
 //~| ERROR diagnostic slug must be first argument
 struct K {
     #[primary_span]
@@ -143,7 +143,7 @@ struct M {
 
 #[derive(Subdiagnostic)]
 #[label(no_crate_example, code = "...")]
-//~^ ERROR invalid nested attribute
+//~^ ERROR only `no_span` is a valid nested attribute
 struct N {
     #[primary_span]
     span: Span,
@@ -152,7 +152,7 @@ struct N {
 
 #[derive(Subdiagnostic)]
 #[label(no_crate_example, applicability = "machine-applicable")]
-//~^ ERROR invalid nested attribute
+//~^ ERROR only `no_span` is a valid nested attribute
 struct O {
     #[primary_span]
     span: Span,
@@ -224,7 +224,7 @@ enum T {
 enum U {
     #[label(code = "...")]
     //~^ ERROR diagnostic slug must be first argument of a `#[label(...)]` attribute
-    //~| ERROR invalid nested attribute
+    //~| ERROR only `no_span` is a valid nested attribute
     A {
         #[primary_span]
         span: Span,

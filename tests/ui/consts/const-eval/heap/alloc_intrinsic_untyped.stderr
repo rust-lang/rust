@@ -1,8 +1,10 @@
-error: untyped pointers are not allowed in constant
+error: unsupported untyped pointer in constant
   --> $DIR/alloc_intrinsic_untyped.rs:6:1
    |
-LL | const BAR: *mut i32 = unsafe { intrinsics::const_allocate(4, 4) as *mut i32};
+LL | const BAR: *mut i32 = unsafe { intrinsics::const_allocate(4, 4) as *mut i32 };
    | ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: memory only reachable via raw pointers is not supported
 
 error: aborting due to previous error
 
