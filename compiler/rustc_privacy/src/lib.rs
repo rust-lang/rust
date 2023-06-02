@@ -751,7 +751,7 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
                         reach.generics().predicates();
 
                         if trait_item_ref.kind == AssocItemKind::Type
-                            && !tcx.impl_defaultness(trait_item_ref.id.owner_id).has_value()
+                            && !tcx.defaultness(trait_item_ref.id.owner_id).has_value()
                         {
                             // No type to visit.
                         } else {
@@ -1927,7 +1927,7 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx> {
 
         let (check_ty, is_assoc_ty) = match assoc_item_kind {
             AssocItemKind::Const | AssocItemKind::Fn { .. } => (true, false),
-            AssocItemKind::Type => (self.tcx.impl_defaultness(def_id).has_value(), true),
+            AssocItemKind::Type => (self.tcx.defaultness(def_id).has_value(), true),
         };
         check.in_assoc_ty = is_assoc_ty;
         check.generics().predicates();

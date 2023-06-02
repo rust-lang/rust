@@ -75,13 +75,13 @@ fn sized_constraint_for_ty<'tcx>(
     result
 }
 
-fn impl_defaultness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Defaultness {
+fn defaultness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Defaultness {
     match tcx.hir().get_by_def_id(def_id) {
         hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(impl_), .. }) => impl_.defaultness,
         hir::Node::ImplItem(hir::ImplItem { defaultness, .. })
         | hir::Node::TraitItem(hir::TraitItem { defaultness, .. }) => *defaultness,
         node => {
-            bug!("`impl_defaultness` called on {:?}", node);
+            bug!("`defaultness` called on {:?}", node);
         }
     }
 }
@@ -574,7 +574,7 @@ pub fn provide(providers: &mut Providers) {
         param_env_reveal_all_normalized,
         instance_def_size_estimate,
         issue33140_self_ty,
-        impl_defaultness,
+        defaultness,
         unsizing_params_for_adt,
         ..*providers
     };

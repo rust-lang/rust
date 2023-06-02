@@ -1437,8 +1437,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         debug!("EncodeContext::encode_info_for_trait_item({:?})", def_id);
         let tcx = self.tcx;
 
-        let impl_defaultness = tcx.impl_defaultness(def_id.expect_local());
-        self.tables.impl_defaultness.set_some(def_id.index, impl_defaultness);
+        let defaultness = tcx.defaultness(def_id.expect_local());
+        self.tables.defaultness.set_some(def_id.index, defaultness);
         let trait_item = tcx.associated_item(def_id);
         self.tables.assoc_container.set_some(def_id.index, trait_item.container);
 
@@ -1466,8 +1466,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         debug!("EncodeContext::encode_info_for_impl_item({:?})", def_id);
         let tcx = self.tcx;
 
-        let defaultness = self.tcx.impl_defaultness(def_id.expect_local());
-        self.tables.impl_defaultness.set_some(def_id.index, defaultness);
+        let defaultness = self.tcx.defaultness(def_id.expect_local());
+        self.tables.defaultness.set_some(def_id.index, defaultness);
         let impl_item = self.tcx.associated_item(def_id);
         self.tables.assoc_container.set_some(def_id.index, impl_item.container);
 
@@ -1653,7 +1653,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 );
             }
             hir::ItemKind::Impl(hir::Impl { defaultness, constness, .. }) => {
-                self.tables.impl_defaultness.set_some(def_id.index, *defaultness);
+                self.tables.defaultness.set_some(def_id.index, *defaultness);
                 self.tables.constness.set_some(def_id.index, *constness);
                 self.tables.impl_polarity.set_some(def_id.index, self.tcx.impl_polarity(def_id));
 
