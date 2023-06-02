@@ -864,15 +864,10 @@ fn debug_dump<'a, 'tcx: 'a>(tcx: TyCtxt<'tcx>, label: &str, cgus: &[CodegenUnit<
                 cgu.size_estimate()
             );
 
-            // The order of `cgu.items()` is non-deterministic; sort it by name
-            // to give deterministic output.
-            let mut items: Vec<_> = cgu.items().iter().collect();
-            items.sort_by_key(|(item, _)| item.symbol_name(tcx).name);
-            for (item, linkage) in items {
+            for (item, linkage) in cgu.items_in_deterministic_order(tcx) {
                 let symbol_name = item.symbol_name(tcx).name;
                 let symbol_hash_start = symbol_name.rfind('h');
                 let symbol_hash = symbol_hash_start.map_or("<no hash>", |i| &symbol_name[i..]);
-
                 let size = item.size_estimate(tcx);
                 let _ = with_no_trimmed_paths!(writeln!(
                     s,
