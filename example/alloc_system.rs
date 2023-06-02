@@ -17,6 +17,7 @@ const MIN_ALIGN: usize = 8;
               target_arch = "aarch64",
               target_arch = "loongarch64",
               target_arch = "mips64",
+              target_arch = "mips64r6",
               target_arch = "s390x",
               target_arch = "sparc64"))]
 const MIN_ALIGN: usize = 16;
