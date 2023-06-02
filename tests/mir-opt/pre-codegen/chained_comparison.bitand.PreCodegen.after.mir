@@ -1,0 +1,84 @@
+// MIR for `bitand` after PreCodegen
+
+fn bitand(_1: &Blueprint, _2: &Blueprint) -> bool {
+    debug a => _1;                       // in scope 0 at $DIR/chained_comparison.rs:+0:15: +0:16
+    debug b => _2;                       // in scope 0 at $DIR/chained_comparison.rs:+0:30: +0:31
+    let mut _0: bool;                    // return place in scope 0 at $DIR/chained_comparison.rs:+0:48: +0:52
+    let mut _3: u32;                     // in scope 0 at $DIR/chained_comparison.rs:+1:6: +1:22
+    let mut _4: u32;                     // in scope 0 at $DIR/chained_comparison.rs:+1:26: +1:42
+    let mut _5: bool;                    // in scope 0 at $DIR/chained_comparison.rs:+1:5: +1:43
+    let mut _6: u32;                     // in scope 0 at $DIR/chained_comparison.rs:+2:12: +2:21
+    let mut _7: u32;                     // in scope 0 at $DIR/chained_comparison.rs:+2:25: +2:34
+    let mut _8: bool;                    // in scope 0 at $DIR/chained_comparison.rs:+2:11: +2:35
+    let mut _9: bool;                    // in scope 0 at $DIR/chained_comparison.rs:+1:5: +2:35
+    let mut _10: u32;                    // in scope 0 at $DIR/chained_comparison.rs:+3:12: +3:28
+    let mut _11: u32;                    // in scope 0 at $DIR/chained_comparison.rs:+3:32: +3:48
+    let mut _12: bool;                   // in scope 0 at $DIR/chained_comparison.rs:+3:11: +3:49
+    let mut _13: bool;                   // in scope 0 at $DIR/chained_comparison.rs:+1:5: +3:49
+    let mut _14: u32;                    // in scope 0 at $DIR/chained_comparison.rs:+4:12: +4:25
+    let mut _15: u32;                    // in scope 0 at $DIR/chained_comparison.rs:+4:29: +4:42
+    let mut _16: bool;                   // in scope 0 at $DIR/chained_comparison.rs:+4:11: +4:43
+    let mut _17: bool;                   // in scope 0 at $DIR/chained_comparison.rs:+1:5: +4:43
+    let mut _18: u32;                    // in scope 0 at $DIR/chained_comparison.rs:+5:12: +5:21
+    let mut _19: u32;                    // in scope 0 at $DIR/chained_comparison.rs:+5:25: +5:34
+    let mut _20: bool;                   // in scope 0 at $DIR/chained_comparison.rs:+5:11: +5:35
+
+    bb0: {
+        StorageLive(_17);                // scope 0 at $DIR/chained_comparison.rs:+1:5: +4:43
+        StorageLive(_13);                // scope 0 at $DIR/chained_comparison.rs:+1:5: +3:49
+        StorageLive(_9);                 // scope 0 at $DIR/chained_comparison.rs:+1:5: +2:35
+        StorageLive(_5);                 // scope 0 at $DIR/chained_comparison.rs:+1:5: +1:43
+        StorageLive(_3);                 // scope 0 at $DIR/chained_comparison.rs:+1:6: +1:22
+        _3 = ((*_1).0: u32);             // scope 0 at $DIR/chained_comparison.rs:+1:6: +1:22
+        StorageLive(_4);                 // scope 0 at $DIR/chained_comparison.rs:+1:26: +1:42
+        _4 = ((*_2).0: u32);             // scope 0 at $DIR/chained_comparison.rs:+1:26: +1:42
+        _5 = Eq(move _3, move _4);       // scope 0 at $DIR/chained_comparison.rs:+1:5: +1:43
+        StorageDead(_4);                 // scope 0 at $DIR/chained_comparison.rs:+1:42: +1:43
+        StorageDead(_3);                 // scope 0 at $DIR/chained_comparison.rs:+1:42: +1:43
+        StorageLive(_8);                 // scope 0 at $DIR/chained_comparison.rs:+2:11: +2:35
+        StorageLive(_6);                 // scope 0 at $DIR/chained_comparison.rs:+2:12: +2:21
+        _6 = ((*_1).1: u32);             // scope 0 at $DIR/chained_comparison.rs:+2:12: +2:21
+        StorageLive(_7);                 // scope 0 at $DIR/chained_comparison.rs:+2:25: +2:34
+        _7 = ((*_2).1: u32);             // scope 0 at $DIR/chained_comparison.rs:+2:25: +2:34
+        _8 = Eq(move _6, move _7);       // scope 0 at $DIR/chained_comparison.rs:+2:11: +2:35
+        StorageDead(_7);                 // scope 0 at $DIR/chained_comparison.rs:+2:34: +2:35
+        StorageDead(_6);                 // scope 0 at $DIR/chained_comparison.rs:+2:34: +2:35
+        _9 = BitAnd(move _5, move _8);   // scope 0 at $DIR/chained_comparison.rs:+1:5: +2:35
+        StorageDead(_8);                 // scope 0 at $DIR/chained_comparison.rs:+2:34: +2:35
+        StorageDead(_5);                 // scope 0 at $DIR/chained_comparison.rs:+2:34: +2:35
+        StorageLive(_12);                // scope 0 at $DIR/chained_comparison.rs:+3:11: +3:49
+        StorageLive(_10);                // scope 0 at $DIR/chained_comparison.rs:+3:12: +3:28
+        _10 = ((*_1).2: u32);            // scope 0 at $DIR/chained_comparison.rs:+3:12: +3:28
+        StorageLive(_11);                // scope 0 at $DIR/chained_comparison.rs:+3:32: +3:48
+        _11 = ((*_2).2: u32);            // scope 0 at $DIR/chained_comparison.rs:+3:32: +3:48
+        _12 = Eq(move _10, move _11);    // scope 0 at $DIR/chained_comparison.rs:+3:11: +3:49
+        StorageDead(_11);                // scope 0 at $DIR/chained_comparison.rs:+3:48: +3:49
+        StorageDead(_10);                // scope 0 at $DIR/chained_comparison.rs:+3:48: +3:49
+        _13 = BitAnd(move _9, move _12); // scope 0 at $DIR/chained_comparison.rs:+1:5: +3:49
+        StorageDead(_12);                // scope 0 at $DIR/chained_comparison.rs:+3:48: +3:49
+        StorageDead(_9);                 // scope 0 at $DIR/chained_comparison.rs:+3:48: +3:49
+        StorageLive(_16);                // scope 0 at $DIR/chained_comparison.rs:+4:11: +4:43
+        StorageLive(_14);                // scope 0 at $DIR/chained_comparison.rs:+4:12: +4:25
+        _14 = ((*_1).3: u32);            // scope 0 at $DIR/chained_comparison.rs:+4:12: +4:25
+        StorageLive(_15);                // scope 0 at $DIR/chained_comparison.rs:+4:29: +4:42
+        _15 = ((*_2).3: u32);            // scope 0 at $DIR/chained_comparison.rs:+4:29: +4:42
+        _16 = Eq(move _14, move _15);    // scope 0 at $DIR/chained_comparison.rs:+4:11: +4:43
+        StorageDead(_15);                // scope 0 at $DIR/chained_comparison.rs:+4:42: +4:43
+        StorageDead(_14);                // scope 0 at $DIR/chained_comparison.rs:+4:42: +4:43
+        _17 = BitAnd(move _13, move _16); // scope 0 at $DIR/chained_comparison.rs:+1:5: +4:43
+        StorageDead(_16);                // scope 0 at $DIR/chained_comparison.rs:+4:42: +4:43
+        StorageDead(_13);                // scope 0 at $DIR/chained_comparison.rs:+4:42: +4:43
+        StorageLive(_20);                // scope 0 at $DIR/chained_comparison.rs:+5:11: +5:35
+        StorageLive(_18);                // scope 0 at $DIR/chained_comparison.rs:+5:12: +5:21
+        _18 = ((*_1).4: u32);            // scope 0 at $DIR/chained_comparison.rs:+5:12: +5:21
+        StorageLive(_19);                // scope 0 at $DIR/chained_comparison.rs:+5:25: +5:34
+        _19 = ((*_2).4: u32);            // scope 0 at $DIR/chained_comparison.rs:+5:25: +5:34
+        _20 = Eq(move _18, move _19);    // scope 0 at $DIR/chained_comparison.rs:+5:11: +5:35
+        StorageDead(_19);                // scope 0 at $DIR/chained_comparison.rs:+5:34: +5:35
+        StorageDead(_18);                // scope 0 at $DIR/chained_comparison.rs:+5:34: +5:35
+        _0 = BitAnd(move _17, move _20); // scope 0 at $DIR/chained_comparison.rs:+1:5: +5:35
+        StorageDead(_20);                // scope 0 at $DIR/chained_comparison.rs:+5:34: +5:35
+        StorageDead(_17);                // scope 0 at $DIR/chained_comparison.rs:+5:34: +5:35
+        return;                          // scope 0 at $DIR/chained_comparison.rs:+6:2: +6:2
+    }
+}
