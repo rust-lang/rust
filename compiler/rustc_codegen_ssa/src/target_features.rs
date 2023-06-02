@@ -44,6 +44,7 @@ const ARM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     // #[target_feature].
     ("thumb-mode", Some(sym::arm_target_feature)),
     ("thumb2", Some(sym::arm_target_feature)),
+    ("trustzone", Some(sym::arm_target_feature)),
     ("v5te", Some(sym::arm_target_feature)),
     ("v6", Some(sym::arm_target_feature)),
     ("v6k", Some(sym::arm_target_feature)),
@@ -53,6 +54,7 @@ const ARM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("vfp2", Some(sym::arm_target_feature)),
     ("vfp3", Some(sym::arm_target_feature)),
     ("vfp4", Some(sym::arm_target_feature)),
+    ("virtualization", Some(sym::arm_target_feature)),
     // tidy-alphabetical-end
 ];
 
