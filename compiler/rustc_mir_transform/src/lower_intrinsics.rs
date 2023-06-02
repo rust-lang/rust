@@ -82,30 +82,35 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                         drop(args);
                         terminator.kind = TerminatorKind::Goto { target };
                     }
-                    sym::wrapping_add | sym::wrapping_sub | sym::wrapping_mul => {
-                        if let Some(target) = *target {
-                            let lhs;
-                            let rhs;
-                            {
-                                let mut args = args.drain(..);
-                                lhs = args.next().unwrap();
-                                rhs = args.next().unwrap();
-                            }
-                            let bin_op = match intrinsic_name {
-                                sym::wrapping_add => BinOp::Add,
-                                sym::wrapping_sub => BinOp::Sub,
-                                sym::wrapping_mul => BinOp::Mul,
-                                _ => bug!("unexpected intrinsic"),
-                            };
-                            block.statements.push(Statement {
-                                source_info: terminator.source_info,
-                                kind: StatementKind::Assign(Box::new((
-                                    *destination,
-                                    Rvalue::BinaryOp(bin_op, Box::new((lhs, rhs))),
-                                ))),
-                            });
-                            terminator.kind = TerminatorKind::Goto { target };
+                    sym::wrapping_add
+                    | sym::wrapping_sub
+                    | sym::wrapping_mul
+                    | sym::unchecked_div
+                    | sym::unchecked_rem => {
+                        let target = target.unwrap();
+                        let lhs;
+                        let rhs;
+                        {
+                            let mut args = args.drain(..);
+                            lhs = args.next().unwrap();
+                            rhs = args.next().unwrap();
                         }
+                        let bin_op = match intrinsic_name {
+                            sym::wrapping_add => BinOp::Add,
+                            sym::wrapping_sub => BinOp::Sub,
+                            sym::wrapping_mul => BinOp::Mul,
+                            sym::unchecked_div => BinOp::Div,
+                            sym::unchecked_rem => BinOp::Rem,
+                            _ => bug!("unexpected intrinsic"),
+                        };
+                        block.statements.push(Statement {
+                            source_info: terminator.source_info,
+                            kind: StatementKind::Assign(Box::new((
+                                *destination,
+                                Rvalue::BinaryOp(bin_op, Box::new((lhs, rhs))),
+                            ))),
+                        });
+                        terminator.kind = TerminatorKind::Goto { target };
                     }
                     sym::add_with_overflow | sym::sub_with_overflow | sym::mul_with_overflow => {
                         if let Some(target) = *target {

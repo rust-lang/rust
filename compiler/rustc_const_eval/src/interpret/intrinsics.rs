@@ -238,9 +238,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | sym::unchecked_shr
             | sym::unchecked_add
             | sym::unchecked_sub
-            | sym::unchecked_mul
-            | sym::unchecked_div
-            | sym::unchecked_rem => {
+            | sym::unchecked_mul => {
                 let l = self.read_immediate(&args[0])?;
                 let r = self.read_immediate(&args[1])?;
                 let bin_op = match intrinsic_name {
@@ -249,8 +247,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     sym::unchecked_add => BinOp::Add,
                     sym::unchecked_sub => BinOp::Sub,
                     sym::unchecked_mul => BinOp::Mul,
-                    sym::unchecked_div => BinOp::Div,
-                    sym::unchecked_rem => BinOp::Rem,
                     _ => bug!(),
                 };
                 let (val, overflowed, _ty) = self.overflowing_binary_op(bin_op, &l, &r)?;

@@ -12,7 +12,7 @@
           StorageLive(_1);                 // scope 0 at $DIR/lower_intrinsics.rs:+1:9: +1:10
 -         _1 = transmute::<usize, &mut Never>(const 1_usize) -> [return: bb1, unwind unreachable]; // scope 0 at $DIR/lower_intrinsics.rs:+1:25: +1:52
 -                                          // mir::Constant
--                                          // + span: $DIR/lower_intrinsics.rs:64:25: 64:44
+-                                          // + span: $DIR/lower_intrinsics.rs:70:25: 70:44
 -                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(usize) -> &mut Never {transmute::<usize, &mut Never>}, val: Value(<ZST>) }
 +         _1 = const 1_usize as &mut Never (Transmute); // scope 0 at $DIR/lower_intrinsics.rs:+1:25: +1:52
 +         goto -> bb1;                     // scope 0 at $DIR/lower_intrinsics.rs:+1:25: +1:52

@@ -475,9 +475,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
         sym::unchecked_add
         | sym::unchecked_sub
         | sym::unchecked_mul
-        | sym::unchecked_div
         | sym::exact_div
-        | sym::unchecked_rem
         | sym::unchecked_shl
         | sym::unchecked_shr => {
             intrinsic_args!(fx, args => (x, y); intrinsic);
@@ -487,8 +485,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 sym::unchecked_add => BinOp::Add,
                 sym::unchecked_sub => BinOp::Sub,
                 sym::unchecked_mul => BinOp::Mul,
-                sym::unchecked_div | sym::exact_div => BinOp::Div,
-                sym::unchecked_rem => BinOp::Rem,
+                sym::exact_div => BinOp::Div,
                 sym::unchecked_shl => BinOp::Shl,
                 sym::unchecked_shr => BinOp::Shr,
                 _ => unreachable!(),

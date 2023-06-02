@@ -32,7 +32,7 @@
           _5 = _2;                         // scope 0 at $DIR/lower_intrinsics.rs:+1:53: +1:54
 -         _3 = add_with_overflow::<i32>(move _4, move _5) -> [return: bb1, unwind unreachable]; // scope 0 at $DIR/lower_intrinsics.rs:+1:14: +1:55
 -                                          // mir::Constant
--                                          // + span: $DIR/lower_intrinsics.rs:112:14: 112:49
+-                                          // + span: $DIR/lower_intrinsics.rs:118:14: 118:49
 -                                          // + literal: Const { ty: extern "rust-intrinsic" fn(i32, i32) -> (i32, bool) {add_with_overflow::<i32>}, val: Value(<ZST>) }
 +         _3 = CheckedAdd(move _4, move _5); // scope 0 at $DIR/lower_intrinsics.rs:+1:14: +1:55
 +         goto -> bb1;                     // scope 0 at $DIR/lower_intrinsics.rs:+1:14: +1:55
@@ -48,7 +48,7 @@
           _8 = _2;                         // scope 1 at $DIR/lower_intrinsics.rs:+2:53: +2:54
 -         _6 = sub_with_overflow::<i32>(move _7, move _8) -> [return: bb2, unwind unreachable]; // scope 1 at $DIR/lower_intrinsics.rs:+2:14: +2:55
 -                                          // mir::Constant
--                                          // + span: $DIR/lower_intrinsics.rs:113:14: 113:49
+-                                          // + span: $DIR/lower_intrinsics.rs:119:14: 119:49
 -                                          // + literal: Const { ty: extern "rust-intrinsic" fn(i32, i32) -> (i32, bool) {sub_with_overflow::<i32>}, val: Value(<ZST>) }
 +         _6 = CheckedSub(move _7, move _8); // scope 1 at $DIR/lower_intrinsics.rs:+2:14: +2:55
 +         goto -> bb2;                     // scope 1 at $DIR/lower_intrinsics.rs:+2:14: +2:55
@@ -64,7 +64,7 @@
           _11 = _2;                        // scope 2 at $DIR/lower_intrinsics.rs:+3:53: +3:54
 -         _9 = mul_with_overflow::<i32>(move _10, move _11) -> [return: bb3, unwind unreachable]; // scope 2 at $DIR/lower_intrinsics.rs:+3:14: +3:55
 -                                          // mir::Constant
--                                          // + span: $DIR/lower_intrinsics.rs:114:14: 114:49
+-                                          // + span: $DIR/lower_intrinsics.rs:120:14: 120:49
 -                                          // + literal: Const { ty: extern "rust-intrinsic" fn(i32, i32) -> (i32, bool) {mul_with_overflow::<i32>}, val: Value(<ZST>) }
 +         _9 = CheckedMul(move _10, move _11); // scope 2 at $DIR/lower_intrinsics.rs:+3:14: +3:55
 +         goto -> bb3;                     // scope 2 at $DIR/lower_intrinsics.rs:+3:14: +3:55
