@@ -1101,7 +1101,12 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     );
 }
 
-fn item_trait_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::TraitAlias) {
+fn item_trait_alias(
+    w: &mut impl fmt::Write,
+    cx: &mut Context<'_>,
+    it: &clean::Item,
+    t: &clean::TraitAlias,
+) {
     wrap_item(w, |w| {
         write!(
             w,
@@ -1111,16 +1116,17 @@ fn item_trait_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &
             print_where_clause(&t.generics, cx, 0, Ending::Newline),
             bounds(&t.bounds, true, cx),
             attrs = render_attributes_in_pre(it, "", cx.tcx()),
-        );
+        )
+        .unwrap();
     });
 
-    write!(w, "{}", document(cx, it, None, HeadingOffset::H2));
-
+    write!(w, "{}", document(cx, it, None, HeadingOffset::H2)).unwrap();
     // Render any items associated directly to this alias, as otherwise they
     // won't be visible anywhere in the docs. It would be nice to also show
     // associated items from the aliased type (see discussion in #32077), but
     // we need #14072 to make sense of the generics.
     write!(w, "{}", render_assoc_items(cx, it, it.item_id.expect_def_id(), AssocItemRender::All))
+        .unwrap();
 }
 
 fn item_opaque_ty(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::OpaqueTy) {
@@ -1673,13 +1679,14 @@ fn bounds(t_bounds: &[clean::GenericBound], trait_alias: bool, cx: &Context<'_>)
     bounds
 }
 
-fn wrap_item<F>(w: &mut Buffer, f: F)
+fn wrap_item<W, F>(w: &mut W, f: F)
 where
-    F: FnOnce(&mut Buffer),
+    W: fmt::Write,
+    F: FnOnce(&mut W),
 {
-    w.write_str(r#"<pre class="rust item-decl"><code>"#);
+    write!(w, r#"<pre class="rust item-decl"><code>"#).unwrap();
     f(w);
-    w.write_str("</code></pre>");
+    write!(w, "</code></pre>").unwrap();
 }
 
 #[derive(PartialEq, Eq)]
