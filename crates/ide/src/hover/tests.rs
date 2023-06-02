@@ -4338,6 +4338,211 @@ const FOO$0: f64 = 1.0f64;
 }
 
 #[test]
+fn hover_const_eval_enum() {
+    check(
+        r#"
+enum Enum {
+    V1,
+    V2,
+}
+
+const VX: Enum = Enum::V1;
+
+const FOO$0: Enum = VX;
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: Enum = V1
+            ```
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: option
+const FOO$0: Option<i32> = Some(2);
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: Option<i32> = Some(2)
+            ```
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: option
+const FOO$0: Option<&i32> = Some(2).as_ref();
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: Option<&i32> = Some(&2)
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn hover_const_eval_slice() {
+    check(
+        r#"
+//- minicore: slice, index, coerce_unsized
+const FOO$0: &[i32] = &[1, 2, 3 + 4];
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: &[i32] = &[1, 2, 7]
+            ```
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: slice, index, coerce_unsized
+const FOO$0: &[i32; 5] = &[12; 5];
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: &[i32; 5] = &[12, 12, 12, 12, 12]
+            ```
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: slice, index, coerce_unsized
+
+const FOO$0: (&i32, &[i32], &i32) = {
+    let a: &[i32] = &[1, 2, 3];
+    (&a[0], a, &a[0])
+}
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: (&i32, &[i32], &i32) = (&1, &[1, 2, 3], &1)
+            ```
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: slice, index, coerce_unsized
+
+struct Tree(&[Tree]);
+
+const FOO$0: Tree = {
+    let x = &[Tree(&[]), Tree(&[Tree(&[])])];
+    Tree(&[Tree(x), Tree(x)])
+}
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: Tree = Tree(&[Tree(&[Tree(&[]), Tree(&[Tree(&[])])]), Tree(&[Tree(&[]), Tree(&[Tree(&[])])])])
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn hover_const_eval_str() {
+    check(
+        r#"
+const FOO$0: &str = "foo";
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: &str = "foo"
+            ```
+        "#]],
+    );
+    check(
+        r#"
+struct X {
+    a: &'static str,
+    b: &'static str,
+}
+const FOO$0: X = X {
+    a: "axiom",
+    b: "buy N large",
+};
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: X = X { a: "axiom", b: "buy N large" }
+            ```
+        "#]],
+    );
+    check(
+        r#"
+const FOO$0: (&str, &str) = {
+    let x = "foo";
+    (x, x)
+};
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: (&str, &str) = ("foo", "foo")
+            ```
+        "#]],
+    );
+}
+
+#[test]
 fn hover_const_eval_in_generic_trait() {
     // Doesn't compile, but we shouldn't crash.
     check(

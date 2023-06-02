@@ -17,21 +17,26 @@ use hir_def::{
     path::{Path, PathKind},
     type_ref::{TraitBoundModifier, TypeBound, TypeRef},
     visibility::Visibility,
-    HasModule, ItemContainerId, LocalFieldId, Lookup, ModuleDefId, ModuleId, TraitId,
+    EnumVariantId, HasModule, ItemContainerId, LocalFieldId, Lookup, ModuleDefId, ModuleId,
+    TraitId,
 };
 use hir_expand::{hygiene::Hygiene, name::Name};
 use intern::{Internable, Interned};
 use itertools::Itertools;
+use la_arena::ArenaMap;
 use smallvec::SmallVec;
 use stdx::never;
 
 use crate::{
+    consteval::try_const_usize,
     db::HirDatabase,
-    from_assoc_type_id, from_foreign_def_id, from_placeholder_idx, lt_from_placeholder_idx,
+    from_assoc_type_id, from_foreign_def_id, from_placeholder_idx,
+    layout::Layout,
+    lt_from_placeholder_idx,
     mapping::from_chalk,
     mir::pad16,
     primitive, to_assoc_type_id,
-    utils::{self, generics, ClosureSubst},
+    utils::{self, detect_variant_from_bytes, generics, ClosureSubst},
     AdtId, AliasEq, AliasTy, Binders, CallableDefId, CallableSig, Const, ConstScalar, ConstValue,
     DomainGoal, GenericArg, ImplTraitId, Interner, Lifetime, LifetimeData, LifetimeOutlives,
     MemoryMap, Mutability, OpaqueTy, ProjectionTy, ProjectionTyExt, QuantifiedWhereClause, Scalar,
@@ -470,7 +475,7 @@ fn render_const_scalar(
     // infrastructure and have it here as a field on `f`.
     let krate = *f.db.crate_graph().crates_in_topological_order().last().unwrap();
     match ty.kind(Interner) {
-        chalk_ir::TyKind::Scalar(s) => match s {
+        TyKind::Scalar(s) => match s {
             Scalar::Bool => write!(f, "{}", if b[0] == 0 { false } else { true }),
             Scalar::Char => {
                 let x = u128::from_le_bytes(pad16(b, false)) as u32;
@@ -498,17 +503,54 @@ fn render_const_scalar(
                 }
             },
         },
-        chalk_ir::TyKind::Ref(_, _, t) => match t.kind(Interner) {
-            chalk_ir::TyKind::Str => {
+        TyKind::Ref(_, _, t) => match t.kind(Interner) {
+            TyKind::Str => {
                 let addr = usize::from_le_bytes(b[0..b.len() / 2].try_into().unwrap());
-                let bytes = memory_map.memory.get(&addr).map(|x| &**x).unwrap_or(&[]);
-                let s = std::str::from_utf8(bytes).unwrap_or("<utf8-error>");
+                let size = usize::from_le_bytes(b[b.len() / 2..].try_into().unwrap());
+                let Some(bytes) = memory_map.get(addr, size) else {
+                    return f.write_str("<ref-data-not-available>");
+                };
+                let s = std::str::from_utf8(&bytes).unwrap_or("<utf8-error>");
                 write!(f, "{s:?}")
             }
-            _ => f.write_str("<ref-not-supported>"),
+            TyKind::Slice(ty) => {
+                let addr = usize::from_le_bytes(b[0..b.len() / 2].try_into().unwrap());
+                let count = usize::from_le_bytes(b[b.len() / 2..].try_into().unwrap());
+                let Ok(layout) = f.db.layout_of_ty(ty.clone(), krate) else {
+                    return f.write_str("<layout-error>");
+                };
+                let size_one = layout.size.bytes_usize();
+                let Some(bytes) = memory_map.get(addr, size_one * count) else {
+                    return f.write_str("<ref-data-not-available>");
+                };
+                f.write_str("&[")?;
+                let mut first = true;
+                for i in 0..count {
+                    if first {
+                        first = false;
+                    } else {
+                        f.write_str(", ")?;
+                    }
+                    let offset = size_one * i;
+                    render_const_scalar(f, &bytes[offset..offset + size_one], memory_map, &ty)?;
+                }
+                f.write_str("]")
+            }
+            _ => {
+                let addr = usize::from_le_bytes(b.try_into().unwrap());
+                let Ok(layout) = f.db.layout_of_ty(t.clone(), krate) else {
+                    return f.write_str("<layout-error>");
+                };
+                let size = layout.size.bytes_usize();
+                let Some(bytes) = memory_map.get(addr, size) else {
+                    return f.write_str("<ref-data-not-available>");
+                };
+                f.write_str("&")?;
+                render_const_scalar(f, bytes, memory_map, t)
+            }
         },
-        chalk_ir::TyKind::Tuple(_, subst) => {
-            let Ok(layout) = f.db.layout_of_ty( ty.clone(), krate) else {
+        TyKind::Tuple(_, subst) => {
+            let Ok(layout) = f.db.layout_of_ty(ty.clone(), krate) else {
                 return f.write_str("<layout-error>");
             };
             f.write_str("(")?;
@@ -530,69 +572,144 @@ fn render_const_scalar(
             }
             f.write_str(")")
         }
-        chalk_ir::TyKind::Adt(adt, subst) => match adt.0 {
-            hir_def::AdtId::StructId(s) => {
-                let data = f.db.struct_data(s);
-                let Ok(layout) = f.db.layout_of_adt(adt.0, subst.clone(), krate) else {
-                    return f.write_str("<layout-error>");
-                };
-                match data.variant_data.as_ref() {
-                    VariantData::Record(fields) | VariantData::Tuple(fields) => {
-                        let field_types = f.db.field_types(s.into());
-                        let krate = adt.0.module(f.db.upcast()).krate();
-                        let render_field = |f: &mut HirFormatter<'_>, id: LocalFieldId| {
-                            let offset = layout
-                                .fields
-                                .offset(u32::from(id.into_raw()) as usize)
-                                .bytes_usize();
-                            let ty = field_types[id].clone().substitute(Interner, subst);
-                            let Ok(layout) = f.db.layout_of_ty(ty.clone(), krate) else {
-                                return f.write_str("<layout-error>");
-                            };
-                            let size = layout.size.bytes_usize();
-                            render_const_scalar(f, &b[offset..offset + size], memory_map, &ty)
-                        };
-                        let mut it = fields.iter();
-                        if matches!(data.variant_data.as_ref(), VariantData::Record(_)) {
-                            write!(f, "{} {{", data.name.display(f.db.upcast()))?;
-                            if let Some((id, data)) = it.next() {
-                                write!(f, " {}: ", data.name.display(f.db.upcast()))?;
-                                render_field(f, id)?;
-                            }
-                            for (id, data) in it {
-                                write!(f, ", {}: ", data.name.display(f.db.upcast()))?;
-                                render_field(f, id)?;
-                            }
-                            write!(f, " }}")?;
-                        } else {
-                            let mut it = it.map(|x| x.0);
-                            write!(f, "{}(", data.name.display(f.db.upcast()))?;
-                            if let Some(id) = it.next() {
-                                render_field(f, id)?;
-                            }
-                            for id in it {
-                                write!(f, ", ")?;
-                                render_field(f, id)?;
-                            }
-                            write!(f, ")")?;
-                        }
-                        return Ok(());
-                    }
-                    VariantData::Unit => write!(f, "{}", data.name.display(f.db.upcast())),
+        TyKind::Adt(adt, subst) => {
+            let Ok(layout) = f.db.layout_of_adt(adt.0, subst.clone(), krate) else {
+                return f.write_str("<layout-error>");
+            };
+            match adt.0 {
+                hir_def::AdtId::StructId(s) => {
+                    let data = f.db.struct_data(s);
+                    write!(f, "{}", data.name.display(f.db.upcast()))?;
+                    let field_types = f.db.field_types(s.into());
+                    render_variant_after_name(
+                        &data.variant_data,
+                        f,
+                        &field_types,
+                        adt.0.module(f.db.upcast()).krate(),
+                        &layout,
+                        subst,
+                        b,
+                        memory_map,
+                    )
+                }
+                hir_def::AdtId::UnionId(u) => {
+                    write!(f, "{}", f.db.union_data(u).name.display(f.db.upcast()))
+                }
+                hir_def::AdtId::EnumId(e) => {
+                    let Some((var_id, var_layout)) =
+                            detect_variant_from_bytes(&layout, f.db, krate, b, e) else {
+                        return f.write_str("<failed-to-detect-variant>");
+                    };
+                    let data = &f.db.enum_data(e).variants[var_id];
+                    write!(f, "{}", data.name.display(f.db.upcast()))?;
+                    let field_types =
+                        f.db.field_types(EnumVariantId { parent: e, local_id: var_id }.into());
+                    render_variant_after_name(
+                        &data.variant_data,
+                        f,
+                        &field_types,
+                        adt.0.module(f.db.upcast()).krate(),
+                        &var_layout,
+                        subst,
+                        b,
+                        memory_map,
+                    )
                 }
             }
-            hir_def::AdtId::UnionId(u) => {
-                write!(f, "{}", f.db.union_data(u).name.display(f.db.upcast()))
-            }
-            hir_def::AdtId::EnumId(_) => f.write_str("<enum-not-supported>"),
-        },
-        chalk_ir::TyKind::FnDef(..) => ty.hir_fmt(f),
-        chalk_ir::TyKind::Raw(_, _) => {
+        }
+        TyKind::FnDef(..) => ty.hir_fmt(f),
+        TyKind::Function(_) | TyKind::Raw(_, _) => {
             let x = u128::from_le_bytes(pad16(b, false));
             write!(f, "{:#X} as ", x)?;
             ty.hir_fmt(f)
         }
-        _ => f.write_str("<not-supported>"),
+        TyKind::Array(ty, len) => {
+            let Some(len) = try_const_usize(f.db, len) else {
+                return f.write_str("<unknown-array-len>");
+            };
+            let Ok(layout) = f.db.layout_of_ty(ty.clone(), krate) else {
+                return f.write_str("<layout-error>");
+            };
+            let size_one = layout.size.bytes_usize();
+            f.write_str("[")?;
+            let mut first = true;
+            for i in 0..len as usize {
+                if first {
+                    first = false;
+                } else {
+                    f.write_str(", ")?;
+                }
+                let offset = size_one * i;
+                render_const_scalar(f, &b[offset..offset + size_one], memory_map, &ty)?;
+            }
+            f.write_str("]")
+        }
+        TyKind::Never => f.write_str("!"),
+        TyKind::Closure(_, _) => f.write_str("<closure>"),
+        TyKind::Generator(_, _) => f.write_str("<generator>"),
+        TyKind::GeneratorWitness(_, _) => f.write_str("<generator-witness>"),
+        // The below arms are unreachable, since const eval will bail out before here.
+        TyKind::Foreign(_) => f.write_str("<extern-type>"),
+        TyKind::Error
+        | TyKind::Placeholder(_)
+        | TyKind::Alias(_)
+        | TyKind::AssociatedType(_, _)
+        | TyKind::OpaqueType(_, _)
+        | TyKind::BoundVar(_)
+        | TyKind::InferenceVar(_, _) => f.write_str("<placeholder-or-unknown-type>"),
+        // The below arms are unreachable, since we handled them in ref case.
+        TyKind::Slice(_) | TyKind::Str | TyKind::Dyn(_) => f.write_str("<unsized-value>"),
+    }
+}
+
+fn render_variant_after_name(
+    data: &VariantData,
+    f: &mut HirFormatter<'_>,
+    field_types: &ArenaMap<LocalFieldId, Binders<Ty>>,
+    krate: CrateId,
+    layout: &Layout,
+    subst: &Substitution,
+    b: &[u8],
+    memory_map: &MemoryMap,
+) -> Result<(), HirDisplayError> {
+    match data {
+        VariantData::Record(fields) | VariantData::Tuple(fields) => {
+            let render_field = |f: &mut HirFormatter<'_>, id: LocalFieldId| {
+                let offset = layout.fields.offset(u32::from(id.into_raw()) as usize).bytes_usize();
+                let ty = field_types[id].clone().substitute(Interner, subst);
+                let Ok(layout) = f.db.layout_of_ty(ty.clone(), krate) else {
+                    return f.write_str("<layout-error>");
+                };
+                let size = layout.size.bytes_usize();
+                render_const_scalar(f, &b[offset..offset + size], memory_map, &ty)
+            };
+            let mut it = fields.iter();
+            if matches!(data, VariantData::Record(_)) {
+                write!(f, " {{")?;
+                if let Some((id, data)) = it.next() {
+                    write!(f, " {}: ", data.name.display(f.db.upcast()))?;
+                    render_field(f, id)?;
+                }
+                for (id, data) in it {
+                    write!(f, ", {}: ", data.name.display(f.db.upcast()))?;
+                    render_field(f, id)?;
+                }
+                write!(f, " }}")?;
+            } else {
+                let mut it = it.map(|x| x.0);
+                write!(f, "(")?;
+                if let Some(id) = it.next() {
+                    render_field(f, id)?;
+                }
+                for id in it {
+                    write!(f, ", ")?;
+                    render_field(f, id)?;
+                }
+                write!(f, ")")?;
+            }
+            return Ok(());
+        }
+        VariantData::Unit => Ok(()),
     }
 }
 

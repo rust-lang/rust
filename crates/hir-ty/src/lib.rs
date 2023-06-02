@@ -35,7 +35,10 @@ mod tests;
 #[cfg(test)]
 mod test_db;
 
-use std::{collections::HashMap, hash::Hash};
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    hash::Hash,
+};
 
 use chalk_ir::{
     fold::{Shift, TypeFoldable},
@@ -160,7 +163,16 @@ pub struct MemoryMap {
 
 impl MemoryMap {
     fn insert(&mut self, addr: usize, x: Vec<u8>) {
-        self.memory.insert(addr, x);
+        match self.memory.entry(addr) {
+            Entry::Occupied(mut e) => {
+                if e.get().len() < x.len() {
+                    e.insert(x);
+                }
+            }
+            Entry::Vacant(e) => {
+                e.insert(x);
+            }
+        }
     }
 
     /// This functions convert each address by a function `f` which gets the byte intervals and assign an address
@@ -171,6 +183,14 @@ impl MemoryMap {
         mut f: impl FnMut(&[u8]) -> Result<usize, MirEvalError>,
     ) -> Result<HashMap<usize, usize>, MirEvalError> {
         self.memory.iter().map(|x| Ok((*x.0, f(x.1)?))).collect()
+    }
+
+    fn get<'a>(&'a self, addr: usize, size: usize) -> Option<&'a [u8]> {
+        if size == 0 {
+            Some(&[])
+        } else {
+            self.memory.get(&addr)?.get(0..size)
+        }
     }
 }
 

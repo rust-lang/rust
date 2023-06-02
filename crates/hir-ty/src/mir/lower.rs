@@ -1855,7 +1855,7 @@ pub fn lower_to_mir(
     }
     let mut ctx = MirLowerCtx::new(db, owner, body, infer);
     // 0 is return local
-    ctx.result.locals.alloc(Local { ty: infer[root_expr].clone() });
+    ctx.result.locals.alloc(Local { ty: ctx.expr_ty_after_adjustments(root_expr) });
     let binding_picker = |b: BindingId| {
         if root_expr == body.body_expr {
             body[b].owner.is_none()

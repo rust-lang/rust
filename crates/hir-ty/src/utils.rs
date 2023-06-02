@@ -20,8 +20,8 @@ use hir_def::{
     lang_item::LangItem,
     resolver::{HasResolver, TypeNs},
     type_ref::{TraitBoundModifier, TypeRef},
-    ConstParamId, FunctionId, GenericDefId, ItemContainerId, Lookup, TraitId, TypeAliasId,
-    TypeOrConstParamId, TypeParamId,
+    ConstParamId, EnumId, EnumVariantId, FunctionId, GenericDefId, ItemContainerId,
+    LocalEnumVariantId, Lookup, TraitId, TypeAliasId, TypeOrConstParamId, TypeParamId,
 };
 use hir_expand::name::Name;
 use intern::Interned;
@@ -30,8 +30,12 @@ use smallvec::{smallvec, SmallVec};
 use stdx::never;
 
 use crate::{
-    consteval::unknown_const, db::HirDatabase, ChalkTraitId, Const, ConstScalar, GenericArg,
-    Interner, Substitution, TraitRef, TraitRefExt, Ty, TyExt, WhereClause,
+    consteval::unknown_const,
+    db::HirDatabase,
+    layout::{Layout, TagEncoding},
+    mir::pad16,
+    ChalkTraitId, Const, ConstScalar, GenericArg, Interner, Substitution, TraitRef, TraitRefExt,
+    Ty, TyExt, WhereClause,
 };
 
 pub(crate) fn fn_traits(
@@ -439,4 +443,42 @@ impl FallibleTypeFolder<Interner> for UnevaluatedConstEvaluatorFolder<'_> {
         }
         Ok(constant)
     }
+}
+
+pub(crate) fn detect_variant_from_bytes<'a>(
+    layout: &'a Layout,
+    db: &dyn HirDatabase,
+    krate: CrateId,
+    b: &[u8],
+    e: EnumId,
+) -> Option<(LocalEnumVariantId, &'a Layout)> {
+    let (var_id, var_layout) = match &layout.variants {
+        hir_def::layout::Variants::Single { index } => (index.0, &*layout),
+        hir_def::layout::Variants::Multiple { tag, tag_encoding, variants, .. } => {
+            let target_data_layout = db.target_data_layout(krate)?;
+            let size = tag.size(&*target_data_layout).bytes_usize();
+            let offset = layout.fields.offset(0).bytes_usize(); // The only field on enum variants is the tag field
+            let tag = i128::from_le_bytes(pad16(&b[offset..offset + size], false));
+            match tag_encoding {
+                TagEncoding::Direct => {
+                    let x = variants.iter_enumerated().find(|x| {
+                        db.const_eval_discriminant(EnumVariantId { parent: e, local_id: x.0 .0 })
+                            == Ok(tag)
+                    })?;
+                    (x.0 .0, x.1)
+                }
+                TagEncoding::Niche { untagged_variant, niche_start, .. } => {
+                    let candidate_tag = tag.wrapping_sub(*niche_start as i128) as usize;
+                    let variant = variants
+                        .iter_enumerated()
+                        .map(|(x, _)| x)
+                        .filter(|x| x != untagged_variant)
+                        .nth(candidate_tag)
+                        .unwrap_or(*untagged_variant);
+                    (variant.0, &variants[variant])
+                }
+            }
+        }
+    };
+    Some((var_id, var_layout))
 }
