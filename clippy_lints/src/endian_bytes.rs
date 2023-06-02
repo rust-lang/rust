@@ -76,6 +76,11 @@ enum LintKind {
     Big,
 }
 
+enum Prefix {
+    From,
+    To,
+}
+
 impl LintKind {
     fn allowed(&self, cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         is_lint_allowed(cx, self.as_lint(), expr.hir_id)
@@ -89,29 +94,13 @@ impl LintKind {
         }
     }
 
-    fn to_name(&self, prefix: &str) -> &str {
+    fn as_name(&self, prefix: &Prefix) -> &str {
+        let index = if matches!(prefix, Prefix::From) { 0 } else { 1 };
+
         match self {
-            LintKind::Host => {
-                if prefix == "from" {
-                    HOST_NAMES[0]
-                } else {
-                    HOST_NAMES[1]
-                }
-            },
-            LintKind::Little => {
-                if prefix == "from" {
-                    LITTLE_NAMES[0]
-                } else {
-                    LITTLE_NAMES[1]
-                }
-            },
-            LintKind::Big => {
-                if prefix == "from" {
-                    BIG_NAMES[0]
-                } else {
-                    BIG_NAMES[1]
-                }
-            },
+            LintKind::Host => HOST_NAMES[index],
+            LintKind::Little => LITTLE_NAMES[index],
+            LintKind::Big => BIG_NAMES[index],
         }
     }
 }
@@ -127,7 +116,7 @@ impl LateLintPass<'_> for EndianBytes {
             if args.is_empty();
             let ty = cx.typeck_results().expr_ty(receiver);
             if ty.is_primitive_ty();
-            if maybe_lint_endian_bytes(cx, expr, "to", method_name.ident.name, ty);
+            if maybe_lint_endian_bytes(cx, expr, &Prefix::To, method_name.ident.name, ty);
             then {
                 return;
             }
@@ -141,16 +130,16 @@ impl LateLintPass<'_> for EndianBytes {
             let ty = cx.typeck_results().expr_ty(expr);
             if ty.is_primitive_ty();
             then {
-                maybe_lint_endian_bytes(cx, expr, "from", *function_name, ty);
+                maybe_lint_endian_bytes(cx, expr, &Prefix::From, *function_name, ty);
             }
         }
     }
 }
 
-fn maybe_lint_endian_bytes(cx: &LateContext<'_>, expr: &Expr<'_>, prefix: &str, name: Symbol, ty: Ty<'_>) -> bool {
-    let ne = LintKind::Host.to_name(prefix);
-    let le = LintKind::Little.to_name(prefix);
-    let be = LintKind::Big.to_name(prefix);
+fn maybe_lint_endian_bytes(cx: &LateContext<'_>, expr: &Expr<'_>, prefix: &Prefix, name: Symbol, ty: Ty<'_>) -> bool {
+    let ne = LintKind::Host.as_name(prefix);
+    let le = LintKind::Little.as_name(prefix);
+    let be = LintKind::Big.as_name(prefix);
 
     let (lint, other_lints) = match name.as_str() {
         name if name == ne => ((&LintKind::Host), [(&LintKind::Little), (&LintKind::Big)]),
@@ -172,14 +161,14 @@ fn maybe_lint_endian_bytes(cx: &LateContext<'_>, expr: &Expr<'_>, prefix: &str, 
         }
 
         // ne_bytes and all other lints allowed
-        if lint.to_name(prefix) == ne && other_lints.iter().all(|lint| lint.allowed(cx, expr)) {
+        if lint.as_name(prefix) == ne && other_lints.iter().all(|lint| lint.allowed(cx, expr)) {
             help = Some(Cow::Borrowed("specify the desired endianness explicitly"));
             break 'build_help;
         }
 
         // le_bytes where ne_bytes allowed but be_bytes is not, or le_bytes where ne_bytes allowed but
         // le_bytes is not
-        if (lint.to_name(prefix) == le || lint.to_name(prefix) == be) && LintKind::Host.allowed(cx, expr) {
+        if (lint.as_name(prefix) == le || lint.as_name(prefix) == be) && LintKind::Host.allowed(cx, expr) {
             help = Some(Cow::Borrowed("use the native endianness instead"));
             break 'build_help;
         }
@@ -195,7 +184,7 @@ fn maybe_lint_endian_bytes(cx: &LateContext<'_>, expr: &Expr<'_>, prefix: &str, 
                 help_str.push_str("either of ");
             }
 
-            help_str.push_str(&format!("`{ty}::{}` ", lint.to_name(prefix)));
+            help_str.push_str(&format!("`{ty}::{}` ", lint.as_name(prefix)));
 
             if i != len && !only_one {
                 help_str.push_str("or ");
@@ -211,9 +200,13 @@ fn maybe_lint_endian_bytes(cx: &LateContext<'_>, expr: &Expr<'_>, prefix: &str, 
         expr.span,
         &format!(
             "usage of the {}`{ty}::{}`{}",
-            if prefix == "from" { "function " } else { "" },
-            lint.to_name(prefix),
-            if prefix == "to" { " method" } else { "" },
+            if matches!(prefix, Prefix::From) {
+                "function "
+            } else {
+                ""
+            },
+            lint.as_name(prefix),
+            if matches!(prefix, Prefix::To) { " method" } else { "" },
         ),
         move |diag| {
             if let Some(help) = help {
