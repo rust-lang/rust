@@ -10,7 +10,7 @@ document.
 
 ## Rust 1.70
 
-Current beta, released 2023-06-01
+Current stable, released 2023-06-01
 
 [149392b0...83e42a23](https://github.com/rust-lang/rust-clippy/compare/149392b0...83e42a23)
 
@@ -95,7 +95,7 @@ Current beta, released 2023-06-01
   [#10375](https://github.com/rust-lang/rust-clippy/pull/10375)
 * [`mem_replace_option_with_none`]: No longer lints on field expressions
   [#10594](https://github.com/rust-lang/rust-clippy/pull/10594)
-* [`items_after_statements`]: No longer lints on times from macros
+* [`items_after_statements`]: No longer lints on items from macros
   [#10542](https://github.com/rust-lang/rust-clippy/pull/10542)
 * [`print_literal`], [`write_literal`]: No longer lint strings coming from the `file!()` macro
   [#10573](https://github.com/rust-lang/rust-clippy/pull/10573)
@@ -135,7 +135,7 @@ Current beta, released 2023-06-01
 
 ## Rust 1.69
 
-Current stable, released 2023-04-20
+Released 2023-04-20
 
 [7f27e2e7...149392b0](https://github.com/rust-lang/rust-clippy/compare/7f27e2e7...149392b0)
 
