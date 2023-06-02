@@ -746,6 +746,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         Ok(mplace)
     }
 
+    fn deref_pointer_as(
+        &self,
+        val: &ImmTy<'tcx, Provenance>,
+        layout: TyAndLayout<'tcx>,
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, Provenance>> {
+        let this = self.eval_context_ref();
+        let mut mplace = this.ref_to_mplace(val)?;
+
+        mplace.layout = layout;
+        mplace.align = layout.align.abi;
+
+        Ok(mplace)
+    }
+
     /// Calculates the MPlaceTy given the offset and layout of an access on an operand
     fn deref_operand_and_offset(
         &self,
