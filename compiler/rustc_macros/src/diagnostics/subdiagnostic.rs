@@ -14,6 +14,8 @@ use quote::{format_ident, quote};
 use syn::{spanned::Spanned, Attribute, Meta, MetaList, Path};
 use synstructure::{BindingInfo, Structure, VariantInfo};
 
+use super::utils::SubdiagnosticVariant;
+
 /// The central struct for constructing the `add_to_diagnostic` method from an annotated struct.
 pub(crate) struct SubdiagnosticDeriveBuilder {
     diag: syn::Ident,
@@ -180,11 +182,13 @@ impl<'a> FromIterator<&'a SubdiagnosticKind> for KindsStatistics {
 }
 
 impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
-    fn identify_kind(&mut self) -> Result<Vec<(SubdiagnosticKind, Path)>, DiagnosticDeriveError> {
+    fn identify_kind(
+        &mut self,
+    ) -> Result<Vec<(SubdiagnosticKind, Path, bool)>, DiagnosticDeriveError> {
         let mut kind_slugs = vec![];
 
         for attr in self.variant.ast().attrs {
-            let Some((kind, slug)) = SubdiagnosticKind::from_attr(attr, self)? else {
+            let Some(SubdiagnosticVariant { kind, slug, no_span }) = SubdiagnosticVariant::from_attr(attr, self)? else {
                 // Some attributes aren't errors - like documentation comments - but also aren't
                 // subdiagnostics.
                 continue;
@@ -202,7 +206,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                 );
             };
 
-            kind_slugs.push((kind, slug));
+            kind_slugs.push((kind, slug, no_span));
         }
 
         Ok(kind_slugs)
@@ -487,7 +491,8 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
             }
         };
 
-        let kind_stats: KindsStatistics = kind_slugs.iter().map(|(kind, _slug)| kind).collect();
+        let kind_stats: KindsStatistics =
+            kind_slugs.iter().map(|(kind, _slug, _no_span)| kind).collect();
 
         let init = if kind_stats.has_multipart_suggestion {
             quote! { let mut suggestions = Vec::new(); }
@@ -508,13 +513,17 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         let diag = &self.parent.diag;
         let f = &self.parent.f;
         let mut calls = TokenStream::new();
-        for (kind, slug) in kind_slugs {
+        for (kind, slug, no_span) in kind_slugs {
             let message = format_ident!("__message");
             calls.extend(
                 quote! { let #message = #f(#diag, crate::fluent_generated::#slug.into()); },
             );
 
-            let name = format_ident!("{}{}", if span_field.is_some() { "span_" } else { "" }, kind);
+            let name = format_ident!(
+                "{}{}",
+                if span_field.is_some() && !no_span { "span_" } else { "" },
+                kind
+            );
             let call = match kind {
                 SubdiagnosticKind::Suggestion {
                     suggestion_kind,
@@ -566,7 +575,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                     }
                 }
                 _ => {
-                    if let Some(span) = span_field {
+                    if let Some(span) = span_field && !no_span {
                         quote! { #diag.#name(#span, #message); }
                     } else {
                         quote! { #diag.#name(#message); }

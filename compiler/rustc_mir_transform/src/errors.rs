@@ -163,7 +163,14 @@ impl<'a, P: std::fmt::Debug> DecorateLint<'a, ()> for AssertLint<P> {
         self,
         diag: &'b mut DiagnosticBuilder<'a, ()>,
     ) -> &'b mut DiagnosticBuilder<'a, ()> {
-        diag.span_label(self.span(), format!("{:?}", self.panic()));
+        let span = self.span();
+        let assert_kind = self.panic();
+        let message = assert_kind.diagnostic_message();
+        assert_kind.add_args(&mut |name, value| {
+            diag.set_arg(name, value);
+        });
+        diag.span_label(span, message);
+
         diag
     }
 
@@ -191,7 +198,7 @@ impl<P> AssertLint<P> {
             AssertLint::ArithmeticOverflow(sp, _) | AssertLint::UnconditionalPanic(sp, _) => *sp,
         }
     }
-    pub fn panic(&self) -> &AssertKind<P> {
+    pub fn panic(self) -> AssertKind<P> {
         match self {
             AssertLint::ArithmeticOverflow(_, p) | AssertLint::UnconditionalPanic(_, p) => p,
         }

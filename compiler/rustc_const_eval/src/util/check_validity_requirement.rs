@@ -1,6 +1,5 @@
 use rustc_middle::ty::layout::{LayoutCx, LayoutError, LayoutOf, TyAndLayout, ValidityRequirement};
 use rustc_middle::ty::{ParamEnv, ParamEnvAnd, Ty, TyCtxt};
-use rustc_session::Limit;
 use rustc_target::abi::{Abi, FieldsShape, Scalar, Variants};
 
 use crate::const_eval::{CheckAlignment, CompileTimeInterpreter};
@@ -45,11 +44,8 @@ fn might_permit_raw_init_strict<'tcx>(
     tcx: TyCtxt<'tcx>,
     kind: ValidityRequirement,
 ) -> Result<bool, LayoutError<'tcx>> {
-    let machine = CompileTimeInterpreter::new(
-        Limit::new(0),
-        /*can_access_statics:*/ false,
-        CheckAlignment::Error,
-    );
+    let machine =
+        CompileTimeInterpreter::new(/*can_access_statics:*/ false, CheckAlignment::Error);
 
     let mut cx = InterpCx::new(tcx, rustc_span::DUMMY_SP, ParamEnv::reveal_all(), machine);
 

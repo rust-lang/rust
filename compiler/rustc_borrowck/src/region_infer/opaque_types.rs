@@ -279,8 +279,18 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         // HACK This bubble is required for this tests to pass:
         // nested-return-type2-tait2.rs
         // nested-return-type2-tait3.rs
-        let infcx =
-            self.tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bubble).build();
+        // FIXME(-Ztrait-solver=next): We probably should use `DefiningAnchor::Error`
+        // and prepopulate this `InferCtxt` with known opaque values, rather than
+        // using the `Bind` anchor here. For now it's fine.
+        let infcx = self
+            .tcx
+            .infer_ctxt()
+            .with_opaque_type_inference(if self.tcx.trait_solver_next() {
+                DefiningAnchor::Bind(def_id)
+            } else {
+                DefiningAnchor::Bubble
+            })
+            .build();
         let ocx = ObligationCtxt::new(&infcx);
         // Require the hidden type to be well-formed with only the generics of the opaque type.
         // Defining use functions may have more bounds than the opaque type, which is ok, as long as the

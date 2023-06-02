@@ -1,0 +1,155 @@
+// MIR for `range_loop` after PreCodegen
+
+fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
+    debug slice => _1;                   // in scope 0 at $DIR/slice_iter.rs:+0:26: +0:31
+    debug f => _2;                       // in scope 0 at $DIR/slice_iter.rs:+0:42: +0:43
+    let mut _0: ();                      // return place in scope 0 at $DIR/slice_iter.rs:+0:65: +0:65
+    let mut _3: usize;                   // in scope 0 at $DIR/slice_iter.rs:+1:17: +1:28
+    let mut _4: std::ops::Range<usize>;  // in scope 0 at $DIR/slice_iter.rs:+1:14: +1:28
+    let mut _5: std::ops::Range<usize>;  // in scope 0 at $DIR/slice_iter.rs:+1:14: +1:28
+    let mut _6: &mut std::ops::Range<usize>; // in scope 0 at $DIR/slice_iter.rs:+1:14: +1:28
+    let mut _10: std::option::Option<usize>; // in scope 0 at $DIR/slice_iter.rs:+1:14: +1:28
+    let mut _13: isize;                  // in scope 0 at $DIR/slice_iter.rs:+1:5: +4:6
+    let mut _15: usize;                  // in scope 0 at $DIR/slice_iter.rs:+2:18: +2:26
+    let mut _16: bool;                   // in scope 0 at $DIR/slice_iter.rs:+2:18: +2:26
+    let mut _18: &impl Fn(usize, &T);    // in scope 0 at $DIR/slice_iter.rs:+3:9: +3:10
+    let mut _19: (usize, &T);            // in scope 0 at $DIR/slice_iter.rs:+3:9: +3:16
+    let _20: ();                         // in scope 0 at $DIR/slice_iter.rs:+1:14: +1:28
+    scope 1 {
+        debug iter => _5;                // in scope 1 at $DIR/slice_iter.rs:+1:14: +1:28
+        let _14: usize;                  // in scope 1 at $DIR/slice_iter.rs:+1:9: +1:10
+        scope 2 {
+            debug i => _14;              // in scope 2 at $DIR/slice_iter.rs:+1:9: +1:10
+            let _17: &T;                 // in scope 2 at $DIR/slice_iter.rs:+2:13: +2:14
+            scope 3 {
+                debug x => _17;          // in scope 3 at $DIR/slice_iter.rs:+2:13: +2:14
+            }
+        }
+        scope 5 (inlined iter::range::<impl Iterator for std::ops::Range<usize>>::next) { // at $DIR/slice_iter.rs:49:14: 49:28
+            debug self => _6;            // in scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+            scope 6 (inlined <std::ops::Range<usize> as iter::range::RangeIteratorImpl>::spec_next) { // at $SRC_DIR/core/src/iter/range.rs:LL:COL
+                debug self => _6;        // in scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+                let mut _7: &usize;      // in scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+                let mut _8: &usize;      // in scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+                let mut _9: bool;        // in scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+                let _11: usize;          // in scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+                let mut _12: usize;      // in scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+                scope 7 {
+                    debug old => _11;    // in scope 7 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+                    scope 8 {
+                    }
+                }
+            }
+        }
+    }
+    scope 4 (inlined <std::ops::Range<usize> as IntoIterator>::into_iter) { // at $DIR/slice_iter.rs:49:14: 49:28
+        debug self => _4;                // in scope 4 at $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+    }
+
+    bb0: {
+        StorageLive(_3);                 // scope 0 at $DIR/slice_iter.rs:+1:17: +1:28
+        _3 = Len((*_1));                 // scope 0 at $DIR/slice_iter.rs:+1:17: +1:28
+        _4 = std::ops::Range::<usize> { start: const 0_usize, end: move _3 }; // scope 0 at $DIR/slice_iter.rs:+1:14: +1:28
+        StorageDead(_3);                 // scope 0 at $DIR/slice_iter.rs:+1:27: +1:28
+        StorageLive(_5);                 // scope 0 at $DIR/slice_iter.rs:+1:14: +1:28
+        _5 = move _4;                    // scope 0 at $DIR/slice_iter.rs:+1:14: +1:28
+        goto -> bb1;                     // scope 1 at $DIR/slice_iter.rs:+1:5: +4:6
+    }
+
+    bb1: {
+        StorageLive(_10);                // scope 1 at $DIR/slice_iter.rs:+1:14: +1:28
+        _6 = &mut _5;                    // scope 1 at $DIR/slice_iter.rs:+1:14: +1:28
+        StorageLive(_11);                // scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        StorageLive(_9);                 // scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        StorageLive(_7);                 // scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        _7 = &((*_6).0: usize);          // scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        StorageLive(_8);                 // scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        _8 = &((*_6).1: usize);          // scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        _9 = <usize as PartialOrd>::lt(move _7, move _8) -> [return: bb2, unwind: bb13]; // scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+                                         // mir::Constant
+                                         // + span: $SRC_DIR/core/src/iter/range.rs:LL:COL
+                                         // + literal: Const { ty: for<'a, 'b> fn(&'a usize, &'b usize) -> bool {<usize as PartialOrd>::lt}, val: Value(<ZST>) }
+    }
+
+    bb2: {
+        StorageDead(_8);                 // scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        StorageDead(_7);                 // scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        switchInt(move _9) -> [0: bb3, otherwise: bb4]; // scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+    }
+
+    bb3: {
+        _10 = Option::<usize>::None;     // scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        goto -> bb6;                     // scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+    }
+
+    bb4: {
+        _11 = ((*_6).0: usize);          // scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        StorageLive(_12);                // scope 7 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        _12 = <usize as Step>::forward_unchecked(_11, const 1_usize) -> [return: bb5, unwind: bb13]; // scope 8 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+                                         // mir::Constant
+                                         // + span: $SRC_DIR/core/src/iter/range.rs:LL:COL
+                                         // + literal: Const { ty: unsafe fn(usize, usize) -> usize {<usize as Step>::forward_unchecked}, val: Value(<ZST>) }
+    }
+
+    bb5: {
+        ((*_6).0: usize) = move _12;     // scope 7 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        StorageDead(_12);                // scope 7 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        _10 = Option::<usize>::Some(_11); // scope 7 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        goto -> bb6;                     // scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+    }
+
+    bb6: {
+        StorageDead(_9);                 // scope 6 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        StorageDead(_11);                // scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+        _13 = discriminant(_10);         // scope 1 at $DIR/slice_iter.rs:+1:14: +1:28
+        switchInt(move _13) -> [0: bb7, 1: bb9, otherwise: bb12]; // scope 1 at $DIR/slice_iter.rs:+1:14: +1:28
+    }
+
+    bb7: {
+        StorageDead(_10);                // scope 1 at $DIR/slice_iter.rs:+4:5: +4:6
+        StorageDead(_5);                 // scope 0 at $DIR/slice_iter.rs:+4:5: +4:6
+        drop(_2) -> bb8;                 // scope 0 at $DIR/slice_iter.rs:+5:1: +5:2
+    }
+
+    bb8: {
+        return;                          // scope 0 at $DIR/slice_iter.rs:+5:2: +5:2
+    }
+
+    bb9: {
+        _14 = ((_10 as Some).0: usize);  // scope 1 at $DIR/slice_iter.rs:+1:9: +1:10
+        _15 = Len((*_1));                // scope 2 at $DIR/slice_iter.rs:+2:18: +2:26
+        _16 = Lt(_14, _15);              // scope 2 at $DIR/slice_iter.rs:+2:18: +2:26
+        assert(move _16, "index out of bounds: the length is {} but the index is {}", move _15, _14) -> [success: bb10, unwind: bb13]; // scope 2 at $DIR/slice_iter.rs:+2:18: +2:26
+    }
+
+    bb10: {
+        _17 = &(*_1)[_14];               // scope 2 at $DIR/slice_iter.rs:+2:17: +2:26
+        StorageLive(_18);                // scope 3 at $DIR/slice_iter.rs:+3:9: +3:10
+        _18 = &_2;                       // scope 3 at $DIR/slice_iter.rs:+3:9: +3:10
+        StorageLive(_19);                // scope 3 at $DIR/slice_iter.rs:+3:9: +3:16
+        _19 = (_14, _17);                // scope 3 at $DIR/slice_iter.rs:+3:9: +3:16
+        _20 = <impl Fn(usize, &T) as Fn<(usize, &T)>>::call(move _18, move _19) -> [return: bb11, unwind: bb13]; // scope 3 at $DIR/slice_iter.rs:+3:9: +3:16
+                                         // mir::Constant
+                                         // + span: $DIR/slice_iter.rs:51:9: 51:10
+                                         // + literal: Const { ty: for<'a> extern "rust-call" fn(&'a impl Fn(usize, &T), (usize, &T)) -> <impl Fn(usize, &T) as FnOnce<(usize, &T)>>::Output {<impl Fn(usize, &T) as Fn<(usize, &T)>>::call}, val: Value(<ZST>) }
+    }
+
+    bb11: {
+        StorageDead(_19);                // scope 3 at $DIR/slice_iter.rs:+3:15: +3:16
+        StorageDead(_18);                // scope 3 at $DIR/slice_iter.rs:+3:15: +3:16
+        StorageDead(_10);                // scope 1 at $DIR/slice_iter.rs:+4:5: +4:6
+        goto -> bb1;                     // scope 1 at $DIR/slice_iter.rs:+1:5: +4:6
+    }
+
+    bb12: {
+        unreachable;                     // scope 1 at $DIR/slice_iter.rs:+1:14: +1:28
+    }
+
+    bb13 (cleanup): {
+        drop(_2) -> [return: bb14, unwind terminate]; // scope 0 at $DIR/slice_iter.rs:+5:1: +5:2
+    }
+
+    bb14 (cleanup): {
+        resume;                          // scope 0 at $DIR/slice_iter.rs:+0:1: +5:2
+    }
+}

@@ -322,6 +322,7 @@ pub(crate) struct CrateDep {
     pub host_hash: Option<Svh>,
     pub kind: CrateDepKind,
     pub extra_filename: String,
+    pub is_private: bool,
 }
 
 #[derive(MetadataEncodable, MetadataDecodable)]

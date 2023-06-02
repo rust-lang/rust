@@ -874,7 +874,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let found = self.resolve_vars_with_obligations(found);
 
         let in_loop = self.is_loop(id)
-            || self.tcx.hir().parent_iter(id).any(|(parent_id, _)| self.is_loop(parent_id));
+            || self
+                .tcx
+                .hir()
+                .parent_iter(id)
+                .take_while(|(_, node)| {
+                    // look at parents until we find the first body owner
+                    node.body_id().is_none()
+                })
+                .any(|(parent_id, _)| self.is_loop(parent_id));
 
         let in_local_statement = self.is_local_statement(id)
             || self

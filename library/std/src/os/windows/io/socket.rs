@@ -254,7 +254,7 @@ impl<T: AsSocket> AsSocket for &mut T {
     }
 }
 
-#[stable(feature = "as_windows_ptrs", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "as_windows_ptrs", since = "1.71.0")]
 /// This impl allows implementing traits that require `AsSocket` on Arc.
 /// ```
 /// # #[cfg(windows)] mod group_cfg {
@@ -274,7 +274,7 @@ impl<T: AsSocket> AsSocket for crate::sync::Arc<T> {
     }
 }
 
-#[stable(feature = "as_windows_ptrs", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "as_windows_ptrs", since = "1.71.0")]
 impl<T: AsSocket> AsSocket for crate::rc::Rc<T> {
     #[inline]
     fn as_socket(&self) -> BorrowedSocket<'_> {
@@ -282,7 +282,7 @@ impl<T: AsSocket> AsSocket for crate::rc::Rc<T> {
     }
 }
 
-#[stable(feature = "as_windows_ptrs", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "as_windows_ptrs", since = "1.71.0")]
 impl<T: AsSocket> AsSocket for Box<T> {
     #[inline]
     fn as_socket(&self) -> BorrowedSocket<'_> {

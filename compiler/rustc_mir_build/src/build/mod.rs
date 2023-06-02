@@ -1,4 +1,3 @@
-pub(crate) use crate::build::expr::as_constant::lit_to_mir_constant;
 use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::scope::DropKind;
 use rustc_apfloat::ieee::{Double, Single};

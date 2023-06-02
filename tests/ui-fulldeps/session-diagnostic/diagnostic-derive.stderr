@@ -243,7 +243,7 @@ error: invalid nested attribute
 LL |     #[suggestion(nonsense = "bar")]
    |                  ^^^^^^^^
    |
-   = help: only `style`, `code` and `applicability` are valid nested attributes
+   = help: only `no_span`, `style`, `code` and `applicability` are valid nested attributes
 
 error: suggestion without `code = "..."`
   --> $DIR/diagnostic-derive.rs:234:5
@@ -257,7 +257,7 @@ error: invalid nested attribute
 LL |     #[suggestion(msg = "bar")]
    |                  ^^^
    |
-   = help: only `style`, `code` and `applicability` are valid nested attributes
+   = help: only `no_span`, `style`, `code` and `applicability` are valid nested attributes
 
 error: suggestion without `code = "..."`
   --> $DIR/diagnostic-derive.rs:243:5
@@ -335,13 +335,13 @@ error: a diagnostic slug must be the first argument to the attribute
 LL |     #[label(no_crate_label, foo)]
    |                                ^
 
-error: invalid nested attribute
+error: only `no_span` is a valid nested attribute
   --> $DIR/diagnostic-derive.rs:540:29
    |
 LL |     #[label(no_crate_label, foo = "...")]
    |                             ^^^
 
-error: invalid nested attribute
+error: only `no_span` is a valid nested attribute
   --> $DIR/diagnostic-derive.rs:548:29
    |
 LL |     #[label(no_crate_label, foo("..."))]

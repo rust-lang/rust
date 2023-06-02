@@ -1,30 +1,23 @@
-error[E0080]: evaluation of constant value failed
+error: constant evaluation is taking a long time
   --> $DIR/ctfe-labelled-loop.rs:6:5
    |
 LL | /     'mylabel: loop {
+LL | |
 LL | |         if i > n {
-LL | |             break 'mylabel
-LL | |         }
-LL | |         i += 1;
-LL | |     }
-   | |_____^ exceeded interpreter step limit (see `#[const_eval_limit]`)
-   |
-note: inside `labelled_loop`
-  --> $DIR/ctfe-labelled-loop.rs:6:5
-   |
-LL | /     'mylabel: loop {
-LL | |         if i > n {
-LL | |             break 'mylabel
+LL | |             break 'mylabel;
 LL | |         }
 LL | |         i += 1;
 LL | |     }
    | |_____^
-note: inside `X`
-  --> $DIR/ctfe-labelled-loop.rs:15:16
+   |
+   = note: this lint makes sure the compiler doesn't get stuck due to infinite loops in const eval.
+           If your compilation actually takes a long time, you can safely allow the lint.
+help: the constant being evaluated
+  --> $DIR/ctfe-labelled-loop.rs:16:1
    |
 LL | const X: u32 = labelled_loop(19);
-   |                ^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^
+   = note: `#[deny(long_running_const_eval)]` on by default
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0080`.

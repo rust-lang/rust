@@ -1,0 +1,91 @@
+// MIR for `mapped` after PreCodegen
+
+fn mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> U) -> () {
+    debug iter => _1;                    // in scope 0 at $DIR/loops.rs:+0:21: +0:25
+    debug f => _2;                       // in scope 0 at $DIR/loops.rs:+0:52: +0:53
+    let mut _0: ();                      // return place in scope 0 at $DIR/loops.rs:+0:72: +0:72
+    let mut _3: std::iter::Map<impl Iterator<Item = T>, impl Fn(T) -> U>; // in scope 0 at $DIR/loops.rs:+1:14: +1:25
+    let mut _4: std::iter::Map<impl Iterator<Item = T>, impl Fn(T) -> U>; // in scope 0 at $DIR/loops.rs:+1:14: +1:25
+    let mut _5: std::iter::Map<impl Iterator<Item = T>, impl Fn(T) -> U>; // in scope 0 at $DIR/loops.rs:+1:14: +1:25
+    let mut _6: &mut std::iter::Map<impl Iterator<Item = T>, impl Fn(T) -> U>; // in scope 0 at $DIR/loops.rs:+1:14: +1:25
+    let mut _7: std::option::Option<U>;  // in scope 0 at $DIR/loops.rs:+1:14: +1:25
+    let mut _8: isize;                   // in scope 0 at $DIR/loops.rs:+1:5: +3:6
+    let _10: ();                         // in scope 0 at $DIR/loops.rs:+1:14: +1:25
+    scope 1 {
+        debug iter => _5;                // in scope 1 at $DIR/loops.rs:+1:14: +1:25
+        let _9: U;                       // in scope 1 at $DIR/loops.rs:+1:9: +1:10
+        scope 2 {
+            debug x => _9;               // in scope 2 at $DIR/loops.rs:+1:9: +1:10
+        }
+    }
+    scope 3 (inlined <Map<impl Iterator<Item = T>, impl Fn(T) -> U> as IntoIterator>::into_iter) { // at $DIR/loops.rs:14:14: 14:25
+        debug self => _3;                // in scope 3 at $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+    }
+
+    bb0: {
+        StorageLive(_4);                 // scope 0 at $DIR/loops.rs:+1:14: +1:25
+        StorageLive(_3);                 // scope 0 at $DIR/loops.rs:+1:14: +1:25
+        _3 = <impl Iterator<Item = T> as Iterator>::map::<U, impl Fn(T) -> U>(move _1, move _2) -> bb1; // scope 0 at $DIR/loops.rs:+1:14: +1:25
+                                         // mir::Constant
+                                         // + span: $DIR/loops.rs:14:19: 14:22
+                                         // + literal: Const { ty: fn(impl Iterator<Item = T>, impl Fn(T) -> U) -> Map<impl Iterator<Item = T>, impl Fn(T) -> U> {<impl Iterator<Item = T> as Iterator>::map::<U, impl Fn(T) -> U>}, val: Value(<ZST>) }
+    }
+
+    bb1: {
+        _4 = move _3;                    // scope 3 at $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+        StorageDead(_3);                 // scope 0 at $DIR/loops.rs:+1:24: +1:25
+        StorageLive(_5);                 // scope 0 at $DIR/loops.rs:+1:14: +1:25
+        _5 = move _4;                    // scope 0 at $DIR/loops.rs:+1:14: +1:25
+        goto -> bb2;                     // scope 1 at $DIR/loops.rs:+1:5: +3:6
+    }
+
+    bb2: {
+        StorageLive(_7);                 // scope 1 at $DIR/loops.rs:+1:14: +1:25
+        _6 = &mut _5;                    // scope 1 at $DIR/loops.rs:+1:14: +1:25
+        _7 = <Map<impl Iterator<Item = T>, impl Fn(T) -> U> as Iterator>::next(_6) -> [return: bb3, unwind: bb9]; // scope 1 at $DIR/loops.rs:+1:14: +1:25
+                                         // mir::Constant
+                                         // + span: $DIR/loops.rs:14:14: 14:25
+                                         // + literal: Const { ty: for<'a> fn(&'a mut Map<impl Iterator<Item = T>, impl Fn(T) -> U>) -> Option<<Map<impl Iterator<Item = T>, impl Fn(T) -> U> as Iterator>::Item> {<Map<impl Iterator<Item = T>, impl Fn(T) -> U> as Iterator>::next}, val: Value(<ZST>) }
+    }
+
+    bb3: {
+        _8 = discriminant(_7);           // scope 1 at $DIR/loops.rs:+1:14: +1:25
+        switchInt(move _8) -> [0: bb4, 1: bb6, otherwise: bb8]; // scope 1 at $DIR/loops.rs:+1:14: +1:25
+    }
+
+    bb4: {
+        StorageDead(_7);                 // scope 1 at $DIR/loops.rs:+3:5: +3:6
+        drop(_5) -> bb5;                 // scope 0 at $DIR/loops.rs:+3:5: +3:6
+    }
+
+    bb5: {
+        StorageDead(_5);                 // scope 0 at $DIR/loops.rs:+3:5: +3:6
+        StorageDead(_4);                 // scope 0 at $DIR/loops.rs:+3:5: +3:6
+        return;                          // scope 0 at $DIR/loops.rs:+4:2: +4:2
+    }
+
+    bb6: {
+        _9 = move ((_7 as Some).0: U);   // scope 1 at $DIR/loops.rs:+1:9: +1:10
+        _10 = opaque::<U>(move _9) -> [return: bb7, unwind: bb9]; // scope 2 at $DIR/loops.rs:+2:9: +2:18
+                                         // mir::Constant
+                                         // + span: $DIR/loops.rs:15:9: 15:15
+                                         // + literal: Const { ty: fn(U) {opaque::<U>}, val: Value(<ZST>) }
+    }
+
+    bb7: {
+        StorageDead(_7);                 // scope 1 at $DIR/loops.rs:+3:5: +3:6
+        goto -> bb2;                     // scope 1 at $DIR/loops.rs:+1:5: +3:6
+    }
+
+    bb8: {
+        unreachable;                     // scope 1 at $DIR/loops.rs:+1:14: +1:25
+    }
+
+    bb9 (cleanup): {
+        drop(_5) -> [return: bb10, unwind terminate]; // scope 0 at $DIR/loops.rs:+3:5: +3:6
+    }
+
+    bb10 (cleanup): {
+        resume;                          // scope 0 at $DIR/loops.rs:+0:1: +4:2
+    }
+}

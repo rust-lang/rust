@@ -162,11 +162,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let instance = this.resolve_path(path, Namespace::ValueNS);
         let cid = GlobalId { instance, promoted: None };
         // We don't give a span -- this isn't actually used directly by the program anyway.
-        let const_val = this
-            .eval_global(cid, None)
-            .unwrap_or_else(|err| panic!("failed to evaluate required Rust item: {path:?}\n{err}"));
+        let const_val = this.eval_global(cid, None).unwrap_or_else(|err| {
+            panic!("failed to evaluate required Rust item: {path:?}\n{err:?}")
+        });
         this.read_scalar(&const_val.into())
-            .unwrap_or_else(|err| panic!("failed to read required Rust item: {path:?}\n{err}"))
+            .unwrap_or_else(|err| panic!("failed to read required Rust item: {path:?}\n{err:?}"))
     }
 
     /// Helper function to get a `libc` constant as a `Scalar`.

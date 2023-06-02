@@ -3,7 +3,7 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/mir/index.html
 
 use crate::mir::interpret::{
-    AllocRange, ConstAllocation, ConstValue, ErrorHandled, GlobalAlloc, LitToConstInput, Scalar,
+    AllocRange, ConstAllocation, ConstValue, ErrorHandled, GlobalAlloc, Scalar,
 };
 use crate::mir::visit::MirVisitable;
 use crate::ty::codec::{TyDecoder, TyEncoder};
@@ -15,7 +15,7 @@ use crate::ty::{AdtDef, InstanceDef, ScalarInt, UserTypeAnnotationIndex};
 use crate::ty::{GenericArg, InternalSubsts, SubstsRef};
 
 use rustc_data_structures::captures::Captures;
-use rustc_errors::ErrorGuaranteed;
+use rustc_errors::{DiagnosticArgValue, DiagnosticMessage, ErrorGuaranteed, IntoDiagnosticArg};
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_hir::{self, GeneratorKind, ImplicitSelfKind};
@@ -1371,55 +1371,61 @@ impl<O> AssertKind<O> {
             _ => write!(f, "\"{}\"", self.description()),
         }
     }
-}
 
-impl<O: fmt::Debug> fmt::Debug for AssertKind<O> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    pub fn diagnostic_message(&self) -> DiagnosticMessage {
+        use crate::fluent_generated::*;
         use AssertKind::*;
+
         match self {
-            BoundsCheck { ref len, ref index } => write!(
-                f,
-                "index out of bounds: the length is {:?} but the index is {:?}",
-                len, index
-            ),
-            OverflowNeg(op) => write!(f, "attempt to negate `{:#?}`, which would overflow", op),
-            DivisionByZero(op) => write!(f, "attempt to divide `{:#?}` by zero", op),
-            RemainderByZero(op) => write!(
-                f,
-                "attempt to calculate the remainder of `{:#?}` with a divisor of zero",
-                op
-            ),
-            Overflow(BinOp::Add, l, r) => {
-                write!(f, "attempt to compute `{:#?} + {:#?}`, which would overflow", l, r)
+            BoundsCheck { .. } => middle_bounds_check,
+            Overflow(BinOp::Shl, _, _) => middle_assert_shl_overflow,
+            Overflow(BinOp::Shr, _, _) => middle_assert_shr_overflow,
+            Overflow(_, _, _) => middle_assert_op_overflow,
+            OverflowNeg(_) => middle_assert_overflow_neg,
+            DivisionByZero(_) => middle_assert_divide_by_zero,
+            RemainderByZero(_) => middle_assert_remainder_by_zero,
+            ResumedAfterReturn(GeneratorKind::Async(_)) => middle_assert_async_resume_after_return,
+            ResumedAfterReturn(GeneratorKind::Gen) => middle_assert_generator_resume_after_return,
+            ResumedAfterPanic(GeneratorKind::Async(_)) => middle_assert_async_resume_after_panic,
+            ResumedAfterPanic(GeneratorKind::Gen) => middle_assert_generator_resume_after_panic,
+
+            MisalignedPointerDereference { .. } => middle_assert_misaligned_ptr_deref,
+        }
+    }
+
+    pub fn add_args(self, adder: &mut dyn FnMut(Cow<'static, str>, DiagnosticArgValue<'static>))
+    where
+        O: fmt::Debug,
+    {
+        use AssertKind::*;
+
+        macro_rules! add {
+            ($name: expr, $value: expr) => {
+                adder($name.into(), $value.into_diagnostic_arg());
+            };
+        }
+
+        match self {
+            BoundsCheck { len, index } => {
+                add!("len", format!("{len:?}"));
+                add!("index", format!("{index:?}"));
             }
-            Overflow(BinOp::Sub, l, r) => {
-                write!(f, "attempt to compute `{:#?} - {:#?}`, which would overflow", l, r)
+            Overflow(BinOp::Shl | BinOp::Shr, _, val)
+            | DivisionByZero(val)
+            | RemainderByZero(val)
+            | OverflowNeg(val) => {
+                add!("val", format!("{val:#?}"));
             }
-            Overflow(BinOp::Mul, l, r) => {
-                write!(f, "attempt to compute `{:#?} * {:#?}`, which would overflow", l, r)
+            Overflow(binop, left, right) => {
+                add!("op", binop.to_hir_binop().as_str());
+                add!("left", format!("{left:#?}"));
+                add!("right", format!("{right:#?}"));
             }
-            Overflow(BinOp::Div, l, r) => {
-                write!(f, "attempt to compute `{:#?} / {:#?}`, which would overflow", l, r)
-            }
-            Overflow(BinOp::Rem, l, r) => write!(
-                f,
-                "attempt to compute the remainder of `{:#?} % {:#?}`, which would overflow",
-                l, r
-            ),
-            Overflow(BinOp::Shr, _, r) => {
-                write!(f, "attempt to shift right by `{:#?}`, which would overflow", r)
-            }
-            Overflow(BinOp::Shl, _, r) => {
-                write!(f, "attempt to shift left by `{:#?}`, which would overflow", r)
-            }
+            ResumedAfterReturn(_) | ResumedAfterPanic(_) => {}
             MisalignedPointerDereference { required, found } => {
-                write!(
-                    f,
-                    "misaligned pointer dereference: address must be a multiple of {:?} but is {:?}",
-                    required, found
-                )
+                add!("required", format!("{required:#?}"));
+                add!("found", format!("{found:#?}"));
             }
-            _ => write!(f, "{}", self.description()),
         }
     }
 }
@@ -2459,51 +2465,6 @@ impl<'tcx> ConstantKind<'tcx> {
     pub fn from_scalar(_tcx: TyCtxt<'tcx>, s: Scalar, ty: Ty<'tcx>) -> Self {
         let val = ConstValue::Scalar(s);
         Self::Val(val, ty)
-    }
-
-    #[instrument(skip(tcx), level = "debug", ret)]
-    pub fn from_inline_const(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-        let body_id = match tcx.hir().get(hir_id) {
-            hir::Node::AnonConst(ac) => ac.body,
-            _ => span_bug!(
-                tcx.def_span(def_id.to_def_id()),
-                "from_inline_const can only process anonymous constants"
-            ),
-        };
-        let expr = &tcx.hir().body(body_id).value;
-        let ty = tcx.typeck(def_id).node_type(hir_id);
-
-        let lit_input = match expr.kind {
-            hir::ExprKind::Lit(ref lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: false }),
-            hir::ExprKind::Unary(hir::UnOp::Neg, ref expr) => match expr.kind {
-                hir::ExprKind::Lit(ref lit) => {
-                    Some(LitToConstInput { lit: &lit.node, ty, neg: true })
-                }
-                _ => None,
-            },
-            _ => None,
-        };
-        if let Some(lit_input) = lit_input {
-            // If an error occurred, ignore that it's a literal and leave reporting the error up to
-            // mir.
-            match tcx.at(expr.span).lit_to_mir_constant(lit_input) {
-                Ok(c) => return c,
-                Err(_) => {}
-            }
-        }
-
-        let typeck_root_def_id = tcx.typeck_root_def_id(def_id.to_def_id());
-        let parent_substs =
-            tcx.erase_regions(InternalSubsts::identity_for_item(tcx, typeck_root_def_id));
-        let substs =
-            ty::InlineConstSubsts::new(tcx, ty::InlineConstSubstsParts { parent_substs, ty })
-                .substs;
-
-        let uneval = UnevaluatedConst { def: def_id.to_def_id(), substs, promoted: None };
-        debug_assert!(!uneval.has_free_regions());
-
-        Self::Unevaluated(uneval, ty)
     }
 
     /// Literals are converted to `ConstantKindVal`, const generic parameters are eagerly

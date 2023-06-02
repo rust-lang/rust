@@ -1,4 +1,4 @@
-error: `&dyn PartialEq<u32>` cannot be used in patterns
+error: `dyn PartialEq<u32>` cannot be used in patterns
   --> $DIR/issue-72565.rs:6:9
    |
 LL |         F => panic!(),

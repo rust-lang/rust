@@ -264,6 +264,7 @@ docker \
   --env RUST_CI_OVERRIDE_RELEASE_CHANNEL \
   --env CI_JOB_NAME="${CI_JOB_NAME-$IMAGE}" \
   --env BASE_COMMIT="$BASE_COMMIT" \
+  --env DIST_TRY_BUILD \
   --init \
   --rm \
   rust-ci \

@@ -718,6 +718,11 @@ pub enum InvalidFromUtf8Diag {
     },
 }
 
+// cast_ref_to_mut.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_cast_ref_to_mut)]
+pub struct CastRefToMutDiag;
+
 // hidden_unicode_codepoints.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_hidden_unicode_codepoints)]

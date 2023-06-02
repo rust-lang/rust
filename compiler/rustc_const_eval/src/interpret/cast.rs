@@ -14,6 +14,8 @@ use super::{
     util::ensure_monomorphic_enough, FnVal, ImmTy, Immediate, InterpCx, Machine, OpTy, PlaceTy,
 };
 
+use crate::fluent_generated as fluent;
+
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn cast(
         &mut self,
@@ -138,12 +140,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 assert!(src.layout.is_sized());
                 assert!(dest.layout.is_sized());
                 if src.layout.size != dest.layout.size {
-                    throw_ub_format!(
-                        "transmuting from {}-byte type to {}-byte type: `{}` -> `{}`",
-                        src.layout.size.bytes(),
-                        dest.layout.size.bytes(),
-                        src.layout.ty,
-                        dest.layout.ty,
+                    let src_bytes = src.layout.size.bytes();
+                    let dest_bytes = dest.layout.size.bytes();
+                    let src_ty = format!("{}", src.layout.ty);
+                    let dest_ty = format!("{}", dest.layout.ty);
+                    throw_ub_custom!(
+                        fluent::const_eval_invalid_transmute,
+                        src_bytes = src_bytes,
+                        dest_bytes = dest_bytes,
+                        src = src_ty,
+                        dest = dest_ty,
                     );
                 }
 
@@ -363,7 +369,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let old_vptr = old_vptr.to_pointer(self)?;
                 let (ty, old_trait) = self.get_ptr_vtable(old_vptr)?;
                 if old_trait != data_a.principal() {
-                    throw_ub_format!("upcast on a pointer whose vtable does not match its type");
+                    throw_ub_custom!(fluent::const_eval_upcast_mismatch);
                 }
                 let new_vptr = self.get_vtable_ptr(ty, data_b.principal())?;
                 self.write_immediate(Immediate::new_dyn_trait(old_data, new_vptr, self), dest)

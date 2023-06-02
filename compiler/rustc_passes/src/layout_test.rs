@@ -93,7 +93,7 @@ fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribute) {
 
         Err(layout_error) => {
             tcx.sess.emit_fatal(Spanned {
-                node: layout_error,
+                node: layout_error.into_diagnostic(),
                 span: tcx.def_span(item_def_id.to_def_id()),
             });
         }
@@ -109,12 +109,7 @@ impl<'tcx> LayoutOfHelpers<'tcx> for UnwrapLayoutCx<'tcx> {
     type LayoutOfResult = TyAndLayout<'tcx>;
 
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
-        span_bug!(
-            span,
-            "`#[rustc_layout(..)]` test resulted in `layout_of({}) = Err({})`",
-            ty,
-            err
-        );
+        span_bug!(span, "`#[rustc_layout(..)]` test resulted in `layout_of({ty}) = Err({err})`",);
     }
 }
 

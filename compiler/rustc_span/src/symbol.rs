@@ -1146,6 +1146,8 @@ symbols! {
         profiler_builtins,
         profiler_runtime,
         ptr,
+        ptr_cast_mut,
+        ptr_from_ref,
         ptr_guaranteed_cmp,
         ptr_mask,
         ptr_null,

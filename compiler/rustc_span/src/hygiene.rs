@@ -1288,7 +1288,7 @@ pub fn decode_expn_id(
     decode_data: impl FnOnce(ExpnId) -> (ExpnData, ExpnHash),
 ) -> ExpnId {
     if index == 0 {
-        debug!("decode_expn_id: deserialized root");
+        trace!("decode_expn_id: deserialized root");
         return ExpnId::root();
     }
 
@@ -1321,7 +1321,7 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
 ) -> SyntaxContext {
     let raw_id: u32 = Decodable::decode(d);
     if raw_id == 0 {
-        debug!("decode_syntax_context: deserialized root");
+        trace!("decode_syntax_context: deserialized root");
         // The root is special
         return SyntaxContext::root();
     }

@@ -1179,6 +1179,10 @@ a.test-arrow:hover {
 	position: relative;
 }
 
+.code-header a.tooltip:hover {
+	color: var(--link-color);
+}
+
 /* placeholder thunk so that the mouse can easily travel from "(i)" to popover
 	the resulting "hover tunnel" is a stepped triangle, approximating
 	https://bjk5.com/post/44698559168/breaking-down-amazons-mega-dropdown */
@@ -1189,6 +1193,14 @@ a.tooltip:hover::after {
 	right: -15px;
 	height: 20px;
 	content: "\00a0";
+}
+
+/* This animation is layered onto the mistake-proofing delay for dismissing
+	a hovered tooltip, to ensure it feels responsive even with the delay.
+	*/
+.fade-out {
+	opacity: 0;
+	transition: opacity 0.45s cubic-bezier(0, 0, 0.1, 1.0);
 }
 
 .popover.tooltip .content {

@@ -366,7 +366,6 @@ fn const_maybe_uninit() {
 }
 
 #[test]
-#[cfg(not(bootstrap))]
 fn offset_of() {
     #[repr(C)]
     struct Foo {
@@ -391,7 +390,7 @@ fn offset_of() {
     struct Generic<T> {
         x: u8,
         y: u32,
-        z: T
+        z: T,
     }
 
     trait Trait {}
@@ -409,7 +408,6 @@ fn offset_of() {
 }
 
 #[test]
-#[cfg(not(bootstrap))]
 fn offset_of_union() {
     #[repr(C)]
     union Foo {
@@ -429,7 +427,6 @@ fn offset_of_union() {
 }
 
 #[test]
-#[cfg(not(bootstrap))]
 fn offset_of_dst() {
     #[repr(C)]
     struct Alpha {
@@ -469,7 +466,6 @@ fn offset_of_dst() {
 }
 
 #[test]
-#[cfg(not(bootstrap))]
 fn offset_of_packed() {
     #[repr(C, packed)]
     struct Foo {
@@ -482,7 +478,6 @@ fn offset_of_packed() {
 }
 
 #[test]
-#[cfg(not(bootstrap))]
 fn offset_of_projection() {
     #[repr(C)]
     struct Foo {
@@ -503,7 +498,6 @@ fn offset_of_projection() {
 }
 
 #[test]
-#[cfg(not(bootstrap))]
 fn offset_of_alias() {
     #[repr(C)]
     struct Foo {
@@ -518,7 +512,6 @@ fn offset_of_alias() {
 }
 
 #[test]
-#[cfg(not(bootstrap))]
 fn const_offset_of() {
     #[repr(C)]
     struct Foo {
@@ -534,7 +527,6 @@ fn const_offset_of() {
 }
 
 #[test]
-#[cfg(not(bootstrap))]
 fn offset_of_without_const_promotion() {
     #[repr(C)]
     struct Foo<SuppressConstPromotion> {
@@ -555,7 +547,6 @@ fn offset_of_without_const_promotion() {
 }
 
 #[test]
-#[cfg(not(bootstrap))]
 fn offset_of_addr() {
     #[repr(C)]
     struct Foo {

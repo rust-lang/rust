@@ -486,7 +486,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         assert_eq!(place.llextra.is_some(), place.layout.is_unsized());
 
         if place.layout.is_zst() {
-            return OperandRef::new_zst(self, place.layout);
+            return OperandRef::zero_sized(place.layout);
         }
 
         #[instrument(level = "trace", skip(bx))]
