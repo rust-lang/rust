@@ -870,7 +870,7 @@ impl Evaluator<'_> {
                             Owned(c.to_le_bytes().into())
                         }
                         chalk_ir::FloatTy::F64 => {
-                            let c = -from_bytes!(f32, c);
+                            let c = -from_bytes!(f64, c);
                             Owned(c.to_le_bytes().into())
                         }
                     }
