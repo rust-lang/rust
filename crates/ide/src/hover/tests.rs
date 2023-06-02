@@ -4338,6 +4338,30 @@ const FOO$0: f64 = 1.0f64;
 }
 
 #[test]
+fn hover_const_eval_floating_point() {
+    check(
+        r#"
+extern "rust-intrinsic" {
+    pub fn expf64(x: f64) -> f64;
+}
+
+const FOO$0: f64 = expf64(1.2);
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: f64 = 3.3201169227365472
+            ```
+        "#]],
+    );
+}
+
+#[test]
 fn hover_const_eval_enum() {
     check(
         r#"

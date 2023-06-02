@@ -175,6 +175,40 @@ fn likely() {
 }
 
 #[test]
+fn floating_point() {
+    check_number(
+        r#"
+        extern "rust-intrinsic" {
+            pub fn sqrtf32(x: f32) -> f32;
+            pub fn powf32(a: f32, x: f32) -> f32;
+            pub fn fmaf32(a: f32, b: f32, c: f32) -> f32;
+        }
+
+        const GOAL: f32 = sqrtf32(1.2) + powf32(3.4, 5.6) + fmaf32(-7.8, 1.3, 2.4);
+        "#,
+        i128::from_le_bytes(pad16(
+            &f32::to_le_bytes(1.2f32.sqrt() + 3.4f32.powf(5.6) + (-7.8f32).mul_add(1.3, 2.4)),
+            true,
+        )),
+    );
+    check_number(
+        r#"
+        extern "rust-intrinsic" {
+            pub fn powif64(a: f64, x: i32) -> f64;
+            pub fn sinf64(x: f64) -> f64;
+            pub fn minnumf64(x: f64, y: f64) -> f64;
+        }
+
+        const GOAL: f64 = powif64(1.2, 5) + sinf64(3.4) + minnumf64(-7.8, 1.3);
+        "#,
+        i128::from_le_bytes(pad16(
+            &f64::to_le_bytes(1.2f64.powi(5) + 3.4f64.sin() + (-7.8f64).min(1.3)),
+            true,
+        )),
+    );
+}
+
+#[test]
 fn atomic() {
     check_number(
         r#"
