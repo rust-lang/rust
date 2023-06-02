@@ -17,6 +17,7 @@ use hir_expand::InFile;
 use intern::Interned;
 use la_arena::ArenaMap;
 use rustc_hash::{FxHashMap, FxHashSet};
+use stdx::never;
 use syntax::{SyntaxNodePtr, TextRange};
 use triomphe::Arc;
 
@@ -896,7 +897,7 @@ impl Evaluator<'_> {
                     Owned(c)
                 }
             }
-            Rvalue::CheckedBinaryOp(op, lhs, rhs) => {
+            Rvalue::CheckedBinaryOp(op, lhs, rhs) => 'binary_op: {
                 let lc = self.eval_operand(lhs, locals)?;
                 let rc = self.eval_operand(rhs, locals)?;
                 let mut lc = lc.get(&self)?;
@@ -905,10 +906,17 @@ impl Evaluator<'_> {
                 while let TyKind::Ref(_, _, z) = ty.kind(Interner) {
                     ty = z.clone();
                     let size = if ty.kind(Interner) == &TyKind::Str {
-                        let ns = from_bytes!(usize, &lc[self.ptr_size()..self.ptr_size() * 2]);
+                        if *op != BinOp::Eq {
+                            never!("Only eq is builtin for `str`");
+                        }
+                        let ls = from_bytes!(usize, &lc[self.ptr_size()..self.ptr_size() * 2]);
+                        let rs = from_bytes!(usize, &rc[self.ptr_size()..self.ptr_size() * 2]);
+                        if ls != rs {
+                            break 'binary_op Owned(vec![0]);
+                        }
                         lc = &lc[..self.ptr_size()];
                         rc = &rc[..self.ptr_size()];
-                        ns
+                        ls
                     } else {
                         self.size_of_sized(&ty, locals, "operand of binary op")?
                     };
@@ -1200,8 +1208,15 @@ impl Evaluator<'_> {
                 CastKind::IntToInt
                 | CastKind::PointerExposeAddress
                 | CastKind::PointerFromExposedAddress => {
-                    // FIXME: handle signed cast
-                    let current = pad16(self.eval_operand(operand, locals)?.get(&self)?, false);
+                    let current_ty = self.operand_ty(operand, locals)?;
+                    let is_signed = match current_ty.kind(Interner) {
+                        TyKind::Scalar(s) => match s {
+                            chalk_ir::Scalar::Int(_) => true,
+                            _ => false,
+                        },
+                        _ => false,
+                    };
+                    let current = pad16(self.eval_operand(operand, locals)?.get(&self)?, is_signed);
                     let dest_size =
                         self.size_of_sized(target_ty, locals, "destination of int to int cast")?;
                     Owned(current[0..dest_size].to_vec())

@@ -829,7 +829,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         op,
                         BinaryOp::ArithOp(ArithOp::Shl | ArithOp::Shr) | BinaryOp::Assignment { op: Some(ArithOp::Shl | ArithOp::Shr) }
                     );
-                    lhs_ty.as_builtin().is_some() && rhs_ty.as_builtin().is_some() && (lhs_ty == rhs_ty || builtin_inequal_impls)
+                    lhs_ty.is_scalar() && rhs_ty.is_scalar() && (lhs_ty == rhs_ty || builtin_inequal_impls)
                 };
                 if !is_builtin {
                     if let Some((func_id, generic_args)) = self.infer.method_resolution(expr_id) {

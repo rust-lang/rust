@@ -179,6 +179,7 @@ fn casts() {
         "#,
         4,
     );
+    check_number(r#"const GOAL: i32 = -12i8 as i32"#, -12);
 }
 
 #[test]
@@ -1034,16 +1035,18 @@ fn pattern_matching_literal() {
     );
     check_number(
         r#"
-    const fn f(x: &str) -> u8 {
+    const fn f(x: &str) -> i32 {
         match x {
-            "foo" => 1,
-            "bar" => 10,
-            _ => 100,
+            "f" => 1,
+            "foo" => 10,
+            "" => 100,
+            "bar" => 1000,
+            _ => 10000,
         }
     }
-    const GOAL: u8 = f("foo") + f("bar");
+    const GOAL: i32 = f("f") + f("foo") * 2 + f("") * 3 + f("bar") * 4;
         "#,
-        11,
+        4321,
     );
 }
 
