@@ -106,7 +106,7 @@ struct Field {
 }
 
 impl Field {
-    pub fn new(
+    pub(crate) fn new(
         ctx: &AssistContext<'_>,
         f: Either<ast::RecordField, (ast::TupleField, ast::TupleFieldList)>,
     ) -> Option<Field> {
@@ -208,12 +208,12 @@ struct Struct {
 }
 
 impl Struct {
-    pub fn new(s: ast::Struct) -> Option<Self> {
+    pub(crate) fn new(s: ast::Struct) -> Option<Self> {
         let name = s.name()?;
         Some(Struct { name, strukt: s })
     }
 
-    pub fn delegate(&self, field: Field, acc: &mut Assists, ctx: &AssistContext<'_>) {
+    pub(crate) fn delegate(&self, field: Field, acc: &mut Assists, ctx: &AssistContext<'_>) {
         let db = ctx.db();
         for delegee in &field.impls {
             // FIXME :  We can omit already implemented impl_traits
