@@ -26,7 +26,7 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::RegisteredTools;
 use rustc_middle::ty::{TyCtxt, Visibility};
 use rustc_session::lint::builtin::{
-    LEGACY_DERIVE_HELPERS, SOFT_UNSTABLE, UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
+    LEGACY_DERIVE_HELPERS, SOFT_UNSTABLE, UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
 };
 use rustc_session::lint::builtin::{UNUSED_MACROS, UNUSED_MACRO_RULES};
 use rustc_session::lint::BuiltinLintDiagnostics;
@@ -610,9 +610,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         if res == Res::NonMacroAttr(NonMacroAttrKind::Tool)
             && path.segments.len() >= 2
             && path.segments[0].ident.name == sym::diagnostic
+            && path.segments[1].ident.name != sym::on_unimplemented
         {
             self.tcx.sess.parse_sess.buffer_lint(
-                UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
+                UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                 path.segments[1].span(),
                 node_id,
                 "unknown diagnostic attribute",

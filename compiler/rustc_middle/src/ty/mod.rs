@@ -2408,6 +2408,22 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    pub fn get_attrs_by_path<'attr>(
+        self,
+        did: DefId,
+        attr: &'attr [Symbol],
+    ) -> impl Iterator<Item = &'tcx ast::Attribute> + 'attr
+    where
+        'tcx: 'attr,
+    {
+        let filter_fn = move |a: &&ast::Attribute| a.path_matches(&attr);
+        if let Some(did) = did.as_local() {
+            self.hir().attrs(self.hir().local_def_id_to_hir_id(did)).iter().filter(filter_fn)
+        } else {
+            self.item_attrs(did).iter().filter(filter_fn)
+        }
+    }
+
     pub fn get_attr(self, did: impl Into<DefId>, attr: Symbol) -> Option<&'tcx ast::Attribute> {
         if cfg!(debug_assertions) && !rustc_feature::is_valid_for_get_attr(attr) {
             let did: DefId = did.into();
