@@ -1,3 +1,12 @@
+error[E0277]: the type `CantParam` does not `#[derive(PartialEq)]`
+  --> $DIR/const_param_ty_impl_no_structural_eq.rs:10:36
+   |
+LL | impl std::marker::ConstParamTy for CantParam {}
+   |                                    ^^^^^^^^^ the trait `StructuralPartialEq` is not implemented for `CantParam`
+   |
+note: required by a bound in `ConstParamTy`
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
+
 error[E0277]: the type `CantParam` does not `#[derive(Eq)]`
   --> $DIR/const_param_ty_impl_no_structural_eq.rs:10:36
    |
@@ -7,8 +16,18 @@ LL | impl std::marker::ConstParamTy for CantParam {}
 note: required by a bound in `ConstParamTy`
   --> $SRC_DIR/core/src/marker.rs:LL:COL
 
+error[E0277]: the type `CantParamDerive` does not `#[derive(PartialEq)]`
+  --> $DIR/const_param_ty_impl_no_structural_eq.rs:14:10
+   |
+LL | #[derive(std::marker::ConstParamTy)]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `StructuralPartialEq` is not implemented for `CantParamDerive`
+   |
+note: required by a bound in `ConstParamTy`
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
+   = note: this error originates in the derive macro `std::marker::ConstParamTy` (in Nightly builds, run with -Z macro-backtrace for more info)
+
 error[E0277]: the type `CantParamDerive` does not `#[derive(Eq)]`
-  --> $DIR/const_param_ty_impl_no_structural_eq.rs:13:10
+  --> $DIR/const_param_ty_impl_no_structural_eq.rs:14:10
    |
 LL | #[derive(std::marker::ConstParamTy)]
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `StructuralEq` is not implemented for `CantParamDerive`
@@ -17,6 +36,6 @@ note: required by a bound in `ConstParamTy`
   --> $SRC_DIR/core/src/marker.rs:LL:COL
    = note: this error originates in the derive macro `std::marker::ConstParamTy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 2 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

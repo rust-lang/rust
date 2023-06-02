@@ -205,6 +205,20 @@ pub trait StructuralPartialEq {
     // Empty.
 }
 
+marker_impls! {
+    #[unstable(feature = "structural_match", issue = "31434")]
+    StructuralPartialEq for
+        usize, u8, u16, u32, u64, u128,
+        isize, i8, i16, i32, i64, i128,
+        bool,
+        char,
+        str /* Technically requires `[u8]: StructuralEq` */,
+        (),
+        {T, const N: usize} [T; N],
+        {T} [T],
+        {T: ?Sized} &T,
+}
+
 /// Required trait for constants used in pattern matches.
 ///
 /// Any type that derives `Eq` automatically implements this trait, *regardless*
@@ -267,6 +281,7 @@ marker_impls! {
         bool,
         char,
         str /* Technically requires `[u8]: StructuralEq` */,
+        (),
         {T, const N: usize} [T; N],
         {T} [T],
         {T: ?Sized} &T,
@@ -974,7 +989,8 @@ pub trait PointerLike {}
 #[lang = "const_param_ty"]
 #[unstable(feature = "adt_const_params", issue = "95174")]
 #[rustc_on_unimplemented(message = "`{Self}` can't be used as a const parameter type")]
-pub trait ConstParamTy: StructuralEq {}
+#[allow(multiple_supertrait_upcastable)]
+pub trait ConstParamTy: StructuralEq + StructuralPartialEq {}
 
 /// Derive macro generating an impl of the trait `ConstParamTy`.
 #[rustc_builtin_macro]
@@ -983,8 +999,7 @@ pub macro ConstParamTy($item:item) {
     /* compiler built-in */
 }
 
-// FIXME(generic_const_parameter_types): handle `ty::FnDef`/`ty::Closure`
-// FIXME(generic_const_parameter_types): handle `ty::Tuple`
+// FIXME(adt_const_params): handle `ty::FnDef`/`ty::Closure`
 marker_impls! {
     #[unstable(feature = "adt_const_params", issue = "95174")]
     ConstParamTy for
@@ -997,6 +1012,11 @@ marker_impls! {
         {T: ConstParamTy} [T],
         {T: ?Sized + ConstParamTy} &T,
 }
+
+// FIXME(adt_const_params): Add to marker_impls call above once not in bootstrap
+#[unstable(feature = "adt_const_params", issue = "95174")]
+#[cfg(not(bootstrap))]
+impl ConstParamTy for () {}
 
 /// A common trait implemented by all function pointers.
 #[unstable(

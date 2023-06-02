@@ -1,5 +1,5 @@
 // The classification code for the x86_64 ABI is taken from the clay language
-// https://github.com/jckarter/clay/blob/master/compiler/src/externals.cpp
+// https://github.com/jckarter/clay/blob/db0bd2702ab0b6e48965cd85f8859bbd5f60e48e/compiler/externals.cpp
 
 use crate::abi::call::{ArgAbi, CastTarget, FnAbi, Reg, RegKind};
 use crate::abi::{self, Abi, HasDataLayout, Size, TyAbiInterface, TyAndLayout};

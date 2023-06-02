@@ -445,6 +445,9 @@ pub enum ObligationCauseCode<'tcx> {
     /// Obligations to prove that a `std::ops::Drop` impl is not stronger than
     /// the ADT it's being implemented for.
     DropImpl,
+
+    /// Requirement for a `const N: Ty` to implement `Ty: ConstParamTy`
+    ConstParam(Ty<'tcx>),
 }
 
 /// The 'location' at which we try to perform HIR-based wf checking.

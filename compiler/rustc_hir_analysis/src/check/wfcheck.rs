@@ -829,83 +829,20 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
             let ty = tcx.type_of(param.def_id).subst_identity();
 
             if tcx.features().adt_const_params {
-                if let Some(non_structural_match_ty) =
-                    traits::search_for_adt_const_param_violation(param.span, tcx, ty)
-                {
-                    // We use the same error code in both branches, because this is really the same
-                    // issue: we just special-case the message for type parameters to make it
-                    // clearer.
-                    match non_structural_match_ty.kind() {
-                        ty::Param(_) => {
-                            // Const parameters may not have type parameters as their types,
-                            // because we cannot be sure that the type parameter derives `PartialEq`
-                            // and `Eq` (just implementing them is not enough for `structural_match`).
-                            struct_span_err!(
-                                tcx.sess,
-                                hir_ty.span,
-                                E0741,
-                                "`{ty}` is not guaranteed to `#[derive(PartialEq, Eq)]`, so may not be \
-                                used as the type of a const parameter",
-                            )
-                            .span_label(
-                                hir_ty.span,
-                                format!("`{ty}` may not derive both `PartialEq` and `Eq`"),
-                            )
-                            .note(
-                                "it is not currently possible to use a type parameter as the type of a \
-                                const parameter",
-                            )
-                            .emit();
-                        }
-                        ty::Float(_) => {
-                            struct_span_err!(
-                                tcx.sess,
-                                hir_ty.span,
-                                E0741,
-                                "`{ty}` is forbidden as the type of a const generic parameter",
-                            )
-                            .note("floats do not derive `Eq` or `Ord`, which are required for const parameters")
-                            .emit();
-                        }
-                        ty::FnPtr(_) => {
-                            struct_span_err!(
-                                tcx.sess,
-                                hir_ty.span,
-                                E0741,
-                                "using function pointers as const generic parameters is forbidden",
-                            )
-                            .emit();
-                        }
-                        ty::RawPtr(_) => {
-                            struct_span_err!(
-                                tcx.sess,
-                                hir_ty.span,
-                                E0741,
-                                "using raw pointers as const generic parameters is forbidden",
-                            )
-                            .emit();
-                        }
-                        _ => {
-                            let mut diag = struct_span_err!(
-                                tcx.sess,
-                                hir_ty.span,
-                                E0741,
-                                "`{}` must be annotated with `#[derive(PartialEq, Eq)]` to be used as \
-                                the type of a const parameter",
-                                non_structural_match_ty,
-                            );
-
-                            if ty == non_structural_match_ty {
-                                diag.span_label(
-                                    hir_ty.span,
-                                    format!("`{ty}` doesn't derive both `PartialEq` and `Eq`"),
-                                );
-                            }
-
-                            diag.emit();
-                        }
-                    }
-                }
+                enter_wf_checking_ctxt(tcx, hir_ty.span, param.def_id, |wfcx| {
+                    let trait_def_id =
+                        tcx.require_lang_item(LangItem::ConstParamTy, Some(hir_ty.span));
+                    wfcx.register_bound(
+                        ObligationCause::new(
+                            hir_ty.span,
+                            param.def_id,
+                            ObligationCauseCode::ConstParam(ty),
+                        ),
+                        wfcx.param_env,
+                        ty,
+                        trait_def_id,
+                    );
+                });
             } else {
                 let err_ty_str;
                 let mut is_ptr = true;

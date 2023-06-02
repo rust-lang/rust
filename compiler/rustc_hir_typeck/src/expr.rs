@@ -3117,16 +3117,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
                 ty::Tuple(tys) => {
-                    let fstr = field.as_str();
+                    if let Ok(index) = field.as_str().parse::<usize>()
+                        && field.name == sym::integer(index)
+                    {
+                        for ty in tys.iter().take(index + 1) {
+                            self.require_type_is_sized(ty, expr.span, traits::MiscObligation);
+                        }
+                        if let Some(&field_ty) = tys.get(index) {
+                            field_indices.push(index.into());
+                            current_container = field_ty;
 
-                    if let Ok(index) = fstr.parse::<usize>() {
-                        if fstr == index.to_string() {
-                            if let Some(&field_ty) = tys.get(index) {
-                                field_indices.push(index.into());
-                                current_container = field_ty;
-
-                                continue;
-                            }
+                            continue;
                         }
                     }
                 }

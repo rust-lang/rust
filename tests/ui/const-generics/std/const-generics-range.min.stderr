@@ -1,5 +1,5 @@
 error: `std::ops::Range<usize>` is forbidden as the type of a const generic parameter
-  --> $DIR/const-generics-range.rs:7:24
+  --> $DIR/const-generics-range.rs:8:24
    |
 LL | struct _Range<const R: std::ops::Range<usize>>;
    |                        ^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | struct _Range<const R: std::ops::Range<usize>>;
    = help: more complex types are supported with `#![feature(adt_const_params)]`
 
 error: `RangeFrom<usize>` is forbidden as the type of a const generic parameter
-  --> $DIR/const-generics-range.rs:12:28
+  --> $DIR/const-generics-range.rs:13:28
    |
 LL | struct _RangeFrom<const R: std::ops::RangeFrom<usize>>;
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL | struct _RangeFrom<const R: std::ops::RangeFrom<usize>>;
    = help: more complex types are supported with `#![feature(adt_const_params)]`
 
 error: `RangeFull` is forbidden as the type of a const generic parameter
-  --> $DIR/const-generics-range.rs:17:28
+  --> $DIR/const-generics-range.rs:18:28
    |
 LL | struct _RangeFull<const R: std::ops::RangeFull>;
    |                            ^^^^^^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL | struct _RangeFull<const R: std::ops::RangeFull>;
    = help: more complex types are supported with `#![feature(adt_const_params)]`
 
 error: `RangeInclusive<usize>` is forbidden as the type of a const generic parameter
-  --> $DIR/const-generics-range.rs:23:33
+  --> $DIR/const-generics-range.rs:24:33
    |
 LL | struct _RangeInclusive<const R: std::ops::RangeInclusive<usize>>;
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -35,7 +35,7 @@ LL | struct _RangeInclusive<const R: std::ops::RangeInclusive<usize>>;
    = help: more complex types are supported with `#![feature(adt_const_params)]`
 
 error: `RangeTo<usize>` is forbidden as the type of a const generic parameter
-  --> $DIR/const-generics-range.rs:28:26
+  --> $DIR/const-generics-range.rs:29:26
    |
 LL | struct _RangeTo<const R: std::ops::RangeTo<usize>>;
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -44,7 +44,7 @@ LL | struct _RangeTo<const R: std::ops::RangeTo<usize>>;
    = help: more complex types are supported with `#![feature(adt_const_params)]`
 
 error: `RangeToInclusive<usize>` is forbidden as the type of a const generic parameter
-  --> $DIR/const-generics-range.rs:33:35
+  --> $DIR/const-generics-range.rs:34:35
    |
 LL | struct _RangeToInclusive<const R: std::ops::RangeToInclusive<usize>>;
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
