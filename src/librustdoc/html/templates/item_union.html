@@ -1,8 +1,8 @@
 <pre class="rust item-decl"><code>
-    {{ self::item_template_render_attributes_in_pre(self.borrow()) | safe }}
+    {{ self.render_attributes_in_pre() | safe }}
     {{ self.render_union() | safe }}
 </code></pre>
-{{ self::item_template_document(self.borrow()) | safe }}
+{{ self.document() | safe }}
 {% if self.fields_iter().peek().is_some() %}
     <h2 id="fields" class="fields small-section-header">
         Fields<a href="#fields" class="anchor">§</a>
@@ -19,5 +19,5 @@
         {{ self.document_field(field) | safe }}
     {% endfor %}
 {% endif %}
-{{ self::item_template_render_assoc_items(self.borrow()) | safe }}
-{{ self::item_template_document_type_layout(self.borrow()) | safe }}
+{{ self.render_assoc_items() | safe }}
+{{ self.document_type_layout() | safe }}
