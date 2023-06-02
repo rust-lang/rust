@@ -51,7 +51,7 @@ impl ClippyConfiguration {
     #[cfg(feature = "internal")]
     fn to_markdown_paragraph(&self) -> String {
         format!(
-            "### {}\n{}\n\n**Default Value:** `{}` (`{}`)\n\n{}\n\n",
+            "## `{}`\n{}\n\n**Default Value:** `{}` (`{}`)\n\n---\n**Affected lints:**\n{}\n\n",
             self.name,
             self.doc
                 .lines()
@@ -62,14 +62,9 @@ impl ClippyConfiguration {
             self.lints
                 .iter()
                 .map(|name| name.to_string().split_whitespace().next().unwrap().to_string())
-                .map(|name| format!("* [{name}](https://rust-lang.github.io/rust-clippy/master/index.html#{name})"))
+                .map(|name| format!("* [`{name}`](https://rust-lang.github.io/rust-clippy/master/index.html#{name})"))
                 .join("\n"),
         )
-    }
-
-    #[cfg(feature = "internal")]
-    fn to_markdown_table_entry(&self) -> String {
-        format!("| [{}](#{}) | `{}` |", self.name, self.name, self.default)
     }
 }
 
