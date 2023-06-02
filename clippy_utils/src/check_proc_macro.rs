@@ -12,7 +12,11 @@
 //! code was written, and check if the span contains that text. Note this will only work correctly
 //! if the span is not from a `macro_rules` based macro.
 
-use rustc_ast::ast::{IntTy, LitIntType, LitKind, StrStyle, UintTy};
+use rustc_ast::{
+    ast::{AttrKind, Attribute, IntTy, LitIntType, LitKind, StrStyle, UintTy},
+    token::CommentKind,
+    AttrStyle,
+};
 use rustc_hir::{
     intravisit::FnKind, Block, BlockCheckMode, Body, Closure, Destination, Expr, ExprKind, FieldDef, FnHeader, HirId,
     Impl, ImplItem, ImplItemKind, IsAuto, Item, ItemKind, LoopSource, MatchSource, Node, QPath, TraitItem,
@@ -271,6 +275,32 @@ fn fn_kind_pat(tcx: TyCtxt<'_>, kind: &FnKind<'_>, body: &Body<'_>, hir_id: HirI
     (start_pat, end_pat)
 }
 
+fn attr_search_pat(attr: &Attribute) -> (Pat, Pat) {
+    match attr.kind {
+        AttrKind::Normal(..) => {
+            if matches!(attr.style, AttrStyle::Outer) {
+                (Pat::Str("#["), Pat::Str("]"))
+            } else {
+                (Pat::Str("#!["), Pat::Str("]"))
+            }
+        },
+        AttrKind::DocComment(_kind @ CommentKind::Line, ..) => {
+            if matches!(attr.style, AttrStyle::Outer) {
+                (Pat::Str("///"), Pat::Str(""))
+            } else {
+                (Pat::Str("//!"), Pat::Str(""))
+            }
+        },
+        AttrKind::DocComment(_kind @ CommentKind::Block, ..) => {
+            if matches!(attr.style, AttrStyle::Outer) {
+                (Pat::Str("/**"), Pat::Str("*/"))
+            } else {
+                (Pat::Str("/*!"), Pat::Str("*/"))
+            }
+        },
+    }
+}
+
 pub trait WithSearchPat {
     type Context: LintContext;
     fn search_pat(&self, cx: &Self::Context) -> (Pat, Pat);
@@ -307,6 +337,18 @@ impl<'cx> WithSearchPat for (&FnKind<'cx>, &Body<'cx>, HirId, Span) {
 
     fn span(&self) -> Span {
         self.3
+    }
+}
+
+impl<'cx> WithSearchPat for (&Attribute, &LateContext<'cx>) {
+    type Context = LateContext<'cx>;
+
+    fn search_pat(&self, _cx: &Self::Context) -> (Pat, Pat) {
+        attr_search_pat(&self.0)
+    }
+
+    fn span(&self) -> Span {
+        self.0.span
     }
 }
 
