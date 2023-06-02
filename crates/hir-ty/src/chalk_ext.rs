@@ -22,6 +22,7 @@ use crate::{
 pub trait TyExt {
     fn is_unit(&self) -> bool;
     fn is_integral(&self) -> bool;
+    fn is_scalar(&self) -> bool;
     fn is_floating_point(&self) -> bool;
     fn is_never(&self) -> bool;
     fn is_unknown(&self) -> bool;
@@ -66,6 +67,10 @@ impl TyExt for Ty {
             TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_))
                 | TyKind::InferenceVar(_, TyVariableKind::Integer)
         )
+    }
+
+    fn is_scalar(&self) -> bool {
+        matches!(self.kind(Interner), TyKind::Scalar(_))
     }
 
     fn is_floating_point(&self) -> bool {

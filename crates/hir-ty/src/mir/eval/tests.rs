@@ -229,6 +229,39 @@ fn main() {
 }
 
 #[test]
+fn memcmp() {
+    check_pass(
+        r#"
+//- minicore: slice, coerce_unsized, index
+
+fn should_not_reach() -> bool {
+    _ // FIXME: replace this function with panic when that works
+}
+
+extern "C" {
+    fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> i32;
+}
+
+fn my_cmp(x: &[u8], y: &[u8]) -> i32 {
+    memcmp(x as *const u8, y as *const u8, x.len())
+}
+
+fn main() {
+    if my_cmp(&[1, 2, 3], &[1, 2, 3]) != 0 {
+        should_not_reach();
+    }
+    if my_cmp(&[1, 20, 3], &[1, 2, 3]) <= 0 {
+        should_not_reach();
+    }
+    if my_cmp(&[1, 2, 3], &[1, 20, 3]) >= 0 {
+        should_not_reach();
+    }
+}
+    "#,
+    );
+}
+
+#[test]
 fn unix_write_stdout() {
     check_pass_and_stdio(
         r#"

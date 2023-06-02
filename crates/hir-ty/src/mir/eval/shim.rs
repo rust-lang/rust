@@ -238,6 +238,22 @@ impl Evaluator<'_> {
         _span: MirSpan,
     ) -> Result<()> {
         match as_str {
+            "memcmp" => {
+                let [ptr1, ptr2, size] = args else {
+                    return Err(MirEvalError::TypeError("memcmp args are not provided"));
+                };
+                let addr1 = Address::from_bytes(ptr1.get(self)?)?;
+                let addr2 = Address::from_bytes(ptr2.get(self)?)?;
+                let size = from_bytes!(usize, size.get(self)?);
+                let slice1 = self.read_memory(addr1, size)?;
+                let slice2 = self.read_memory(addr2, size)?;
+                let r: i128 = match slice1.cmp(slice2) {
+                    cmp::Ordering::Less => -1,
+                    cmp::Ordering::Equal => 0,
+                    cmp::Ordering::Greater => 1,
+                };
+                destination.write_from_bytes(self, &r.to_le_bytes()[..destination.size])
+            }
             "write" => {
                 let [fd, ptr, len] = args else {
                     return Err(MirEvalError::TypeError("libc::write args are not provided"));
