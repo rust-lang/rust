@@ -38,6 +38,17 @@ declare_tool_lint! {
     report_in_external_macro: true
 }
 
+declare_tool_lint! {
+    /// # What it does
+    /// Detects uses of incorrect formulations (allowed with attribute)
+    #[allow(clippy::almost_standard_lint_formulation)]
+    #[clippy::version = "pre 1.29.0"]
+    pub clippy::ALLOWED_INVALID,
+    Warn,
+    "One",
+    report_in_external_macro: true
+}
+
 declare_lint_pass!(Pass => [VALID, INVALID1, INVALID2]);
 
 fn main() {}
