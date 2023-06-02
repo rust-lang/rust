@@ -1,10 +1,10 @@
 use super::REDUNDANT_PATTERN_MATCHING;
-use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet, walk_span_to_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{is_type_diagnostic_item, needs_ordered_drop};
 use clippy_utils::visitors::any_temporaries_need_ordered_drop;
-use clippy_utils::{higher, is_trait_method};
+use clippy_utils::{higher, is_expn_of, is_trait_method};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -190,24 +190,19 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op
         let node_pair = (&arms[0].pat.kind, &arms[1].pat.kind);
 
         if let Some(good_method) = found_good_method(cx, arms, node_pair) {
-            let span = expr.span.to(op.span);
+            let span = is_expn_of(expr.span, "matches").unwrap_or(expr.span.to(op.span));
             let result_expr = match &op.kind {
                 ExprKind::AddrOf(_, _, borrowed) => borrowed,
                 _ => op,
             };
-            span_lint_and_then(
+            span_lint_and_sugg(
                 cx,
                 REDUNDANT_PATTERN_MATCHING,
-                expr.span,
+                span,
                 &format!("redundant pattern matching, consider using `{good_method}`"),
-                |diag| {
-                    diag.span_suggestion(
-                        span,
-                        "try this",
-                        format!("{}.{good_method}", snippet(cx, result_expr.span, "_")),
-                        Applicability::MaybeIncorrect, // snippet
-                    );
-                },
+                "try this",
+                format!("{}.{good_method}", snippet(cx, result_expr.span, "_")),
+                Applicability::MachineApplicable,
             );
         }
     }

@@ -42,6 +42,11 @@ fn syntax_error() {
     let escaped_string_span = Regex::new("\\b\\c");
 
     let aux_span = Regex::new("(?ixi)");
+
+    let should_not_lint = Regex::new("(?u).");
+    let should_not_lint = BRegex::new("(?u).");
+    let invalid_utf8_should_not_lint = BRegex::new("(?-u).");
+    let invalid_utf8_should_lint = Regex::new("(?-u).");
 }
 
 fn trivial_regex() {
@@ -71,6 +76,8 @@ fn trivial_regex() {
     // non-trivial regexes
     let non_trivial_dot = Regex::new("a.b");
     let non_trivial_dot_builder = RegexBuilder::new("a.b");
+    let non_trivial_dot = Regex::new(".");
+    let non_trivial_dot = BRegex::new(".");
     let non_trivial_eq = Regex::new("^foo|bar$");
     let non_trivial_starts_with = Regex::new("^foo|bar");
     let non_trivial_ends_with = Regex::new("^foo|bar");

@@ -260,19 +260,42 @@ LL |     create_binding_if_some!(w, g());
    = note: this error originates in the macro `create_binding_if_some` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: this could be rewritten as `let...else`
-  --> $DIR/manual_let_else.rs:150:5
+  --> $DIR/manual_let_else.rs:149:5
    |
 LL |     let v = if let Variant::A(a, 0) = e() { a } else { return };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let Variant::A(a, 0) = e() else { return };`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let Variant::A(v, 0) = e() else { return };`
 
 error: this could be rewritten as `let...else`
   --> $DIR/manual_let_else.rs:152:5
    |
-LL |     let v = if let Variant::B(b) = e() { b } else { return };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let Variant::B(v) = e() else { return };`
+LL |     let mut v = if let Variant::B(b) = e() { b } else { return };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let Variant::B(mut v) = e() else { return };`
 
 error: this could be rewritten as `let...else`
-  --> $DIR/manual_let_else.rs:262:5
+  --> $DIR/manual_let_else.rs:156:5
+   |
+LL | /     let v = if let Ok(Some(Variant::B(b))) | Err(Some(Variant::A(b, _))) = nested {
+LL | |         b
+LL | |     } else {
+LL | |         return;
+LL | |     };
+   | |______^
+   |
+help: consider writing
+   |
+LL ~     let (Ok(Some(Variant::B(v))) | Err(Some(Variant::A(v, _)))) = nested else {
+LL +         return;
+LL +     };
+   |
+
+error: this could be rewritten as `let...else`
+  --> $DIR/manual_let_else.rs:162:5
+   |
+LL |     let v = if let Variant::A(.., a) = e() { a } else { return };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let Variant::A(.., v) = e() else { return };`
+
+error: this could be rewritten as `let...else`
+  --> $DIR/manual_let_else.rs:272:5
    |
 LL | /     let _ = match ff {
 LL | |         Some(value) => value,
@@ -280,5 +303,5 @@ LL | |         _ => macro_call!(),
 LL | |     };
    | |______^ help: consider writing: `let Some(_) = ff else { macro_call!() };`
 
-error: aborting due to 20 previous errors
+error: aborting due to 22 previous errors
 

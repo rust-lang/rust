@@ -3191,7 +3191,7 @@ declare_clippy_lint! {
     /// let mut v = vec![1, 2, 3];
     /// v.clear();
     /// ```
-    #[clippy::version = "1.69.0"]
+    #[clippy::version = "1.70.0"]
     pub CLEAR_WITH_DRAIN,
     nursery,
     "calling `drain` in order to `clear` a container"

@@ -7,7 +7,7 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::symbol::{sym, Symbol};
 
 use super::INEFFICIENT_TO_STRING;
 
