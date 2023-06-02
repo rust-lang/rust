@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::numeric_literal::NumericLiteral;
 use clippy_utils::source::snippet_opt;
-use clippy_utils::{get_parent_expr, path_to_local};
+use clippy_utils::{get_parent_expr, is_ty_alias, path_to_local};
 use if_chain::if_chain;
 use rustc_ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::Applicability;
@@ -20,6 +20,38 @@ pub(super) fn check<'tcx>(
     cast_from: Ty<'tcx>,
     cast_to: Ty<'tcx>,
 ) -> bool {
+    let cast_str = snippet_opt(cx, cast_expr.span).unwrap_or_default();
+
+    if_chain! {
+        if let ty::RawPtr(..) = cast_from.kind();
+        // check both mutability and type are the same
+        if cast_from.kind() == cast_to.kind();
+        if let ExprKind::Cast(_, cast_to_hir) = expr.kind;
+        then {
+            if_chain! {
+                if let TyKind::Path(qpath) = cast_to_hir.kind;
+                if is_ty_alias(&qpath);
+                then {
+                    return false;
+                }
+            }
+
+            if let TyKind::Infer = cast_to_hir.kind {
+                return false;
+            }
+
+            span_lint_and_sugg(
+                cx,
+                UNNECESSARY_CAST,
+                expr.span,
+                &format!("casting raw pointers to the same type and constness is unnecessary (`{cast_from}` -> `{cast_to}`)"),
+                "try",
+                cast_str.clone(),
+                Applicability::MachineApplicable,
+            );
+        }
+    }
+
     // skip non-primitive type cast
     if_chain! {
         if let ExprKind::Cast(_, cast_to) = expr.kind;
@@ -27,11 +59,9 @@ pub(super) fn check<'tcx>(
         if let Res::PrimTy(_) = path.res;
         then {}
         else {
-            return false
+            return false;
         }
     }
-
-    let cast_str = snippet_opt(cx, cast_expr.span).unwrap_or_default();
 
     if let Some(lit) = get_numeric_literal(cast_expr) {
         let literal_str = &cast_str;

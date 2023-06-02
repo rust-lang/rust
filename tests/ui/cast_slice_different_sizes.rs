@@ -1,4 +1,4 @@
-#![allow(clippy::let_unit_value)]
+#![allow(clippy::let_unit_value, clippy::unnecessary_cast)]
 
 fn main() {
     let x: [i32; 3] = [1_i32, 2, 3];

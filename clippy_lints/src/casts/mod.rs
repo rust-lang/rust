@@ -174,8 +174,8 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for casts to the same type, casts of int literals to integer types
-    /// and casts of float literals to float types.
+    /// Checks for casts to the same type, casts of int literals to integer types, casts of float
+    /// literals to float types and casts between raw pointers without changing type or constness.
     ///
     /// ### Why is this bad?
     /// It's just unnecessary.
