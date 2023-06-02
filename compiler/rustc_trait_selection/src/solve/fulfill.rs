@@ -118,16 +118,6 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
                                         TypeError::Sorts(expected_found),
                                     )
                                 }
-                                ty::PredicateKind::ConstEquate(a, b) => {
-                                    let (a, b) = infcx.instantiate_binder_with_placeholders(
-                                        goal.predicate.kind().rebind((a, b)),
-                                    );
-                                    let expected_found = ExpectedFound::new(true, a, b);
-                                    FulfillmentErrorCode::CodeConstEquateError(
-                                        expected_found,
-                                        TypeError::ConstMismatch(expected_found),
-                                    )
-                                }
                                 ty::PredicateKind::Clause(_)
                                 | ty::PredicateKind::WellFormed(_)
                                 | ty::PredicateKind::ObjectSafe(_)
@@ -138,7 +128,8 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
                                         SelectionError::Unimplemented,
                                     )
                                 }
-                                ty::PredicateKind::TypeWellFormedFromEnv(_) => {
+                                ty::PredicateKind::ConstEquate(..)
+                                | ty::PredicateKind::TypeWellFormedFromEnv(_) => {
                                     bug!("unexpected goal: {goal:?}")
                                 }
                             },

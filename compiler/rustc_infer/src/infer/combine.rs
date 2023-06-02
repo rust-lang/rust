@@ -227,7 +227,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 return self.unify_const_variable(vid, a, relation.param_env());
             }
             (ty::ConstKind::Unevaluated(..), _) | (_, ty::ConstKind::Unevaluated(..))
-                if self.tcx.lazy_normalization() =>
+                if self.tcx.features().generic_const_exprs || self.tcx.trait_solver_next() =>
             {
                 relation.register_const_equate_obligation(a, b);
                 return Ok(b);

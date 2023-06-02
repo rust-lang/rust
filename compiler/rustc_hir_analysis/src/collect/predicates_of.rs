@@ -463,7 +463,7 @@ pub(super) fn explicit_predicates_of<'tcx>(
             }
         }
     } else {
-        if matches!(def_kind, DefKind::AnonConst) && tcx.lazy_normalization() {
+        if matches!(def_kind, DefKind::AnonConst) && tcx.features().generic_const_exprs {
             let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
             let parent_def_id = tcx.hir().get_parent_item(hir_id);
 
