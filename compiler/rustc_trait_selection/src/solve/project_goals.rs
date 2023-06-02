@@ -226,10 +226,14 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
     }
 
     fn consider_auto_trait_candidate(
-        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
-        bug!("auto traits do not have associated types: {:?}", goal);
+        ecx.tcx().sess.delay_span_bug(
+            ecx.tcx().def_span(goal.predicate.def_id()),
+            "associated types not allowed on auto traits",
+        );
+        Err(NoSolution)
     }
 
     fn consider_trait_alias_candidate(
