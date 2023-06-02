@@ -344,7 +344,7 @@ impl<'cx> WithSearchPat for (&Attribute, &LateContext<'cx>) {
     type Context = LateContext<'cx>;
 
     fn search_pat(&self, _cx: &Self::Context) -> (Pat, Pat) {
-        attr_search_pat(&self.0)
+        attr_search_pat(self.0)
     }
 
     fn span(&self) -> Span {

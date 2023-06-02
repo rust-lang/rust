@@ -25,7 +25,7 @@ struct CfgT;
 
 fn ignore_external() {
     external! {
-        #[allow(clippy::needless_borrow)]
+        #[allow(clippy::needless_borrow)] // Should not lint
         fn a() {}
     }
 }
