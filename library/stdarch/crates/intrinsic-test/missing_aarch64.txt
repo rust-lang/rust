@@ -14,15 +14,16 @@ vbfmlaltq_laneq_f32
 vbfmmlaq_f32
 
 
-# Missing from both Clang and stdarch
-vrnd32x_f64
+# Implemented in stdarch, but missing in Clang.
 vrnd32xq_f64
-vrnd32z_f64
 vrnd32zq_f64
-vrnd64x_f64
 vrnd64xq_f64
-vrnd64z_f64
 vrnd64zq_f64
+# LLVM select error, and missing in Clang.
+vrnd32x_f64
+vrnd32z_f64
+vrnd64x_f64
+vrnd64z_f64
 
 # LLVM select error in debug builds
 #vqshlu_n_s16

@@ -15297,6 +15297,21 @@ pub unsafe fn vrnd32xq_f32(a: float32x4_t) -> float32x4_t {
     vrnd32xq_f32_(a)
 }
 
+/// Floating-point round to 32-bit integer, using current rounding mode
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnd32xq_f64)
+#[inline]
+#[target_feature(enable = "neon,frintts")]
+#[cfg_attr(test, assert_instr(frint32x))]
+pub unsafe fn vrnd32xq_f64(a: float64x2_t) -> float64x2_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frint32x.v2f64")]
+        fn vrnd32xq_f64_(a: float64x2_t) -> float64x2_t;
+    }
+    vrnd32xq_f64_(a)
+}
+
 /// Floating-point round to 32-bit integer toward zero
 ///
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnd32z_f32)
@@ -15325,6 +15340,21 @@ pub unsafe fn vrnd32zq_f32(a: float32x4_t) -> float32x4_t {
         fn vrnd32zq_f32_(a: float32x4_t) -> float32x4_t;
     }
     vrnd32zq_f32_(a)
+}
+
+/// Floating-point round to 32-bit integer toward zero
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnd32zq_f64)
+#[inline]
+#[target_feature(enable = "neon,frintts")]
+#[cfg_attr(test, assert_instr(frint32z))]
+pub unsafe fn vrnd32zq_f64(a: float64x2_t) -> float64x2_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frint32z.v2f64")]
+        fn vrnd32zq_f64_(a: float64x2_t) -> float64x2_t;
+    }
+    vrnd32zq_f64_(a)
 }
 
 /// Floating-point round to 64-bit integer, using current rounding mode
@@ -15357,6 +15387,21 @@ pub unsafe fn vrnd64xq_f32(a: float32x4_t) -> float32x4_t {
     vrnd64xq_f32_(a)
 }
 
+/// Floating-point round to 64-bit integer, using current rounding mode
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnd64xq_f64)
+#[inline]
+#[target_feature(enable = "neon,frintts")]
+#[cfg_attr(test, assert_instr(frint64x))]
+pub unsafe fn vrnd64xq_f64(a: float64x2_t) -> float64x2_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frint64x.v2f64")]
+        fn vrnd64xq_f64_(a: float64x2_t) -> float64x2_t;
+    }
+    vrnd64xq_f64_(a)
+}
+
 /// Floating-point round to 64-bit integer toward zero
 ///
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnd64z_f32)
@@ -15385,6 +15430,21 @@ pub unsafe fn vrnd64zq_f32(a: float32x4_t) -> float32x4_t {
         fn vrnd64zq_f32_(a: float32x4_t) -> float32x4_t;
     }
     vrnd64zq_f32_(a)
+}
+
+/// Floating-point round to 64-bit integer toward zero
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnd64zq_f64)
+#[inline]
+#[target_feature(enable = "neon,frintts")]
+#[cfg_attr(test, assert_instr(frint64z))]
+pub unsafe fn vrnd64zq_f64(a: float64x2_t) -> float64x2_t {
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frint64z.v2f64")]
+        fn vrnd64zq_f64_(a: float64x2_t) -> float64x2_t;
+    }
+    vrnd64zq_f64_(a)
 }
 
 /// Transpose vectors
@@ -26811,6 +26871,14 @@ mod test {
     }
 
     #[simd_test(enable = "neon,frintts")]
+    unsafe fn test_vrnd32xq_f64() {
+        let a: f64x2 = f64x2::new(1.1, 1.9);
+        let e: f64x2 = f64x2::new(1.0, 2.0);
+        let r: f64x2 = transmute(vrnd32xq_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon,frintts")]
     unsafe fn test_vrnd32z_f32() {
         let a: f32x2 = f32x2::new(1.1, 1.9);
         let e: f32x2 = f32x2::new(1.0, 1.0);
@@ -26823,6 +26891,14 @@ mod test {
         let a: f32x4 = f32x4::new(1.1, 1.9, -1.7, -2.3);
         let e: f32x4 = f32x4::new(1.0, 1.0, -1.0, -2.0);
         let r: f32x4 = transmute(vrnd32zq_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon,frintts")]
+    unsafe fn test_vrnd32zq_f64() {
+        let a: f64x2 = f64x2::new(1.1, 1.9);
+        let e: f64x2 = f64x2::new(1.0, 1.0);
+        let r: f64x2 = transmute(vrnd32zq_f64(transmute(a)));
         assert_eq!(r, e);
     }
 
@@ -26843,6 +26919,14 @@ mod test {
     }
 
     #[simd_test(enable = "neon,frintts")]
+    unsafe fn test_vrnd64xq_f64() {
+        let a: f64x2 = f64x2::new(1.1, 1.9);
+        let e: f64x2 = f64x2::new(1.0, 2.0);
+        let r: f64x2 = transmute(vrnd64xq_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon,frintts")]
     unsafe fn test_vrnd64z_f32() {
         let a: f32x2 = f32x2::new(1.1, 1.9);
         let e: f32x2 = f32x2::new(1.0, 1.0);
@@ -26855,6 +26939,14 @@ mod test {
         let a: f32x4 = f32x4::new(1.1, 1.9, -1.7, -2.3);
         let e: f32x4 = f32x4::new(1.0, 1.0, -1.0, -2.0);
         let r: f32x4 = transmute(vrnd64zq_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon,frintts")]
+    unsafe fn test_vrnd64zq_f64() {
+        let a: f64x2 = f64x2::new(1.1, 1.9);
+        let e: f64x2 = f64x2::new(1.0, 1.0);
+        let r: f64x2 = transmute(vrnd64zq_f64(transmute(a)));
         assert_eq!(r, e);
     }
 
