@@ -56,6 +56,7 @@ impl<'a> MultiSpan for &'a [Span] {
 /// ```rust
 /// # use proc_macro::Diagnostic;
 /// # use proc_macro::Level;
+/// # use proc_macro::Span;
 /// Diagnostic::spanned(Level::Error, "unclosed tag", Span::call_site())
 ///     .emit();
 ///````
@@ -63,6 +64,7 @@ impl<'a> MultiSpan for &'a [Span] {
 /// ```rust
 /// # use proc_macro::Diagnostic;
 /// # use proc_macro::Level;
+/// # use proc_macro::Span;
 /// Diagnostic::spanned(Level::Error, "invalid tag", Span::call_site())
 ///     .span_help(Span::call_site(), "did you mean `h3` instead of `g3`?")
 ///     .emit();
