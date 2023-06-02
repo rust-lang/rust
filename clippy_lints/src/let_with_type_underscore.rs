@@ -1,4 +1,5 @@
-use clippy_utils::{diagnostics::span_lint_and_help, is_from_proc_macro};
+use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::source::snippet;
 use rustc_hir::{Local, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
@@ -32,7 +33,12 @@ impl LateLintPass<'_> for UnderscoreTyped {
             if let TyKind::Infer = &ty.kind; // that type is '_'
             if local.span.ctxt() == ty.span.ctxt();
             then {
-                if let Some(init) = local.init && is_from_proc_macro(cx, init) {
+                let underscore_span = ty.span.with_lo(local.pat.span.hi());
+                let snippet = snippet(cx, underscore_span, ": _");
+
+                // NOTE: Using `is_from_proc_macro` on `init` will require that it's initialized,
+                // this doesn't. Alternatively, `WithSearchPat` can be implemented for `Ty`
+                if !snippet.trim().starts_with(':') && !snippet.trim().ends_with('_') {
                     return;
                 }
 
@@ -41,7 +47,7 @@ impl LateLintPass<'_> for UnderscoreTyped {
                     LET_WITH_TYPE_UNDERSCORE,
                     local.span,
                     "variable declared with type underscore",
-                    Some(ty.span.with_lo(local.pat.span.hi())),
+                    Some(underscore_span),
                     "remove the explicit type `_` declaration"
                 )
             }
