@@ -891,11 +891,11 @@ unsafe fn embed_bitcode(
         let llglobal = llvm::LLVMAddGlobal(
             llmod,
             common::val_ty(llconst),
-            "rustc.embedded.module\0".as_ptr().cast(),
+            c"rustc.embedded.module".as_ptr().cast(),
         );
         llvm::LLVMSetInitializer(llglobal, llconst);
 
-        let section = if is_apple { "__LLVM,__bitcode\0" } else { ".llvmbc\0" };
+        let section = if is_apple { c"__LLVM,__bitcode" } else { c".llvmbc" };
         llvm::LLVMSetSection(llglobal, section.as_ptr().cast());
         llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
         llvm::LLVMSetGlobalConstant(llglobal, llvm::True);
@@ -904,10 +904,10 @@ unsafe fn embed_bitcode(
         let llglobal = llvm::LLVMAddGlobal(
             llmod,
             common::val_ty(llconst),
-            "rustc.embedded.cmdline\0".as_ptr().cast(),
+            c"rustc.embedded.cmdline".as_ptr().cast(),
         );
         llvm::LLVMSetInitializer(llglobal, llconst);
-        let section = if is_apple { "__LLVM,__cmdline\0" } else { ".llvmcmd\0" };
+        let section = if is_apple { c"__LLVM,__cmdline" } else { c".llvmcmd" };
         llvm::LLVMSetSection(llglobal, section.as_ptr().cast());
         llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
     } else {

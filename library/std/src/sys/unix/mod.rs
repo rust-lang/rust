@@ -1,6 +1,5 @@
 #![allow(missing_docs, nonstandard_style)]
 
-use crate::ffi::CStr;
 use crate::io::ErrorKind;
 
 pub use self::rand::hashmap_random_keys;
@@ -75,7 +74,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     // thread-id for the main thread and so renaming the main thread will rename the
     // process and we only want to enable this on platforms we've tested.
     if cfg!(target_os = "macos") {
-        thread::Thread::set_name(&CStr::from_bytes_with_nul_unchecked(b"main\0"));
+        thread::Thread::set_name(&c"main");
     }
 
     unsafe fn sanitize_standard_fds() {
@@ -121,7 +120,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
                 if pfd.revents & libc::POLLNVAL == 0 {
                     continue;
                 }
-                if open64("/dev/null\0".as_ptr().cast(), libc::O_RDWR, 0) == -1 {
+                if open64(c"/dev/null".as_ptr().cast(), libc::O_RDWR, 0) == -1 {
                     // If the stream is closed but we failed to reopen it, abort the
                     // process. Otherwise we wouldn't preserve the safety of
                     // operations on the corresponding Rust object Stdin, Stdout, or
@@ -151,7 +150,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
             use libc::open64;
             for fd in 0..3 {
                 if libc::fcntl(fd, libc::F_GETFD) == -1 && errno() == libc::EBADF {
-                    if open64("/dev/null\0".as_ptr().cast(), libc::O_RDWR, 0) == -1 {
+                    if open64(c"/dev/null".as_ptr().cast(), libc::O_RDWR, 0) == -1 {
                         // If the stream is closed but we failed to reopen it, abort the
                         // process. Otherwise we wouldn't preserve the safety of
                         // operations on the corresponding Rust object Stdin, Stdout, or
