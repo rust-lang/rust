@@ -35,7 +35,7 @@ declare_clippy_lint! {
     /// };
     /// let fut = f;
     /// ```
-    #[clippy::version = "1.69.0"]
+    #[clippy::version = "1.70.0"]
     pub REDUNDANT_ASYNC_BLOCK,
     complexity,
     "`async { future.await }` can be replaced by `future`"

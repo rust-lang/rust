@@ -28,6 +28,7 @@
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::recursive_format_impl)]
 #![allow(clippy::invisible_characters)]
+#![allow(cast_ref_to_mut)]
 #![allow(suspicious_double_ref_op)]
 #![allow(cast_ref_to_mut)]
 #![allow(drop_bounds)]

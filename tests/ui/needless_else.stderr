@@ -1,0 +1,12 @@
+error: this else branch is empty
+  --> $DIR/needless_else.rs:24:7
+   |
+LL |       } else {
+   |  _______^
+LL | |     }
+   | |_____^ help: you can remove it
+   |
+   = note: `-D clippy::needless-else` implied by `-D warnings`
+
+error: aborting due to previous error
+

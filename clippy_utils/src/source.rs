@@ -4,7 +4,7 @@
 
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind};
+use rustc_hir::{BlockCheckMode, Expr, ExprKind, UnsafeSource};
 use rustc_lint::{LateContext, LintContext};
 use rustc_session::Session;
 use rustc_span::source_map::{original_sp, SourceMap};
@@ -71,11 +71,16 @@ pub fn expr_block<T: LintContext>(
     app: &mut Applicability,
 ) -> String {
     let (code, from_macro) = snippet_block_with_context(cx, expr.span, outer, default, indent_relative_to, app);
-    if from_macro {
-        format!("{{ {code} }}")
-    } else if let ExprKind::Block(_, _) = expr.kind {
+    if !from_macro &&
+        let ExprKind::Block(block, _) = expr.kind &&
+        block.rules != BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)
+    {
         format!("{code}")
     } else {
+        // FIXME: add extra indent for the unsafe blocks:
+        //     original code:   unsafe { ... }
+        //     result code:     { unsafe { ... } }
+        //     desired code:    {\n  unsafe { ... }\n}
         format!("{{ {code} }}")
     }
 }

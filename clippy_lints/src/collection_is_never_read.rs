@@ -37,7 +37,7 @@ declare_clippy_lint! {
     ///     println!("{sample}");
     /// }
     /// ```
-    #[clippy::version = "1.69.0"]
+    #[clippy::version = "1.70.0"]
     pub COLLECTION_IS_NEVER_READ,
     nursery,
     "a collection is never queried"
