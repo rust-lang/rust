@@ -1219,7 +1219,7 @@ fn needless_borrow_impl_arg_position<'tcx>(
                 return false;
             }
 
-            let predicate = EarlyBinder(predicate).subst(cx.tcx, &substs_with_referent_ty);
+            let predicate = EarlyBinder::bind(predicate).subst(cx.tcx, &substs_with_referent_ty);
             let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, predicate);
             let infcx = cx.tcx.infer_ctxt().build();
             infcx.predicate_must_hold_modulo_regions(&obligation)

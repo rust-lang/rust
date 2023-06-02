@@ -428,7 +428,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                                      }));
 
                         if trait_predicates.any(|predicate| {
-                            let predicate = EarlyBinder(predicate).subst(cx.tcx, new_subst);
+                            let predicate = EarlyBinder::bind(predicate).subst(cx.tcx, new_subst);
                             let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, predicate);
                             !cx.tcx.infer_ctxt().build().predicate_must_hold_modulo_regions(&obligation)
                         }) {
@@ -438,7 +438,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                         let output_ty = fn_sig.output();
                         if output_ty.contains(*param_ty) {
                             if let Ok(new_ty)  = cx.tcx.try_subst_and_normalize_erasing_regions(
-                                new_subst, cx.param_env, EarlyBinder(output_ty)) {
+                                new_subst, cx.param_env, EarlyBinder::bind(output_ty)) {
                                 expr = parent_expr;
                                 ty = new_ty;
                                 continue;

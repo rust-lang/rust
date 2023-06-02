@@ -217,7 +217,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingFieldsInDebug {
             && let body = cx.tcx.hir().body(*body_id)
             && let ExprKind::Block(block, _) = body.value.kind
             // inspect `self`
-            && let self_ty = cx.tcx.type_of(self_path.res.def_id()).0.peel_refs()
+            && let self_ty = cx.tcx.type_of(self_path.res.def_id()).skip_binder().peel_refs()
             && let Some(self_adt) = self_ty.ty_adt_def()
             && let Some(self_def_id) = self_adt.did().as_local()
             && let Some(Node::Item(self_item)) = cx.tcx.hir().find_by_def_id(self_def_id)

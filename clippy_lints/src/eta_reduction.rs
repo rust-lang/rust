@@ -243,7 +243,7 @@ fn get_ufcs_type_name<'tcx>(cx: &LateContext<'tcx>, method_def_id: DefId, substs
                 | ty::Ref(..)
                 | ty::Slice(_)
                 | ty::Tuple(_) => {
-                    format!("<{}>", EarlyBinder(ty).subst(cx.tcx, substs))
+                    format!("<{}>", EarlyBinder::bind(ty).subst(cx.tcx, substs))
                 },
                 _ => ty.to_string(),
             }
