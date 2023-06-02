@@ -435,7 +435,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
                     in_trait,
                     ..
                 }) => {
-                    if in_trait && !tcx.impl_defaultness(owner).has_value() {
+                    if in_trait && !tcx.defaultness(owner).has_value() {
                         span_bug!(
                             tcx.def_span(def_id),
                             "tried to get type of this RPITIT with no definition"

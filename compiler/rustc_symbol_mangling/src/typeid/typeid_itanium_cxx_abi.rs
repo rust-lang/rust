@@ -697,12 +697,12 @@ fn encode_ty<'tcx>(
         }
 
         // Unexpected types
-        ty::Bound(..)
+        ty::Alias(..)
+        | ty::Bound(..)
         | ty::Error(..)
         | ty::GeneratorWitness(..)
         | ty::GeneratorWitnessMIR(..)
         | ty::Infer(..)
-        | ty::Alias(..)
         | ty::Placeholder(..) => {
             bug!("encode_ty: unexpected `{:?}`", ty.kind());
         }
@@ -946,11 +946,18 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
             );
         }
 
+        ty::Alias(..) => {
+            ty = transform_ty(
+                tcx,
+                tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty),
+                options,
+            );
+        }
+
         ty::Bound(..)
         | ty::Error(..)
         | ty::GeneratorWitnessMIR(..)
         | ty::Infer(..)
-        | ty::Alias(..)
         | ty::Param(..)
         | ty::Placeholder(..) => {
             bug!("transform_ty: unexpected `{:?}`", ty.kind());

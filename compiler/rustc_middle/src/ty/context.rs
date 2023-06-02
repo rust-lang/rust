@@ -1884,18 +1884,28 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_closure(self, closure_id: DefId, closure_substs: SubstsRef<'tcx>) -> Ty<'tcx> {
-        self.mk_ty_from_kind(Closure(closure_id, closure_substs))
+    pub fn mk_closure(self, def_id: DefId, closure_substs: SubstsRef<'tcx>) -> Ty<'tcx> {
+        debug_assert_eq!(
+            closure_substs.len(),
+            self.generics_of(self.typeck_root_def_id(def_id)).count() + 3,
+            "closure constructed with incorrect substitutions"
+        );
+        self.mk_ty_from_kind(Closure(def_id, closure_substs))
     }
 
     #[inline]
     pub fn mk_generator(
         self,
-        id: DefId,
+        def_id: DefId,
         generator_substs: SubstsRef<'tcx>,
         movability: hir::Movability,
     ) -> Ty<'tcx> {
-        self.mk_ty_from_kind(Generator(id, generator_substs, movability))
+        debug_assert_eq!(
+            generator_substs.len(),
+            self.generics_of(self.typeck_root_def_id(def_id)).count() + 5,
+            "generator constructed with incorrect number of substitutions"
+        );
+        self.mk_ty_from_kind(Generator(def_id, generator_substs, movability))
     }
 
     #[inline]

@@ -586,7 +586,7 @@ fn foo(&self) -> Self::T { String::new() }
                             // FIXME: account for returning some type in a trait fn impl that has
                             // an assoc type as a return type (#72076).
                             if let hir::Defaultness::Default { has_value: true } =
-                                tcx.impl_defaultness(item.id.owner_id)
+                                tcx.defaultness(item.id.owner_id)
                             {
                                 let assoc_ty = tcx.type_of(item.id.owner_id).subst_identity();
                                 if self.infcx.can_eq(param_env, assoc_ty, found) {
