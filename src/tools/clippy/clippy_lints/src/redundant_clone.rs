@@ -57,7 +57,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.32.0"]
     pub REDUNDANT_CLONE,
-    perf,
+    nursery,
     "`clone()` of an owned value that is going to be dropped immediately"
 }
 
