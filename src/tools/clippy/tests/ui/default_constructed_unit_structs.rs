@@ -101,6 +101,28 @@ struct EmptyStruct {}
 #[non_exhaustive]
 struct NonExhaustiveStruct;
 
+mod issue_10755 {
+    struct Sqlite {}
+
+    trait HasArguments<'q> {
+        type Arguments;
+    }
+
+    impl<'q> HasArguments<'q> for Sqlite {
+        type Arguments = std::marker::PhantomData<&'q ()>;
+    }
+
+    type SqliteArguments<'q> = <Sqlite as HasArguments<'q>>::Arguments;
+
+    fn foo() {
+        // should not lint
+        // type alias cannot be used as a constructor
+        let _ = <Sqlite as HasArguments>::Arguments::default();
+
+        let _ = SqliteArguments::default();
+    }
+}
+
 fn main() {
     // should lint
     let _ = PhantomData::<usize>::default();

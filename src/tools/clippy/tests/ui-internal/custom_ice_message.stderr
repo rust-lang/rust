@@ -5,10 +5,9 @@ error: the compiler unexpectedly panicked. this is a bug.
 
 note: we would appreciate a bug report: https://github.com/rust-lang/rust-clippy/issues/new
 
-note: rustc 1.71.0-nightly (521f4dae1 2023-05-19) running on <target>
+note: rustc <version> running on <target>
 
 note: compiler flags: -C prefer-dynamic -Z ui-testing
 
-note: Clippy version: foo
-
-thread panicked while panicking. aborting.
+query stack during panic:
+thread panicked while processing panic. aborting.

@@ -1,5 +1,5 @@
-use clippy_utils::diagnostics::span_lint_and_help;
-use rustc_hir::intravisit::{walk_expr, walk_fn, FnKind, Visitor};
+use clippy_utils::diagnostics::span_lint_and_then;
+use rustc_hir::intravisit::{walk_body, walk_expr, walk_fn, FnKind, Visitor};
 use rustc_hir::{Body, Expr, ExprKind, FnDecl, YieldSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
@@ -42,6 +42,10 @@ declare_lint_pass!(UnusedAsync => [UNUSED_ASYNC]);
 struct AsyncFnVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     found_await: bool,
+    /// Also keep track of `await`s in nested async blocks so we can mention
+    /// it in a note
+    await_in_async_block: Option<Span>,
+    async_depth: usize,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for AsyncFnVisitor<'a, 'tcx> {
@@ -49,13 +53,31 @@ impl<'a, 'tcx> Visitor<'tcx> for AsyncFnVisitor<'a, 'tcx> {
 
     fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
         if let ExprKind::Yield(_, YieldSource::Await { .. }) = ex.kind {
-            self.found_await = true;
+            if self.async_depth == 1 {
+                self.found_await = true;
+            } else if self.await_in_async_block.is_none() {
+                self.await_in_async_block = Some(ex.span);
+            }
         }
         walk_expr(self, ex);
     }
 
     fn nested_visit_map(&mut self) -> Self::Map {
         self.cx.tcx.hir()
+    }
+
+    fn visit_body(&mut self, b: &'tcx Body<'tcx>) {
+        let is_async_block = matches!(b.generator_kind, Some(rustc_hir::GeneratorKind::Async(_)));
+
+        if is_async_block {
+            self.async_depth += 1;
+        }
+
+        walk_body(self, b);
+
+        if is_async_block {
+            self.async_depth -= 1;
+        }
     }
 }
 
@@ -70,16 +92,30 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
         def_id: LocalDefId,
     ) {
         if !span.from_expansion() && fn_kind.asyncness().is_async() {
-            let mut visitor = AsyncFnVisitor { cx, found_await: false };
+            let mut visitor = AsyncFnVisitor {
+                cx,
+                found_await: false,
+                async_depth: 0,
+                await_in_async_block: None,
+            };
             walk_fn(&mut visitor, fn_kind, fn_decl, body.id(), def_id);
             if !visitor.found_await {
-                span_lint_and_help(
+                span_lint_and_then(
                     cx,
                     UNUSED_ASYNC,
                     span,
                     "unused `async` for function with no await statements",
-                    None,
-                    "consider removing the `async` from this function",
+                    |diag| {
+                        diag.help("consider removing the `async` from this function");
+
+                        if let Some(span) = visitor.await_in_async_block {
+                            diag.span_note(
+                                span,
+                                "`await` used in an async block, which does not require \
+                                the enclosing function to be `async`",
+                            );
+                        }
+                    },
                 );
             }
         }

@@ -56,6 +56,7 @@ fn main() {
     issue6067();
     issue6065();
     issue10726();
+    issue10803();
 
     let _ = if let Ok(_) = gen_res() {
         1
@@ -162,4 +163,18 @@ fn issue10726() {
         Ok(16) => false,
         _ => true,
     };
+}
+
+fn issue10803() {
+    let x: Result<i32, i32> = Ok(42);
+
+    let _ = matches!(x, Ok(_));
+
+    let _ = matches!(x, Err(_));
+
+    // Don't lint
+    let _ = matches!(x, Ok(16));
+
+    // Don't lint
+    let _ = matches!(x, Err(16));
 }

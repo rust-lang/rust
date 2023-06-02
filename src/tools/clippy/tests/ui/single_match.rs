@@ -1,6 +1,6 @@
+//@run-rustfix
 #![warn(clippy::single_match)]
-#![allow(clippy::uninlined_format_args)]
-
+#![allow(unused, clippy::uninlined_format_args, clippy::redundant_pattern_matching)]
 fn dummy() {}
 
 fn single_match() {
@@ -243,4 +243,25 @@ fn main() {
         Some(x) => x,
         _ => 0,
     };
+}
+
+fn issue_10808(bar: Option<i32>) {
+    match bar {
+        Some(v) => unsafe {
+            let r = &v as *const i32;
+            println!("{}", *r);
+        },
+        _ => {},
+    }
+
+    match bar {
+        #[rustfmt::skip]
+        Some(v) => {
+            unsafe {
+                let r = &v as *const i32;
+                println!("{}", *r);
+            }
+        },
+        _ => {},
+    }
 }

@@ -155,5 +155,47 @@ LL | |         (..) => {},
 LL | |     }
    | |_____^ help: try this: `if let (.., Some(E::V), _) = (Some(42), Some(E::V), Some(42)) {}`
 
-error: aborting due to 16 previous errors
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> $DIR/single_match.rs:249:5
+   |
+LL | /     match bar {
+LL | |         Some(v) => unsafe {
+LL | |             let r = &v as *const i32;
+LL | |             println!("{}", *r);
+LL | |         },
+LL | |         _ => {},
+LL | |     }
+   | |_____^
+   |
+help: try this
+   |
+LL ~     if let Some(v) = bar { unsafe {
+LL +         let r = &v as *const i32;
+LL +         println!("{}", *r);
+LL +     } }
+   |
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> $DIR/single_match.rs:257:5
+   |
+LL | /     match bar {
+LL | |         #[rustfmt::skip]
+LL | |         Some(v) => {
+LL | |             unsafe {
+...  |
+LL | |         _ => {},
+LL | |     }
+   | |_____^
+   |
+help: try this
+   |
+LL ~     if let Some(v) = bar {
+LL +         unsafe {
+LL +             let r = &v as *const i32;
+LL +             println!("{}", *r);
+LL +         }
+LL +     }
+   |
+
+error: aborting due to 18 previous errors
 

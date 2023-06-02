@@ -1,4 +1,8 @@
-error: error reading Clippy's configuration file `$DIR/clippy.toml`: expected an equals, found an identifier at line 1 column 4
+error: error reading Clippy's configuration file: expected `.`, `=`
+  --> $DIR/clippy.toml:1:4
+   |
+LL | fn this_is_obviously(not: a, toml: file) {
+   |    ^
 
 error: aborting due to previous error
 
