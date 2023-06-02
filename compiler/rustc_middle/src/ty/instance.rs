@@ -586,7 +586,7 @@ impl<'tcx> Instance<'tcx> {
         if let Some(substs) = self.substs_for_mir_body() {
             v.subst(tcx, substs)
         } else {
-            v.skip_binder()
+            v.subst_identity()
         }
     }
 
