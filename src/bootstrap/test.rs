@@ -2344,7 +2344,7 @@ impl Step for Crate {
                 // `std_cargo` actually does the wrong thing: it passes `--sysroot build/host/stage2`,
                 // but we want to use the force-recompile std we just built in `build/host/stage2-test-sysroot`.
                 // Override it.
-                if builder.download_rustc() {
+                if builder.download_rustc() && compiler.stage > 0 {
                     let sysroot = builder
                         .out
                         .join(compiler.host.triple)
