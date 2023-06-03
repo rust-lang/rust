@@ -156,10 +156,6 @@
                 Object.entries(versionFilterKeyMap).map(([key, value]) => [value, key])
             );
 
-            // An internal URL change occurs when we are modifying the URL parameters in a way
-            // that should not reload parameters from the URL
-            let internalURLChange = false;
-
             // loadFromURLParameters retrieves filter settings from the URL parameters and assigns them
             // to corresponding $scope variables.
             function loadFromURLParameters() {
@@ -211,29 +207,37 @@
                     $scope.open[searchParameter] = true;
                     scrollToLintByURL($scope, $location);
                 }
-
-                // If there are any filters in the URL, mark that the filters have been changed
-                if (urlParameters.levels || urlParameters.groups || urlParameters.versions) {
-                    $scope.filtersChanged = true;
-                }
             }
 
             // updateURLParameter updates the URL parameter with the given key to the given value
-            function updateURLParameter(filterObj, urlKey, processFilter = filter => filter) {
+            function updateURLParameter(filterObj, urlKey, defaultValue = {}, processFilter = filter => filter) {
                 const parameter = Object.keys(filterObj)
                     .filter(filter => filterObj[filter])
+                    .sort()
                     .map(processFilter)
                     .filter(Boolean) // Filters out any falsy values, including null
                     .join(',');
 
-                $location.search(urlKey, parameter || null);
+                const defaultParameter = Object.keys(defaultValue)
+                    .filter(filter => defaultValue[filter])
+                    .sort()
+                    .map(processFilter)
+                    .filter(Boolean) // Filters out any falsy values, including null
+                    .join(',');
+
+                // if we ended up back at the defaults, just remove it from the URL
+                if (parameter === defaultParameter) {
+                    $location.search(urlKey, null);
+                } else {
+                    $location.search(urlKey, parameter || null);
+                }
             }
 
             // updateVersionURLParameter updates the version URL parameter with the given version filters
             function updateVersionURLParameter(versionFilters) {
                 updateURLParameter(
                     versionFilters,
-                    'versions',
+                    'versions', {},
                     versionFilter => versionFilters[versionFilter].enabled && versionFilters[versionFilter].minorVersion != null
                         ? `${versionFilterKeyMap[versionFilter]}:${versionFilters[versionFilter].minorVersion}`
                         : null
@@ -242,29 +246,26 @@
 
             // updateAllURLParameters updates all the URL parameters with the current filter settings
             function updateAllURLParameters() {
-                updateURLParameter($scope.levels, 'levels');
-                updateURLParameter($scope.groups, 'groups');
+                updateURLParameter($scope.levels, 'levels', LEVEL_FILTERS_DEFAULT);
+                updateURLParameter($scope.groups, 'groups', GROUPS_FILTER_DEFAULT);
                 updateVersionURLParameter($scope.versionFilters);
             }
 
             // Add $watches to automatically update URL parameters when the data changes
             $scope.$watch('levels', function (newVal, oldVal) {
                 if (newVal !== oldVal) {
-                    $scope.filtersChanged = true;
-                    updateURLParameter(newVal, 'levels');
+                    updateURLParameter(newVal, 'levels', LEVEL_FILTERS_DEFAULT);
                 }
             }, true);
 
             $scope.$watch('groups', function (newVal, oldVal) {
                 if (newVal !== oldVal) {
-                    $scope.filtersChanged = true;
-                    updateURLParameter(newVal, 'groups');
+                    updateURLParameter(newVal, 'groups', GROUPS_FILTER_DEFAULT);
                 }
             }, true);
 
             $scope.$watch('versionFilters', function (newVal, oldVal) {
                 if (newVal !== oldVal) {
-                    $scope.filtersChanged = true;
                     updateVersionURLParameter(newVal);
                 }
             }, true);
@@ -293,10 +294,7 @@
             });
 
             $scope.$watch(function () { return $location.search(); }, function (newParameters) {
-                if (!internalURLChange) {
-                    loadFromURLParameters();
-                }
-                internalURLChange = false;
+                loadFromURLParameters();
             }, true);
 
             $scope.updatePath = function () {
@@ -330,12 +328,9 @@
             };
 
             $scope.resetGroupsToDefault = function () {
-                const groups = $scope.groups;
-                for (const [key, value] of Object.entries(GROUPS_FILTER_DEFAULT)) {
-                    groups[key] = value;
-                }
-                internalURLChange = true;
-                $location.search('groups', null);
+                $scope.groups = {
+                    ...GROUPS_FILTER_DEFAULT
+                };
             };
 
             $scope.selectedValuesCount = function (obj) {
@@ -439,10 +434,6 @@
             $scope.openLint = function (lint) {
                 $scope.open[lint.id] = true;
                 $location.path(lint.id);
-                if ($scope.filtersChanged) {
-                    updateAllURLParameters();
-                    $scope.filtersChanged = false;
-                }
             };
 
             $scope.copyToClipboard = function (lint) {
@@ -469,7 +460,6 @@
             // Get data
             $scope.open = {};
             $scope.loading = true;
-            $scope.filtersChanged = false;
 
             // This will be used to jump into the source code of the version that this documentation is for.
             $scope.docVersion = window.location.pathname.split('/')[2] || "master";
