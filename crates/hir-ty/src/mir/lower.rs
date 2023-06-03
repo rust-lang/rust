@@ -478,9 +478,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     current,
                     None,
                     cond_place,
-                    self.expr_ty_after_adjustments(*expr),
                     *pat,
-                    BindingAnnotation::Unannotated,
                 )?;
                 self.write_bytes_to_place(
                     then_target,
@@ -598,16 +596,13 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 else {
                     return Ok(None);
                 };
-                let cond_ty = self.expr_ty_after_adjustments(*expr);
                 let mut end = None;
                 for MatchArm { pat, guard, expr } in arms.iter() {
                     let (then, mut otherwise) = self.pattern_match(
                         current,
                         None,
                         cond_place.clone(),
-                        cond_ty.clone(),
                         *pat,
-                        BindingAnnotation::Unannotated,
                     )?;
                     let then = if let &Some(guard) = guard {
                         let next = self.new_basic_block();
@@ -1477,9 +1472,6 @@ impl<'ctx> MirLowerCtx<'ctx> {
         span: MirSpan,
     ) -> Result<()> {
         self.drop_scopes.last_mut().unwrap().locals.push(l);
-        // FIXME: this storage dead is not neccessary, but since drop scope handling is broken, we need
-        // it to avoid falso positives in mutability errors
-        self.push_statement(current, StatementKind::StorageDead(l).with_span(span));
         self.push_statement(current, StatementKind::StorageLive(l).with_span(span));
         Ok(())
     }
@@ -1508,14 +1500,8 @@ impl<'ctx> MirLowerCtx<'ctx> {
                             return Ok(None);
                         };
                         current = c;
-                        (current, else_block) = self.pattern_match(
-                            current,
-                            None,
-                            init_place,
-                            self.expr_ty_after_adjustments(*expr_id),
-                            *pat,
-                            BindingAnnotation::Unannotated,
-                        )?;
+                        (current, else_block) =
+                            self.pattern_match(current, None, init_place, *pat)?;
                         match (else_block, else_branch) {
                             (None, _) => (),
                             (Some(else_block), None) => {
@@ -1595,14 +1581,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     continue;
                 }
             }
-            let r = self.pattern_match(
-                current,
-                None,
-                local.into(),
-                self.result.locals[local].ty.clone(),
-                param,
-                BindingAnnotation::Unannotated,
-            )?;
+            let r = self.pattern_match(current, None, local.into(), param)?;
             if let Some(b) = r.1 {
                 self.set_terminator(b, TerminatorKind::Unreachable, param.into());
             }
