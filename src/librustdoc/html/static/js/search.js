@@ -1179,7 +1179,7 @@ function initSearch(rawSearchIndex) {
 
         /**
          * This function checks if the object (`row`) generics match the given type (`elem`)
-         * generics. If there are no generics on `row`, `defaultDistance` is returned.
+         * generics.
          *
          * @param {Row} row                 - The object to check.
          * @param {QueryElement} elem       - The element from the parsed query.
@@ -1196,82 +1196,82 @@ function initSearch(rawSearchIndex) {
             // This search engine implements order-agnostic unification. There
             // should be no missing duplicates (generics have "bag semantics"),
             // and the row is allowed to have extras.
-            if (elem.generics.length > 0 && row.generics.length >= elem.generics.length) {
-                const elems = new Map();
-                const addEntryToElems = function addEntryToElems(entry) {
-                    if (entry.id === -1) {
-                        // Pure generic, needs to check into it.
-                        for (const inner_entry of entry.generics) {
-                            addEntryToElems(inner_entry);
-                        }
-                        return;
+            if (elem.generics.length <= 0 || row.generics.length < elem.generics.length) {
+                return false;
+            }
+            const elems = new Map();
+            const addEntryToElems = function addEntryToElems(entry) {
+                if (entry.id === -1) {
+                    // Pure generic, needs to check into it.
+                    for (const inner_entry of entry.generics) {
+                        addEntryToElems(inner_entry);
                     }
-                    let currentEntryElems;
-                    if (elems.has(entry.id)) {
-                        currentEntryElems = elems.get(entry.id);
-                    } else {
-                        currentEntryElems = [];
-                        elems.set(entry.id, currentEntryElems);
-                    }
-                    currentEntryElems.push(entry);
-                };
-                for (const entry of row.generics) {
-                    addEntryToElems(entry);
+                    return;
                 }
-                // We need to find the type that matches the most to remove it in order
-                // to move forward.
-                const handleGeneric = generic => {
-                    if (!elems.has(generic.id)) {
-                        return false;
-                    }
-                    const matchElems = elems.get(generic.id);
-                    const matchIdx = matchElems.findIndex(tmp_elem => {
-                        if (generic.generics.length > 0 && !checkGenerics(tmp_elem, generic)) {
-                            return false;
-                        }
-                        return typePassesFilter(generic.typeFilter, tmp_elem.ty);
-                    });
-                    if (matchIdx === -1) {
-                        return false;
-                    }
-                    matchElems.splice(matchIdx, 1);
-                    if (matchElems.length === 0) {
-                        elems.delete(generic.id);
-                    }
-                    return true;
-                };
-                // To do the right thing with type filters, we first process generics
-                // that have them, removing matching ones from the "bag," then do the
-                // ones with no type filter, which can match any entry regardless of its
-                // own type.
-                for (const generic of elem.generics) {
-                    if (generic.typeFilter === TY_PRIMITIVE &&
-                        generic.id === typeNameIdOfArrayOrSlice) {
-                        const genericArray = {
-                            id: typeNameIdOfArray,
-                            typeFilter: TY_PRIMITIVE,
-                            generics: generic.generics,
-                        };
-                        const genericSlice = {
-                            id: typeNameIdOfSlice,
-                            typeFilter: TY_PRIMITIVE,
-                            generics: generic.generics,
-                        };
-                        if (!handleGeneric(genericArray) && !handleGeneric(genericSlice)) {
-                            return false;
-                        }
-                    } else if (generic.typeFilter !== -1 && !handleGeneric(generic)) {
-                        return false;
-                    }
+                let currentEntryElems;
+                if (elems.has(entry.id)) {
+                    currentEntryElems = elems.get(entry.id);
+                } else {
+                    currentEntryElems = [];
+                    elems.set(entry.id, currentEntryElems);
                 }
-                for (const generic of elem.generics) {
-                    if (generic.typeFilter === -1 && !handleGeneric(generic)) {
+                currentEntryElems.push(entry);
+            };
+            for (const entry of row.generics) {
+                addEntryToElems(entry);
+            }
+            // We need to find the type that matches the most to remove it in order
+            // to move forward.
+            const handleGeneric = generic => {
+                if (!elems.has(generic.id)) {
+                    return false;
+                }
+                const matchElems = elems.get(generic.id);
+                const matchIdx = matchElems.findIndex(tmp_elem => {
+                    if (generic.generics.length > 0 && !checkGenerics(tmp_elem, generic)) {
                         return false;
                     }
+                    return typePassesFilter(generic.typeFilter, tmp_elem.ty);
+                });
+                if (matchIdx === -1) {
+                    return false;
+                }
+                matchElems.splice(matchIdx, 1);
+                if (matchElems.length === 0) {
+                    elems.delete(generic.id);
                 }
                 return true;
+            };
+            // To do the right thing with type filters, we first process generics
+            // that have them, removing matching ones from the "bag," then do the
+            // ones with no type filter, which can match any entry regardless of its
+            // own type.
+            for (const generic of elem.generics) {
+                if (generic.typeFilter === TY_PRIMITIVE &&
+                    generic.id === typeNameIdOfArrayOrSlice) {
+                    const genericArray = {
+                        id: typeNameIdOfArray,
+                        typeFilter: TY_PRIMITIVE,
+                        generics: generic.generics,
+                    };
+                    const genericSlice = {
+                        id: typeNameIdOfSlice,
+                        typeFilter: TY_PRIMITIVE,
+                        generics: generic.generics,
+                    };
+                    if (!handleGeneric(genericArray) && !handleGeneric(genericSlice)) {
+                        return false;
+                    }
+                } else if (generic.typeFilter !== -1 && !handleGeneric(generic)) {
+                    return false;
+                }
             }
-            return false;
+            for (const generic of elem.generics) {
+                if (generic.typeFilter === -1 && !handleGeneric(generic)) {
+                    return false;
+                }
+            }
+            return true;
         }
 
         /**
