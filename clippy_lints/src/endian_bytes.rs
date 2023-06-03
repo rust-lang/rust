@@ -76,6 +76,7 @@ enum LintKind {
     Big,
 }
 
+#[derive(Clone, Copy, PartialEq)]
 enum Prefix {
     From,
     To,
@@ -94,8 +95,8 @@ impl LintKind {
         }
     }
 
-    fn as_name(&self, prefix: &Prefix) -> &str {
-        let index = usize::from(matches!(prefix, Prefix::To));
+    fn as_name(&self, prefix: Prefix) -> &str {
+        let index = usize::from(prefix == Prefix::To);
 
         match self {
             LintKind::Host => HOST_NAMES[index],
@@ -116,7 +117,7 @@ impl LateLintPass<'_> for EndianBytes {
             if args.is_empty();
             let ty = cx.typeck_results().expr_ty(receiver);
             if ty.is_primitive_ty();
-            if maybe_lint_endian_bytes(cx, expr, &Prefix::To, method_name.ident.name, ty);
+            if maybe_lint_endian_bytes(cx, expr, Prefix::To, method_name.ident.name, ty);
             then {
                 return;
             }
@@ -130,13 +131,13 @@ impl LateLintPass<'_> for EndianBytes {
             let ty = cx.typeck_results().expr_ty(expr);
             if ty.is_primitive_ty();
             then {
-                maybe_lint_endian_bytes(cx, expr, &Prefix::From, *function_name, ty);
+                maybe_lint_endian_bytes(cx, expr, Prefix::From, *function_name, ty);
             }
         }
     }
 }
 
-fn maybe_lint_endian_bytes(cx: &LateContext<'_>, expr: &Expr<'_>, prefix: &Prefix, name: Symbol, ty: Ty<'_>) -> bool {
+fn maybe_lint_endian_bytes(cx: &LateContext<'_>, expr: &Expr<'_>, prefix: Prefix, name: Symbol, ty: Ty<'_>) -> bool {
     let ne = LintKind::Host.as_name(prefix);
     let le = LintKind::Little.as_name(prefix);
     let be = LintKind::Big.as_name(prefix);
@@ -200,13 +201,9 @@ fn maybe_lint_endian_bytes(cx: &LateContext<'_>, expr: &Expr<'_>, prefix: &Prefi
         expr.span,
         &format!(
             "usage of the {}`{ty}::{}`{}",
-            if matches!(prefix, Prefix::From) {
-                "function "
-            } else {
-                ""
-            },
+            if prefix == Prefix::From { "function " } else { "" },
             lint.as_name(prefix),
-            if matches!(prefix, Prefix::To) { " method" } else { "" },
+            if prefix == Prefix::To { " method" } else { "" },
         ),
         move |diag| {
             if let Some(help) = help {
