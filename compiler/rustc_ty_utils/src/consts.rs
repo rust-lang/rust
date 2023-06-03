@@ -78,8 +78,9 @@ pub(crate) fn destructure_const<'tcx>(
 fn check_binop(op: mir::BinOp) -> bool {
     use mir::BinOp::*;
     match op {
-        Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr | Shl | Shr | Eq | Lt | Le | Ne
-        | Ge | Gt => true,
+        Add | AddUnchecked | Sub | SubUnchecked | Mul | MulUnchecked | Div | Rem | BitXor
+        | BitAnd | BitOr | Shl | ShlUnchecked | Shr | ShrUnchecked | Eq | Lt | Le | Ne | Ge
+        | Gt => true,
         Offset => false,
     }
 }

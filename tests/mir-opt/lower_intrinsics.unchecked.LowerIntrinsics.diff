@@ -10,11 +10,41 @@
       let mut _5: i32;                     // in scope 0 at $DIR/lower_intrinsics.rs:+1:49: +1:50
       let mut _7: i32;                     // in scope 0 at $DIR/lower_intrinsics.rs:+2:46: +2:47
       let mut _8: i32;                     // in scope 0 at $DIR/lower_intrinsics.rs:+2:49: +2:50
+      let mut _10: i32;                    // in scope 0 at $DIR/lower_intrinsics.rs:+3:46: +3:47
+      let mut _11: i32;                    // in scope 0 at $DIR/lower_intrinsics.rs:+3:49: +3:50
+      let mut _13: i32;                    // in scope 0 at $DIR/lower_intrinsics.rs:+4:46: +4:47
+      let mut _14: i32;                    // in scope 0 at $DIR/lower_intrinsics.rs:+4:49: +4:50
+      let mut _16: i32;                    // in scope 0 at $DIR/lower_intrinsics.rs:+5:46: +5:47
+      let mut _17: i32;                    // in scope 0 at $DIR/lower_intrinsics.rs:+5:49: +5:50
+      let mut _19: i32;                    // in scope 0 at $DIR/lower_intrinsics.rs:+6:46: +6:47
+      let mut _20: i32;                    // in scope 0 at $DIR/lower_intrinsics.rs:+6:49: +6:50
+      let mut _22: i32;                    // in scope 0 at $DIR/lower_intrinsics.rs:+7:46: +7:47
+      let mut _23: i32;                    // in scope 0 at $DIR/lower_intrinsics.rs:+7:49: +7:50
       scope 1 {
-          debug _x => _3;                  // in scope 1 at $DIR/lower_intrinsics.rs:+1:9: +1:11
+          debug _a => _3;                  // in scope 1 at $DIR/lower_intrinsics.rs:+1:9: +1:11
           let _6: i32;                     // in scope 1 at $DIR/lower_intrinsics.rs:+2:9: +2:11
           scope 2 {
-              debug _y => _6;              // in scope 2 at $DIR/lower_intrinsics.rs:+2:9: +2:11
+              debug _b => _6;              // in scope 2 at $DIR/lower_intrinsics.rs:+2:9: +2:11
+              let _9: i32;                 // in scope 2 at $DIR/lower_intrinsics.rs:+3:9: +3:11
+              scope 3 {
+                  debug _c => _9;          // in scope 3 at $DIR/lower_intrinsics.rs:+3:9: +3:11
+                  let _12: i32;            // in scope 3 at $DIR/lower_intrinsics.rs:+4:9: +4:11
+                  scope 4 {
+                      debug _x => _12;     // in scope 4 at $DIR/lower_intrinsics.rs:+4:9: +4:11
+                      let _15: i32;        // in scope 4 at $DIR/lower_intrinsics.rs:+5:9: +5:11
+                      scope 5 {
+                          debug _y => _15; // in scope 5 at $DIR/lower_intrinsics.rs:+5:9: +5:11
+                          let _18: i32;    // in scope 5 at $DIR/lower_intrinsics.rs:+6:9: +6:11
+                          scope 6 {
+                              debug _i => _18; // in scope 6 at $DIR/lower_intrinsics.rs:+6:9: +6:11
+                              let _21: i32; // in scope 6 at $DIR/lower_intrinsics.rs:+7:9: +7:11
+                              scope 7 {
+                                  debug _j => _21; // in scope 7 at $DIR/lower_intrinsics.rs:+7:9: +7:11
+                              }
+                          }
+                      }
+                  }
+              }
           }
       }
   
@@ -24,11 +54,11 @@
           _4 = _1;                         // scope 0 at $DIR/lower_intrinsics.rs:+1:46: +1:47
           StorageLive(_5);                 // scope 0 at $DIR/lower_intrinsics.rs:+1:49: +1:50
           _5 = _2;                         // scope 0 at $DIR/lower_intrinsics.rs:+1:49: +1:50
--         _3 = unchecked_div::<i32>(move _4, move _5) -> [return: bb1, unwind unreachable]; // scope 0 at $DIR/lower_intrinsics.rs:+1:14: +1:51
+-         _3 = unchecked_add::<i32>(move _4, move _5) -> [return: bb1, unwind unreachable]; // scope 0 at $DIR/lower_intrinsics.rs:+1:14: +1:51
 -                                          // mir::Constant
 -                                          // + span: $DIR/lower_intrinsics.rs:16:14: 16:45
--                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(i32, i32) -> i32 {unchecked_div::<i32>}, val: Value(<ZST>) }
-+         _3 = Div(move _4, move _5);      // scope 0 at $DIR/lower_intrinsics.rs:+1:14: +1:51
+-                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(i32, i32) -> i32 {unchecked_add::<i32>}, val: Value(<ZST>) }
++         _3 = AddUnchecked(move _4, move _5); // scope 0 at $DIR/lower_intrinsics.rs:+1:14: +1:51
 +         goto -> bb1;                     // scope 0 at $DIR/lower_intrinsics.rs:+1:14: +1:51
       }
   
@@ -40,21 +70,106 @@
           _7 = _1;                         // scope 1 at $DIR/lower_intrinsics.rs:+2:46: +2:47
           StorageLive(_8);                 // scope 1 at $DIR/lower_intrinsics.rs:+2:49: +2:50
           _8 = _2;                         // scope 1 at $DIR/lower_intrinsics.rs:+2:49: +2:50
--         _6 = unchecked_rem::<i32>(move _7, move _8) -> [return: bb2, unwind unreachable]; // scope 1 at $DIR/lower_intrinsics.rs:+2:14: +2:51
+-         _6 = unchecked_sub::<i32>(move _7, move _8) -> [return: bb2, unwind unreachable]; // scope 1 at $DIR/lower_intrinsics.rs:+2:14: +2:51
 -                                          // mir::Constant
 -                                          // + span: $DIR/lower_intrinsics.rs:17:14: 17:45
--                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(i32, i32) -> i32 {unchecked_rem::<i32>}, val: Value(<ZST>) }
-+         _6 = Rem(move _7, move _8);      // scope 1 at $DIR/lower_intrinsics.rs:+2:14: +2:51
+-                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(i32, i32) -> i32 {unchecked_sub::<i32>}, val: Value(<ZST>) }
++         _6 = SubUnchecked(move _7, move _8); // scope 1 at $DIR/lower_intrinsics.rs:+2:14: +2:51
 +         goto -> bb2;                     // scope 1 at $DIR/lower_intrinsics.rs:+2:14: +2:51
       }
   
       bb2: {
           StorageDead(_8);                 // scope 1 at $DIR/lower_intrinsics.rs:+2:50: +2:51
           StorageDead(_7);                 // scope 1 at $DIR/lower_intrinsics.rs:+2:50: +2:51
-          _0 = const ();                   // scope 0 at $DIR/lower_intrinsics.rs:+0:41: +3:2
-          StorageDead(_6);                 // scope 1 at $DIR/lower_intrinsics.rs:+3:1: +3:2
-          StorageDead(_3);                 // scope 0 at $DIR/lower_intrinsics.rs:+3:1: +3:2
-          return;                          // scope 0 at $DIR/lower_intrinsics.rs:+3:2: +3:2
+          StorageLive(_9);                 // scope 2 at $DIR/lower_intrinsics.rs:+3:9: +3:11
+          StorageLive(_10);                // scope 2 at $DIR/lower_intrinsics.rs:+3:46: +3:47
+          _10 = _1;                        // scope 2 at $DIR/lower_intrinsics.rs:+3:46: +3:47
+          StorageLive(_11);                // scope 2 at $DIR/lower_intrinsics.rs:+3:49: +3:50
+          _11 = _2;                        // scope 2 at $DIR/lower_intrinsics.rs:+3:49: +3:50
+-         _9 = unchecked_mul::<i32>(move _10, move _11) -> [return: bb3, unwind unreachable]; // scope 2 at $DIR/lower_intrinsics.rs:+3:14: +3:51
+-                                          // mir::Constant
+-                                          // + span: $DIR/lower_intrinsics.rs:18:14: 18:45
+-                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(i32, i32) -> i32 {unchecked_mul::<i32>}, val: Value(<ZST>) }
++         _9 = MulUnchecked(move _10, move _11); // scope 2 at $DIR/lower_intrinsics.rs:+3:14: +3:51
++         goto -> bb3;                     // scope 2 at $DIR/lower_intrinsics.rs:+3:14: +3:51
+      }
+  
+      bb3: {
+          StorageDead(_11);                // scope 2 at $DIR/lower_intrinsics.rs:+3:50: +3:51
+          StorageDead(_10);                // scope 2 at $DIR/lower_intrinsics.rs:+3:50: +3:51
+          StorageLive(_12);                // scope 3 at $DIR/lower_intrinsics.rs:+4:9: +4:11
+          StorageLive(_13);                // scope 3 at $DIR/lower_intrinsics.rs:+4:46: +4:47
+          _13 = _1;                        // scope 3 at $DIR/lower_intrinsics.rs:+4:46: +4:47
+          StorageLive(_14);                // scope 3 at $DIR/lower_intrinsics.rs:+4:49: +4:50
+          _14 = _2;                        // scope 3 at $DIR/lower_intrinsics.rs:+4:49: +4:50
+-         _12 = unchecked_div::<i32>(move _13, move _14) -> [return: bb4, unwind unreachable]; // scope 3 at $DIR/lower_intrinsics.rs:+4:14: +4:51
+-                                          // mir::Constant
+-                                          // + span: $DIR/lower_intrinsics.rs:19:14: 19:45
+-                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(i32, i32) -> i32 {unchecked_div::<i32>}, val: Value(<ZST>) }
++         _12 = Div(move _13, move _14);   // scope 3 at $DIR/lower_intrinsics.rs:+4:14: +4:51
++         goto -> bb4;                     // scope 3 at $DIR/lower_intrinsics.rs:+4:14: +4:51
+      }
+  
+      bb4: {
+          StorageDead(_14);                // scope 3 at $DIR/lower_intrinsics.rs:+4:50: +4:51
+          StorageDead(_13);                // scope 3 at $DIR/lower_intrinsics.rs:+4:50: +4:51
+          StorageLive(_15);                // scope 4 at $DIR/lower_intrinsics.rs:+5:9: +5:11
+          StorageLive(_16);                // scope 4 at $DIR/lower_intrinsics.rs:+5:46: +5:47
+          _16 = _1;                        // scope 4 at $DIR/lower_intrinsics.rs:+5:46: +5:47
+          StorageLive(_17);                // scope 4 at $DIR/lower_intrinsics.rs:+5:49: +5:50
+          _17 = _2;                        // scope 4 at $DIR/lower_intrinsics.rs:+5:49: +5:50
+-         _15 = unchecked_rem::<i32>(move _16, move _17) -> [return: bb5, unwind unreachable]; // scope 4 at $DIR/lower_intrinsics.rs:+5:14: +5:51
+-                                          // mir::Constant
+-                                          // + span: $DIR/lower_intrinsics.rs:20:14: 20:45
+-                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(i32, i32) -> i32 {unchecked_rem::<i32>}, val: Value(<ZST>) }
++         _15 = Rem(move _16, move _17);   // scope 4 at $DIR/lower_intrinsics.rs:+5:14: +5:51
++         goto -> bb5;                     // scope 4 at $DIR/lower_intrinsics.rs:+5:14: +5:51
+      }
+  
+      bb5: {
+          StorageDead(_17);                // scope 4 at $DIR/lower_intrinsics.rs:+5:50: +5:51
+          StorageDead(_16);                // scope 4 at $DIR/lower_intrinsics.rs:+5:50: +5:51
+          StorageLive(_18);                // scope 5 at $DIR/lower_intrinsics.rs:+6:9: +6:11
+          StorageLive(_19);                // scope 5 at $DIR/lower_intrinsics.rs:+6:46: +6:47
+          _19 = _1;                        // scope 5 at $DIR/lower_intrinsics.rs:+6:46: +6:47
+          StorageLive(_20);                // scope 5 at $DIR/lower_intrinsics.rs:+6:49: +6:50
+          _20 = _2;                        // scope 5 at $DIR/lower_intrinsics.rs:+6:49: +6:50
+-         _18 = unchecked_shl::<i32>(move _19, move _20) -> [return: bb6, unwind unreachable]; // scope 5 at $DIR/lower_intrinsics.rs:+6:14: +6:51
+-                                          // mir::Constant
+-                                          // + span: $DIR/lower_intrinsics.rs:21:14: 21:45
+-                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(i32, i32) -> i32 {unchecked_shl::<i32>}, val: Value(<ZST>) }
++         _18 = ShlUnchecked(move _19, move _20); // scope 5 at $DIR/lower_intrinsics.rs:+6:14: +6:51
++         goto -> bb6;                     // scope 5 at $DIR/lower_intrinsics.rs:+6:14: +6:51
+      }
+  
+      bb6: {
+          StorageDead(_20);                // scope 5 at $DIR/lower_intrinsics.rs:+6:50: +6:51
+          StorageDead(_19);                // scope 5 at $DIR/lower_intrinsics.rs:+6:50: +6:51
+          StorageLive(_21);                // scope 6 at $DIR/lower_intrinsics.rs:+7:9: +7:11
+          StorageLive(_22);                // scope 6 at $DIR/lower_intrinsics.rs:+7:46: +7:47
+          _22 = _1;                        // scope 6 at $DIR/lower_intrinsics.rs:+7:46: +7:47
+          StorageLive(_23);                // scope 6 at $DIR/lower_intrinsics.rs:+7:49: +7:50
+          _23 = _2;                        // scope 6 at $DIR/lower_intrinsics.rs:+7:49: +7:50
+-         _21 = unchecked_shr::<i32>(move _22, move _23) -> [return: bb7, unwind unreachable]; // scope 6 at $DIR/lower_intrinsics.rs:+7:14: +7:51
+-                                          // mir::Constant
+-                                          // + span: $DIR/lower_intrinsics.rs:22:14: 22:45
+-                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(i32, i32) -> i32 {unchecked_shr::<i32>}, val: Value(<ZST>) }
++         _21 = ShrUnchecked(move _22, move _23); // scope 6 at $DIR/lower_intrinsics.rs:+7:14: +7:51
++         goto -> bb7;                     // scope 6 at $DIR/lower_intrinsics.rs:+7:14: +7:51
+      }
+  
+      bb7: {
+          StorageDead(_23);                // scope 6 at $DIR/lower_intrinsics.rs:+7:50: +7:51
+          StorageDead(_22);                // scope 6 at $DIR/lower_intrinsics.rs:+7:50: +7:51
+          _0 = const ();                   // scope 0 at $DIR/lower_intrinsics.rs:+0:41: +8:2
+          StorageDead(_21);                // scope 6 at $DIR/lower_intrinsics.rs:+8:1: +8:2
+          StorageDead(_18);                // scope 5 at $DIR/lower_intrinsics.rs:+8:1: +8:2
+          StorageDead(_15);                // scope 4 at $DIR/lower_intrinsics.rs:+8:1: +8:2
+          StorageDead(_12);                // scope 3 at $DIR/lower_intrinsics.rs:+8:1: +8:2
+          StorageDead(_9);                 // scope 2 at $DIR/lower_intrinsics.rs:+8:1: +8:2
+          StorageDead(_6);                 // scope 1 at $DIR/lower_intrinsics.rs:+8:1: +8:2
+          StorageDead(_3);                 // scope 0 at $DIR/lower_intrinsics.rs:+8:1: +8:2
+          return;                          // scope 0 at $DIR/lower_intrinsics.rs:+8:2: +8:2
       }
   }
   

@@ -13,8 +13,13 @@ pub fn wrapping(a: i32, b: i32) {
 
 // EMIT_MIR lower_intrinsics.unchecked.LowerIntrinsics.diff
 pub unsafe fn unchecked(a: i32, b: i32) {
+    let _a = core::intrinsics::unchecked_add(a, b);
+    let _b = core::intrinsics::unchecked_sub(a, b);
+    let _c = core::intrinsics::unchecked_mul(a, b);
     let _x = core::intrinsics::unchecked_div(a, b);
     let _y = core::intrinsics::unchecked_rem(a, b);
+    let _i = core::intrinsics::unchecked_shl(a, b);
+    let _j = core::intrinsics::unchecked_shr(a, b);
 }
 
 // EMIT_MIR lower_intrinsics.size_of.LowerIntrinsics.diff
