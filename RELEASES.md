@@ -999,7 +999,6 @@ and related tools.
 [`<*mut T>::copy_from_nonoverlapping`]: https://doc.rust-lang.org/std/primitive.pointer.html#method.copy_from_nonoverlapping
 [`str::from_utf8`]: https://doc.rust-lang.org/std/str/fn.from_utf8.html
 [`Utf8Error::error_len`]: https://doc.rust-lang.org/std/str/struct.Utf8Error.html#method.error_len
-[`Utf8Error::valid_up_to`]: https://doc.rust-lang.org/std/str/struct.Utf8Error.html#method.valid_up_to
 [`Condvar::new`]: https://doc.rust-lang.org/std/sync/struct.Condvar.html#method.new
 [`Mutex::new`]: https://doc.rust-lang.org/std/sync/struct.Mutex.html#method.new
 [`RwLock::new`]: https://doc.rust-lang.org/std/sync/struct.RwLock.html#method.new
@@ -1403,7 +1402,6 @@ and related tools.
 
 [cargo/10086]: https://github.com/rust-lang/cargo/pull/10086
 [cargo/10245]: https://github.com/rust-lang/cargo/pull/10245
-[cargo/10269]: https://github.com/rust-lang/cargo/pull/10269
 [cargo/10274]: https://github.com/rust-lang/cargo/pull/10274
 [cargo/10379]: https://github.com/rust-lang/cargo/pull/10379
 
@@ -2019,9 +2017,7 @@ and related tools.
 [`HashSet::shrink_to`]: https://doc.rust-lang.org/std/collections/hash_set/struct.HashSet.html#method.shrink_to
 [`std::mem::transmute`]: https://doc.rust-lang.org/std/mem/fn.transmute.html
 [`slice::first`]: https://doc.rust-lang.org/std/primitive.slice.html#method.first
-[`slice::split_first`]: https://doc.rust-lang.org/std/primitive.slice.html#method.split_first
 [`slice::last`]: https://doc.rust-lang.org/std/primitive.slice.html#method.last
-[`slice::split_last`]: https://doc.rust-lang.org/std/primitive.slice.html#method.split_last
 [`rust-version`]: https://doc.rust-lang.org/cargo/reference/manifest.html#the-rust-version-field
 [rust#87671]: https://github.com/rust-lang/rust/pull/87671
 [rust#86183]: https://github.com/rust-lang/rust/pull/86183
@@ -2548,9 +2544,9 @@ Stabilised APIs
 - [`char::MAX`]
 - [`char::REPLACEMENT_CHARACTER`]
 - [`char::UNICODE_VERSION`]
-- [`char::decode_utf16`]
+- [`char::decode_utf16`][`primitive@char::decode_utf16`]
 - [`char::from_digit`]
-- [`char::from_u32_unchecked`]
+- [`char::from_u32_unchecked`][`primitive@char::from_u32_unchecked`]
 - [`char::from_u32`]
 - [`slice::partition_point`]
 - [`str::rsplit_once`]
@@ -2641,9 +2637,9 @@ Compatibility Notes
 [`char::MAX`]: https://doc.rust-lang.org/std/primitive.char.html#associatedconstant.MAX
 [`char::REPLACEMENT_CHARACTER`]: https://doc.rust-lang.org/std/primitive.char.html#associatedconstant.REPLACEMENT_CHARACTER
 [`char::UNICODE_VERSION`]: https://doc.rust-lang.org/std/primitive.char.html#associatedconstant.UNICODE_VERSION
-[`char::decode_utf16`]: https://doc.rust-lang.org/std/primitive.char.html#method.decode_utf16
+[`primitive@char::decode_utf16`]: https://doc.rust-lang.org/std/primitive.char.html#method.decode_utf16
 [`char::from_u32`]: https://doc.rust-lang.org/std/primitive.char.html#method.from_u32
-[`char::from_u32_unchecked`]: https://doc.rust-lang.org/std/primitive.char.html#method.from_u32_unchecked
+[`primitive@char::from_u32_unchecked`]: https://doc.rust-lang.org/std/primitive.char.html#method.from_u32_unchecked
 [`char::from_digit`]: https://doc.rust-lang.org/std/primitive.char.html#method.from_digit
 [`Peekable::next_if`]: https://doc.rust-lang.org/std/iter/struct.Peekable.html#method.next_if
 [`Peekable::next_if_eq`]: https://doc.rust-lang.org/std/iter/struct.Peekable.html#method.next_if_eq
@@ -2960,22 +2956,10 @@ Compatibility Notes
 [cargo/8725]: https://github.com/rust-lang/cargo/pull/8725
 [`IpAddr::is_ipv4`]: https://doc.rust-lang.org/std/net/enum.IpAddr.html#method.is_ipv4
 [`IpAddr::is_ipv6`]: https://doc.rust-lang.org/std/net/enum.IpAddr.html#method.is_ipv6
-[`IpAddr::is_unspecified`]: https://doc.rust-lang.org/std/net/enum.IpAddr.html#method.is_unspecified
-[`IpAddr::is_loopback`]: https://doc.rust-lang.org/std/net/enum.IpAddr.html#method.is_loopback
-[`IpAddr::is_multicast`]: https://doc.rust-lang.org/std/net/enum.IpAddr.html#method.is_multicast
 [`Ipv4Addr::octets`]: https://doc.rust-lang.org/std/net/struct.Ipv4Addr.html#method.octets
-[`Ipv4Addr::is_loopback`]: https://doc.rust-lang.org/std/net/struct.Ipv4Addr.html#method.is_loopback
-[`Ipv4Addr::is_private`]: https://doc.rust-lang.org/std/net/struct.Ipv4Addr.html#method.is_private
-[`Ipv4Addr::is_link_local`]: https://doc.rust-lang.org/std/net/struct.Ipv4Addr.html#method.is_link_local
-[`Ipv4Addr::is_multicast`]: https://doc.rust-lang.org/std/net/struct.Ipv4Addr.html#method.is_multicast
-[`Ipv4Addr::is_broadcast`]: https://doc.rust-lang.org/std/net/struct.Ipv4Addr.html#method.is_broadcast
-[`Ipv4Addr::is_documentation`]: https://doc.rust-lang.org/std/net/struct.Ipv4Addr.html#method.is_documentation
 [`Ipv4Addr::to_ipv6_compatible`]: https://doc.rust-lang.org/std/net/struct.Ipv4Addr.html#method.to_ipv6_compatible
 [`Ipv4Addr::to_ipv6_mapped`]: https://doc.rust-lang.org/std/net/struct.Ipv4Addr.html#method.to_ipv6_mapped
 [`Ipv6Addr::segments`]: https://doc.rust-lang.org/std/net/struct.Ipv6Addr.html#method.segments
-[`Ipv6Addr::is_unspecified`]: https://doc.rust-lang.org/std/net/struct.Ipv6Addr.html#method.is_unspecified
-[`Ipv6Addr::is_loopback`]: https://doc.rust-lang.org/std/net/struct.Ipv6Addr.html#method.is_loopback
-[`Ipv6Addr::is_multicast`]: https://doc.rust-lang.org/std/net/struct.Ipv6Addr.html#method.is_multicast
 [`Ipv6Addr::to_ipv4`]: https://doc.rust-lang.org/std/net/struct.Ipv6Addr.html#method.to_ipv4
 [`Layout::align`]: https://doc.rust-lang.org/std/alloc/struct.Layout.html#method.align
 [`Layout::from_size_align`]: https://doc.rust-lang.org/std/alloc/struct.Layout.html#method.from_size_align
@@ -3601,7 +3585,7 @@ Stabilized APIs
 - [`sync::Weak::as_ptr`]
 - [`sync::Weak::from_raw`]
 - [`sync::Weak::into_raw`]
-- [`char::UNICODE_VERSION`]
+- [`std::char::UNICODE_VERSION`]
 - [`Span::resolved_at`]
 - [`Span::located_at`]
 - [`Span::mixed_site`]
@@ -3679,7 +3663,7 @@ Internals Only
 [`sync::Weak::into_raw`]: https://doc.rust-lang.org/std/sync/struct.Weak.html#method.into_raw
 [`str::strip_prefix`]: https://doc.rust-lang.org/std/primitive.str.html#method.strip_prefix
 [`str::strip_suffix`]: https://doc.rust-lang.org/std/primitive.str.html#method.strip_suffix
-[`char::UNICODE_VERSION`]: https://doc.rust-lang.org/std/char/constant.UNICODE_VERSION.html
+[`std::char::UNICODE_VERSION`]: https://doc.rust-lang.org/std/char/constant.UNICODE_VERSION.html
 [`Span::resolved_at`]: https://doc.rust-lang.org/proc_macro/struct.Span.html#method.resolved_at
 [`Span::located_at`]: https://doc.rust-lang.org/proc_macro/struct.Span.html#method.located_at
 [`Span::mixed_site`]: https://doc.rust-lang.org/proc_macro/struct.Span.html#method.mixed_site
@@ -7300,7 +7284,6 @@ Compatibility Notes
 [42844]: https://github.com/rust-lang/rust/issues/42844
 [42948]: https://github.com/rust-lang/rust/pull/42948
 [RFC 1444]: https://github.com/rust-lang/rfcs/pull/1444
-[RFC 1506]: https://github.com/rust-lang/rfcs/pull/1506
 [RFC 1558]: https://github.com/rust-lang/rfcs/pull/1558
 [RFC 1624]: https://github.com/rust-lang/rfcs/pull/1624
 [RFC 1721]: https://github.com/rust-lang/rfcs/pull/1721
@@ -8132,7 +8115,6 @@ Compatibility Notes
 [38192]: https://github.com/rust-lang/rust/pull/38192
 [38279]: https://github.com/rust-lang/rust/pull/38279
 [38835]: https://github.com/rust-lang/rust/pull/38835
-[RFC 1506]: https://github.com/rust-lang/rfcs/blob/master/text/1506-adt-kinds.md
 [RFC 1560]: https://github.com/rust-lang/rfcs/blob/master/text/1560-name-resolution.md
 [RFC 1681]: https://github.com/rust-lang/rfcs/blob/master/text/1681-macros-1.1.md
 [RFC 1717]: https://github.com/rust-lang/rfcs/blob/master/text/1717-dllimport.md
@@ -10207,7 +10189,7 @@ Miscellaneous
 [`Path::read_dir`]: http://doc.rust-lang.org/std/path/struct.Path.html#method.read_dir
 [`Path::read_link`]: http://doc.rust-lang.org/std/path/struct.Path.html#method.read_link
 [`Path::symlink_metadata`]: http://doc.rust-lang.org/std/path/struct.Path.html#method.symlink_metadata
-[`Utf8Error::valid_up_to`]: http://doc.rust-lang.org/core/str/struct.Utf8Error.html#method.valid_up_to
+[`Utf8Error::valid_up_to`]: http://doc.rust-lang.org/std/str/struct.Utf8Error.html#method.valid_up_to
 [`Vec::resize`]: http://doc.rust-lang.org/std/vec/struct.Vec.html#method.resize
 [`VecDeque::as_mut_slices`]: http://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.as_mut_slices
 [`VecDeque::as_slices`]: http://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.as_slices
@@ -10543,8 +10525,8 @@ Misc
 [`Borrow`]: http://doc.rust-lang.org/std/borrow/trait.Borrow.html
 [`CStr`]: http://doc.rust-lang.org/std/ffi/struct.CStr.html
 [`CString`]: http://doc.rust-lang.org/std/ffi/struct.CString.html
-[`Debug`]: http://doc.rust-lang.org/std/fmt/trait.Debug.html
-[`DerefMut`]: http://doc.rust-lang.org/std/ops/trait.DerefMut.html
+[`Debug`]: https://doc.rust-lang.org/std/fmt/trait.Debug.html
+[`DerefMut`]: https://doc.rust-lang.org/std/ops/trait.DerefMut.html
 [`Deref`]: http://doc.rust-lang.org/std/ops/trait.Deref.html
 [`Div`]: http://doc.rust-lang.org/std/ops/trait.Div.html
 [`Duration`]: http://doc.rust-lang.org/std/time/struct.Duration.html
@@ -10556,7 +10538,7 @@ Misc
 [`SliceConcatExt`]: http://doc.rust-lang.org/std/slice/trait.SliceConcatExt.html
 [`Stdin`]: http://doc.rust-lang.org/std/io/struct.Stdin.html
 [`ToOwned`]: http://doc.rust-lang.org/std/borrow/trait.ToOwned.html
-[`Wrapping`]: http://doc.rust-lang.org/std/num/struct.Wrapping.html
+[`Wrapping`]: https://doc.rust-lang.org/std/num/struct.Wrapping.html
 [`connect`]: http://doc.rust-lang.org/std/slice/trait.SliceConcatExt.html#method.connect
 [`downcast_mut`]: http://doc.rust-lang.org/std/error/trait.Error.html#method.downcast_mut
 [`downcast_ref`]: http://doc.rust-lang.org/std/error/trait.Error.html#method.downcast_ref
