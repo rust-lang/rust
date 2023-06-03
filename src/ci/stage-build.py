@@ -620,11 +620,17 @@ def get_files(directory: Path, filter: Optional[Callable[[Path], bool]] = None) 
             yield path
 
 
-def build_rustc(
+def bootstrap_build(
         pipeline: Pipeline,
         args: List[str],
-        env: Optional[Dict[str, str]] = None
+        env: Optional[Dict[str, str]] = None,
+        targets: Iterable[str] = ("library/std", )
 ):
+    if env is None:
+        env = {}
+    else:
+        env = dict(env)
+    env["RUST_BACKTRACE"] = "1"
     arguments = [
                     sys.executable,
                     pipeline.checkout_path() / "x.py",
@@ -632,8 +638,7 @@ def build_rustc(
                     "--target", PGO_HOST,
                     "--host", PGO_HOST,
                     "--stage", "2",
-                    "library/std"
-                ] + args
+                    ] + list(targets) + args
     cmd(arguments, env=env)
 
 
@@ -776,18 +781,18 @@ def record_metrics(pipeline: Pipeline, timer: Timer):
     if metrics is None:
         return
     llvm_steps = tuple(metrics.find_all_by_type("bootstrap::llvm::Llvm"))
-    assert len(llvm_steps) > 0
     llvm_duration = sum(step.duration for step in llvm_steps)
 
     rustc_steps = tuple(metrics.find_all_by_type("bootstrap::compile::Rustc"))
-    assert len(rustc_steps) > 0
     rustc_duration = sum(step.duration for step in rustc_steps)
 
     # The LLVM step is part of the Rustc step
-    rustc_duration -= llvm_duration
+    rustc_duration = max(0, rustc_duration - llvm_duration)
 
-    timer.add_duration("LLVM", llvm_duration)
-    timer.add_duration("Rustc", rustc_duration)
+    if llvm_duration > 0:
+        timer.add_duration("LLVM", llvm_duration)
+    if rustc_duration > 0:
+        timer.add_duration("Rustc", rustc_duration)
 
     log_metrics(metrics)
 
@@ -872,79 +877,108 @@ download-ci-llvm = true
     ))
 
 
-def execute_build_pipeline(timer: Timer, pipeline: Pipeline, runner: BenchmarkRunner, final_build_args: List[str]):
+def execute_build_pipeline(timer: Timer, pipeline: Pipeline, runner: BenchmarkRunner, dist_build_args: List[str]):
     # Clear and prepare tmp directory
     shutil.rmtree(pipeline.opt_artifacts(), ignore_errors=True)
     os.makedirs(pipeline.opt_artifacts(), exist_ok=True)
 
     pipeline.build_rustc_perf()
 
-    # Stage 1: Build rustc + PGO instrumented LLVM
-    with timer.section("Stage 1 (LLVM PGO)") as stage1:
-        with stage1.section("Build rustc and LLVM") as rustc_build:
-            build_rustc(pipeline, args=[
-                "--llvm-profile-generate"
-            ], env=dict(
-                LLVM_PROFILE_DIR=str(pipeline.llvm_profile_dir_root() / "prof-%p")
-            ))
-            record_metrics(pipeline, rustc_build)
+    """
+    Stage 1: Build PGO instrumented rustc
 
-        with stage1.section("Gather profiles"):
-            gather_llvm_profiles(pipeline, runner)
-        print_free_disk_space(pipeline)
-
-    clear_llvm_files(pipeline)
-    final_build_args += [
-        "--llvm-profile-use",
-        pipeline.llvm_profile_merged_file()
-    ]
-
-    # Stage 2: Build PGO instrumented rustc + LLVM
-    with timer.section("Stage 2 (rustc PGO)") as stage2:
-        with stage2.section("Build rustc and LLVM") as rustc_build:
-            build_rustc(pipeline, args=[
+    We use a normal build of LLVM, because gathering PGO profiles for LLVM and `rustc` at the same time
+    can cause issues.
+    """
+    with timer.section("Stage 1 (rustc PGO)") as stage1:
+        with stage1.section("Build PGO instrumented rustc and LLVM") as rustc_pgo_instrument:
+            bootstrap_build(pipeline, args=[
                 "--rust-profile-generate",
                 pipeline.rustc_profile_dir_root()
             ])
-            record_metrics(pipeline, rustc_build)
+            record_metrics(pipeline, rustc_pgo_instrument)
 
-        with stage2.section("Gather profiles"):
+        with stage1.section("Gather profiles"):
             gather_rustc_profiles(pipeline, runner)
         print_free_disk_space(pipeline)
 
-    clear_llvm_files(pipeline)
-    final_build_args += [
-        "--rust-profile-use",
-        pipeline.rustc_profile_merged_file()
-    ]
+        with stage1.section("Build PGO optimized rustc") as rustc_pgo_use:
+            bootstrap_build(pipeline, args=[
+                "--rust-profile-use",
+                pipeline.rustc_profile_merged_file()
+            ])
+            record_metrics(pipeline, rustc_pgo_use)
+        dist_build_args += [
+            "--rust-profile-use",
+            pipeline.rustc_profile_merged_file()
+        ]
 
-    # Stage 3: Build rustc + BOLT instrumented LLVM
+    """
+    Stage 2: Gather LLVM PGO profiles
+    """
+    with timer.section("Stage 2 (LLVM PGO)") as stage2:
+        # Clear normal LLVM artifacts
+        clear_llvm_files(pipeline)
+
+        with stage2.section("Build PGO instrumented LLVM") as llvm_pgo_instrument:
+            bootstrap_build(pipeline, args=[
+                "--llvm-profile-generate",
+                # We want to keep the already built PGO-optimized `rustc`.
+                "--keep-stage", "0",
+                "--keep-stage", "1"
+            ], env=dict(
+                LLVM_PROFILE_DIR=str(pipeline.llvm_profile_dir_root() / "prof-%p")
+            ))
+            record_metrics(pipeline, llvm_pgo_instrument)
+
+        with stage2.section("Gather profiles"):
+            gather_llvm_profiles(pipeline, runner)
+
+        dist_build_args += [
+            "--llvm-profile-use",
+            pipeline.llvm_profile_merged_file(),
+        ]
+        print_free_disk_space(pipeline)
+
+        # Clear PGO-instrumented LLVM artifacts
+        clear_llvm_files(pipeline)
+
+    """
+    Stage 3: Build BOLT instrumented LLVM
+
+    We build a PGO optimized LLVM in this step, then instrument it with BOLT and gather BOLT profiles.
+    Note that we don't remove LLVM artifacts after this step, so that they are reused in the final dist build.
+    BOLT instrumentation is performed "on-the-fly" when the LLVM library is copied to the sysroot of rustc,
+    therefore the LLVM artifacts on disk are not "tainted" with BOLT instrumentation and they can be reused.
+    """
     if pipeline.supports_bolt():
         with timer.section("Stage 3 (LLVM BOLT)") as stage3:
-            with stage3.section("Build rustc and LLVM") as rustc_build:
-                build_rustc(pipeline, args=[
+            with stage3.section("Build BOLT instrumented LLVM") as llvm_bolt_instrument:
+                bootstrap_build(pipeline, args=[
                     "--llvm-profile-use",
                     pipeline.llvm_profile_merged_file(),
                     "--llvm-bolt-profile-generate",
-                    "--rust-profile-use",
-                    pipeline.rustc_profile_merged_file()
+                    # We want to keep the already built PGO-optimized `rustc`.
+                    "--keep-stage", "0",
+                    "--keep-stage", "1"
                 ])
-                record_metrics(pipeline, rustc_build)
+                record_metrics(pipeline, llvm_bolt_instrument)
 
             with stage3.section("Gather profiles"):
                 gather_llvm_bolt_profiles(pipeline, runner)
 
-        # LLVM is not being cleared here, we want to reuse the previous build
-        print_free_disk_space(pipeline)
-        final_build_args += [
-            "--llvm-bolt-profile-use",
-            pipeline.llvm_bolt_profile_merged_file()
-        ]
+            dist_build_args += [
+                "--llvm-bolt-profile-use",
+                pipeline.llvm_bolt_profile_merged_file()
+            ]
+            print_free_disk_space(pipeline)
 
-    # Stage 4: Build PGO optimized rustc + PGO/BOLT optimized LLVM
-    with timer.section("Stage 4 (final build)") as stage4:
-        cmd(final_build_args)
-        record_metrics(pipeline, stage4)
+    """
+    Final stage: Build PGO optimized rustc + PGO/BOLT optimized LLVM
+    """
+    with timer.section("Final stage (dist build)") as final_stage:
+        cmd(dist_build_args)
+        record_metrics(pipeline, final_stage)
 
     # Try builds can be in various broken states, so we don't want to gatekeep them with tests
     if not is_try_build():
