@@ -402,6 +402,10 @@ impl Config {
 
     fn ci_component_contents(&self, stamp_file: &str) -> Vec<String> {
         assert!(self.download_rustc());
+        if self.dry_run() {
+            return vec![];
+        }
+
         let ci_rustc_dir = self.out.join(&*self.build.triple).join("ci-rustc");
         let stamp_file = ci_rustc_dir.join(stamp_file);
         let contents_file = t!(File::open(&stamp_file), stamp_file.display().to_string());
