@@ -501,9 +501,11 @@ Otherwise, have a great day =^.^=
                     <div class="col-12 col-md-7 search-control">
                         <div class="input-group">
                             <label class="input-group-addon" id="filter-label" for="search-input">Filter:</label>
-                            <input type="text" class="form-control filter-input" placeholder="Keywords or search string" id="search-input" ng-model="search" ng-model-options="{debounce: 50}"/>
+                            <input type="text" class="form-control filter-input" placeholder="Keywords or search string" id="search-input"
+                                ng-model="search" ng-blur="updatePath()" ng-keyup="$event.keyCode == 13 && updatePath()"
+                                ng-model-options="{debounce: 50}" />
                             <span class="input-group-btn">
-                                <button class="filter-clear btn" type="button" ng-click="search = ''">
+                                <button class="filter-clear btn" type="button" ng-click="search = ''; updatePath();">
                                     Clear
                                 </button>
                             </span>
@@ -517,7 +519,8 @@ Otherwise, have a great day =^.^=
                     <h2 class="panel-title">
                         <div class="panel-title-name">
                             <span>{{lint.id}}</span>
-                            <a href="#{{lint.id}}" class="anchor label label-default" ng-click="open[lint.id] = true; $event.stopPropagation()">&para;</a>
+                            <a href="#{{lint.id}}" class="anchor label label-default"
+                                ng-click="openLint(lint); $event.preventDefault(); $event.stopPropagation()">&para;</a>
                             <a href="" id="clipboard-{{lint.id}}" class="anchor label label-default" ng-click="copyToClipboard(lint); $event.stopPropagation()">
                                 &#128203;
                             </a>
