@@ -4,7 +4,7 @@ fn foo() {
     (_) = ..;
     struct S { a: i32 }
     S { .. } = S { ..S::default() };
-    Some(..) = Some(0).
+    Some(..) = Some(0);
     Ok(_) = 0;
     let (a, b);
     [a, .., b] = [1, .., 2];
