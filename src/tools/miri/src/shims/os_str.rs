@@ -18,27 +18,12 @@ pub enum PathConversion {
 }
 
 #[cfg(unix)]
-pub fn os_str_to_bytes<'tcx>(os_str: &OsStr) -> InterpResult<'tcx, &[u8]> {
-    Ok(os_str.as_bytes())
-}
-
-#[cfg(not(unix))]
-pub fn os_str_to_bytes<'tcx>(os_str: &OsStr) -> InterpResult<'tcx, &[u8]> {
-    // On non-unix platforms the best we can do to transform bytes from/to OS strings is to do the
-    // intermediate transformation into strings. Which invalidates non-utf8 paths that are actually
-    // valid.
-    os_str
-        .to_str()
-        .map(|s| s.as_bytes())
-        .ok_or_else(|| err_unsup_format!("{:?} is not a valid utf-8 string", os_str).into())
-}
-
-#[cfg(unix)]
 pub fn bytes_to_os_str<'tcx>(bytes: &[u8]) -> InterpResult<'tcx, &OsStr> {
     Ok(OsStr::from_bytes(bytes))
 }
 #[cfg(not(unix))]
 pub fn bytes_to_os_str<'tcx>(bytes: &[u8]) -> InterpResult<'tcx, &OsStr> {
+    // We cannot use `from_os_str_bytes_unchecked` here since we can't trust `bytes`.
     let s = std::str::from_utf8(bytes)
         .map_err(|_| err_unsup_format!("{:?} is not a valid utf-8 string", bytes))?;
     Ok(OsStr::new(s))
@@ -97,7 +82,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         ptr: Pointer<Option<Provenance>>,
         size: u64,
     ) -> InterpResult<'tcx, (bool, u64)> {
-        let bytes = os_str_to_bytes(os_str)?;
+        let bytes = os_str.as_os_str_bytes();
         self.eval_context_mut().write_c_str(bytes, ptr, size)
     }
 

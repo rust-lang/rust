@@ -16,7 +16,6 @@ use rustc_target::abi::{Align, Size};
 
 use crate::shims::os_str::bytes_to_os_str;
 use crate::*;
-use shims::os_str::os_str_to_bytes;
 use shims::time::system_time_to_duration;
 
 #[derive(Debug)]
@@ -1339,7 +1338,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 let mut name = dir_entry.file_name(); // not a Path as there are no separators!
                 name.push("\0"); // Add a NUL terminator
-                let name_bytes = os_str_to_bytes(&name)?;
+                let name_bytes = name.as_os_str_bytes();
                 let name_len = u64::try_from(name_bytes.len()).unwrap();
 
                 let dirent64_layout = this.libc_ty_layout("dirent64");
@@ -1695,7 +1694,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     Cow::Borrowed(resolved.as_ref()),
                     crate::shims::os_str::PathConversion::HostToTarget,
                 );
-                let mut path_bytes = crate::shims::os_str::os_str_to_bytes(resolved.as_ref())?;
+                let mut path_bytes = resolved.as_os_str_bytes();
                 let bufsize: usize = bufsize.try_into().unwrap();
                 if path_bytes.len() > bufsize {
                     path_bytes = &path_bytes[..bufsize]
