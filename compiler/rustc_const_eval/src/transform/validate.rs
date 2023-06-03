@@ -556,7 +556,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             );
                         }
                     }
-                    Shl | Shr => {
+                    Shl | ShlUnchecked | Shr | ShrUnchecked => {
                         for x in [a, b] {
                             check_kinds!(
                                 x,
@@ -596,6 +596,24 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 location,
                                 format!(
                                     "Cannot perform arithmetic on unequal types {:?} and {:?}",
+                                    a, b
+                                ),
+                            );
+                        }
+                    }
+                    AddUnchecked | SubUnchecked | MulUnchecked => {
+                        for x in [a, b] {
+                            check_kinds!(
+                                x,
+                                "Cannot perform unchecked arithmetic on type {:?}",
+                                ty::Uint(..) | ty::Int(..)
+                            )
+                        }
+                        if a != b {
+                            self.fail(
+                                location,
+                                format!(
+                                    "Cannot perform unchecked arithmetic on unequal types {:?} and {:?}",
                                     a, b
                                 ),
                             );

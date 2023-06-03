@@ -15,10 +15,7 @@ fn unchecked_shl_unsigned_bigger(_1: u64, _2: u32) -> u64 {
     bb0: {
         StorageLive(_3);
         _3 = _2 as u64 (IntToInt);
-        _0 = unchecked_shl::<u64>(_1, move _3) -> [return: bb1, unwind unreachable];
-    }
-
-    bb1: {
+        _0 = ShlUnchecked(_1, move _3);
         StorageDead(_3);
         return;
     }

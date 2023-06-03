@@ -22,8 +22,8 @@ pub(crate) fn maybe_codegen<'tcx>(
 
     match bin_op {
         BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor => None,
-        BinOp::Add | BinOp::Sub => None,
-        BinOp::Mul => {
+        BinOp::Add | BinOp::AddUnchecked | BinOp::Sub | BinOp::SubUnchecked => None,
+        BinOp::Mul | BinOp::MulUnchecked => {
             let args = [lhs.load_scalar(fx), rhs.load_scalar(fx)];
             let ret_val = fx.lib_call(
                 "__multi3",
@@ -69,7 +69,7 @@ pub(crate) fn maybe_codegen<'tcx>(
             }
         }
         BinOp::Lt | BinOp::Le | BinOp::Eq | BinOp::Ge | BinOp::Gt | BinOp::Ne => None,
-        BinOp::Shl | BinOp::Shr => None,
+        BinOp::Shl | BinOp::ShlUnchecked | BinOp::Shr | BinOp::ShrUnchecked => None,
     }
 }
 
@@ -131,9 +131,10 @@ pub(crate) fn maybe_codegen_checked<'tcx>(
             fx.lib_call(name, param_types, vec![], &args);
             Some(out_place.to_cvalue(fx))
         }
+        BinOp::AddUnchecked | BinOp::SubUnchecked | BinOp::MulUnchecked => unreachable!(),
         BinOp::Offset => unreachable!("offset should only be used on pointers, not 128bit ints"),
         BinOp::Div | BinOp::Rem => unreachable!(),
         BinOp::Lt | BinOp::Le | BinOp::Eq | BinOp::Ge | BinOp::Gt | BinOp::Ne => unreachable!(),
-        BinOp::Shl | BinOp::Shr => unreachable!(),
+        BinOp::Shl | BinOp::ShlUnchecked | BinOp::Shr | BinOp::ShrUnchecked => unreachable!(),
     }
 }

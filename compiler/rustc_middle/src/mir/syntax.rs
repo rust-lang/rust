@@ -1267,10 +1267,16 @@ pub enum UnOp {
 pub enum BinOp {
     /// The `+` operator (addition)
     Add,
+    /// Like `Add`, but with UB on overflow.  (Integers only.)
+    AddUnchecked,
     /// The `-` operator (subtraction)
     Sub,
+    /// Like `Sub`, but with UB on overflow.  (Integers only.)
+    SubUnchecked,
     /// The `*` operator (multiplication)
     Mul,
+    /// Like `Mul`, but with UB on overflow.  (Integers only.)
+    MulUnchecked,
     /// The `/` operator (division)
     ///
     /// For integer types, division by zero is UB, as is `MIN / -1` for signed.
@@ -1296,10 +1302,17 @@ pub enum BinOp {
     ///
     /// The offset is truncated to the size of the first operand before shifting.
     Shl,
+    /// Like `Shl`, but is UB if the RHS >= LHS::BITS
+    ShlUnchecked,
     /// The `>>` operator (shift right)
     ///
     /// The offset is truncated to the size of the first operand before shifting.
+    ///
+    /// This is an arithmetic shift if the LHS is signed
+    /// and a logical shift if the LHS is unsigned.
     Shr,
+    /// Like `Shl`, but is UB if the RHS >= LHS::BITS
+    ShrUnchecked,
     /// The `==` operator (equality)
     Eq,
     /// The `<` operator (less than)
