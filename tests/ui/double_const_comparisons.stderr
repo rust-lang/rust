@@ -1,5 +1,5 @@
 error: boolean expression will never evaluate to 'true'
-  --> $DIR/double_const_comparisons.rs:15:5
+  --> $DIR/double_const_comparisons.rs:44:5
    |
 LL |     status_code <= 400 && status_code > 500;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     status_code <= 400 && status_code > 500;
    = note: `-D clippy::impossible-double-const-comparisons` implied by `-D warnings`
 
 error: boolean expression will never evaluate to 'true'
-  --> $DIR/double_const_comparisons.rs:16:5
+  --> $DIR/double_const_comparisons.rs:45:5
    |
 LL |     status_code > 500 && status_code < 400;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -16,7 +16,7 @@ LL |     status_code > 500 && status_code < 400;
    = note: since `500` > `400`, the expression evaluates to false for any value of `status_code`
 
 error: boolean expression will never evaluate to 'true'
-  --> $DIR/double_const_comparisons.rs:17:5
+  --> $DIR/double_const_comparisons.rs:46:5
    |
 LL |     status_code < 500 && status_code > 500;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -24,7 +24,7 @@ LL |     status_code < 500 && status_code > 500;
    = note: `status_code` cannot simultaneously be greater than and less than `500`
 
 error: boolean expression will never evaluate to 'true'
-  --> $DIR/double_const_comparisons.rs:20:5
+  --> $DIR/double_const_comparisons.rs:49:5
    |
 LL |     status_code < { 400 } && status_code > { 500 };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -32,7 +32,7 @@ LL |     status_code < { 400 } && status_code > { 500 };
    = note: since `{ 400 }` < `{ 500 }`, the expression evaluates to false for any value of `status_code`
 
 error: boolean expression will never evaluate to 'true'
-  --> $DIR/double_const_comparisons.rs:21:5
+  --> $DIR/double_const_comparisons.rs:50:5
    |
 LL |     status_code < STATUS_BAD_REQUEST && status_code > STATUS_SERVER_ERROR;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -40,7 +40,7 @@ LL |     status_code < STATUS_BAD_REQUEST && status_code > STATUS_SERVER_ERROR;
    = note: since `STATUS_BAD_REQUEST` < `STATUS_SERVER_ERROR`, the expression evaluates to false for any value of `status_code`
 
 error: boolean expression will never evaluate to 'true'
-  --> $DIR/double_const_comparisons.rs:22:5
+  --> $DIR/double_const_comparisons.rs:51:5
    |
 LL |     status_code <= u16::MIN + 1 && status_code > STATUS_SERVER_ERROR;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -48,7 +48,7 @@ LL |     status_code <= u16::MIN + 1 && status_code > STATUS_SERVER_ERROR;
    = note: since `u16::MIN + 1` < `STATUS_SERVER_ERROR`, the expression evaluates to false for any value of `status_code`
 
 error: boolean expression will never evaluate to 'true'
-  --> $DIR/double_const_comparisons.rs:23:5
+  --> $DIR/double_const_comparisons.rs:52:5
    |
 LL |     status_code < STATUS_SERVER_ERROR && status_code > STATUS_SERVER_ERROR;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -56,7 +56,39 @@ LL |     status_code < STATUS_SERVER_ERROR && status_code > STATUS_SERVER_ERROR;
    = note: `status_code` cannot simultaneously be greater than and less than `STATUS_SERVER_ERROR`
 
 error: boolean expression will never evaluate to 'true'
-  --> $DIR/double_const_comparisons.rs:28:5
+  --> $DIR/double_const_comparisons.rs:55:5
+   |
+LL |     status < { 400 } && status > { 500 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: since `{ 400 }` < `{ 500 }`, the expression evaluates to false for any value of `status`
+
+error: boolean expression will never evaluate to 'true'
+  --> $DIR/double_const_comparisons.rs:56:5
+   |
+LL |     status < STATUS_BAD_REQUEST && status > STATUS_SERVER_ERROR;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: since `STATUS_BAD_REQUEST` < `STATUS_SERVER_ERROR`, the expression evaluates to false for any value of `status`
+
+error: boolean expression will never evaluate to 'true'
+  --> $DIR/double_const_comparisons.rs:57:5
+   |
+LL |     status <= u16::MIN + 1 && status > STATUS_SERVER_ERROR;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: since `u16::MIN + 1` < `STATUS_SERVER_ERROR`, the expression evaluates to false for any value of `status`
+
+error: boolean expression will never evaluate to 'true'
+  --> $DIR/double_const_comparisons.rs:58:5
+   |
+LL |     status < STATUS_SERVER_ERROR && status > STATUS_SERVER_ERROR;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `status` cannot simultaneously be greater than and less than `STATUS_SERVER_ERROR`
+
+error: boolean expression will never evaluate to 'true'
+  --> $DIR/double_const_comparisons.rs:63:5
    |
 LL |     500 >= status_code && 600 < status_code; // Incorrect
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -64,88 +96,104 @@ LL |     500 >= status_code && 600 < status_code; // Incorrect
    = note: since `500` < `600`, the expression evaluates to false for any value of `status_code`
 
 error: boolean expression will never evaluate to 'true'
-  --> $DIR/double_const_comparisons.rs:29:5
+  --> $DIR/double_const_comparisons.rs:64:5
    |
 LL |     500 >= status_code && status_code > 600; // Incorrect
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: since `500` < `600`, the expression evaluates to false for any value of `status_code`
 
+error: boolean expression will never evaluate to 'true'
+  --> $DIR/double_const_comparisons.rs:69:5
+   |
+LL |     500 >= status && 600 < status; // Incorrect
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: since `500` < `600`, the expression evaluates to false for any value of `status`
+
+error: boolean expression will never evaluate to 'true'
+  --> $DIR/double_const_comparisons.rs:70:5
+   |
+LL |     500 >= status && status > 600; // Incorrect
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: since `500` < `600`, the expression evaluates to false for any value of `status`
+
 error: right-hand side of `&&` operator has no effect
-  --> $DIR/double_const_comparisons.rs:32:5
+  --> $DIR/double_const_comparisons.rs:73:5
    |
 LL |     status_code < 200 && status_code <= 299;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: `if `status_code < 200` evaluates to true, status_code <= 299` will always evaluate to true as well
-  --> $DIR/double_const_comparisons.rs:32:23
+  --> $DIR/double_const_comparisons.rs:73:23
    |
 LL |     status_code < 200 && status_code <= 299;
    |                       ^^^^^^^^^^^^^^^^^^^^^
    = note: `-D clippy::ineffective-double-const-comparisons` implied by `-D warnings`
 
 error: left-hand side of `&&` operator has no effect
-  --> $DIR/double_const_comparisons.rs:33:5
+  --> $DIR/double_const_comparisons.rs:74:5
    |
 LL |     status_code > 200 && status_code >= 299;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: `if `status_code >= 299` evaluates to true, status_code > 200` will always evaluate to true as well
-  --> $DIR/double_const_comparisons.rs:33:5
+  --> $DIR/double_const_comparisons.rs:74:5
    |
 LL |     status_code > 200 && status_code >= 299;
    |     ^^^^^^^^^^^^^^^^^^^^^
 
 error: left-hand side of `&&` operator has no effect
-  --> $DIR/double_const_comparisons.rs:35:5
+  --> $DIR/double_const_comparisons.rs:76:5
    |
 LL |     status_code >= 500 && status_code > 500; // Useless left
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: `if `status_code > 500` evaluates to true, status_code >= 500` will always evaluate to true as well
-  --> $DIR/double_const_comparisons.rs:35:5
+  --> $DIR/double_const_comparisons.rs:76:5
    |
 LL |     status_code >= 500 && status_code > 500; // Useless left
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: right-hand side of `&&` operator has no effect
-  --> $DIR/double_const_comparisons.rs:36:5
+  --> $DIR/double_const_comparisons.rs:77:5
    |
 LL |     status_code > 500 && status_code >= 500; // Useless right
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: `if `status_code > 500` evaluates to true, status_code >= 500` will always evaluate to true as well
-  --> $DIR/double_const_comparisons.rs:36:23
+  --> $DIR/double_const_comparisons.rs:77:23
    |
 LL |     status_code > 500 && status_code >= 500; // Useless right
    |                       ^^^^^^^^^^^^^^^^^^^^^
 
 error: left-hand side of `&&` operator has no effect
-  --> $DIR/double_const_comparisons.rs:37:5
+  --> $DIR/double_const_comparisons.rs:78:5
    |
 LL |     status_code <= 500 && status_code < 500; // Useless left
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: `if `status_code < 500` evaluates to true, status_code <= 500` will always evaluate to true as well
-  --> $DIR/double_const_comparisons.rs:37:5
+  --> $DIR/double_const_comparisons.rs:78:5
    |
 LL |     status_code <= 500 && status_code < 500; // Useless left
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: right-hand side of `&&` operator has no effect
-  --> $DIR/double_const_comparisons.rs:38:5
+  --> $DIR/double_const_comparisons.rs:79:5
    |
 LL |     status_code < 500 && status_code <= 500; // Useless right
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: `if `status_code < 500` evaluates to true, status_code <= 500` will always evaluate to true as well
-  --> $DIR/double_const_comparisons.rs:38:23
+  --> $DIR/double_const_comparisons.rs:79:23
    |
 LL |     status_code < 500 && status_code <= 500; // Useless right
    |                       ^^^^^^^^^^^^^^^^^^^^^
 
 error: boolean expression will never evaluate to 'true'
-  --> $DIR/double_const_comparisons.rs:42:5
+  --> $DIR/double_const_comparisons.rs:83:5
    |
 LL |     name < "Jennifer" && name > "Shannon";
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -153,7 +201,7 @@ LL |     name < "Jennifer" && name > "Shannon";
    = note: since `"Jennifer"` < `"Shannon"`, the expression evaluates to false for any value of `name`
 
 error: boolean expression will never evaluate to 'true'
-  --> $DIR/double_const_comparisons.rs:45:5
+  --> $DIR/double_const_comparisons.rs:86:5
    |
 LL |     numbers < [3, 4] && numbers > [5, 6];
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -161,7 +209,7 @@ LL |     numbers < [3, 4] && numbers > [5, 6];
    = note: since `[3, 4]` < `[5, 6]`, the expression evaluates to false for any value of `numbers`
 
 error: boolean expression will never evaluate to 'true'
-  --> $DIR/double_const_comparisons.rs:48:5
+  --> $DIR/double_const_comparisons.rs:89:5
    |
 LL |     letter < 'b' && letter > 'c';
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -169,12 +217,12 @@ LL |     letter < 'b' && letter > 'c';
    = note: since `'b'` < `'c'`, the expression evaluates to false for any value of `letter`
 
 error: boolean expression will never evaluate to 'true'
-  --> $DIR/double_const_comparisons.rs:51:5
+  --> $DIR/double_const_comparisons.rs:92:5
    |
 LL |     area < std::f32::consts::E && area > std::f32::consts::PI;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: since `std::f32::consts::E` < `std::f32::consts::PI`, the expression evaluates to false for any value of `area`
 
-error: aborting due to 19 previous errors
+error: aborting due to 25 previous errors
 
