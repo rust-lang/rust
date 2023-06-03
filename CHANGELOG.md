@@ -5048,6 +5048,7 @@ Released 2018-09-13
 [`needless_pass_by_value`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_pass_by_value
 [`needless_question_mark`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_question_mark
 [`needless_range_loop`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_range_loop
+[`needless_raw_string_hashes`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_raw_string_hashes
 [`needless_return`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_return
 [`needless_splitn`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_splitn
 [`needless_update`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_update

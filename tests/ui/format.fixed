@@ -7,6 +7,7 @@
     clippy::to_string_in_format_args,
     clippy::needless_borrow,
     clippy::uninlined_format_args,
+    clippy::needless_raw_string_hashes,
     clippy::useless_vec
 )]
 

@@ -230,6 +230,7 @@ mod needless_late_init;
 mod needless_parens_on_range_literals;
 mod needless_pass_by_value;
 mod needless_question_mark;
+mod needless_raw_string_hashes;
 mod needless_update;
 mod neg_cmp_op_on_partial_ord;
 mod neg_multiply;
