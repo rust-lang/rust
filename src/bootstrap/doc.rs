@@ -746,7 +746,16 @@ impl Step for Rustc {
 }
 
 macro_rules! tool_doc {
-    ($tool: ident, $should_run: literal, $path: literal, $(rustc_tool = $rustc_tool:literal, )? $(in_tree = $in_tree:literal, )? [$($krate: literal),+ $(,)?] $(,)?) => {
+    (
+        $tool: ident,
+        $should_run: literal,
+        $path: literal,
+        $(rustc_tool = $rustc_tool:literal, )?
+        $(in_tree = $in_tree:literal, )?
+        $(only_libs = $only_libs:literal, )?
+        [$($krate: literal),+ $(,)?]
+        $(,)?
+    ) => {
         #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
         pub struct $tool {
             target: TargetSelection,
@@ -834,7 +843,11 @@ macro_rules! tool_doc {
                 cargo.arg("-Zskip-rustdoc-fingerprint");
                 // Only include compiler crates, no dependencies of those, such as `libc`.
                 cargo.arg("--no-deps");
-                cargo.arg("--lib");
+
+                if false $(|| $only_libs)? {
+                    cargo.arg("--lib");
+                }
+
                 $(
                     cargo.arg("-p").arg($krate);
                 )+
@@ -886,7 +899,14 @@ tool_doc!(
     ]
 );
 tool_doc!(Tidy, "tidy", "src/tools/tidy", rustc_tool = false, ["tidy"]);
-tool_doc!(Bootstrap, "bootstrap", "src/bootstrap", rustc_tool = false, ["bootstrap"]);
+tool_doc!(
+    Bootstrap,
+    "bootstrap",
+    "src/bootstrap",
+    rustc_tool = false,
+    only_libs = true,
+    ["bootstrap"]
+);
 
 #[derive(Ord, PartialOrd, Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct ErrorIndex {
