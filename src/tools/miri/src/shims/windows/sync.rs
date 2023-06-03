@@ -38,6 +38,9 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         Ok(())
     }
 
+    // Windows sync primitives are pointer sized.
+    // We only use the first 4 bytes for the id.
+
     fn srwlock_get_id(
         &mut self,
         rwlock_op: &OpTy<'tcx, Provenance>,
