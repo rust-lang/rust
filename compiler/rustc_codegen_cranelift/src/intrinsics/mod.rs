@@ -472,25 +472,11 @@ fn codegen_regular_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, CValue::by_val(align, usize_layout));
         }
 
-        sym::unchecked_add
-        | sym::unchecked_sub
-        | sym::unchecked_mul
-        | sym::exact_div
-        | sym::unchecked_shl
-        | sym::unchecked_shr => {
+        sym::exact_div => {
             intrinsic_args!(fx, args => (x, y); intrinsic);
 
-            // FIXME trap on overflow
-            let bin_op = match intrinsic {
-                sym::unchecked_add => BinOp::Add,
-                sym::unchecked_sub => BinOp::Sub,
-                sym::unchecked_mul => BinOp::Mul,
-                sym::exact_div => BinOp::Div,
-                sym::unchecked_shl => BinOp::Shl,
-                sym::unchecked_shr => BinOp::Shr,
-                _ => unreachable!(),
-            };
-            let res = crate::num::codegen_int_binop(fx, bin_op, x, y);
+            // FIXME trap on inexact
+            let res = crate::num::codegen_int_binop(fx, BinOp::Div, x, y);
             ret.write_cvalue(fx, res);
         }
         sym::saturating_add | sym::saturating_sub => {
