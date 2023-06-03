@@ -693,6 +693,7 @@ impl Step for Rustc {
         // rustc. rustdoc needs to be able to see everything, for example when
         // merging the search index, or generating local (relative) links.
         let out_dir = builder.stage_out(compiler, Mode::Rustc).join(target.triple).join("doc");
+        t!(fs::create_dir_all(out_dir.parent().unwrap()));
         symlink_dir_force(&builder.config, &out, &out_dir);
         // Cargo puts proc macros in `target/doc` even if you pass `--target`
         // explicitly (https://github.com/rust-lang/cargo/issues/7677).
