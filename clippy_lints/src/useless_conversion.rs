@@ -93,14 +93,13 @@ fn into_iter_call<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>) -> Option<
 /// Same as [`into_iter_call`], but tries to look for the innermost `.into_iter()` call, e.g.:
 /// `foo.into_iter().into_iter()`
 ///  ^^^  we want this expression
-fn into_iter_deep_call<'hir>(cx: &LateContext<'_>, mut expr: &'hir Expr<'hir>) -> Option<&'hir Expr<'hir>> {
-    loop {
-        if let Some(recv) = into_iter_call(cx, expr) {
-            expr = recv;
-        } else {
-            return Some(expr);
-        }
+fn into_iter_deep_call<'hir>(cx: &LateContext<'_>, mut expr: &'hir Expr<'hir>) -> (&'hir Expr<'hir>, usize) {
+    let mut depth = 0;
+    while let Some(recv) = into_iter_call(cx, expr) {
+        expr = recv;
+        depth += 1;
     }
+    (expr, depth)
 }
 
 #[expect(clippy::too_many_lines)]
@@ -170,18 +169,19 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             && let Some(&into_iter_param) = sig.inputs().get(kind.param_pos(arg_pos))
                             && let ty::Param(param) = into_iter_param.kind()
                             && let Some(span) = into_iter_bound(cx, parent_fn_did, into_iter_did, param.index)
+                        {
                             // Get the "innermost" `.into_iter()` call, e.g. given this expression:
                             // `foo.into_iter().into_iter()`
                             //  ^^^
-                            //  We want this span
-                            && let Some(into_iter_recv) = into_iter_deep_call(cx, into_iter_recv)
-                        {
+                            let (into_iter_recv, depth) = into_iter_deep_call(cx, into_iter_recv);
+
+                            let plural = if depth == 0 { "" } else { "s" };
                             let mut applicability = Applicability::MachineApplicable;
                             let sugg = snippet_with_applicability(cx, into_iter_recv.span.source_callsite(), "<expr>", &mut applicability).into_owned();
                             span_lint_and_then(cx, USELESS_CONVERSION, e.span, "explicit call to `.into_iter()` in function argument accepting `IntoIterator`", |diag| {
                                 diag.span_suggestion(
                                     e.span,
-                                    "consider removing `.into_iter()`",
+                                    format!("consider removing the `.into_iter()`{plural}"),
                                     sugg,
                                     applicability,
                                 );
