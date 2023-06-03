@@ -1,0 +1,63 @@
+error[E0631]: type mismatch in function arguments
+  --> $DIR/suggest-option-asderef.rs:20:52
+   |
+LL | fn takes_str(_: &str) -> Option<()> {
+   | ----------------------------------- found signature defined here
+...
+LL |     let _: Option<()> = produces_string().and_then(takes_str);
+   |                                           -------- ^^^^^^^^^ expected due to this
+   |                                           |
+   |                                           required by a bound introduced by this call
+   |
+   = note: expected function signature `fn(String) -> _`
+              found function signature `for<'a> fn(&'a str) -> _`
+note: required by a bound in `Option::<T>::and_then`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+help: call `Option::as_deref()` first
+   |
+LL |     let _: Option<()> = produces_string().as_deref().and_then(takes_str);
+   |                                          +++++++++++
+
+error[E0631]: type mismatch in function arguments
+  --> $DIR/suggest-option-asderef.rs:23:55
+   |
+LL | fn takes_str(_: &str) -> Option<()> {
+   | ----------------------------------- found signature defined here
+...
+LL |     let _: Option<Option<()>> = produces_string().map(takes_str);
+   |                                                   --- ^^^^^^^^^ expected due to this
+   |                                                   |
+   |                                                   required by a bound introduced by this call
+   |
+   = note: expected function signature `fn(String) -> _`
+              found function signature `for<'a> fn(&'a str) -> _`
+note: required by a bound in `Option::<T>::map`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+help: call `Option::as_deref()` first
+   |
+LL |     let _: Option<Option<()>> = produces_string().as_deref().map(takes_str);
+   |                                                  +++++++++++
+
+error[E0631]: type mismatch in function arguments
+  --> $DIR/suggest-option-asderef.rs:26:55
+   |
+LL | fn takes_str_mut(_: &mut str) -> Option<()> {
+   | ------------------------------------------- found signature defined here
+...
+LL |     let _: Option<Option<()>> = produces_string().map(takes_str_mut);
+   |                                                   --- ^^^^^^^^^^^^^ expected due to this
+   |                                                   |
+   |                                                   required by a bound introduced by this call
+   |
+   = note: expected function signature `fn(String) -> _`
+              found function signature `for<'a> fn(&'a mut str) -> _`
+note: required by a bound in `Option::<T>::map`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+help: call `Option::as_deref_mut()` first
+   |
+LL |     let _: Option<Option<()>> = produces_string().as_deref_mut().map(takes_str_mut);
+   |                                                  +++++++++++++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0631`.
