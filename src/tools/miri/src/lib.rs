@@ -8,6 +8,7 @@
 #![feature(nonzero_ops)]
 #![feature(local_key_cell_methods)]
 #![feature(round_ties_even)]
+#![feature(os_str_bytes)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
