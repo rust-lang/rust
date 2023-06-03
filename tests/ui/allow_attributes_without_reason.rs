@@ -31,7 +31,7 @@ fn main() {
 
 // Make sure this is not triggered on `?` desugaring
 
-pub fn trigger_fp_option() -> Option<()>{
+pub fn trigger_fp_option() -> Option<()> {
     Some(())?;
     None?;
     Some(())
