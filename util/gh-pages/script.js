@@ -270,7 +270,7 @@
             }, true);
 
             // Watch for changes in the URL path and update the search and lint display
-            $scope.$watch($location.path, function (newPath) {
+            $scope.$watch(function () { return $location.path(); }, function (newPath) {
                 const searchParameter = newPath.substring(1);
                 if ($scope.search !== searchParameter) {
                     $scope.search = searchParameter;
@@ -292,12 +292,12 @@
                 }
             });
 
-            $scope.$watch($location.search, function (newParameters) {
+            $scope.$watch(function () { return $location.search(); }, function (newParameters) {
                 if (!internalURLChange) {
                     loadFromURLParameters();
                 }
                 internalURLChange = false;
-            });
+            }, true);
 
             $scope.updatePath = function () {
                 if (debounceTimeout) {
