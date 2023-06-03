@@ -959,21 +959,21 @@ impl Step for UnstableBookGen {
     }
 }
 
-fn symlink_dir_force(config: &Config, src: &Path, dst: &Path) -> io::Result<()> {
+fn symlink_dir_force(config: &Config, original: &Path, link: &Path) -> io::Result<()> {
     if config.dry_run() {
         return Ok(());
     }
-    if let Ok(m) = fs::symlink_metadata(dst) {
+    if let Ok(m) = fs::symlink_metadata(link) {
         if m.file_type().is_dir() {
-            fs::remove_dir_all(dst)?;
+            fs::remove_dir_all(link)?;
         } else {
             // handle directory junctions on windows by falling back to
             // `remove_dir`.
-            fs::remove_file(dst).or_else(|_| fs::remove_dir(dst))?;
+            fs::remove_file(link).or_else(|_| fs::remove_dir(link))?;
         }
     }
 
-    symlink_dir(config, src, dst)
+    symlink_dir(config, original, link)
 }
 
 #[derive(Ord, PartialOrd, Debug, Copy, Clone, Hash, PartialEq, Eq)]
