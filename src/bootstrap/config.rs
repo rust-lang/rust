@@ -25,6 +25,7 @@ use crate::flags::{Color, Flags, Warnings};
 use crate::util::{exe, output, t};
 use build_helper::detail_exit_macro;
 use once_cell::sync::OnceCell;
+use semver::Version;
 use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
 
@@ -1114,10 +1115,14 @@ impl Config {
             config.out = crate::util::absolute(&config.out);
         }
 
-        config.initial_rustc = build.rustc.map(PathBuf::from).unwrap_or_else(|| {
+        config.initial_rustc = if let Some(rustc) = build.rustc {
+            config.check_build_rustc_version(&rustc);
+            PathBuf::from(rustc)
+        } else {
             config.download_beta_toolchain();
             config.out.join(config.build.triple).join("stage0/bin/rustc")
-        });
+        };
+
         config.initial_cargo = build
             .cargo
             .map(|cargo| {
@@ -1777,6 +1782,42 @@ impl Config {
 
     pub fn default_codegen_backend(&self) -> Option<Interned<String>> {
         self.rust_codegen_backends.get(0).cloned()
+    }
+
+    pub fn check_build_rustc_version(&self, rustc_path: &str) {
+        if self.dry_run() {
+            return;
+        }
+
+        // check rustc version is same or lower with 1 apart from the building one
+        let mut cmd = Command::new(rustc_path);
+        cmd.arg("--version");
+        let rustc_output = output(&mut cmd)
+            .lines()
+            .next()
+            .unwrap()
+            .split(' ')
+            .nth(1)
+            .unwrap()
+            .split('-')
+            .next()
+            .unwrap()
+            .to_owned();
+        let rustc_version = Version::parse(&rustc_output.trim()).unwrap();
+        let source_version =
+            Version::parse(&fs::read_to_string(self.src.join("src/version")).unwrap().trim())
+                .unwrap();
+        if !(source_version == rustc_version
+            || (source_version.major == rustc_version.major
+                && source_version.minor == rustc_version.minor + 1))
+        {
+            let prev_version = format!("{}.{}.x", source_version.major, source_version.minor - 1);
+            eprintln!(
+                "Unexpected rustc version: {}, we should use {}/{} to build source with {}",
+                rustc_version, prev_version, source_version, source_version
+            );
+            detail_exit_macro!(1);
+        }
     }
 
     /// Returns the commit to download, or `None` if we shouldn't download CI artifacts.
