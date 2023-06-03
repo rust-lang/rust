@@ -358,15 +358,16 @@ impl<'cx> WithSearchPat for (&FnKind<'cx>, &Body<'cx>, HirId, Span) {
     }
 }
 
-impl<'cx> WithSearchPat for (&Attribute, &LateContext<'cx>) {
+// `Attribute` does not have the `hir` associated lifetime, so we cannot use the macro
+impl<'cx> WithSearchPat for &'cx Attribute {
     type Context = LateContext<'cx>;
 
     fn search_pat(&self, _cx: &Self::Context) -> (Pat, Pat) {
-        attr_search_pat(self.0)
+        attr_search_pat(self)
     }
 
     fn span(&self) -> Span {
-        self.0.span
+        self.span
     }
 }
 
