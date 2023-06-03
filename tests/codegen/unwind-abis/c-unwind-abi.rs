@@ -1,4 +1,5 @@
 // compile-flags: -C opt-level=0
+// needs-unwind
 
 // Test that `nounwind` attributes are correctly applied to exported `C` and `C-unwind` extern
 // functions. `C-unwind` functions MUST NOT have this attribute. We disable optimizations above
