@@ -7,7 +7,7 @@
 
 #![crate_type = "lib"]
 
-// CHECK-LABEL: define void @string_new
+// CHECK-LABEL: define {{(dso_local )?}}void @string_new
 #[no_mangle]
 pub fn string_new() -> String {
     // CHECK: store ptr inttoptr
@@ -17,7 +17,7 @@ pub fn string_new() -> String {
     String::new()
 }
 
-// CHECK-LABEL: define void @empty_to_string
+// CHECK-LABEL: define {{(dso_local )?}}void @empty_to_string
 #[no_mangle]
 pub fn empty_to_string() -> String {
     // CHECK: store ptr inttoptr

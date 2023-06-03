@@ -31,4 +31,4 @@ pub fn box_uninitialized2() -> Box<MaybeUninit<[usize; 1024 * 1024]>> {
 // Hide the LLVM 15+ `allocalign` attribute in the declaration of __rust_alloc
 // from the CHECK-NOT above. We don't check the attributes here because we can't rely
 // on all of them being set until LLVM 15.
-// CHECK: declare noalias{{.*}} @__rust_alloc(i{{[0-9]+}} noundef, i{{[0-9]+.*}} noundef)
+// CHECK: declare {{(dso_local )?}}noalias{{.*}} @__rust_alloc(i{{[0-9]+}} noundef, i{{[0-9]+.*}} noundef)
