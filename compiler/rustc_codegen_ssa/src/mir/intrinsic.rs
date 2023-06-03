@@ -211,52 +211,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 args[1].val.unaligned_volatile_store(bx, dst);
                 return;
             }
-            | sym::unchecked_shl
-            | sym::unchecked_shr
-            | sym::unchecked_add
-            | sym::unchecked_sub
-            | sym::unchecked_mul
-            | sym::exact_div => {
+            sym::exact_div => {
                 let ty = arg_tys[0];
                 match int_type_width_signed(ty, bx.tcx()) {
-                    Some((_width, signed)) => match name {
-                        sym::exact_div => {
-                            if signed {
-                                bx.exactsdiv(args[0].immediate(), args[1].immediate())
-                            } else {
-                                bx.exactudiv(args[0].immediate(), args[1].immediate())
-                            }
+                    Some((_width, signed)) => {
+                        if signed {
+                            bx.exactsdiv(args[0].immediate(), args[1].immediate())
+                        } else {
+                            bx.exactudiv(args[0].immediate(), args[1].immediate())
                         }
-                        sym::unchecked_shl => bx.shl(args[0].immediate(), args[1].immediate()),
-                        sym::unchecked_shr => {
-                            if signed {
-                                bx.ashr(args[0].immediate(), args[1].immediate())
-                            } else {
-                                bx.lshr(args[0].immediate(), args[1].immediate())
-                            }
-                        }
-                        sym::unchecked_add => {
-                            if signed {
-                                bx.unchecked_sadd(args[0].immediate(), args[1].immediate())
-                            } else {
-                                bx.unchecked_uadd(args[0].immediate(), args[1].immediate())
-                            }
-                        }
-                        sym::unchecked_sub => {
-                            if signed {
-                                bx.unchecked_ssub(args[0].immediate(), args[1].immediate())
-                            } else {
-                                bx.unchecked_usub(args[0].immediate(), args[1].immediate())
-                            }
-                        }
-                        sym::unchecked_mul => {
-                            if signed {
-                                bx.unchecked_smul(args[0].immediate(), args[1].immediate())
-                            } else {
-                                bx.unchecked_umul(args[0].immediate(), args[1].immediate())
-                            }
-                        }
-                        _ => bug!(),
                     },
                     None => {
                         bx.tcx().sess.emit_err(InvalidMonomorphization::BasicIntegerType { span, name, ty });
