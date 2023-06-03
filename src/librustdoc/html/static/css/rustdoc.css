@@ -190,7 +190,6 @@ h1, h2, h3, h4, h5, h6,
 .mobile-topbar,
 .search-input,
 .search-results .result-name,
-.search-results .type-kind,
 .item-name > a,
 .out-of-band,
 span.since,
@@ -871,10 +870,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 }
 
 .search-results > a > div {
-	flex: 3;
-}
-
-.search-results > a > div.type-kind {
 	flex: 1;
 }
 
@@ -1720,14 +1715,6 @@ in source-script.js
 	.item-table, .item-row, .item-table > li, .item-table > li > div,
 	.search-results > a, .search-results > a > div {
 		display: block;
-	}
-
-	.search-results > a > .type-kind {
-		display: inline-block;
-	}
-	.search-results > a > .result-name {
-		display: inline-block;
-		margin-left: 7px;
 	}
 
 	/* Display an alternating layout on tablets and phones */

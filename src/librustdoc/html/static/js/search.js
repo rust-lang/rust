@@ -1892,14 +1892,9 @@ function initSearch(rawSearchIndex) {
                     resultName.appendChild(alias);
                 }
 
-                const typeDisplay = document.createElement("div");
-                typeDisplay.innerText = typeName;
-                typeDisplay.className = "type-kind";
-                link.appendChild(typeDisplay);
-
                 resultName.insertAdjacentHTML(
                     "beforeend",
-                    item.displayPath + "<span class=\"" + type + "\">" + name + "</span>");
+                    `${typeName} ${item.displayPath}<span class="${type}">${name}</span>`);
                 link.appendChild(resultName);
 
                 const description = document.createElement("div");
