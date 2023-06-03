@@ -17,7 +17,7 @@ help: the conflicting tag <TAG> was created here, in the initial state Reserved
    |
 LL | pub fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
    |                                                       ^
-help: the conflicting tag <TAG> then transitioned from Reserved to Frozen due to a foreign read access at offsets [0x0..0x1]
+help: the conflicting tag <TAG> later transitioned to Frozen due to a foreign read access at offsets [0x0..0x1]
   --> RUSTLIB/core/src/ptr/mod.rs:LL:CC
    |
 LL |         crate::intrinsics::read_via_copy(src)

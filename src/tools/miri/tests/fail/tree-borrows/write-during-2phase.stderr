@@ -18,7 +18,7 @@ LL | |         *inner = 42;
 LL | |         n
 LL | |     });
    | |______^
-help: the accessed tag <TAG> then transitioned from Reserved to Disabled due to a foreign write access at offsets [0x0..0x8]
+help: the accessed tag <TAG> later transitioned to Disabled due to a foreign write access at offsets [0x0..0x8]
   --> $DIR/write-during-2phase.rs:LL:CC
    |
 LL |         *inner = 42;

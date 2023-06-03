@@ -51,18 +51,9 @@ fn test_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) ->
     let mut program = CommandBuilder::rustc();
     program.program = miri_path();
 
-    let in_rustc_test_suite = option_env!("RUSTC_STAGE").is_some();
-
     // Add some flags we always want.
-    if in_rustc_test_suite {
-        // Less aggressive warnings to make the rustc toolstate management less painful.
-        // (We often get warnings when e.g. a feature gets stabilized or some lint gets added/improved.)
-        program.args.push("-Astable-features".into());
-        program.args.push("-Aunused".into());
-    } else {
-        program.args.push("-Dwarnings".into());
-        program.args.push("-Dunused".into());
-    }
+    program.args.push("-Dwarnings".into());
+    program.args.push("-Dunused".into());
     if let Ok(extra_flags) = env::var("MIRIFLAGS") {
         for flag in extra_flags.split_whitespace() {
             program.args.push(flag.into());
@@ -277,7 +268,6 @@ fn run_dep_mode(target: String, mut args: impl Iterator<Item = OsString>) -> Res
     // the arguments to the interpreted prog
     cmd.arg("--");
     cmd.args(args);
-    println!("{cmd:?}");
     if cmd.spawn()?.wait()?.success() { Ok(()) } else { std::process::exit(1) }
 }
 

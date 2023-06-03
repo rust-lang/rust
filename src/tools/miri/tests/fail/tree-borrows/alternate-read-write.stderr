@@ -17,13 +17,13 @@ help: the conflicting tag <TAG> was created here, in the initial state Reserved
    |
 LL |     let y = unsafe { &mut *(x as *mut u8) };
    |                      ^^^^^^^^^^^^^^^^^^^^
-help: the conflicting tag <TAG> then transitioned from Reserved to Active due to a child write access at offsets [0x0..0x1]
+help: the conflicting tag <TAG> later transitioned to Active due to a child write access at offsets [0x0..0x1]
   --> $DIR/alternate-read-write.rs:LL:CC
    |
 LL |     *y += 1; // Success
    |     ^^^^^^^
-   = help: this corresponds to an activation
-help: the conflicting tag <TAG> then transitioned from Active to Frozen due to a foreign read access at offsets [0x0..0x1]
+   = help: this corresponds to the first write to a 2-phase borrowed mutable reference
+help: the conflicting tag <TAG> later transitioned to Frozen due to a foreign read access at offsets [0x0..0x1]
   --> $DIR/alternate-read-write.rs:LL:CC
    |
 LL |     let _val = *x;

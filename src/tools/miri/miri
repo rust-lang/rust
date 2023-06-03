@@ -77,7 +77,7 @@ if [ -z "$COMMAND" ]; then
 fi
 shift
 # macOS does not have a useful readlink/realpath so we have to use Python instead...
-MIRIDIR=$(python3 -c 'import os, sys; print(os.path.dirname(os.path.realpath(sys.argv[1])))' "$0")
+MIRIDIR=$(python3 -c 'import pathlib, sys; print(pathlib.Path(sys.argv[1]).resolve().parent.as_posix())' "$0")
 # Used for rustc syncs.
 JOSH_FILTER=":rev(75dd959a3a40eb5b4574f8d2e23aa6efbeb33573:prefix=src/tools/miri):/src/tools/miri"
 # Needed for `./miri bench`.
@@ -184,6 +184,8 @@ many-seeds)
     exit 0
     ;;
 bench)
+    # The hyperfine to use
+    HYPERFINE=${HYPERFINE:-hyperfine -w 1 -m 5 --shell=none}
     # Make sure we have an up-to-date Miri installed
     "$0" install
     # Run the requested benchmarks
@@ -193,7 +195,7 @@ bench)
         BENCHES=("$@")
     fi
     for BENCH in "${BENCHES[@]}"; do
-        hyperfine -w 1 -m 5 --shell=none "cargo +$TOOLCHAIN miri run --manifest-path $MIRIDIR/bench-cargo-miri/$BENCH/Cargo.toml"
+        $HYPERFINE "cargo +$TOOLCHAIN miri run --manifest-path $MIRIDIR/bench-cargo-miri/$BENCH/Cargo.toml"
     done
     exit 0
     ;;
@@ -280,10 +282,9 @@ find_sysroot() {
 # Run command.
 case "$COMMAND" in
 install)
-    # "--locked" to respect the Cargo.lock file if it exists.
     # Install binaries to the miri toolchain's sysroot so they do not interact with other toolchains.
-    $CARGO install $CARGO_EXTRA_FLAGS --path "$MIRIDIR" --force --locked --root "$SYSROOT" "$@"
-    $CARGO install $CARGO_EXTRA_FLAGS --path "$MIRIDIR"/cargo-miri --force --locked --root "$SYSROOT" "$@"
+    $CARGO install $CARGO_EXTRA_FLAGS --path "$MIRIDIR" --force --root "$SYSROOT" "$@"
+    $CARGO install $CARGO_EXTRA_FLAGS --path "$MIRIDIR"/cargo-miri --force --root "$SYSROOT" "$@"
     ;;
 check)
     # Check, and let caller control flags.

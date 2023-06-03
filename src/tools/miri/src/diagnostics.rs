@@ -97,8 +97,12 @@ impl MachineStopType for TerminationInfo {
     }
     fn add_args(
         self: Box<Self>,
-        _: &mut dyn FnMut(std::borrow::Cow<'static, str>, rustc_errors::DiagnosticArgValue<'static>),
-    ) {}
+        _: &mut dyn FnMut(
+            std::borrow::Cow<'static, str>,
+            rustc_errors::DiagnosticArgValue<'static>,
+        ),
+    ) {
+    }
 }
 
 /// Miri specific diagnostics
@@ -324,10 +328,9 @@ pub fn report_error<'tcx, 'mir>(
     // We want to dump the allocation if this is `InvalidUninitBytes`. Since `add_args` consumes
     // the `InterpError`, we extract the variables it before that.
     let extra = match e {
-        UndefinedBehavior(UndefinedBehaviorInfo::InvalidUninitBytes(Some((alloc_id, access)))) => {
-            Some((alloc_id, access))
-        }
-        _ => None
+        UndefinedBehavior(UndefinedBehaviorInfo::InvalidUninitBytes(Some((alloc_id, access)))) =>
+            Some((alloc_id, access)),
+        _ => None,
     };
 
     // FIXME(fee1-dead), HACK: we want to use the error as title therefore we can just extract the
@@ -477,7 +480,7 @@ pub fn report_msg<'tcx>(
     }
 
     let (mut err, handler) = err.into_diagnostic().unwrap();
-    
+
     // Add backtrace
     for (idx, frame_info) in stacktrace.iter().enumerate() {
         let is_local = machine.is_local(frame_info);

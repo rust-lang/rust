@@ -17,19 +17,7 @@ help: the conflicting tag <TAG> was created here, in the initial state Reserved
    |
 LL |         let rmut = &mut *addr_of_mut!(data[0..6]);
    |                                       ^^^^
-help: the conflicting tag <TAG> then transitioned from Reserved to Active due to a child write access at offsets [0x5..0x6]
-  --> $DIR/error-range.rs:LL:CC
-   |
-LL |         rmut[5] += 1;
-   |         ^^^^^^^^^^^^
-   = help: this corresponds to an activation
-help: the conflicting tag <TAG> then transitioned from Active to Frozen due to a foreign read access at offsets [0x5..0x6]
-  --> $DIR/error-range.rs:LL:CC
-   |
-LL |         let _v = data[5];
-   |                  ^^^^^^^
-   = help: this corresponds to a loss of write permissions
-help: the conflicting tag <TAG> then transitioned from Frozen to Disabled due to a foreign write access at offsets [0x5..0x6]
+help: the conflicting tag <TAG> later transitioned to Disabled due to a foreign write access at offsets [0x5..0x6]
   --> $DIR/error-range.rs:LL:CC
    |
 LL |         data[5] = 1;
