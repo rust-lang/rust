@@ -3115,25 +3115,25 @@ fn bind_generator_hidden_types_above<'tcx>(
         .generator_hidden_types(def_id)
         // Deduplicate tys to avoid repeated work.
         .filter(|bty| seen_tys.insert(*bty))
-        .map(|bty| {
-            let mut ty = bty.instantiate(tcx, args);
-
+        .map(|mut bty| {
             // Only remap erased regions if we use them.
             if considering_regions {
-                ty = tcx.fold_regions(ty, |r, current_depth| match r.kind() {
-                    ty::ReErased => {
-                        let br = ty::BoundRegion {
-                            var: ty::BoundVar::from_u32(counter),
-                            kind: ty::BrAnon(None),
-                        };
-                        counter += 1;
-                        ty::Region::new_late_bound(tcx, current_depth, br)
-                    }
-                    r => bug!("unexpected region: {r:?}"),
+                bty = bty.map_bound(|ty| {
+                    tcx.fold_regions(ty, |r, current_depth| match r.kind() {
+                        ty::ReErased => {
+                            let br = ty::BoundRegion {
+                                var: ty::BoundVar::from_u32(counter),
+                                kind: ty::BrAnon(None),
+                            };
+                            counter += 1;
+                            ty::Region::new_late_bound(tcx, current_depth, br)
+                        }
+                        r => bug!("unexpected region: {r:?}"),
+                    })
                 })
             }
 
-            ty
+            bty.instantiate(tcx, args)
         })
         .collect();
     if considering_regions {
