@@ -1813,11 +1813,11 @@ impl Config {
         self.download_rustc_commit().is_some()
     }
 
-    pub(crate) fn download_rustc_commit(&self) -> Option<&'static str> {
+    pub(crate) fn download_rustc_commit(&self) -> Option<&str> {
         static DOWNLOAD_RUSTC: OnceCell<Option<String>> = OnceCell::new();
         if self.dry_run() && DOWNLOAD_RUSTC.get().is_none() {
             // avoid trying to actually download the commit
-            return None;
+            return self.download_rustc_commit.as_deref();
         }
 
         DOWNLOAD_RUSTC
