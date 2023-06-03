@@ -11,6 +11,7 @@
 // aux-build: post_monomorphization_error.rs
 // build-fail: this is a post-monomorphization error, it passes check runs and requires building
 //             to actually fail.
+// compile-flags: -Zmir-opt-level=0
 
 extern crate post_monomorphization_error;
 

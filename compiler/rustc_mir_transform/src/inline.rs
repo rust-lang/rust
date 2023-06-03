@@ -10,7 +10,6 @@ use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
-use rustc_session::config::OptLevel;
 use rustc_target::abi::FieldIdx;
 use rustc_target::spec::abi::Abi;
 
@@ -47,12 +46,8 @@ impl<'tcx> MirPass<'tcx> for Inline {
         }
 
         match sess.mir_opt_level() {
-            0 | 1 => false,
-            2 => {
-                (sess.opts.optimize == OptLevel::Default
-                    || sess.opts.optimize == OptLevel::Aggressive)
-                    && sess.opts.incremental == None
-            }
+            0 => false,
+            1 | 2 => sess.opts.incremental.is_none(),
             _ => true,
         }
     }
@@ -70,6 +65,14 @@ impl<'tcx> MirPass<'tcx> for Inline {
 }
 
 fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
+    let has_call = body
+        .basic_blocks
+        .iter()
+        .any(|b| matches!(b.terminator().kind, TerminatorKind::Call { .. }));
+    if !has_call {
+        return false;
+    }
+
     let def_id = body.source.def_id().expect_local();
 
     // Only do inlining into fn bodies.
@@ -475,7 +478,16 @@ impl<'tcx> Inliner<'tcx> {
         if callee_body.basic_blocks.len() <= 3 {
             threshold += threshold / 4;
         }
-        debug!("    final inline threshold = {}", threshold);
+
+        // At MIR opt level 1 we only want to do a tiny bit of inlining.
+        // 2 * INSTR_COST is the cost of one statement plus a return terminator.
+        if tcx.sess.mir_opt_level() == 1 {
+            threshold = 2 * INSTR_COST;
+            if callee_body.basic_blocks.len() > 1 {
+                return Err("cost above threshold");
+            }
+        }
+        debug!("final inline threshold = {}", threshold);
 
         // FIXME: Give a bonus to functions with only a single caller
 

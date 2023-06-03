@@ -1,4 +1,5 @@
 // build-fail
+// compile-flags: -Zmir-opt-level=0
 
 fn assert_zst<T>() {
     struct F<T>(T);

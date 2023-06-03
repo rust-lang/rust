@@ -1,0 +1,14 @@
+// MIR for `wrapper` after PreCodegen
+
+fn wrapper(_1: &Thing) -> u8 {
+    debug t => _1;
+    let mut _0: u8;
+    scope 1 (inlined Thing::get) {
+        debug self => _1;
+    }
+
+    bb0: {
+        _0 = ((*_1).0: u8);
+        return;
+    }
+}

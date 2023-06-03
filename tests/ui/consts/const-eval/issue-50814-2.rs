@@ -1,4 +1,5 @@
 // build-fail
+// compile-flags: -Zmir-opt-level=0
 
 trait C {
     const BOO: usize;

@@ -1,4 +1,5 @@
 // build-fail
+// compile-flags: -Zmir-opt-level=0
 
 // Regression test for #66975
 #![warn(unconditional_panic)]

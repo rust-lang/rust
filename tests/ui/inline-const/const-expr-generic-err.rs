@@ -1,4 +1,5 @@
 // build-fail
+// compile-flags: -Zmir-opt-level=0
 #![feature(inline_const)]
 
 fn foo<T>() {

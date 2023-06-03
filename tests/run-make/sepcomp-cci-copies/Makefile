@@ -8,5 +8,5 @@ include ../tools.mk
 all:
 	$(RUSTC) cci_lib.rs
 	$(RUSTC) foo.rs --emit=llvm-ir -C codegen-units=6 \
-		-Z inline-in-all-cgus
+		-Z inline-in-all-cgus -Zmir-opt-level=0
 	[ "$$(cat "$(TMPDIR)"/foo.*.ll | grep -c define\ .*cci_fn)" -eq "2" ]

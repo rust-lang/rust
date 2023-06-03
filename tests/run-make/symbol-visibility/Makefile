@@ -32,12 +32,12 @@ endif
 RE_ANY_RUST_SYMBOL="_ZN.*h.*E\|_R[a-zA-Z0-9_]+"
 
 all:
-	$(RUSTC) -Zshare-generics=no an_rlib.rs
-	$(RUSTC) -Zshare-generics=no a_cdylib.rs
-	$(RUSTC) -Zshare-generics=no a_rust_dylib.rs
-	$(RUSTC) -Zshare-generics=no a_proc_macro.rs
-	$(RUSTC) -Zshare-generics=no an_executable.rs
-	$(RUSTC) -Zshare-generics=no a_cdylib.rs --crate-name combined_rlib_dylib --crate-type=rlib,cdylib
+	$(RUSTC) -Zshare-generics=no -Zmir-opt-level=0 an_rlib.rs
+	$(RUSTC) -Zshare-generics=no -Zmir-opt-level=0 a_cdylib.rs
+	$(RUSTC) -Zshare-generics=no -Zmir-opt-level=0 a_rust_dylib.rs
+	$(RUSTC) -Zshare-generics=no -Zmir-opt-level=0 a_proc_macro.rs
+	$(RUSTC) -Zshare-generics=no -Zmir-opt-level=0 an_executable.rs
+	$(RUSTC) -Zshare-generics=no -Zmir-opt-level=0 a_cdylib.rs --crate-name combined_rlib_dylib --crate-type=rlib,cdylib
 
 	# Check that a cdylib exports its public #[no_mangle] functions
 	[ "$$($(NM) $(TMPDIR)/$(CDYLIB_NAME) | grep -v __imp_ | grep -c public_c_function_from_cdylib)" -eq "1" ]
@@ -85,11 +85,11 @@ endif
 	[ "$$($(NM) $(TMPDIR)/$(COMBINED_CDYLIB_NAME) | grep -v __imp_ | grep -c $(RE_ANY_RUST_SYMBOL))" -eq "0" ]
 
 
-	$(RUSTC) -Zshare-generics=yes an_rlib.rs
-	$(RUSTC) -Zshare-generics=yes a_cdylib.rs
-	$(RUSTC) -Zshare-generics=yes a_rust_dylib.rs
-	$(RUSTC) -Zshare-generics=yes a_proc_macro.rs
-	$(RUSTC) -Zshare-generics=yes an_executable.rs
+	$(RUSTC) -Zshare-generics=yes -Zmir-opt-level=0 an_rlib.rs
+	$(RUSTC) -Zshare-generics=yes -Zmir-opt-level=0 a_cdylib.rs
+	$(RUSTC) -Zshare-generics=yes -Zmir-opt-level=0 a_rust_dylib.rs
+	$(RUSTC) -Zshare-generics=yes -Zmir-opt-level=0 a_proc_macro.rs
+	$(RUSTC) -Zshare-generics=yes -Zmir-opt-level=0 an_executable.rs
 
 	# Check that a cdylib exports its public #[no_mangle] functions
 	[ "$$($(NM) $(TMPDIR)/$(CDYLIB_NAME) | grep -v __imp_ | grep -c public_c_function_from_cdylib)" -eq "1" ]

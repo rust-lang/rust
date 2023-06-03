@@ -1,7 +1,7 @@
 // Function names are formatted differently in old versions of GDB
 // min-gdb-version: 10.1
 
-// compile-flags:-g
+// compile-flags: -g -Zmir-opt-level=0
 
 // === GDB TESTS ===================================================================================
 
