@@ -6,7 +6,7 @@ use rustc_span::Span;
 use crate::diagnostics::RegionName;
 
 #[derive(Diagnostic)]
-#[diag(borrowck_cannot_use_when_mutably_borrowed)]
+#[diag(borrowck_cannot_use_when_mutably_borrowed, code = "E0503")]
 pub(crate) struct CannotUseWhenMutablyBorrowed {
     #[primary_span]
     pub span: Span,

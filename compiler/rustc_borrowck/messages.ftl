@@ -19,8 +19,6 @@ borrowck_borrow_due_to_use_generator =
 borrowck_calling_operator_moves_lhs =
     calling this operator moves the left-hand side
 
-borrowck_cannot_use_when_mutably_borrowed = cannot use `{$desc}` when mutably borrowed
-
 borrowck_cannot_move_when_borrowed =
     cannot move out of {$place ->
         [value] value
@@ -34,6 +32,8 @@ borrowck_cannot_move_when_borrowed =
         [value] value
         *[other] {$value_place}
     } occurs here
+
+borrowck_cannot_use_when_mutably_borrowed = cannot use `{$desc}` when mutably borrowed
 
 borrowck_capture_immute =
     capture is immutable because of use here
