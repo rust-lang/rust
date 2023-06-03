@@ -4352,7 +4352,7 @@ Compatibility Notes
 [cargo/7450]: https://github.com/rust-lang/cargo/pull/7450/
 [cargo/7507]: https://github.com/rust-lang/cargo/pull/7507/
 [cargo/7333]: https://github.com/rust-lang/cargo/pull/7333/
-[(rfc 2008)]: https://rust-lang.github.io/rfcs/2008-non-exhaustive.html
+[(RFC 2008)]: https://rust-lang.github.io/rfcs/2008-non-exhaustive.html
 [`f32::to_be_bytes`]: https://doc.rust-lang.org/std/primitive.f32.html#method.to_be_bytes
 [`f32::to_le_bytes`]: https://doc.rust-lang.org/std/primitive.f32.html#method.to_le_bytes
 [`f32::to_ne_bytes`]: https://doc.rust-lang.org/std/primitive.f32.html#method.to_ne_bytes
@@ -4365,14 +4365,14 @@ Compatibility Notes
 [`f64::from_be_bytes`]: https://doc.rust-lang.org/std/primitive.f64.html#method.from_be_bytes
 [`f64::from_le_bytes`]: https://doc.rust-lang.org/std/primitive.f64.html#method.from_le_bytes
 [`f64::from_ne_bytes`]: https://doc.rust-lang.org/std/primitive.f64.html#method.from_ne_bytes
-[`option::flatten`]: https://doc.rust-lang.org/std/option/enum.Option.html#method.flatten
-[`option::as_deref`]: https://doc.rust-lang.org/std/option/enum.Option.html#method.as_deref
-[`option::as_deref_mut`]: https://doc.rust-lang.org/std/option/enum.Option.html#method.as_deref_mut
-[`hashmap::get_key_value`]: https://doc.rust-lang.org/std/collections/struct.HashMap.html#method.get_key_value
-[`btreemap::get_key_value`]: https://doc.rust-lang.org/std/collections/struct.BTreeMap.html#method.get_key_value
+[`Option::flatten`]: https://doc.rust-lang.org/std/option/enum.Option.html#method.flatten
+[`Option::as_deref`]: https://doc.rust-lang.org/std/option/enum.Option.html#method.as_deref
+[`Option::as_deref_mut`]: https://doc.rust-lang.org/std/option/enum.Option.html#method.as_deref_mut
+[`HashMap::get_key_value`]: https://doc.rust-lang.org/std/collections/struct.HashMap.html#method.get_key_value
+[`BTreeMap::get_key_value`]: https://doc.rust-lang.org/std/collections/struct.BTreeMap.html#method.get_key_value
 [`slice::repeat`]: https://doc.rust-lang.org/std/primitive.slice.html#method.repeat
 [`mem::take`]: https://doc.rust-lang.org/std/mem/fn.take.html
-[`udpsocket::peer_addr`]: https://doc.rust-lang.org/std/net/struct.UdpSocket.html#method.peer_addr
+[`UdpSocket::peer_addr`]: https://doc.rust-lang.org/std/net/struct.UdpSocket.html#method.peer_addr
 [`todo!`]: https://doc.rust-lang.org/std/macro.todo.html
 
 
@@ -7481,8 +7481,8 @@ Compiler
   panics][40037]
 * [The rustc type checker now checks items on demand instead of in a single
   in-order pass][40008]. This is mostly an internal refactoring in support of
-  future work, including incremental type checking, but also resolves [RFC
-  1647], allowing `Self` to appear in `impl` `where` clauses.
+  future work, including incremental type checking, but also resolves
+  [RFC 1647], allowing `Self` to appear in `impl` `where` clauses.
 * [Optimize vtable loads][39995]
 * [Turn off vectorization for Emscripten targets][39990]
 * [Provide suggestions for unknown macros imported with `use`][39953]
@@ -11064,7 +11064,7 @@ Version 1.0.0-alpha.2 (2015-02-20)
       slices. [RFC][deref-rfc].
     * The explicit [closure kind syntax][close] (`|&:|`, `|&mut:|`,
       `|:|`) is obsolete and closure kind is inferred from context.
-    * [`Self` is a keyword][Self].
+    * [`Self` is a keyword][kw-Self].
 
 * Libraries
 
@@ -11117,7 +11117,7 @@ Version 1.0.0-alpha.2 (2015-02-20)
 [onun]: https://github.com/rust-lang/rust/pull/20889
 [osstr]: https://github.com/rust-lang/rust/pull/21488
 [osstr-rfc]: https://github.com/rust-lang/rfcs/blob/master/text/0517-io-os-reform.md
-[Self]: https://github.com/rust-lang/rust/pull/22158
+[kw-Self]: https://github.com/rust-lang/rust/pull/22158
 [ufcs-rfc]: https://github.com/rust-lang/rfcs/blob/master/text/0132-ufcs.md
 [un]: https://github.com/rust-lang/rust/pull/22256
 
@@ -11169,7 +11169,7 @@ Version 1.0.0-alpha (2015-01-09)
     * Rust [no longer has a runtime][rt] of any description, and only
       supports OS threads, not green threads.
     * At long last, Rust has been overhauled for 'dynamically-sized
-      types' ([DST]), which integrates 'fat pointers' (object types,
+      types' ([DST][dst]), which integrates 'fat pointers' (object types,
       arrays, and `str`) more deeply into the type system, making it
       more consistent.
     * Rust now has a general [range syntax][range], `i..j`, `i..`, and
@@ -11224,7 +11224,7 @@ Version 1.0.0-alpha (2015-01-09)
       conventions][derive].
     * Importing the containing module or enum at the same time as
       items or variants they contain is [now done with `self` instead
-      of `mod`][self], as in use `foo::{self, bar}`
+      of `mod`][rfc-self], as in use `foo::{self, bar}`
     * Glob imports are no longer feature-gated.
     * The `box` operator and `box` patterns have been feature-gated
       pending a redesign. For now unique boxes should be allocated
@@ -11282,7 +11282,7 @@ Version 1.0.0-alpha (2015-01-09)
 [rt]: https://github.com/rust-lang/rfcs/blob/master/text/0230-remove-runtime.md
 [mac]: https://github.com/rust-lang/rfcs/blob/master/text/0453-macro-reform.md
 [mac-future]: https://github.com/rust-lang/rfcs/pull/550
-[DST]: http://smallcultfollowing.com/babysteps/blog/2014/01/05/dst-take-5/
+[blog-dst]: http://smallcultfollowing.com/babysteps/blog/2014/01/05/dst-take-5/
 [coll1]: https://github.com/rust-lang/rfcs/blob/master/text/0235-collections-conventions.md
 [coll2]: https://github.com/rust-lang/rfcs/blob/master/text/0509-collections-reform-part-2.md
 [coll3]: https://github.com/rust-lang/rfcs/blob/master/text/0216-collection-views.md
@@ -11300,7 +11300,7 @@ Version 1.0.0-alpha (2015-01-09)
 [arrays]: https://github.com/rust-lang/rfcs/blob/master/text/0520-new-array-repeat-syntax.md
 [show]: https://github.com/rust-lang/rfcs/blob/master/text/0504-show-stabilization.md
 [derive]: https://github.com/rust-lang/rfcs/blob/master/text/0534-deriving2derive.md
-[self]: https://github.com/rust-lang/rfcs/blob/master/text/0532-self-in-use.md
+[rfc-self]: https://github.com/rust-lang/rfcs/blob/master/text/0532-self-in-use.md
 [fb]: https://github.com/rust-lang/rfcs/blob/master/text/0212-restore-int-fallback.md
 [objsafe]: https://github.com/rust-lang/rfcs/blob/master/text/0255-object-safety.md
 [assoc]: https://github.com/rust-lang/rfcs/blob/master/text/0195-associated-items.md
