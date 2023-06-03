@@ -766,6 +766,15 @@ impl<A: Step> Iterator for ops::Range<A> {
     }
 
     #[inline]
+    fn count(self) -> usize {
+        if self.start < self.end {
+            Step::steps_between(&self.start, &self.end).expect("count overflowed usize")
+        } else {
+            0
+        }
+    }
+
+    #[inline]
     fn nth(&mut self, n: usize) -> Option<A> {
         self.spec_nth(n)
     }
@@ -1160,6 +1169,17 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
             Some(hint) => (hint.saturating_add(1), hint.checked_add(1)),
             None => (usize::MAX, None),
         }
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        if self.is_empty() {
+            return 0;
+        }
+
+        Step::steps_between(&self.start, &self.end)
+            .and_then(|steps| steps.checked_add(1))
+            .expect("count overflowed usize")
     }
 
     #[inline]
