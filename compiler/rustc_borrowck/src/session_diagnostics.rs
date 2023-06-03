@@ -6,6 +6,14 @@ use rustc_span::Span;
 use crate::diagnostics::RegionName;
 
 #[derive(Diagnostic)]
+#[diag(borrowck_cannot_use_when_mutably_borrowed)]
+pub(crate) struct CannotUseWhenMutablyBorrowed {
+    #[primary_span]
+    pub span: Span,
+    desc: &'static str,
+}
+
+#[derive(Diagnostic)]
 #[diag(borrowck_move_unsized, code = "E0161")]
 pub(crate) struct MoveUnsized<'tcx> {
     pub ty: Ty<'tcx>,

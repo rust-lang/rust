@@ -1,3 +1,4 @@
+use crate::session_diagnostics::CannotUseWhenMutablyBorrowed;
 use rustc_errors::{
     struct_span_err, DiagnosticBuilder, DiagnosticId, DiagnosticMessage, ErrorGuaranteed, MultiSpan,
 };
@@ -29,17 +30,18 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         borrow_span: Span,
         borrow_desc: &str,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let mut err = struct_span_err!(
-            self,
-            span,
-            E0503,
-            "cannot use {} because it was mutably borrowed",
-            desc,
-        );
+        create_err(CannotUseWhenMutablyBorrowed { span, desc })
+        // let mut err = struct_span_err!(
+        //     self,
+        //     span,
+        //     E0503,
+        //     "cannot use {} because it was mutably borrowed",
+        //     desc,
+        // );
 
-        err.span_label(borrow_span, format!("{} is borrowed here", borrow_desc));
-        err.span_label(span, format!("use of borrowed {}", borrow_desc));
-        err
+        // err.span_label(borrow_span, format!("{} is borrowed here", borrow_desc));
+        // err.span_label(span, format!("use of borrowed {}", borrow_desc));
+        // err
     }
 
     pub(crate) fn cannot_mutably_borrow_multiply(
