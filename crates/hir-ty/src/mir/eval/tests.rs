@@ -1,5 +1,6 @@
 use base_db::{fixture::WithFixture, FileId};
 use hir_def::db::DefDatabase;
+use syntax::{TextRange, TextSize};
 
 use crate::{db::HirDatabase, test_db::TestDB, Interner, Substitution};
 
@@ -45,7 +46,21 @@ fn check_pass_and_stdio(ra_fixture: &str, expected_stdout: &str, expected_stderr
     match x {
         Err(e) => {
             let mut err = String::new();
-            let span_formatter = |file, range| format!("{:?} {:?}", file, range);
+            let line_index = |size: TextSize| {
+                let mut size = u32::from(size) as usize;
+                let mut lines = ra_fixture.lines().enumerate();
+                while let Some((i, l)) = lines.next() {
+                    if let Some(x) = size.checked_sub(l.len()) {
+                        size = x;
+                    } else {
+                        return (i, size);
+                    }
+                }
+                (usize::MAX, size)
+            };
+            let span_formatter = |file, range: TextRange| {
+                format!("{:?} {:?}..{:?}", file, line_index(range.start()), line_index(range.end()))
+            };
             e.pretty_print(&mut err, &db, span_formatter).unwrap();
             panic!("Error in interpreting: {err}");
         }
@@ -108,6 +123,58 @@ fn main() {
     let x = X(&mut s);
     NestedX { f1: x, f2: X(&mut s) };
     if s != 15 {
+        should_not_reach();
+    }
+}
+    "#,
+    );
+}
+
+#[test]
+fn drop_if_let() {
+    check_pass(
+        r#"
+//- minicore: drop, add, option, cell, builtin_impls
+
+use core::cell::Cell;
+
+struct X<'a>(&'a Cell<i32>);
+impl<'a> Drop for X<'a> {
+    fn drop(&mut self) {
+        self.0.set(self.0.get() + 1)
+    }
+}
+
+fn should_not_reach() {
+    _ // FIXME: replace this function with panic when that works
+}
+
+#[test]
+fn main() {
+    let s = Cell::new(0);
+    let x = Some(X(&s));
+    if let Some(y) = x {
+        if s.get() != 0 {
+            should_not_reach();
+        }
+        if s.get() != 0 {
+            should_not_reach();
+        }
+    } else {
+        should_not_reach();
+    }
+    if s.get() != 1 {
+        should_not_reach();
+    }
+    let x = Some(X(&s));
+    if let None = x {
+        should_not_reach();
+    } else {
+        if s.get() != 1 {
+            should_not_reach();
+        }
+    }
+    if s.get() != 1 {
         should_not_reach();
     }
 }

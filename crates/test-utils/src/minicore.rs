@@ -726,6 +726,19 @@ pub mod ops {
     pub trait AddAssign<Rhs = Self> {
         fn add_assign(&mut self, rhs: Rhs);
     }
+
+    // region:builtin_impls
+    macro_rules! add_impl {
+        ($($t:ty)*) => ($(
+            impl const Add for $t {
+                type Output = $t;
+                fn add(self, other: $t) -> $t { self + other }
+            }
+        )*)
+    }
+
+    add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+    // endregion:builtin_impls
     // endregion:add
 
     // region:generator
