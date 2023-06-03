@@ -53,7 +53,7 @@ let ParsedQuery;
  *    parent: (Object|null|undefined),
  *    path: string,
  *    ty: (Number|null|number),
- *    type: (Array<?>|null)
+ *    type: FunctionSearchType?
  * }}
  */
 let Row;
@@ -135,7 +135,7 @@ let RawFunctionType;
 /**
  * @typedef {{
  *     inputs: Array<FunctionType>,
- *     outputs: Array<FunctionType>,
+ *     output: Array<FunctionType>,
  * }}
  */
 let FunctionSearchType;

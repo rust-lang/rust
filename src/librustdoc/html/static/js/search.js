@@ -1178,67 +1178,79 @@ function initSearch(rawSearchIndex) {
         }
 
         /**
-         * This function checks if the object (`row`) generics match the given type (`elem`)
-         * generics.
+         * This function checks generics in search query `queryElem` can all be found in the
+         * search index (`fnType`),
          *
-         * @param {Row} row                 - The object to check.
-         * @param {QueryElement} elem       - The element from the parsed query.
+         * @param {FunctionType} fnType     - The object to check.
+         * @param {QueryElement} queryElem  - The element from the parsed query.
          *
-         * @return {boolean}           - Returns true if a match, false otherwise.
+         * @return {boolean} - Returns true if a match, false otherwise.
          */
-        function checkGenerics(row, elem) {
-            if (row.generics.length === 0 || elem.generics.length === 0) {
-                return false;
-            }
-            // This function is called if the names match, but we need to make
-            // sure that all generics match as well.
-            //
+        function checkGenerics(fnType, queryElem) {
+            return unifyFunctionTypes(fnType.generics, queryElem.generics);
+        }
+        /**
+         * This function checks if a list of search query `queryElems` can all be found in the
+         * search index (`fnTypes`).
+         *
+         * @param {Array<FunctionType>} fnTypes    - The objects to check.
+         * @param {Array<QueryElement>} queryElems - The elements from the parsed query.
+         *
+         * @return {boolean} - Returns true if a match, false otherwise.
+         */
+        function unifyFunctionTypes(fnTypes, queryElems) {
             // This search engine implements order-agnostic unification. There
             // should be no missing duplicates (generics have "bag semantics"),
             // and the row is allowed to have extras.
-            if (elem.generics.length <= 0 || row.generics.length < elem.generics.length) {
+            if (queryElems.length === 0) {
+                return true;
+            }
+            if (!fnTypes || fnTypes.length === 0) {
                 return false;
             }
-            const elems = new Map();
-            const addEntryToElems = function addEntryToElems(entry) {
-                if (entry.id === -1) {
+            /**
+             * @type Map<integer, FunctionType[]>
+             */
+            const fnTypeSet = new Map();
+            const addFnTypeToFnTypeSet = function addFnTypeToFnTypeSet(fnType) {
+                if (fnType.id === -1) {
                     // Pure generic, needs to check into it.
-                    for (const inner_entry of entry.generics) {
-                        addEntryToElems(inner_entry);
+                    for (const innerFnType of fnType.generics) {
+                        addFnTypeToFnTypeSet(innerFnType);
                     }
                     return;
                 }
-                let currentEntryElems;
-                if (elems.has(entry.id)) {
-                    currentEntryElems = elems.get(entry.id);
+                let currentFnTypeList;
+                if (fnTypeSet.has(fnType.id)) {
+                    currentFnTypeList = fnTypeSet.get(fnType.id);
                 } else {
-                    currentEntryElems = [];
-                    elems.set(entry.id, currentEntryElems);
+                    currentFnTypeList = [];
+                    fnTypeSet.set(fnType.id, currentFnTypeList);
                 }
-                currentEntryElems.push(entry);
+                currentFnTypeList.push(fnType);
             };
-            for (const entry of row.generics) {
-                addEntryToElems(entry);
+            for (const fnType of fnTypes) {
+                addFnTypeToFnTypeSet(fnType);
             }
             // We need to find the type that matches the most to remove it in order
             // to move forward.
-            const handleGeneric = generic => {
-                if (!elems.has(generic.id)) {
+            const handleQueryElem = queryElem => {
+                if (!fnTypeSet.has(queryElem.id)) {
                     return false;
                 }
-                const matchElems = elems.get(generic.id);
-                const matchIdx = matchElems.findIndex(tmp_elem => {
-                    if (generic.generics.length > 0 && !checkGenerics(tmp_elem, generic)) {
+                const currentFnTypeList = fnTypeSet.get(queryElem.id);
+                const matchIdx = currentFnTypeList.findIndex(fnType => {
+                    if (!typePassesFilter(queryElem.typeFilter, fnType.ty)) {
                         return false;
                     }
-                    return typePassesFilter(generic.typeFilter, tmp_elem.ty);
+                    return queryElem.generics.length === 0 || checkGenerics(fnType, queryElem);
                 });
                 if (matchIdx === -1) {
                     return false;
                 }
-                matchElems.splice(matchIdx, 1);
-                if (matchElems.length === 0) {
-                    elems.delete(generic.id);
+                currentFnTypeList.splice(matchIdx, 1);
+                if (currentFnTypeList.length === 0) {
+                    fnTypeSet.delete(queryElem.id);
                 }
                 return true;
             };
@@ -1246,30 +1258,57 @@ function initSearch(rawSearchIndex) {
             // that have them, removing matching ones from the "bag," then do the
             // ones with no type filter, which can match any entry regardless of its
             // own type.
-            for (const generic of elem.generics) {
-                if (generic.typeFilter === TY_PRIMITIVE &&
-                    generic.id === typeNameIdOfArrayOrSlice) {
-                    const genericArray = {
+            const needsUnboxed = [];
+            for (const queryElem of queryElems) {
+                if (queryElem.typeFilter === TY_PRIMITIVE &&
+                    queryElem.id === typeNameIdOfArrayOrSlice) {
+                    const queryElemArray = {
                         id: typeNameIdOfArray,
                         typeFilter: TY_PRIMITIVE,
-                        generics: generic.generics,
+                        generics: queryElem.generics,
                     };
-                    const genericSlice = {
+                    const queryElemSlice = {
                         id: typeNameIdOfSlice,
                         typeFilter: TY_PRIMITIVE,
-                        generics: generic.generics,
+                        generics: queryElem.generics,
                     };
-                    if (!handleGeneric(genericArray) && !handleGeneric(genericSlice)) {
-                        return false;
+                    if (!handleQueryElem(queryElemArray) && !handleQueryElem(queryElemSlice)) {
+                        needsUnboxed.push(queryElem);
                     }
-                } else if (generic.typeFilter !== -1 && !handleGeneric(generic)) {
-                    return false;
+                } else if (queryElem.typeFilter !== -1 && !handleQueryElem(queryElem)) {
+                    needsUnboxed.push(queryElem);
                 }
             }
-            for (const generic of elem.generics) {
-                if (generic.typeFilter === -1 && !handleGeneric(generic)) {
-                    return false;
+            for (const queryElem of queryElems) {
+                if (queryElem.typeFilter === -1 && !handleQueryElem(queryElem)) {
+                    needsUnboxed.push(queryElem);
                 }
+            }
+            // If the current item does not match, try [unboxing] the generic.
+            // [unboxing]:
+            //   https://ndmitchell.com/downloads/slides-hoogle_fast_type_searching-09_aug_2008.pdf
+            unboxing: while (needsUnboxed.length !== 0) {
+                for (const [i, queryElem] of needsUnboxed.entries()) {
+                    if (handleQueryElem(queryElem)) {
+                        needsUnboxed.splice(i, 1);
+                        continue unboxing;
+                    }
+                }
+                for (const [id, fnTypeList] of fnTypeSet) {
+                    for (const [i, fnType] of fnTypeList.entries()) {
+                        if (fnType.generics.length !== 0) {
+                            fnTypeList.splice(i, 1);
+                            for (const innerFnType of fnType.generics) {
+                                addFnTypeToFnTypeSet(innerFnType);
+                            }
+                            if (fnTypeList.length === 0) {
+                                fnTypeSet.delete(id);
+                            }
+                            continue unboxing;
+                        }
+                    }
+                }
+                return false;
             }
             return true;
         }
@@ -1278,13 +1317,13 @@ function initSearch(rawSearchIndex) {
           * This function checks if the object (`row`) matches the given type (`elem`) and its
           * generics (if any).
           *
-          * @param {Row} row
+          * @param {Array<FunctionType>} list
           * @param {QueryElement} elem    - The element from the parsed query.
           *
           * @return {boolean} - Returns true if found, false otherwise.
           */
-        function checkIfInGenerics(row, elem) {
-            for (const entry of row.generics) {
+        function checkIfInList(list, elem) {
+            for (const entry of list) {
                 if (checkType(entry, elem)) {
                     return true;
                 }
@@ -1304,7 +1343,7 @@ function initSearch(rawSearchIndex) {
         function checkType(row, elem) {
             if (row.id === -1) {
                 // This is a pure "generic" search, no need to run other checks.
-                return row.generics.length > 0 ? checkIfInGenerics(row, elem) : false;
+                return row.generics.length > 0 ? checkIfInList(row.generics, elem) : false;
             }
 
             const matchesExact = row.id === elem.id;
@@ -1322,59 +1361,7 @@ function initSearch(rawSearchIndex) {
             // If the current item does not match, try [unboxing] the generic.
             // [unboxing]:
             //   https://ndmitchell.com/downloads/slides-hoogle_fast_type_searching-09_aug_2008.pdf
-            return checkIfInGenerics(row, elem);
-        }
-
-        /**
-         * This function checks if the object (`row`) has an argument with the given type (`elem`).
-         *
-         * @param {Row} row
-         * @param {QueryElement} elem    - The element from the parsed query.
-         * @param {Array<integer>} skipPositions - Do not return one of these positions.
-         *
-         * @return {integer} - Returns the position of the match, or -1 if none.
-         */
-        function findArg(row, elem, skipPositions) {
-            if (row && row.type && row.type.inputs && row.type.inputs.length > 0) {
-                let i = 0;
-                for (const input of row.type.inputs) {
-                    if (skipPositions.indexOf(i) !== -1) {
-                        i += 1;
-                        continue;
-                    }
-                    if (checkType(input, elem)) {
-                        return i;
-                    }
-                    i += 1;
-                }
-            }
-            return -1;
-        }
-
-        /**
-         * This function checks if the object (`row`) returns the given type (`elem`).
-         *
-         * @param {Row} row
-         * @param {QueryElement} elem   - The element from the parsed query.
-         * @param {Array<integer>} skipPositions - Do not return one of these positions.
-         *
-         * @return {integer} - Returns the position of the matching item, or -1 if none.
-         */
-        function checkReturned(row, elem, skipPositions) {
-            if (row && row.type && row.type.output.length > 0) {
-                let i = 0;
-                for (const ret_ty of row.type.output) {
-                    if (skipPositions.indexOf(i) !== -1) {
-                        i += 1;
-                        continue;
-                    }
-                    if (checkType(ret_ty, elem)) {
-                        return i;
-                    }
-                    i += 1;
-                }
-            }
-            return -1;
+            return checkIfInList(row.generics, elem);
         }
 
         function checkPath(contains, ty, maxEditDistance) {
@@ -1575,14 +1562,14 @@ function initSearch(rawSearchIndex) {
             const fullId = row.id;
             const searchWord = searchWords[pos];
 
-            const in_args = findArg(row, elem, []);
-            if (in_args !== -1) {
+            const in_args = row.type && row.type.inputs && checkIfInList(row.type.inputs, elem);
+            if (in_args) {
                 // path_dist is 0 because no parent path information is currently stored
                 // in the search index
                 addIntoResults(results_in_args, fullId, pos, -1, 0, 0, maxEditDistance);
             }
-            const returned = checkReturned(row, elem, []);
-            if (returned !== -1) {
+            const returned = row.type && row.type.output && checkIfInList(row.type.output, elem);
+            if (returned) {
                 addIntoResults(results_returned, fullId, pos, -1, 0, 0, maxEditDistance);
             }
 
@@ -1638,32 +1625,15 @@ function initSearch(rawSearchIndex) {
          * @param {Object} results
          */
         function handleArgs(row, pos, results) {
-            if (!row || (filterCrates !== null && row.crate !== filterCrates)) {
+            if (!row || (filterCrates !== null && row.crate !== filterCrates) || !row.type) {
                 return;
             }
 
             // If the result is too "bad", we return false and it ends this search.
-            function checkArgs(elems, callback) {
-                const skipPositions = [];
-                for (const elem of elems) {
-                    // There is more than one parameter to the query so all checks should be "exact"
-                    const position = callback(
-                        row,
-                        elem,
-                        skipPositions
-                    );
-                    if (position !== -1) {
-                        skipPositions.push(position);
-                    } else {
-                        return false;
-                    }
-                }
-                return true;
-            }
-            if (!checkArgs(parsedQuery.elems, findArg)) {
+            if (!unifyFunctionTypes(row.type.inputs, parsedQuery.elems)) {
                 return;
             }
-            if (!checkArgs(parsedQuery.returned, checkReturned)) {
+            if (!unifyFunctionTypes(row.type.output, parsedQuery.returned)) {
                 return;
             }
 
@@ -1750,12 +1720,9 @@ function initSearch(rawSearchIndex) {
                     elem = parsedQuery.returned[0];
                     for (i = 0, nSearchWords = searchWords.length; i < nSearchWords; ++i) {
                         row = searchIndex[i];
-                        in_returned = checkReturned(
-                            row,
-                            elem,
-                            []
-                        );
-                        if (in_returned !== -1) {
+                        in_returned = row.type &&
+                            unifyFunctionTypes(row.type.output, parsedQuery.returned);
+                        if (in_returned) {
                             addIntoResults(
                                 results_others,
                                 row.id,
