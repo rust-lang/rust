@@ -516,6 +516,38 @@ fn main() {
         );
         check_diagnostics(
             r#"
+fn check(_: i32) -> bool {
+    false
+}
+fn main() {
+    loop {
+        let x = 1;
+        if check(x) {
+            break;
+        }
+        let y = (1, 2);
+        if check(y.1) {
+            return;
+        }
+        let z = (1, 2);
+        match z {
+            (k @ 5, ref mut t) if { continue; } => {
+                  //^^^^^^^^^ 💡 error: cannot mutate immutable variable `z`
+                *t = 5;
+            }
+            _ => {
+                let y = (1, 2);
+                if check(y.1) {
+                    return;
+                }
+            }
+        }
+    }
+}
+"#,
+        );
+        check_diagnostics(
+            r#"
 fn f(_: i32) {}
 fn main() {
     loop {
@@ -592,12 +624,34 @@ fn f((x, y): (i32, i32)) {
     fn for_loop() {
         check_diagnostics(
             r#"
-//- minicore: iterators
+//- minicore: iterators, copy
 fn f(x: [(i32, u8); 10]) {
     for (a, mut b) in x {
           //^^^^^ 💡 weak: variable does not need to be mutable
         a = 2;
       //^^^^^ 💡 error: cannot mutate immutable variable `a`
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn while_let() {
+        check_diagnostics(
+            r#"
+//- minicore: iterators, copy
+fn f(x: [(i32, u8); 10]) {
+    let mut it = x.into_iter();
+    while let Some((a, mut b)) = it.next() {
+                     //^^^^^ 💡 weak: variable does not need to be mutable
+        while let Some((c, mut d)) = it.next() {
+                         //^^^^^ 💡 weak: variable does not need to be mutable
+            a = 2;
+          //^^^^^ 💡 error: cannot mutate immutable variable `a`
+            c = 2;
+          //^^^^^ 💡 error: cannot mutate immutable variable `c`
+        }
     }
 }
 "#,

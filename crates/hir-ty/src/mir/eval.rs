@@ -1896,7 +1896,14 @@ impl Evaluator<'_> {
         let mir_body = self
             .db
             .monomorphized_mir_body(def, generic_args, self.trait_env.clone())
-            .map_err(|e| MirEvalError::MirLowerError(imp, e))?;
+            .map_err(|e| {
+                MirEvalError::InFunction(
+                    Either::Left(imp),
+                    Box::new(MirEvalError::MirLowerError(imp, e)),
+                    span,
+                    locals.body.owner,
+                )
+            })?;
         let result = self.interpret_mir(&mir_body, arg_bytes.iter().cloned()).map_err(|e| {
             MirEvalError::InFunction(Either::Left(imp), Box::new(e), span, locals.body.owner)
         })?;

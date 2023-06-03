@@ -48,6 +48,7 @@ struct LoopBlocks {
     /// `None` for loops that are not terminating
     end: Option<BasicBlockId>,
     place: Place,
+    drop_scope_index: usize,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -100,6 +101,35 @@ pub enum MirLowerError {
     // monomorphization errors:
     GenericArgNotProvided(TypeOrConstParamId, Substitution),
 }
+
+/// A token to ensuring that each drop scope is popped at most once, thanks to the compiler that checks moves.
+struct DropScopeToken;
+impl DropScopeToken {
+    fn pop_and_drop(self, ctx: &mut MirLowerCtx<'_>, current: BasicBlockId) -> BasicBlockId {
+        std::mem::forget(self);
+        ctx.pop_drop_scope_internal(current)
+    }
+
+    /// It is useful when we want a drop scope is syntaxically closed, but we don't want to execute any drop
+    /// code. Either when the control flow is diverging (so drop code doesn't reached) or when drop is handled
+    /// for us (for example a block that ended with a return statement. Return will drop everything, so the block shouldn't
+    /// do anything)
+    fn pop_assume_dropped(self, ctx: &mut MirLowerCtx<'_>) {
+        std::mem::forget(self);
+        ctx.pop_drop_scope_assume_dropped_internal();
+    }
+}
+
+// Uncomment this to make `DropScopeToken` a drop bomb. Unfortunately we can't do this in release, since
+// in cases that mir lowering fails, we don't handle (and don't need to handle) drop scopes so it will be
+// actually reached. `pop_drop_scope_assert_finished` will also detect this case, but doesn't show useful
+// stack trace.
+//
+// impl Drop for DropScopeToken {
+//     fn drop(&mut self) {
+//         never!("Drop scope doesn't popped");
+//     }
+// }
 
 impl MirLowerError {
     pub fn pretty_print(
@@ -506,7 +536,6 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     self.lower_loop(current, place.clone(), Some(*label), expr_id.into(), |this, begin| {
                         if let Some(current) = this.lower_block_to_place(statements, begin, *tail, place, expr_id.into())? {
                             let end = this.current_loop_end()?;
-                            let current = this.pop_drop_scope(current);
                             this.set_goto(current, end, expr_id.into());
                         }
                         Ok(())
@@ -516,30 +545,39 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 }
             }
             Expr::Loop { body, label } => self.lower_loop(current, place, *label, expr_id.into(), |this, begin| {
-                if let Some((_, current)) = this.lower_expr_as_place(begin, *body, true)? {
-                    let current = this.pop_drop_scope(current);
+                let scope = this.push_drop_scope();
+                if let Some((_, mut current)) = this.lower_expr_as_place(begin, *body, true)? {
+                    current = scope.pop_and_drop(this, current);
                     this.set_goto(current, begin, expr_id.into());
+                } else {
+                    scope.pop_assume_dropped(this);
                 }
                 Ok(())
             }),
             Expr::While { condition, body, label } => {
                 self.lower_loop(current, place, *label, expr_id.into(),|this, begin| {
+                    let scope = this.push_drop_scope();
                     let Some((discr, to_switch)) = this.lower_expr_to_some_operand(*condition, begin)? else {
                         return Ok(());
                     };
-                    let end = this.current_loop_end()?;
+                    let fail_cond = this.new_basic_block();
                     let after_cond = this.new_basic_block();
                     this.set_terminator(
                         to_switch,
                         TerminatorKind::SwitchInt {
                             discr,
-                            targets: SwitchTargets::static_if(1, after_cond, end),
+                            targets: SwitchTargets::static_if(1, after_cond, fail_cond),
                         },
                         expr_id.into(),
                     );
+                    let fail_cond = this.drop_until_scope(this.drop_scopes.len() - 1, fail_cond);
+                    let end = this.current_loop_end()?;
+                    this.set_goto(fail_cond, end, expr_id.into());
                     if let Some((_, block)) = this.lower_expr_as_place(after_cond, *body, true)? {
-                        let block = this.pop_drop_scope(block);
+                        let block = scope.pop_and_drop(this, block);
                         this.set_goto(block, begin, expr_id.into());
+                    } else {
+                        scope.pop_assume_dropped(this);
                     }
                     Ok(())
                 })
@@ -637,7 +675,9 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     Some(l) => self.labeled_loop_blocks.get(l).ok_or(MirLowerError::UnresolvedLabel)?,
                     None => self.current_loop_blocks.as_ref().ok_or(MirLowerError::ContinueWithoutLoop)?,
                 };
-                self.set_goto(current, loop_data.begin, expr_id.into());
+                let begin = loop_data.begin;
+                current = self.drop_until_scope(loop_data.drop_scope_index, current);
+                self.set_goto(current, begin, expr_id.into());
                 Ok(None)
             },
             &Expr::Break { expr, label } => {
@@ -651,10 +691,16 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     };
                     current = c;
                 }
-                let end = match label {
-                    Some(l) => self.labeled_loop_blocks.get(&l).ok_or(MirLowerError::UnresolvedLabel)?.end.expect("We always generate end for labeled loops"),
-                    None => self.current_loop_end()?,
+                let (end, drop_scope) = match label {
+                    Some(l) => {
+                        let loop_blocks = self.labeled_loop_blocks.get(&l).ok_or(MirLowerError::UnresolvedLabel)?;
+                        (loop_blocks.end.expect("We always generate end for labeled loops"), loop_blocks.drop_scope_index)
+                    },
+                    None => {
+                        (self.current_loop_end()?, self.current_loop_blocks.as_ref().unwrap().drop_scope_index)
+                    },
                 };
+                current = self.drop_until_scope(drop_scope, current);
                 self.set_goto(current, end, expr_id.into());
                 Ok(None)
             }
@@ -1378,7 +1424,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
         let begin = self.new_basic_block();
         let prev = mem::replace(
             &mut self.current_loop_blocks,
-            Some(LoopBlocks { begin, end: None, place }),
+            Some(LoopBlocks { begin, end: None, place, drop_scope_index: self.drop_scopes.len() }),
         );
         let prev_label = if let Some(label) = label {
             // We should generate the end now, to make sure that it wouldn't change later. It is
@@ -1391,7 +1437,6 @@ impl<'ctx> MirLowerCtx<'ctx> {
             None
         };
         self.set_goto(prev_block, begin, span);
-        self.push_drop_scope();
         f(self, begin)?;
         let my = mem::replace(&mut self.current_loop_blocks, prev).ok_or(
             MirLowerError::ImplementationError("current_loop_blocks is corrupt".to_string()),
@@ -1489,6 +1534,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
         place: Place,
         span: MirSpan,
     ) -> Result<Option<Idx<BasicBlock>>> {
+        let scope = self.push_drop_scope();
         for statement in statements.iter() {
             match statement {
                 hir_def::hir::Statement::Let { pat, initializer, else_branch, type_ref: _ } => {
@@ -1497,6 +1543,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         let Some((init_place, c)) =
                             self.lower_expr_as_place(current, *expr_id, true)?
                         else {
+                            scope.pop_assume_dropped(self);
                             return Ok(None);
                         };
                         current = c;
@@ -1528,18 +1575,25 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     }
                 }
                 hir_def::hir::Statement::Expr { expr, has_semi: _ } => {
-                    self.push_drop_scope();
+                    let scope2 = self.push_drop_scope();
                     let Some((_, c)) = self.lower_expr_as_place(current, *expr, true)? else {
+                        scope2.pop_assume_dropped(self);
+                        scope.pop_assume_dropped(self);
                         return Ok(None);
                     };
-                    current = self.pop_drop_scope(c);
+                    current = scope2.pop_and_drop(self, c);
                 }
             }
         }
-        match tail {
-            Some(tail) => self.lower_expr_to_place(tail, place, current),
-            None => Ok(Some(current)),
+        if let Some(tail) = tail {
+            let Some(c) = self.lower_expr_to_place(tail, place, current)? else {
+                scope.pop_assume_dropped(self);
+                return Ok(None);
+            };
+            current = c;
         }
+        current = scope.pop_and_drop(self, current);
+        Ok(Some(current))
     }
 
     fn lower_params_and_bindings(
@@ -1625,14 +1679,32 @@ impl<'ctx> MirLowerCtx<'ctx> {
         current
     }
 
-    fn push_drop_scope(&mut self) {
+    fn push_drop_scope(&mut self) -> DropScopeToken {
         self.drop_scopes.push(DropScope::default());
+        DropScopeToken
     }
 
-    fn pop_drop_scope(&mut self, mut current: BasicBlockId) -> BasicBlockId {
+    /// Don't call directly
+    fn pop_drop_scope_assume_dropped_internal(&mut self) {
+        self.drop_scopes.pop();
+    }
+
+    /// Don't call directly
+    fn pop_drop_scope_internal(&mut self, mut current: BasicBlockId) -> BasicBlockId {
         let scope = self.drop_scopes.pop().unwrap();
         self.emit_drop_and_storage_dead_for_scope(&scope, &mut current);
         current
+    }
+
+    fn pop_drop_scope_assert_finished(
+        &mut self,
+        mut current: BasicBlockId,
+    ) -> Result<BasicBlockId> {
+        current = self.pop_drop_scope_internal(current);
+        if !self.drop_scopes.is_empty() {
+            implementation_error!("Mismatched count between drop scope push and pops");
+        }
+        Ok(current)
     }
 
     fn emit_drop_and_storage_dead_for_scope(
@@ -1728,7 +1800,7 @@ pub fn mir_body_for_closure_query(
         |_| true,
     )?;
     if let Some(current) = ctx.lower_expr_to_place(*root, return_slot().into(), current)? {
-        let current = ctx.pop_drop_scope(current);
+        let current = ctx.pop_drop_scope_assert_finished(current)?;
         ctx.set_terminator(current, TerminatorKind::Return, (*root).into());
     }
     let mut upvar_map: FxHashMap<LocalId, Vec<(&CapturedItem, usize)>> = FxHashMap::default();
@@ -1863,7 +1935,7 @@ pub fn lower_to_mir(
         ctx.lower_params_and_bindings([].into_iter(), binding_picker)?
     };
     if let Some(current) = ctx.lower_expr_to_place(root_expr, return_slot().into(), current)? {
-        let current = ctx.pop_drop_scope(current);
+        let current = ctx.pop_drop_scope_assert_finished(current)?;
         ctx.set_terminator(current, TerminatorKind::Return, root_expr.into());
     }
     Ok(ctx.result)
