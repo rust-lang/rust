@@ -55,42 +55,42 @@ Libraries
 Stabilized APIs
 ---------------
 
-- [`NonZero*::MIN/MAX`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroI8.html#associatedconstant.MIN)
-- [`BinaryHeap::retain`](https://doc.rust-lang.org/stable/std/collections/struct.BinaryHeap.html#method.retain)
-- [`Default for std::collections::binary_heap::IntoIter`](https://doc.rust-lang.org/stable/std/collections/binary_heap/struct.IntoIter.html)
-- [`Default for std::collections::btree_map::{IntoIter, Iter, IterMut}`](https://doc.rust-lang.org/stable/std/collections/btree_map/struct.IntoIter.html)
-- [`Default for std::collections::btree_map::{IntoKeys, Keys}`](https://doc.rust-lang.org/stable/std/collections/btree_map/struct.IntoKeys.html)
-- [`Default for std::collections::btree_map::{IntoValues, Values}`](https://doc.rust-lang.org/stable/std/collections/btree_map/struct.IntoKeys.html)
-- [`Default for std::collections::btree_map::Range`](https://doc.rust-lang.org/stable/std/collections/btree_map/struct.Range.html)
-- [`Default for std::collections::btree_set::{IntoIter, Iter}`](https://doc.rust-lang.org/stable/std/collections/btree_set/struct.IntoIter.html)
-- [`Default for std::collections::btree_set::Range`](https://doc.rust-lang.org/stable/std/collections/btree_set/struct.Range.html)
-- [`Default for std::collections::linked_list::{IntoIter, Iter, IterMut}`](https://doc.rust-lang.org/stable/alloc/collections/linked_list/struct.IntoIter.html)
-- [`Default for std::vec::IntoIter`](https://doc.rust-lang.org/stable/alloc/vec/struct.IntoIter.html#impl-Default-for-IntoIter%3CT,+A%3E)
-- [`Default for std::iter::Chain`](https://doc.rust-lang.org/stable/std/iter/struct.Chain.html)
-- [`Default for std::iter::Cloned`](https://doc.rust-lang.org/stable/std/iter/struct.Cloned.html)
-- [`Default for std::iter::Copied`](https://doc.rust-lang.org/stable/std/iter/struct.Copied.html)
-- [`Default for std::iter::Enumerate`](https://doc.rust-lang.org/stable/std/iter/struct.Enumerate.html)
-- [`Default for std::iter::Flatten`](https://doc.rust-lang.org/stable/std/iter/struct.Flatten.html)
-- [`Default for std::iter::Fuse`](https://doc.rust-lang.org/stable/std/iter/struct.Fuse.html)
-- [`Default for std::iter::Rev`](https://doc.rust-lang.org/stable/std/iter/struct.Rev.html)
-- [`Default for std::slice::Iter`](https://doc.rust-lang.org/stable/std/slice/struct.Iter.html)
-- [`Default for std::slice::IterMut`](https://doc.rust-lang.org/stable/std/slice/struct.IterMut.html)
-- [`Rc::into_inner`](https://doc.rust-lang.org/stable/alloc/rc/struct.Rc.html#method.into_inner)
-- [`Arc::into_inner`](https://doc.rust-lang.org/stable/alloc/sync/struct.Arc.html#method.into_inner)
-- [`std::cell::OnceCell`](https://doc.rust-lang.org/stable/std/cell/struct.OnceCell.html)
-- [`Option::is_some_and`](https://doc.rust-lang.org/stable/std/option/enum.Option.html#method.is_some_and)
-- [`NonNull::slice_from_raw_parts`](https://doc.rust-lang.org/stable/std/ptr/struct.NonNull.html#method.slice_from_raw_parts)
-- [`Result::is_ok_and`](https://doc.rust-lang.org/stable/std/result/enum.Result.html#method.is_ok_and)
-- [`Result::is_err_and`](https://doc.rust-lang.org/stable/std/result/enum.Result.html#method.is_err_and)
-- [`std::sync::atomic::Atomic*::as_ptr`](https://doc.rust-lang.org/stable/std/sync/atomic/struct.AtomicU8.html#method.as_ptr)
-- [`std::io::IsTerminal`](https://doc.rust-lang.org/stable/std/io/trait.IsTerminal.html)
-- [`std::os::linux::net::SocketAddrExt`](https://doc.rust-lang.org/stable/std/os/linux/net/trait.SocketAddrExt.html)
-- [`std::os::unix::net::UnixDatagram::bind_addr`](https://doc.rust-lang.org/stable/std/os/unix/net/struct.UnixDatagram.html#method.bind_addr)
-- [`std::os::unix::net::UnixDatagram::connect_addr`](https://doc.rust-lang.org/stable/std/os/unix/net/struct.UnixDatagram.html#method.connect_addr)
-- [`std::os::unix::net::UnixDatagram::send_to_addr`](https://doc.rust-lang.org/stable/std/os/unix/net/struct.UnixDatagram.html#method.send_to_addr)
-- [`std::os::unix::net::UnixListener::bind_addr`](https://doc.rust-lang.org/stable/std/os/unix/net/struct.UnixListener.html#method.bind_addr)
-- [`std::path::Path::as_mut_os_str`](https://doc.rust-lang.org/stable/std/path/struct.Path.html#method.as_mut_os_str)
-- [`std::sync::OnceLock`](https://doc.rust-lang.org/stable/std/sync/struct.OnceLock.html)
+- [`NonZero*::MIN/MAX`](https://doc.rust-lang.org/std/num/struct.NonZeroI8.html#associatedconstant.MIN)
+- [`BinaryHeap::retain`](https://doc.rust-lang.org/std/collections/struct.BinaryHeap.html#method.retain)
+- [`Default for std::collections::binary_heap::IntoIter`](https://doc.rust-lang.org/std/collections/binary_heap/struct.IntoIter.html)
+- [`Default for std::collections::btree_map::{IntoIter, Iter, IterMut}`](https://doc.rust-lang.org/std/collections/btree_map/struct.IntoIter.html)
+- [`Default for std::collections::btree_map::{IntoKeys, Keys}`](https://doc.rust-lang.org/std/collections/btree_map/struct.IntoKeys.html)
+- [`Default for std::collections::btree_map::{IntoValues, Values}`](https://doc.rust-lang.org/std/collections/btree_map/struct.IntoKeys.html)
+- [`Default for std::collections::btree_map::Range`](https://doc.rust-lang.org/std/collections/btree_map/struct.Range.html)
+- [`Default for std::collections::btree_set::{IntoIter, Iter}`](https://doc.rust-lang.org/std/collections/btree_set/struct.IntoIter.html)
+- [`Default for std::collections::btree_set::Range`](https://doc.rust-lang.org/std/collections/btree_set/struct.Range.html)
+- [`Default for std::collections::linked_list::{IntoIter, Iter, IterMut}`](https://doc.rust-lang.org/alloc/collections/linked_list/struct.IntoIter.html)
+- [`Default for std::vec::IntoIter`](https://doc.rust-lang.org/alloc/vec/struct.IntoIter.html#impl-Default-for-IntoIter%3CT,+A%3E)
+- [`Default for std::iter::Chain`](https://doc.rust-lang.org/std/iter/struct.Chain.html)
+- [`Default for std::iter::Cloned`](https://doc.rust-lang.org/std/iter/struct.Cloned.html)
+- [`Default for std::iter::Copied`](https://doc.rust-lang.org/std/iter/struct.Copied.html)
+- [`Default for std::iter::Enumerate`](https://doc.rust-lang.org/std/iter/struct.Enumerate.html)
+- [`Default for std::iter::Flatten`](https://doc.rust-lang.org/std/iter/struct.Flatten.html)
+- [`Default for std::iter::Fuse`](https://doc.rust-lang.org/std/iter/struct.Fuse.html)
+- [`Default for std::iter::Rev`](https://doc.rust-lang.org/std/iter/struct.Rev.html)
+- [`Default for std::slice::Iter`](https://doc.rust-lang.org/std/slice/struct.Iter.html)
+- [`Default for std::slice::IterMut`](https://doc.rust-lang.org/std/slice/struct.IterMut.html)
+- [`Rc::into_inner`](https://doc.rust-lang.org/alloc/rc/struct.Rc.html#method.into_inner)
+- [`Arc::into_inner`](https://doc.rust-lang.org/alloc/sync/struct.Arc.html#method.into_inner)
+- [`std::cell::OnceCell`](https://doc.rust-lang.org/std/cell/struct.OnceCell.html)
+- [`Option::is_some_and`](https://doc.rust-lang.org/std/option/enum.Option.html#method.is_some_and)
+- [`NonNull::slice_from_raw_parts`](https://doc.rust-lang.org/std/ptr/struct.NonNull.html#method.slice_from_raw_parts)
+- [`Result::is_ok_and`](https://doc.rust-lang.org/std/result/enum.Result.html#method.is_ok_and)
+- [`Result::is_err_and`](https://doc.rust-lang.org/std/result/enum.Result.html#method.is_err_and)
+- [`std::sync::atomic::Atomic*::as_ptr`](https://doc.rust-lang.org/std/sync/atomic/struct.AtomicU8.html#method.as_ptr)
+- [`std::io::IsTerminal`](https://doc.rust-lang.org/std/io/trait.IsTerminal.html)
+- [`std::os::linux::net::SocketAddrExt`](https://doc.rust-lang.org/std/os/linux/net/trait.SocketAddrExt.html)
+- [`std::os::unix::net::UnixDatagram::bind_addr`](https://doc.rust-lang.org/std/os/unix/net/struct.UnixDatagram.html#method.bind_addr)
+- [`std::os::unix::net::UnixDatagram::connect_addr`](https://doc.rust-lang.org/std/os/unix/net/struct.UnixDatagram.html#method.connect_addr)
+- [`std::os::unix::net::UnixDatagram::send_to_addr`](https://doc.rust-lang.org/std/os/unix/net/struct.UnixDatagram.html#method.send_to_addr)
+- [`std::os::unix::net::UnixListener::bind_addr`](https://doc.rust-lang.org/std/os/unix/net/struct.UnixListener.html#method.bind_addr)
+- [`std::path::Path::as_mut_os_str`](https://doc.rust-lang.org/std/path/struct.Path.html#method.as_mut_os_str)
+- [`std::sync::OnceLock`](https://doc.rust-lang.org/std/sync/struct.OnceLock.html)
 
 <a id="1.70.0-Cargo"></a>
 
@@ -173,24 +173,24 @@ Libraries
 Stabilized APIs
 ---------------
 
-- [`CStr::from_bytes_until_nul`](https://doc.rust-lang.org/stable/core/ffi/struct.CStr.html#method.from_bytes_until_nul)
-- [`core::ffi::FromBytesUntilNulError`](https://doc.rust-lang.org/stable/core/ffi/struct.FromBytesUntilNulError.html)
+- [`CStr::from_bytes_until_nul`](https://doc.rust-lang.org/core/ffi/struct.CStr.html#method.from_bytes_until_nul)
+- [`core::ffi::FromBytesUntilNulError`](https://doc.rust-lang.org/core/ffi/struct.FromBytesUntilNulError.html)
 
 These APIs are now stable in const contexts:
 
-- [`SocketAddr::new`](https://doc.rust-lang.org/stable/std/net/enum.SocketAddr.html#method.new)
-- [`SocketAddr::ip`](https://doc.rust-lang.org/stable/std/net/enum.SocketAddr.html#method.ip)
-- [`SocketAddr::port`](https://doc.rust-lang.org/stable/std/net/enum.SocketAddr.html#method.port)
-- [`SocketAddr::is_ipv4`](https://doc.rust-lang.org/stable/std/net/enum.SocketAddr.html#method.is_ipv4)
-- [`SocketAddr::is_ipv6`](https://doc.rust-lang.org/stable/std/net/enum.SocketAddr.html#method.is_ipv6)
-- [`SocketAddrV4::new`](https://doc.rust-lang.org/stable/std/net/struct.SocketAddrV4.html#method.new)
-- [`SocketAddrV4::ip`](https://doc.rust-lang.org/stable/std/net/struct.SocketAddrV4.html#method.ip)
-- [`SocketAddrV4::port`](https://doc.rust-lang.org/stable/std/net/struct.SocketAddrV4.html#method.port)
-- [`SocketAddrV6::new`](https://doc.rust-lang.org/stable/std/net/struct.SocketAddrV6.html#method.new)
-- [`SocketAddrV6::ip`](https://doc.rust-lang.org/stable/std/net/struct.SocketAddrV6.html#method.ip)
-- [`SocketAddrV6::port`](https://doc.rust-lang.org/stable/std/net/struct.SocketAddrV6.html#method.port)
-- [`SocketAddrV6::flowinfo`](https://doc.rust-lang.org/stable/std/net/struct.SocketAddrV6.html#method.flowinfo)
-- [`SocketAddrV6::scope_id`](https://doc.rust-lang.org/stable/std/net/struct.SocketAddrV6.html#method.scope_id)
+- [`SocketAddr::new`](https://doc.rust-lang.org/std/net/enum.SocketAddr.html#method.new)
+- [`SocketAddr::ip`](https://doc.rust-lang.org/std/net/enum.SocketAddr.html#method.ip)
+- [`SocketAddr::port`](https://doc.rust-lang.org/std/net/enum.SocketAddr.html#method.port)
+- [`SocketAddr::is_ipv4`](https://doc.rust-lang.org/std/net/enum.SocketAddr.html#method.is_ipv4)
+- [`SocketAddr::is_ipv6`](https://doc.rust-lang.org/std/net/enum.SocketAddr.html#method.is_ipv6)
+- [`SocketAddrV4::new`](https://doc.rust-lang.org/std/net/struct.SocketAddrV4.html#method.new)
+- [`SocketAddrV4::ip`](https://doc.rust-lang.org/std/net/struct.SocketAddrV4.html#method.ip)
+- [`SocketAddrV4::port`](https://doc.rust-lang.org/std/net/struct.SocketAddrV4.html#method.port)
+- [`SocketAddrV6::new`](https://doc.rust-lang.org/std/net/struct.SocketAddrV6.html#method.new)
+- [`SocketAddrV6::ip`](https://doc.rust-lang.org/std/net/struct.SocketAddrV6.html#method.ip)
+- [`SocketAddrV6::port`](https://doc.rust-lang.org/std/net/struct.SocketAddrV6.html#method.port)
+- [`SocketAddrV6::flowinfo`](https://doc.rust-lang.org/std/net/struct.SocketAddrV6.html#method.flowinfo)
+- [`SocketAddrV6::scope_id`](https://doc.rust-lang.org/std/net/struct.SocketAddrV6.html#method.scope_id)
 
 <a id="1.69.0-Cargo"></a>
 
@@ -308,14 +308,14 @@ Libraries
 Stabilized APIs
 ---------------
 
-- [`{core,std}::pin::pin!`](https://doc.rust-lang.org/stable/std/pin/macro.pin.html)
-- [`impl From<bool> for {f32,f64}`](https://doc.rust-lang.org/stable/std/primitive.f32.html#impl-From%3Cbool%3E-for-f32)
-- [`std::path::MAIN_SEPARATOR_STR`](https://doc.rust-lang.org/stable/std/path/constant.MAIN_SEPARATOR_STR.html)
-- [`impl DerefMut for PathBuf`](https://doc.rust-lang.org/stable/std/path/struct.PathBuf.html#impl-DerefMut-for-PathBuf)
+- [`{core,std}::pin::pin!`](https://doc.rust-lang.org/std/pin/macro.pin.html)
+- [`impl From<bool> for {f32,f64}`](https://doc.rust-lang.org/std/primitive.f32.html#impl-From%3Cbool%3E-for-f32)
+- [`std::path::MAIN_SEPARATOR_STR`](https://doc.rust-lang.org/std/path/constant.MAIN_SEPARATOR_STR.html)
+- [`impl DerefMut for PathBuf`](https://doc.rust-lang.org/std/path/struct.PathBuf.html#impl-DerefMut-for-PathBuf)
 
 These APIs are now stable in const contexts:
 
-- [`VecDeque::new`](https://doc.rust-lang.org/stable/std/collections/struct.VecDeque.html#method.new)
+- [`VecDeque::new`](https://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.new)
 
 <a id="1.68.0-Cargo"></a>
 
@@ -418,23 +418,23 @@ Libraries
 Stabilized APIs
 ---------------
 
-- [`{integer}::checked_ilog`](https://doc.rust-lang.org/stable/std/primitive.i32.html#method.checked_ilog)
-- [`{integer}::checked_ilog2`](https://doc.rust-lang.org/stable/std/primitive.i32.html#method.checked_ilog2)
-- [`{integer}::checked_ilog10`](https://doc.rust-lang.org/stable/std/primitive.i32.html#method.checked_ilog10)
-- [`{integer}::ilog`](https://doc.rust-lang.org/stable/std/primitive.i32.html#method.ilog)
-- [`{integer}::ilog2`](https://doc.rust-lang.org/stable/std/primitive.i32.html#method.ilog2)
-- [`{integer}::ilog10`](https://doc.rust-lang.org/stable/std/primitive.i32.html#method.ilog10)
-- [`NonZeroU*::ilog2`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroU32.html#method.ilog2)
-- [`NonZeroU*::ilog10`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroU32.html#method.ilog10)
-- [`NonZero*::BITS`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroU32.html#associatedconstant.BITS)
+- [`{integer}::checked_ilog`](https://doc.rust-lang.org/std/primitive.i32.html#method.checked_ilog)
+- [`{integer}::checked_ilog2`](https://doc.rust-lang.org/std/primitive.i32.html#method.checked_ilog2)
+- [`{integer}::checked_ilog10`](https://doc.rust-lang.org/std/primitive.i32.html#method.checked_ilog10)
+- [`{integer}::ilog`](https://doc.rust-lang.org/std/primitive.i32.html#method.ilog)
+- [`{integer}::ilog2`](https://doc.rust-lang.org/std/primitive.i32.html#method.ilog2)
+- [`{integer}::ilog10`](https://doc.rust-lang.org/std/primitive.i32.html#method.ilog10)
+- [`NonZeroU*::ilog2`](https://doc.rust-lang.org/std/num/struct.NonZeroU32.html#method.ilog2)
+- [`NonZeroU*::ilog10`](https://doc.rust-lang.org/std/num/struct.NonZeroU32.html#method.ilog10)
+- [`NonZero*::BITS`](https://doc.rust-lang.org/std/num/struct.NonZeroU32.html#associatedconstant.BITS)
 
 These APIs are now stable in const contexts:
 
-- [`char::from_u32`](https://doc.rust-lang.org/stable/std/primitive.char.html#method.from_u32)
-- [`char::from_digit`](https://doc.rust-lang.org/stable/std/primitive.char.html#method.from_digit)
-- [`char::to_digit`](https://doc.rust-lang.org/stable/std/primitive.char.html#method.to_digit)
-- [`core::char::from_u32`](https://doc.rust-lang.org/stable/core/char/fn.from_u32.html)
-- [`core::char::from_digit`](https://doc.rust-lang.org/stable/core/char/fn.from_digit.html)
+- [`char::from_u32`](https://doc.rust-lang.org/std/primitive.char.html#method.from_u32)
+- [`char::from_digit`](https://doc.rust-lang.org/std/primitive.char.html#method.from_digit)
+- [`char::to_digit`](https://doc.rust-lang.org/std/primitive.char.html#method.to_digit)
+- [`core::char::from_u32`](https://doc.rust-lang.org/core/char/fn.from_u32.html)
+- [`core::char::from_digit`](https://doc.rust-lang.org/core/char/fn.from_digit.html)
 
 <a id="1.67.0-Compatibility-Notes"></a>
 
@@ -516,18 +516,18 @@ Libraries
 Stabilized APIs
 ---------------
 
-- [`proc_macro::Span::source_text`](https://doc.rust-lang.org/stable/proc_macro/struct.Span.html#method.source_text)
-- [`uX::{checked_add_signed, overflowing_add_signed, saturating_add_signed, wrapping_add_signed}`](https://doc.rust-lang.org/stable/std/primitive.u8.html#method.checked_add_signed)
-- [`iX::{checked_add_unsigned, overflowing_add_unsigned, saturating_add_unsigned, wrapping_add_unsigned}`](https://doc.rust-lang.org/stable/std/primitive.i8.html#method.checked_add_unsigned)
-- [`iX::{checked_sub_unsigned, overflowing_sub_unsigned, saturating_sub_unsigned, wrapping_sub_unsigned}`](https://doc.rust-lang.org/stable/std/primitive.i8.html#method.checked_sub_unsigned)
-- [`BTreeSet::{first, last, pop_first, pop_last}`](https://doc.rust-lang.org/stable/std/collections/struct.BTreeSet.html#method.first)
-- [`BTreeMap::{first_key_value, last_key_value, first_entry, last_entry, pop_first, pop_last}`](https://doc.rust-lang.org/stable/std/collections/struct.BTreeMap.html#method.first_key_value)
+- [`proc_macro::Span::source_text`](https://doc.rust-lang.org/proc_macro/struct.Span.html#method.source_text)
+- [`uX::{checked_add_signed, overflowing_add_signed, saturating_add_signed, wrapping_add_signed}`](https://doc.rust-lang.org/std/primitive.u8.html#method.checked_add_signed)
+- [`iX::{checked_add_unsigned, overflowing_add_unsigned, saturating_add_unsigned, wrapping_add_unsigned}`](https://doc.rust-lang.org/std/primitive.i8.html#method.checked_add_unsigned)
+- [`iX::{checked_sub_unsigned, overflowing_sub_unsigned, saturating_sub_unsigned, wrapping_sub_unsigned}`](https://doc.rust-lang.org/std/primitive.i8.html#method.checked_sub_unsigned)
+- [`BTreeSet::{first, last, pop_first, pop_last}`](https://doc.rust-lang.org/std/collections/struct.BTreeSet.html#method.first)
+- [`BTreeMap::{first_key_value, last_key_value, first_entry, last_entry, pop_first, pop_last}`](https://doc.rust-lang.org/std/collections/struct.BTreeMap.html#method.first_key_value)
 - [Add `AsFd` implementations for stdio lock types on WASI.](https://github.com/rust-lang/rust/pull/101768/)
-- [`impl TryFrom<Vec<T>> for Box<[T; N]>`](https://doc.rust-lang.org/stable/std/boxed/struct.Box.html#impl-TryFrom%3CVec%3CT%2C%20Global%3E%3E-for-Box%3C%5BT%3B%20N%5D%2C%20Global%3E)
-- [`core::hint::black_box`](https://doc.rust-lang.org/stable/std/hint/fn.black_box.html)
-- [`Duration::try_from_secs_{f32,f64}`](https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.try_from_secs_f32)
-- [`Option::unzip`](https://doc.rust-lang.org/stable/std/option/enum.Option.html#method.unzip)
-- [`std::os::fd`](https://doc.rust-lang.org/stable/std/os/fd/index.html)
+- [`impl TryFrom<Vec<T>> for Box<[T; N]>`](https://doc.rust-lang.org/std/boxed/struct.Box.html#impl-TryFrom%3CVec%3CT%2C%20Global%3E%3E-for-Box%3C%5BT%3B%20N%5D%2C%20Global%3E)
+- [`core::hint::black_box`](https://doc.rust-lang.org/std/hint/fn.black_box.html)
+- [`Duration::try_from_secs_{f32,f64}`](https://doc.rust-lang.org/std/time/struct.Duration.html#method.try_from_secs_f32)
+- [`Option::unzip`](https://doc.rust-lang.org/std/option/enum.Option.html#method.unzip)
+- [`std::os::fd`](https://doc.rust-lang.org/std/os/fd/index.html)
 
 
 Rustdoc
@@ -538,7 +538,7 @@ Rustdoc
 Cargo
 -----
 
-- [Added `cargo remove` to remove dependencies from Cargo.toml](https://doc.rust-lang.org/nightly/cargo/commands/cargo-remove.html)
+- [Added `cargo remove` to remove dependencies from Cargo.toml](https://doc.rust-lang.org/cargo/commands/cargo-remove.html)
 - [`cargo publish` now waits for the new version to be downloadable before exiting](https://github.com/rust-lang/cargo/pull/11062)
 
 See [detailed release notes](https://github.com/rust-lang/cargo/blob/master/CHANGELOG.md#cargo-166-2022-12-15) for more.
@@ -616,16 +616,16 @@ Libraries
 Stabilized APIs
 ---------------
 
-- [`std::backtrace::Backtrace`](https://doc.rust-lang.org/stable/std/backtrace/struct.Backtrace.html)
-- [`Bound::as_ref`](https://doc.rust-lang.org/stable/std/ops/enum.Bound.html#method.as_ref)
-- [`std::io::read_to_string`](https://doc.rust-lang.org/stable/std/io/fn.read_to_string.html)
-- [`<*const T>::cast_mut`](https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.cast_mut)
-- [`<*mut T>::cast_const`](https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.cast_const)
+- [`std::backtrace::Backtrace`](https://doc.rust-lang.org/std/backtrace/struct.Backtrace.html)
+- [`Bound::as_ref`](https://doc.rust-lang.org/std/ops/enum.Bound.html#method.as_ref)
+- [`std::io::read_to_string`](https://doc.rust-lang.org/std/io/fn.read_to_string.html)
+- [`<*const T>::cast_mut`](https://doc.rust-lang.org/std/primitive.pointer.html#method.cast_mut)
+- [`<*mut T>::cast_const`](https://doc.rust-lang.org/std/primitive.pointer.html#method.cast_const)
 
 These APIs are now stable in const contexts:
 
-- [`<*const T>::offset_from`](https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.offset_from)
-- [`<*mut T>::offset_from`](https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.offset_from)
+- [`<*const T>::offset_from`](https://doc.rust-lang.org/std/primitive.pointer.html#method.offset_from)
+- [`<*mut T>::offset_from`](https://doc.rust-lang.org/std/primitive.pointer.html#method.offset_from)
 
 Cargo
 -----
@@ -705,72 +705,72 @@ Libraries
 Stabilized APIs
 ---------------
 
-- [`future::IntoFuture`](https://doc.rust-lang.org/stable/std/future/trait.IntoFuture.html)
-- [`future::poll_fn`](https://doc.rust-lang.org/stable/std/future/fn.poll_fn.html)
-- [`task::ready!`](https://doc.rust-lang.org/stable/std/task/macro.ready.html)
-- [`num::NonZero*::checked_mul`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroUsize.html#method.checked_mul)
-- [`num::NonZero*::checked_pow`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroUsize.html#method.checked_pow)
-- [`num::NonZero*::saturating_mul`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroUsize.html#method.saturating_mul)
-- [`num::NonZero*::saturating_pow`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroUsize.html#method.saturating_pow)
-- [`num::NonZeroI*::abs`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroIsize.html#method.abs)
-- [`num::NonZeroI*::checked_abs`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroIsize.html#method.checked_abs)
-- [`num::NonZeroI*::overflowing_abs`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroIsize.html#method.overflowing_abs)
-- [`num::NonZeroI*::saturating_abs`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroIsize.html#method.saturating_abs)
-- [`num::NonZeroI*::unsigned_abs`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroIsize.html#method.unsigned_abs)
-- [`num::NonZeroI*::wrapping_abs`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroIsize.html#method.wrapping_abs)
-- [`num::NonZeroU*::checked_add`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroUsize.html#method.checked_add)
-- [`num::NonZeroU*::checked_next_power_of_two`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroUsize.html#method.checked_next_power_of_two)
-- [`num::NonZeroU*::saturating_add`](https://doc.rust-lang.org/stable/std/num/struct.NonZeroUsize.html#method.saturating_add)
-- [`os::unix::process::CommandExt::process_group`](https://doc.rust-lang.org/stable/std/os/unix/process/trait.CommandExt.html#tymethod.process_group)
-- [`os::windows::fs::FileTypeExt::is_symlink_dir`](https://doc.rust-lang.org/stable/std/os/windows/fs/trait.FileTypeExt.html#tymethod.is_symlink_dir)
-- [`os::windows::fs::FileTypeExt::is_symlink_file`](https://doc.rust-lang.org/stable/std/os/windows/fs/trait.FileTypeExt.html#tymethod.is_symlink_file)
+- [`future::IntoFuture`](https://doc.rust-lang.org/std/future/trait.IntoFuture.html)
+- [`future::poll_fn`](https://doc.rust-lang.org/std/future/fn.poll_fn.html)
+- [`task::ready!`](https://doc.rust-lang.org/std/task/macro.ready.html)
+- [`num::NonZero*::checked_mul`](https://doc.rust-lang.org/std/num/struct.NonZeroUsize.html#method.checked_mul)
+- [`num::NonZero*::checked_pow`](https://doc.rust-lang.org/std/num/struct.NonZeroUsize.html#method.checked_pow)
+- [`num::NonZero*::saturating_mul`](https://doc.rust-lang.org/std/num/struct.NonZeroUsize.html#method.saturating_mul)
+- [`num::NonZero*::saturating_pow`](https://doc.rust-lang.org/std/num/struct.NonZeroUsize.html#method.saturating_pow)
+- [`num::NonZeroI*::abs`](https://doc.rust-lang.org/std/num/struct.NonZeroIsize.html#method.abs)
+- [`num::NonZeroI*::checked_abs`](https://doc.rust-lang.org/std/num/struct.NonZeroIsize.html#method.checked_abs)
+- [`num::NonZeroI*::overflowing_abs`](https://doc.rust-lang.org/std/num/struct.NonZeroIsize.html#method.overflowing_abs)
+- [`num::NonZeroI*::saturating_abs`](https://doc.rust-lang.org/std/num/struct.NonZeroIsize.html#method.saturating_abs)
+- [`num::NonZeroI*::unsigned_abs`](https://doc.rust-lang.org/std/num/struct.NonZeroIsize.html#method.unsigned_abs)
+- [`num::NonZeroI*::wrapping_abs`](https://doc.rust-lang.org/std/num/struct.NonZeroIsize.html#method.wrapping_abs)
+- [`num::NonZeroU*::checked_add`](https://doc.rust-lang.org/std/num/struct.NonZeroUsize.html#method.checked_add)
+- [`num::NonZeroU*::checked_next_power_of_two`](https://doc.rust-lang.org/std/num/struct.NonZeroUsize.html#method.checked_next_power_of_two)
+- [`num::NonZeroU*::saturating_add`](https://doc.rust-lang.org/std/num/struct.NonZeroUsize.html#method.saturating_add)
+- [`os::unix::process::CommandExt::process_group`](https://doc.rust-lang.org/std/os/unix/process/trait.CommandExt.html#tymethod.process_group)
+- [`os::windows::fs::FileTypeExt::is_symlink_dir`](https://doc.rust-lang.org/std/os/windows/fs/trait.FileTypeExt.html#tymethod.is_symlink_dir)
+- [`os::windows::fs::FileTypeExt::is_symlink_file`](https://doc.rust-lang.org/std/os/windows/fs/trait.FileTypeExt.html#tymethod.is_symlink_file)
 
 These types were previously stable in `std::ffi`, but are now also available in `core` and `alloc`:
 
-- [`core::ffi::CStr`](https://doc.rust-lang.org/stable/core/ffi/struct.CStr.html)
-- [`core::ffi::FromBytesWithNulError`](https://doc.rust-lang.org/stable/core/ffi/struct.FromBytesWithNulError.html)
-- [`alloc::ffi::CString`](https://doc.rust-lang.org/stable/alloc/ffi/struct.CString.html)
-- [`alloc::ffi::FromVecWithNulError`](https://doc.rust-lang.org/stable/alloc/ffi/struct.FromVecWithNulError.html)
-- [`alloc::ffi::IntoStringError`](https://doc.rust-lang.org/stable/alloc/ffi/struct.IntoStringError.html)
-- [`alloc::ffi::NulError`](https://doc.rust-lang.org/stable/alloc/ffi/struct.NulError.html)
+- [`core::ffi::CStr`](https://doc.rust-lang.org/core/ffi/struct.CStr.html)
+- [`core::ffi::FromBytesWithNulError`](https://doc.rust-lang.org/core/ffi/struct.FromBytesWithNulError.html)
+- [`alloc::ffi::CString`](https://doc.rust-lang.org/alloc/ffi/struct.CString.html)
+- [`alloc::ffi::FromVecWithNulError`](https://doc.rust-lang.org/alloc/ffi/struct.FromVecWithNulError.html)
+- [`alloc::ffi::IntoStringError`](https://doc.rust-lang.org/alloc/ffi/struct.IntoStringError.html)
+- [`alloc::ffi::NulError`](https://doc.rust-lang.org/alloc/ffi/struct.NulError.html)
 
 These types were previously stable in `std::os::raw`, but are now also available in `core::ffi` and `std::ffi`:
 
-- [`ffi::c_char`](https://doc.rust-lang.org/stable/std/ffi/type.c_char.html)
-- [`ffi::c_double`](https://doc.rust-lang.org/stable/std/ffi/type.c_double.html)
-- [`ffi::c_float`](https://doc.rust-lang.org/stable/std/ffi/type.c_float.html)
-- [`ffi::c_int`](https://doc.rust-lang.org/stable/std/ffi/type.c_int.html)
-- [`ffi::c_long`](https://doc.rust-lang.org/stable/std/ffi/type.c_long.html)
-- [`ffi::c_longlong`](https://doc.rust-lang.org/stable/std/ffi/type.c_longlong.html)
-- [`ffi::c_schar`](https://doc.rust-lang.org/stable/std/ffi/type.c_schar.html)
-- [`ffi::c_short`](https://doc.rust-lang.org/stable/std/ffi/type.c_short.html)
-- [`ffi::c_uchar`](https://doc.rust-lang.org/stable/std/ffi/type.c_uchar.html)
-- [`ffi::c_uint`](https://doc.rust-lang.org/stable/std/ffi/type.c_uint.html)
-- [`ffi::c_ulong`](https://doc.rust-lang.org/stable/std/ffi/type.c_ulong.html)
-- [`ffi::c_ulonglong`](https://doc.rust-lang.org/stable/std/ffi/type.c_ulonglong.html)
-- [`ffi::c_ushort`](https://doc.rust-lang.org/stable/std/ffi/type.c_ushort.html)
+- [`ffi::c_char`](https://doc.rust-lang.org/std/ffi/type.c_char.html)
+- [`ffi::c_double`](https://doc.rust-lang.org/std/ffi/type.c_double.html)
+- [`ffi::c_float`](https://doc.rust-lang.org/std/ffi/type.c_float.html)
+- [`ffi::c_int`](https://doc.rust-lang.org/std/ffi/type.c_int.html)
+- [`ffi::c_long`](https://doc.rust-lang.org/std/ffi/type.c_long.html)
+- [`ffi::c_longlong`](https://doc.rust-lang.org/std/ffi/type.c_longlong.html)
+- [`ffi::c_schar`](https://doc.rust-lang.org/std/ffi/type.c_schar.html)
+- [`ffi::c_short`](https://doc.rust-lang.org/std/ffi/type.c_short.html)
+- [`ffi::c_uchar`](https://doc.rust-lang.org/std/ffi/type.c_uchar.html)
+- [`ffi::c_uint`](https://doc.rust-lang.org/std/ffi/type.c_uint.html)
+- [`ffi::c_ulong`](https://doc.rust-lang.org/std/ffi/type.c_ulong.html)
+- [`ffi::c_ulonglong`](https://doc.rust-lang.org/std/ffi/type.c_ulonglong.html)
+- [`ffi::c_ushort`](https://doc.rust-lang.org/std/ffi/type.c_ushort.html)
 
 These APIs are now usable in const contexts:
 
-- [`slice::from_raw_parts`](https://doc.rust-lang.org/stable/core/slice/fn.from_raw_parts.html)
+- [`slice::from_raw_parts`](https://doc.rust-lang.org/core/slice/fn.from_raw_parts.html)
 
 Cargo
 -----
 - [Packages can now inherit settings from the workspace so that the settings
   can be centralized in one place.](https://github.com/rust-lang/cargo/pull/10859) See
-  [`workspace.package`](https://doc.rust-lang.org/nightly/cargo/reference/workspaces.html#the-workspacepackage-table)
+  [`workspace.package`](https://doc.rust-lang.org/cargo/reference/workspaces.html#the-workspacepackage-table)
   and
-  [`workspace.dependencies`](https://doc.rust-lang.org/nightly/cargo/reference/workspaces.html#the-workspacedependencies-table)
+  [`workspace.dependencies`](https://doc.rust-lang.org/cargo/reference/workspaces.html#the-workspacedependencies-table)
   for more details on how to define these common settings.
 - [Cargo commands can now accept multiple `--target` flags to build for
   multiple targets at once](https://github.com/rust-lang/cargo/pull/10766), and the
-  [`build.target`](https://doc.rust-lang.org/nightly/cargo/reference/config.html#buildtarget)
+  [`build.target`](https://doc.rust-lang.org/cargo/reference/config.html#buildtarget)
   config option may now take an array of multiple targets.
 - [The `--jobs` argument can now take a negative number to count backwards from
   the max CPUs.](https://github.com/rust-lang/cargo/pull/10844)
 - [`cargo add` will now update `Cargo.lock`.](https://github.com/rust-lang/cargo/pull/10902)
 - [Added](https://github.com/rust-lang/cargo/pull/10838) the
-  [`--crate-type`](https://doc.rust-lang.org/nightly/cargo/commands/cargo-rustc.html#option-cargo-rustc---crate-type)
+  [`--crate-type`](https://doc.rust-lang.org/cargo/commands/cargo-rustc.html#option-cargo-rustc---crate-type)
   flag to `cargo rustc` to override the crate type.
 - [Significantly improved the performance fetching git dependencies from GitHub
   when using a hash in the `rev` field.](https://github.com/rust-lang/cargo/pull/10079)
@@ -956,53 +956,53 @@ and related tools.
 [cargo/10713]: https://github.com/rust-lang/cargo/pull/10713/
 [cargo/10755]: https://github.com/rust-lang/cargo/pull/10755/
 
-[`array::from_fn`]: https://doc.rust-lang.org/stable/std/array/fn.from_fn.html
-[`Box::into_pin`]: https://doc.rust-lang.org/stable/std/boxed/struct.Box.html#method.into_pin
-[`BinaryHeap::try_reserve_exact`]: https://doc.rust-lang.org/stable/alloc/collections/binary_heap/struct.BinaryHeap.html#method.try_reserve_exact
-[`BinaryHeap::try_reserve`]: https://doc.rust-lang.org/stable/std/collections/struct.BinaryHeap.html#method.try_reserve
-[`OsString::try_reserve`]: https://doc.rust-lang.org/stable/std/ffi/struct.OsString.html#method.try_reserve
-[`OsString::try_reserve_exact`]: https://doc.rust-lang.org/stable/std/ffi/struct.OsString.html#method.try_reserve_exact
-[`PathBuf::try_reserve`]: https://doc.rust-lang.org/stable/std/path/struct.PathBuf.html#method.try_reserve
-[`PathBuf::try_reserve_exact`]: https://doc.rust-lang.org/stable/std/path/struct.PathBuf.html#method.try_reserve_exact
-[`Path::try_exists`]: https://doc.rust-lang.org/stable/std/path/struct.Path.html#method.try_exists
-[`Ref::filter_map`]: https://doc.rust-lang.org/stable/std/cell/struct.Ref.html#method.filter_map
-[`RefMut::filter_map`]: https://doc.rust-lang.org/stable/std/cell/struct.RefMut.html#method.filter_map
-[`NonNull::<slice>::len`]: https://doc.rust-lang.org/stable/std/ptr/struct.NonNull.html#method.len
-[`ToOwned::clone_into`]: https://doc.rust-lang.org/stable/std/borrow/trait.ToOwned.html#method.clone_into
-[`Ipv6Addr::to_ipv4_mapped`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv6Addr.html#method.to_ipv4_mapped
-[`unix::io::AsFd`]: https://doc.rust-lang.org/stable/std/os/unix/io/trait.AsFd.html
-[`unix::io::BorrowedFd<'fd>`]: https://doc.rust-lang.org/stable/std/os/unix/io/struct.BorrowedFd.html
-[`unix::io::OwnedFd`]: https://doc.rust-lang.org/stable/std/os/unix/io/struct.OwnedFd.html
-[`windows::io::AsHandle`]: https://doc.rust-lang.org/stable/std/os/windows/io/trait.AsHandle.html
-[`windows::io::BorrowedHandle<'handle>`]: https://doc.rust-lang.org/stable/std/os/windows/io/struct.BorrowedHandle.html
-[`windows::io::OwnedHandle`]: https://doc.rust-lang.org/stable/std/os/windows/io/struct.OwnedHandle.html
-[`windows::io::HandleOrInvalid`]: https://doc.rust-lang.org/stable/std/os/windows/io/struct.HandleOrInvalid.html
-[`windows::io::HandleOrNull`]: https://doc.rust-lang.org/stable/std/os/windows/io/struct.HandleOrNull.html
-[`windows::io::InvalidHandleError`]: https://doc.rust-lang.org/stable/std/os/windows/io/struct.InvalidHandleError.html
-[`windows::io::NullHandleError`]: https://doc.rust-lang.org/stable/std/os/windows/io/struct.NullHandleError.html
-[`windows::io::AsSocket`]: https://doc.rust-lang.org/stable/std/os/windows/io/trait.AsSocket.html
-[`windows::io::BorrowedSocket<'handle>`]: https://doc.rust-lang.org/stable/std/os/windows/io/struct.BorrowedSocket.html
-[`windows::io::OwnedSocket`]: https://doc.rust-lang.org/stable/std/os/windows/io/struct.OwnedSocket.html
-[`thread::scope`]: https://doc.rust-lang.org/stable/std/thread/fn.scope.html
-[`thread::Scope`]: https://doc.rust-lang.org/stable/std/thread/struct.Scope.html
-[`thread::ScopedJoinHandle`]: https://doc.rust-lang.org/stable/std/thread/struct.ScopedJoinHandle.html
+[`array::from_fn`]: https://doc.rust-lang.org/std/array/fn.from_fn.html
+[`Box::into_pin`]: https://doc.rust-lang.org/std/boxed/struct.Box.html#method.into_pin
+[`BinaryHeap::try_reserve_exact`]: https://doc.rust-lang.org/alloc/collections/binary_heap/struct.BinaryHeap.html#method.try_reserve_exact
+[`BinaryHeap::try_reserve`]: https://doc.rust-lang.org/std/collections/struct.BinaryHeap.html#method.try_reserve
+[`OsString::try_reserve`]: https://doc.rust-lang.org/std/ffi/struct.OsString.html#method.try_reserve
+[`OsString::try_reserve_exact`]: https://doc.rust-lang.org/std/ffi/struct.OsString.html#method.try_reserve_exact
+[`PathBuf::try_reserve`]: https://doc.rust-lang.org/std/path/struct.PathBuf.html#method.try_reserve
+[`PathBuf::try_reserve_exact`]: https://doc.rust-lang.org/std/path/struct.PathBuf.html#method.try_reserve_exact
+[`Path::try_exists`]: https://doc.rust-lang.org/std/path/struct.Path.html#method.try_exists
+[`Ref::filter_map`]: https://doc.rust-lang.org/std/cell/struct.Ref.html#method.filter_map
+[`RefMut::filter_map`]: https://doc.rust-lang.org/std/cell/struct.RefMut.html#method.filter_map
+[`NonNull::<slice>::len`]: https://doc.rust-lang.org/std/ptr/struct.NonNull.html#method.len
+[`ToOwned::clone_into`]: https://doc.rust-lang.org/std/borrow/trait.ToOwned.html#method.clone_into
+[`Ipv6Addr::to_ipv4_mapped`]: https://doc.rust-lang.org/std/net/struct.Ipv6Addr.html#method.to_ipv4_mapped
+[`unix::io::AsFd`]: https://doc.rust-lang.org/std/os/unix/io/trait.AsFd.html
+[`unix::io::BorrowedFd<'fd>`]: https://doc.rust-lang.org/std/os/unix/io/struct.BorrowedFd.html
+[`unix::io::OwnedFd`]: https://doc.rust-lang.org/std/os/unix/io/struct.OwnedFd.html
+[`windows::io::AsHandle`]: https://doc.rust-lang.org/std/os/windows/io/trait.AsHandle.html
+[`windows::io::BorrowedHandle<'handle>`]: https://doc.rust-lang.org/std/os/windows/io/struct.BorrowedHandle.html
+[`windows::io::OwnedHandle`]: https://doc.rust-lang.org/std/os/windows/io/struct.OwnedHandle.html
+[`windows::io::HandleOrInvalid`]: https://doc.rust-lang.org/std/os/windows/io/struct.HandleOrInvalid.html
+[`windows::io::HandleOrNull`]: https://doc.rust-lang.org/std/os/windows/io/struct.HandleOrNull.html
+[`windows::io::InvalidHandleError`]: https://doc.rust-lang.org/std/os/windows/io/struct.InvalidHandleError.html
+[`windows::io::NullHandleError`]: https://doc.rust-lang.org/std/os/windows/io/struct.NullHandleError.html
+[`windows::io::AsSocket`]: https://doc.rust-lang.org/std/os/windows/io/trait.AsSocket.html
+[`windows::io::BorrowedSocket<'handle>`]: https://doc.rust-lang.org/std/os/windows/io/struct.BorrowedSocket.html
+[`windows::io::OwnedSocket`]: https://doc.rust-lang.org/std/os/windows/io/struct.OwnedSocket.html
+[`thread::scope`]: https://doc.rust-lang.org/std/thread/fn.scope.html
+[`thread::Scope`]: https://doc.rust-lang.org/std/thread/struct.Scope.html
+[`thread::ScopedJoinHandle`]: https://doc.rust-lang.org/std/thread/struct.ScopedJoinHandle.html
 
-[`array::from_ref`]: https://doc.rust-lang.org/stable/std/array/fn.from_ref.html
-[`slice::from_ref`]: https://doc.rust-lang.org/stable/std/slice/fn.from_ref.html
-[`intrinsics::copy`]: https://doc.rust-lang.org/stable/std/intrinsics/fn.copy.html
-[`intrinsics::copy_nonoverlapping`]: https://doc.rust-lang.org/stable/std/intrinsics/fn.copy_nonoverlapping.html
-[`<*const T>::copy_to`]: https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.copy_to
-[`<*const T>::copy_to_nonoverlapping`]: https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.copy_to_nonoverlapping
-[`<*mut T>::copy_to`]: https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.copy_to-1
-[`<*mut T>::copy_to_nonoverlapping`]: https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.copy_to_nonoverlapping-1
-[`<*mut T>::copy_from`]: https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.copy_from
-[`<*mut T>::copy_from_nonoverlapping`]: https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.copy_from_nonoverlapping
-[`str::from_utf8`]: https://doc.rust-lang.org/stable/std/str/fn.from_utf8.html
-[`Utf8Error::error_len`]: https://doc.rust-lang.org/stable/std/str/struct.Utf8Error.html#method.error_len
-[`Utf8Error::valid_up_to`]: https://doc.rust-lang.org/stable/std/str/struct.Utf8Error.html#method.valid_up_to
-[`Condvar::new`]: https://doc.rust-lang.org/stable/std/sync/struct.Condvar.html#method.new
-[`Mutex::new`]: https://doc.rust-lang.org/stable/std/sync/struct.Mutex.html#method.new
-[`RwLock::new`]: https://doc.rust-lang.org/stable/std/sync/struct.RwLock.html#method.new
+[`array::from_ref`]: https://doc.rust-lang.org/std/array/fn.from_ref.html
+[`slice::from_ref`]: https://doc.rust-lang.org/std/slice/fn.from_ref.html
+[`intrinsics::copy`]: https://doc.rust-lang.org/std/intrinsics/fn.copy.html
+[`intrinsics::copy_nonoverlapping`]: https://doc.rust-lang.org/std/intrinsics/fn.copy_nonoverlapping.html
+[`<*const T>::copy_to`]: https://doc.rust-lang.org/std/primitive.pointer.html#method.copy_to
+[`<*const T>::copy_to_nonoverlapping`]: https://doc.rust-lang.org/std/primitive.pointer.html#method.copy_to_nonoverlapping
+[`<*mut T>::copy_to`]: https://doc.rust-lang.org/std/primitive.pointer.html#method.copy_to-1
+[`<*mut T>::copy_to_nonoverlapping`]: https://doc.rust-lang.org/std/primitive.pointer.html#method.copy_to_nonoverlapping-1
+[`<*mut T>::copy_from`]: https://doc.rust-lang.org/std/primitive.pointer.html#method.copy_from
+[`<*mut T>::copy_from_nonoverlapping`]: https://doc.rust-lang.org/std/primitive.pointer.html#method.copy_from_nonoverlapping
+[`str::from_utf8`]: https://doc.rust-lang.org/std/str/fn.from_utf8.html
+[`Utf8Error::error_len`]: https://doc.rust-lang.org/std/str/struct.Utf8Error.html#method.error_len
+[`Utf8Error::valid_up_to`]: https://doc.rust-lang.org/std/str/struct.Utf8Error.html#method.valid_up_to
+[`Condvar::new`]: https://doc.rust-lang.org/std/sync/struct.Condvar.html#method.new
+[`Mutex::new`]: https://doc.rust-lang.org/std/sync/struct.Mutex.html#method.new
+[`RwLock::new`]: https://doc.rust-lang.org/std/sync/struct.RwLock.html#method.new
 
 Version 1.62.1 (2022-07-19)
 ==========================
@@ -1083,7 +1083,7 @@ Cargo
 
 - Added the `cargo add` command for adding dependencies to `Cargo.toml` from
   the command-line.
-  [docs](https://doc.rust-lang.org/nightly/cargo/commands/cargo-add.html)
+  [docs](https://doc.rust-lang.org/cargo/commands/cargo-add.html)
 - Package ID specs now support `name@version` syntax in addition to the
   previous `name:version` to align with the behavior in `cargo add` and other
   tools. `cargo install` and `cargo yank` also now support this syntax so the
@@ -1141,16 +1141,16 @@ and related tools.
 [96557]: https://github.com/rust-lang/rust/pull/96557/
 [96630]: https://github.com/rust-lang/rust/pull/96630/
 
-[`bool::then_some`]: https://doc.rust-lang.org/stable/std/primitive.bool.html#method.then_some
-[`f32::total_cmp`]: https://doc.rust-lang.org/stable/std/primitive.f32.html#method.total_cmp
-[`f64::total_cmp`]: https://doc.rust-lang.org/stable/std/primitive.f64.html#method.total_cmp
-[`Stdin::lines`]: https://doc.rust-lang.org/stable/std/io/struct.Stdin.html#method.lines
-[`impl<T: Default> Default for AssertUnwindSafe<T>`]: https://doc.rust-lang.org/stable/std/panic/struct.AssertUnwindSafe.html#impl-Default
-[rc-u8-from-str]: https://doc.rust-lang.org/stable/std/rc/struct.Rc.html#impl-From%3CRc%3Cstr%3E%3E
-[arc-u8-from-str]: https://doc.rust-lang.org/stable/std/sync/struct.Arc.html#impl-From%3CArc%3Cstr%3E%3E
+[`bool::then_some`]: https://doc.rust-lang.org/std/primitive.bool.html#method.then_some
+[`f32::total_cmp`]: https://doc.rust-lang.org/std/primitive.f32.html#method.total_cmp
+[`f64::total_cmp`]: https://doc.rust-lang.org/std/primitive.f64.html#method.total_cmp
+[`Stdin::lines`]: https://doc.rust-lang.org/std/io/struct.Stdin.html#method.lines
+[`impl<T: Default> Default for AssertUnwindSafe<T>`]: https://doc.rust-lang.org/std/panic/struct.AssertUnwindSafe.html#impl-Default
+[rc-u8-from-str]: https://doc.rust-lang.org/std/rc/struct.Rc.html#impl-From%3CRc%3Cstr%3E%3E
+[arc-u8-from-str]: https://doc.rust-lang.org/std/sync/struct.Arc.html#impl-From%3CArc%3Cstr%3E%3E
 [stdarch/1285]: https://github.com/rust-lang/stdarch/pull/1285
-[`windows::CommandExt::raw_arg`]: https://doc.rust-lang.org/stable/std/os/windows/process/trait.CommandExt.html#tymethod.raw_arg
-[`FusedIterator for EncodeWide`]: https://doc.rust-lang.org/stable/std/os/windows/ffi/struct.EncodeWide.html#impl-FusedIterator
+[`windows::CommandExt::raw_arg`]: https://doc.rust-lang.org/std/os/windows/process/trait.CommandExt.html#tymethod.raw_arg
+[`FusedIterator for EncodeWide`]: https://doc.rust-lang.org/std/os/windows/ffi/struct.EncodeWide.html#impl-FusedIterator
 
 Version 1.61.0 (2022-05-19)
 ==========================
@@ -1254,27 +1254,27 @@ and related tools.
 [94832]: https://github.com/rust-lang/rust/pull/94832/
 [95016]: https://github.com/rust-lang/rust/pull/95016/
 [95251]: https://github.com/rust-lang/rust/pull/95251/
-[`+whole-archive`]: https://doc.rust-lang.org/stable/rustc/command-line-arguments.html#linking-modifiers-whole-archive
-[`Pin::static_mut`]: https://doc.rust-lang.org/stable/std/pin/struct.Pin.html#method.static_mut
-[`Pin::static_ref`]: https://doc.rust-lang.org/stable/std/pin/struct.Pin.html#method.static_ref
-[`Vec::retain_mut`]: https://doc.rust-lang.org/stable/std/vec/struct.Vec.html#method.retain_mut
-[`VecDeque::retain_mut`]: https://doc.rust-lang.org/stable/std/collections/struct.VecDeque.html#method.retain_mut
-[`std::os::unix::net::SocketAddr::from_pathname`]: https://doc.rust-lang.org/stable/std/os/unix/net/struct.SocketAddr.html#method.from_pathname
-[`std::process::ExitCode`]: https://doc.rust-lang.org/stable/std/process/struct.ExitCode.html
-[`std::process::Termination`]: https://doc.rust-lang.org/stable/std/process/trait.Termination.html
-[`std::thread::JoinHandle::is_finished`]: https://doc.rust-lang.org/stable/std/thread/struct.JoinHandle.html#method.is_finished
+[`+whole-archive`]: https://doc.rust-lang.org/rustc/command-line-arguments.html#linking-modifiers-whole-archive
+[`Pin::static_mut`]: https://doc.rust-lang.org/std/pin/struct.Pin.html#method.static_mut
+[`Pin::static_ref`]: https://doc.rust-lang.org/std/pin/struct.Pin.html#method.static_ref
+[`Vec::retain_mut`]: https://doc.rust-lang.org/std/vec/struct.Vec.html#method.retain_mut
+[`VecDeque::retain_mut`]: https://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.retain_mut
+[`std::os::unix::net::SocketAddr::from_pathname`]: https://doc.rust-lang.org/std/os/unix/net/struct.SocketAddr.html#method.from_pathname
+[`std::process::ExitCode`]: https://doc.rust-lang.org/std/process/struct.ExitCode.html
+[`std::process::Termination`]: https://doc.rust-lang.org/std/process/trait.Termination.html
+[`std::thread::JoinHandle::is_finished`]: https://doc.rust-lang.org/std/thread/struct.JoinHandle.html#method.is_finished
 [cargo/10448]: https://github.com/rust-lang/cargo/pull/10448/
-[cursor-write-array]: https://doc.rust-lang.org/stable/std/io/struct.Cursor.html#impl-Write-4
-[link-attr]: https://doc.rust-lang.org/stable/reference/items/external-blocks.html#the-link-attribute
-[ptr-add]: https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.add
-[ptr-offset]: https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.offset
-[ptr-sub]: https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.sub
-[ptr-wrapping_add]: https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.wrapping_add
-[ptr-wrapping_offset]: https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.wrapping_offset
-[ptr-wrapping_sub]: https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.wrapping_sub
-[slice-as_mut_ptr]: https://doc.rust-lang.org/stable/std/primitive.slice.html#method.as_mut_ptr
-[slice-as_mut_ptr_range]: https://doc.rust-lang.org/stable/std/primitive.slice.html#method.as_mut_ptr_range
-[slice-as_ptr_range]: https://doc.rust-lang.org/stable/std/primitive.slice.html#method.as_ptr_range
+[cursor-write-array]: https://doc.rust-lang.org/std/io/struct.Cursor.html#impl-Write-4
+[link-attr]: https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute
+[ptr-add]: https://doc.rust-lang.org/std/primitive.pointer.html#method.add
+[ptr-offset]: https://doc.rust-lang.org/std/primitive.pointer.html#method.offset
+[ptr-sub]: https://doc.rust-lang.org/std/primitive.pointer.html#method.sub
+[ptr-wrapping_add]: https://doc.rust-lang.org/std/primitive.pointer.html#method.wrapping_add
+[ptr-wrapping_offset]: https://doc.rust-lang.org/std/primitive.pointer.html#method.wrapping_offset
+[ptr-wrapping_sub]: https://doc.rust-lang.org/std/primitive.pointer.html#method.wrapping_sub
+[slice-as_mut_ptr]: https://doc.rust-lang.org/std/primitive.slice.html#method.as_mut_ptr
+[slice-as_mut_ptr_range]: https://doc.rust-lang.org/std/primitive.slice.html#method.as_mut_ptr_range
+[slice-as_ptr_range]: https://doc.rust-lang.org/std/primitive.slice.html#method.as_ptr_range
 [target_feature]: https://doc.rust-lang.org/reference/attributes/codegen.html#the-target_feature-attribute
 
 
@@ -1407,31 +1407,31 @@ and related tools.
 [cargo/10274]: https://github.com/rust-lang/cargo/pull/10274
 [cargo/10379]: https://github.com/rust-lang/cargo/pull/10379
 
-[arc_new_cyclic]: https://doc.rust-lang.org/stable/std/sync/struct.Arc.html#method.new_cyclic
-[rc_new_cyclic]: https://doc.rust-lang.org/stable/std/rc/struct.Rc.html#method.new_cyclic
-[slice_escape_ascii]: https://doc.rust-lang.org/stable/std/slice/struct.EscapeAscii.html
-[slice_u8_escape_ascii]: https://doc.rust-lang.org/stable/std/primitive.slice.html#method.escape_ascii
-[u8_escape_ascii]: https://doc.rust-lang.org/stable/std/primitive.u8.html#method.escape_ascii
-[vec_spare_capacity_mut]: https://doc.rust-lang.org/stable/std/vec/struct.Vec.html#method.spare_capacity_mut
-[assume_init_drop]: https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#method.assume_init_drop
-[assume_init_read]: https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#method.assume_init_read
-[i8_abs_diff]: https://doc.rust-lang.org/stable/std/primitive.i8.html#method.abs_diff
-[i16_abs_diff]: https://doc.rust-lang.org/stable/std/primitive.i16.html#method.abs_diff
-[i32_abs_diff]: https://doc.rust-lang.org/stable/std/primitive.i32.html#method.abs_diff
-[i64_abs_diff]: https://doc.rust-lang.org/stable/std/primitive.i64.html#method.abs_diff
-[i128_abs_diff]: https://doc.rust-lang.org/stable/std/primitive.i128.html#method.abs_diff
-[isize_abs_diff]: https://doc.rust-lang.org/stable/std/primitive.isize.html#method.abs_diff
-[u8_abs_diff]: https://doc.rust-lang.org/stable/std/primitive.u8.html#method.abs_diff
-[u16_abs_diff]: https://doc.rust-lang.org/stable/std/primitive.u16.html#method.abs_diff
-[u32_abs_diff]: https://doc.rust-lang.org/stable/std/primitive.u32.html#method.abs_diff
-[u64_abs_diff]: https://doc.rust-lang.org/stable/std/primitive.u64.html#method.abs_diff
-[u128_abs_diff]: https://doc.rust-lang.org/stable/std/primitive.u128.html#method.abs_diff
-[usize_abs_diff]: https://doc.rust-lang.org/stable/std/primitive.usize.html#method.abs_diff
-[display_error_kind]: https://doc.rust-lang.org/stable/std/io/enum.ErrorKind.html#impl-Display
-[from_u8_exit_code]: https://doc.rust-lang.org/stable/std/process/struct.ExitCode.html#impl-From%3Cu8%3E
-[not_never]: https://doc.rust-lang.org/stable/std/primitive.never.html#impl-Not
-[wrapping_assign_ops]: https://doc.rust-lang.org/stable/std/num/struct.Wrapping.html#trait-implementations
-[is_aarch64_feature_detected]: https://doc.rust-lang.org/stable/std/arch/macro.is_aarch64_feature_detected.html
+[arc_new_cyclic]: https://doc.rust-lang.org/std/sync/struct.Arc.html#method.new_cyclic
+[rc_new_cyclic]: https://doc.rust-lang.org/std/rc/struct.Rc.html#method.new_cyclic
+[slice_escape_ascii]: https://doc.rust-lang.org/std/slice/struct.EscapeAscii.html
+[slice_u8_escape_ascii]: https://doc.rust-lang.org/std/primitive.slice.html#method.escape_ascii
+[u8_escape_ascii]: https://doc.rust-lang.org/std/primitive.u8.html#method.escape_ascii
+[vec_spare_capacity_mut]: https://doc.rust-lang.org/std/vec/struct.Vec.html#method.spare_capacity_mut
+[assume_init_drop]: https://doc.rust-lang.org/std/mem/union.MaybeUninit.html#method.assume_init_drop
+[assume_init_read]: https://doc.rust-lang.org/std/mem/union.MaybeUninit.html#method.assume_init_read
+[i8_abs_diff]: https://doc.rust-lang.org/std/primitive.i8.html#method.abs_diff
+[i16_abs_diff]: https://doc.rust-lang.org/std/primitive.i16.html#method.abs_diff
+[i32_abs_diff]: https://doc.rust-lang.org/std/primitive.i32.html#method.abs_diff
+[i64_abs_diff]: https://doc.rust-lang.org/std/primitive.i64.html#method.abs_diff
+[i128_abs_diff]: https://doc.rust-lang.org/std/primitive.i128.html#method.abs_diff
+[isize_abs_diff]: https://doc.rust-lang.org/std/primitive.isize.html#method.abs_diff
+[u8_abs_diff]: https://doc.rust-lang.org/std/primitive.u8.html#method.abs_diff
+[u16_abs_diff]: https://doc.rust-lang.org/std/primitive.u16.html#method.abs_diff
+[u32_abs_diff]: https://doc.rust-lang.org/std/primitive.u32.html#method.abs_diff
+[u64_abs_diff]: https://doc.rust-lang.org/std/primitive.u64.html#method.abs_diff
+[u128_abs_diff]: https://doc.rust-lang.org/std/primitive.u128.html#method.abs_diff
+[usize_abs_diff]: https://doc.rust-lang.org/std/primitive.usize.html#method.abs_diff
+[display_error_kind]: https://doc.rust-lang.org/std/io/enum.ErrorKind.html#impl-Display
+[from_u8_exit_code]: https://doc.rust-lang.org/std/process/struct.ExitCode.html#impl-From%3Cu8%3E
+[not_never]: https://doc.rust-lang.org/std/primitive.never.html#impl-Not
+[wrapping_assign_ops]: https://doc.rust-lang.org/std/num/struct.Wrapping.html#trait-implementations
+[is_aarch64_feature_detected]: https://doc.rust-lang.org/std/arch/macro.is_aarch64_feature_detected.html
 
 Version 1.59.0 (2022-02-24)
 ==========================
@@ -1590,31 +1590,31 @@ and related tools.
 [cargo/10201]: https://github.com/rust-lang/cargo/pull/10201/
 [cargo/10269]: https://github.com/rust-lang/cargo/pull/10269/
 
-[cstr_from_bytes]: https://doc.rust-lang.org/stable/std/ffi/struct.CStr.html#method.from_bytes_with_nul_unchecked
-[muninit_ptr]: https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#method.as_ptr
-[muninit_init]: https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#method.assume_init
-[muninit_init_ref]: https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#method.assume_init_ref
-[unwindsafe_once]: https://doc.rust-lang.org/stable/std/sync/struct.Once.html#impl-UnwindSafe
-[refunwindsafe_once]: https://doc.rust-lang.org/stable/std/sync/struct.Once.html#impl-RefUnwindSafe
-[tryfrom_ref_arr]: https://doc.rust-lang.org/stable/std/convert/trait.TryFrom.html#impl-TryFrom%3C%26%27_%20mut%20%5BT%5D%3E
-[lowercase]: https://doc.rust-lang.org/stable/std/char/struct.ToLowercase.html#impl-DoubleEndedIterator
-[uppercase]: https://doc.rust-lang.org/stable/std/char/struct.ToUppercase.html#impl-DoubleEndedIterator
-[try_from_char_err]: https://doc.rust-lang.org/stable/std/char/struct.TryFromCharError.html
-[available_parallelism]: https://doc.rust-lang.org/stable/std/thread/fn.available_parallelism.html
-[result-copied]: https://doc.rust-lang.org/stable/std/result/enum.Result.html#method.copied
-[result-cloned]: https://doc.rust-lang.org/stable/std/result/enum.Result.html#method.cloned
-[asm]: https://doc.rust-lang.org/stable/core/arch/macro.asm.html
-[global_asm]: https://doc.rust-lang.org/stable/core/arch/macro.global_asm.html
-[is_break]: https://doc.rust-lang.org/stable/std/ops/enum.ControlFlow.html#method.is_break
-[is_continue]: https://doc.rust-lang.org/stable/std/ops/enum.ControlFlow.html#method.is_continue
-[try_from_char_u8]: https://doc.rust-lang.org/stable/std/primitive.char.html#impl-TryFrom%3Cchar%3E
-[zip]: https://doc.rust-lang.org/stable/std/iter/fn.zip.html
-[is_power_of_two8]: https://doc.rust-lang.org/stable/core/num/struct.NonZeroU8.html#method.is_power_of_two
-[is_power_of_two16]: https://doc.rust-lang.org/stable/core/num/struct.NonZeroU16.html#method.is_power_of_two
-[is_power_of_two32]: https://doc.rust-lang.org/stable/core/num/struct.NonZeroU32.html#method.is_power_of_two
-[is_power_of_two64]: https://doc.rust-lang.org/stable/core/num/struct.NonZeroU64.html#method.is_power_of_two
-[is_power_of_two128]: https://doc.rust-lang.org/stable/core/num/struct.NonZeroU128.html#method.is_power_of_two
-[is_power_of_two_usize]: https://doc.rust-lang.org/stable/core/num/struct.NonZeroUsize.html#method.is_power_of_two
+[cstr_from_bytes]: https://doc.rust-lang.org/std/ffi/struct.CStr.html#method.from_bytes_with_nul_unchecked
+[muninit_ptr]: https://doc.rust-lang.org/std/mem/union.MaybeUninit.html#method.as_ptr
+[muninit_init]: https://doc.rust-lang.org/std/mem/union.MaybeUninit.html#method.assume_init
+[muninit_init_ref]: https://doc.rust-lang.org/std/mem/union.MaybeUninit.html#method.assume_init_ref
+[unwindsafe_once]: https://doc.rust-lang.org/std/sync/struct.Once.html#impl-UnwindSafe
+[refunwindsafe_once]: https://doc.rust-lang.org/std/sync/struct.Once.html#impl-RefUnwindSafe
+[tryfrom_ref_arr]: https://doc.rust-lang.org/std/convert/trait.TryFrom.html#impl-TryFrom%3C%26%27_%20mut%20%5BT%5D%3E
+[lowercase]: https://doc.rust-lang.org/std/char/struct.ToLowercase.html#impl-DoubleEndedIterator
+[uppercase]: https://doc.rust-lang.org/std/char/struct.ToUppercase.html#impl-DoubleEndedIterator
+[try_from_char_err]: https://doc.rust-lang.org/std/char/struct.TryFromCharError.html
+[available_parallelism]: https://doc.rust-lang.org/std/thread/fn.available_parallelism.html
+[result-copied]: https://doc.rust-lang.org/std/result/enum.Result.html#method.copied
+[result-cloned]: https://doc.rust-lang.org/std/result/enum.Result.html#method.cloned
+[asm]: https://doc.rust-lang.org/core/arch/macro.asm.html
+[global_asm]: https://doc.rust-lang.org/core/arch/macro.global_asm.html
+[is_break]: https://doc.rust-lang.org/std/ops/enum.ControlFlow.html#method.is_break
+[is_continue]: https://doc.rust-lang.org/std/ops/enum.ControlFlow.html#method.is_continue
+[try_from_char_u8]: https://doc.rust-lang.org/std/primitive.char.html#impl-TryFrom%3Cchar%3E
+[zip]: https://doc.rust-lang.org/std/iter/fn.zip.html
+[is_power_of_two8]: https://doc.rust-lang.org/core/num/struct.NonZeroU8.html#method.is_power_of_two
+[is_power_of_two16]: https://doc.rust-lang.org/core/num/struct.NonZeroU16.html#method.is_power_of_two
+[is_power_of_two32]: https://doc.rust-lang.org/core/num/struct.NonZeroU32.html#method.is_power_of_two
+[is_power_of_two64]: https://doc.rust-lang.org/core/num/struct.NonZeroU64.html#method.is_power_of_two
+[is_power_of_two128]: https://doc.rust-lang.org/core/num/struct.NonZeroU128.html#method.is_power_of_two
+[is_power_of_two_usize]: https://doc.rust-lang.org/core/num/struct.NonZeroUsize.html#method.is_power_of_two
 [stdarch/1266]: https://github.com/rust-lang/stdarch/pull/1266
 
 Version 1.58.1 (2022-01-20)
@@ -1709,7 +1709,7 @@ Compatibility Notes
 - Windows: [`std::process::Command` will no longer search the current directory for executables.][87704]
 - [All proc-macro backward-compatibility lints are now deny-by-default.][88041]
 - [proc_macro: Append .0 to unsuffixed float if it would otherwise become int token][90297]
-- [Refactor weak symbols in std::sys::unix][90846]. This optimizes accesses to glibc functions, by avoiding the use of dlopen. This does not increase the [minimum expected version of glibc](https://doc.rust-lang.org/nightly/rustc/platform-support.html). However, software distributions that use symbol versions to detect library dependencies, and which take weak symbols into account in that analysis, may detect rust binaries as requiring newer versions of glibc.
+- [Refactor weak symbols in std::sys::unix][90846]. This optimizes accesses to glibc functions, by avoiding the use of dlopen. This does not increase the [minimum expected version of glibc](https://doc.rust-lang.org/rustc/platform-support.html). However, software distributions that use symbol versions to detect library dependencies, and which take weak symbols into account in that analysis, may detect rust binaries as requiring newer versions of glibc.
 - [rustdoc now rejects some unexpected semicolons in doctests][91026]
 
 Internal Changes
@@ -1757,14 +1757,14 @@ and related tools.
 [91255]: https://github.com/rust-lang/rust/pull/91255/
 [cargo/10082]: https://github.com/rust-lang/cargo/pull/10082/
 [cargo/10107]: https://github.com/rust-lang/cargo/pull/10107/
-[`Metadata::is_symlink`]: https://doc.rust-lang.org/stable/std/fs/struct.Metadata.html#method.is_symlink
-[`Path::is_symlink`]: https://doc.rust-lang.org/stable/std/path/struct.Path.html#method.is_symlink
-[`{integer}::saturating_div`]: https://doc.rust-lang.org/stable/std/primitive.i8.html#method.saturating_div
-[`Option::unwrap_unchecked`]: https://doc.rust-lang.org/stable/std/option/enum.Option.html#method.unwrap_unchecked
-[`Result::unwrap_unchecked`]: https://doc.rust-lang.org/stable/std/result/enum.Result.html#method.unwrap_unchecked
-[`Result::unwrap_err_unchecked`]: https://doc.rust-lang.org/stable/std/result/enum.Result.html#method.unwrap_err_unchecked
-[`File::options`]: https://doc.rust-lang.org/stable/std/fs/struct.File.html#method.options
-[`Duration::new`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.new
+[`Metadata::is_symlink`]: https://doc.rust-lang.org/std/fs/struct.Metadata.html#method.is_symlink
+[`Path::is_symlink`]: https://doc.rust-lang.org/std/path/struct.Path.html#method.is_symlink
+[`{integer}::saturating_div`]: https://doc.rust-lang.org/std/primitive.i8.html#method.saturating_div
+[`Option::unwrap_unchecked`]: https://doc.rust-lang.org/std/option/enum.Option.html#method.unwrap_unchecked
+[`Result::unwrap_unchecked`]: https://doc.rust-lang.org/std/result/enum.Result.html#method.unwrap_unchecked
+[`Result::unwrap_err_unchecked`]: https://doc.rust-lang.org/std/result/enum.Result.html#method.unwrap_err_unchecked
+[`File::options`]: https://doc.rust-lang.org/std/fs/struct.File.html#method.options
+[`Duration::new`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.new
 
 Version 1.57.0 (2021-12-02)
 ==========================
@@ -1903,7 +1903,7 @@ Language
 - [The pattern in `binding @ pattern` can now also introduce new bindings.][rust#85305]
 - [Union field access is permitted in `const fn`.][rust#85769]
 
-[rust-2021-edition-guide]: https://doc.rust-lang.org/nightly/edition-guide/rust-2021/index.html
+[rust-2021-edition-guide]: https://doc.rust-lang.org/edition-guide/rust-2021/index.html
 
 Compiler
 --------
@@ -2005,24 +2005,24 @@ and related tools.
   This change fixes a host of bugs with the handling of macros by the compiler,
   as well as rustdoc.
 
-[`std::os::unix::fs::chroot`]: https://doc.rust-lang.org/stable/std/os/unix/fs/fn.chroot.html
-[`UnsafeCell::raw_get`]: https://doc.rust-lang.org/stable/std/cell/struct.UnsafeCell.html#method.raw_get
-[`BufWriter::into_parts`]: https://doc.rust-lang.org/stable/std/io/struct.BufWriter.html#method.into_parts
+[`std::os::unix::fs::chroot`]: https://doc.rust-lang.org/std/os/unix/fs/fn.chroot.html
+[`UnsafeCell::raw_get`]: https://doc.rust-lang.org/std/cell/struct.UnsafeCell.html#method.raw_get
+[`BufWriter::into_parts`]: https://doc.rust-lang.org/std/io/struct.BufWriter.html#method.into_parts
 [`core::panic::{UnwindSafe, RefUnwindSafe, AssertUnwindSafe}`]: https://github.com/rust-lang/rust/pull/84662
-[`Vec::shrink_to`]: https://doc.rust-lang.org/stable/std/vec/struct.Vec.html#method.shrink_to
-[`String::shrink_to`]: https://doc.rust-lang.org/stable/std/string/struct.String.html#method.shrink_to
-[`OsString::shrink_to`]: https://doc.rust-lang.org/stable/std/ffi/struct.OsString.html#method.shrink_to
-[`PathBuf::shrink_to`]: https://doc.rust-lang.org/stable/std/path/struct.PathBuf.html#method.shrink_to
-[`BinaryHeap::shrink_to`]: https://doc.rust-lang.org/stable/std/collections/struct.BinaryHeap.html#method.shrink_to
-[`VecDeque::shrink_to`]: https://doc.rust-lang.org/stable/std/collections/struct.VecDeque.html#method.shrink_to
-[`HashMap::shrink_to`]: https://doc.rust-lang.org/stable/std/collections/hash_map/struct.HashMap.html#method.shrink_to
-[`HashSet::shrink_to`]: https://doc.rust-lang.org/stable/std/collections/hash_set/struct.HashSet.html#method.shrink_to
-[`std::mem::transmute`]: https://doc.rust-lang.org/stable/std/mem/fn.transmute.html
-[`slice::first`]: https://doc.rust-lang.org/stable/std/primitive.slice.html#method.first
-[`slice::split_first`]: https://doc.rust-lang.org/stable/std/primitive.slice.html#method.split_first
-[`slice::last`]: https://doc.rust-lang.org/stable/std/primitive.slice.html#method.last
-[`slice::split_last`]: https://doc.rust-lang.org/stable/std/primitive.slice.html#method.split_last
-[`rust-version`]: https://doc.rust-lang.org/nightly/cargo/reference/manifest.html#the-rust-version-field
+[`Vec::shrink_to`]: https://doc.rust-lang.org/std/vec/struct.Vec.html#method.shrink_to
+[`String::shrink_to`]: https://doc.rust-lang.org/std/string/struct.String.html#method.shrink_to
+[`OsString::shrink_to`]: https://doc.rust-lang.org/std/ffi/struct.OsString.html#method.shrink_to
+[`PathBuf::shrink_to`]: https://doc.rust-lang.org/std/path/struct.PathBuf.html#method.shrink_to
+[`BinaryHeap::shrink_to`]: https://doc.rust-lang.org/std/collections/struct.BinaryHeap.html#method.shrink_to
+[`VecDeque::shrink_to`]: https://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.shrink_to
+[`HashMap::shrink_to`]: https://doc.rust-lang.org/std/collections/hash_map/struct.HashMap.html#method.shrink_to
+[`HashSet::shrink_to`]: https://doc.rust-lang.org/std/collections/hash_set/struct.HashSet.html#method.shrink_to
+[`std::mem::transmute`]: https://doc.rust-lang.org/std/mem/fn.transmute.html
+[`slice::first`]: https://doc.rust-lang.org/std/primitive.slice.html#method.first
+[`slice::split_first`]: https://doc.rust-lang.org/std/primitive.slice.html#method.split_first
+[`slice::last`]: https://doc.rust-lang.org/std/primitive.slice.html#method.last
+[`slice::split_last`]: https://doc.rust-lang.org/std/primitive.slice.html#method.split_last
+[`rust-version`]: https://doc.rust-lang.org/cargo/reference/manifest.html#the-rust-version-field
 [rust#87671]: https://github.com/rust-lang/rust/pull/87671
 [rust#86183]: https://github.com/rust-lang/rust/pull/86183
 [rust#87385]: https://github.com/rust-lang/rust/pull/87385
@@ -2136,7 +2136,7 @@ Compatibility Notes
   with `rustdoc::`][86849]
 - `RUSTFLAGS` is no longer set for build scripts. Build scripts
   should use `CARGO_ENCODED_RUSTFLAGS` instead. See the
-  [documentation](https://doc.rust-lang.org/nightly/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-build-scripts)
+  [documentation](https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-build-scripts)
   for more details.
 
 [86849]: https://github.com/rust-lang/rust/pull/86849
@@ -2157,24 +2157,24 @@ Compatibility Notes
 [cargo/9675]: https://github.com/rust-lang/cargo/pull/9675
 [cargo/9550]: https://github.com/rust-lang/cargo/pull/9550
 [cargo/9680]: https://github.com/rust-lang/cargo/pull/9680
-[`array::map`]: https://doc.rust-lang.org/stable/std/primitive.array.html#method.map
-[`Bound::cloned`]: https://doc.rust-lang.org/stable/std/ops/enum.Bound.html#method.cloned
-[`Drain::as_str`]: https://doc.rust-lang.org/stable/std/string/struct.Drain.html#method.as_str
-[`IntoInnerError::into_error`]: https://doc.rust-lang.org/stable/std/io/struct.IntoInnerError.html#method.into_error
-[`IntoInnerError::into_parts`]: https://doc.rust-lang.org/stable/std/io/struct.IntoInnerError.html#method.into_parts
-[`MaybeUninit::assume_init_mut`]: https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#method.assume_init_mut
-[`MaybeUninit::assume_init_ref`]: https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#method.assume_init_ref
-[`MaybeUninit::write`]: https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#method.write
-[`ops::ControlFlow`]: https://doc.rust-lang.org/stable/std/ops/enum.ControlFlow.html
-[`str::from_utf8_unchecked`]: https://doc.rust-lang.org/stable/std/str/fn.from_utf8_unchecked.html
-[`x86::_bittest`]: https://doc.rust-lang.org/stable/core/arch/x86/fn._bittest.html
-[`x86::_bittestandcomplement`]: https://doc.rust-lang.org/stable/core/arch/x86/fn._bittestandcomplement.html
-[`x86::_bittestandreset`]: https://doc.rust-lang.org/stable/core/arch/x86/fn._bittestandreset.html
-[`x86::_bittestandset`]: https://doc.rust-lang.org/stable/core/arch/x86/fn._bittestandset.html
-[`x86_64::_bittest64`]: https://doc.rust-lang.org/stable/core/arch/x86_64/fn._bittest64.html
-[`x86_64::_bittestandcomplement64`]: https://doc.rust-lang.org/stable/core/arch/x86_64/fn._bittestandcomplement64.html
-[`x86_64::_bittestandreset64`]: https://doc.rust-lang.org/stable/core/arch/x86_64/fn._bittestandreset64.html
-[`x86_64::_bittestandset64`]: https://doc.rust-lang.org/stable/core/arch/x86_64/fn._bittestandset64.html
+[`array::map`]: https://doc.rust-lang.org/std/primitive.array.html#method.map
+[`Bound::cloned`]: https://doc.rust-lang.org/std/ops/enum.Bound.html#method.cloned
+[`Drain::as_str`]: https://doc.rust-lang.org/std/string/struct.Drain.html#method.as_str
+[`IntoInnerError::into_error`]: https://doc.rust-lang.org/std/io/struct.IntoInnerError.html#method.into_error
+[`IntoInnerError::into_parts`]: https://doc.rust-lang.org/std/io/struct.IntoInnerError.html#method.into_parts
+[`MaybeUninit::assume_init_mut`]: https://doc.rust-lang.org/std/mem/union.MaybeUninit.html#method.assume_init_mut
+[`MaybeUninit::assume_init_ref`]: https://doc.rust-lang.org/std/mem/union.MaybeUninit.html#method.assume_init_ref
+[`MaybeUninit::write`]: https://doc.rust-lang.org/std/mem/union.MaybeUninit.html#method.write
+[`ops::ControlFlow`]: https://doc.rust-lang.org/std/ops/enum.ControlFlow.html
+[`str::from_utf8_unchecked`]: https://doc.rust-lang.org/std/str/fn.from_utf8_unchecked.html
+[`x86::_bittest`]: https://doc.rust-lang.org/core/arch/x86/fn._bittest.html
+[`x86::_bittestandcomplement`]: https://doc.rust-lang.org/core/arch/x86/fn._bittestandcomplement.html
+[`x86::_bittestandreset`]: https://doc.rust-lang.org/core/arch/x86/fn._bittestandreset.html
+[`x86::_bittestandset`]: https://doc.rust-lang.org/core/arch/x86/fn._bittestandset.html
+[`x86_64::_bittest64`]: https://doc.rust-lang.org/core/arch/x86_64/fn._bittest64.html
+[`x86_64::_bittestandcomplement64`]: https://doc.rust-lang.org/core/arch/x86_64/fn._bittestandcomplement64.html
+[`x86_64::_bittestandreset64`]: https://doc.rust-lang.org/core/arch/x86_64/fn._bittestandreset64.html
+[`x86_64::_bittestandset64`]: https://doc.rust-lang.org/core/arch/x86_64/fn._bittestandset64.html
 
 
 Version 1.54.0 (2021-07-29)
@@ -2477,13 +2477,13 @@ related tools.
 [`Peekable::peek_mut`]: https://doc.rust-lang.org/std/iter/struct.Peekable.html#method.peek_mut
 [`Rc::decrement_strong_count`]: https://doc.rust-lang.org/std/rc/struct.Rc.html#method.increment_strong_count
 [`Rc::increment_strong_count`]: https://doc.rust-lang.org/std/rc/struct.Rc.html#method.increment_strong_count
-[`Vec::extend_from_within`]: https://doc.rust-lang.org/beta/std/vec/struct.Vec.html#method.extend_from_within
-[`array::from_mut`]: https://doc.rust-lang.org/beta/std/array/fn.from_mut.html
-[`array::from_ref`]: https://doc.rust-lang.org/beta/std/array/fn.from_ref.html
-[`cmp::max_by_key`]: https://doc.rust-lang.org/beta/std/cmp/fn.max_by_key.html
-[`cmp::max_by`]: https://doc.rust-lang.org/beta/std/cmp/fn.max_by.html
-[`cmp::min_by_key`]: https://doc.rust-lang.org/beta/std/cmp/fn.min_by_key.html
-[`cmp::min_by`]: https://doc.rust-lang.org/beta/std/cmp/fn.min_by.html
+[`Vec::extend_from_within`]: https://doc.rust-lang.org/std/vec/struct.Vec.html#method.extend_from_within
+[`array::from_mut`]: https://doc.rust-lang.org/std/array/fn.from_mut.html
+[`array::from_ref`]: https://doc.rust-lang.org/std/array/fn.from_ref.html
+[`cmp::max_by_key`]: https://doc.rust-lang.org/std/cmp/fn.max_by_key.html
+[`cmp::max_by`]: https://doc.rust-lang.org/std/cmp/fn.max_by.html
+[`cmp::min_by_key`]: https://doc.rust-lang.org/std/cmp/fn.min_by_key.html
+[`cmp::min_by`]: https://doc.rust-lang.org/std/cmp/fn.min_by.html
 [`f32::is_subnormal`]: https://doc.rust-lang.org/std/primitive.f64.html#method.is_subnormal
 [`f64::is_subnormal`]: https://doc.rust-lang.org/std/primitive.f64.html#method.is_subnormal
 [ietf6943]: https://datatracker.ietf.org/doc/html/rfc6943#section-3.1.1
@@ -2645,20 +2645,20 @@ Compatibility Notes
 [`char::from_u32`]: https://doc.rust-lang.org/std/primitive.char.html#method.from_u32
 [`char::from_u32_unchecked`]: https://doc.rust-lang.org/std/primitive.char.html#method.from_u32_unchecked
 [`char::from_digit`]: https://doc.rust-lang.org/std/primitive.char.html#method.from_digit
-[`Peekable::next_if`]: https://doc.rust-lang.org/stable/std/iter/struct.Peekable.html#method.next_if
-[`Peekable::next_if_eq`]: https://doc.rust-lang.org/stable/std/iter/struct.Peekable.html#method.next_if_eq
-[`Arguments::as_str`]: https://doc.rust-lang.org/stable/std/fmt/struct.Arguments.html#method.as_str
-[`str::split_once`]: https://doc.rust-lang.org/stable/std/primitive.str.html#method.split_once
-[`str::rsplit_once`]: https://doc.rust-lang.org/stable/std/primitive.str.html#method.rsplit_once
-[`slice::partition_point`]: https://doc.rust-lang.org/stable/std/primitive.slice.html#method.partition_point
-[`char::len_utf8`]: https://doc.rust-lang.org/stable/std/primitive.char.html#method.len_utf8
-[`char::len_utf16`]: https://doc.rust-lang.org/stable/std/primitive.char.html#method.len_utf16
-[`char::to_ascii_uppercase`]: https://doc.rust-lang.org/stable/std/primitive.char.html#method.to_ascii_uppercase
-[`char::to_ascii_lowercase`]: https://doc.rust-lang.org/stable/std/primitive.char.html#method.to_ascii_lowercase
-[`char::eq_ignore_ascii_case`]: https://doc.rust-lang.org/stable/std/primitive.char.html#method.eq_ignore_ascii_case
-[`u8::to_ascii_uppercase`]: https://doc.rust-lang.org/stable/std/primitive.u8.html#method.to_ascii_uppercase
-[`u8::to_ascii_lowercase`]: https://doc.rust-lang.org/stable/std/primitive.u8.html#method.to_ascii_lowercase
-[`u8::eq_ignore_ascii_case`]: https://doc.rust-lang.org/stable/std/primitive.u8.html#method.eq_ignore_ascii_case
+[`Peekable::next_if`]: https://doc.rust-lang.org/std/iter/struct.Peekable.html#method.next_if
+[`Peekable::next_if_eq`]: https://doc.rust-lang.org/std/iter/struct.Peekable.html#method.next_if_eq
+[`Arguments::as_str`]: https://doc.rust-lang.org/std/fmt/struct.Arguments.html#method.as_str
+[`str::split_once`]: https://doc.rust-lang.org/std/primitive.str.html#method.split_once
+[`str::rsplit_once`]: https://doc.rust-lang.org/std/primitive.str.html#method.rsplit_once
+[`slice::partition_point`]: https://doc.rust-lang.org/std/primitive.slice.html#method.partition_point
+[`char::len_utf8`]: https://doc.rust-lang.org/std/primitive.char.html#method.len_utf8
+[`char::len_utf16`]: https://doc.rust-lang.org/std/primitive.char.html#method.len_utf16
+[`char::to_ascii_uppercase`]: https://doc.rust-lang.org/std/primitive.char.html#method.to_ascii_uppercase
+[`char::to_ascii_lowercase`]: https://doc.rust-lang.org/std/primitive.char.html#method.to_ascii_lowercase
+[`char::eq_ignore_ascii_case`]: https://doc.rust-lang.org/std/primitive.char.html#method.eq_ignore_ascii_case
+[`u8::to_ascii_uppercase`]: https://doc.rust-lang.org/std/primitive.u8.html#method.to_ascii_uppercase
+[`u8::to_ascii_lowercase`]: https://doc.rust-lang.org/std/primitive.u8.html#method.to_ascii_lowercase
+[`u8::eq_ignore_ascii_case`]: https://doc.rust-lang.org/std/primitive.u8.html#method.eq_ignore_ascii_case
 
 Version 1.51.0 (2021-03-25)
 ============================
@@ -2815,27 +2815,27 @@ Internal Only
 [80966]: https://github.com/rust-lang/rust/pull/80966
 [cargo/8997]: https://github.com/rust-lang/cargo/pull/8997
 [cargo/9112]: https://github.com/rust-lang/cargo/pull/9112
-[feature-resolver@2.0]: https://doc.rust-lang.org/nightly/cargo/reference/features.html#feature-resolver-version-2
-[`Once::call_once_force`]: https://doc.rust-lang.org/stable/std/sync/struct.Once.html#method.call_once_force
-[`sync::OnceState`]: https://doc.rust-lang.org/stable/std/sync/struct.OnceState.html
-[`panic::panic_any`]: https://doc.rust-lang.org/stable/std/panic/fn.panic_any.html
-[`slice::strip_prefix`]: https://doc.rust-lang.org/stable/std/primitive.slice.html#method.strip_prefix
-[`slice::strip_suffix`]: https://doc.rust-lang.org/stable/std/primitive.slice.html#method.strip_prefix
-[`Arc::increment_strong_count`]: https://doc.rust-lang.org/nightly/std/sync/struct.Arc.html#method.increment_strong_count
-[`Arc::decrement_strong_count`]: https://doc.rust-lang.org/nightly/std/sync/struct.Arc.html#method.decrement_strong_count
-[`slice::fill_with`]: https://doc.rust-lang.org/nightly/std/primitive.slice.html#method.fill_with
-[`ptr::addr_of!`]: https://doc.rust-lang.org/nightly/std/ptr/macro.addr_of.html
-[`ptr::addr_of_mut!`]: https://doc.rust-lang.org/nightly/std/ptr/macro.addr_of_mut.html
-[`array::IntoIter`]: https://doc.rust-lang.org/nightly/std/array/struct.IntoIter.html
-[`slice::split_inclusive`]: https://doc.rust-lang.org/nightly/std/primitive.slice.html#method.split_inclusive
-[`slice::split_inclusive_mut`]: https://doc.rust-lang.org/nightly/std/primitive.slice.html#method.split_inclusive_mut
-[`str::split_inclusive`]: https://doc.rust-lang.org/nightly/std/primitive.str.html#method.split_inclusive
-[`task::Wake`]: https://doc.rust-lang.org/nightly/std/task/trait.Wake.html
-[`Seek::stream_position`]: https://doc.rust-lang.org/nightly/std/io/trait.Seek.html#method.stream_position
-[`Peekable::next_if`]: https://doc.rust-lang.org/nightly/std/iter/struct.Peekable.html#method.next_if
-[`Peekable::next_if_eq`]: https://doc.rust-lang.org/nightly/std/iter/struct.Peekable.html#method.next_if_eq
-[`VecDeque::range`]: https://doc.rust-lang.org/nightly/std/collections/struct.VecDeque.html#method.range
-[`VecDeque::range_mut`]: https://doc.rust-lang.org/nightly/std/collections/struct.VecDeque.html#method.range_mut
+[feature-resolver@2.0]: https://doc.rust-lang.org/cargo/reference/features.html#feature-resolver-version-2
+[`Once::call_once_force`]: https://doc.rust-lang.org/std/sync/struct.Once.html#method.call_once_force
+[`sync::OnceState`]: https://doc.rust-lang.org/std/sync/struct.OnceState.html
+[`panic::panic_any`]: https://doc.rust-lang.org/std/panic/fn.panic_any.html
+[`slice::strip_prefix`]: https://doc.rust-lang.org/std/primitive.slice.html#method.strip_prefix
+[`slice::strip_suffix`]: https://doc.rust-lang.org/std/primitive.slice.html#method.strip_prefix
+[`Arc::increment_strong_count`]: https://doc.rust-lang.org/std/sync/struct.Arc.html#method.increment_strong_count
+[`Arc::decrement_strong_count`]: https://doc.rust-lang.org/std/sync/struct.Arc.html#method.decrement_strong_count
+[`slice::fill_with`]: https://doc.rust-lang.org/std/primitive.slice.html#method.fill_with
+[`ptr::addr_of!`]: https://doc.rust-lang.org/std/ptr/macro.addr_of.html
+[`ptr::addr_of_mut!`]: https://doc.rust-lang.org/std/ptr/macro.addr_of_mut.html
+[`array::IntoIter`]: https://doc.rust-lang.org/std/array/struct.IntoIter.html
+[`slice::split_inclusive`]: https://doc.rust-lang.org/std/primitive.slice.html#method.split_inclusive
+[`slice::split_inclusive_mut`]: https://doc.rust-lang.org/std/primitive.slice.html#method.split_inclusive_mut
+[`str::split_inclusive`]: https://doc.rust-lang.org/std/primitive.str.html#method.split_inclusive
+[`task::Wake`]: https://doc.rust-lang.org/std/task/trait.Wake.html
+[`Seek::stream_position`]: https://doc.rust-lang.org/std/io/trait.Seek.html#method.stream_position
+[`Peekable::next_if`]: https://doc.rust-lang.org/std/iter/struct.Peekable.html#method.next_if
+[`Peekable::next_if_eq`]: https://doc.rust-lang.org/std/iter/struct.Peekable.html#method.next_if_eq
+[`VecDeque::range`]: https://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.range
+[`VecDeque::range_mut`]: https://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.range_mut
 
 Version 1.50.0 (2021-02-11)
 ============================
@@ -2958,37 +2958,37 @@ Compatibility Notes
 [cargo/8976]: https://github.com/rust-lang/cargo/pull/8976
 [cargo/8973]: https://github.com/rust-lang/cargo/pull/8973
 [cargo/8725]: https://github.com/rust-lang/cargo/pull/8725
-[`IpAddr::is_ipv4`]: https://doc.rust-lang.org/stable/std/net/enum.IpAddr.html#method.is_ipv4
-[`IpAddr::is_ipv6`]: https://doc.rust-lang.org/stable/std/net/enum.IpAddr.html#method.is_ipv6
-[`IpAddr::is_unspecified`]: https://doc.rust-lang.org/stable/std/net/enum.IpAddr.html#method.is_unspecified
-[`IpAddr::is_loopback`]: https://doc.rust-lang.org/stable/std/net/enum.IpAddr.html#method.is_loopback
-[`IpAddr::is_multicast`]: https://doc.rust-lang.org/stable/std/net/enum.IpAddr.html#method.is_multicast
-[`Ipv4Addr::octets`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv4Addr.html#method.octets
-[`Ipv4Addr::is_loopback`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv4Addr.html#method.is_loopback
-[`Ipv4Addr::is_private`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv4Addr.html#method.is_private
-[`Ipv4Addr::is_link_local`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv4Addr.html#method.is_link_local
-[`Ipv4Addr::is_multicast`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv4Addr.html#method.is_multicast
-[`Ipv4Addr::is_broadcast`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv4Addr.html#method.is_broadcast
-[`Ipv4Addr::is_documentation`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv4Addr.html#method.is_documentation
-[`Ipv4Addr::to_ipv6_compatible`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv4Addr.html#method.to_ipv6_compatible
-[`Ipv4Addr::to_ipv6_mapped`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv4Addr.html#method.to_ipv6_mapped
-[`Ipv6Addr::segments`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv6Addr.html#method.segments
-[`Ipv6Addr::is_unspecified`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv6Addr.html#method.is_unspecified
-[`Ipv6Addr::is_loopback`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv6Addr.html#method.is_loopback
-[`Ipv6Addr::is_multicast`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv6Addr.html#method.is_multicast
-[`Ipv6Addr::to_ipv4`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv6Addr.html#method.to_ipv4
-[`Layout::align`]: https://doc.rust-lang.org/stable/std/alloc/struct.Layout.html#method.align
-[`Layout::from_size_align`]: https://doc.rust-lang.org/stable/std/alloc/struct.Layout.html#method.from_size_align
-[`Layout::size`]: https://doc.rust-lang.org/stable/std/alloc/struct.Layout.html#method.size
-[`Ord::clamp`]: https://doc.rust-lang.org/stable/std/cmp/trait.Ord.html#method.clamp
-[`RefCell::take`]: https://doc.rust-lang.org/stable/std/cell/struct.RefCell.html#method.take
-[`UnsafeCell::get_mut`]: https://doc.rust-lang.org/stable/std/cell/struct.UnsafeCell.html#method.get_mut
-[`bool::then`]: https://doc.rust-lang.org/stable/std/primitive.bool.html#method.then
-[`btree_map::Entry::or_insert_with_key`]: https://doc.rust-lang.org/stable/std/collections/btree_map/enum.Entry.html#method.or_insert_with_key
-[`f32::clamp`]: https://doc.rust-lang.org/stable/std/primitive.f32.html#method.clamp
-[`f64::clamp`]: https://doc.rust-lang.org/stable/std/primitive.f64.html#method.clamp
-[`hash_map::Entry::or_insert_with_key`]: https://doc.rust-lang.org/stable/std/collections/hash_map/enum.Entry.html#method.or_insert_with_key
-[`slice::fill`]: https://doc.rust-lang.org/stable/std/primitive.slice.html#method.fill
+[`IpAddr::is_ipv4`]: https://doc.rust-lang.org/std/net/enum.IpAddr.html#method.is_ipv4
+[`IpAddr::is_ipv6`]: https://doc.rust-lang.org/std/net/enum.IpAddr.html#method.is_ipv6
+[`IpAddr::is_unspecified`]: https://doc.rust-lang.org/std/net/enum.IpAddr.html#method.is_unspecified
+[`IpAddr::is_loopback`]: https://doc.rust-lang.org/std/net/enum.IpAddr.html#method.is_loopback
+[`IpAddr::is_multicast`]: https://doc.rust-lang.org/std/net/enum.IpAddr.html#method.is_multicast
+[`Ipv4Addr::octets`]: https://doc.rust-lang.org/std/net/struct.Ipv4Addr.html#method.octets
+[`Ipv4Addr::is_loopback`]: https://doc.rust-lang.org/std/net/struct.Ipv4Addr.html#method.is_loopback
+[`Ipv4Addr::is_private`]: https://doc.rust-lang.org/std/net/struct.Ipv4Addr.html#method.is_private
+[`Ipv4Addr::is_link_local`]: https://doc.rust-lang.org/std/net/struct.Ipv4Addr.html#method.is_link_local
+[`Ipv4Addr::is_multicast`]: https://doc.rust-lang.org/std/net/struct.Ipv4Addr.html#method.is_multicast
+[`Ipv4Addr::is_broadcast`]: https://doc.rust-lang.org/std/net/struct.Ipv4Addr.html#method.is_broadcast
+[`Ipv4Addr::is_documentation`]: https://doc.rust-lang.org/std/net/struct.Ipv4Addr.html#method.is_documentation
+[`Ipv4Addr::to_ipv6_compatible`]: https://doc.rust-lang.org/std/net/struct.Ipv4Addr.html#method.to_ipv6_compatible
+[`Ipv4Addr::to_ipv6_mapped`]: https://doc.rust-lang.org/std/net/struct.Ipv4Addr.html#method.to_ipv6_mapped
+[`Ipv6Addr::segments`]: https://doc.rust-lang.org/std/net/struct.Ipv6Addr.html#method.segments
+[`Ipv6Addr::is_unspecified`]: https://doc.rust-lang.org/std/net/struct.Ipv6Addr.html#method.is_unspecified
+[`Ipv6Addr::is_loopback`]: https://doc.rust-lang.org/std/net/struct.Ipv6Addr.html#method.is_loopback
+[`Ipv6Addr::is_multicast`]: https://doc.rust-lang.org/std/net/struct.Ipv6Addr.html#method.is_multicast
+[`Ipv6Addr::to_ipv4`]: https://doc.rust-lang.org/std/net/struct.Ipv6Addr.html#method.to_ipv4
+[`Layout::align`]: https://doc.rust-lang.org/std/alloc/struct.Layout.html#method.align
+[`Layout::from_size_align`]: https://doc.rust-lang.org/std/alloc/struct.Layout.html#method.from_size_align
+[`Layout::size`]: https://doc.rust-lang.org/std/alloc/struct.Layout.html#method.size
+[`Ord::clamp`]: https://doc.rust-lang.org/std/cmp/trait.Ord.html#method.clamp
+[`RefCell::take`]: https://doc.rust-lang.org/std/cell/struct.RefCell.html#method.take
+[`UnsafeCell::get_mut`]: https://doc.rust-lang.org/std/cell/struct.UnsafeCell.html#method.get_mut
+[`bool::then`]: https://doc.rust-lang.org/std/primitive.bool.html#method.then
+[`btree_map::Entry::or_insert_with_key`]: https://doc.rust-lang.org/std/collections/btree_map/enum.Entry.html#method.or_insert_with_key
+[`f32::clamp`]: https://doc.rust-lang.org/std/primitive.f32.html#method.clamp
+[`f64::clamp`]: https://doc.rust-lang.org/std/primitive.f64.html#method.clamp
+[`hash_map::Entry::or_insert_with_key`]: https://doc.rust-lang.org/std/collections/hash_map/enum.Entry.html#method.or_insert_with_key
+[`slice::fill`]: https://doc.rust-lang.org/std/primitive.slice.html#method.fill
 
 
 Version 1.49.0 (2020-12-31)
@@ -3109,11 +3109,11 @@ related tools.
 [cargo/8765]: https://github.com/rust-lang/cargo/pull/8765
 [cargo/8758]: https://github.com/rust-lang/cargo/pull/8758
 [cargo/8752]: https://github.com/rust-lang/cargo/pull/8752
-[`slice::select_nth_unstable`]: https://doc.rust-lang.org/nightly/std/primitive.slice.html#method.select_nth_unstable
-[`slice::select_nth_unstable_by`]: https://doc.rust-lang.org/nightly/std/primitive.slice.html#method.select_nth_unstable_by
-[`slice::select_nth_unstable_by_key`]: https://doc.rust-lang.org/nightly/std/primitive.slice.html#method.select_nth_unstable_by_key
-[`Poll::is_ready`]: https://doc.rust-lang.org/stable/std/task/enum.Poll.html#method.is_ready
-[`Poll::is_pending`]: https://doc.rust-lang.org/stable/std/task/enum.Poll.html#method.is_pending
+[`slice::select_nth_unstable`]: https://doc.rust-lang.org/std/primitive.slice.html#method.select_nth_unstable
+[`slice::select_nth_unstable_by`]: https://doc.rust-lang.org/std/primitive.slice.html#method.select_nth_unstable_by
+[`slice::select_nth_unstable_by_key`]: https://doc.rust-lang.org/std/primitive.slice.html#method.select_nth_unstable_by_key
+[`Poll::is_ready`]: https://doc.rust-lang.org/std/task/enum.Poll.html#method.is_ready
+[`Poll::is_pending`]: https://doc.rust-lang.org/std/task/enum.Poll.html#method.is_pending
 [rustdoc-ws-post]: https://blog.guillaume-gomez.fr/articles/2020-11-11+New+doc+comment+handling+in+rustdoc
 
 Version 1.48.0 (2020-11-19)
@@ -3377,15 +3377,15 @@ Internal Only
 [cargo/8485]: https://github.com/rust-lang/cargo/pull/8485/
 [cargo/8500]: https://github.com/rust-lang/cargo/pull/8500/
 [cargo/8571]: https://github.com/rust-lang/cargo/pull/8571/
-[`Ident::new_raw`]:  https://doc.rust-lang.org/nightly/proc_macro/struct.Ident.html#method.new_raw
-[`Range::is_empty`]: https://doc.rust-lang.org/nightly/std/ops/struct.Range.html#method.is_empty
-[`RangeInclusive::is_empty`]: https://doc.rust-lang.org/nightly/std/ops/struct.RangeInclusive.html#method.is_empty
-[`Result::as_deref_mut`]: https://doc.rust-lang.org/nightly/std/result/enum.Result.html#method.as_deref_mut
-[`Result::as_deref`]: https://doc.rust-lang.org/nightly/std/result/enum.Result.html#method.as_deref
-[`Vec::leak`]: https://doc.rust-lang.org/nightly/std/vec/struct.Vec.html#method.leak
-[`f32::TAU`]: https://doc.rust-lang.org/nightly/std/f32/consts/constant.TAU.html
-[`f64::TAU`]: https://doc.rust-lang.org/nightly/std/f64/consts/constant.TAU.html
-[`pointer::offset_from`]: https://doc.rust-lang.org/nightly/std/primitive.pointer.html#method.offset_from
+[`Ident::new_raw`]:  https://doc.rust-lang.org/proc_macro/struct.Ident.html#method.new_raw
+[`Range::is_empty`]: https://doc.rust-lang.org/std/ops/struct.Range.html#method.is_empty
+[`RangeInclusive::is_empty`]: https://doc.rust-lang.org/std/ops/struct.RangeInclusive.html#method.is_empty
+[`Result::as_deref_mut`]: https://doc.rust-lang.org/std/result/enum.Result.html#method.as_deref_mut
+[`Result::as_deref`]: https://doc.rust-lang.org/std/result/enum.Result.html#method.as_deref
+[`Vec::leak`]: https://doc.rust-lang.org/std/vec/struct.Vec.html#method.leak
+[`f32::TAU`]: https://doc.rust-lang.org/std/f32/consts/constant.TAU.html
+[`f64::TAU`]: https://doc.rust-lang.org/std/f64/consts/constant.TAU.html
+[`pointer::offset_from`]: https://doc.rust-lang.org/std/primitive.pointer.html#method.offset_from
 
 
 Version 1.46.0 (2020-08-27)
@@ -3497,8 +3497,8 @@ Compatibility Notes
 [cargo/8270]: https://github.com/rust-lang/cargo/pull/8270/
 [cargo/8325]: https://github.com/rust-lang/cargo/pull/8325/
 [cargo/8387]: https://github.com/rust-lang/cargo/pull/8387/
-[`Option::zip`]: https://doc.rust-lang.org/stable/std/option/enum.Option.html#method.zip
-[`vec::Drain::as_slice`]: https://doc.rust-lang.org/stable/std/vec/struct.Drain.html#method.as_slice
+[`Option::zip`]: https://doc.rust-lang.org/std/option/enum.Option.html#method.zip
+[`vec::Drain::as_slice`]: https://doc.rust-lang.org/std/vec/struct.Drain.html#method.as_slice
 
 
 Version 1.45.2 (2020-08-03)
@@ -3668,21 +3668,21 @@ Internals Only
 [69464]: https://github.com/rust-lang/rust/pull/69464/
 [68717]: https://github.com/rust-lang/rust/pull/68717/
 [cargo/8066]: https://github.com/rust-lang/cargo/pull/8066
-[`Arc::as_ptr`]: https://doc.rust-lang.org/stable/std/sync/struct.Arc.html#method.as_ptr
-[`BTreeMap::remove_entry`]: https://doc.rust-lang.org/stable/std/collections/struct.BTreeMap.html#method.remove_entry
-[`Rc::as_ptr`]: https://doc.rust-lang.org/stable/std/rc/struct.Rc.html#method.as_ptr
-[`rc::Weak::as_ptr`]: https://doc.rust-lang.org/stable/std/rc/struct.Weak.html#method.as_ptr
-[`rc::Weak::from_raw`]: https://doc.rust-lang.org/stable/std/rc/struct.Weak.html#method.from_raw
-[`rc::Weak::into_raw`]: https://doc.rust-lang.org/stable/std/rc/struct.Weak.html#method.into_raw
-[`sync::Weak::as_ptr`]: https://doc.rust-lang.org/stable/std/sync/struct.Weak.html#method.as_ptr
-[`sync::Weak::from_raw`]: https://doc.rust-lang.org/stable/std/sync/struct.Weak.html#method.from_raw
-[`sync::Weak::into_raw`]: https://doc.rust-lang.org/stable/std/sync/struct.Weak.html#method.into_raw
-[`str::strip_prefix`]: https://doc.rust-lang.org/stable/std/primitive.str.html#method.strip_prefix
-[`str::strip_suffix`]: https://doc.rust-lang.org/stable/std/primitive.str.html#method.strip_suffix
-[`char::UNICODE_VERSION`]: https://doc.rust-lang.org/stable/std/char/constant.UNICODE_VERSION.html
-[`Span::resolved_at`]: https://doc.rust-lang.org/stable/proc_macro/struct.Span.html#method.resolved_at
-[`Span::located_at`]: https://doc.rust-lang.org/stable/proc_macro/struct.Span.html#method.located_at
-[`Span::mixed_site`]: https://doc.rust-lang.org/stable/proc_macro/struct.Span.html#method.mixed_site
+[`Arc::as_ptr`]: https://doc.rust-lang.org/std/sync/struct.Arc.html#method.as_ptr
+[`BTreeMap::remove_entry`]: https://doc.rust-lang.org/std/collections/struct.BTreeMap.html#method.remove_entry
+[`Rc::as_ptr`]: https://doc.rust-lang.org/std/rc/struct.Rc.html#method.as_ptr
+[`rc::Weak::as_ptr`]: https://doc.rust-lang.org/std/rc/struct.Weak.html#method.as_ptr
+[`rc::Weak::from_raw`]: https://doc.rust-lang.org/std/rc/struct.Weak.html#method.from_raw
+[`rc::Weak::into_raw`]: https://doc.rust-lang.org/std/rc/struct.Weak.html#method.into_raw
+[`sync::Weak::as_ptr`]: https://doc.rust-lang.org/std/sync/struct.Weak.html#method.as_ptr
+[`sync::Weak::from_raw`]: https://doc.rust-lang.org/std/sync/struct.Weak.html#method.from_raw
+[`sync::Weak::into_raw`]: https://doc.rust-lang.org/std/sync/struct.Weak.html#method.into_raw
+[`str::strip_prefix`]: https://doc.rust-lang.org/std/primitive.str.html#method.strip_prefix
+[`str::strip_suffix`]: https://doc.rust-lang.org/std/primitive.str.html#method.strip_suffix
+[`char::UNICODE_VERSION`]: https://doc.rust-lang.org/std/char/constant.UNICODE_VERSION.html
+[`Span::resolved_at`]: https://doc.rust-lang.org/proc_macro/struct.Span.html#method.resolved_at
+[`Span::located_at`]: https://doc.rust-lang.org/proc_macro/struct.Span.html#method.located_at
+[`Span::mixed_site`]: https://doc.rust-lang.org/proc_macro/struct.Span.html#method.mixed_site
 [`unix::process::CommandExt::arg0`]: https://doc.rust-lang.org/std/os/unix/process/trait.CommandExt.html#tymethod.arg0
 
 
@@ -4112,14 +4112,14 @@ Compatibility Notes
 [66919]: https://github.com/rust-lang/rust/pull/66919/
 [66254]: https://github.com/rust-lang/rust/pull/66254/
 [cargo/7700]: https://github.com/rust-lang/cargo/pull/7700
-[`DebugMap::key`]: https://doc.rust-lang.org/stable/std/fmt/struct.DebugMap.html#method.key
-[`DebugMap::value`]: https://doc.rust-lang.org/stable/std/fmt/struct.DebugMap.html#method.value
-[`ManuallyDrop::take`]: https://doc.rust-lang.org/stable/std/mem/struct.ManuallyDrop.html#method.take
-[`matches!`]: https://doc.rust-lang.org/stable/std/macro.matches.html
-[`ptr::slice_from_raw_parts_mut`]: https://doc.rust-lang.org/stable/std/ptr/fn.slice_from_raw_parts_mut.html
-[`ptr::slice_from_raw_parts`]: https://doc.rust-lang.org/stable/std/ptr/fn.slice_from_raw_parts.html
-[`CondVar::wait_while`]: https://doc.rust-lang.org/stable/std/sync/struct.Condvar.html#method.wait_while
-[`CondVar::wait_timeout_while`]: https://doc.rust-lang.org/stable/std/sync/struct.Condvar.html#method.wait_timeout_while
+[`DebugMap::key`]: https://doc.rust-lang.org/std/fmt/struct.DebugMap.html#method.key
+[`DebugMap::value`]: https://doc.rust-lang.org/std/fmt/struct.DebugMap.html#method.value
+[`ManuallyDrop::take`]: https://doc.rust-lang.org/std/mem/struct.ManuallyDrop.html#method.take
+[`matches!`]: https://doc.rust-lang.org/std/macro.matches.html
+[`ptr::slice_from_raw_parts_mut`]: https://doc.rust-lang.org/std/ptr/fn.slice_from_raw_parts_mut.html
+[`ptr::slice_from_raw_parts`]: https://doc.rust-lang.org/std/ptr/fn.slice_from_raw_parts.html
+[`CondVar::wait_while`]: https://doc.rust-lang.org/std/sync/struct.Condvar.html#method.wait_while
+[`CondVar::wait_timeout_while`]: https://doc.rust-lang.org/std/sync/struct.Condvar.html#method.wait_timeout_while
 
 
 Version 1.41.1 (2020-02-27)
@@ -4173,7 +4173,7 @@ Compiler
 \* Refer to Rust's [platform support page][platform-support-doc] for more
 information on Rust's tiered platform support.
 
-[argfile-docs]: https://doc.rust-lang.org/nightly/rustc/command-line-arguments.html#path-load-command-line-flags-from-a-path
+[argfile-docs]: https://doc.rust-lang.org/rustc/command-line-arguments.html#path-load-command-line-flags-from-a-path
 
 Libraries
 ---------
@@ -4624,7 +4624,7 @@ Compatibility Notes
 [`Duration::mul_f32`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.mul_f32
 [`Duration::mul_f64`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.mul_f64
 [`any::type_name`]: https://doc.rust-lang.org/std/any/fn.type_name.html
-[platform-support-doc]: https://doc.rust-lang.org/nightly/rustc/platform-support.html
+[platform-support-doc]: https://doc.rust-lang.org/rustc/platform-support.html
 [pipeline-internals]: https://internals.rust-lang.org/t/evaluating-pipelined-rustc-compilation/10199
 
 Version 1.37.0 (2019-08-15)
@@ -4836,11 +4836,11 @@ Compatibility Notes
 [`mem::MaybeUninit`]: https://doc.rust-lang.org/std/mem/union.MaybeUninit.html
 [`pointer::align_offset`]: https://doc.rust-lang.org/std/primitive.pointer.html#method.align_offset
 [`future::Future`]: https://doc.rust-lang.org/std/future/trait.Future.html
-[`task::Context`]: https://doc.rust-lang.org/beta/std/task/struct.Context.html
-[`task::RawWaker`]: https://doc.rust-lang.org/beta/std/task/struct.RawWaker.html
-[`task::RawWakerVTable`]: https://doc.rust-lang.org/beta/std/task/struct.RawWakerVTable.html
-[`task::Waker`]: https://doc.rust-lang.org/beta/std/task/struct.Waker.html
-[`task::Poll`]: https://doc.rust-lang.org/beta/std/task/enum.Poll.html
+[`task::Context`]: https://doc.rust-lang.org/std/task/struct.Context.html
+[`task::RawWaker`]: https://doc.rust-lang.org/std/task/struct.RawWaker.html
+[`task::RawWakerVTable`]: https://doc.rust-lang.org/std/task/struct.RawWakerVTable.html
+[`task::Waker`]: https://doc.rust-lang.org/std/task/struct.Waker.html
+[`task::Poll`]: https://doc.rust-lang.org/std/task/enum.Poll.html
 [clippy-1-36-0]: https://github.com/rust-lang/rust-clippy/blob/master/CHANGELOG.md#rust-136
 [cargo-1-36-0]: https://github.com/rust-lang/cargo/blob/master/CHANGELOG.md#cargo-136-2019-07-04
 
@@ -4930,11 +4930,11 @@ Misc
 [57847]: https://github.com/rust-lang/rust/pull/57847/
 [58575]: https://github.com/rust-lang/rust/pull/58575
 [cargo/6298]: https://github.com/rust-lang/cargo/pull/6298/
-[`f32::copysign`]: https://doc.rust-lang.org/stable/std/primitive.f32.html#method.copysign
-[`f64::copysign`]: https://doc.rust-lang.org/stable/std/primitive.f64.html#method.copysign
-[`RefCell::replace_with`]: https://doc.rust-lang.org/stable/std/cell/struct.RefCell.html#method.replace_with
-[`RefCell::map_split`]: https://doc.rust-lang.org/stable/std/cell/struct.RefCell.html#method.map_split
-[`ptr::hash`]: https://doc.rust-lang.org/stable/std/ptr/fn.hash.html
+[`f32::copysign`]: https://doc.rust-lang.org/std/primitive.f32.html#method.copysign
+[`f64::copysign`]: https://doc.rust-lang.org/std/primitive.f64.html#method.copysign
+[`RefCell::replace_with`]: https://doc.rust-lang.org/std/cell/struct.RefCell.html#method.replace_with
+[`RefCell::map_split`]: https://doc.rust-lang.org/std/cell/struct.RefCell.html#method.map_split
+[`ptr::hash`]: https://doc.rust-lang.org/std/ptr/fn.hash.html
 [`Range::contains`]: https://doc.rust-lang.org/std/ops/struct.Range.html#method.contains
 [`RangeFrom::contains`]: https://doc.rust-lang.org/std/ops/struct.RangeFrom.html#method.contains
 [`RangeTo::contains`]: https://doc.rust-lang.org/std/ops/struct.RangeTo.html#method.contains
@@ -5254,8 +5254,8 @@ Compatibility Notes
 [`Result::transpose`]: https://doc.rust-lang.org/std/result/enum.Result.html#method.transpose
 [`convert::identity`]: https://doc.rust-lang.org/std/convert/fn.identity.html
 [`pin::Pin`]: https://doc.rust-lang.org/std/pin/struct.Pin.html
-[`marker::Unpin`]: https://doc.rust-lang.org/stable/std/marker/trait.Unpin.html
-[`marker::PhantomPinned`]: https://doc.rust-lang.org/nightly/std/marker/struct.PhantomPinned.html
+[`marker::Unpin`]: https://doc.rust-lang.org/std/marker/trait.Unpin.html
+[`marker::PhantomPinned`]: https://doc.rust-lang.org/std/marker/struct.PhantomPinned.html
 [`Vec::resize_with`]: https://doc.rust-lang.org/std/vec/struct.Vec.html#method.resize_with
 [`VecDeque::resize_with`]: https://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.resize_with
 [`Duration::as_millis`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.as_millis
@@ -5485,80 +5485,80 @@ Compatibility Notes
 [`UnsafeCell::get`]: https://doc.rust-lang.org/std/cell/struct.UnsafeCell.html#method.get
 [`slice::as_ptr`]: https://doc.rust-lang.org/std/primitive.slice.html#method.as_ptr
 [`char::is_ascii`]: https://doc.rust-lang.org/std/primitive.char.html#method.is_ascii
-[`i128::from_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i128.html#method.from_be_bytes
-[`i128::from_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i128.html#method.from_le_bytes
-[`i128::from_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i128.html#method.from_ne_bytes
-[`i128::to_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i128.html#method.to_be_bytes
-[`i128::to_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i128.html#method.to_le_bytes
-[`i128::to_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i128.html#method.to_ne_bytes
-[`i16::from_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i16.html#method.from_be_bytes
-[`i16::from_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i16.html#method.from_le_bytes
-[`i16::from_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i16.html#method.from_ne_bytes
-[`i16::to_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i16.html#method.to_be_bytes
-[`i16::to_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i16.html#method.to_le_bytes
-[`i16::to_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i16.html#method.to_ne_bytes
-[`i32::from_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i32.html#method.from_be_bytes
-[`i32::from_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i32.html#method.from_le_bytes
-[`i32::from_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i32.html#method.from_ne_bytes
-[`i32::to_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i32.html#method.to_be_bytes
-[`i32::to_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i32.html#method.to_le_bytes
-[`i32::to_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i32.html#method.to_ne_bytes
-[`i64::from_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i64.html#method.from_be_bytes
-[`i64::from_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i64.html#method.from_le_bytes
-[`i64::from_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i64.html#method.from_ne_bytes
-[`i64::to_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i64.html#method.to_be_bytes
-[`i64::to_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i64.html#method.to_le_bytes
-[`i64::to_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i64.html#method.to_ne_bytes
-[`i8::from_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i8.html#method.from_be_bytes
-[`i8::from_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i8.html#method.from_le_bytes
-[`i8::from_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i8.html#method.from_ne_bytes
-[`i8::to_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i8.html#method.to_be_bytes
-[`i8::to_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i8.html#method.to_le_bytes
-[`i8::to_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.i8.html#method.to_ne_bytes
-[`isize::from_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.isize.html#method.from_be_bytes
-[`isize::from_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.isize.html#method.from_le_bytes
-[`isize::from_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.isize.html#method.from_ne_bytes
-[`isize::to_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.isize.html#method.to_be_bytes
-[`isize::to_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.isize.html#method.to_le_bytes
-[`isize::to_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.isize.html#method.to_ne_bytes
+[`i128::from_be_bytes`]: https://doc.rust-lang.org/std/primitive.i128.html#method.from_be_bytes
+[`i128::from_le_bytes`]: https://doc.rust-lang.org/std/primitive.i128.html#method.from_le_bytes
+[`i128::from_ne_bytes`]: https://doc.rust-lang.org/std/primitive.i128.html#method.from_ne_bytes
+[`i128::to_be_bytes`]: https://doc.rust-lang.org/std/primitive.i128.html#method.to_be_bytes
+[`i128::to_le_bytes`]: https://doc.rust-lang.org/std/primitive.i128.html#method.to_le_bytes
+[`i128::to_ne_bytes`]: https://doc.rust-lang.org/std/primitive.i128.html#method.to_ne_bytes
+[`i16::from_be_bytes`]: https://doc.rust-lang.org/std/primitive.i16.html#method.from_be_bytes
+[`i16::from_le_bytes`]: https://doc.rust-lang.org/std/primitive.i16.html#method.from_le_bytes
+[`i16::from_ne_bytes`]: https://doc.rust-lang.org/std/primitive.i16.html#method.from_ne_bytes
+[`i16::to_be_bytes`]: https://doc.rust-lang.org/std/primitive.i16.html#method.to_be_bytes
+[`i16::to_le_bytes`]: https://doc.rust-lang.org/std/primitive.i16.html#method.to_le_bytes
+[`i16::to_ne_bytes`]: https://doc.rust-lang.org/std/primitive.i16.html#method.to_ne_bytes
+[`i32::from_be_bytes`]: https://doc.rust-lang.org/std/primitive.i32.html#method.from_be_bytes
+[`i32::from_le_bytes`]: https://doc.rust-lang.org/std/primitive.i32.html#method.from_le_bytes
+[`i32::from_ne_bytes`]: https://doc.rust-lang.org/std/primitive.i32.html#method.from_ne_bytes
+[`i32::to_be_bytes`]: https://doc.rust-lang.org/std/primitive.i32.html#method.to_be_bytes
+[`i32::to_le_bytes`]: https://doc.rust-lang.org/std/primitive.i32.html#method.to_le_bytes
+[`i32::to_ne_bytes`]: https://doc.rust-lang.org/std/primitive.i32.html#method.to_ne_bytes
+[`i64::from_be_bytes`]: https://doc.rust-lang.org/std/primitive.i64.html#method.from_be_bytes
+[`i64::from_le_bytes`]: https://doc.rust-lang.org/std/primitive.i64.html#method.from_le_bytes
+[`i64::from_ne_bytes`]: https://doc.rust-lang.org/std/primitive.i64.html#method.from_ne_bytes
+[`i64::to_be_bytes`]: https://doc.rust-lang.org/std/primitive.i64.html#method.to_be_bytes
+[`i64::to_le_bytes`]: https://doc.rust-lang.org/std/primitive.i64.html#method.to_le_bytes
+[`i64::to_ne_bytes`]: https://doc.rust-lang.org/std/primitive.i64.html#method.to_ne_bytes
+[`i8::from_be_bytes`]: https://doc.rust-lang.org/std/primitive.i8.html#method.from_be_bytes
+[`i8::from_le_bytes`]: https://doc.rust-lang.org/std/primitive.i8.html#method.from_le_bytes
+[`i8::from_ne_bytes`]: https://doc.rust-lang.org/std/primitive.i8.html#method.from_ne_bytes
+[`i8::to_be_bytes`]: https://doc.rust-lang.org/std/primitive.i8.html#method.to_be_bytes
+[`i8::to_le_bytes`]: https://doc.rust-lang.org/std/primitive.i8.html#method.to_le_bytes
+[`i8::to_ne_bytes`]: https://doc.rust-lang.org/std/primitive.i8.html#method.to_ne_bytes
+[`isize::from_be_bytes`]: https://doc.rust-lang.org/std/primitive.isize.html#method.from_be_bytes
+[`isize::from_le_bytes`]: https://doc.rust-lang.org/std/primitive.isize.html#method.from_le_bytes
+[`isize::from_ne_bytes`]: https://doc.rust-lang.org/std/primitive.isize.html#method.from_ne_bytes
+[`isize::to_be_bytes`]: https://doc.rust-lang.org/std/primitive.isize.html#method.to_be_bytes
+[`isize::to_le_bytes`]: https://doc.rust-lang.org/std/primitive.isize.html#method.to_le_bytes
+[`isize::to_ne_bytes`]: https://doc.rust-lang.org/std/primitive.isize.html#method.to_ne_bytes
 [`iter::empty`]: https://doc.rust-lang.org/std/iter/fn.empty.html
 [`str::as_ptr`]: https://doc.rust-lang.org/std/primitive.str.html#method.as_ptr
-[`u128::from_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u128.html#method.from_be_bytes
-[`u128::from_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u128.html#method.from_le_bytes
-[`u128::from_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u128.html#method.from_ne_bytes
-[`u128::to_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u128.html#method.to_be_bytes
-[`u128::to_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u128.html#method.to_le_bytes
-[`u128::to_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u128.html#method.to_ne_bytes
-[`u16::from_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u16.html#method.from_be_bytes
-[`u16::from_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u16.html#method.from_le_bytes
-[`u16::from_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u16.html#method.from_ne_bytes
-[`u16::to_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u16.html#method.to_be_bytes
-[`u16::to_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u16.html#method.to_le_bytes
-[`u16::to_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u16.html#method.to_ne_bytes
-[`u32::from_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u32.html#method.from_be_bytes
-[`u32::from_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u32.html#method.from_le_bytes
-[`u32::from_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u32.html#method.from_ne_bytes
-[`u32::to_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u32.html#method.to_be_bytes
-[`u32::to_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u32.html#method.to_le_bytes
-[`u32::to_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u32.html#method.to_ne_bytes
-[`u64::from_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u64.html#method.from_be_bytes
-[`u64::from_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u64.html#method.from_le_bytes
-[`u64::from_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u64.html#method.from_ne_bytes
-[`u64::to_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u64.html#method.to_be_bytes
-[`u64::to_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u64.html#method.to_le_bytes
-[`u64::to_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u64.html#method.to_ne_bytes
-[`u8::from_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u8.html#method.from_be_bytes
-[`u8::from_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u8.html#method.from_le_bytes
-[`u8::from_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u8.html#method.from_ne_bytes
-[`u8::to_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u8.html#method.to_be_bytes
-[`u8::to_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u8.html#method.to_le_bytes
-[`u8::to_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.u8.html#method.to_ne_bytes
-[`usize::from_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.usize.html#method.from_be_bytes
-[`usize::from_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.usize.html#method.from_le_bytes
-[`usize::from_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.usize.html#method.from_ne_bytes
-[`usize::to_be_bytes`]: https://doc.rust-lang.org/stable/std/primitive.usize.html#method.to_be_bytes
-[`usize::to_le_bytes`]: https://doc.rust-lang.org/stable/std/primitive.usize.html#method.to_le_bytes
-[`usize::to_ne_bytes`]: https://doc.rust-lang.org/stable/std/primitive.usize.html#method.to_ne_bytes
+[`u128::from_be_bytes`]: https://doc.rust-lang.org/std/primitive.u128.html#method.from_be_bytes
+[`u128::from_le_bytes`]: https://doc.rust-lang.org/std/primitive.u128.html#method.from_le_bytes
+[`u128::from_ne_bytes`]: https://doc.rust-lang.org/std/primitive.u128.html#method.from_ne_bytes
+[`u128::to_be_bytes`]: https://doc.rust-lang.org/std/primitive.u128.html#method.to_be_bytes
+[`u128::to_le_bytes`]: https://doc.rust-lang.org/std/primitive.u128.html#method.to_le_bytes
+[`u128::to_ne_bytes`]: https://doc.rust-lang.org/std/primitive.u128.html#method.to_ne_bytes
+[`u16::from_be_bytes`]: https://doc.rust-lang.org/std/primitive.u16.html#method.from_be_bytes
+[`u16::from_le_bytes`]: https://doc.rust-lang.org/std/primitive.u16.html#method.from_le_bytes
+[`u16::from_ne_bytes`]: https://doc.rust-lang.org/std/primitive.u16.html#method.from_ne_bytes
+[`u16::to_be_bytes`]: https://doc.rust-lang.org/std/primitive.u16.html#method.to_be_bytes
+[`u16::to_le_bytes`]: https://doc.rust-lang.org/std/primitive.u16.html#method.to_le_bytes
+[`u16::to_ne_bytes`]: https://doc.rust-lang.org/std/primitive.u16.html#method.to_ne_bytes
+[`u32::from_be_bytes`]: https://doc.rust-lang.org/std/primitive.u32.html#method.from_be_bytes
+[`u32::from_le_bytes`]: https://doc.rust-lang.org/std/primitive.u32.html#method.from_le_bytes
+[`u32::from_ne_bytes`]: https://doc.rust-lang.org/std/primitive.u32.html#method.from_ne_bytes
+[`u32::to_be_bytes`]: https://doc.rust-lang.org/std/primitive.u32.html#method.to_be_bytes
+[`u32::to_le_bytes`]: https://doc.rust-lang.org/std/primitive.u32.html#method.to_le_bytes
+[`u32::to_ne_bytes`]: https://doc.rust-lang.org/std/primitive.u32.html#method.to_ne_bytes
+[`u64::from_be_bytes`]: https://doc.rust-lang.org/std/primitive.u64.html#method.from_be_bytes
+[`u64::from_le_bytes`]: https://doc.rust-lang.org/std/primitive.u64.html#method.from_le_bytes
+[`u64::from_ne_bytes`]: https://doc.rust-lang.org/std/primitive.u64.html#method.from_ne_bytes
+[`u64::to_be_bytes`]: https://doc.rust-lang.org/std/primitive.u64.html#method.to_be_bytes
+[`u64::to_le_bytes`]: https://doc.rust-lang.org/std/primitive.u64.html#method.to_le_bytes
+[`u64::to_ne_bytes`]: https://doc.rust-lang.org/std/primitive.u64.html#method.to_ne_bytes
+[`u8::from_be_bytes`]: https://doc.rust-lang.org/std/primitive.u8.html#method.from_be_bytes
+[`u8::from_le_bytes`]: https://doc.rust-lang.org/std/primitive.u8.html#method.from_le_bytes
+[`u8::from_ne_bytes`]: https://doc.rust-lang.org/std/primitive.u8.html#method.from_ne_bytes
+[`u8::to_be_bytes`]: https://doc.rust-lang.org/std/primitive.u8.html#method.to_be_bytes
+[`u8::to_le_bytes`]: https://doc.rust-lang.org/std/primitive.u8.html#method.to_le_bytes
+[`u8::to_ne_bytes`]: https://doc.rust-lang.org/std/primitive.u8.html#method.to_ne_bytes
+[`usize::from_be_bytes`]: https://doc.rust-lang.org/std/primitive.usize.html#method.from_be_bytes
+[`usize::from_le_bytes`]: https://doc.rust-lang.org/std/primitive.usize.html#method.from_le_bytes
+[`usize::from_ne_bytes`]: https://doc.rust-lang.org/std/primitive.usize.html#method.from_ne_bytes
+[`usize::to_be_bytes`]: https://doc.rust-lang.org/std/primitive.usize.html#method.to_be_bytes
+[`usize::to_le_bytes`]: https://doc.rust-lang.org/std/primitive.usize.html#method.to_le_bytes
+[`usize::to_ne_bytes`]: https://doc.rust-lang.org/std/primitive.usize.html#method.to_ne_bytes
 
 
 Version 1.31.1 (2018-12-20)
@@ -5756,18 +5756,18 @@ Misc
 [cargo/5877]: https://github.com/rust-lang/cargo/pull/5877/
 [cargo/5878]: https://github.com/rust-lang/cargo/pull/5878/
 [cargo/5995]: https://github.com/rust-lang/cargo/pull/5995/
-[proc-macros]: https://doc.rust-lang.org/nightly/book/2018-edition/ch19-06-macros.html
+[proc-macros]: https://doc.rust-lang.org/book/2018-edition/ch19-06-macros.html
 
-[`Ipv4Addr::BROADCAST`]: https://doc.rust-lang.org/nightly/std/net/struct.Ipv4Addr.html#associatedconstant.BROADCAST
-[`Ipv4Addr::LOCALHOST`]: https://doc.rust-lang.org/nightly/std/net/struct.Ipv4Addr.html#associatedconstant.LOCALHOST
-[`Ipv4Addr::UNSPECIFIED`]: https://doc.rust-lang.org/nightly/std/net/struct.Ipv4Addr.html#associatedconstant.UNSPECIFIED
-[`Ipv6Addr::LOCALHOST`]: https://doc.rust-lang.org/nightly/std/net/struct.Ipv6Addr.html#associatedconstant.LOCALHOST
-[`Ipv6Addr::UNSPECIFIED`]: https://doc.rust-lang.org/nightly/std/net/struct.Ipv6Addr.html#associatedconstant.UNSPECIFIED
+[`Ipv4Addr::BROADCAST`]: https://doc.rust-lang.org/std/net/struct.Ipv4Addr.html#associatedconstant.BROADCAST
+[`Ipv4Addr::LOCALHOST`]: https://doc.rust-lang.org/std/net/struct.Ipv4Addr.html#associatedconstant.LOCALHOST
+[`Ipv4Addr::UNSPECIFIED`]: https://doc.rust-lang.org/std/net/struct.Ipv4Addr.html#associatedconstant.UNSPECIFIED
+[`Ipv6Addr::LOCALHOST`]: https://doc.rust-lang.org/std/net/struct.Ipv6Addr.html#associatedconstant.LOCALHOST
+[`Ipv6Addr::UNSPECIFIED`]: https://doc.rust-lang.org/std/net/struct.Ipv6Addr.html#associatedconstant.UNSPECIFIED
 [`Iterator::find_map`]: https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.find_map
-[`str::trim_end_matches`]: https://doc.rust-lang.org/nightly/std/primitive.str.html#method.trim_end_matches
-[`str::trim_end`]: https://doc.rust-lang.org/nightly/std/primitive.str.html#method.trim_end
-[`str::trim_start_matches`]: https://doc.rust-lang.org/nightly/std/primitive.str.html#method.trim_start_matches
-[`str::trim_start`]: https://doc.rust-lang.org/nightly/std/primitive.str.html#method.trim_start
+[`str::trim_end_matches`]: https://doc.rust-lang.org/std/primitive.str.html#method.trim_end_matches
+[`str::trim_end`]: https://doc.rust-lang.org/std/primitive.str.html#method.trim_end
+[`str::trim_start_matches`]: https://doc.rust-lang.org/std/primitive.str.html#method.trim_start_matches
+[`str::trim_start`]: https://doc.rust-lang.org/std/primitive.str.html#method.trim_start
 
 
 Version 1.29.2 (2018-10-11)
@@ -9356,92 +9356,92 @@ Compatibility Notes
 [1.9tu]: https://github.com/rust-lang/rust/pull/32062
 [1.9ws]: https://github.com/rust-lang/rust/pull/29734
 [RFC 1270]: https://github.com/rust-lang/rfcs/blob/master/text/1270-deprecation.md
-[`<*const T>::as_ref`]: http://doc.rust-lang.org/nightly/std/primitive.pointer.html#method.as_ref
-[`<*mut T>::as_mut`]: http://doc.rust-lang.org/nightly/std/primitive.pointer.html#method.as_mut
-[`<*mut T>::as_ref`]: http://doc.rust-lang.org/nightly/std/primitive.pointer.html#method.as_ref
-[`slice::copy_from_slice`]: http://doc.rust-lang.org/nightly/std/primitive.slice.html#method.copy_from_slice
-[`AsciiExt::make_ascii_lowercase`]: http://doc.rust-lang.org/nightly/std/ascii/trait.AsciiExt.html#tymethod.make_ascii_lowercase
-[`AsciiExt::make_ascii_uppercase`]: http://doc.rust-lang.org/nightly/std/ascii/trait.AsciiExt.html#tymethod.make_ascii_uppercase
-[`BTreeSet::get`]: http://doc.rust-lang.org/nightly/collections/btree/set/struct.BTreeSet.html#method.get
-[`BTreeSet::replace`]: http://doc.rust-lang.org/nightly/collections/btree/set/struct.BTreeSet.html#method.replace
-[`BTreeSet::take`]: http://doc.rust-lang.org/nightly/collections/btree/set/struct.BTreeSet.html#method.take
-[`CommandExt::exec`]: http://doc.rust-lang.org/nightly/std/os/unix/process/trait.CommandExt.html#tymethod.exec
-[`File::try_clone`]: http://doc.rust-lang.org/nightly/std/fs/struct.File.html#method.try_clone
-[`HashMap::hasher`]: http://doc.rust-lang.org/nightly/std/collections/struct.HashMap.html#method.hasher
-[`HashSet::get`]: http://doc.rust-lang.org/nightly/std/collections/struct.HashSet.html#method.get
-[`HashSet::hasher`]: http://doc.rust-lang.org/nightly/std/collections/struct.HashSet.html#method.hasher
-[`HashSet::replace`]: http://doc.rust-lang.org/nightly/std/collections/struct.HashSet.html#method.replace
-[`HashSet::take`]: http://doc.rust-lang.org/nightly/std/collections/struct.HashSet.html#method.take
-[`JoinHandleExt::as_pthread_t`]: http://doc.rust-lang.org/nightly/std/os/unix/thread/trait.JoinHandleExt.html#tymethod.as_pthread_t
-[`JoinHandleExt::into_pthread_t`]: http://doc.rust-lang.org/nightly/std/os/unix/thread/trait.JoinHandleExt.html#tymethod.into_pthread_t
-[`JoinHandleExt`]: http://doc.rust-lang.org/nightly/std/os/unix/thread/trait.JoinHandleExt.html
-[`OpenOptions::create_new`]: http://doc.rust-lang.org/nightly/std/fs/struct.OpenOptions.html#method.create_new
-[`OsStr::is_empty`]: http://doc.rust-lang.org/nightly/std/ffi/struct.OsStr.html#method.is_empty
-[`OsStr::len`]: http://doc.rust-lang.org/nightly/std/ffi/struct.OsStr.html#method.len
-[`OsString::capacity`]: http://doc.rust-lang.org/nightly/std/ffi/struct.OsString.html#method.capacity
-[`OsString::clear`]: http://doc.rust-lang.org/nightly/std/ffi/struct.OsString.html#method.clear
-[`OsString::reserve_exact`]: http://doc.rust-lang.org/nightly/std/ffi/struct.OsString.html#method.reserve_exact
-[`OsString::reserve`]: http://doc.rust-lang.org/nightly/std/ffi/struct.OsString.html#method.reserve
-[`OsString::with_capacity`]: http://doc.rust-lang.org/nightly/std/ffi/struct.OsString.html#method.with_capacity
-[`RawPthread`]: http://doc.rust-lang.org/nightly/std/os/unix/thread/type.RawPthread.html
-[`SocketAddr::set_ip`]: http://doc.rust-lang.org/nightly/std/net/enum.SocketAddr.html#method.set_ip
-[`SocketAddr::set_port`]: http://doc.rust-lang.org/nightly/std/net/enum.SocketAddr.html#method.set_port
-[`SocketAddrV4::set_ip`]: http://doc.rust-lang.org/nightly/std/net/struct.SocketAddrV4.html#method.set_ip
-[`SocketAddrV4::set_port`]: http://doc.rust-lang.org/nightly/std/net/struct.SocketAddrV4.html#method.set_port
-[`SocketAddrV6::set_flowinfo`]: http://doc.rust-lang.org/nightly/std/net/struct.SocketAddrV6.html#method.set_flowinfo
-[`SocketAddrV6::set_ip`]: http://doc.rust-lang.org/nightly/std/net/struct.SocketAddrV6.html#method.set_ip
-[`SocketAddrV6::set_port`]: http://doc.rust-lang.org/nightly/std/net/struct.SocketAddrV6.html#method.set_port
-[`SocketAddrV6::set_scope_id`]: http://doc.rust-lang.org/nightly/std/net/struct.SocketAddrV6.html#method.set_scope_id
-[`TcpListener::only_v6`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.only_v6
-[`TcpListener::set_nonblocking`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.set_nonblocking
-[`TcpListener::set_only_v6`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.set_only_v6
-[`TcpListener::set_ttl`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.set_ttl
-[`TcpListener::take_error`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.take_error
-[`TcpListener::ttl`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.ttl
-[`TcpStream::nodelay`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.nodelay
-[`TcpStream::only_v6`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.only_v6
-[`TcpStream::set_nodelay`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.set_nodelay
-[`TcpStream::set_nonblocking`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.set_nonblocking
-[`TcpStream::set_only_v6`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.set_only_v6
-[`TcpStream::set_ttl`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.set_ttl
-[`TcpStream::take_error`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.take_error
-[`TcpStream::ttl`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.ttl
-[`UdpSocket::broadcast`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.broadcast
-[`UdpSocket::connect`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.connect
-[`UdpSocket::join_multicast_v4`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.join_multicast_v4
-[`UdpSocket::join_multicast_v6`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.join_multicast_v6
-[`UdpSocket::leave_multicast_v4`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.leave_multicast_v4
-[`UdpSocket::leave_multicast_v6`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.leave_multicast_v6
-[`UdpSocket::multicast_loop_v4`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.multicast_loop_v4
-[`UdpSocket::multicast_loop_v6`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.multicast_loop_v6
-[`UdpSocket::multicast_ttl_v4`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.multicast_ttl_v4
-[`UdpSocket::multicast_ttl_v6`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.multicast_ttl_v6
-[`UdpSocket::only_v6`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.only_v6
-[`UdpSocket::recv`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.recv
-[`UdpSocket::send`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.send
-[`UdpSocket::set_broadcast`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.set_broadcast
-[`UdpSocket::set_multicast_loop_v4`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.set_multicast_loop_v4
-[`UdpSocket::set_multicast_loop_v6`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.set_multicast_loop_v6
-[`UdpSocket::set_multicast_ttl_v4`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.set_multicast_ttl_v4
-[`UdpSocket::set_multicast_ttl_v6`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.set_multicast_ttl_v6
-[`UdpSocket::set_nonblocking`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.set_nonblocking
-[`UdpSocket::set_only_v6`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.set_only_v6
-[`UdpSocket::set_ttl`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.set_ttl
-[`UdpSocket::take_error`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.take_error
-[`UdpSocket::ttl`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.ttl
-[`char::DecodeUtf16Error::unpaired_surrogate`]: http://doc.rust-lang.org/nightly/std/char/struct.DecodeUtf16Error.html#method.unpaired_surrogate
-[`char::DecodeUtf16Error`]: http://doc.rust-lang.org/nightly/std/char/struct.DecodeUtf16Error.html
-[`char::DecodeUtf16`]: http://doc.rust-lang.org/nightly/std/char/struct.DecodeUtf16.html
-[`char::decode_utf16`]: http://doc.rust-lang.org/nightly/std/char/fn.decode_utf16.html
-[`ptr::read_volatile`]: http://doc.rust-lang.org/nightly/std/ptr/fn.read_volatile.html
-[`ptr::write_volatile`]: http://doc.rust-lang.org/nightly/std/ptr/fn.write_volatile.html
-[`std::os::unix::thread`]: http://doc.rust-lang.org/nightly/std/os/unix/thread/index.html
-[`std::panic::AssertUnwindSafe`]: http://doc.rust-lang.org/nightly/std/panic/struct.AssertUnwindSafe.html
-[`std::panic::UnwindSafe`]: http://doc.rust-lang.org/nightly/std/panic/trait.UnwindSafe.html
-[`std::panic::catch_unwind`]: http://doc.rust-lang.org/nightly/std/panic/fn.catch_unwind.html
-[`std::panic::resume_unwind`]: http://doc.rust-lang.org/nightly/std/panic/fn.resume_unwind.html
-[`std::panic`]: http://doc.rust-lang.org/nightly/std/panic/index.html
-[`str::is_char_boundary`]: http://doc.rust-lang.org/nightly/std/primitive.str.html#method.is_char_boundary
+[`<*const T>::as_ref`]: http://doc.rust-lang.org/std/primitive.pointer.html#method.as_ref
+[`<*mut T>::as_mut`]: http://doc.rust-lang.org/std/primitive.pointer.html#method.as_mut
+[`<*mut T>::as_ref`]: http://doc.rust-lang.org/std/primitive.pointer.html#method.as_ref
+[`slice::copy_from_slice`]: http://doc.rust-lang.org/std/primitive.slice.html#method.copy_from_slice
+[`AsciiExt::make_ascii_lowercase`]: http://doc.rust-lang.org/std/ascii/trait.AsciiExt.html#tymethod.make_ascii_lowercase
+[`AsciiExt::make_ascii_uppercase`]: http://doc.rust-lang.org/std/ascii/trait.AsciiExt.html#tymethod.make_ascii_uppercase
+[`BTreeSet::get`]: http://doc.rust-lang.org/collections/btree/set/struct.BTreeSet.html#method.get
+[`BTreeSet::replace`]: http://doc.rust-lang.org/collections/btree/set/struct.BTreeSet.html#method.replace
+[`BTreeSet::take`]: http://doc.rust-lang.org/collections/btree/set/struct.BTreeSet.html#method.take
+[`CommandExt::exec`]: http://doc.rust-lang.org/std/os/unix/process/trait.CommandExt.html#tymethod.exec
+[`File::try_clone`]: http://doc.rust-lang.org/std/fs/struct.File.html#method.try_clone
+[`HashMap::hasher`]: http://doc.rust-lang.org/std/collections/struct.HashMap.html#method.hasher
+[`HashSet::get`]: http://doc.rust-lang.org/std/collections/struct.HashSet.html#method.get
+[`HashSet::hasher`]: http://doc.rust-lang.org/std/collections/struct.HashSet.html#method.hasher
+[`HashSet::replace`]: http://doc.rust-lang.org/std/collections/struct.HashSet.html#method.replace
+[`HashSet::take`]: http://doc.rust-lang.org/std/collections/struct.HashSet.html#method.take
+[`JoinHandleExt::as_pthread_t`]: http://doc.rust-lang.org/std/os/unix/thread/trait.JoinHandleExt.html#tymethod.as_pthread_t
+[`JoinHandleExt::into_pthread_t`]: http://doc.rust-lang.org/std/os/unix/thread/trait.JoinHandleExt.html#tymethod.into_pthread_t
+[`JoinHandleExt`]: http://doc.rust-lang.org/std/os/unix/thread/trait.JoinHandleExt.html
+[`OpenOptions::create_new`]: http://doc.rust-lang.org/std/fs/struct.OpenOptions.html#method.create_new
+[`OsStr::is_empty`]: http://doc.rust-lang.org/std/ffi/struct.OsStr.html#method.is_empty
+[`OsStr::len`]: http://doc.rust-lang.org/std/ffi/struct.OsStr.html#method.len
+[`OsString::capacity`]: http://doc.rust-lang.org/std/ffi/struct.OsString.html#method.capacity
+[`OsString::clear`]: http://doc.rust-lang.org/std/ffi/struct.OsString.html#method.clear
+[`OsString::reserve_exact`]: http://doc.rust-lang.org/std/ffi/struct.OsString.html#method.reserve_exact
+[`OsString::reserve`]: http://doc.rust-lang.org/std/ffi/struct.OsString.html#method.reserve
+[`OsString::with_capacity`]: http://doc.rust-lang.org/std/ffi/struct.OsString.html#method.with_capacity
+[`RawPthread`]: http://doc.rust-lang.org/std/os/unix/thread/type.RawPthread.html
+[`SocketAddr::set_ip`]: http://doc.rust-lang.org/std/net/enum.SocketAddr.html#method.set_ip
+[`SocketAddr::set_port`]: http://doc.rust-lang.org/std/net/enum.SocketAddr.html#method.set_port
+[`SocketAddrV4::set_ip`]: http://doc.rust-lang.org/std/net/struct.SocketAddrV4.html#method.set_ip
+[`SocketAddrV4::set_port`]: http://doc.rust-lang.org/std/net/struct.SocketAddrV4.html#method.set_port
+[`SocketAddrV6::set_flowinfo`]: http://doc.rust-lang.org/std/net/struct.SocketAddrV6.html#method.set_flowinfo
+[`SocketAddrV6::set_ip`]: http://doc.rust-lang.org/std/net/struct.SocketAddrV6.html#method.set_ip
+[`SocketAddrV6::set_port`]: http://doc.rust-lang.org/std/net/struct.SocketAddrV6.html#method.set_port
+[`SocketAddrV6::set_scope_id`]: http://doc.rust-lang.org/std/net/struct.SocketAddrV6.html#method.set_scope_id
+[`TcpListener::only_v6`]: http://doc.rust-lang.org/std/net/struct.TcpStream.html#method.only_v6
+[`TcpListener::set_nonblocking`]: http://doc.rust-lang.org/std/net/struct.TcpStream.html#method.set_nonblocking
+[`TcpListener::set_only_v6`]: http://doc.rust-lang.org/std/net/struct.TcpStream.html#method.set_only_v6
+[`TcpListener::set_ttl`]: http://doc.rust-lang.org/std/net/struct.TcpStream.html#method.set_ttl
+[`TcpListener::take_error`]: http://doc.rust-lang.org/std/net/struct.TcpStream.html#method.take_error
+[`TcpListener::ttl`]: http://doc.rust-lang.org/std/net/struct.TcpStream.html#method.ttl
+[`TcpStream::nodelay`]: http://doc.rust-lang.org/std/net/struct.TcpStream.html#method.nodelay
+[`TcpStream::only_v6`]: http://doc.rust-lang.org/std/net/struct.TcpStream.html#method.only_v6
+[`TcpStream::set_nodelay`]: http://doc.rust-lang.org/std/net/struct.TcpStream.html#method.set_nodelay
+[`TcpStream::set_nonblocking`]: http://doc.rust-lang.org/std/net/struct.TcpStream.html#method.set_nonblocking
+[`TcpStream::set_only_v6`]: http://doc.rust-lang.org/std/net/struct.TcpStream.html#method.set_only_v6
+[`TcpStream::set_ttl`]: http://doc.rust-lang.org/std/net/struct.TcpStream.html#method.set_ttl
+[`TcpStream::take_error`]: http://doc.rust-lang.org/std/net/struct.TcpStream.html#method.take_error
+[`TcpStream::ttl`]: http://doc.rust-lang.org/std/net/struct.TcpStream.html#method.ttl
+[`UdpSocket::broadcast`]: http://doc.rust-lang.org/std/net/struct.UdpSocket.html#method.broadcast
+[`UdpSocket::connect`]: http://doc.rust-lang.org/std/net/struct.UdpSocket.html#method.connect
+[`UdpSocket::join_multicast_v4`]: http://doc.rust-lang.org/std/net/struct.UdpSocket.html#method.join_multicast_v4
+[`UdpSocket::join_multicast_v6`]: http://doc.rust-lang.org/std/net/struct.UdpSocket.html#method.join_multicast_v6
+[`UdpSocket::leave_multicast_v4`]: http://doc.rust-lang.org/std/net/struct.UdpSocket.html#method.leave_multicast_v4
+[`UdpSocket::leave_multicast_v6`]: http://doc.rust-lang.org/std/net/struct.UdpSocket.html#method.leave_multicast_v6
+[`UdpSocket::multicast_loop_v4`]: http://doc.rust-lang.org/std/net/struct.UdpSocket.html#method.multicast_loop_v4
+[`UdpSocket::multicast_loop_v6`]: http://doc.rust-lang.org/std/net/struct.UdpSocket.html#method.multicast_loop_v6
+[`UdpSocket::multicast_ttl_v4`]: http://doc.rust-lang.org/std/net/struct.UdpSocket.html#method.multicast_ttl_v4
+[`UdpSocket::multicast_ttl_v6`]: http://doc.rust-lang.org/std/net/struct.UdpSocket.html#method.multicast_ttl_v6
+[`UdpSocket::only_v6`]: http://doc.rust-lang.org/std/net/struct.UdpSocket.html#method.only_v6
+[`UdpSocket::recv`]: http://doc.rust-lang.org/std/net/struct.UdpSocket.html#method.recv
+[`UdpSocket::send`]: http://doc.rust-lang.org/std/net/struct.UdpSocket.html#method.send
+[`UdpSocket::set_broadcast`]: http://doc.rust-lang.org/std/net/struct.UdpSocket.html#method.set_broadcast
+[`UdpSocket::set_multicast_loop_v4`]: http://doc.rust-lang.org/std/net/struct.UdpSocket.html#method.set_multicast_loop_v4
+[`UdpSocket::set_multicast_loop_v6`]: http://doc.rust-lang.org/std/net/struct.UdpSocket.html#method.set_multicast_loop_v6
+[`UdpSocket::set_multicast_ttl_v4`]: http://doc.rust-lang.org/std/net/struct.UdpSocket.html#method.set_multicast_ttl_v4
+[`UdpSocket::set_multicast_ttl_v6`]: http://doc.rust-lang.org/std/net/struct.UdpSocket.html#method.set_multicast_ttl_v6
+[`UdpSocket::set_nonblocking`]: http://doc.rust-lang.org/std/net/struct.UdpSocket.html#method.set_nonblocking
+[`UdpSocket::set_only_v6`]: http://doc.rust-lang.org/std/net/struct.UdpSocket.html#method.set_only_v6
+[`UdpSocket::set_ttl`]: http://doc.rust-lang.org/std/net/struct.UdpSocket.html#method.set_ttl
+[`UdpSocket::take_error`]: http://doc.rust-lang.org/std/net/struct.UdpSocket.html#method.take_error
+[`UdpSocket::ttl`]: http://doc.rust-lang.org/std/net/struct.UdpSocket.html#method.ttl
+[`char::DecodeUtf16Error::unpaired_surrogate`]: http://doc.rust-lang.org/std/char/struct.DecodeUtf16Error.html#method.unpaired_surrogate
+[`char::DecodeUtf16Error`]: http://doc.rust-lang.org/std/char/struct.DecodeUtf16Error.html
+[`char::DecodeUtf16`]: http://doc.rust-lang.org/std/char/struct.DecodeUtf16.html
+[`char::decode_utf16`]: http://doc.rust-lang.org/std/char/fn.decode_utf16.html
+[`ptr::read_volatile`]: http://doc.rust-lang.org/std/ptr/fn.read_volatile.html
+[`ptr::write_volatile`]: http://doc.rust-lang.org/std/ptr/fn.write_volatile.html
+[`std::os::unix::thread`]: http://doc.rust-lang.org/std/os/unix/thread/index.html
+[`std::panic::AssertUnwindSafe`]: http://doc.rust-lang.org/std/panic/struct.AssertUnwindSafe.html
+[`std::panic::UnwindSafe`]: http://doc.rust-lang.org/std/panic/trait.UnwindSafe.html
+[`std::panic::catch_unwind`]: http://doc.rust-lang.org/std/panic/fn.catch_unwind.html
+[`std::panic::resume_unwind`]: http://doc.rust-lang.org/std/panic/fn.resume_unwind.html
+[`std::panic`]: http://doc.rust-lang.org/std/panic/index.html
+[`str::is_char_boundary`]: http://doc.rust-lang.org/std/primitive.str.html#method.is_char_boundary
 
 
 Version 1.8.0 (2016-04-14)
@@ -9624,32 +9624,32 @@ Compatibility Notes
 [RFC 1415]: https://github.com/rust-lang/rfcs/blob/master/text/1415-trim-std-os.md
 [RFC 218]: https://github.com/rust-lang/rfcs/blob/master/text/0218-empty-struct-with-braces.md
 [RFC 953]: https://github.com/rust-lang/rfcs/blob/master/text/0953-op-assign.md
-[`AddAssign`]: http://doc.rust-lang.org/nightly/std/ops/trait.AddAssign.html
-[`BitAndAssign`]: http://doc.rust-lang.org/nightly/std/ops/trait.BitAndAssign.html
-[`BitOrAssign`]: http://doc.rust-lang.org/nightly/std/ops/trait.BitOrAssign.html
-[`BitXorAssign`]: http://doc.rust-lang.org/nightly/std/ops/trait.BitXorAssign.html
-[`DivAssign`]: http://doc.rust-lang.org/nightly/std/ops/trait.DivAssign.html
-[`Instant::duration_since`]: http://doc.rust-lang.org/nightly/std/time/struct.Instant.html#method.duration_since
-[`Instant::elapsed`]: http://doc.rust-lang.org/nightly/std/time/struct.Instant.html#method.elapsed
-[`Instant::now`]: http://doc.rust-lang.org/nightly/std/time/struct.Instant.html#method.now
-[`MulAssign`]: http://doc.rust-lang.org/nightly/std/ops/trait.MulAssign.html
-[`Ref::map`]: http://doc.rust-lang.org/nightly/std/cell/struct.Ref.html#method.map
-[`RefMut::map`]: http://doc.rust-lang.org/nightly/std/cell/struct.RefMut.html#method.map
-[`RemAssign`]: http://doc.rust-lang.org/nightly/std/ops/trait.RemAssign.html
-[`ShlAssign`]: http://doc.rust-lang.org/nightly/std/ops/trait.ShlAssign.html
-[`ShrAssign`]: http://doc.rust-lang.org/nightly/std/ops/trait.ShrAssign.html
-[`SubAssign`]: http://doc.rust-lang.org/nightly/std/ops/trait.SubAssign.html
-[`SystemTime::duration_since`]: http://doc.rust-lang.org/nightly/std/time/struct.SystemTime.html#method.duration_since
-[`SystemTime::elapsed`]: http://doc.rust-lang.org/nightly/std/time/struct.SystemTime.html#method.elapsed
-[`SystemTime::now`]: http://doc.rust-lang.org/nightly/std/time/struct.SystemTime.html#method.now
-[`SystemTimeError::duration`]: http://doc.rust-lang.org/nightly/std/time/struct.SystemTimeError.html#method.duration
-[`SystemTimeError`]: http://doc.rust-lang.org/nightly/std/time/struct.SystemTimeError.html
-[`UNIX_EPOCH`]: http://doc.rust-lang.org/nightly/std/time/constant.UNIX_EPOCH.html
-[`ptr::drop_in_place`]: http://doc.rust-lang.org/nightly/std/ptr/fn.drop_in_place.html
-[`str::EncodeUtf16`]: http://doc.rust-lang.org/nightly/std/str/struct.EncodeUtf16.html
-[`str::encode_utf16`]: http://doc.rust-lang.org/nightly/std/primitive.str.html#method.encode_utf16
-[`time::Instant`]: http://doc.rust-lang.org/nightly/std/time/struct.Instant.html
-[`time::SystemTime`]: http://doc.rust-lang.org/nightly/std/time/struct.SystemTime.html
+[`AddAssign`]: http://doc.rust-lang.org/std/ops/trait.AddAssign.html
+[`BitAndAssign`]: http://doc.rust-lang.org/std/ops/trait.BitAndAssign.html
+[`BitOrAssign`]: http://doc.rust-lang.org/std/ops/trait.BitOrAssign.html
+[`BitXorAssign`]: http://doc.rust-lang.org/std/ops/trait.BitXorAssign.html
+[`DivAssign`]: http://doc.rust-lang.org/std/ops/trait.DivAssign.html
+[`Instant::duration_since`]: http://doc.rust-lang.org/std/time/struct.Instant.html#method.duration_since
+[`Instant::elapsed`]: http://doc.rust-lang.org/std/time/struct.Instant.html#method.elapsed
+[`Instant::now`]: http://doc.rust-lang.org/std/time/struct.Instant.html#method.now
+[`MulAssign`]: http://doc.rust-lang.org/std/ops/trait.MulAssign.html
+[`Ref::map`]: http://doc.rust-lang.org/std/cell/struct.Ref.html#method.map
+[`RefMut::map`]: http://doc.rust-lang.org/std/cell/struct.RefMut.html#method.map
+[`RemAssign`]: http://doc.rust-lang.org/std/ops/trait.RemAssign.html
+[`ShlAssign`]: http://doc.rust-lang.org/std/ops/trait.ShlAssign.html
+[`ShrAssign`]: http://doc.rust-lang.org/std/ops/trait.ShrAssign.html
+[`SubAssign`]: http://doc.rust-lang.org/std/ops/trait.SubAssign.html
+[`SystemTime::duration_since`]: http://doc.rust-lang.org/std/time/struct.SystemTime.html#method.duration_since
+[`SystemTime::elapsed`]: http://doc.rust-lang.org/std/time/struct.SystemTime.html#method.elapsed
+[`SystemTime::now`]: http://doc.rust-lang.org/std/time/struct.SystemTime.html#method.now
+[`SystemTimeError::duration`]: http://doc.rust-lang.org/std/time/struct.SystemTimeError.html#method.duration
+[`SystemTimeError`]: http://doc.rust-lang.org/std/time/struct.SystemTimeError.html
+[`UNIX_EPOCH`]: http://doc.rust-lang.org/std/time/constant.UNIX_EPOCH.html
+[`ptr::drop_in_place`]: http://doc.rust-lang.org/std/ptr/fn.drop_in_place.html
+[`str::EncodeUtf16`]: http://doc.rust-lang.org/std/str/struct.EncodeUtf16.html
+[`str::encode_utf16`]: http://doc.rust-lang.org/std/primitive.str.html#method.encode_utf16
+[`time::Instant`]: http://doc.rust-lang.org/std/time/struct.Instant.html
+[`time::SystemTime`]: http://doc.rust-lang.org/std/time/struct.SystemTime.html
 
 
 Version 1.7.0 (2016-03-03)
@@ -9794,65 +9794,65 @@ Compatibility Notes
 [1.7utf8]: https://github.com/rust-lang/rust/pull/30740
 [1.7v]: https://github.com/rust-lang/rust/pull/29973
 [RFC 1214]: https://github.com/rust-lang/rfcs/blob/master/text/1214-projections-lifetimes-and-wf.md
-[`BuildHasher::Hasher`]: http://doc.rust-lang.org/nightly/std/hash/trait.Hasher.html
-[`BuildHasher::build_hasher`]: http://doc.rust-lang.org/nightly/std/hash/trait.BuildHasher.html#tymethod.build_hasher
-[`CString::into_bytes_with_nul`]: http://doc.rust-lang.org/nightly/std/ffi/struct.CString.html#method.into_bytes_with_nul
-[`CString::into_bytes`]: http://doc.rust-lang.org/nightly/std/ffi/struct.CString.html#method.into_bytes
-[`CString::into_string`]: http://doc.rust-lang.org/nightly/std/ffi/struct.CString.html#method.into_string
-[`HashMap::with_capacity_and_hasher`]: http://doc.rust-lang.org/nightly/std/collections/struct.HashMap.html#method.with_capacity_and_hasher
-[`HashMap::with_hasher`]: http://doc.rust-lang.org/nightly/std/collections/struct.HashMap.html#method.with_hasher
-[`HashSet::with_capacity_and_hasher`]: http://doc.rust-lang.org/nightly/std/collections/struct.HashSet.html#method.with_capacity_and_hasher
-[`HashSet::with_hasher`]: http://doc.rust-lang.org/nightly/std/collections/struct.HashSet.html#method.with_hasher
-[`IntoStringError::into_cstring`]: http://doc.rust-lang.org/nightly/std/ffi/struct.IntoStringError.html#method.into_cstring
-[`IntoStringError::utf8_error`]: http://doc.rust-lang.org/nightly/std/ffi/struct.IntoStringError.html#method.utf8_error
-[`Ipv4Addr::is_broadcast`]: http://doc.rust-lang.org/nightly/std/net/struct.Ipv4Addr.html#method.is_broadcast
-[`Ipv4Addr::is_documentation`]: http://doc.rust-lang.org/nightly/std/net/struct.Ipv4Addr.html#method.is_documentation
-[`Ipv4Addr::is_link_local`]: http://doc.rust-lang.org/nightly/std/net/struct.Ipv4Addr.html#method.is_link_local
-[`Ipv4Addr::is_loopback`]: http://doc.rust-lang.org/nightly/std/net/struct.Ipv4Addr.html#method.is_loopback
-[`Ipv4Addr::is_multicast`]: http://doc.rust-lang.org/nightly/std/net/struct.Ipv4Addr.html#method.is_multicast
-[`Ipv4Addr::is_private`]: http://doc.rust-lang.org/nightly/std/net/struct.Ipv4Addr.html#method.is_private
-[`Ipv6Addr::is_loopback`]: http://doc.rust-lang.org/nightly/std/net/struct.Ipv6Addr.html#method.is_loopback
-[`Ipv6Addr::is_multicast`]: http://doc.rust-lang.org/nightly/std/net/struct.Ipv6Addr.html#method.is_multicast
-[`Ipv6Addr::is_unspecified`]: http://doc.rust-lang.org/nightly/std/net/struct.Ipv6Addr.html#method.is_unspecified
-[`Path::strip_prefix`]: http://doc.rust-lang.org/nightly/std/path/struct.Path.html#method.strip_prefix
-[`RandomState::new`]: http://doc.rust-lang.org/nightly/std/collections/hash_map/struct.RandomState.html#method.new
-[`String::as_mut_str`]: http://doc.rust-lang.org/nightly/std/string/struct.String.html#method.as_mut_str
-[`String::as_str`]: http://doc.rust-lang.org/nightly/std/string/struct.String.html#method.as_str
-[`Vec::as_mut_slice`]: http://doc.rust-lang.org/nightly/std/vec/struct.Vec.html#method.as_mut_slice
-[`Vec::as_slice`]: http://doc.rust-lang.org/nightly/std/vec/struct.Vec.html#method.as_slice
-[`clone_from_slice`]: http://doc.rust-lang.org/nightly/std/primitive.slice.html#method.clone_from_slice
-[`ffi::IntoStringError`]: http://doc.rust-lang.org/nightly/std/ffi/struct.IntoStringError.html
-[`i32::checked_neg`]: http://doc.rust-lang.org/nightly/std/primitive.i32.html#method.checked_neg
-[`i32::checked_rem`]: http://doc.rust-lang.org/nightly/std/primitive.i32.html#method.checked_rem
-[`i32::checked_shl`]: http://doc.rust-lang.org/nightly/std/primitive.i32.html#method.checked_shl
-[`i32::checked_shr`]: http://doc.rust-lang.org/nightly/std/primitive.i32.html#method.checked_shr
-[`i32::overflowing_add`]: http://doc.rust-lang.org/nightly/std/primitive.i32.html#method.overflowing_add
-[`i32::overflowing_div`]: http://doc.rust-lang.org/nightly/std/primitive.i32.html#method.overflowing_div
-[`i32::overflowing_mul`]: http://doc.rust-lang.org/nightly/std/primitive.i32.html#method.overflowing_mul
-[`i32::overflowing_neg`]: http://doc.rust-lang.org/nightly/std/primitive.i32.html#method.overflowing_neg
-[`i32::overflowing_rem`]: http://doc.rust-lang.org/nightly/std/primitive.i32.html#method.overflowing_rem
-[`i32::overflowing_shl`]: http://doc.rust-lang.org/nightly/std/primitive.i32.html#method.overflowing_shl
-[`i32::overflowing_shr`]: http://doc.rust-lang.org/nightly/std/primitive.i32.html#method.overflowing_shr
-[`i32::overflowing_sub`]: http://doc.rust-lang.org/nightly/std/primitive.i32.html#method.overflowing_sub
-[`i32::saturating_mul`]: http://doc.rust-lang.org/nightly/std/primitive.i32.html#method.saturating_mul
-[`path::StripPrefixError`]: http://doc.rust-lang.org/nightly/std/path/struct.StripPrefixError.html
-[`sort_by_key`]: http://doc.rust-lang.org/nightly/std/primitive.slice.html#method.sort_by_key
-[`std::collections::hash_map::RandomState`]: http://doc.rust-lang.org/nightly/std/collections/hash_map/struct.RandomState.html
-[`std::hash::BuildHasherDefault`]: http://doc.rust-lang.org/nightly/std/hash/struct.BuildHasherDefault.html
-[`std::hash::BuildHasher`]: http://doc.rust-lang.org/nightly/std/hash/trait.BuildHasher.html
-[`u32::checked_neg`]: http://doc.rust-lang.org/nightly/std/primitive.u32.html#method.checked_neg
-[`u32::checked_rem`]: http://doc.rust-lang.org/nightly/std/primitive.u32.html#method.checked_rem
-[`u32::checked_neg`]: http://doc.rust-lang.org/nightly/std/primitive.u32.html#method.checked_neg
-[`u32::checked_shl`]: http://doc.rust-lang.org/nightly/std/primitive.u32.html#method.checked_shl
-[`u32::overflowing_add`]: http://doc.rust-lang.org/nightly/std/primitive.u32.html#method.overflowing_add
-[`u32::overflowing_div`]: http://doc.rust-lang.org/nightly/std/primitive.u32.html#method.overflowing_div
-[`u32::overflowing_mul`]: http://doc.rust-lang.org/nightly/std/primitive.u32.html#method.overflowing_mul
-[`u32::overflowing_neg`]: http://doc.rust-lang.org/nightly/std/primitive.u32.html#method.overflowing_neg
-[`u32::overflowing_rem`]: http://doc.rust-lang.org/nightly/std/primitive.u32.html#method.overflowing_rem
-[`u32::overflowing_shl`]: http://doc.rust-lang.org/nightly/std/primitive.u32.html#method.overflowing_shl
-[`u32::overflowing_shr`]: http://doc.rust-lang.org/nightly/std/primitive.u32.html#method.overflowing_shr
-[`u32::overflowing_sub`]: http://doc.rust-lang.org/nightly/std/primitive.u32.html#method.overflowing_sub
-[`u32::saturating_mul`]: http://doc.rust-lang.org/nightly/std/primitive.u32.html#method.saturating_mul
+[`BuildHasher::Hasher`]: http://doc.rust-lang.org/std/hash/trait.Hasher.html
+[`BuildHasher::build_hasher`]: http://doc.rust-lang.org/std/hash/trait.BuildHasher.html#tymethod.build_hasher
+[`CString::into_bytes_with_nul`]: http://doc.rust-lang.org/std/ffi/struct.CString.html#method.into_bytes_with_nul
+[`CString::into_bytes`]: http://doc.rust-lang.org/std/ffi/struct.CString.html#method.into_bytes
+[`CString::into_string`]: http://doc.rust-lang.org/std/ffi/struct.CString.html#method.into_string
+[`HashMap::with_capacity_and_hasher`]: http://doc.rust-lang.org/std/collections/struct.HashMap.html#method.with_capacity_and_hasher
+[`HashMap::with_hasher`]: http://doc.rust-lang.org/std/collections/struct.HashMap.html#method.with_hasher
+[`HashSet::with_capacity_and_hasher`]: http://doc.rust-lang.org/std/collections/struct.HashSet.html#method.with_capacity_and_hasher
+[`HashSet::with_hasher`]: http://doc.rust-lang.org/std/collections/struct.HashSet.html#method.with_hasher
+[`IntoStringError::into_cstring`]: http://doc.rust-lang.org/std/ffi/struct.IntoStringError.html#method.into_cstring
+[`IntoStringError::utf8_error`]: http://doc.rust-lang.org/std/ffi/struct.IntoStringError.html#method.utf8_error
+[`Ipv4Addr::is_broadcast`]: http://doc.rust-lang.org/std/net/struct.Ipv4Addr.html#method.is_broadcast
+[`Ipv4Addr::is_documentation`]: http://doc.rust-lang.org/std/net/struct.Ipv4Addr.html#method.is_documentation
+[`Ipv4Addr::is_link_local`]: http://doc.rust-lang.org/std/net/struct.Ipv4Addr.html#method.is_link_local
+[`Ipv4Addr::is_loopback`]: http://doc.rust-lang.org/std/net/struct.Ipv4Addr.html#method.is_loopback
+[`Ipv4Addr::is_multicast`]: http://doc.rust-lang.org/std/net/struct.Ipv4Addr.html#method.is_multicast
+[`Ipv4Addr::is_private`]: http://doc.rust-lang.org/std/net/struct.Ipv4Addr.html#method.is_private
+[`Ipv6Addr::is_loopback`]: http://doc.rust-lang.org/std/net/struct.Ipv6Addr.html#method.is_loopback
+[`Ipv6Addr::is_multicast`]: http://doc.rust-lang.org/std/net/struct.Ipv6Addr.html#method.is_multicast
+[`Ipv6Addr::is_unspecified`]: http://doc.rust-lang.org/std/net/struct.Ipv6Addr.html#method.is_unspecified
+[`Path::strip_prefix`]: http://doc.rust-lang.org/std/path/struct.Path.html#method.strip_prefix
+[`RandomState::new`]: http://doc.rust-lang.org/std/collections/hash_map/struct.RandomState.html#method.new
+[`String::as_mut_str`]: http://doc.rust-lang.org/std/string/struct.String.html#method.as_mut_str
+[`String::as_str`]: http://doc.rust-lang.org/std/string/struct.String.html#method.as_str
+[`Vec::as_mut_slice`]: http://doc.rust-lang.org/std/vec/struct.Vec.html#method.as_mut_slice
+[`Vec::as_slice`]: http://doc.rust-lang.org/std/vec/struct.Vec.html#method.as_slice
+[`clone_from_slice`]: http://doc.rust-lang.org/std/primitive.slice.html#method.clone_from_slice
+[`ffi::IntoStringError`]: http://doc.rust-lang.org/std/ffi/struct.IntoStringError.html
+[`i32::checked_neg`]: http://doc.rust-lang.org/std/primitive.i32.html#method.checked_neg
+[`i32::checked_rem`]: http://doc.rust-lang.org/std/primitive.i32.html#method.checked_rem
+[`i32::checked_shl`]: http://doc.rust-lang.org/std/primitive.i32.html#method.checked_shl
+[`i32::checked_shr`]: http://doc.rust-lang.org/std/primitive.i32.html#method.checked_shr
+[`i32::overflowing_add`]: http://doc.rust-lang.org/std/primitive.i32.html#method.overflowing_add
+[`i32::overflowing_div`]: http://doc.rust-lang.org/std/primitive.i32.html#method.overflowing_div
+[`i32::overflowing_mul`]: http://doc.rust-lang.org/std/primitive.i32.html#method.overflowing_mul
+[`i32::overflowing_neg`]: http://doc.rust-lang.org/std/primitive.i32.html#method.overflowing_neg
+[`i32::overflowing_rem`]: http://doc.rust-lang.org/std/primitive.i32.html#method.overflowing_rem
+[`i32::overflowing_shl`]: http://doc.rust-lang.org/std/primitive.i32.html#method.overflowing_shl
+[`i32::overflowing_shr`]: http://doc.rust-lang.org/std/primitive.i32.html#method.overflowing_shr
+[`i32::overflowing_sub`]: http://doc.rust-lang.org/std/primitive.i32.html#method.overflowing_sub
+[`i32::saturating_mul`]: http://doc.rust-lang.org/std/primitive.i32.html#method.saturating_mul
+[`path::StripPrefixError`]: http://doc.rust-lang.org/std/path/struct.StripPrefixError.html
+[`sort_by_key`]: http://doc.rust-lang.org/std/primitive.slice.html#method.sort_by_key
+[`std::collections::hash_map::RandomState`]: http://doc.rust-lang.org/std/collections/hash_map/struct.RandomState.html
+[`std::hash::BuildHasherDefault`]: http://doc.rust-lang.org/std/hash/struct.BuildHasherDefault.html
+[`std::hash::BuildHasher`]: http://doc.rust-lang.org/std/hash/trait.BuildHasher.html
+[`u32::checked_neg`]: http://doc.rust-lang.org/std/primitive.u32.html#method.checked_neg
+[`u32::checked_rem`]: http://doc.rust-lang.org/std/primitive.u32.html#method.checked_rem
+[`u32::checked_neg`]: http://doc.rust-lang.org/std/primitive.u32.html#method.checked_neg
+[`u32::checked_shl`]: http://doc.rust-lang.org/std/primitive.u32.html#method.checked_shl
+[`u32::overflowing_add`]: http://doc.rust-lang.org/std/primitive.u32.html#method.overflowing_add
+[`u32::overflowing_div`]: http://doc.rust-lang.org/std/primitive.u32.html#method.overflowing_div
+[`u32::overflowing_mul`]: http://doc.rust-lang.org/std/primitive.u32.html#method.overflowing_mul
+[`u32::overflowing_neg`]: http://doc.rust-lang.org/std/primitive.u32.html#method.overflowing_neg
+[`u32::overflowing_rem`]: http://doc.rust-lang.org/std/primitive.u32.html#method.overflowing_rem
+[`u32::overflowing_shl`]: http://doc.rust-lang.org/std/primitive.u32.html#method.overflowing_shl
+[`u32::overflowing_shr`]: http://doc.rust-lang.org/std/primitive.u32.html#method.overflowing_shr
+[`u32::overflowing_sub`]: http://doc.rust-lang.org/std/primitive.u32.html#method.overflowing_sub
+[`u32::saturating_mul`]: http://doc.rust-lang.org/std/primitive.u32.html#method.saturating_mul
 
 
 Version 1.6.0 (2016-01-21)
@@ -9981,33 +9981,33 @@ Compatibility Notes
 [1.6xc]: https://github.com/rust-lang/rust/issues/30123
 [RFC 1184]: https://github.com/rust-lang/rfcs/blob/master/text/1184-stabilize-no_std.md
 [RFC 1241]: https://github.com/rust-lang/rfcs/blob/master/text/1241-no-wildcard-deps.md
-[`ErrorKind::UnexpectedEof`]: http://doc.rust-lang.org/nightly/std/io/enum.ErrorKind.html#variant.UnexpectedEof
-[`Iterator::max_by_key`]: http://doc.rust-lang.org/nightly/std/iter/trait.Iterator.html#method.max_by_key
-[`Iterator::min_by_key`]: http://doc.rust-lang.org/nightly/std/iter/trait.Iterator.html#method.min_by_key
-[`Mutex::get_mut`]: http://doc.rust-lang.org/nightly/std/sync/struct.Mutex.html#method.get_mut
-[`Mutex::into_inner`]: http://doc.rust-lang.org/nightly/std/sync/struct.Mutex.html#method.into_inner
-[`Read::read_exact`]: http://doc.rust-lang.org/nightly/std/io/trait.Read.html#method.read_exact
-[`RwLock::get_mut`]: http://doc.rust-lang.org/nightly/std/sync/struct.RwLock.html#method.get_mut
-[`RwLock::into_inner`]: http://doc.rust-lang.org/nightly/std/sync/struct.RwLock.html#method.into_inner
-[`Vec::extend_from_slice`]: http://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html#method.extend_from_slice
-[`collections::binary_heap::BinaryHeap::drain`]: http://doc.rust-lang.org/nightly/std/collections/binary_heap/struct.BinaryHeap.html#method.drain
-[`collections::binary_heap::Drain`]: http://doc.rust-lang.org/nightly/std/collections/binary_heap/struct.Drain.html
-[`collections::hash_map::Drain`]: http://doc.rust-lang.org/nightly/std/collections/hash_map/struct.Drain.html
-[`collections::hash_map::HashMap::drain`]: http://doc.rust-lang.org/nightly/std/collections/hash_map/struct.HashMap.html#method.drain
-[`collections::hash_set::Drain`]: http://doc.rust-lang.org/nightly/std/collections/hash_set/struct.Drain.html
-[`collections::hash_set::HashSet::drain`]: http://doc.rust-lang.org/nightly/std/collections/hash_set/struct.HashSet.html#method.drain
-[`fs::DirBuilder::create`]: http://doc.rust-lang.org/nightly/std/fs/struct.DirBuilder.html#method.create
-[`fs::DirBuilder::new`]: http://doc.rust-lang.org/nightly/std/fs/struct.DirBuilder.html#method.new
-[`fs::DirBuilder::recursive`]: http://doc.rust-lang.org/nightly/std/fs/struct.DirBuilder.html#method.recursive
-[`fs::DirBuilder`]: http://doc.rust-lang.org/nightly/std/fs/struct.DirBuilder.html
-[`os::unix::fs::DirBuilderExt::mode`]: http://doc.rust-lang.org/nightly/std/os/unix/fs/trait.DirBuilderExt.html#tymethod.mode
-[`os::unix::fs::DirBuilderExt`]: http://doc.rust-lang.org/nightly/std/os/unix/fs/trait.DirBuilderExt.html
-[`string::Drain`]: http://doc.rust-lang.org/nightly/std/string/struct.Drain.html
-[`string::String::drain`]: http://doc.rust-lang.org/nightly/std/string/struct.String.html#method.drain
-[`vec::Drain`]: http://doc.rust-lang.org/nightly/std/vec/struct.Drain.html
-[`vec::Vec::drain`]: http://doc.rust-lang.org/nightly/std/vec/struct.Vec.html#method.drain
-[`vec_deque::Drain`]: http://doc.rust-lang.org/nightly/std/collections/vec_deque/struct.Drain.html
-[`vec_deque::VecDeque::drain`]: http://doc.rust-lang.org/nightly/std/collections/vec_deque/struct.VecDeque.html#method.drain
+[`ErrorKind::UnexpectedEof`]: http://doc.rust-lang.org/std/io/enum.ErrorKind.html#variant.UnexpectedEof
+[`Iterator::max_by_key`]: http://doc.rust-lang.org/std/iter/trait.Iterator.html#method.max_by_key
+[`Iterator::min_by_key`]: http://doc.rust-lang.org/std/iter/trait.Iterator.html#method.min_by_key
+[`Mutex::get_mut`]: http://doc.rust-lang.org/std/sync/struct.Mutex.html#method.get_mut
+[`Mutex::into_inner`]: http://doc.rust-lang.org/std/sync/struct.Mutex.html#method.into_inner
+[`Read::read_exact`]: http://doc.rust-lang.org/std/io/trait.Read.html#method.read_exact
+[`RwLock::get_mut`]: http://doc.rust-lang.org/std/sync/struct.RwLock.html#method.get_mut
+[`RwLock::into_inner`]: http://doc.rust-lang.org/std/sync/struct.RwLock.html#method.into_inner
+[`Vec::extend_from_slice`]: http://doc.rust-lang.org/collections/vec/struct.Vec.html#method.extend_from_slice
+[`collections::binary_heap::BinaryHeap::drain`]: http://doc.rust-lang.org/std/collections/binary_heap/struct.BinaryHeap.html#method.drain
+[`collections::binary_heap::Drain`]: http://doc.rust-lang.org/std/collections/binary_heap/struct.Drain.html
+[`collections::hash_map::Drain`]: http://doc.rust-lang.org/std/collections/hash_map/struct.Drain.html
+[`collections::hash_map::HashMap::drain`]: http://doc.rust-lang.org/std/collections/hash_map/struct.HashMap.html#method.drain
+[`collections::hash_set::Drain`]: http://doc.rust-lang.org/std/collections/hash_set/struct.Drain.html
+[`collections::hash_set::HashSet::drain`]: http://doc.rust-lang.org/std/collections/hash_set/struct.HashSet.html#method.drain
+[`fs::DirBuilder::create`]: http://doc.rust-lang.org/std/fs/struct.DirBuilder.html#method.create
+[`fs::DirBuilder::new`]: http://doc.rust-lang.org/std/fs/struct.DirBuilder.html#method.new
+[`fs::DirBuilder::recursive`]: http://doc.rust-lang.org/std/fs/struct.DirBuilder.html#method.recursive
+[`fs::DirBuilder`]: http://doc.rust-lang.org/std/fs/struct.DirBuilder.html
+[`os::unix::fs::DirBuilderExt::mode`]: http://doc.rust-lang.org/std/os/unix/fs/trait.DirBuilderExt.html#tymethod.mode
+[`os::unix::fs::DirBuilderExt`]: http://doc.rust-lang.org/std/os/unix/fs/trait.DirBuilderExt.html
+[`string::Drain`]: http://doc.rust-lang.org/std/string/struct.Drain.html
+[`string::String::drain`]: http://doc.rust-lang.org/std/string/struct.String.html#method.drain
+[`vec::Drain`]: http://doc.rust-lang.org/std/vec/struct.Drain.html
+[`vec::Vec::drain`]: http://doc.rust-lang.org/std/vec/struct.Vec.html#method.drain
+[`vec_deque::Drain`]: http://doc.rust-lang.org/std/collections/vec_deque/struct.Drain.html
+[`vec_deque::VecDeque::drain`]: http://doc.rust-lang.org/std/collections/vec_deque/struct.VecDeque.html#method.drain
 
 
 Version 1.5.0 (2015-12-10)
@@ -10171,62 +10171,62 @@ Miscellaneous
 [1.5nd]: https://github.com/rust-lang/rust/pull/28578
 [1.5wf2]: https://github.com/rust-lang/rfcs/blob/master/text/1214-projections-lifetimes-and-wf.md
 [1.5wf1]: https://github.com/rust-lang/rust/pull/28669
-[dropck]: https://doc.rust-lang.org/nightly/nomicon/dropck.html
+[dropck]: https://doc.rust-lang.org/nomicon/dropck.html
 [1.5c]: https://github.com/rust-lang/rust/pull/29110
 [1.5w]: https://github.com/rust-lang/rfcs/blob/master/text/1241-no-wildcard-deps.md
 [`cargo install`]: https://github.com/rust-lang/rfcs/blob/master/text/1200-cargo-install.md
-[`BinaryHeap::from`]: http://doc.rust-lang.org/nightly/std/convert/trait.From.html#method.from
-[`BinaryHeap::into_sorted_vec`]: http://doc.rust-lang.org/nightly/std/collections/struct.BinaryHeap.html#method.into_sorted_vec
-[`BinaryHeap::into_vec`]: http://doc.rust-lang.org/nightly/std/collections/struct.BinaryHeap.html#method.into_vec
-[`Condvar::wait_timeout`]: http://doc.rust-lang.org/nightly/std/sync/struct.Condvar.html#method.wait_timeout
-[`FileTypeExt::is_block_device`]: http://doc.rust-lang.org/nightly/std/os/unix/fs/trait.FileTypeExt.html#tymethod.is_block_device
-[`FileTypeExt::is_char_device`]: http://doc.rust-lang.org/nightly/std/os/unix/fs/trait.FileTypeExt.html#tymethod.is_char_device
-[`FileTypeExt::is_fifo`]: http://doc.rust-lang.org/nightly/std/os/unix/fs/trait.FileTypeExt.html#tymethod.is_fifo
-[`FileTypeExt::is_socket`]: http://doc.rust-lang.org/nightly/std/os/unix/fs/trait.FileTypeExt.html#tymethod.is_socket
-[`FileTypeExt`]: http://doc.rust-lang.org/nightly/std/os/unix/fs/trait.FileTypeExt.html
-[`Formatter::alternate`]: http://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html#method.alternate
-[`Formatter::fill`]: http://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html#method.fill
-[`Formatter::precision`]: http://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html#method.precision
-[`Formatter::sign_aware_zero_pad`]: http://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html#method.sign_aware_zero_pad
-[`Formatter::sign_minus`]: http://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html#method.sign_minus
-[`Formatter::sign_plus`]: http://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html#method.sign_plus
-[`Formatter::width`]: http://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html#method.width
-[`Iterator::cmp`]: http://doc.rust-lang.org/nightly/core/iter/trait.Iterator.html#method.cmp
-[`Iterator::eq`]: http://doc.rust-lang.org/nightly/core/iter/trait.Iterator.html#method.eq
-[`Iterator::ge`]: http://doc.rust-lang.org/nightly/core/iter/trait.Iterator.html#method.ge
-[`Iterator::gt`]: http://doc.rust-lang.org/nightly/core/iter/trait.Iterator.html#method.gt
-[`Iterator::le`]: http://doc.rust-lang.org/nightly/core/iter/trait.Iterator.html#method.le
-[`Iterator::lt`]: http://doc.rust-lang.org/nightly/core/iter/trait.Iterator.html#method.lt
-[`Iterator::ne`]: http://doc.rust-lang.org/nightly/core/iter/trait.Iterator.html#method.ne
-[`Iterator::partial_cmp`]: http://doc.rust-lang.org/nightly/core/iter/trait.Iterator.html#method.partial_cmp
-[`Path::canonicalize`]: http://doc.rust-lang.org/nightly/std/path/struct.Path.html#method.canonicalize
-[`Path::exists`]: http://doc.rust-lang.org/nightly/std/path/struct.Path.html#method.exists
-[`Path::is_dir`]: http://doc.rust-lang.org/nightly/std/path/struct.Path.html#method.is_dir
-[`Path::is_file`]: http://doc.rust-lang.org/nightly/std/path/struct.Path.html#method.is_file
-[`Path::metadata`]: http://doc.rust-lang.org/nightly/std/path/struct.Path.html#method.metadata
-[`Path::read_dir`]: http://doc.rust-lang.org/nightly/std/path/struct.Path.html#method.read_dir
-[`Path::read_link`]: http://doc.rust-lang.org/nightly/std/path/struct.Path.html#method.read_link
-[`Path::symlink_metadata`]: http://doc.rust-lang.org/nightly/std/path/struct.Path.html#method.symlink_metadata
-[`Utf8Error::valid_up_to`]: http://doc.rust-lang.org/nightly/core/str/struct.Utf8Error.html#method.valid_up_to
-[`Vec::resize`]: http://doc.rust-lang.org/nightly/std/vec/struct.Vec.html#method.resize
-[`VecDeque::as_mut_slices`]: http://doc.rust-lang.org/nightly/std/collections/struct.VecDeque.html#method.as_mut_slices
-[`VecDeque::as_slices`]: http://doc.rust-lang.org/nightly/std/collections/struct.VecDeque.html#method.as_slices
-[`VecDeque::insert`]: http://doc.rust-lang.org/nightly/std/collections/struct.VecDeque.html#method.insert
-[`VecDeque::shrink_to_fit`]: http://doc.rust-lang.org/nightly/std/collections/struct.VecDeque.html#method.shrink_to_fit
-[`VecDeque::swap_remove_back`]: http://doc.rust-lang.org/nightly/std/collections/struct.VecDeque.html#method.swap_remove_back
-[`VecDeque::swap_remove_front`]: http://doc.rust-lang.org/nightly/std/collections/struct.VecDeque.html#method.swap_remove_front
-[`slice::split_first_mut`]: http://doc.rust-lang.org/nightly/std/primitive.slice.html#method.split_first_mut
-[`slice::split_first`]: http://doc.rust-lang.org/nightly/std/primitive.slice.html#method.split_first
-[`slice::split_last_mut`]: http://doc.rust-lang.org/nightly/std/primitive.slice.html#method.split_last_mut
-[`slice::split_last`]: http://doc.rust-lang.org/nightly/std/primitive.slice.html#method.split_last
-[`char::from_u32_unchecked`]: http://doc.rust-lang.org/nightly/std/char/fn.from_u32_unchecked.html
-[`fs::canonicalize`]: http://doc.rust-lang.org/nightly/std/fs/fn.canonicalize.html
-[`str::MatchIndices`]: http://doc.rust-lang.org/nightly/std/str/struct.MatchIndices.html
-[`str::RMatchIndices`]: http://doc.rust-lang.org/nightly/std/str/struct.RMatchIndices.html
-[`str::match_indices`]: http://doc.rust-lang.org/nightly/std/primitive.str.html#method.match_indices
-[`str::rmatch_indices`]: http://doc.rust-lang.org/nightly/std/primitive.str.html#method.rmatch_indices
-[`str::slice_mut_unchecked`]: http://doc.rust-lang.org/nightly/std/primitive.str.html#method.slice_mut_unchecked
-[`string::ParseError`]: http://doc.rust-lang.org/nightly/std/string/enum.ParseError.html
+[`BinaryHeap::from`]: http://doc.rust-lang.org/std/convert/trait.From.html#method.from
+[`BinaryHeap::into_sorted_vec`]: http://doc.rust-lang.org/std/collections/struct.BinaryHeap.html#method.into_sorted_vec
+[`BinaryHeap::into_vec`]: http://doc.rust-lang.org/std/collections/struct.BinaryHeap.html#method.into_vec
+[`Condvar::wait_timeout`]: http://doc.rust-lang.org/std/sync/struct.Condvar.html#method.wait_timeout
+[`FileTypeExt::is_block_device`]: http://doc.rust-lang.org/std/os/unix/fs/trait.FileTypeExt.html#tymethod.is_block_device
+[`FileTypeExt::is_char_device`]: http://doc.rust-lang.org/std/os/unix/fs/trait.FileTypeExt.html#tymethod.is_char_device
+[`FileTypeExt::is_fifo`]: http://doc.rust-lang.org/std/os/unix/fs/trait.FileTypeExt.html#tymethod.is_fifo
+[`FileTypeExt::is_socket`]: http://doc.rust-lang.org/std/os/unix/fs/trait.FileTypeExt.html#tymethod.is_socket
+[`FileTypeExt`]: http://doc.rust-lang.org/std/os/unix/fs/trait.FileTypeExt.html
+[`Formatter::alternate`]: http://doc.rust-lang.org/core/fmt/struct.Formatter.html#method.alternate
+[`Formatter::fill`]: http://doc.rust-lang.org/core/fmt/struct.Formatter.html#method.fill
+[`Formatter::precision`]: http://doc.rust-lang.org/core/fmt/struct.Formatter.html#method.precision
+[`Formatter::sign_aware_zero_pad`]: http://doc.rust-lang.org/core/fmt/struct.Formatter.html#method.sign_aware_zero_pad
+[`Formatter::sign_minus`]: http://doc.rust-lang.org/core/fmt/struct.Formatter.html#method.sign_minus
+[`Formatter::sign_plus`]: http://doc.rust-lang.org/core/fmt/struct.Formatter.html#method.sign_plus
+[`Formatter::width`]: http://doc.rust-lang.org/core/fmt/struct.Formatter.html#method.width
+[`Iterator::cmp`]: http://doc.rust-lang.org/core/iter/trait.Iterator.html#method.cmp
+[`Iterator::eq`]: http://doc.rust-lang.org/core/iter/trait.Iterator.html#method.eq
+[`Iterator::ge`]: http://doc.rust-lang.org/core/iter/trait.Iterator.html#method.ge
+[`Iterator::gt`]: http://doc.rust-lang.org/core/iter/trait.Iterator.html#method.gt
+[`Iterator::le`]: http://doc.rust-lang.org/core/iter/trait.Iterator.html#method.le
+[`Iterator::lt`]: http://doc.rust-lang.org/core/iter/trait.Iterator.html#method.lt
+[`Iterator::ne`]: http://doc.rust-lang.org/core/iter/trait.Iterator.html#method.ne
+[`Iterator::partial_cmp`]: http://doc.rust-lang.org/core/iter/trait.Iterator.html#method.partial_cmp
+[`Path::canonicalize`]: http://doc.rust-lang.org/std/path/struct.Path.html#method.canonicalize
+[`Path::exists`]: http://doc.rust-lang.org/std/path/struct.Path.html#method.exists
+[`Path::is_dir`]: http://doc.rust-lang.org/std/path/struct.Path.html#method.is_dir
+[`Path::is_file`]: http://doc.rust-lang.org/std/path/struct.Path.html#method.is_file
+[`Path::metadata`]: http://doc.rust-lang.org/std/path/struct.Path.html#method.metadata
+[`Path::read_dir`]: http://doc.rust-lang.org/std/path/struct.Path.html#method.read_dir
+[`Path::read_link`]: http://doc.rust-lang.org/std/path/struct.Path.html#method.read_link
+[`Path::symlink_metadata`]: http://doc.rust-lang.org/std/path/struct.Path.html#method.symlink_metadata
+[`Utf8Error::valid_up_to`]: http://doc.rust-lang.org/core/str/struct.Utf8Error.html#method.valid_up_to
+[`Vec::resize`]: http://doc.rust-lang.org/std/vec/struct.Vec.html#method.resize
+[`VecDeque::as_mut_slices`]: http://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.as_mut_slices
+[`VecDeque::as_slices`]: http://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.as_slices
+[`VecDeque::insert`]: http://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.insert
+[`VecDeque::shrink_to_fit`]: http://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.shrink_to_fit
+[`VecDeque::swap_remove_back`]: http://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.swap_remove_back
+[`VecDeque::swap_remove_front`]: http://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.swap_remove_front
+[`slice::split_first_mut`]: http://doc.rust-lang.org/std/primitive.slice.html#method.split_first_mut
+[`slice::split_first`]: http://doc.rust-lang.org/std/primitive.slice.html#method.split_first
+[`slice::split_last_mut`]: http://doc.rust-lang.org/std/primitive.slice.html#method.split_last_mut
+[`slice::split_last`]: http://doc.rust-lang.org/std/primitive.slice.html#method.split_last
+[`char::from_u32_unchecked`]: http://doc.rust-lang.org/std/char/fn.from_u32_unchecked.html
+[`fs::canonicalize`]: http://doc.rust-lang.org/std/fs/fn.canonicalize.html
+[`str::MatchIndices`]: http://doc.rust-lang.org/std/str/struct.MatchIndices.html
+[`str::RMatchIndices`]: http://doc.rust-lang.org/std/str/struct.RMatchIndices.html
+[`str::match_indices`]: http://doc.rust-lang.org/std/primitive.str.html#method.match_indices
+[`str::rmatch_indices`]: http://doc.rust-lang.org/std/primitive.str.html#method.rmatch_indices
+[`str::slice_mut_unchecked`]: http://doc.rust-lang.org/std/primitive.str.html#method.slice_mut_unchecked
+[`string::ParseError`]: http://doc.rust-lang.org/std/string/enum.ParseError.html
 
 Version 1.4.0 (2015-10-29)
 ==========================
@@ -10335,47 +10335,47 @@ Miscellaneous
 * [Cargo now displays useful information about what its doing during
   `cargo update`][cu].
 
-[`Arc::downgrade`]: http://doc.rust-lang.org/nightly/alloc/arc/struct.Arc.html#method.downgrade
-[`Arc::make_mut`]: http://doc.rust-lang.org/nightly/alloc/arc/struct.Arc.html#method.make_mut
-[`Arc::get_mut`]: http://doc.rust-lang.org/nightly/alloc/arc/struct.Arc.html#method.get_mut
-[`Arc::try_unwrap`]: http://doc.rust-lang.org/nightly/alloc/arc/struct.Arc.html#method.try_unwrap
-[`Box::from_raw`]: http://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html#method.from_raw
-[`Box::into_raw`]: http://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html#method.into_raw
-[`CStr::to_str`]: http://doc.rust-lang.org/nightly/std/ffi/struct.CStr.html#method.to_str
-[`CStr::to_string_lossy`]: http://doc.rust-lang.org/nightly/std/ffi/struct.CStr.html#method.to_string_lossy
-[`CString::from_raw`]: http://doc.rust-lang.org/nightly/std/ffi/struct.CString.html#method.from_raw
-[`CString::into_raw`]: http://doc.rust-lang.org/nightly/std/ffi/struct.CString.html#method.into_raw
-[`IntoRawFd::into_raw_fd`]: http://doc.rust-lang.org/nightly/std/os/unix/io/trait.IntoRawFd.html#tymethod.into_raw_fd
-[`IntoRawFd`]: http://doc.rust-lang.org/nightly/std/os/unix/io/trait.IntoRawFd.html
-[`Rc::downgrade`]: http://doc.rust-lang.org/nightly/alloc/rc/struct.Rc.html#method.downgrade
-[`Rc::get_mut`]: http://doc.rust-lang.org/nightly/alloc/rc/struct.Rc.html#method.get_mut
-[`Rc::make_mut`]: http://doc.rust-lang.org/nightly/alloc/rc/struct.Rc.html#method.make_mut
-[`Rc::try_unwrap`]: http://doc.rust-lang.org/nightly/alloc/rc/struct.Rc.html#method.try_unwrap
-[`Result::expect`]: http://doc.rust-lang.org/nightly/core/result/enum.Result.html#method.expect
-[`String::into_boxed_str`]: http://doc.rust-lang.org/nightly/collections/string/struct.String.html#method.into_boxed_str
-[`TcpStream::read_timeout`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.read_timeout
-[`TcpStream::set_read_timeout`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.set_read_timeout
-[`TcpStream::write_timeout`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.write_timeout
-[`TcpStream::set_write_timeout`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.set_write_timeout
-[`UdpSocket::read_timeout`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.read_timeout
-[`UdpSocket::set_read_timeout`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.set_read_timeout
-[`UdpSocket::write_timeout`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.write_timeout
-[`UdpSocket::set_write_timeout`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.set_write_timeout
-[`VecDeque::append`]: http://doc.rust-lang.org/nightly/std/collections/struct.VecDeque.html#method.append
-[`VecDeque::retain`]: http://doc.rust-lang.org/nightly/std/collections/struct.VecDeque.html#method.retain
-[`VecDeque::split_off`]: http://doc.rust-lang.org/nightly/std/collections/struct.VecDeque.html#method.split_off
-[`rc::Weak::upgrade`]: http://doc.rust-lang.org/nightly/std/rc/struct.Weak.html#method.upgrade
-[`rc::Weak`]: http://doc.rust-lang.org/nightly/std/rc/struct.Weak.html
-[`slice::Iter::as_slice`]: http://doc.rust-lang.org/nightly/std/slice/struct.Iter.html#method.as_slice
-[`slice::IterMut::into_slice`]: http://doc.rust-lang.org/nightly/std/slice/struct.IterMut.html#method.into_slice
-[`str::CharIndices::as_str`]: http://doc.rust-lang.org/nightly/std/str/struct.CharIndices.html#method.as_str
-[`str::Chars::as_str`]: http://doc.rust-lang.org/nightly/std/str/struct.Chars.html#method.as_str
-[`str::split_at_mut`]: http://doc.rust-lang.org/nightly/std/primitive.str.html#method.split_at_mut
-[`str::split_at`]: http://doc.rust-lang.org/nightly/std/primitive.str.html#method.split_at
-[`sync::Weak::upgrade`]: http://doc.rust-lang.org/nightly/std/sync/struct.Weak.html#method.upgrade
-[`sync::Weak`]: http://doc.rust-lang.org/nightly/std/sync/struct.Weak.html
-[`thread::park_timeout`]: http://doc.rust-lang.org/nightly/std/thread/fn.park_timeout.html
-[`thread::sleep`]: http://doc.rust-lang.org/nightly/std/thread/fn.sleep.html
+[`Arc::downgrade`]: http://doc.rust-lang.org/alloc/arc/struct.Arc.html#method.downgrade
+[`Arc::make_mut`]: http://doc.rust-lang.org/alloc/arc/struct.Arc.html#method.make_mut
+[`Arc::get_mut`]: http://doc.rust-lang.org/alloc/arc/struct.Arc.html#method.get_mut
+[`Arc::try_unwrap`]: http://doc.rust-lang.org/alloc/arc/struct.Arc.html#method.try_unwrap
+[`Box::from_raw`]: http://doc.rust-lang.org/alloc/boxed/struct.Box.html#method.from_raw
+[`Box::into_raw`]: http://doc.rust-lang.org/alloc/boxed/struct.Box.html#method.into_raw
+[`CStr::to_str`]: http://doc.rust-lang.org/std/ffi/struct.CStr.html#method.to_str
+[`CStr::to_string_lossy`]: http://doc.rust-lang.org/std/ffi/struct.CStr.html#method.to_string_lossy
+[`CString::from_raw`]: http://doc.rust-lang.org/std/ffi/struct.CString.html#method.from_raw
+[`CString::into_raw`]: http://doc.rust-lang.org/std/ffi/struct.CString.html#method.into_raw
+[`IntoRawFd::into_raw_fd`]: http://doc.rust-lang.org/std/os/unix/io/trait.IntoRawFd.html#tymethod.into_raw_fd
+[`IntoRawFd`]: http://doc.rust-lang.org/std/os/unix/io/trait.IntoRawFd.html
+[`Rc::downgrade`]: http://doc.rust-lang.org/alloc/rc/struct.Rc.html#method.downgrade
+[`Rc::get_mut`]: http://doc.rust-lang.org/alloc/rc/struct.Rc.html#method.get_mut
+[`Rc::make_mut`]: http://doc.rust-lang.org/alloc/rc/struct.Rc.html#method.make_mut
+[`Rc::try_unwrap`]: http://doc.rust-lang.org/alloc/rc/struct.Rc.html#method.try_unwrap
+[`Result::expect`]: http://doc.rust-lang.org/core/result/enum.Result.html#method.expect
+[`String::into_boxed_str`]: http://doc.rust-lang.org/collections/string/struct.String.html#method.into_boxed_str
+[`TcpStream::read_timeout`]: http://doc.rust-lang.org/std/net/struct.TcpStream.html#method.read_timeout
+[`TcpStream::set_read_timeout`]: http://doc.rust-lang.org/std/net/struct.TcpStream.html#method.set_read_timeout
+[`TcpStream::write_timeout`]: http://doc.rust-lang.org/std/net/struct.TcpStream.html#method.write_timeout
+[`TcpStream::set_write_timeout`]: http://doc.rust-lang.org/std/net/struct.TcpStream.html#method.set_write_timeout
+[`UdpSocket::read_timeout`]: http://doc.rust-lang.org/std/net/struct.TcpStream.html#method.read_timeout
+[`UdpSocket::set_read_timeout`]: http://doc.rust-lang.org/std/net/struct.TcpStream.html#method.set_read_timeout
+[`UdpSocket::write_timeout`]: http://doc.rust-lang.org/std/net/struct.TcpStream.html#method.write_timeout
+[`UdpSocket::set_write_timeout`]: http://doc.rust-lang.org/std/net/struct.TcpStream.html#method.set_write_timeout
+[`VecDeque::append`]: http://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.append
+[`VecDeque::retain`]: http://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.retain
+[`VecDeque::split_off`]: http://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.split_off
+[`rc::Weak::upgrade`]: http://doc.rust-lang.org/std/rc/struct.Weak.html#method.upgrade
+[`rc::Weak`]: http://doc.rust-lang.org/std/rc/struct.Weak.html
+[`slice::Iter::as_slice`]: http://doc.rust-lang.org/std/slice/struct.Iter.html#method.as_slice
+[`slice::IterMut::into_slice`]: http://doc.rust-lang.org/std/slice/struct.IterMut.html#method.into_slice
+[`str::CharIndices::as_str`]: http://doc.rust-lang.org/std/str/struct.CharIndices.html#method.as_str
+[`str::Chars::as_str`]: http://doc.rust-lang.org/std/str/struct.Chars.html#method.as_str
+[`str::split_at_mut`]: http://doc.rust-lang.org/std/primitive.str.html#method.split_at_mut
+[`str::split_at`]: http://doc.rust-lang.org/std/primitive.str.html#method.split_at
+[`sync::Weak::upgrade`]: http://doc.rust-lang.org/std/sync/struct.Weak.html#method.upgrade
+[`sync::Weak`]: http://doc.rust-lang.org/std/sync/struct.Weak.html
+[`thread::park_timeout`]: http://doc.rust-lang.org/std/thread/fn.park_timeout.html
+[`thread::sleep`]: http://doc.rust-lang.org/std/thread/fn.sleep.html
 [bh2]: https://github.com/rust-lang/rust/pull/28156
 [binfat]: https://github.com/rust-lang/rust/pull/28270
 [bm]: https://github.com/rust-lang/rust/pull/28197
@@ -10538,52 +10538,52 @@ Misc
 * If landing pads are disabled (with `-Z no-landing-pads`), [`panic!`
   will kill the process instead of leaking][nlp].
 
-[`Any`]: http://doc.rust-lang.org/nightly/std/any/trait.Any.html
-[`AtomicPtr`]: http://doc.rust-lang.org/nightly/std/sync/atomic/struct.AtomicPtr.html
-[`Borrow`]: http://doc.rust-lang.org/nightly/std/borrow/trait.Borrow.html
-[`CStr`]: http://doc.rust-lang.org/nightly/std/ffi/struct.CStr.html
-[`CString`]: http://doc.rust-lang.org/nightly/std/ffi/struct.CString.html
-[`Debug`]: http://doc.rust-lang.org/nightly/std/fmt/trait.Debug.html
-[`DerefMut`]: http://doc.rust-lang.org/nightly/std/ops/trait.DerefMut.html
-[`Deref`]: http://doc.rust-lang.org/nightly/std/ops/trait.Deref.html
-[`Div`]: http://doc.rust-lang.org/nightly/std/ops/trait.Div.html
-[`Duration`]: http://doc.rust-lang.org/nightly/std/time/struct.Duration.html
-[`Error`]: http://doc.rust-lang.org/nightly/std/error/trait.Error.html
-[`File`]: http://doc.rust-lang.org/nightly/std/fs/struct.File.html
-[`Hash`]: http://doc.rust-lang.org/nightly/std/hash/trait.Hash.html
-[`Hasher`]: http://doc.rust-lang.org/nightly/std/hash/trait.Hasher.html
-[`Send`]: http://doc.rust-lang.org/nightly/std/marker/trait.Send.html
-[`SliceConcatExt`]: http://doc.rust-lang.org/nightly/std/slice/trait.SliceConcatExt.html
-[`Stdin`]: http://doc.rust-lang.org/nightly/std/io/struct.Stdin.html
-[`ToOwned`]: http://doc.rust-lang.org/nightly/std/borrow/trait.ToOwned.html
-[`Wrapping`]: http://doc.rust-lang.org/nightly/std/num/struct.Wrapping.html
-[`connect`]: http://doc.rust-lang.org/nightly/std/slice/trait.SliceConcatExt.html#method.connect
-[`downcast_mut`]: http://doc.rust-lang.org/nightly/std/error/trait.Error.html#method.downcast_mut
-[`downcast_ref`]: http://doc.rust-lang.org/nightly/std/error/trait.Error.html#method.downcast_ref
-[`downcast`]: http://doc.rust-lang.org/nightly/std/error/trait.Error.html#method.downcast
-[`hash_slice`]: http://doc.rust-lang.org/nightly/std/hash/trait.Hash.html#method.hash_slice
-[`id`]: http://doc.rust-lang.org/nightly/std/process/struct.Child.html#method.id
-[`is`]: http://doc.rust-lang.org/nightly/std/error/trait.Error.html#method.is
-[`join`]: http://doc.rust-lang.org/nightly/std/slice/trait.SliceConcatExt.html#method.join
-[`read_to_end`]: http://doc.rust-lang.org/nightly/std/io/trait.Read.html#method.read_to_end
+[`Any`]: http://doc.rust-lang.org/std/any/trait.Any.html
+[`AtomicPtr`]: http://doc.rust-lang.org/std/sync/atomic/struct.AtomicPtr.html
+[`Borrow`]: http://doc.rust-lang.org/std/borrow/trait.Borrow.html
+[`CStr`]: http://doc.rust-lang.org/std/ffi/struct.CStr.html
+[`CString`]: http://doc.rust-lang.org/std/ffi/struct.CString.html
+[`Debug`]: http://doc.rust-lang.org/std/fmt/trait.Debug.html
+[`DerefMut`]: http://doc.rust-lang.org/std/ops/trait.DerefMut.html
+[`Deref`]: http://doc.rust-lang.org/std/ops/trait.Deref.html
+[`Div`]: http://doc.rust-lang.org/std/ops/trait.Div.html
+[`Duration`]: http://doc.rust-lang.org/std/time/struct.Duration.html
+[`Error`]: http://doc.rust-lang.org/std/error/trait.Error.html
+[`File`]: http://doc.rust-lang.org/std/fs/struct.File.html
+[`Hash`]: http://doc.rust-lang.org/std/hash/trait.Hash.html
+[`Hasher`]: http://doc.rust-lang.org/std/hash/trait.Hasher.html
+[`Send`]: http://doc.rust-lang.org/std/marker/trait.Send.html
+[`SliceConcatExt`]: http://doc.rust-lang.org/std/slice/trait.SliceConcatExt.html
+[`Stdin`]: http://doc.rust-lang.org/std/io/struct.Stdin.html
+[`ToOwned`]: http://doc.rust-lang.org/std/borrow/trait.ToOwned.html
+[`Wrapping`]: http://doc.rust-lang.org/std/num/struct.Wrapping.html
+[`connect`]: http://doc.rust-lang.org/std/slice/trait.SliceConcatExt.html#method.connect
+[`downcast_mut`]: http://doc.rust-lang.org/std/error/trait.Error.html#method.downcast_mut
+[`downcast_ref`]: http://doc.rust-lang.org/std/error/trait.Error.html#method.downcast_ref
+[`downcast`]: http://doc.rust-lang.org/std/error/trait.Error.html#method.downcast
+[`hash_slice`]: http://doc.rust-lang.org/std/hash/trait.Hash.html#method.hash_slice
+[`id`]: http://doc.rust-lang.org/std/process/struct.Child.html#method.id
+[`is`]: http://doc.rust-lang.org/std/error/trait.Error.html#method.is
+[`join`]: http://doc.rust-lang.org/std/slice/trait.SliceConcatExt.html#method.join
+[`read_to_end`]: http://doc.rust-lang.org/std/io/trait.Read.html#method.read_to_end
 [ar]: https://github.com/rust-lang/rust/pull/26926
 [b14]: https://static.rust-lang.org/dist/rust-beta-x86_64-pc-windows-msvc.msi
 [dms]: https://github.com/rust-lang/rust/pull/26241
 [27261]: https://github.com/rust-lang/rust/pull/27261
 [dropckrfc]: https://github.com/rust-lang/rfcs/blob/master/text/0769-sound-generic-drop.md
 [ds]: https://github.com/rust-lang/rust/pull/26818
-[dst1]: http://doc.rust-lang.org/nightly/std/mem/fn.size_of_val.html
-[dst2]: http://doc.rust-lang.org/nightly/std/mem/fn.align_of_val.html
+[dst1]: http://doc.rust-lang.org/std/mem/fn.size_of_val.html
+[dst2]: http://doc.rust-lang.org/std/mem/fn.align_of_val.html
 [dst3]: https://github.com/rust-lang/rust/pull/27351
 [e]: https://github.com/rust-lang/rust/pull/24793
 [f]: https://github.com/rust-lang/rust/pull/26588
 [26959]: https://github.com/rust-lang/rust/pull/26959
 [fl]: https://github.com/rust-lang/rust-installer/pull/41
-[ie]: http://doc.rust-lang.org/nightly/std/io/struct.Error.html
-[iec]: http://doc.rust-lang.org/nightly/std/io/struct.Error.html#method.cause
-[iegm]: http://doc.rust-lang.org/nightly/std/io/struct.Error.html#method.get_mut
-[iegr]: http://doc.rust-lang.org/nightly/std/io/struct.Error.html#method.get_ref
-[ieii]: http://doc.rust-lang.org/nightly/std/io/struct.Error.html#method.into_inner
+[ie]: http://doc.rust-lang.org/std/io/struct.Error.html
+[iec]: http://doc.rust-lang.org/std/io/struct.Error.html#method.cause
+[iegm]: http://doc.rust-lang.org/std/io/struct.Error.html#method.get_mut
+[iegr]: http://doc.rust-lang.org/std/io/struct.Error.html#method.get_ref
+[ieii]: http://doc.rust-lang.org/std/io/struct.Error.html#method.into_inner
 [lic]: https://github.com/rust-lang/rust/pull/26583
 [lnu]: https://github.com/rust-lang/rust/pull/27026
 [lr]: https://github.com/rust-lang/rust/issues/27248
@@ -10592,19 +10592,19 @@ Misc
 [nlp]: https://github.com/rust-lang/rust/pull/27176
 [nold2]: https://github.com/rust-lang/rust/pull/27045
 [nold]: https://github.com/rust-lang/rfcs/blob/master/text/1156-adjust-default-object-bounds.md
-[nom]: http://doc.rust-lang.org/nightly/nomicon/
-[pc]: http://doc.rust-lang.org/nightly/std/process/struct.Child.html
+[nom]: http://doc.rust-lang.org/nomicon/
+[pc]: http://doc.rust-lang.org/std/process/struct.Child.html
 [pi]: https://github.com/rust-lang/rust/pull/26699
 [ps]: https://github.com/rust-lang/rust/pull/26884
 [rte]: https://github.com/rust-lang/rust/pull/26950
-[sc]: http://doc.rust-lang.org/nightly/std/primitive.str.html#method.contains
+[sc]: http://doc.rust-lang.org/std/primitive.str.html#method.contains
 [search]: https://github.com/rust-lang/rust/pull/26327
-[sew]: http://doc.rust-lang.org/nightly/std/primitive.str.html#method.ends_with
-[sf]: http://doc.rust-lang.org/nightly/std/primitive.str.html#method.find
+[sew]: http://doc.rust-lang.org/std/primitive.str.html#method.ends_with
+[sf]: http://doc.rust-lang.org/std/primitive.str.html#method.find
 [sh]: https://github.com/rust-lang/rust/pull/27280
-[srf]: http://doc.rust-lang.org/nightly/std/primitive.str.html#method.rfind
-[ss]: http://doc.rust-lang.org/nightly/std/primitive.str.html#method.split
-[ssw]: http://doc.rust-lang.org/nightly/std/primitive.str.html#method.starts_with
+[srf]: http://doc.rust-lang.org/std/primitive.str.html#method.rfind
+[ss]: http://doc.rust-lang.org/std/primitive.str.html#method.split
+[ssw]: http://doc.rust-lang.org/std/primitive.str.html#method.starts_with
 [st]: https://github.com/rust-lang/rust/pull/26630
 [win1]: https://github.com/rust-lang/rust/pull/26569
 [win2]: https://github.com/rust-lang/rust/pull/26741
@@ -10716,51 +10716,51 @@ Misc
 * Fat pointers are now [passed in pairs of immediate arguments][fat],
   resulting in faster compile times and smaller code.
 
-[`Extend`]: https://doc.rust-lang.org/nightly/std/iter/trait.Extend.html
+[`Extend`]: https://doc.rust-lang.org/std/iter/trait.Extend.html
 [extend-rfc]: https://github.com/rust-lang/rfcs/blob/master/text/0839-embrace-extend-extinguish.md
-[`iter::once`]: https://doc.rust-lang.org/nightly/std/iter/fn.once.html
-[`iter::empty`]: https://doc.rust-lang.org/nightly/std/iter/fn.empty.html
-[`matches`]: https://doc.rust-lang.org/nightly/std/primitive.str.html#method.matches
-[`rmatches`]: https://doc.rust-lang.org/nightly/std/primitive.str.html#method.rmatches
-[`Cell`]: https://doc.rust-lang.org/nightly/std/cell/struct.Cell.html
-[`RefCell`]: https://doc.rust-lang.org/nightly/std/cell/struct.RefCell.html
-[`wrapping_add`]: https://doc.rust-lang.org/nightly/std/primitive.i8.html#method.wrapping_add
-[`wrapping_sub`]: https://doc.rust-lang.org/nightly/std/primitive.i8.html#method.wrapping_sub
-[`wrapping_mul`]: https://doc.rust-lang.org/nightly/std/primitive.i8.html#method.wrapping_mul
-[`wrapping_div`]: https://doc.rust-lang.org/nightly/std/primitive.i8.html#method.wrapping_div
-[`wrapping_rem`]: https://doc.rust-lang.org/nightly/std/primitive.i8.html#method.wrapping_rem
-[`wrapping_neg`]: https://doc.rust-lang.org/nightly/std/primitive.i8.html#method.wrapping_neg
-[`wrapping_shl`]: https://doc.rust-lang.org/nightly/std/primitive.i8.html#method.wrapping_shl
-[`wrapping_shr`]: https://doc.rust-lang.org/nightly/std/primitive.i8.html#method.wrapping_shr
-[`Wrapping`]: https://doc.rust-lang.org/nightly/std/num/struct.Wrapping.html
-[`fmt::Formatter`]: https://doc.rust-lang.org/nightly/std/fmt/struct.Formatter.html
-[`fmt::Write`]: https://doc.rust-lang.org/nightly/std/fmt/trait.Write.html
-[`io::Write`]: https://doc.rust-lang.org/nightly/std/io/trait.Write.html
-[`debug_struct`]: https://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html#method.debug_struct
-[`debug_tuple`]: https://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html#method.debug_tuple
-[`debug_list`]: https://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html#method.debug_list
-[`debug_set`]: https://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html#method.debug_set
-[`debug_map`]: https://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html#method.debug_map
-[`Debug`]: https://doc.rust-lang.org/nightly/std/fmt/trait.Debug.html
-[strup]: https://doc.rust-lang.org/nightly/std/primitive.str.html#method.to_uppercase
-[strlow]: https://doc.rust-lang.org/nightly/std/primitive.str.html#method.to_lowercase
-[`to_uppercase`]: https://doc.rust-lang.org/nightly/std/primitive.char.html#method.to_uppercase
-[`to_lowercase`]: https://doc.rust-lang.org/nightly/std/primitive.char.html#method.to_lowercase
-[`PoisonError`]: https://doc.rust-lang.org/nightly/std/sync/struct.PoisonError.html
-[`RwLock`]: https://doc.rust-lang.org/nightly/std/sync/struct.RwLock.html
-[`Mutex`]: https://doc.rust-lang.org/nightly/std/sync/struct.Mutex.html
-[`FromRawFd`]: https://doc.rust-lang.org/nightly/std/os/unix/io/trait.FromRawFd.html
-[`AsRawFd`]: https://doc.rust-lang.org/nightly/std/os/unix/io/trait.AsRawFd.html
-[`Stdio`]: https://doc.rust-lang.org/nightly/std/process/struct.Stdio.html
-[`ChildStdin`]: https://doc.rust-lang.org/nightly/std/process/struct.ChildStdin.html
-[`ChildStdout`]: https://doc.rust-lang.org/nightly/std/process/struct.ChildStdout.html
-[`ChildStderr`]: https://doc.rust-lang.org/nightly/std/process/struct.ChildStderr.html
-[`io::ErrorKind`]: https://doc.rust-lang.org/nightly/std/io/enum.ErrorKind.html
+[`iter::once`]: https://doc.rust-lang.org/std/iter/fn.once.html
+[`iter::empty`]: https://doc.rust-lang.org/std/iter/fn.empty.html
+[`matches`]: https://doc.rust-lang.org/std/primitive.str.html#method.matches
+[`rmatches`]: https://doc.rust-lang.org/std/primitive.str.html#method.rmatches
+[`Cell`]: https://doc.rust-lang.org/std/cell/struct.Cell.html
+[`RefCell`]: https://doc.rust-lang.org/std/cell/struct.RefCell.html
+[`wrapping_add`]: https://doc.rust-lang.org/std/primitive.i8.html#method.wrapping_add
+[`wrapping_sub`]: https://doc.rust-lang.org/std/primitive.i8.html#method.wrapping_sub
+[`wrapping_mul`]: https://doc.rust-lang.org/std/primitive.i8.html#method.wrapping_mul
+[`wrapping_div`]: https://doc.rust-lang.org/std/primitive.i8.html#method.wrapping_div
+[`wrapping_rem`]: https://doc.rust-lang.org/std/primitive.i8.html#method.wrapping_rem
+[`wrapping_neg`]: https://doc.rust-lang.org/std/primitive.i8.html#method.wrapping_neg
+[`wrapping_shl`]: https://doc.rust-lang.org/std/primitive.i8.html#method.wrapping_shl
+[`wrapping_shr`]: https://doc.rust-lang.org/std/primitive.i8.html#method.wrapping_shr
+[`Wrapping`]: https://doc.rust-lang.org/std/num/struct.Wrapping.html
+[`fmt::Formatter`]: https://doc.rust-lang.org/std/fmt/struct.Formatter.html
+[`fmt::Write`]: https://doc.rust-lang.org/std/fmt/trait.Write.html
+[`io::Write`]: https://doc.rust-lang.org/std/io/trait.Write.html
+[`debug_struct`]: https://doc.rust-lang.org/core/fmt/struct.Formatter.html#method.debug_struct
+[`debug_tuple`]: https://doc.rust-lang.org/core/fmt/struct.Formatter.html#method.debug_tuple
+[`debug_list`]: https://doc.rust-lang.org/core/fmt/struct.Formatter.html#method.debug_list
+[`debug_set`]: https://doc.rust-lang.org/core/fmt/struct.Formatter.html#method.debug_set
+[`debug_map`]: https://doc.rust-lang.org/core/fmt/struct.Formatter.html#method.debug_map
+[`Debug`]: https://doc.rust-lang.org/std/fmt/trait.Debug.html
+[strup]: https://doc.rust-lang.org/std/primitive.str.html#method.to_uppercase
+[strlow]: https://doc.rust-lang.org/std/primitive.str.html#method.to_lowercase
+[`to_uppercase`]: https://doc.rust-lang.org/std/primitive.char.html#method.to_uppercase
+[`to_lowercase`]: https://doc.rust-lang.org/std/primitive.char.html#method.to_lowercase
+[`PoisonError`]: https://doc.rust-lang.org/std/sync/struct.PoisonError.html
+[`RwLock`]: https://doc.rust-lang.org/std/sync/struct.RwLock.html
+[`Mutex`]: https://doc.rust-lang.org/std/sync/struct.Mutex.html
+[`FromRawFd`]: https://doc.rust-lang.org/std/os/unix/io/trait.FromRawFd.html
+[`AsRawFd`]: https://doc.rust-lang.org/std/os/unix/io/trait.AsRawFd.html
+[`Stdio`]: https://doc.rust-lang.org/std/process/struct.Stdio.html
+[`ChildStdin`]: https://doc.rust-lang.org/std/process/struct.ChildStdin.html
+[`ChildStdout`]: https://doc.rust-lang.org/std/process/struct.ChildStdout.html
+[`ChildStderr`]: https://doc.rust-lang.org/std/process/struct.ChildStderr.html
+[`io::ErrorKind`]: https://doc.rust-lang.org/std/io/enum.ErrorKind.html
 [debugfmt]: https://www.reddit.com/r/rust/comments/3ceaui/psa_produces_prettyprinted_debug_output/
-[`DerefMut`]: https://doc.rust-lang.org/nightly/std/ops/trait.DerefMut.html
-[`mem::align_of`]: https://doc.rust-lang.org/nightly/std/mem/fn.align_of.html
+[`DerefMut`]: https://doc.rust-lang.org/std/ops/trait.DerefMut.html
+[`mem::align_of`]: https://doc.rust-lang.org/std/mem/fn.align_of.html
 [align]: https://github.com/rust-lang/rust/pull/25646
-[`mem::min_align_of`]: https://doc.rust-lang.org/nightly/std/mem/fn.min_align_of.html
+[`mem::min_align_of`]: https://doc.rust-lang.org/std/mem/fn.min_align_of.html
 [typos]: https://github.com/rust-lang/rust/pull/26087
 [nop]: https://github.com/rust-lang/rust/pull/26336
 [fat]: https://github.com/rust-lang/rust/pull/26411
@@ -10851,12 +10851,12 @@ Misc
 * [The `drop_with_repr_extern` lint warns about mixing `repr(C)`
   with `Drop`][24935].
 
-[`str::split_whitespace`]: https://doc.rust-lang.org/nightly/std/primitive.str.html#method.split_whitespace
-[`FromRawFd`]: https://doc.rust-lang.org/nightly/std/os/unix/io/trait.FromRawFd.html
-[`AsRawFd`]: https://doc.rust-lang.org/nightly/std/os/unix/io/trait.AsRawFd.html
-[`std::os::unix::symlink`]: https://doc.rust-lang.org/nightly/std/os/unix/fs/fn.symlink.html
-[`IntoIterator`]: https://doc.rust-lang.org/nightly/std/iter/trait.IntoIterator.html
-[`From`]: https://doc.rust-lang.org/nightly/std/convert/trait.From.html
+[`str::split_whitespace`]: https://doc.rust-lang.org/std/primitive.str.html#method.split_whitespace
+[`FromRawFd`]: https://doc.rust-lang.org/std/os/unix/io/trait.FromRawFd.html
+[`AsRawFd`]: https://doc.rust-lang.org/std/os/unix/io/trait.AsRawFd.html
+[`std::os::unix::symlink`]: https://doc.rust-lang.org/std/os/unix/fs/fn.symlink.html
+[`IntoIterator`]: https://doc.rust-lang.org/std/iter/trait.IntoIterator.html
+[`From`]: https://doc.rust-lang.org/std/convert/trait.From.html
 [rf]: https://github.com/rust-lang/rust/pull/24491
 [err-index]: https://doc.rust-lang.org/error-index.html
 [sk]: https://github.com/rust-lang/rust/pull/24615
@@ -10872,13 +10872,13 @@ Misc
 [pie]: https://github.com/rust-lang/rust/pull/24953
 [abs]: https://github.com/rust-lang/rust/pull/25441
 [c]: https://github.com/rust-lang/rust/pull/25496
-[`Cloned`]: https://doc.rust-lang.org/nightly/std/iter/struct.Cloned.html
-[`Incoming`]: https://doc.rust-lang.org/nightly/std/net/struct.Incoming.html
+[`Cloned`]: https://doc.rust-lang.org/std/iter/struct.Cloned.html
+[`Incoming`]: https://doc.rust-lang.org/std/net/struct.Incoming.html
 [inc]: https://github.com/rust-lang/rust/pull/25522
 [bh]: https://github.com/rust-lang/rust/pull/25856
-[`BinaryHeap`]: https://doc.rust-lang.org/nightly/std/collections/struct.BinaryHeap.html
+[`BinaryHeap`]: https://doc.rust-lang.org/std/collections/struct.BinaryHeap.html
 [ll]: https://github.com/rust-lang/rust/pull/26022
-[`split_off`]: https://doc.rust-lang.org/nightly/collections/linked_list/struct.LinkedList.html#method.split_off
+[`split_off`]: https://doc.rust-lang.org/collections/linked_list/struct.LinkedList.html#method.split_off
 [24935]: https://github.com/rust-lang/rust/pull/24935
 
 Version 1.0.0 (2015-05-15)
