@@ -1595,7 +1595,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             Some(blk_id),
                         );
                         if !fcx.tcx.features().unsized_locals {
-                            unsized_return = self.is_return_ty_unsized(fcx, blk_id);
+                            unsized_return = self.is_return_ty_definitely_unsized(fcx);
                         }
                         if let Some(expression) = expression
                             && let hir::ExprKind::Loop(loop_blk, ..) = expression.kind {
@@ -1614,8 +1614,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             None,
                         );
                         if !fcx.tcx.features().unsized_locals {
-                            let id = fcx.tcx.hir().parent_id(id);
-                            unsized_return = self.is_return_ty_unsized(fcx, id);
+                            unsized_return = self.is_return_ty_definitely_unsized(fcx);
                         }
                     }
                     _ => {
@@ -1896,15 +1895,24 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         err.help("you could instead create a new `enum` with a variant for each returned type");
     }
 
-    fn is_return_ty_unsized<'a>(&self, fcx: &FnCtxt<'a, 'tcx>, blk_id: hir::HirId) -> bool {
-        if let Some((_, fn_decl, _)) = fcx.get_fn_decl(blk_id)
-            && let hir::FnRetTy::Return(ty) = fn_decl.output
-            && let ty = fcx.astconv().ast_ty_to_ty( ty)
-            && let ty::Dynamic(..) = ty.kind()
-        {
-            return true;
+    /// Checks whether the return type is unsized via an obligation, which makes
+    /// sure we consider `dyn Trait: Sized` where clauses, which are trivially
+    /// false but technically valid for typeck.
+    fn is_return_ty_definitely_unsized(&self, fcx: &FnCtxt<'_, 'tcx>) -> bool {
+        if let Some(sig) = fcx.body_fn_sig() {
+            !fcx.predicate_may_hold(&Obligation::new(
+                fcx.tcx,
+                ObligationCause::dummy(),
+                fcx.param_env,
+                ty::TraitRef::new(
+                    fcx.tcx,
+                    fcx.tcx.require_lang_item(hir::LangItem::Sized, None),
+                    [sig.output()],
+                ),
+            ))
+        } else {
+            false
         }
-        false
     }
 
     pub fn complete<'a>(self, fcx: &FnCtxt<'a, 'tcx>) -> Ty<'tcx> {
