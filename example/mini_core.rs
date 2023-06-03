@@ -451,6 +451,9 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
     drop_in_place(to_drop);
 }
 
+#[lang = "unpin"]
+pub auto trait Unpin {}
+
 #[lang = "deref"]
 pub trait Deref {
     type Target: ?Sized;
@@ -486,7 +489,18 @@ impl<T: ?Sized, U: ?Sized> DispatchFromDyn<Unique<U>> for Unique<T> where T: Uns
 #[lang = "owned_box"]
 pub struct Box<T: ?Sized, A: Allocator = Global>(Unique<T>, A);
 
-impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Box<U, A>> for Box<T, A> {}
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
+
+impl<T> Box<T> {
+    pub fn new(val: T) -> Box<T> {
+        unsafe {
+            let size = intrinsics::size_of::<T>();
+            let ptr = libc::malloc(size);
+            intrinsics::copy(&val as *const T as *const u8, ptr, size);
+            Box(Unique { pointer: NonNull(ptr as *const T), _marker: PhantomData }, Global)
+        }
+    }
+}
 
 impl<T: ?Sized, A: Allocator> Drop for Box<T, A> {
     fn drop(&mut self) {
