@@ -689,8 +689,6 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     fn trivial_cast_lint(&self, fcx: &FnCtxt<'a, 'tcx>) {
         let t_cast = self.cast_ty;
         let t_expr = self.expr_ty;
-        let type_asc_or =
-            if fcx.tcx.features().type_ascription { "type ascription or " } else { "" };
         let (adjective, lint) = if t_cast.is_numeric() && t_expr.is_numeric() {
             ("numeric ", lint::builtin::TRIVIAL_NUMERIC_CASTS)
         } else {
@@ -711,7 +709,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             |lint| {
                 lint.help(format!(
                     "cast can be replaced by coercion; this might \
-                     require {type_asc_or}a temporary variable"
+                     require a temporary variable"
                 ))
             },
         );
