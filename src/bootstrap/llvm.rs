@@ -845,7 +845,8 @@ impl Step for Lld {
         // component installed, one can successfully invoke `rust-lld` directly without rustup's
         // `LD_LIBRARY_PATH` overrides)
         //
-        if builder.config.rust_rpath
+        if builder.config.rpath_enabled(target)
+            && util::use_host_linker(target)
             && builder.config.llvm_link_shared()
             && target.contains("linux")
         {
