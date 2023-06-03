@@ -27,7 +27,6 @@ use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk, LateBoundRegionConversionTime};
 use rustc_middle::hir::map;
-use rustc_middle::query::Key;
 use rustc_middle::ty::error::TypeError::{self, Sorts};
 use rustc_middle::ty::{
     self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind,
@@ -3701,8 +3700,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let Some(typeck_results) = self.typeck_results.as_ref() else { return };
 
         // Make sure we're dealing with the `Option` type.
-        let Some(ty_adt_did) = typeck_results.expr_ty_adjusted(expr).ty_adt_id() else { return };
-        if !tcx.is_diagnostic_item(sym::Option, ty_adt_did) {
+        let Some(option_ty_adt) = typeck_results.expr_ty_adjusted(expr).ty_adt_def() else { return };
+        if !tcx.is_diagnostic_item(sym::Option, option_ty_adt.did()) {
             return;
         }
 
