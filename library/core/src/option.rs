@@ -1138,7 +1138,7 @@ impl<T> Option<T> {
     /// Computes a default function result (if none), or
     /// applies a different function to the contained value (if any).
     ///
-    /// # Examples
+    /// # Basic examples
     ///
     /// ```
     /// let k = 21;
@@ -1148,6 +1148,25 @@ impl<T> Option<T> {
     ///
     /// let x: Option<&str> = None;
     /// assert_eq!(x.map_or_else(|| 2 * k, |v| v.len()), 42);
+    /// ```
+    ///
+    /// # Handling a Result-based fallback
+    ///
+    /// A somewhat common occurrence when dealing with optional values
+    /// in combination with [`Result<T, E>`] is the case where one wants to invoke
+    /// a fallible fallback if the option is not present.  This example
+    /// parses a command line argument (if present), or the contents of a file to
+    /// an integer.  However, unlike accessing the command line argument, reading
+    /// the file is fallible, so it must be wrapped with `Ok`.
+    ///
+    /// ```no_run
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let v: u64 = std::env::args()
+    ///    .nth(1)
+    ///    .map_or_else(|| std::fs::read_to_string("/etc/someconfig.conf"), Ok)?
+    ///    .parse()?;
+    /// #   Ok(())
+    /// # }
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
