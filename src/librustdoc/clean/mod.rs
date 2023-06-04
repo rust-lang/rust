@@ -2180,7 +2180,8 @@ fn get_all_import_attributes<'hir>(
             // This is the "original" reexport so we get all its attributes without filtering them.
             attrs = import_attrs.iter().map(|attr| (Cow::Borrowed(attr), Some(def_id))).collect();
             first = false;
-        } else {
+        // We don't add attributes of an intermediate re-export if it has `#[doc(hidden)]`.
+        } else if !cx.tcx.is_doc_hidden(def_id) {
             add_without_unwanted_attributes(&mut attrs, import_attrs, is_inline, Some(def_id));
         }
     }
