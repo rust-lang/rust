@@ -834,6 +834,31 @@ impl Step for Lld {
             }
         }
 
+        // LLD is built as an LLVM tool, but is distributed outside of the `llvm-tools` component,
+        // which impacts where it expects to find LLVM's shared library. This causes #80703.
+        //
+        // LLD is distributed at "$root/lib/rustlib/$host/bin/rust-lld", but the `libLLVM-*.so` it
+        // needs is distributed at "$root/lib". The default rpath of "$ORIGIN/../lib" points at the
+        // lib path for LLVM tools, not the one for rust binaries.
+        //
+        // (The `llvm-tools` component copies the .so there for the other tools, and with that
+        // component installed, one can successfully invoke `rust-lld` directly without rustup's
+        // `LD_LIBRARY_PATH` overrides)
+        //
+        if builder.config.rpath_enabled(target)
+            && util::use_host_linker(target)
+            && builder.config.llvm_link_shared()
+            && target.contains("linux")
+        {
+            // So we inform LLD where it can find LLVM's libraries by adding an rpath entry to the
+            // expected parent `lib` directory.
+            //
+            // Be careful when changing this path, we need to ensure it's quoted or escaped:
+            // `$ORIGIN` would otherwise be expanded when the `LdFlags` are passed verbatim to
+            // cmake.
+            ldflags.push_all("-Wl,-rpath,'$ORIGIN/../../../'");
+        }
+
         configure_cmake(builder, target, &mut cfg, true, ldflags, &[]);
         configure_llvm(builder, target, &mut cfg);
 
