@@ -458,23 +458,52 @@ def unpack_component(download_info):
         verbose=download_info.verbose,
     )
 
-class RustBuild(object):
-    """Provide all the methods required to build Rust"""
+class FakeArgs:
+    """Used for unit tests to avoid updating all call sites"""
     def __init__(self):
-        self.checksums_sha256 = {}
-        self.stage0_compiler = None
-        self.download_url = ''
         self.build = ''
         self.build_dir = ''
         self.clean = False
-        self.config_toml = ''
-        self.rust_root = ''
-        self.use_locked_deps = False
-        self.use_vendored_sources = False
         self.verbose = False
+        self.json_output = False
+
+class RustBuild(object):
+    """Provide all the methods required to build Rust"""
+    def __init__(self, config_toml="", args=FakeArgs()):
         self.git_version = None
         self.nix_deps_dir = None
         self._should_fix_bins_and_dylibs = None
+        self.rust_root = os.path.abspath(os.path.join(__file__, '../../..'))
+
+        self.config_toml = config_toml
+
+        self.verbose = args.verbose != 0
+        self.clean = args.clean
+        self.json_output = args.json_output
+
+        profile = self.get_toml('profile')
+        if profile is not None:
+            include_file = 'config.{}.toml'.format(profile)
+            include_dir = os.path.join(self.rust_root, 'src', 'bootstrap', 'defaults')
+            include_path = os.path.join(include_dir, include_file)
+            # HACK: This works because `self.get_toml()` returns the first match it finds for a
+            # specific key, so appending our defaults at the end allows the user to override them
+            with open(include_path) as included_toml:
+                self.config_toml += os.linesep + included_toml.read()
+
+        self.use_vendored_sources = self.get_toml('vendor', 'build') == 'true'
+        self.use_locked_deps = self.get_toml('locked-deps', 'build') == 'true'
+
+        build_dir = args.build_dir or self.get_toml('build-dir', 'build') or 'build'
+        self.build_dir = os.path.abspath(build_dir)
+
+        with open(os.path.join(self.rust_root, "src", "stage0.json")) as f:
+            data = json.load(f)
+        self.checksums_sha256 = data["checksums_sha256"]
+        self.stage0_compiler = Stage0Toolchain(data["compiler"])
+        self.download_url = os.getenv("RUSTUP_DIST_SERVER") or data["config"]["dist_server"]
+
+        self.build = args.build or self.build_triple()
 
     def download_toolchain(self):
         """Fetch the build system for Rust, written in Rust
@@ -704,9 +733,10 @@ class RustBuild(object):
         """Return the path for .rustc-stamp at the given stage
 
         >>> rb = RustBuild()
+        >>> rb.build = "host"
         >>> rb.build_dir = "build"
-        >>> rb.rustc_stamp() == os.path.join("build", "stage0", ".rustc-stamp")
-        True
+        >>> expected = os.path.join("build", "host", "stage0", ".rustc-stamp")
+        >>> assert rb.rustc_stamp() == expected, rb.rustc_stamp()
         """
         return os.path.join(self.bin_root(), '.rustc-stamp')
 
@@ -721,15 +751,9 @@ class RustBuild(object):
         """Return the binary root directory for the given stage
 
         >>> rb = RustBuild()
-        >>> rb.build_dir = "build"
-        >>> rb.bin_root() == os.path.join("build", "stage0")
-        True
-
-        When the 'build' property is given should be a nested directory:
-
         >>> rb.build = "devel"
-        >>> rb.bin_root() == os.path.join("build", "devel", "stage0")
-        True
+        >>> expected = os.path.abspath(os.path.join("build", "devel", "stage0"))
+        >>> assert rb.bin_root() == expected, rb.bin_root()
         """
         subdir = "stage0"
         return os.path.join(self.build_dir, self.build, subdir)
@@ -842,6 +866,16 @@ class RustBuild(object):
             print("::group::Building bootstrap")
         else:
             print("Building bootstrap", file=sys.stderr)
+
+        args = self.build_bootstrap_cmd(env, color, warnings, verbose_count)
+        # Run this from the source directory so cargo finds .cargo/config
+        run(args, env=env, verbose=self.verbose, cwd=self.rust_root)
+
+        if "GITHUB_ACTIONS" in env:
+            print("::endgroup::")
+
+    def build_bootstrap_cmd(self, env, color, warnings, verbose_count):
+        """For tests."""
         build_dir = os.path.join(self.build_dir, "bootstrap")
         if self.clean and os.path.exists(build_dir):
             shutil.rmtree(build_dir)
@@ -927,11 +961,7 @@ class RustBuild(object):
         except KeyError:
             pass
 
-        # Run this from the source directory so cargo finds .cargo/config
-        run(args, env=env, verbose=self.verbose, cwd=self.rust_root)
-
-        if "GITHUB_ACTIONS" in env:
-            print("::endgroup::")
+        return args
 
     def build_triple(self):
         """Build triple as in LLVM
@@ -981,7 +1011,7 @@ class RustBuild(object):
             if os.path.exists(cargo_dir):
                 shutil.rmtree(cargo_dir)
 
-def parse_args():
+def parse_args(args):
     """Parse the command line arguments that the python script needs."""
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument('-h', '--help', action='store_true')
@@ -994,16 +1024,11 @@ def parse_args():
     parser.add_argument('--warnings', choices=['deny', 'warn', 'default'], default='default')
     parser.add_argument('-v', '--verbose', action='count', default=0)
 
-    return parser.parse_known_args(sys.argv)[0]
+    return parser.parse_known_args(args)[0]
 
 def bootstrap(args):
     """Configure, fetch, build and run the initial bootstrap"""
-    # Configure initial bootstrap
-    build = RustBuild()
-    build.rust_root = os.path.abspath(os.path.join(__file__, '../../..'))
-    build.verbose = args.verbose != 0
-    build.clean = args.clean
-    build.json_output = args.json_output
+    rust_root = os.path.abspath(os.path.join(__file__, '../../..'))
 
     # Read from `--config`, then `RUST_BOOTSTRAP_CONFIG`, then `./config.toml`,
     # then `config.toml` in the root directory.
@@ -1012,44 +1037,22 @@ def bootstrap(args):
     if using_default_path:
         toml_path = 'config.toml'
         if not os.path.exists(toml_path):
-            toml_path = os.path.join(build.rust_root, toml_path)
+            toml_path = os.path.join(rust_root, toml_path)
 
     # Give a hard error if `--config` or `RUST_BOOTSTRAP_CONFIG` are set to a missing path,
     # but not if `config.toml` hasn't been created.
     if not using_default_path or os.path.exists(toml_path):
         with open(toml_path) as config:
-            build.config_toml = config.read()
+            config_toml = config.read()
 
-    profile = build.get_toml('profile')
-    if profile is not None:
-        include_file = 'config.{}.toml'.format(profile)
-        include_dir = os.path.join(build.rust_root, 'src', 'bootstrap', 'defaults')
-        include_path = os.path.join(include_dir, include_file)
-        # HACK: This works because `build.get_toml()` returns the first match it finds for a
-        # specific key, so appending our defaults at the end allows the user to override them
-        with open(include_path) as included_toml:
-            build.config_toml += os.linesep + included_toml.read()
+    # Configure initial bootstrap
+    build = RustBuild(config_toml, args)
+    build.check_vendored_status()
 
     verbose_count = args.verbose
     config_verbose_count = build.get_toml('verbose', 'build')
     if config_verbose_count is not None:
         verbose_count = max(args.verbose, int(config_verbose_count))
-
-    build.use_vendored_sources = build.get_toml('vendor', 'build') == 'true'
-    build.use_locked_deps = build.get_toml('locked-deps', 'build') == 'true'
-
-    build.check_vendored_status()
-
-    build_dir = args.build_dir or build.get_toml('build-dir', 'build') or 'build'
-    build.build_dir = os.path.abspath(build_dir)
-
-    with open(os.path.join(build.rust_root, "src", "stage0.json")) as f:
-        data = json.load(f)
-    build.checksums_sha256 = data["checksums_sha256"]
-    build.stage0_compiler = Stage0Toolchain(data["compiler"])
-    build.download_url = os.getenv("RUSTUP_DIST_SERVER") or data["config"]["dist_server"]
-
-    build.build = args.build or build.build_triple()
 
     if not os.path.exists(build.build_dir):
         os.makedirs(build.build_dir)
@@ -1077,7 +1080,7 @@ def main():
     if len(sys.argv) > 1 and sys.argv[1] == 'help':
         sys.argv[1] = '-h'
 
-    args = parse_args()
+    args = parse_args(sys.argv)
     help_triggered = args.help or len(sys.argv) == 1
 
     # If the user is asking for help, let them know that the whole download-and-build
