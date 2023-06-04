@@ -487,6 +487,16 @@ impl BindingAnnotation {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
+pub enum BindingProblems {
+    /// https://doc.rust-lang.org/stable/error_codes/E0416.html
+    BoundMoreThanOnce,
+    /// https://doc.rust-lang.org/stable/error_codes/E0409.html
+    BoundInconsistently,
+    /// https://doc.rust-lang.org/stable/error_codes/E0408.html
+    NotBoundAcrossAll,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Binding {
     pub name: Name,
     pub mode: BindingAnnotation,
@@ -494,6 +504,7 @@ pub struct Binding {
     /// Id of the closure/generator that owns this binding. If it is owned by the
     /// top level expression, this field would be `None`.
     pub owner: Option<ExprId>,
+    pub problems: Option<BindingProblems>,
 }
 
 impl Binding {

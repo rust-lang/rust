@@ -30,9 +30,9 @@ use crate::{
     db::DefDatabase,
     expander::Expander,
     hir::{
-        dummy_expr_id, Array, Binding, BindingAnnotation, BindingId, CaptureBy, ClosureKind, Expr,
-        ExprId, Label, LabelId, Literal, LiteralOrConst, MatchArm, Movability, Pat, PatId,
-        RecordFieldPat, RecordLitField, Statement,
+        dummy_expr_id, Array, Binding, BindingAnnotation, BindingId, BindingProblems, CaptureBy,
+        ClosureKind, Expr, ExprId, Label, LabelId, Literal, LiteralOrConst, MatchArm, Movability,
+        Pat, PatId, RecordFieldPat, RecordLitField, Statement,
     },
     item_scope::BuiltinShadowMode,
     lang_item::LangItem,
@@ -141,6 +141,8 @@ impl RibKind {
 #[derive(Debug, Default)]
 struct BindingList {
     map: FxHashMap<Name, BindingId>,
+    is_used: FxHashMap<BindingId, bool>,
+    reject_new: bool,
 }
 
 impl BindingList {
@@ -150,7 +152,27 @@ impl BindingList {
         name: Name,
         mode: BindingAnnotation,
     ) -> BindingId {
-        *self.map.entry(name).or_insert_with_key(|n| ec.alloc_binding(n.clone(), mode))
+        let id = *self.map.entry(name).or_insert_with_key(|n| ec.alloc_binding(n.clone(), mode));
+        if ec.body.bindings[id].mode != mode {
+            ec.body.bindings[id].problems = Some(BindingProblems::BoundInconsistently);
+        }
+        self.check_is_used(ec, id);
+        id
+    }
+
+    fn check_is_used(&mut self, ec: &mut ExprCollector<'_>, id: BindingId) {
+        match self.is_used.get(&id) {
+            None => {
+                if self.reject_new {
+                    ec.body.bindings[id].problems = Some(BindingProblems::NotBoundAcrossAll);
+                }
+            }
+            Some(true) => {
+                ec.body.bindings[id].problems = Some(BindingProblems::BoundMoreThanOnce);
+            }
+            Some(false) => {}
+        }
+        self.is_used.insert(id, true);
     }
 }
 
@@ -1208,9 +1230,34 @@ impl ExprCollector<'_> {
                     p.path().and_then(|path| self.expander.parse_path(self.db, path)).map(Box::new);
                 path.map(Pat::Path).unwrap_or(Pat::Missing)
             }
-            ast::Pat::OrPat(p) => {
-                let pats = p.pats().map(|p| self.collect_pat(p, binding_list)).collect();
-                Pat::Or(pats)
+            ast::Pat::OrPat(p) => 'b: {
+                let prev_is_used = mem::take(&mut binding_list.is_used);
+                let prev_reject_new = mem::take(&mut binding_list.reject_new);
+                let mut pats = Vec::with_capacity(p.pats().count());
+                let mut it = p.pats();
+                let Some(first) = it.next() else {
+                    break 'b Pat::Or(Box::new([]));
+                };
+                pats.push(self.collect_pat(first, binding_list));
+                binding_list.reject_new = true;
+                for rest in it {
+                    for (_, x) in binding_list.is_used.iter_mut() {
+                        *x = false;
+                    }
+                    pats.push(self.collect_pat(rest, binding_list));
+                    for (&id, &x) in binding_list.is_used.iter() {
+                        if !x {
+                            self.body.bindings[id].problems =
+                                Some(BindingProblems::NotBoundAcrossAll);
+                        }
+                    }
+                }
+                binding_list.reject_new = prev_reject_new;
+                let current_is_used = mem::replace(&mut binding_list.is_used, prev_is_used);
+                for (id, _) in current_is_used.into_iter() {
+                    binding_list.check_is_used(self, id);
+                }
+                Pat::Or(pats.into())
             }
             ast::Pat::ParenPat(p) => return self.collect_pat_opt(p.pat(), binding_list),
             ast::Pat::TuplePat(p) => {
@@ -1499,6 +1546,7 @@ impl ExprCollector<'_> {
             mode,
             definitions: SmallVec::new(),
             owner: self.current_binding_owner,
+            problems: None,
         })
     }
 
