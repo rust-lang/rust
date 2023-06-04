@@ -994,6 +994,58 @@ fn f() {
     }
 
     #[test]
+    fn boxes() {
+        check_diagnostics(
+            r#"
+//- minicore: coerce_unsized, deref_mut, slice
+use core::ops::{Deref, DerefMut};
+use core::{marker::Unsize, ops::CoerceUnsized};
+
+#[lang = "owned_box"]
+pub struct Box<T: ?Sized> {
+    inner: *mut T,
+}
+impl<T> Box<T> {
+    fn new(t: T) -> Self {
+        #[rustc_box]
+        Box::new(t)
+    }
+}
+
+impl<T: ?Sized> Deref for Box<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &**self
+    }
+}
+
+impl<T: ?Sized> DerefMut for Box<T> {
+    fn deref_mut(&mut self) -> &mut T {
+        &mut **self
+    }
+}
+
+fn f() {
+    let x = Box::new(5);
+    x = Box::new(7);
+  //^^^^^^^^^^^^^^^ 💡 error: cannot mutate immutable variable `x`
+    let x = Box::new(5);
+    *x = 7;
+  //^^^^^^ 💡 error: cannot mutate immutable variable `x`
+    let mut y = Box::new(5);
+      //^^^^^ 💡 weak: variable does not need to be mutable
+    *x = *y;
+  //^^^^^^^ 💡 error: cannot mutate immutable variable `x`
+    let x = Box::new(5);
+    let closure = || *x = 2;
+                    //^ 💡 error: cannot mutate immutable variable `x`
+}
+"#,
+        );
+    }
+
+    #[test]
     fn allow_unused_mut_for_identifiers_starting_with_underline() {
         check_diagnostics(
             r#"

@@ -78,7 +78,7 @@ pub fn borrowck_query(
         .map(|body| {
             let body = body?;
             Ok(BorrowckResult {
-                mutability_of_locals: mutability_of_locals(&body),
+                mutability_of_locals: mutability_of_locals(db, &body),
                 moved_out_of_ref: moved_out_of_ref(db, &body),
                 mir_body: body,
             })
@@ -186,10 +186,7 @@ fn moved_out_of_ref(db: &dyn HirDatabase, body: &MirBody) -> Vec<MovedOutOfRef> 
     result
 }
 
-fn is_place_direct(lvalue: &Place) -> bool {
-    !lvalue.projection.iter().any(|x| *x == ProjectionElem::Deref)
-}
-
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ProjectionCase {
     /// Projection is a local
     Direct,
@@ -199,12 +196,14 @@ enum ProjectionCase {
     Indirect,
 }
 
-fn place_case(lvalue: &Place) -> ProjectionCase {
+fn place_case(db: &dyn HirDatabase, body: &MirBody, lvalue: &Place) -> ProjectionCase {
     let mut is_part_of = false;
-    for proj in lvalue.projection.iter().rev() {
+    let mut ty = body.locals[lvalue.local].ty.clone();
+    for proj in lvalue.projection.iter() {
         match proj {
-            ProjectionElem::Deref => return ProjectionCase::Indirect, // It's indirect
-            ProjectionElem::ConstantIndex { .. }
+            ProjectionElem::Deref if ty.as_adt().is_none() => return ProjectionCase::Indirect, // It's indirect in case of reference and raw
+            ProjectionElem::Deref // It's direct in case of `Box<T>`
+            | ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Field(_)
             | ProjectionElem::TupleOrClosureField(_)
@@ -213,6 +212,23 @@ fn place_case(lvalue: &Place) -> ProjectionCase {
             }
             ProjectionElem::OpaqueCast(_) => (),
         }
+        ty = proj.projected_ty(
+            ty,
+            db,
+            |c, subst, f| {
+                let (def, _) = db.lookup_intern_closure(c.into());
+                let infer = db.infer(def);
+                let (captures, _) = infer.closure_info(&c);
+                let parent_subst = ClosureSubst(subst).parent_subst();
+                captures
+                    .get(f)
+                    .expect("broken closure field")
+                    .ty
+                    .clone()
+                    .substitute(Interner, parent_subst)
+            },
+            body.owner.module(db.upcast()).krate(),
+        );
     }
     if is_part_of {
         ProjectionCase::DirectPart
@@ -300,7 +316,10 @@ fn ever_initialized_map(body: &MirBody) -> ArenaMap<BasicBlockId, ArenaMap<Local
     result
 }
 
-fn mutability_of_locals(body: &MirBody) -> ArenaMap<LocalId, MutabilityReason> {
+fn mutability_of_locals(
+    db: &dyn HirDatabase,
+    body: &MirBody,
+) -> ArenaMap<LocalId, MutabilityReason> {
     let mut result: ArenaMap<LocalId, MutabilityReason> =
         body.locals.iter().map(|x| (x.0, MutabilityReason::Not)).collect();
     let mut push_mut_span = |local, span| match &mut result[local] {
@@ -313,7 +332,7 @@ fn mutability_of_locals(body: &MirBody) -> ArenaMap<LocalId, MutabilityReason> {
         for statement in &block.statements {
             match &statement.kind {
                 StatementKind::Assign(place, value) => {
-                    match place_case(place) {
+                    match place_case(db, body, place) {
                         ProjectionCase::Direct => {
                             if ever_init_map.get(place.local).copied().unwrap_or_default() {
                                 push_mut_span(place.local, statement.span);
@@ -328,7 +347,7 @@ fn mutability_of_locals(body: &MirBody) -> ArenaMap<LocalId, MutabilityReason> {
                         ProjectionCase::Indirect => (),
                     }
                     if let Rvalue::Ref(BorrowKind::Mut { .. }, p) = value {
-                        if is_place_direct(p) {
+                        if place_case(db, body, p) != ProjectionCase::Indirect {
                             push_mut_span(p.local, statement.span);
                         }
                     }
