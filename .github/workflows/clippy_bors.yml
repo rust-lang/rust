@@ -11,7 +11,6 @@ env:
   CARGO_TARGET_DIR: '${{ github.workspace }}/target'
   NO_FMT_TEST: 1
   CARGO_INCREMENTAL: 0
-  CARGO_UNSTABLE_SPARSE_REGISTRY: true
 
 defaults:
   run:
