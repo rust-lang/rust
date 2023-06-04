@@ -336,7 +336,7 @@ pub fn remove_duplicate_unreachable_blocks<'tcx>(tcx: TyCtxt<'tcx>, body: &mut B
 }
 
 pub fn remove_dead_blocks<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let reachable = traversal::reachable_as_bitset(body);
+    let reachable = traversal::reachable_as_bitset(body).clone();
     let num_blocks = body.basic_blocks.len();
     if num_blocks == reachable.count() {
         return;

@@ -297,7 +297,7 @@ struct ElaborateDropsCtxt<'a, 'tcx> {
     drop_flags: IndexVec<MovePathIndex, Option<Local>>,
     patch: MirPatch<'tcx>,
     un_derefer: UnDerefer<'tcx>,
-    reachable: BitSet<BasicBlock>,
+    reachable: &'a BitSet<BasicBlock>,
 }
 
 impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {

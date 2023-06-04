@@ -93,7 +93,7 @@ struct TypeChecker<'a, 'tcx> {
     param_env: ParamEnv<'tcx>,
     mir_phase: MirPhase,
     unwind_edge_count: usize,
-    reachable_blocks: BitSet<BasicBlock>,
+    reachable_blocks: &'a BitSet<BasicBlock>,
     storage_liveness: ResultsCursor<'a, 'tcx, MaybeStorageLive<'static>>,
     place_cache: Vec<PlaceRef<'tcx>>,
     value_cache: Vec<u128>,
