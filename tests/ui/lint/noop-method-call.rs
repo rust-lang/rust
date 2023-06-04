@@ -1,6 +1,7 @@
 // check-pass
 
 #![allow(unused)]
+#![warn(noop_method_call)]
 
 use std::borrow::Borrow;
 use std::ops::Deref;

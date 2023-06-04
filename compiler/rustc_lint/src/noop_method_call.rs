@@ -31,7 +31,7 @@ declare_lint! {
     /// calling `clone` on a `&T` where `T` does not implement clone, actually doesn't do anything
     /// as references are copy. This lint detects these calls and warns the user about them.
     pub NOOP_METHOD_CALL,
-    Warn,
+    Deny,
     "detects the use of well-known noop methods"
 }
 
