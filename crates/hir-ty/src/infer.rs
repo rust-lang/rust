@@ -367,6 +367,10 @@ pub enum PointerCast {
 }
 
 /// The result of type inference: A mapping from expressions and patterns to types.
+///
+/// When you add a field that stores types (including `Substitution` and the like), don't forget
+/// `resolve_completely()`'ing  them in `InferenceContext::resolve_all()`. Inference variables must
+/// not appear in the final inference result.
 #[derive(Clone, PartialEq, Eq, Debug, Default)]
 pub struct InferenceResult {
     /// For each method call expr, records the function it resolves to.
@@ -575,6 +579,8 @@ impl<'a> InferenceContext<'a> {
     // used this function for another workaround, mention it here. If you really need this function and believe that
     // there is no problem in it being `pub(crate)`, remove this comment.
     pub(crate) fn resolve_all(self) -> InferenceResult {
+        // NOTE: `InferenceResult::closure_info` is `resolve_completely()`'d during
+        // `InferenceContext::infer_closures()` (in `HirPlace::ty()` specifically).
         let InferenceContext { mut table, mut result, .. } = self;
 
         table.fallback_if_possible();
