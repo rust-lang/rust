@@ -32,4 +32,14 @@ impl Into<u8> for ContainsVal {
     }
 }
 
+pub struct Lval<T>(T);
+
+pub struct Rval<T>(T);
+
+impl<T> Into<Rval<Self>> for Lval<T> {
+    fn into(self) -> Rval<Self> {
+        Rval(self)
+    }
+}
+
 fn main() {}
