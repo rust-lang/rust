@@ -1,4 +1,5 @@
 error: error reading Clippy's configuration file: unknown field `foobar`, expected one of
+           accept-comment-above-statement
            allow-dbg-in-tests
            allow-expect-in-tests
            allow-mixed-uninlined-format-args
@@ -65,6 +66,7 @@ LL | foobar = 42
    | ^^^^^^
 
 error: error reading Clippy's configuration file: unknown field `barfoo`, expected one of
+           accept-comment-above-statement
            allow-dbg-in-tests
            allow-expect-in-tests
            allow-mixed-uninlined-format-args

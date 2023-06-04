@@ -11,7 +11,7 @@ use rustc_hir::{Block, BlockCheckMode, ItemKind, Node, UnsafeSource};
 use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{BytePos, Pos, Span, SyntaxContext};
 
 declare_clippy_lint! {
@@ -92,7 +92,20 @@ declare_clippy_lint! {
     "annotating safe code with a safety comment"
 }
 
-declare_lint_pass!(UndocumentedUnsafeBlocks => [UNDOCUMENTED_UNSAFE_BLOCKS, UNNECESSARY_SAFETY_COMMENT]);
+#[derive(Copy, Clone)]
+pub struct UndocumentedUnsafeBlocks {
+    accept_comment_above_statement: bool,
+}
+
+impl UndocumentedUnsafeBlocks {
+    pub fn new(accept_comment_above_statement: bool) -> Self {
+        Self {
+            accept_comment_above_statement,
+        }
+    }
+}
+
+impl_lint_pass!(UndocumentedUnsafeBlocks => [UNDOCUMENTED_UNSAFE_BLOCKS, UNNECESSARY_SAFETY_COMMENT]);
 
 impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
@@ -101,7 +114,7 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
             && !is_lint_allowed(cx, UNDOCUMENTED_UNSAFE_BLOCKS, block.hir_id)
             && !is_unsafe_from_proc_macro(cx, block.span)
             && !block_has_safety_comment(cx, block.span)
-            && !block_parents_have_safety_comment(cx, block.hir_id)
+            && !block_parents_have_safety_comment(self.accept_comment_above_statement, cx, block.hir_id)
         {
             let source_map = cx.tcx.sess.source_map();
             let span = if source_map.is_multiline(block.span) {
@@ -313,10 +326,31 @@ fn is_unsafe_from_proc_macro(cx: &LateContext<'_>, span: Span) -> bool {
 
 // Checks if any parent {expression, statement, block, local, const, static}
 // has a safety comment
-fn block_parents_have_safety_comment(cx: &LateContext<'_>, id: hir::HirId) -> bool {
+fn block_parents_have_safety_comment(
+    accept_comment_above_statement: bool,
+    cx: &LateContext<'_>,
+    id: hir::HirId,
+) -> bool {
     if let Some(node) = get_parent_node(cx.tcx, id) {
         return match node {
-            Node::Expr(expr) => !is_branchy(expr) && span_in_body_has_safety_comment(cx, expr.span),
+            Node::Expr(expr) => {
+                if let Some(
+                    Node::Local(hir::Local { span, .. })
+                    | Node::Item(hir::Item {
+                        kind: hir::ItemKind::Const(..) | ItemKind::Static(..),
+                        span,
+                        ..
+                    }),
+                ) = get_parent_node(cx.tcx, expr.hir_id)
+                {
+                    // if unsafe block is part of a let/const/static statement,
+                    // and accept_comment_above_statement is set to true
+                    // we accept the safety comment in the line the precedes this statement.
+                    accept_comment_above_statement && span_in_body_has_safety_comment(cx, *span)
+                } else {
+                    !is_branchy(expr) && span_in_body_has_safety_comment(cx, expr.span)
+                }
+            },
             Node::Stmt(hir::Stmt {
                 kind:
                     hir::StmtKind::Local(hir::Local { span, .. })

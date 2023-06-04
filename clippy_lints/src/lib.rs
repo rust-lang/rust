@@ -929,7 +929,12 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
             enable_raw_pointer_heuristic_for_send,
         ))
     });
-    store.register_late_pass(move |_| Box::new(undocumented_unsafe_blocks::UndocumentedUnsafeBlocks));
+    let accept_comment_above_statement = conf.accept_comment_above_statement;
+    store.register_late_pass(move |_| {
+        Box::new(undocumented_unsafe_blocks::UndocumentedUnsafeBlocks::new(
+            accept_comment_above_statement,
+        ))
+    });
     let allow_mixed_uninlined = conf.allow_mixed_uninlined_format_args;
     store.register_late_pass(move |_| Box::new(format_args::FormatArgs::new(msrv(), allow_mixed_uninlined)));
     store.register_late_pass(|_| Box::new(trailing_empty_array::TrailingEmptyArray));

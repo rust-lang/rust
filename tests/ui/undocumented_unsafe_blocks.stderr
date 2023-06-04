@@ -318,5 +318,13 @@ LL |             let bar = unsafe {};
    |
    = help: consider adding a safety comment on the preceding line
 
-error: aborting due to 36 previous errors
+error: unsafe block missing a safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:519:9
+   |
+LL |         unsafe { a_function_with_a_very_long_name_to_break_the_line() };
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: aborting due to 37 previous errors
 

@@ -509,4 +509,14 @@ fn issue_9142() {
     };
 }
 
+pub unsafe fn a_function_with_a_very_long_name_to_break_the_line() -> u32 {
+    1
+}
+
+fn issue_10832() {
+    // Safety: A safety comment. But it will warn anyways
+    let _some_variable_with_a_very_long_name_to_break_the_line =
+        unsafe { a_function_with_a_very_long_name_to_break_the_line() };
+}
+
 fn main() {}

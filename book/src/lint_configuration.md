@@ -695,3 +695,13 @@ Minimum chars an ident can have, anything below or equal to this will be linted.
 * [`min_ident_chars`](https://rust-lang.github.io/rust-clippy/master/index.html#min_ident_chars)
 
 
+## `accept-comment-above-statement`
+Whether to accept a safety comment to be placed above the statement containing the `usafe` block
+
+**Default Value:** `false` (`bool`)
+
+---
+**Affected lints:**
+* [`undocumented_unsafe_blocks`](https://rust-lang.github.io/rust-clippy/master/index.html#undocumented_unsafe_blocks)
+
+

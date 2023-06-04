@@ -538,6 +538,10 @@ define_Conf! {
     ///
     /// Minimum chars an ident can have, anything below or equal to this will be linted.
     (min_ident_chars_threshold: u64 = 1),
+    /// Lint: UNDOCUMENTED_UNSAFE_BLOCKS.
+    ///
+    /// Whether to accept a safety comment to be placed above the statement containing the `usafe` block
+    (accept_comment_above_statement: bool = false),
 }
 
 /// Search for the configuration file.
