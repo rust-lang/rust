@@ -1,9 +1,9 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::{self, Command};
+use std::process::Command;
 
 use super::path::{Dirs, RelPath};
-use super::rustc_info::{get_file_name, get_rustc_version};
+use super::rustc_info::get_file_name;
 use super::utils::{
     maybe_incremental, remove_dir_if_exists, spawn_and_wait, try_hard_link, CargoProject, Compiler,
 };
@@ -158,7 +158,6 @@ impl SysrootTarget {
 }
 
 pub(crate) static STDLIB_SRC: RelPath = RelPath::BUILD.join("stdlib");
-pub(crate) static SYSROOT_RUSTC_VERSION: RelPath = STDLIB_SRC.join("rustc_version");
 pub(crate) static STANDARD_LIBRARY: CargoProject =
     CargoProject::new(&STDLIB_SRC.join("library/sysroot"), "stdlib_target");
 pub(crate) static RTSTARTUP_SYSROOT: RelPath = RelPath::BUILD.join("rtstartup");
@@ -222,24 +221,6 @@ fn build_clif_sysroot_for_triple(
     mut compiler: Compiler,
     cg_clif_dylib_path: &CodegenBackend,
 ) -> SysrootTarget {
-    match fs::read_to_string(SYSROOT_RUSTC_VERSION.to_path(dirs)) {
-        Err(e) => {
-            eprintln!("Failed to get rustc version for patched sysroot source: {}", e);
-            eprintln!("Hint: Try `./y.sh prepare` to patch the sysroot source");
-            process::exit(1);
-        }
-        Ok(source_version) => {
-            let rustc_version = get_rustc_version(&compiler.rustc);
-            if source_version != rustc_version {
-                eprintln!("The patched sysroot source is outdated");
-                eprintln!("Source version: {}", source_version.trim());
-                eprintln!("Rustc version:  {}", rustc_version.trim());
-                eprintln!("Hint: Try `./y.sh prepare` to update the patched sysroot source");
-                process::exit(1);
-            }
-        }
-    }
-
     let mut target_libs = SysrootTarget { triple: compiler.triple.clone(), libs: vec![] };
 
     if let Some(rtstartup_target_libs) = build_rtstartup(dirs, &compiler) {
@@ -302,6 +283,10 @@ fn build_clif_sysroot_for_triple(
 }
 
 fn build_rtstartup(dirs: &Dirs, compiler: &Compiler) -> Option<SysrootTarget> {
+    if !super::config::get_bool("keep_sysroot") {
+        super::prepare::prepare_stdlib(dirs, &compiler.rustc);
+    }
+
     if !compiler.triple.ends_with("windows-gnu") {
         return None;
     }

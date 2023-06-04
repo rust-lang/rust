@@ -3,24 +3,21 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use super::build_sysroot::{STDLIB_SRC, SYSROOT_RUSTC_VERSION};
+use super::build_sysroot::STDLIB_SRC;
 use super::path::{Dirs, RelPath};
-use super::rustc_info::{get_default_sysroot, get_rustc_version};
+use super::rustc_info::get_default_sysroot;
 use super::utils::{
     copy_dir_recursively, git_command, remove_dir_if_exists, retry_spawn_and_wait, spawn_and_wait,
 };
 
-pub(crate) fn prepare(dirs: &Dirs, rustc: &Path) {
+pub(crate) fn prepare(dirs: &Dirs) {
     RelPath::DOWNLOAD.ensure_exists(dirs);
     super::tests::RAND_REPO.fetch(dirs);
     super::tests::REGEX_REPO.fetch(dirs);
     super::tests::PORTABLE_SIMD_REPO.fetch(dirs);
-
-    // FIXME do this on the fly?
-    prepare_stdlib(dirs, rustc);
 }
 
-fn prepare_stdlib(dirs: &Dirs, rustc: &Path) {
+pub(crate) fn prepare_stdlib(dirs: &Dirs, rustc: &Path) {
     let sysroot_src_orig = get_default_sysroot(rustc).join("lib/rustlib/src/rust");
     assert!(sysroot_src_orig.exists());
 
@@ -50,9 +47,6 @@ codegen-units = 10000
 "#,
     )
     .unwrap();
-
-    let rustc_version = get_rustc_version(rustc);
-    fs::write(SYSROOT_RUSTC_VERSION.to_path(dirs), &rustc_version).unwrap();
 }
 
 pub(crate) struct GitRepo {

@@ -126,6 +126,22 @@ fn main() {
         }
     }
 
+    let current_dir = std::env::current_dir().unwrap();
+    out_dir = current_dir.join(out_dir);
+
+    if command == Command::Prepare {
+        prepare::prepare(&path::Dirs {
+            source_dir: current_dir.clone(),
+            download_dir: download_dir
+                .map(|dir| current_dir.join(dir))
+                .unwrap_or_else(|| out_dir.join("download")),
+            build_dir: PathBuf::from("dummy_do_not_use"),
+            dist_dir: PathBuf::from("dummy_do_not_use"),
+            frozen,
+        });
+        process::exit(0);
+    }
+
     let rustup_toolchain_name = match (env::var("CARGO"), env::var("RUSTC"), env::var("RUSTDOC")) {
         (Ok(_), Ok(_), Ok(_)) => None,
         (Err(_), Err(_), Err(_)) => Some(rustc_info::get_toolchain_name()),
@@ -158,8 +174,6 @@ fn main() {
         .unwrap_or_else(|| bootstrap_host_compiler.triple.clone());
 
     // FIXME allow changing the location of these dirs using cli arguments
-    let current_dir = std::env::current_dir().unwrap();
-    out_dir = current_dir.join(out_dir);
     let dirs = path::Dirs {
         source_dir: current_dir.clone(),
         download_dir: download_dir
@@ -179,11 +193,6 @@ fn main() {
         env::set_var("CARGO_TARGET_DIR", &target);
         let _ = std::fs::remove_file(&target);
         std::fs::File::create(target).unwrap();
-    }
-
-    if command == Command::Prepare {
-        prepare::prepare(&dirs, &bootstrap_host_compiler.rustc);
-        process::exit(0);
     }
 
     env::set_var("RUSTC", "rustc_should_be_set_explicitly");
