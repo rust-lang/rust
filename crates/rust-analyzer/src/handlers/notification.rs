@@ -291,11 +291,15 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
             }
             Ok(())
         };
-        state.task_pool.handle.spawn_with_sender(stdx::thread::ThreadIntent::Worker, move |_| {
-            if let Err(e) = std::panic::catch_unwind(task) {
-                tracing::error!("flycheck task panicked: {e:?}")
-            }
-        });
+        state.task_pool.handle.spawn_with_sender(
+            stdx::thread::ThreadIntent::Worker,
+            "flycheck",
+            move |_| {
+                if let Err(e) = std::panic::catch_unwind(task) {
+                    tracing::error!("flycheck task panicked: {e:?}")
+                }
+            },
+        );
         true
     } else {
         false
