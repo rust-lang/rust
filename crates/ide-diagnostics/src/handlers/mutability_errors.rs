@@ -621,6 +621,19 @@ fn f((x, y): (i32, i32)) {
     }
 
     #[test]
+    fn no_diagnostics_in_case_of_multiple_bounds() {
+        check_diagnostics(
+            r#"
+fn f() {
+    let (b, a, b) = (2, 3, 5);
+    a = 8;
+  //^^^^^ 💡 error: cannot mutate immutable variable `a`
+}
+"#,
+        );
+    }
+
+    #[test]
     fn for_loop() {
         check_diagnostics(
             r#"

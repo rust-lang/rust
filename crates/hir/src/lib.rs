@@ -1643,7 +1643,11 @@ impl DefWithBody {
                     )
                 }
                 let mol = &borrowck_result.mutability_of_locals;
-                for (binding_id, _) in hir_body.bindings.iter() {
+                for (binding_id, binding_data) in hir_body.bindings.iter() {
+                    if binding_data.problems.is_some() {
+                        // We should report specific diagnostics for these problems, not `need-mut` and `unused-mut`.
+                        continue;
+                    }
                     let Some(&local) = mir_body.binding_locals.get(binding_id) else {
                         continue;
                     };
