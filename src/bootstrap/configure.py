@@ -280,7 +280,7 @@ def parse_args(args):
 
     config = {}
 
-    set('build.configure-args', sys.argv[1:], config)
+    set('build.configure-args', args, config)
     apply_args(known_args, option_checking, config)
     return parse_example_config(known_args, config)
 
