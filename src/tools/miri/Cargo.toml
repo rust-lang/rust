@@ -24,10 +24,6 @@ log = "0.4"
 rand = "0.8"
 smallvec = "1.7"
 
-# A noop dependency that changes in the Rust repository, it's a bit of a hack.
-# See the `src/tools/rustc-workspace-hack/README.md` file in `rust-lang/rust`
-# for more information.
-rustc-workspace-hack = "1.0.0"
 measureme = "10.0.0"
 ctrlc = "3.2.5"
 
