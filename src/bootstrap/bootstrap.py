@@ -466,6 +466,8 @@ class FakeArgs:
         self.clean = False
         self.verbose = False
         self.json_output = False
+        self.color = 'auto'
+        self.warnings = 'default'
 
 class RustBuild(object):
     """Provide all the methods required to build Rust"""
@@ -477,9 +479,11 @@ class RustBuild(object):
 
         self.config_toml = config_toml
 
-        self.verbose = args.verbose != 0
         self.clean = args.clean
         self.json_output = args.json_output
+        self.verbose = args.verbose
+        self.color = args.color
+        self.warnings = args.warnings
 
         profile = self.get_toml('profile')
         if profile is not None:
@@ -490,6 +494,10 @@ class RustBuild(object):
             # specific key, so appending our defaults at the end allows the user to override them
             with open(include_path) as included_toml:
                 self.config_toml += os.linesep + included_toml.read()
+
+        config_verbose_count = self.get_toml('verbose', 'build')
+        if config_verbose_count is not None:
+            self.verbose = max(self.verbose, int(config_verbose_count))
 
         self.use_vendored_sources = self.get_toml('vendor', 'build') == 'true'
         self.use_locked_deps = self.get_toml('locked-deps', 'build') == 'true'
@@ -504,6 +512,7 @@ class RustBuild(object):
         self.download_url = os.getenv("RUSTUP_DIST_SERVER") or data["config"]["dist_server"]
 
         self.build = args.build or self.build_triple()
+
 
     def download_toolchain(self):
         """Fetch the build system for Rust, written in Rust
@@ -859,7 +868,7 @@ class RustBuild(object):
         """
         return os.path.join(self.build_dir, "bootstrap", "debug", "bootstrap")
 
-    def build_bootstrap(self, color, warnings, verbose_count):
+    def build_bootstrap(self):
         """Build bootstrap"""
         env = os.environ.copy()
         if "GITHUB_ACTIONS" in env:
@@ -867,14 +876,14 @@ class RustBuild(object):
         else:
             print("Building bootstrap", file=sys.stderr)
 
-        args = self.build_bootstrap_cmd(env, color, warnings, verbose_count)
+        args = self.build_bootstrap_cmd(env)
         # Run this from the source directory so cargo finds .cargo/config
         run(args, env=env, verbose=self.verbose, cwd=self.rust_root)
 
         if "GITHUB_ACTIONS" in env:
             print("::endgroup::")
 
-    def build_bootstrap_cmd(self, env, color, warnings, verbose_count):
+    def build_bootstrap_cmd(self, env):
         """For tests."""
         build_dir = os.path.join(self.build_dir, "bootstrap")
         if self.clean and os.path.exists(build_dir):
@@ -928,10 +937,10 @@ class RustBuild(object):
         if target_linker is not None:
             env["RUSTFLAGS"] += " -C linker=" + target_linker
         env["RUSTFLAGS"] += " -Wrust_2018_idioms -Wunused_lifetimes"
-        if warnings == "default":
+        if self.warnings == "default":
             deny_warnings = self.get_toml("deny-warnings", "rust") != "false"
         else:
-            deny_warnings = warnings == "deny"
+            deny_warnings = self.warnings == "deny"
         if deny_warnings:
             env["RUSTFLAGS"] += " -Dwarnings"
 
@@ -942,7 +951,7 @@ class RustBuild(object):
                 self.cargo()))
         args = [self.cargo(), "build", "--manifest-path",
                 os.path.join(self.rust_root, "src/bootstrap/Cargo.toml")]
-        args.extend("--verbose" for _ in range(verbose_count))
+        args.extend("--verbose" for _ in range(self.verbose))
         if self.use_locked_deps:
             args.append("--locked")
         if self.use_vendored_sources:
@@ -952,9 +961,9 @@ class RustBuild(object):
             args.append("build-metrics")
         if self.json_output:
             args.append("--message-format=json")
-        if color == "always":
+        if self.color == "always":
             args.append("--color=always")
-        elif color == "never":
+        elif self.color == "never":
             args.append("--color=never")
         try:
             args += env["CARGOFLAGS"].split()
@@ -1049,18 +1058,13 @@ def bootstrap(args):
     build = RustBuild(config_toml, args)
     build.check_vendored_status()
 
-    verbose_count = args.verbose
-    config_verbose_count = build.get_toml('verbose', 'build')
-    if config_verbose_count is not None:
-        verbose_count = max(args.verbose, int(config_verbose_count))
-
     if not os.path.exists(build.build_dir):
         os.makedirs(build.build_dir)
 
     # Fetch/build the bootstrap
     build.download_toolchain()
     sys.stdout.flush()
-    build.build_bootstrap(args.color, args.warnings, verbose_count)
+    build.build_bootstrap()
     sys.stdout.flush()
 
     # Run the bootstrap

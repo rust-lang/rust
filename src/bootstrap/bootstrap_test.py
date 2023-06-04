@@ -15,14 +15,13 @@ from shutil import rmtree
 import bootstrap
 import configure
 
-def serialize_and_parse(args):
+def serialize_and_parse(configure_args, bootstrap_args=bootstrap.FakeArgs()):
     from io import StringIO
 
-    section_order, sections, targets = configure.parse_args(args)
+    section_order, sections, targets = configure.parse_args(configure_args)
     buffer = StringIO()
     configure.write_config_toml(buffer, section_order, targets, sections)
-    build = bootstrap.RustBuild()
-    build.config_toml = buffer.getvalue()
+    build = bootstrap.RustBuild(config_toml=buffer.getvalue(), args=bootstrap_args)
 
     try:
         import tomllib
@@ -130,10 +129,10 @@ class BuildBootstrap(unittest.TestCase):
         env = env.copy()
         env["PATH"] = os.environ["PATH"]
 
-        build = serialize_and_parse(configure_args)
-        build.build_dir = os.environ["BUILD_DIR"]
         parsed = bootstrap.parse_args(args)
-        return build.build_bootstrap_cmd(env, parsed.color, parsed.warnings, parsed.verbose), env
+        build = serialize_and_parse(configure_args, parsed)
+        build.build_dir = os.environ["BUILD_DIR"]
+        return build.build_bootstrap_cmd(env), env
 
     def test_cargoflags(self):
         args, _ = self.build_args(env={"CARGOFLAGS": "--timings"})
