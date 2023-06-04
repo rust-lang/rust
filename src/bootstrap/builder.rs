@@ -995,7 +995,7 @@ impl<'a> Builder<'a> {
     }
 
     pub fn sysroot(&self, compiler: Compiler) -> Interned<PathBuf> {
-        self.ensure(compile::Sysroot { compiler })
+        self.ensure(compile::Sysroot::new(compiler))
     }
 
     /// Returns the libdir where the standard library and other artifacts are
@@ -1786,7 +1786,10 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_TLS_MODEL_INITIAL_EXEC", "1");
         }
 
-        if self.config.incremental {
+        // Ignore incremental modes except for stage0, since we're
+        // not guaranteeing correctness across builds if the compiler
+        // is changing under your feet.
+        if self.config.incremental && compiler.stage == 0 {
             cargo.env("CARGO_INCREMENTAL", "1");
         } else {
             // Don't rely on any default setting for incr. comp. in Cargo
