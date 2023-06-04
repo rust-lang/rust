@@ -772,7 +772,6 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
             // mutation.
             | NonMutatingUse(NonMutatingUseContext::SharedBorrow)
             | NonMutatingUse(NonMutatingUseContext::ShallowBorrow)
-            | NonMutatingUse(NonMutatingUseContext::UniqueBorrow)
             | NonMutatingUse(NonMutatingUseContext::AddressOf)
             | MutatingUse(MutatingUseContext::Borrow)
             | MutatingUse(MutatingUseContext::AddressOf) => {
