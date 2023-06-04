@@ -244,6 +244,8 @@ fn link_env_remove(arch: Arch, os: &'static str) -> StaticCow<[StaticCow<str>]> 
                 || sdkroot.contains("iPhoneSimulator.platform")
                 || sdkroot.contains("AppleTVOS.platform")
                 || sdkroot.contains("AppleTVSimulator.platform")
+                || sdkroot.contains("WatchOS.platform")
+                || sdkroot.contains("WatchSimulator.platform")
             {
                 env_remove.push("SDKROOT".into())
             }
@@ -283,16 +285,6 @@ pub fn ios_llvm_target(arch: Arch) -> String {
     format!("{}-apple-ios{}.{}.0", arch.target_name(), major, minor)
 }
 
-pub fn tvos_sim_llvm_target(arch: Arch) -> String {
-    let (major, minor) = tvos_deployment_target();
-    format!("{}-apple-tvos{}.{}.0-simulator", arch.target_name(), major, minor)
-}
-
-pub fn tvos_llvm_target(arch: Arch) -> String {
-    let (major, minor) = tvos_deployment_target();
-    format!("{}-apple-tvos{}.{}.0", arch.target_name(), major, minor)
-}
-
 fn ios_lld_platform_version() -> String {
     let (major, minor) = ios_deployment_target();
     format!("{major}.{minor}")
@@ -311,6 +303,16 @@ fn tvos_deployment_target() -> (u32, u32) {
 fn tvos_lld_platform_version() -> String {
     let (major, minor) = tvos_deployment_target();
     format!("{major}.{minor}")
+}
+
+pub fn tvos_llvm_target(arch: Arch) -> String {
+    let (major, minor) = tvos_deployment_target();
+    format!("{}-apple-tvos{}.{}.0", arch.target_name(), major, minor)
+}
+
+pub fn tvos_sim_llvm_target(arch: Arch) -> String {
+    let (major, minor) = tvos_deployment_target();
+    format!("{}-apple-tvos{}.{}.0-simulator", arch.target_name(), major, minor)
 }
 
 fn watchos_deployment_target() -> (u32, u32) {
