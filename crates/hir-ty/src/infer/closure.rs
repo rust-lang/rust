@@ -5,7 +5,7 @@ use std::{cmp, collections::HashMap, convert::Infallible, mem};
 use chalk_ir::{
     cast::Cast,
     fold::{FallibleTypeFolder, TypeFoldable},
-    AliasEq, AliasTy, BoundVar, ConstData, DebruijnIndex, FnSubst, Mutability, TyKind, WhereClause,
+    AliasEq, AliasTy, BoundVar, DebruijnIndex, FnSubst, Mutability, TyKind, WhereClause,
 };
 use hir_def::{
     data::adt::VariantData,
@@ -26,8 +26,8 @@ use crate::{
     static_lifetime, to_chalk_trait_id,
     traits::FnTrait,
     utils::{self, generics, Generics},
-    Adjust, Adjustment, Binders, BindingMode, ChalkTraitId, ClosureId, ConstValue, DynTy,
-    FnPointer, FnSig, Interner, Substitution, Ty, TyExt,
+    Adjust, Adjustment, Binders, BindingMode, ChalkTraitId, ClosureId, DynTy, FnPointer, FnSig,
+    Interner, Substitution, Ty, TyExt,
 };
 
 use super::{Expectation, InferenceContext};
@@ -236,6 +236,24 @@ pub(crate) struct CapturedItemWithoutTy {
 
 impl CapturedItemWithoutTy {
     fn with_ty(self, ctx: &mut InferenceContext<'_>) -> CapturedItem {
+        let ty = self.place.ty(ctx).clone();
+        let ty = match &self.kind {
+            CaptureKind::ByValue => ty,
+            CaptureKind::ByRef(bk) => {
+                let m = match bk {
+                    BorrowKind::Mut { .. } => Mutability::Mut,
+                    _ => Mutability::Not,
+                };
+                TyKind::Ref(m, static_lifetime(), ty).intern(Interner)
+            }
+        };
+        return CapturedItem {
+            place: self.place,
+            kind: self.kind,
+            span: self.span,
+            ty: replace_placeholder_with_binder(ctx.db, ctx.owner, ty),
+        };
+
         fn replace_placeholder_with_binder(
             db: &dyn HirDatabase,
             owner: DefWithBodyId,
@@ -266,55 +284,27 @@ impl CapturedItemWithoutTy {
                     let Some(idx) = self.generics.param_idx(x) else {
                         return Err(());
                     };
-                    Ok(ConstData {
-                        ty,
-                        value: ConstValue::BoundVar(BoundVar::new(outer_binder, idx)),
-                    }
-                    .intern(Interner))
+                    Ok(BoundVar::new(outer_binder, idx).to_const(Interner, ty))
                 }
 
                 fn try_fold_free_placeholder_ty(
                     &mut self,
                     idx: chalk_ir::PlaceholderIndex,
-                    _outer_binder: DebruijnIndex,
+                    outer_binder: DebruijnIndex,
                 ) -> std::result::Result<Ty, Self::Error> {
                     let x = from_placeholder_idx(self.db, idx);
                     let Some(idx) = self.generics.param_idx(x) else {
                         return Err(());
                     };
-                    Ok(TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, idx))
-                        .intern(Interner))
+                    Ok(BoundVar::new(outer_binder, idx).to_ty(Interner))
                 }
             }
-            let g_def = match owner {
-                DefWithBodyId::FunctionId(f) => Some(f.into()),
-                DefWithBodyId::StaticId(_) => None,
-                DefWithBodyId::ConstId(f) => Some(f.into()),
-                DefWithBodyId::VariantId(f) => Some(f.into()),
-            };
-            let Some(generics) = g_def.map(|g_def| generics(db.upcast(), g_def)) else {
+            let Some(generic_def) = owner.as_generic_def_id() else {
                 return Binders::empty(Interner, ty);
             };
-            let filler = &mut Filler { db, generics };
+            let filler = &mut Filler { db, generics: generics(db.upcast(), generic_def) };
             let result = ty.clone().try_fold_with(filler, DebruijnIndex::INNERMOST).unwrap_or(ty);
             make_binders(db, &filler.generics, result)
-        }
-        let ty = self.place.ty(ctx).clone();
-        let ty = match &self.kind {
-            CaptureKind::ByValue => ty,
-            CaptureKind::ByRef(bk) => {
-                let m = match bk {
-                    BorrowKind::Mut { .. } => Mutability::Mut,
-                    _ => Mutability::Not,
-                };
-                TyKind::Ref(m, static_lifetime(), ty).intern(Interner)
-            }
-        };
-        CapturedItem {
-            place: self.place,
-            kind: self.kind,
-            span: self.span,
-            ty: replace_placeholder_with_binder(ctx.db, ctx.owner, ty),
         }
     }
 }

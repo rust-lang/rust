@@ -640,3 +640,37 @@ fn main() {
         "#,
     );
 }
+
+#[test]
+fn regression_14966() {
+    check_pass(
+        r#"
+//- minicore: fn, copy, coerce_unsized
+trait A<T> {
+    fn a(&self) {}
+}
+impl A<()> for () {}
+
+struct B;
+impl B {
+    pub fn b<T>(s: &dyn A<T>) -> Self {
+        B
+    }
+}
+struct C;
+impl C {
+    fn c<T>(a: &dyn A<T>) -> Self {
+        let mut c = C;
+        let b = B::b(a);
+        c.d(|| a.a());
+        c
+    }
+    fn d(&mut self, f: impl FnOnce()) {}
+}
+
+fn main() {
+    C::c(&());
+}
+"#,
+    );
+}
