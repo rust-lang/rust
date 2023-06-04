@@ -343,7 +343,7 @@ impl<K: DepKind> DepGraphData<K> {
         task: fn(Ctxt, A) -> R,
         hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
     ) -> (R, DepNodeIndex) {
-        self.assert_nonexistent_node(&key, || {
+        self.assert_nonexistent_node(key, || {
             format!(
                 "forcing query with already existing `DepNode`\n\
             - query-key: {arg:?}\n\
@@ -353,7 +353,7 @@ impl<K: DepKind> DepGraphData<K> {
 
         let with_deps = |task_deps| K::with_deps(task_deps, || task(cx, arg));
         let (result, edges) = if cx.dep_context().is_eval_always(key.kind) {
-            (with_deps(TaskDepsRef::EvalAlways), smallvec![])
+            (with_deps(TaskDepsRef::EvalAlways), smallvec![DepNodeIndex::FOREVER_RED_NODE])
         } else {
             let task_deps = Lock::new(TaskDeps {
                 #[cfg(debug_assertions)]
@@ -643,12 +643,12 @@ impl<K: DepKind> DepGraph<K> {
 impl<K: DepKind> DepGraphData<K> {
     fn assert_nonexistent_node<S: std::fmt::Display>(
         &self,
-        _dep_node: &DepNode<K>,
+        _dep_node: DepNode<K>,
         _msg: impl FnOnce() -> S,
     ) {
         #[cfg(debug_assertions)]
         if let Some(seen_dep_nodes) = &self.current.seen_dep_nodes {
-            let seen = seen_dep_nodes.lock().contains(_dep_node);
+            let seen = seen_dep_nodes.lock().contains(&_dep_node);
             assert!(!seen, "{}", _msg());
         }
     }
@@ -760,7 +760,7 @@ impl<K: DepKind> DepGraphData<K> {
                 // in the previous compilation session too, so we can try to
                 // mark it as green by recursively marking all of its
                 // dependencies green.
-                self.try_mark_previous_green(qcx, prev_index, &dep_node, None)
+                self.try_mark_previous_green(qcx, prev_index, None)
                     .map(|dep_node_index| (prev_index, dep_node_index))
             }
         }
@@ -771,18 +771,17 @@ impl<K: DepKind> DepGraphData<K> {
         &self,
         qcx: Qcx,
         parent_dep_node_index: SerializedDepNodeIndex,
-        dep_node: &DepNode<K>,
         frame: Option<&MarkFrame<'_>>,
     ) -> Option<()> {
         let dep_dep_node_color = self.colors.get(parent_dep_node_index);
-        let dep_dep_node = &self.previous.index_to_node(parent_dep_node_index);
+        let dep_dep_node = || self.previous.index_to_node(parent_dep_node_index);
 
         match dep_dep_node_color {
             Some(DepNodeColor::Green(_)) => {
                 // This dependency has been marked as green before, we are
                 // still fine and can continue with checking the other
                 // dependencies.
-                debug!("dependency {dep_dep_node:?} was immediately green");
+                debug!("dependency {:?} was immediately green", dep_dep_node());
                 return Some(());
             }
             Some(DepNodeColor::Red) => {
@@ -790,32 +789,25 @@ impl<K: DepKind> DepGraphData<K> {
                 // compared to the previous compilation session. We cannot
                 // mark the DepNode as green and also don't need to bother
                 // with checking any of the other dependencies.
-                debug!("dependency {dep_dep_node:?} was immediately red");
+                debug!("dependency {:?} was immediately red", dep_dep_node());
                 return None;
             }
             None => {}
         }
 
-        // We don't know the state of this dependency. If it isn't
-        // an eval_always node, let's try to mark it green recursively.
-        if !qcx.dep_context().is_eval_always(dep_dep_node.kind) {
-            debug!(
-                "state of dependency {:?} ({}) is unknown, trying to mark it green",
-                dep_dep_node, dep_dep_node.hash,
-            );
+        // We don't know the state of this dependency. Let's try to mark it green recursively.
+        debug!("state of dependency {:?} is unknown, trying to mark it green", dep_dep_node());
+        let node_index = self.try_mark_previous_green(qcx, parent_dep_node_index, frame);
 
-            let node_index =
-                self.try_mark_previous_green(qcx, parent_dep_node_index, dep_dep_node, frame);
-
-            if node_index.is_some() {
-                debug!("managed to MARK dependency {dep_dep_node:?} as green",);
-                return Some(());
-            }
+        if node_index.is_some() {
+            debug!("managed to MARK dependency {:?} as green", dep_dep_node());
+            return Some(());
         }
 
         // We failed to mark it green, so we try to force the query.
+        let dep_dep_node = dep_dep_node();
         debug!("trying to force dependency {dep_dep_node:?}");
-        if !qcx.dep_context().try_force_from_dep_node(*dep_dep_node, frame) {
+        if !qcx.dep_context().try_force_from_dep_node(dep_dep_node, frame) {
             // The DepNode could not be forced.
             debug!("dependency {dep_dep_node:?} could not be forced");
             return None;
@@ -859,27 +851,21 @@ impl<K: DepKind> DepGraphData<K> {
         &self,
         qcx: Qcx,
         prev_dep_node_index: SerializedDepNodeIndex,
-        dep_node: &DepNode<K>,
         frame: Option<&MarkFrame<'_>>,
     ) -> Option<DepNodeIndex> {
         let frame = MarkFrame { index: prev_dep_node_index, parent: frame };
+        let dep_node = || self.previous.index_to_node(prev_dep_node_index);
 
         #[cfg(not(parallel_compiler))]
-        self.assert_nonexistent_node(dep_node, || {
-            format!("trying to mark existing {dep_node:?} as green")
+        self.assert_nonexistent_node(dep_node(), || {
+            format!("trying to mark existing {:?} as green", dep_node())
         });
         #[cfg(not(parallel_compiler))]
         debug_assert!(self.colors.get(prev_dep_node_index).is_none());
 
-        // We never try to mark eval_always nodes as green
-        debug_assert!(!qcx.dep_context().is_eval_always(dep_node.kind));
-
-        debug_assert_eq!(self.previous.index_to_node(prev_dep_node_index), *dep_node);
-
         let prev_deps = self.previous.edge_targets_from(prev_dep_node_index);
-
         for &dep_dep_node_index in prev_deps {
-            self.try_mark_parent_green(qcx, dep_dep_node_index, dep_node, Some(&frame))?;
+            self.try_mark_parent_green(qcx, dep_dep_node_index, Some(&frame))?;
         }
 
         // If we got here without hitting a `return` that means that all
@@ -905,8 +891,8 @@ impl<K: DepKind> DepGraphData<K> {
         #[cfg(not(parallel_compiler))]
         debug_assert!(
             self.colors.get(prev_dep_node_index).is_none(),
-            "DepGraph::try_mark_previous_green() - Duplicate DepNodeColor \
-                      insertion for {dep_node:?}"
+            "DepGraph::try_mark_previous_green() - Duplicate DepNodeColor insertion for {:?}",
+            dep_node()
         );
 
         if !side_effects.is_empty() {
@@ -919,7 +905,7 @@ impl<K: DepKind> DepGraphData<K> {
         // Multiple threads can all write the same color here
         self.colors.insert(prev_dep_node_index, DepNodeColor::Green(dep_node_index));
 
-        debug!("successfully marked {dep_node:?} as green");
+        debug!("successfully marked {:?} as green", dep_node());
         Some(dep_node_index)
     }
 
@@ -966,7 +952,7 @@ impl<K: DepKind> DepGraph<K> {
 
     pub fn assert_nonexistent_node<S: std::fmt::Display>(
         &self,
-        dep_node: &DepNode<K>,
+        dep_node: DepNode<K>,
         msg: impl FnOnce() -> S,
     ) {
         if cfg!(debug_assertions)
