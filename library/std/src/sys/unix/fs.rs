@@ -362,7 +362,7 @@ pub struct FilePermissions {
 pub struct FileTimes {
     accessed: Option<SystemTime>,
     modified: Option<SystemTime>,
-    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
+    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos", target_os = "tvos"))]
     created: Option<SystemTime>,
 }
 
@@ -615,7 +615,7 @@ impl FileTimes {
         self.modified = Some(t);
     }
 
-    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
+    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos", target_os = "tvos"))]
     pub fn set_created(&mut self, t: SystemTime) {
         self.created = Some(t);
     }
@@ -1272,7 +1272,7 @@ impl File {
                     io::ErrorKind::Unsupported,
                     "setting file times not supported",
                 ))
-            } else if #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))] {
+            } else if #[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))] {
                 let mut buf = [mem::MaybeUninit::<libc::timespec>::uninit(); 3];
                 let mut num_times = 0;
                 let mut attrlist: libc::attrlist = unsafe { mem::zeroed() };
