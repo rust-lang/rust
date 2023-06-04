@@ -777,7 +777,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Check for temporaries returned from function calls in a match scrutinee that have the
+    /// Checks for temporaries returned from function calls in a match scrutinee that have the
     /// `clippy::has_significant_drop` attribute.
     ///
     /// ### Why is this bad?
