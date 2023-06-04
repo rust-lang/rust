@@ -995,7 +995,7 @@ impl<'a> Builder<'a> {
     }
 
     pub fn sysroot(&self, compiler: Compiler) -> Interned<PathBuf> {
-        self.ensure(compile::Sysroot { compiler })
+        self.ensure(compile::Sysroot::new(compiler))
     }
 
     /// Returns the libdir where the standard library and other artifacts are
