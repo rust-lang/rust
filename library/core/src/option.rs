@@ -1402,6 +1402,7 @@ impl<T> Option<T> {
     /// let item_2_0 = arr_2d.get(2).and_then(|row| row.get(0));
     /// assert_eq!(item_2_0, None);
     /// ```
+    #[doc(alias = "flatmap")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn and_then<U, F>(self, f: F) -> Option<U>
