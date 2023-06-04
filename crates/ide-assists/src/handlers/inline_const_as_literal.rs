@@ -66,8 +66,6 @@ fn eval_and_inline_recursively(
         (true, ast::Expr::BlockExpr(block)) if block.is_standalone() => {
             eval_and_inline_recursively(ctx, konst, &block.tail_expr()?, fuel - 1)
         }
-        (_, ast::Expr::Literal(lit)) => Some(lit.to_string()),
-
         // NOTE: For some expressions, `render_eval` will crash.
         // e.g. `{ &[&[&[&[&[&[10, 20, 30]]]]]] }` will fail for `render_eval`.
         //
@@ -85,6 +83,7 @@ fn eval_and_inline_recursively(
         // > const A: &[u32] = { &[10] };     OK because we inline ref expression.
         // > const B: &[u32] = { { &[10] } }; ERROR because we evaluate block.
         (_, ast::Expr::BlockExpr(_))
+        | (_, ast::Expr::Literal(_))
         | (_, ast::Expr::RefExpr(_))
         | (_, ast::Expr::ArrayExpr(_))
         | (_, ast::Expr::TupleExpr(_))
@@ -130,7 +129,7 @@ fn validate_type_recursively(
             validate_type_recursively(ctx, ty.as_slice().as_ref(), false, fuel - 1)
         }
         (_, Some(ty)) => match ty.as_builtin() {
-            // `const A: str` is not correct, `const A: &builtin` is always correct.
+            // `const A: str` is not correct, but `const A: &builtin` is.
             Some(builtin) if refed || (!refed && !builtin.is_str()) => Some(()),
             _ => None,
         },
@@ -438,20 +437,35 @@ mod tests {
     }
 
     // FIXME: These won't work with `konst.render_eval(ctx.sema.db)`
-    // #[test]
-    // fn inline_const_as_literal_block_slice() {
-    //     check_assist(
-    //         inline_const_as_literal,
-    //         r#"
-    //         const ABC: &[&[&[&[&[&[i32]]]]]] = { &[&[&[&[&[&[10, 20, 30]]]]]] };
-    //         fn a() { A$0BC }
-    //         "#,
-    //         r#"
-    //         const ABC: &[&[&[&[&[&[i32]]]]]] = { &[&[&[&[&[&[10, 20, 30]]]]]] };
-    //         fn a() { &[&[&[&[&[&[10, 20, 30]]]]]] }
-    //         "#,
-    //     );
-    // }
+    #[test]
+    fn inline_const_as_literal_block_slice() {
+        check_assist(
+            inline_const_as_literal,
+            r#"
+            const ABC: &[&[&[&[&[&[i32]]]]]] = { &[&[&[&[&[&[10, 20, 30]]]]]] };
+            fn a() { A$0BC }
+            "#,
+            r#"
+            const ABC: &[&[&[&[&[&[i32]]]]]] = { &[&[&[&[&[&[10, 20, 30]]]]]] };
+            fn a() { &[&[&[&[&[&[10, 20, 30]]]]]] }
+            "#,
+        );
+    }
+
+    #[test]
+    fn inline_const_as_literal_block_slice_single() {
+        check_assist(
+            inline_const_as_literal,
+            r#"
+            const ABC: [i32; 1] = { [10] };
+            fn a() { A$0BC }
+            "#,
+            r#"
+            const ABC: [i32; 1] = { [10] };
+            fn a() { [10] }
+            "#,
+        );
+    }
 
     // #[test]
     // fn inline_const_as_literal_block_array() {
