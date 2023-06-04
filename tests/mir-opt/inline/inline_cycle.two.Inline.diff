@@ -10,6 +10,14 @@
 +         debug f => _2;                   // in scope 1 at $DIR/inline_cycle.rs:54:22: 54:23
 +         let _3: ();                      // in scope 1 at $DIR/inline_cycle.rs:55:5: 55:8
 +         scope 2 (inlined <fn() {f} as FnOnce<()>>::call_once - shim(fn() {f})) { // at $DIR/inline_cycle.rs:55:5: 55:8
++             scope 3 (inlined f) {        // at $SRC_DIR/core/src/ops/function.rs:LL:COL
++                 scope 4 (inlined call::<fn() {f}>) { // at $DIR/inline_cycle.rs:60:5: 60:12
++                     debug f => f;        // in scope 4 at $DIR/inline_cycle.rs:54:22: 54:23
++                     let _5: ();          // in scope 4 at $DIR/inline_cycle.rs:55:5: 55:8
++                     scope 5 (inlined <fn() {f} as FnOnce<()>>::call_once - shim(fn() {f})) { // at $DIR/inline_cycle.rs:55:5: 55:8
++                     }
++                 }
++             }
 +         }
 +     }
   
@@ -27,10 +35,15 @@
 +         StorageLive(_3);                 // scope 0 at $DIR/inline_cycle.rs:+1:5: +1:12
 +         StorageLive(_4);                 // scope 1 at $DIR/inline_cycle.rs:55:5: 55:8
 +         _4 = const ();                   // scope 1 at $DIR/inline_cycle.rs:55:5: 55:8
-+         _3 = move _2() -> bb1;           // scope 2 at $SRC_DIR/core/src/ops/function.rs:LL:COL
++         StorageLive(_5);                 // scope 2 at $SRC_DIR/core/src/ops/function.rs:LL:COL
++         _5 = f() -> bb1;                 // scope 5 at $SRC_DIR/core/src/ops/function.rs:LL:COL
++                                          // mir::Constant
++                                          // + span: no-location
++                                          // + literal: Const { ty: fn() {f}, val: Value(<ZST>) }
       }
   
       bb1: {
++         StorageDead(_5);                 // scope 2 at $SRC_DIR/core/src/ops/function.rs:LL:COL
 +         StorageDead(_4);                 // scope 1 at $DIR/inline_cycle.rs:55:5: 55:8
 +         StorageDead(_3);                 // scope 0 at $DIR/inline_cycle.rs:+1:5: +1:12
 +         StorageDead(_2);                 // scope 0 at $DIR/inline_cycle.rs:+1:5: +1:12
