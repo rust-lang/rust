@@ -172,13 +172,12 @@ impl Command {
         crate::sys_common::process::wait_with_output(proc, pipes)
     }
 
-    // WatchOS and TVOS can theoretically spawn processes using `posix_spawn*`
-    // (although it just fails with a runtime error AFAICT, so we don't yet
-    // support it in `std`), but forbid use of `fork`/`exec*`. It's unclear the
-    // extent to which these is restricted, but the headers say
-    // `__WATCHOS_PROHIBITED __TVOS_PROHIBITED`, so we go out of our way to
-    // avoid containing any calls to them at all, to avoid linking against their
-    // symbols on those targets.
+    // WatchOS and TVOS headers mark the `fork`/`exec*` functions with
+    // `__WATCHOS_PROHIBITED __TVOS_PROHIBITED`, and indicate that the
+    // `posix_spawn*` functions should be used instead. It isn't entirely clear
+    // what `PROHIBITED` means here (e.g. if calls to these functions are
+    // allowed to exist in dead code), but it sounds bad, so we go out of our
+    // way to avoid that all-together.
     #[cfg(any(target_os = "tvos", target_os = "watchos"))]
     const ERR_APPLE_TV_WATCH_NO_FORK_EXEC: Error = io::const_io_error!(
         ErrorKind::Unsupported,
