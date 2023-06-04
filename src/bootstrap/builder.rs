@@ -703,8 +703,8 @@ impl<'a> Builder<'a> {
                 check::CargoMiri,
                 check::MiroptTestTools,
                 check::Rls,
-                check::RustAnalyzer,
                 check::Rustfmt,
+                check::RustAnalyzer,
                 check::Bootstrap
             ),
             Kind::Test => describe!(
