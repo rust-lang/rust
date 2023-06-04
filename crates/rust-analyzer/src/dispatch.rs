@@ -104,10 +104,13 @@ impl<'a> RequestDispatcher<'a> {
             None => return self,
         };
 
-        self.global_state.task_pool.handle.spawn(ThreadIntent::Worker, panic_context, {
+        self.global_state.task_pool.handle.spawn(ThreadIntent::Worker, {
             let world = self.global_state.snapshot();
             move || {
-                let result = panic::catch_unwind(move || f(world, params));
+                let result = panic::catch_unwind(move || {
+                    let _pctx = stdx::panic_context::enter(panic_context);
+                    f(world, params)
+                });
                 match thread_result_to_response::<R>(req.id.clone(), result) {
                     Ok(response) => Task::Response(response),
                     Err(_) => Task::Response(lsp_server::Response::new_err(
@@ -175,10 +178,13 @@ impl<'a> RequestDispatcher<'a> {
             None => return self,
         };
 
-        self.global_state.task_pool.handle.spawn(intent, panic_context, {
+        self.global_state.task_pool.handle.spawn(intent, {
             let world = self.global_state.snapshot();
             move || {
-                let result = panic::catch_unwind(move || f(world, params));
+                let result = panic::catch_unwind(move || {
+                    let _pctx = stdx::panic_context::enter(panic_context);
+                    f(world, params)
+                });
                 match thread_result_to_response::<R>(req.id.clone(), result) {
                     Ok(response) => Task::Response(response),
                     Err(_) => Task::Retry(req),

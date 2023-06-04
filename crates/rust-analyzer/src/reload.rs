@@ -185,7 +185,7 @@ impl GlobalState {
     pub(crate) fn fetch_workspaces(&mut self, cause: Cause) {
         tracing::info!(%cause, "will fetch workspaces");
 
-        self.task_pool.handle.spawn_with_sender(ThreadIntent::Worker, "fetch_workspaces", {
+        self.task_pool.handle.spawn_with_sender(ThreadIntent::Worker, {
             let linked_projects = self.config.linked_projects();
             let detached_files = self.config.detached_files().to_vec();
             let cargo_config = self.config.cargo();
@@ -260,25 +260,19 @@ impl GlobalState {
         tracing::info!(%cause, "will fetch build data");
         let workspaces = Arc::clone(&self.workspaces);
         let config = self.config.cargo();
-        self.task_pool.handle.spawn_with_sender(
-            ThreadIntent::Worker,
-            "fetch_build_data",
-            move |sender| {
-                sender.send(Task::FetchBuildData(BuildDataProgress::Begin)).unwrap();
+        self.task_pool.handle.spawn_with_sender(ThreadIntent::Worker, move |sender| {
+            sender.send(Task::FetchBuildData(BuildDataProgress::Begin)).unwrap();
 
-                let progress = {
-                    let sender = sender.clone();
-                    move |msg| {
-                        sender.send(Task::FetchBuildData(BuildDataProgress::Report(msg))).unwrap()
-                    }
-                };
-                let res = ProjectWorkspace::run_all_build_scripts(&workspaces, &config, &progress);
+            let progress = {
+                let sender = sender.clone();
+                move |msg| {
+                    sender.send(Task::FetchBuildData(BuildDataProgress::Report(msg))).unwrap()
+                }
+            };
+            let res = ProjectWorkspace::run_all_build_scripts(&workspaces, &config, &progress);
 
-                sender
-                    .send(Task::FetchBuildData(BuildDataProgress::End((workspaces, res))))
-                    .unwrap();
-            },
-        );
+            sender.send(Task::FetchBuildData(BuildDataProgress::End((workspaces, res)))).unwrap();
+        });
     }
 
     pub(crate) fn fetch_proc_macros(&mut self, cause: Cause, paths: Vec<ProcMacroPaths>) {
@@ -286,54 +280,50 @@ impl GlobalState {
         let dummy_replacements = self.config.dummy_replacements().clone();
         let proc_macro_clients = self.proc_macro_clients.clone();
 
-        self.task_pool.handle.spawn_with_sender(
-            ThreadIntent::Worker,
-            "fetch_proc_macros",
-            move |sender| {
-                sender.send(Task::LoadProcMacros(ProcMacroProgress::Begin)).unwrap();
+        self.task_pool.handle.spawn_with_sender(ThreadIntent::Worker, move |sender| {
+            sender.send(Task::LoadProcMacros(ProcMacroProgress::Begin)).unwrap();
 
-                let dummy_replacements = &dummy_replacements;
-                let progress = {
-                    let sender = sender.clone();
-                    &move |msg| {
-                        sender.send(Task::LoadProcMacros(ProcMacroProgress::Report(msg))).unwrap()
-                    }
-                };
-
-                let mut res = FxHashMap::default();
-                let chain = proc_macro_clients
-                    .iter()
-                    .map(|res| res.as_ref().map_err(|e| e.to_string()))
-                    .chain(iter::repeat_with(|| Err("Proc macros servers are not running".into())));
-                for (client, paths) in chain.zip(paths) {
-                    res.extend(paths.into_iter().map(move |(crate_id, res)| {
-                        (
-                            crate_id,
-                            res.map_or_else(
-                                |_| Err("proc macro crate is missing dylib".to_owned()),
-                                |(crate_name, path)| {
-                                    progress(path.display().to_string());
-                                    client.as_ref().map_err(Clone::clone).and_then(|client| {
-                                        load_proc_macro(
-                                            client,
-                                            &path,
-                                            crate_name
-                                                .as_deref()
-                                                .and_then(|crate_name| {
-                                                    dummy_replacements.get(crate_name).map(|v| &**v)
-                                                })
-                                                .unwrap_or_default(),
-                                        )
-                                    })
-                                },
-                            ),
-                        )
-                    }));
+            let dummy_replacements = &dummy_replacements;
+            let progress = {
+                let sender = sender.clone();
+                &move |msg| {
+                    sender.send(Task::LoadProcMacros(ProcMacroProgress::Report(msg))).unwrap()
                 }
+            };
 
-                sender.send(Task::LoadProcMacros(ProcMacroProgress::End(res))).unwrap();
-            },
-        );
+            let mut res = FxHashMap::default();
+            let chain = proc_macro_clients
+                .iter()
+                .map(|res| res.as_ref().map_err(|e| e.to_string()))
+                .chain(iter::repeat_with(|| Err("Proc macros servers are not running".into())));
+            for (client, paths) in chain.zip(paths) {
+                res.extend(paths.into_iter().map(move |(crate_id, res)| {
+                    (
+                        crate_id,
+                        res.map_or_else(
+                            |_| Err("proc macro crate is missing dylib".to_owned()),
+                            |(crate_name, path)| {
+                                progress(path.display().to_string());
+                                client.as_ref().map_err(Clone::clone).and_then(|client| {
+                                    load_proc_macro(
+                                        client,
+                                        &path,
+                                        crate_name
+                                            .as_deref()
+                                            .and_then(|crate_name| {
+                                                dummy_replacements.get(crate_name).map(|v| &**v)
+                                            })
+                                            .unwrap_or_default(),
+                                    )
+                                })
+                            },
+                        ),
+                    )
+                }));
+            }
+
+            sender.send(Task::LoadProcMacros(ProcMacroProgress::End(res))).unwrap();
+        });
     }
 
     pub(crate) fn set_proc_macros(&mut self, proc_macros: ProcMacros) {
