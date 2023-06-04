@@ -579,9 +579,31 @@ impl<'a> InferenceContext<'a> {
     // used this function for another workaround, mention it here. If you really need this function and believe that
     // there is no problem in it being `pub(crate)`, remove this comment.
     pub(crate) fn resolve_all(self) -> InferenceResult {
-        // NOTE: `InferenceResult::closure_info` is `resolve_completely()`'d during
-        // `InferenceContext::infer_closures()` (in `HirPlace::ty()` specifically).
         let InferenceContext { mut table, mut result, .. } = self;
+        // Destructure every single field so whenever new fields are added to `InferenceResult` we
+        // don't forget to handle them here.
+        let InferenceResult {
+            method_resolutions,
+            field_resolutions: _,
+            variant_resolutions: _,
+            assoc_resolutions,
+            diagnostics,
+            type_of_expr,
+            type_of_pat,
+            type_of_binding,
+            type_of_rpit,
+            type_of_for_iterator,
+            type_mismatches,
+            standard_types: _,
+            pat_adjustments,
+            binding_modes: _,
+            expr_adjustments,
+            // Types in `closure_info` have already been `resolve_completely()`'d during
+            // `InferenceContext::infer_closures()` (in `HirPlace::ty()` specifically), so no need
+            // to resolve them here.
+            closure_info: _,
+            mutated_bindings_in_closure: _,
+        } = &mut result;
 
         table.fallback_if_possible();
 
@@ -590,26 +612,26 @@ impl<'a> InferenceContext<'a> {
 
         // make sure diverging type variables are marked as such
         table.propagate_diverging_flag();
-        for ty in result.type_of_expr.values_mut() {
+        for ty in type_of_expr.values_mut() {
             *ty = table.resolve_completely(ty.clone());
         }
-        for ty in result.type_of_pat.values_mut() {
+        for ty in type_of_pat.values_mut() {
             *ty = table.resolve_completely(ty.clone());
         }
-        for ty in result.type_of_binding.values_mut() {
+        for ty in type_of_binding.values_mut() {
             *ty = table.resolve_completely(ty.clone());
         }
-        for ty in result.type_of_rpit.values_mut() {
+        for ty in type_of_rpit.values_mut() {
             *ty = table.resolve_completely(ty.clone());
         }
-        for ty in result.type_of_for_iterator.values_mut() {
+        for ty in type_of_for_iterator.values_mut() {
             *ty = table.resolve_completely(ty.clone());
         }
-        for mismatch in result.type_mismatches.values_mut() {
+        for mismatch in type_mismatches.values_mut() {
             mismatch.expected = table.resolve_completely(mismatch.expected.clone());
             mismatch.actual = table.resolve_completely(mismatch.actual.clone());
         }
-        result.diagnostics.retain_mut(|diagnostic| {
+        diagnostics.retain_mut(|diagnostic| {
             use InferenceDiagnostic::*;
             match diagnostic {
                 ExpectedFunction { found: ty, .. }
@@ -637,16 +659,16 @@ impl<'a> InferenceContext<'a> {
             }
             true
         });
-        for (_, subst) in result.method_resolutions.values_mut() {
+        for (_, subst) in method_resolutions.values_mut() {
             *subst = table.resolve_completely(subst.clone());
         }
-        for (_, subst) in result.assoc_resolutions.values_mut() {
+        for (_, subst) in assoc_resolutions.values_mut() {
             *subst = table.resolve_completely(subst.clone());
         }
-        for adjustment in result.expr_adjustments.values_mut().flatten() {
+        for adjustment in expr_adjustments.values_mut().flatten() {
             adjustment.target = table.resolve_completely(adjustment.target.clone());
         }
-        for adjustment in result.pat_adjustments.values_mut().flatten() {
+        for adjustment in pat_adjustments.values_mut().flatten() {
             *adjustment = table.resolve_completely(adjustment.clone());
         }
         result
