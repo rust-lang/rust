@@ -1,4 +1,6 @@
-"""Bootstrap tests"""
+"""Bootstrap tests
+
+Run these with `x test bootstrap`, or `python -m unittest bootstrap_test.py`."""
 
 from __future__ import absolute_import, division, print_function
 import os
@@ -120,15 +122,3 @@ class GenerateAndParseConfig(unittest.TestCase):
         build = self.serialize_and_parse(["--enable-full-tools"])
         self.assertNotEqual(build.config_toml.find("codegen-backends = ['llvm']"), -1)
 
-if __name__ == '__main__':
-    SUITE = unittest.TestSuite()
-    TEST_LOADER = unittest.TestLoader()
-    SUITE.addTest(doctest.DocTestSuite(bootstrap))
-    SUITE.addTests([
-        TEST_LOADER.loadTestsFromTestCase(VerifyTestCase),
-        TEST_LOADER.loadTestsFromTestCase(GenerateAndParseConfig),
-        TEST_LOADER.loadTestsFromTestCase(ProgramOutOfDate)])
-
-    RUNNER = unittest.TextTestRunner(stream=sys.stdout, verbosity=2)
-    result = RUNNER.run(SUITE)
-    sys.exit(0 if result.wasSuccessful() else 1)
