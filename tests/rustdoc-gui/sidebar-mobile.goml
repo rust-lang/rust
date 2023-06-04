@@ -73,16 +73,16 @@ define-function: (
 
 call-function: ("check-colors", {
     "theme": "ayu",
-    "color": "rgb(197, 197, 197)",
-    "background": "rgb(20, 25, 31)",
+    "color": "#c5c5c5",
+    "background": "#14191f",
 })
 call-function: ("check-colors", {
     "theme": "dark",
-    "color": "rgb(221, 221, 221)",
-    "background": "rgb(80, 80, 80)",
+    "color": "#ddd",
+    "background": "#505050",
 })
 call-function: ("check-colors", {
     "theme": "light",
-    "color": "rgb(0, 0, 0)",
-    "background": "rgb(245, 245, 245)",
+    "color": "black",
+    "background": "#F5F5F5",
 })
