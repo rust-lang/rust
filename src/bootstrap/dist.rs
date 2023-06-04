@@ -1601,8 +1601,7 @@ impl Step for Extended {
             prepare("cargo");
             prepare("rust-analysis");
             prepare("rust-std");
-            prepare("rust-analyzer");
-            for tool in &["clippy", "rust-docs", "rust-demangler", "miri"] {
+            for tool in &["clippy", "rust-analyzer", "rust-docs", "rust-demangler", "miri"] {
                 if built_tools.contains(tool) {
                     prepare(tool);
                 }
@@ -1688,23 +1687,25 @@ impl Step for Extended {
                     .arg("-out")
                     .arg(exe.join("StdGroup.wxs")),
             );
-            builder.run(
-                Command::new(&heat)
-                    .current_dir(&exe)
-                    .arg("dir")
-                    .arg("rust-analyzer")
-                    .args(&heat_flags)
-                    .arg("-cg")
-                    .arg("RustAnalyzerGroup")
-                    .arg("-dr")
-                    .arg("RustAnalyzer")
-                    .arg("-var")
-                    .arg("var.RustAnalyzerDir")
-                    .arg("-out")
-                    .arg(exe.join("RustAnalyzerGroup.wxs"))
-                    .arg("-t")
-                    .arg(etc.join("msi/remove-duplicates.xsl")),
-            );
+            if built_tools.contains("rust-analyzer") {
+                builder.run(
+                    Command::new(&heat)
+                        .current_dir(&exe)
+                        .arg("dir")
+                        .arg("rust-analyzer")
+                        .args(&heat_flags)
+                        .arg("-cg")
+                        .arg("RustAnalyzerGroup")
+                        .arg("-dr")
+                        .arg("RustAnalyzer")
+                        .arg("-var")
+                        .arg("var.RustAnalyzerDir")
+                        .arg("-out")
+                        .arg(exe.join("RustAnalyzerGroup.wxs"))
+                        .arg("-t")
+                        .arg(etc.join("msi/remove-duplicates.xsl")),
+                );
+            }
             if built_tools.contains("clippy") {
                 builder.run(
                     Command::new(&heat)
