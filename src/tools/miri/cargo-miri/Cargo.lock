@@ -30,7 +30,6 @@ dependencies = [
  "cargo_metadata",
  "directories",
  "rustc-build-sysroot",
- "rustc-workspace-hack",
  "rustc_tools_util",
  "rustc_version",
  "serde",
@@ -234,12 +233,6 @@ dependencies = [
  "rustc_version",
  "tempfile",
 ]
-
-[[package]]
-name = "rustc-workspace-hack"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc71d2faa173b74b232dedc235e3ee1696581bb132fc116fa3626d6151a1a8fb"
 
 [[package]]
 name = "rustc_tools_util"
