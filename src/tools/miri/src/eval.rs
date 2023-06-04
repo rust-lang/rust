@@ -11,6 +11,7 @@ use log::info;
 use rustc_middle::ty::Ty;
 
 use crate::borrow_tracker::RetagFields;
+use crate::concurrency::thread::TlsAllocAction;
 use crate::diagnostics::report_leaks;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::Namespace;
@@ -244,9 +245,9 @@ impl MainThreadState {
                 // Figure out exit code.
                 let ret_place = this.machine.main_fn_ret_place.clone().unwrap();
                 let exit_code = this.read_target_isize(&ret_place)?;
-                // Need to call this ourselves since we are not going to return to the scheduler
-                // loop, and we want the main thread TLS to not show up as memory leaks.
-                this.terminate_active_thread()?;
+                // Deal with our thread-local memory. We do *not* want to actually free it, instead we consider TLS
+                // to be like a global `static`, so that all memory reached by it is considered to "not leak".
+                this.terminate_active_thread(TlsAllocAction::Leak)?;
                 // Stop interpreter loop.
                 throw_machine_stop!(TerminationInfo::Exit { code: exit_code, leak_check: true });
             }
