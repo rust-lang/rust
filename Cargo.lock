@@ -469,12 +469,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f497285884f3fcff424ffc933e56d7cbca511def0c9831a7f9b5f6153e3cc89b"
 
 [[package]]
-name = "rustc-workspace-hack"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc71d2faa173b74b232dedc235e3ee1696581bb132fc116fa3626d6151a1a8fb"
-
-[[package]]
 name = "rustfmt-config_proc_macro"
 version = "0.3.0"
 dependencies = [
@@ -502,7 +496,6 @@ dependencies = [
  "lazy_static",
  "log",
  "regex",
- "rustc-workspace-hack",
  "rustfmt-config_proc_macro",
  "serde",
  "serde_json",
