@@ -214,12 +214,14 @@ function setup_rustc() {
     rm config.toml || true
 
     cat > config.toml <<EOF
+changelog-seen = 2
+
 [rust]
 codegen-backends = []
 deny-warnings = false
 
 [build]
-cargo = "$(which cargo)"
+cargo = "$(rustup which cargo)"
 local-rebuild = true
 rustc = "$HOME/.rustup/toolchains/$rust_toolchain-$TARGET_TRIPLE/bin/rustc"
 
@@ -237,7 +239,7 @@ EOF
 function asm_tests() {
     setup_rustc
 
-    echo "[TEST] rustc test suite"
+    echo "[TEST] rustc asm test suite"
     RUSTC_ARGS="-Zpanic-abort-tests -Csymbol-mangling-version=v0 -Zcodegen-backend="$(pwd)"/../target/"$CHANNEL"/librustc_codegen_gcc."$dylib_ext" --sysroot "$(pwd)"/../build_sysroot/sysroot -Cpanic=abort"
     COMPILETEST_FORCE_STAGE0=1 ./x.py test --run always --stage 0 tests/assembly/asm --rustc-args "$RUSTC_ARGS"
 }
@@ -351,7 +353,14 @@ function test_rustc() {
     git checkout tests/ui/type-alias-impl-trait/auxiliary/cross_crate_ice2.rs
     git checkout tests/ui/macros/rfc-2011-nicer-assert-messages/auxiliary/common.rs
 
-    RUSTC_ARGS="$TEST_FLAGS -Csymbol-mangling-version=v0 -Zcodegen-backend="$(pwd)"/../target/"$CHANNEL"/librustc_codegen_gcc."$dylib_ext" --sysroot "$(pwd)"/../build_sysroot/sysroot"
+    # We need to overwrite the sysroot in the tests, now.
+    # TODO(antoyo): find a faster way to do this.
+    # FIXME: this makes the stderr different since it changes the line numbers.
+    for file in $(find tests/ui -type f -name '*.rs'); do
+        sed -ie "1i // compile-flags: --sysroot "$(pwd)"/../build_sysroot/sysroot\n" $file
+    done
+
+    RUSTC_ARGS="$TEST_FLAGS -Csymbol-mangling-version=v0 -Zcodegen-backend="$(pwd)"/../target/"$CHANNEL"/librustc_codegen_gcc."$dylib_ext""
 
     if [ $# -eq 0 ]; then
         # No argument supplied to the function. Doing nothing.

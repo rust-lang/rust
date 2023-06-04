@@ -1,3 +1,5 @@
+// FIXME: simple programs now segfault with a sysroot compile in release mode.
+
 /*
  * TODO(antoyo): implement equality in libgccjit based on https://zpz.github.io/blog/overloading-equality-operator-in-cpp-class-hierarchy/ (for type equality?)
  * TODO(antoyo): support #[inline] attributes.

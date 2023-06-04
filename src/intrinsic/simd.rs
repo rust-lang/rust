@@ -165,10 +165,15 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             InvalidMonomorphizationReturnIntegerType { span, name, ret_ty, out_ty }
         );
 
+        let arg1 = args[0].immediate();
+        // NOTE: we get different vector types for the same vector type and libgccjit doesn't
+        // compare them as equal, so bitcast.
+        // FIXME(antoyo): allow comparing vector types as equal in libgccjit.
+        let arg2 = bx.context.new_bitcast(None, args[1].immediate(), arg1.get_type());
         return Ok(compare_simd_types(
             bx,
-            args[0].immediate(),
-            args[1].immediate(),
+            arg1,
+            arg2,
             in_elem,
             llret_ty,
             cmp_op,
