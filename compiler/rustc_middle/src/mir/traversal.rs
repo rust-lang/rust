@@ -188,8 +188,11 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
     }
 }
 
-pub fn postorder<'a, 'tcx>(body: &'a Body<'tcx>) -> Postorder<'a, 'tcx> {
-    Postorder::new(&body.basic_blocks, START_BLOCK)
+pub type PostorderIter<'a, 'tcx: 'a> =
+    impl Iterator<Item = (BasicBlock, &'a BasicBlockData<'tcx>)> + ExactSizeIterator;
+
+pub fn postorder<'a, 'tcx>(body: &'a Body<'tcx>) -> PostorderIter<'a, 'tcx> {
+    body.basic_blocks.postorder().iter().map(|&bb| (bb, &body.basic_blocks[bb]))
 }
 
 impl<'a, 'tcx> Iterator for Postorder<'a, 'tcx> {
