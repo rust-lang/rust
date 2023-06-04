@@ -994,6 +994,27 @@ fn f() {
     }
 
     #[test]
+    fn slice_pattern() {
+        check_diagnostics(
+            r#"
+//- minicore: coerce_unsized, deref_mut, slice, copy
+fn x(t: &[u8]) {
+    match t {
+        &[a, mut b] | &[a, _, mut b] => {
+           //^^^^^ 💡 weak: variable does not need to be mutable
+
+            a = 2;
+          //^^^^^ 💡 error: cannot mutate immutable variable `a`
+
+        }
+        _ => {}
+    }
+}
+            "#,
+        );
+    }
+
+    #[test]
     fn boxes() {
         check_diagnostics(
             r#"

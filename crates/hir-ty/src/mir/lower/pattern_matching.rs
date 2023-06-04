@@ -206,56 +206,60 @@ impl MirLowerCtx<'_> {
                 (current, current_else)
             }
             Pat::Slice { prefix, slice, suffix } => {
-                if let TyKind::Slice(_) = self.infer[pattern].kind(Interner) {
-                    let pattern_len = prefix.len() + suffix.len();
-                    let place_len: Place =
-                        self.temp(TyBuilder::usize(), current, pattern.into())?.into();
-                    self.push_assignment(
-                        current,
-                        place_len.clone(),
-                        Rvalue::Len((&mut cond_place).clone()),
-                        pattern.into(),
-                    );
-                    let else_target = *current_else.get_or_insert_with(|| self.new_basic_block());
-                    let next = self.new_basic_block();
-                    if slice.is_none() {
-                        self.set_terminator(
-                            current,
-                            TerminatorKind::SwitchInt {
-                                discr: Operand::Copy(place_len),
-                                targets: SwitchTargets::static_if(
-                                    pattern_len as u128,
-                                    next,
-                                    else_target,
-                                ),
-                            },
-                            pattern.into(),
-                        );
-                    } else {
-                        let c = Operand::from_concrete_const(
-                            pattern_len.to_le_bytes().to_vec(),
-                            MemoryMap::default(),
-                            TyBuilder::usize(),
-                        );
-                        let discr: Place =
-                            self.temp(TyBuilder::bool(), current, pattern.into())?.into();
+                if mode == MatchingMode::Check {
+                    // emit runtime length check for slice
+                    if let TyKind::Slice(_) = self.infer[pattern].kind(Interner) {
+                        let pattern_len = prefix.len() + suffix.len();
+                        let place_len: Place =
+                            self.temp(TyBuilder::usize(), current, pattern.into())?.into();
                         self.push_assignment(
                             current,
-                            discr.clone(),
-                            Rvalue::CheckedBinaryOp(BinOp::Le, c, Operand::Copy(place_len)),
+                            place_len.clone(),
+                            Rvalue::Len((&mut cond_place).clone()),
                             pattern.into(),
                         );
-                        let discr = Operand::Copy(discr);
-                        self.set_terminator(
-                            current,
-                            TerminatorKind::SwitchInt {
-                                discr,
-                                targets: SwitchTargets::static_if(1, next, else_target),
-                            },
-                            pattern.into(),
-                        );
+                        let else_target =
+                            *current_else.get_or_insert_with(|| self.new_basic_block());
+                        let next = self.new_basic_block();
+                        if slice.is_none() {
+                            self.set_terminator(
+                                current,
+                                TerminatorKind::SwitchInt {
+                                    discr: Operand::Copy(place_len),
+                                    targets: SwitchTargets::static_if(
+                                        pattern_len as u128,
+                                        next,
+                                        else_target,
+                                    ),
+                                },
+                                pattern.into(),
+                            );
+                        } else {
+                            let c = Operand::from_concrete_const(
+                                pattern_len.to_le_bytes().to_vec(),
+                                MemoryMap::default(),
+                                TyBuilder::usize(),
+                            );
+                            let discr: Place =
+                                self.temp(TyBuilder::bool(), current, pattern.into())?.into();
+                            self.push_assignment(
+                                current,
+                                discr.clone(),
+                                Rvalue::CheckedBinaryOp(BinOp::Le, c, Operand::Copy(place_len)),
+                                pattern.into(),
+                            );
+                            let discr = Operand::Copy(discr);
+                            self.set_terminator(
+                                current,
+                                TerminatorKind::SwitchInt {
+                                    discr,
+                                    targets: SwitchTargets::static_if(1, next, else_target),
+                                },
+                                pattern.into(),
+                            );
+                        }
+                        current = next;
                     }
-                    current = next;
                 }
                 for (i, &pat) in prefix.iter().enumerate() {
                     let next_place = (&mut cond_place).project(ProjectionElem::ConstantIndex {
