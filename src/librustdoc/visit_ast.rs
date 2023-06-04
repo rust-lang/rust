@@ -246,7 +246,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         glob: bool,
         please_inline: bool,
     ) -> bool {
-        debug!("maybe_inline_local res: {:?}", res);
+        debug!("maybe_inline_local (renamed: {renamed:?}) res: {res:?}");
 
         if renamed == Some(kw::Underscore) {
             // We never inline `_` reexports.
@@ -308,6 +308,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     .cache
                     .effective_visibilities
                     .is_directly_public(tcx, item_def_id.to_def_id()) &&
+                !tcx.is_doc_hidden(item_def_id) &&
                 !inherits_doc_hidden(tcx, item_def_id, None)
             {
                 // The imported item is public and not `doc(hidden)` so no need to inline it.
