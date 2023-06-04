@@ -362,7 +362,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     continue;
                 }
 
-                let is_closure = matches!(arg.kind, ExprKind::Closure { .. });
+                // For this check, we do *not* want to treat async generator closures (async blocks)
+                // as proper closures. Doing so would regress type inference when feeding
+                // the return value of an argument-position async block to an argument-position
+                // closure wrapped in a block.
+                // See <https://github.com/rust-lang/rust/issues/112225>.
+                let is_closure = if let ExprKind::Closure(closure) = arg.kind {
+                    !tcx.generator_is_async(closure.def_id.to_def_id())
+                } else {
+                    false
+                };
                 if is_closure != check_closures {
                     continue;
                 }
