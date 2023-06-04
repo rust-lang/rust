@@ -29,6 +29,7 @@
 //!     future: pin
 //!     generator: pin
 //!     hash:
+//!     include:
 //!     index: sized
 //!     infallible:
 //!     iterator: option
@@ -1274,6 +1275,14 @@ mod macros {
         }
     }
     // endregion:derive
+
+    // region:include
+    #[rustc_builtin_macro]
+    #[macro_export]
+    macro_rules! include {
+        ($file:expr $(,)?) => {{ /* compiler built-in */ }};
+    }
+    // endregion:include
 }
 
 // region:non_zero

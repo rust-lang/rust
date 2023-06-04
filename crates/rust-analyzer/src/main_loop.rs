@@ -798,6 +798,7 @@ impl GlobalState {
         // so we run them on a latency sensitive thread.
         self.task_pool.handle.spawn(stdx::thread::ThreadIntent::LatencySensitive, move || {
             let _p = profile::span("publish_diagnostics");
+            let _ctx = stdx::panic_context::enter("publish_diagnostics".to_owned());
             let diagnostics = subscriptions
                 .into_iter()
                 .filter_map(|file_id| {
