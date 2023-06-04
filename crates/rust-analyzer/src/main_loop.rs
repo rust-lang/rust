@@ -397,19 +397,25 @@ impl GlobalState {
         tracing::debug!(%cause, "will prime caches");
         let num_worker_threads = self.config.prime_caches_num_threads();
 
-        self.task_pool.handle.spawn_with_sender(stdx::thread::ThreadIntent::Worker, {
-            let analysis = self.snapshot().analysis;
-            move |sender| {
-                sender.send(Task::PrimeCaches(PrimeCachesProgress::Begin)).unwrap();
-                let res = analysis.parallel_prime_caches(num_worker_threads, |progress| {
-                    let report = PrimeCachesProgress::Report(progress);
-                    sender.send(Task::PrimeCaches(report)).unwrap();
-                });
-                sender
-                    .send(Task::PrimeCaches(PrimeCachesProgress::End { cancelled: res.is_err() }))
-                    .unwrap();
-            }
-        });
+        self.task_pool.handle.spawn_with_sender(
+            stdx::thread::ThreadIntent::Worker,
+            "prime_caches",
+            {
+                let analysis = self.snapshot().analysis;
+                move |sender| {
+                    sender.send(Task::PrimeCaches(PrimeCachesProgress::Begin)).unwrap();
+                    let res = analysis.parallel_prime_caches(num_worker_threads, |progress| {
+                        let report = PrimeCachesProgress::Report(progress);
+                        sender.send(Task::PrimeCaches(report)).unwrap();
+                    });
+                    sender
+                        .send(Task::PrimeCaches(PrimeCachesProgress::End {
+                            cancelled: res.is_err(),
+                        }))
+                        .unwrap();
+                }
+            },
+        );
     }
 
     fn update_status_or_notify(&mut self) {
@@ -796,56 +802,62 @@ impl GlobalState {
 
         // Diagnostics are triggered by the user typing
         // so we run them on a latency sensitive thread.
-        self.task_pool.handle.spawn(stdx::thread::ThreadIntent::LatencySensitive, move || {
-            let _p = profile::span("publish_diagnostics");
-            let diagnostics = subscriptions
-                .into_iter()
-                .filter_map(|file_id| {
-                    let line_index = snapshot.file_line_index(file_id).ok()?;
-                    Some((
-                        file_id,
-                        line_index,
-                        snapshot
-                            .analysis
-                            .diagnostics(
-                                &snapshot.config.diagnostics(),
-                                ide::AssistResolveStrategy::None,
-                                file_id,
-                            )
-                            .ok()?,
-                    ))
-                })
-                .map(|(file_id, line_index, it)| {
-                    (
-                        file_id,
-                        it.into_iter()
-                            .map(move |d| lsp_types::Diagnostic {
-                                range: crate::to_proto::range(&line_index, d.range),
-                                severity: Some(crate::to_proto::diagnostic_severity(d.severity)),
-                                code: Some(lsp_types::NumberOrString::String(
-                                    d.code.as_str().to_string(),
-                                )),
-                                code_description: Some(lsp_types::CodeDescription {
-                                    href: lsp_types::Url::parse(&format!(
-                                        "https://rust-analyzer.github.io/manual.html#{}",
-                                        d.code.as_str()
-                                    ))
-                                    .unwrap(),
-                                }),
-                                source: Some("rust-analyzer".to_string()),
-                                message: d.message,
-                                related_information: None,
-                                tags: if d.unused {
-                                    Some(vec![lsp_types::DiagnosticTag::UNNECESSARY])
-                                } else {
-                                    None
-                                },
-                                data: None,
-                            })
-                            .collect::<Vec<_>>(),
-                    )
-                });
-            Task::Diagnostics(diagnostics.collect())
-        });
+        self.task_pool.handle.spawn(
+            stdx::thread::ThreadIntent::LatencySensitive,
+            "publish_diagnostics",
+            move || {
+                let _p = profile::span("publish_diagnostics");
+                let diagnostics = subscriptions
+                    .into_iter()
+                    .filter_map(|file_id| {
+                        let line_index = snapshot.file_line_index(file_id).ok()?;
+                        Some((
+                            file_id,
+                            line_index,
+                            snapshot
+                                .analysis
+                                .diagnostics(
+                                    &snapshot.config.diagnostics(),
+                                    ide::AssistResolveStrategy::None,
+                                    file_id,
+                                )
+                                .ok()?,
+                        ))
+                    })
+                    .map(|(file_id, line_index, it)| {
+                        (
+                            file_id,
+                            it.into_iter()
+                                .map(move |d| lsp_types::Diagnostic {
+                                    range: crate::to_proto::range(&line_index, d.range),
+                                    severity: Some(crate::to_proto::diagnostic_severity(
+                                        d.severity,
+                                    )),
+                                    code: Some(lsp_types::NumberOrString::String(
+                                        d.code.as_str().to_string(),
+                                    )),
+                                    code_description: Some(lsp_types::CodeDescription {
+                                        href: lsp_types::Url::parse(&format!(
+                                            "https://rust-analyzer.github.io/manual.html#{}",
+                                            d.code.as_str()
+                                        ))
+                                        .unwrap(),
+                                    }),
+                                    source: Some("rust-analyzer".to_string()),
+                                    message: d.message,
+                                    related_information: None,
+                                    tags: if d.unused {
+                                        Some(vec![lsp_types::DiagnosticTag::UNNECESSARY])
+                                    } else {
+                                        None
+                                    },
+                                    data: None,
+                                })
+                                .collect::<Vec<_>>(),
+                        )
+                    });
+                Task::Diagnostics(diagnostics.collect())
+            },
+        );
     }
 }
