@@ -29,24 +29,38 @@ pub(crate) fn inline_const_as_literal(acc: &mut Assists, ctx: &AssistContext<'_>
     {
         let konst_ty = konst.ty(ctx.sema.db);
 
+        // Used as the upper limit for recursive calls if no TCO is available
         let fuel = 20;
 
-        // FIXME: Add support to handle type aliases for builtin scalar types.
-        //
         // There is no way to have a const static reference to a type that contains a interior
         // mutability cell.
+
+        // FIXME: Add support to handle type aliases for builtin scalar types.
         validate_type_recursively(ctx, Some(&konst_ty), false, fuel)?;
 
         let expr = konst.value(ctx.sema.db)?;
 
-        // FIXME: Tuples and other sequence types will be inlined even though
-        // they might contain inner block expressions.
-        // e.g `(1, { 2 + 3 })` will be inline as it is.
-        let value = eval_and_inline_recursively(ctx, &konst, &expr, fuel)?;
+        let value = match expr {
+            ast::Expr::BlockExpr(_)
+            | ast::Expr::Literal(_)
+            | ast::Expr::RefExpr(_)
+            | ast::Expr::ArrayExpr(_)
+            | ast::Expr::TupleExpr(_)
+            | ast::Expr::IfExpr(_)
+            | ast::Expr::ParenExpr(_)
+            | ast::Expr::MatchExpr(_)
+            | ast::Expr::MacroExpr(_)
+            | ast::Expr::BinExpr(_)
+            | ast::Expr::CallExpr(_) => match konst.render_eval(ctx.sema.db) {
+                Ok(result) => result,
+                Err(_) => return None,
+            },
+            _ => return None,
+        };
 
         let id = AssistId("inline_const_as_literal", AssistKind::RefactorInline);
 
-        let label = format!("Inline as literal");
+        let label = format!("Inline const as literal");
         let target = variable.syntax().text_range();
 
         return acc.add(id, label, target, |edit| {
@@ -54,50 +68,6 @@ pub(crate) fn inline_const_as_literal(acc: &mut Assists, ctx: &AssistContext<'_>
         });
     }
     None
-}
-
-fn eval_and_inline_recursively(
-    ctx: &AssistContext<'_>,
-    konst: &hir::Const,
-    expr: &ast::Expr,
-    fuel: i32,
-) -> Option<String> {
-    match (fuel > 0, expr) {
-        (true, ast::Expr::BlockExpr(block)) if block.is_standalone() => {
-            eval_and_inline_recursively(ctx, konst, &block.tail_expr()?, fuel - 1)
-        }
-        // NOTE: For some expressions, `render_eval` will crash.
-        // e.g. `{ &[&[&[&[&[&[10, 20, 30]]]]]] }` will fail for `render_eval`.
-        //
-        // If these (Ref, Array or Tuple) contain evaluable expression, then we could
-        // visit/evaluate/walk them one by one, but I think this is enough for now.
-        //
-        // Add these if inlining without evaluation is preferred.
-        // (_, ast::Expr::RefExpr(expr)) => Some(expr.to_string()),
-        // (_, ast::Expr::ArrayExpr(expr)) => Some(expr.to_string()),
-        // (_, ast::Expr::TupleExpr(expr)) => Some(expr.to_string()),
-
-        // We should fail on (false, BlockExpr) && is_standalone because we've run out of fuel. BUT
-        // what is the harm in trying to evaluate the block anyway? Worst case would be that it
-        // behaves differently when for example: fuel = 1
-        // > const A: &[u32] = { &[10] };     OK because we inline ref expression.
-        // > const B: &[u32] = { { &[10] } }; ERROR because we evaluate block.
-        (_, ast::Expr::BlockExpr(_))
-        | (_, ast::Expr::Literal(_))
-        | (_, ast::Expr::RefExpr(_))
-        | (_, ast::Expr::ArrayExpr(_))
-        | (_, ast::Expr::TupleExpr(_))
-        | (_, ast::Expr::IfExpr(_))
-        | (_, ast::Expr::ParenExpr(_))
-        | (_, ast::Expr::MatchExpr(_))
-        | (_, ast::Expr::MacroExpr(_))
-        | (_, ast::Expr::BinExpr(_))
-        | (_, ast::Expr::CallExpr(_)) => match konst.render_eval(ctx.sema.db) {
-            Ok(result) => Some(result),
-            Err(_) => return None,
-        },
-        _ => return None,
-    }
 }
 
 fn validate_type_recursively(
@@ -111,7 +81,7 @@ fn validate_type_recursively(
             ctx,
             ty.as_reference().map(|(ty, _)| ty).as_ref(),
             true,
-            // FIXME: Saving fuel when `&` repeating. Might not be a good idea.
+            // FIXME: Saving fuel when `&` repeating might not be a good idea if there's no TCO.
             if refed { fuel } else { fuel - 1 },
         ),
         (true, Some(ty)) if ty.is_array() => validate_type_recursively(
@@ -166,23 +136,6 @@ mod tests {
     ];
 
     // -----------Not supported-----------
-
-    #[test]
-    fn inline_const_as_literal_const_fn_call_array() {
-        TEST_PAIRS.into_iter().for_each(|(ty, val, _)| {
-            check_assist_not_applicable(
-                inline_const_as_literal,
-                &format!(
-                    r#"
-				const fn abc() -> [{ty}; 1] {{ [{val}] }}
-				const ABC: [{ty}; 1] = abc();
-				fn a() {{ A$0BC }}
-				"#
-                ),
-            );
-        });
-    }
-
     #[test]
     fn inline_const_as_literal_const_fn_call_slice() {
         TEST_PAIRS.into_iter().for_each(|(ty, val, _)| {
@@ -190,10 +143,10 @@ mod tests {
                 inline_const_as_literal,
                 &format!(
                     r#"
-				const fn abc() -> &[{ty}] {{ &[{val}] }}
-				const ABC: &[{ty}] = abc();
-				fn a() {{ A$0BC }}
-				"#
+                    const fn abc() -> &[{ty}] {{ &[{val}] }}
+                    const ABC: &[{ty}] = abc();
+                    fn a() {{ A$0BC }}
+                    "#
                 ),
             );
         });
@@ -213,6 +166,76 @@ mod tests {
         );
     }
 
+    #[test]
+    fn inline_const_as_struct_() {
+        check_assist_not_applicable(
+            inline_const_as_literal,
+            r#"
+            struct A;
+            const STRUKT: A = A;
+
+            fn something() -> A {
+                STRU$0KT
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn inline_const_as_enum_() {
+        check_assist_not_applicable(
+            inline_const_as_literal,
+            r#"
+            enum A { A, B, C }
+            const ENUM: A = A::A;
+
+            fn something() -> A {
+                EN$0UM
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn inline_const_as_tuple_closure() {
+        check_assist_not_applicable(
+            inline_const_as_literal,
+            r#"
+            const CLOSURE: (&dyn Fn(i32) -> i32) = (&|num| -> i32 { num });
+            fn something() -> (&dyn Fn(i32) -> i32) {
+                STRU$0KT
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn inline_const_as_closure_() {
+        check_assist_not_applicable(
+            inline_const_as_literal,
+            r#"
+            const CLOSURE: &dyn Fn(i32) -> i32 = &|num| -> i32 { num };
+            fn something() -> &dyn Fn(i32) -> i32 {
+                STRU$0KT
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn inline_const_as_fn_() {
+        check_assist_not_applicable(
+            inline_const_as_literal,
+            r#"
+            struct S(i32);
+            const CON: fn(i32) -> S = S;
+            fn something() {
+                let x = CO$0N;
+            }
+            "#,
+        );
+    }
+
     // ----------------------------
 
     #[test]
@@ -222,15 +245,15 @@ mod tests {
                 inline_const_as_literal,
                 &format!(
                     r#"
-				const ABC: {ty} = {val};
-				fn a() {{ A$0BC }}
-				"#
+                    const ABC: {ty} = {val};
+                    fn a() {{ A$0BC }}
+                    "#
                 ),
                 &format!(
                     r#"
-				const ABC: {ty} = {val};
-				fn a() {{ {val} }}
-				"#
+                    const ABC: {ty} = {val};
+                    fn a() {{ {val} }}
+                    "#
                 ),
             );
         });
@@ -243,15 +266,15 @@ mod tests {
                 inline_const_as_literal,
                 &format!(
                     r#"
-				const ABC: {ty} = {{ {val} }};
-				fn a() {{ A$0BC }}
-				"#
+                    const ABC: {ty} = {{ {val} }};
+                    fn a() {{ A$0BC }}
+                    "#
                 ),
                 &format!(
                     r#"
-				const ABC: {ty} = {{ {val} }};
-				fn a() {{ {val} }}
-				"#
+                    const ABC: {ty} = {{ {val} }};
+                    fn a() {{ {val} }}
+                    "#
                 ),
             );
         });
@@ -264,15 +287,15 @@ mod tests {
                 inline_const_as_literal,
                 &format!(
                     r#"
-				const ABC: {ty} = {{ true; {val} }};
-				fn a() {{ A$0BC }}
-				"#
+                    const ABC: {ty} = {{ true; {val} }};
+                    fn a() {{ A$0BC }}
+                    "#
                 ),
                 &format!(
                     r#"
-				const ABC: {ty} = {{ true; {val} }};
-				fn a() {{ {val} }}
-				"#
+                    const ABC: {ty} = {{ true; {val} }};
+                    fn a() {{ {val} }}
+                    "#
                 ),
             );
         });
@@ -285,15 +308,15 @@ mod tests {
                 inline_const_as_literal,
                 &format!(
                     r#"
-				const ABC: {ty} = {{ true; {{ {val} }} }};
-				fn a() {{ A$0BC }}
-				"#
+                    const ABC: {ty} = {{ true; {{ {val} }} }};
+                    fn a() {{ A$0BC }}
+                    "#
                 ),
                 &format!(
                     r#"
-				const ABC: {ty} = {{ true; {{ {val} }} }};
-				fn a() {{ {val} }}
-				"#
+                    const ABC: {ty} = {{ true; {{ {val} }} }};
+                    fn a() {{ {val} }}
+                    "#
                 ),
             );
         });
@@ -306,17 +329,17 @@ mod tests {
                 inline_const_as_literal,
                 &format!(
                     r#"
-				const fn abc() -> {ty} {{ {{ {{ {{ {val} }} }} }} }}
-				const ABC: {ty} = abc();
-				fn a() {{ A$0BC }}
-				"#
+                    const fn abc() -> {ty} {{ {{ {{ {{ {val} }} }} }} }}
+                    const ABC: {ty} = abc();
+                    fn a() {{ A$0BC }}
+                    "#
                 ),
                 &format!(
                     r#"
-				const fn abc() -> {ty} {{ {{ {{ {{ {val} }} }} }} }}
-				const ABC: {ty} = abc();
-				fn a() {{ {val} }}
-				"#
+                    const fn abc() -> {ty} {{ {{ {{ {{ {val} }} }} }} }}
+                    const ABC: {ty} = abc();
+                    fn a() {{ {val} }}
+                    "#
                 ),
             );
         });
@@ -324,33 +347,24 @@ mod tests {
 
     #[test]
     fn inline_const_as_literal_const_fn_call_tuple() {
-        // FIXME:
-        // const fn abc() -> (i32) { (1) }
-        //  - results in `1` instead of `(1)`. It handles it as a paren expr
-        //
-        // const fn abc() -> (&str, &str) { ("a", "a") }
-        //  - results in `("", "")` instead of `("a", "a")`.
-        TEST_PAIRS.into_iter().for_each(|(ty, val, bit)| {
-            // Everything except `&str`
-            if bit & STR == 0 {
-                check_assist(
-                    inline_const_as_literal,
-                    &format!(
-                        r#"
-					const fn abc() -> ({ty}, {ty}) {{ ({val}, {val}) }}
-					const ABC: ({ty}, {ty}) = abc();
-					fn a() {{ A$0BC }}
-					"#
-                    ),
-                    &format!(
-                        r#"
-					const fn abc() -> ({ty}, {ty}) {{ ({val}, {val}) }}
-					const ABC: ({ty}, {ty}) = abc();
-					fn a() {{ ({val}, {val}) }}
-					"#
-                    ),
-                );
-            }
+        TEST_PAIRS.into_iter().for_each(|(ty, val, _)| {
+            check_assist(
+                inline_const_as_literal,
+                &format!(
+                    r#"
+                    const fn abc() -> ({ty}, {ty}) {{ ({val}, {val}) }}
+                    const ABC: ({ty}, {ty}) = abc();
+                    fn a() {{ A$0BC }}
+                    "#
+                ),
+                &format!(
+                    r#"
+                    const fn abc() -> ({ty}, {ty}) {{ ({val}, {val}) }}
+                    const ABC: ({ty}, {ty}) = abc();
+                    fn a() {{ ({val}, {val}) }}
+                    "#
+                ),
+            );
         });
     }
 
@@ -436,18 +450,32 @@ mod tests {
         );
     }
 
-    // FIXME: These won't work with `konst.render_eval(ctx.sema.db)`
+    // FIXME: Add support for nested ref slices when using `render_eval`
     #[test]
     fn inline_const_as_literal_block_slice() {
-        check_assist(
+        check_assist_not_applicable(
             inline_const_as_literal,
             r#"
             const ABC: &[&[&[&[&[&[i32]]]]]] = { &[&[&[&[&[&[10, 20, 30]]]]]] };
             fn a() { A$0BC }
             "#,
+        );
+    }
+
+    // FIXME: Add support for unary tuple expressions when using `render_eval`.
+    // `const fn abc() -> (i32) { (1) }` will results in `1` instead of `(1)` because it's evaluated
+    // as a paren expr.
+    #[test]
+    fn inline_const_as_literal_block_tuple() {
+        check_assist(
+            inline_const_as_literal,
             r#"
-            const ABC: &[&[&[&[&[&[i32]]]]]] = { &[&[&[&[&[&[10, 20, 30]]]]]] };
-            fn a() { &[&[&[&[&[&[10, 20, 30]]]]]] }
+            const ABC: (([i32; 3]), (i32), ((&str, i32), i32), i32) = { (([1, 2, 3]), (10), (("hello", 10), 20), 30) };
+            fn a() { A$0BC }
+            "#,
+            r#"
+            const ABC: (([i32; 3]), (i32), ((&str, i32), i32), i32) = { (([1, 2, 3]), (10), (("hello", 10), 20), 30) };
+            fn a() { ([1, 2, 3], 10, (("hello", 10), 20), 30) }
             "#,
         );
     }
@@ -467,35 +495,20 @@ mod tests {
         );
     }
 
-    // #[test]
-    // fn inline_const_as_literal_block_array() {
-    //     check_assist(
-    //         inline_const_as_literal,
-    //         r#"
-    //         const ABC: [[[i32; 1]; 1]; 1] = { [[[10]]] };
-    //         fn a() { A$0BC }
-    //         "#,
-    //         r#"
-    //         const ABC: [[[i32; 1]; 1]; 1] = { [[[10]]] };
-    //         fn a() { [[[10]]] }
-    //         "#,
-    //     );
-    // }
-
-    // #[test]
-    // fn inline_const_as_literal_block_tuple() {
-    //     check_assist(
-    //         inline_const_as_literal,
-    //         r#"
-    //         const ABC: (([i32; 3]), (i32), ((&str, i32), i32), i32) = { (([1, 2, 3]), (10), (("hello", 10), 20), 30) };
-    //         fn a() { A$0BC }
-    //         "#,
-    //         r#"
-    //         const ABC: (([i32; 3]), (i32), ((&str, i32), i32), i32) = { (([1, 2, 3]), (10), (("hello", 10), 20), 30) };
-    //         fn a() { (([1, 2, 3]), (10), (("hello", 10), 20), 30) }
-    //         "#,
-    //     );
-    // }
+    #[test]
+    fn inline_const_as_literal_block_array() {
+        check_assist(
+            inline_const_as_literal,
+            r#"
+            const ABC: [[[i32; 1]; 1]; 1] = { [[[10]]] };
+            fn a() { A$0BC }
+            "#,
+            r#"
+            const ABC: [[[i32; 1]; 1]; 1] = { [[[10]]] };
+            fn a() { [[[10]]] }
+            "#,
+        );
+    }
 
     #[test]
     fn inline_const_as_literal_block_recursive() {
