@@ -29,6 +29,7 @@ pub struct FileAttr {
     creation_time: c::FILETIME,
     last_access_time: c::FILETIME,
     last_write_time: c::FILETIME,
+    change_time: Option<c::FILETIME>,
     file_size: u64,
     reparse_tag: c::DWORD,
     volume_serial_number: Option<u32>,
@@ -375,6 +376,7 @@ impl File {
                 creation_time: info.ftCreationTime,
                 last_access_time: info.ftLastAccessTime,
                 last_write_time: info.ftLastWriteTime,
+                change_time: None, // Only available in FILE_BASIC_INFO
                 file_size: (info.nFileSizeLow as u64) | ((info.nFileSizeHigh as u64) << 32),
                 reparse_tag,
                 volume_serial_number: Some(info.dwVolumeSerialNumber),
@@ -411,6 +413,10 @@ impl File {
                     dwLowDateTime: info.LastWriteTime as c::DWORD,
                     dwHighDateTime: (info.LastWriteTime >> 32) as c::DWORD,
                 },
+                change_time: Some(c::FILETIME {
+                    dhLowDateTime: info.ChangeTime as c::DWORD,
+                    dhHighDateTime: (info.ChangeTime >> 32) as c::DWORD,
+                }),
                 file_size: 0,
                 reparse_tag: 0,
                 volume_serial_number: None,
@@ -952,6 +958,10 @@ impl FileAttr {
         to_u64(&self.creation_time)
     }
 
+    pub fn changed_u64(&self) -> Option<u64> {
+        self.change_time.as_ref().map(|c| to_u64(c))
+    }
+
     pub fn volume_serial_number(&self) -> Option<u32> {
         self.volume_serial_number
     }
@@ -971,6 +981,7 @@ impl From<c::WIN32_FIND_DATAW> for FileAttr {
             creation_time: wfd.ftCreationTime,
             last_access_time: wfd.ftLastAccessTime,
             last_write_time: wfd.ftLastWriteTime,
+            change_time: None,
             file_size: ((wfd.nFileSizeHigh as u64) << 32) | (wfd.nFileSizeLow as u64),
             reparse_tag: if wfd.dwFileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
                 // reserved unless this is a reparse point
