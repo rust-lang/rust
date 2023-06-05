@@ -260,9 +260,9 @@ impl TraitBounds {
                     SpanlessTy { ty: p.bounded_ty, cx },
                     p.bounds.iter().collect::<Vec<_>>()
                 );
+                let bounded_ty = snippet(cx, p.bounded_ty.span, "_");
                 if let TyKind::Path(qpath) = p.bounded_ty.kind;
-                if format!("{}:", rustc_hir_pretty::qpath_to_string(&qpath))
-                    == format!("{}:", snippet(cx, p.bounded_ty.span, "_"));
+                if format!("{}:", rustc_hir_pretty::qpath_to_string(&qpath)) == format!("{}:", bounded_ty);
 
                 then {
                     let trait_bounds = v
@@ -272,10 +272,7 @@ impl TraitBounds {
                         .filter_map(get_trait_info_from_bound)
                         .map(|(_, _, span)| snippet_with_applicability(cx, span, "..", &mut applicability))
                         .join(" + ");
-                    let hint_string = format!(
-                        "consider combining the bounds: `{}: {trait_bounds}`",
-                        snippet(cx, p.bounded_ty.span, "_"),
-                    );
+                    let hint_string = format!("consider combining the bounds: `{}: {trait_bounds}`", bounded_ty);
                     span_lint_and_help(
                         cx,
                         TYPE_REPETITION_IN_BOUNDS,
@@ -345,7 +342,7 @@ fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
                             "this trait bound is already specified in the where clause",
                             None,
                             "consider removing this trait bound",
-                            );
+                        );
                     }
                 }
             }
