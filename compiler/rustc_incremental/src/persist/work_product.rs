@@ -46,10 +46,15 @@ pub fn copy_cgu_workproduct_to_incr_comp_cache_dir(
 
 /// Removes files for a given work product.
 pub fn delete_workproduct_files(sess: &Session, work_product: &WorkProduct) {
-    work_product.saved_files.to_sorted(&(), false).iter().for_each(|(_, path)| {
+    for path in work_product
+        .saved_files
+        .items()
+        .map(|(_, path)| path.as_str())
+        .into_sorted_stable_ord(false)
+    {
         let path = in_incr_comp_dir_sess(sess, path);
         if let Err(err) = std_fs::remove_file(&path) {
             sess.emit_warning(errors::DeleteWorkProduct { path: &path, err });
         }
-    });
+    }
 }

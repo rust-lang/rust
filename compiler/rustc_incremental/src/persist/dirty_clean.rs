@@ -198,7 +198,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
         let (name, mut auto) = self.auto_labels(item_id, attr);
         let except = self.except(attr);
         let loaded_from_disk = self.loaded_from_disk(attr);
-        for e in except.to_sorted(&(), false) {
+        for e in except.items().map(|x| x.as_str()).into_sorted_stable_ord(false) {
             if !auto.remove(e) {
                 self.tcx.sess.emit_fatal(errors::AssertionAuto { span: attr.span, name, e });
             }
@@ -377,18 +377,20 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
                 continue;
             };
             self.checked_attrs.insert(attr.id);
-            assertion.clean.to_sorted(&(), false).iter().for_each(|label| {
+            for label in assertion.clean.items().map(|x| x.as_str()).into_sorted_stable_ord(false) {
                 let dep_node = DepNode::from_label_string(self.tcx, &label, def_path_hash).unwrap();
                 self.assert_clean(item_span, dep_node);
-            });
-            assertion.dirty.to_sorted(&(), false).iter().for_each(|label| {
+            }
+            for label in assertion.dirty.items().map(|x| x.as_str()).into_sorted_stable_ord(false) {
                 let dep_node = DepNode::from_label_string(self.tcx, &label, def_path_hash).unwrap();
                 self.assert_dirty(item_span, dep_node);
-            });
-            assertion.loaded_from_disk.to_sorted(&(), false).iter().for_each(|label| {
+            }
+            for label in
+                assertion.loaded_from_disk.items().map(|x| x.as_str()).into_sorted_stable_ord(false)
+            {
                 let dep_node = DepNode::from_label_string(self.tcx, &label, def_path_hash).unwrap();
                 self.assert_loaded_from_disk(item_span, dep_node);
-            });
+            }
         }
     }
 }

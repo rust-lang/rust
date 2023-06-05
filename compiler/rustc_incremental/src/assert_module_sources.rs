@@ -118,8 +118,8 @@ impl<'tcx> AssertModuleSource<'tcx> {
         debug!("mapping '{}' to cgu name '{}'", self.field(attr, sym::module), cgu_name);
 
         if !self.available_cgus.contains(&cgu_name) {
-            let cgu_names: Vec<String> =
-                self.available_cgus.items().map(|cgu| cgu.as_str().to_owned()).into_sorted(&());
+            let cgu_names: Vec<&str> =
+                self.available_cgus.items().map(|cgu| cgu.as_str()).into_sorted_stable_ord(true);
             self.tcx.sess.emit_err(errors::NoModuleNamed {
                 span: attr.span,
                 user_path,

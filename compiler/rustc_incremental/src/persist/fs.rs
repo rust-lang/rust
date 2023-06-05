@@ -661,8 +661,9 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
     session_directories.sort();
 
     // Now map from lock files to session directories
-    let lock_file_to_session_dir: UnordMap<String, Option<String>> =
-        UnordMap::from(lock_files.into_items().map(|lock_file_name| {
+    let lock_file_to_session_dir: UnordMap<String, Option<String>> = lock_files
+        .into_items()
+        .map(|lock_file_name| {
             assert!(lock_file_name.ends_with(LOCK_FILE_EXT));
             let dir_prefix_end = lock_file_name.len() - LOCK_FILE_EXT.len();
             let session_dir = {
@@ -670,41 +671,45 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
                 session_directories.iter().find(|dir_name| dir_name.starts_with(dir_prefix))
             };
             (lock_file_name, session_dir.map(String::clone))
-        }));
+        })
+        .into();
 
     // Delete all lock files, that don't have an associated directory. They must
     // be some kind of leftover
-    lock_file_to_session_dir.to_sorted(&(), false).iter().for_each(
-        |(lock_file_name, directory_name)| {
-            if directory_name.is_none() {
-                let Ok(timestamp) = extract_timestamp_from_session_dir(lock_file_name) else {
+    let lock_file_to_session_dir_iter = lock_file_to_session_dir
+        .items()
+        .map(|(file, dir)| (file.as_str(), dir.as_ref().map(|y| y.as_str())));
+    for (lock_file_name, directory_name) in
+        lock_file_to_session_dir_iter.into_sorted_stable_ord(false)
+    {
+        if directory_name.is_none() {
+            let Ok(timestamp) = extract_timestamp_from_session_dir(lock_file_name) else {
                 debug!(
                     "found lock-file with malformed timestamp: {}",
                     crate_directory.join(&lock_file_name).display()
                 );
                 // Ignore it
-                return;
+                continue;
             };
 
-                let lock_file_path = crate_directory.join(&**lock_file_name);
+            let lock_file_path = crate_directory.join(&*lock_file_name);
 
-                if is_old_enough_to_be_collected(timestamp) {
-                    debug!(
-                        "garbage_collect_session_directories() - deleting \
-                        garbage lock file: {}",
-                        lock_file_path.display()
-                    );
-                    delete_session_dir_lock_file(sess, &lock_file_path);
-                } else {
-                    debug!(
-                        "garbage_collect_session_directories() - lock file with \
-                        no session dir not old enough to be collected: {}",
-                        lock_file_path.display()
-                    );
-                }
+            if is_old_enough_to_be_collected(timestamp) {
+                debug!(
+                    "garbage_collect_session_directories() - deleting \
+                    garbage lock file: {}",
+                    lock_file_path.display()
+                );
+                delete_session_dir_lock_file(sess, &lock_file_path);
+            } else {
+                debug!(
+                    "garbage_collect_session_directories() - lock file with \
+                    no session dir not old enough to be collected: {}",
+                    lock_file_path.display()
+                );
             }
-        },
-    );
+        }
+    }
 
     // Filter out `None` directories
     let lock_file_to_session_dir: UnordMap<String, String> =

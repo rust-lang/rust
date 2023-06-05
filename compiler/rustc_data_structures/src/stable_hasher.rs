@@ -339,6 +339,8 @@ impl<T1: HashStable<CTX>, T2: HashStable<CTX>, CTX> HashStable<CTX> for (T1, T2)
     }
 }
 
+unsafe impl<T1: StableOrd, T2: StableOrd> StableOrd for (T1, T2) {}
+
 impl<T1, T2, T3, CTX> HashStable<CTX> for (T1, T2, T3)
 where
     T1: HashStable<CTX>,
@@ -352,6 +354,8 @@ where
         _2.hash_stable(ctx, hasher);
     }
 }
+
+unsafe impl<T1: StableOrd, T2: StableOrd, T3: StableOrd> StableOrd for (T1, T2, T3) {}
 
 impl<T1, T2, T3, T4, CTX> HashStable<CTX> for (T1, T2, T3, T4)
 where
@@ -367,6 +371,11 @@ where
         _2.hash_stable(ctx, hasher);
         _3.hash_stable(ctx, hasher);
     }
+}
+
+unsafe impl<T1: StableOrd, T2: StableOrd, T3: StableOrd, T4: StableOrd> StableOrd
+    for (T1, T2, T3, T4)
+{
 }
 
 impl<T: HashStable<CTX>, CTX> HashStable<CTX> for [T] {
@@ -458,6 +467,8 @@ impl<CTX> HashStable<CTX> for str {
         self.as_bytes().hash_stable(ctx, hasher);
     }
 }
+
+unsafe impl StableOrd for &str {}
 
 impl<CTX> HashStable<CTX> for String {
     #[inline]
