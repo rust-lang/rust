@@ -1,5 +1,4 @@
 use hir::HasSource;
-use ide_db::syntax_helpers::insert_whitespace_into_node::insert_ws_into;
 use syntax::ast::{self, make, AstNode};
 
 use crate::{
@@ -129,20 +128,9 @@ fn add_missing_impl_members_inner(
     let target = impl_def.syntax().text_range();
     acc.add(AssistId(assist_id, AssistKind::QuickFix), label, target, |edit| {
         let new_impl_def = edit.make_mut(impl_def.clone());
-        let missing_items = missing_items
-            .into_iter()
-            .map(|it| {
-                if ctx.sema.hir_file_for(it.syntax()).is_macro() {
-                    if let Some(it) = ast::AssocItem::cast(insert_ws_into(it.syntax().clone())) {
-                        return it;
-                    }
-                }
-                it.clone_for_update()
-            })
-            .collect();
         let first_new_item = add_trait_assoc_items_to_impl(
             &ctx.sema,
-            missing_items,
+            &missing_items,
             trait_,
             &new_impl_def,
             target_scope,
@@ -1729,5 +1717,78 @@ impl m::Foo for S {
     fn valid(some: u32) -> bool { false }
 }"#,
         )
+    }
+
+    #[test]
+    fn nested_macro_should_not_cause_crash() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+macro_rules! ty { () => { i32 } }
+trait SomeTrait { type Output; }
+impl SomeTrait for i32 { type Output = i64; }
+macro_rules! define_method {
+    () => {
+        fn method(&mut self, params: <ty!() as SomeTrait>::Output);
+    };
+}
+trait AnotherTrait { define_method!(); }
+impl $0AnotherTrait for () {
+}
+"#,
+            r#"
+macro_rules! ty { () => { i32 } }
+trait SomeTrait { type Output; }
+impl SomeTrait for i32 { type Output = i64; }
+macro_rules! define_method {
+    () => {
+        fn method(&mut self, params: <ty!() as SomeTrait>::Output);
+    };
+}
+trait AnotherTrait { define_method!(); }
+impl AnotherTrait for () {
+    $0fn method(&mut self,params: <ty!()as SomeTrait>::Output) {
+        todo!()
+    }
+}
+"#,
+        );
+    }
+
+    // FIXME: `T` in `ty!(T)` should be replaced by `PathTransform`.
+    #[test]
+    fn paths_in_nested_macro_should_get_transformed() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+macro_rules! ty { ($me:ty) => { $me } }
+trait SomeTrait { type Output; }
+impl SomeTrait for i32 { type Output = i64; }
+macro_rules! define_method {
+    ($t:ty) => {
+        fn method(&mut self, params: <ty!($t) as SomeTrait>::Output);
+    };
+}
+trait AnotherTrait<T: SomeTrait> { define_method!(T); }
+impl $0AnotherTrait<i32> for () {
+}
+"#,
+            r#"
+macro_rules! ty { ($me:ty) => { $me } }
+trait SomeTrait { type Output; }
+impl SomeTrait for i32 { type Output = i64; }
+macro_rules! define_method {
+    ($t:ty) => {
+        fn method(&mut self, params: <ty!($t) as SomeTrait>::Output);
+    };
+}
+trait AnotherTrait<T: SomeTrait> { define_method!(T); }
+impl AnotherTrait<i32> for () {
+    $0fn method(&mut self,params: <ty!(T)as SomeTrait>::Output) {
+        todo!()
+    }
+}
+"#,
+        );
     }
 }
